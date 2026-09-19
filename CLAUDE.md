@@ -22,6 +22,7 @@ template (MIT, see `.claude/LICENSE-ccgs`), adapted. Owner / product lead / lore
 - **Godot project root**: `game/` (this is `res://`). The template's `src/` and `assets/` conventions map to `game/scripts/` and `game/data/` until `/adopt` decides otherwise.
 - **Version Control**: Git, trunk-based on `main`, local only (no remote). See "Version Control" below.
 - **Smoke check**: `--headless --path game --import`, then `--headless --path game --quit-after 400 -- --shot` must produce no `ERROR` / `SCRIPT ERROR` lines.
+- **Rules self-test**: `--headless --path game res://tests/selftest.tscn` must end `0 failed` (exit code 0). It drives wound maths, natural healing, arm loss/regrowth, healer credit and rent directly. Add a check there whenever a rule changes. It is a stopgap until GUT is installed (`/test-setup`), and it proves arithmetic, not feel.
 - **Style**: D2-style real-time isometric combat in low-poly 3D; BG3-style depth in the hub. Nodes are built in code so the project stays plain text. Position nodes *before* `add_child` (a physics body that exists at the origin for one step can carry the player off as a platform passenger).
 
 ## Project Structure

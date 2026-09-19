@@ -82,6 +82,11 @@ func heal_layer(layer: String, amount: float) -> float:
 	return healed
 
 
+## Damage aimed at one layer (e.g. a destroyed limb is catastrophic by definition).
+func damage_layer(layer: String, amount: float) -> float:
+	return _drain(layer, amount)
+
+
 func scale_max(factor: float) -> void:
 	for layer: String in max_hp:
 		max_hp[layer] = float(max_hp[layer]) * factor

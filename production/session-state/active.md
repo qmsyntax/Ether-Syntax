@@ -29,7 +29,7 @@
 - Pillars rewritten to five (direction confirmed; wording is Claude's and editable).
 
 ## Still waiting on Brent
-- **Hands-on playtest of the arena build** — the real fun gate. Nothing about feel is verified. Note the build still has the OLD rules (no natural healing, healer-only recovery).
+- **Hands-on playtest of the arena build `v0.2.0`** — the real fun gate. Nothing about feel is verified. The build now has the NEW rules (2026-09-19): free natural healing at rest (superficial fast, structural slow, catastrophic never), rent ticking during rest with Space = go now / E = rest longer, a striking arm that overcharging wears out and can destroy (off-hand blows at 60%, no overcharge, until a healer or the Lifesteal talent regrows it), and healer credit down to -$2000 debt. Rules proven by `game/tests/selftest.tscn` (19 checks); tuning numbers are first guesses.
 - Motivation profile and target-player sections in `game-concept.md` are still marked PROPOSED; ranks 2–4 of the aesthetics table are proposed.
 - MVP scope: the build has outgrown the v0 MVP definition — settle at sprint planning.
 - How strict the approval protocol should be (template default: ask before every file write; root `CLAUDE.md` relaxes this to per-changeset).

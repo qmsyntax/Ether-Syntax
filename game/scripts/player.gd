@@ -18,6 +18,18 @@ const BOLT_COST := 12.0
 const BOLT_DAMAGE := 90.0
 const HEAL_PRICES := {"catastrophic": 300, "structural": 60, "superficial": 15}
 
+# Natural healing (design pillar 3): free, out of combat only, never restores what is lost.
+const NATURAL_SUPERFICIAL_PER_S := 3.0
+const NATURAL_STRUCTURAL_PER_S := 0.4
+const ARM_NATURAL_PER_S := 2.0
+const ARM_MAX := 100.0
+const ARM_COST_PER_SELF_HARM := 4.0     # arm integrity lost per point of overcharge self-harm
+const ARM_LOSS_CATASTROPHIC := 4.0
+const ARM_REGROW_HEAL_POINTS := 25.0    # talent heal points needed to regrow a lost arm
+const ARM_REGROW_PRICE := 1200
+const OFF_HAND_FACTOR := 0.6
+const DEBT_LIMIT := -2000
+
 var body := Body.new(60.0, 30.0, 10.0)
 var talent_id := ""
 var talent: Dictionary = {}
@@ -34,6 +46,9 @@ var meditating := false
 var active := false
 var dead := false
 var heal_points_total := 0.0
+var arm_right := ARM_MAX          # striking arm integrity; overcharging spends it
+var arm_right_lost := false
+var _arm_regrow := 0.0
 var discoveries: Array[String] = []
 var log_lines: Array[String] = []
 
@@ -113,7 +128,14 @@ func _physics_process(delta: float) -> void:
 		reflux_locked = false
 		note("Water affinity unlocks.")
 
-	var rmb: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
+	# The body mends itself between fights - but only what a body can mend.
+	if not in_combat:
+		body.heal_layer("superficial", NATURAL_SUPERFICIAL_PER_S * delta)
+		body.heal_layer("structural", NATURAL_STRUCTURAL_PER_S * delta)
+		if not arm_right_lost:
+			arm_right = minf(ARM_MAX, arm_right + ARM_NATURAL_PER_S * delta)
+
+	var rmb: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and not arm_right_lost
 	if rmb and not meditating:
 		_charging = true
 		_charge = minf(CHARGE_MAX, _charge + delta)
@@ -121,7 +143,7 @@ func _physics_process(delta: float) -> void:
 		_release_overcharge()
 
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and _melee_cd <= 0.0 and not meditating and not _charging:
-		_swing(1.0, MELEE_RANGE)
+		_swing(OFF_HAND_FACTOR if arm_right_lost else 1.0, MELEE_RANGE)
 		_melee_cd = MELEE_COOLDOWN
 
 	var input := Vector2.ZERO
@@ -177,12 +199,31 @@ func deal_damage(target: Node, base: float) -> void:
 	if talent_id == "one_percent_lifesteal" and bool(target.get("is_living")):
 		var points: float = applied * 0.01
 		heal_points_total += points
-		var used: float = body.heal(points, stars >= 2)
+		var used: float = _spend_heal_points(points)
 		if used > 0.0:
 			discover("Pays on plants: YES" if scenery else "Pays on monsters: YES")
 
 	if bool(target.call("is_dead")):
 		_on_kill(target)
+
+
+## Talent healing: worst first. A lost limb is catastrophic-class, so it is always 1 point per
+## unit even at Dynamic quality - this is the one thing natural healing can never do.
+func _spend_heal_points(points: float) -> float:
+	var left: float = points
+	left -= body.heal(minf(left, body.missing("catastrophic")), false)
+	if arm_right_lost and left > 0.0:
+		var into_arm: float = minf(left, ARM_REGROW_HEAL_POINTS - _arm_regrow)
+		_arm_regrow += into_arm
+		left -= into_arm
+		if _arm_regrow >= ARM_REGROW_HEAL_POINTS:
+			arm_right_lost = false
+			arm_right = ARM_MAX * 0.4
+			FloatText.spawn(get_parent(), global_position, "ARM REGROWN", Color(0.4, 1, 0.5))
+			discover("Regrows lost limbs: YES")
+	if left > 0.0:
+		left -= body.heal(left, stars >= 2)
+	return points - left
 
 
 func _on_kill(target: Node) -> void:
@@ -220,6 +261,15 @@ func _release_overcharge() -> void:
 	FloatText.spawn(get_parent(), global_position, "arm -%d" % int(applied), Color(1, 0.4, 0.3))
 	_swing(1.0 + c * 2.5, MELEE_RANGE + 0.5)
 	_melee_cd = MELEE_COOLDOWN * 1.5
+
+	arm_right -= self_cost * ARM_COST_PER_SELF_HARM
+	if arm_right <= 0.0:
+		arm_right = 0.0
+		arm_right_lost = true
+		_arm_regrow = 0.0
+		body.damage_layer("catastrophic", ARM_LOSS_CATASTROPHIC)
+		FloatText.spawn(get_parent(), global_position + Vector3.UP * 0.6, "ARM LOST", Color(1, 0.1, 0.1))
+		note("Your striking arm is destroyed. Rest will not bring it back.")
 	_check_death()
 
 
@@ -323,15 +373,35 @@ func _check_death() -> void:
 
 # --- between fights -----------------------------------------------------------
 
+## Rent keeps ticking while you rest. Money may go negative: that is debt.
+func charge(amount: int) -> void:
+	money -= amount
+
+
+func _can_afford(cost: int) -> bool:
+	return money - cost >= DEBT_LIMIT
+
+
+## The healer sells speed, and the one thing rest cannot do: regrowth. Credit is extended to a limit.
 func buy_healing() -> void:
+	if arm_right_lost:
+		if not _can_afford(ARM_REGROW_PRICE):
+			note("Healer: regrowing an arm is $%d. Your credit won't stretch that far." % ARM_REGROW_PRICE)
+			return
+		money -= ARM_REGROW_PRICE
+		arm_right_lost = false
+		arm_right = ARM_MAX
+		_arm_regrow = 0.0
+		note("Healer: -$%d, arm regrown." % ARM_REGROW_PRICE)
+		return
 	for layer: String in Body.ORDER_HEAL:
 		var gap: float = body.missing(layer)
 		if gap <= 0.0:
 			continue
 		var amount: float = minf(10.0, gap)
 		var cost: int = int(ceil(amount * float(HEAL_PRICES[layer])))
-		if money < cost:
-			note("Healer: %s work costs $%d. You have $%d." % [layer, cost, money])
+		if not _can_afford(cost):
+			note("Healer: %s work costs $%d. You have $%d and no more credit." % [layer, cost, money])
 			return
 		money -= cost
 		body.heal_layer(layer, amount)

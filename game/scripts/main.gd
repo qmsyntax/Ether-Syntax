@@ -22,6 +22,9 @@ var wave := 0
 var rest_timer := 0.0
 var rng := RandomNumberGenerator.new()
 
+const RENT_PER_SECOND := 5.0
+
+var _rent_accum := 0.0
 var _shot_mode := false
 var _frames := 0
 
@@ -46,7 +49,14 @@ func _process(delta: float) -> void:
 	match state:
 		"rest":
 			rest_timer -= delta
-			banner.text = "Wave %d in %d...   [H] pay the healer   hold [M] to meditate   cut the grass" % [wave + 1, int(ceil(rest_timer))]
+			# Rest is free for the body and costly for the wallet: rent ticks while you recover.
+			if wave >= 1:
+				_rent_accum += RENT_PER_SECOND * delta
+				if _rent_accum >= 1.0:
+					var due: int = int(_rent_accum)
+					_rent_accum -= float(due)
+					player.call("charge", due)
+			banner.text = "Wave %d in %d...   resting heals you for free, but rent is $%d/s\n[Space] go now   [E] rest 10s longer   [H] healer (fast, and regrows limbs)   hold [M] meditate" % [wave + 1, int(ceil(rest_timer)), int(RENT_PER_SECOND)]
 			if rest_timer <= 0.0:
 				_start_wave()
 		"fight":
@@ -82,6 +92,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			player.call("cast_bolt")
 		KEY_T:
 			player.call("try_ascend")
+		KEY_SPACE:
+			if state == "rest":
+				rest_timer = 0.0
+		KEY_E:
+			if state == "rest":
+				rest_timer += 10.0
+				player.call("note", "You rest a while longer. The landlord notices.")
 		KEY_H:
 			if state == "rest":
 				player.call("buy_healing")
@@ -264,7 +281,15 @@ func _refresh_notebook() -> void:
 		int(float(player.get("essence"))), int(float(player.get("essence_max"))),
 		int(float(player.get("satellite_rate"))), int(float(player.get("reflux"))), lock,
 	])
-	lines.append("Money: $%d        Wave: %d" % [int(player.get("money")), wave])
+	if bool(player.get("arm_right_lost")):
+		lines.append("Striking arm: LOST - off-hand blows only, no overcharge")
+	else:
+		lines.append("Striking arm: %d%%" % int(float(player.get("arm_right"))))
+	var cash: int = int(player.get("money"))
+	if cash < 0:
+		lines.append("DEBT: $%d        Wave: %d" % [-cash, wave])
+	else:
+		lines.append("Money: $%d        Wave: %d" % [cash, wave])
 	if str(player.get("talent_id")) == "one_percent_lifesteal":
 		lines.append("Heal points drawn so far: %.1f" % float(player.get("heal_points_total")))
 	lines.append("")
@@ -279,7 +304,8 @@ func _refresh_notebook() -> void:
 		lines.append("> %s" % l)
 	lines.append("")
 	lines.append("WASD move   LMB strike   hold RMB overcharge (hurts you)")
-	lines.append("Q water bolt   hold M meditate   H healer (between waves)   R restart")
+	lines.append("Q water bolt   hold M meditate   R restart")
+	lines.append("Between waves: Space go now   E rest longer   H healer")
 	notebook.text = "\n".join(lines)
 
 
