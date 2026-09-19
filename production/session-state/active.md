@@ -18,7 +18,19 @@
 3. The arena build is, in template terms, a **concept prototype**: write its `REPORT.md` with a PROCEED / PIVOT / KILL verdict after Brent's hands-on playtest (`/playtest-report`).
 4. `/sprint-plan` for sprint 1 once the adoption plan is agreed.
 
-## Decisions waiting on Brent
-- Baseline git commit (nothing is committed yet; repo is initialised on `main`).
-- How strict the approval protocol should be (template default: ask before every file write; CLAUDE.md currently relaxes this to per-changeset).
+## Decided by Brent 2026-09-19 (recorded in `design/gdd/game-concept.md`, `design/03`, `design/04`)
+- **Version control**: commit each approved changeset without being asked again; Conventional Commits; tag playable builds and gates; still ask before any remote/push/history rewrite (policy in root `CLAUDE.md`). Baseline is committed and tagged `v0.1.0-concept-prototype`.
+- **Top priority**: living in that world (fantasy) beats discovery and challenge when they conflict.
+- **Death**: two modes — standard wakes you up in debt (bill / bad contract / indenture), hardcore is opt-in permadeath.
+- **Session**: 20–30 minutes — one delve plus a quick town stop.
+- **Healing**: natural healing is free over time but never regrows limbs/organs; fast or catastrophic healing costs money or a talent. "Free" costs town-clock time.
+- **Town**: hard but not crooked — the game never cheats the player.
+- **Talents**: core rule and most fine print visible at creation; only one or two flags per talent stay hidden.
+- Pillars rewritten to five (direction confirmed; wording is Claude's and editable).
+
+## Still waiting on Brent
+- **Hands-on playtest of the arena build** — the real fun gate. Nothing about feel is verified. Note the build still has the OLD rules (no natural healing, healer-only recovery).
+- Motivation profile and target-player sections in `game-concept.md` are still marked PROPOSED; ranks 2–4 of the aesthetics table are proposed.
+- MVP scope: the build has outgrown the v0 MVP definition — settle at sprint planning.
+- How strict the approval protocol should be (template default: ask before every file write; root `CLAUDE.md` relaxes this to per-changeset).
 - Review mode: `lean` runs four director agents at each phase gate (costly); `solo` is artifact checks only.

@@ -10,6 +10,8 @@ canon idea playable (numbers are starting values for tuning, not lore).
 | Superficial | cuts, bruises, burns | 1 heal point / HP |
 | Structural | fractures, deep wounds, organ damage | 10 / HP |
 | Catastrophic | lost limb, destroyed organ | 100 / HP |
+- **Natural healing is free and works over time** `[B, 2026-09-19]` — a healthy archhuman body mends itself. `[MODEL]` Superficial recovers quickly (minutes of rest), structural slowly (a night's rest or more), **catastrophic never**: a lost limb or ruined organ stays lost until a healer or a talent restores it. No natural healing while in combat.
+- `[MODEL]` "Free" costs time, not money: resting advances the town clock, and rent, contract deadlines and break pressure keep ticking. Paying a healer buys the time back. This is what keeps the economy meaningful without charging for ordinary recovery.
 - Catastrophic wounds disable what they hit (no arm = no two-handed weapon, no strike techniques on that side).
 - Death = brain destruction or all layers emptied. [CANON: brain is the kill condition]
 
@@ -19,7 +21,8 @@ canon idea playable (numbers are starting values for tuning, not lore).
 - [CANON] **1★ = Supreme only.** [MODEL] Every HP costs 100 points regardless of layer. Painfully slow, but it *can* regrow anything.
 - [CANON] **2★ = Dynamic.** [MODEL] Each HP costs its layer's native price. Same income, up to 100× more superficial healing. This is the first "talent evolution" the player feels.
 - [CANON] Never restores: essence, sleep/soul exhaustion, soul damage, psychological trauma.
-- [MODEL] **Hidden technicality flags**, rolled per save and discovered by play (the notebook records each once proven): does it pay on constructs? on undead? on damage dealt by thrown environment? through armour bleed? while unconscious?
+- [MODEL] **Technicality flags**, rolled per save: does it pay on constructs? on undead? on damage dealt by thrown environment? through armour bleed? while unconscious? `[B, 2026-09-19]` softened: the talent's core rule and **most** of these are shown to the player at creation; only **one or two** per talent stay hidden to be proven by play (the notebook records each once proven). Enough to discover, not enough to feel arbitrary.
+- `[MODEL]` Consequence of free natural healing (§1): this talent's edge is no longer "the only affordable healing". It is **no downtime** (heal while working instead of resting while the clock runs) and **regrowth** of what natural healing can never restore — which is what makes limb-cost attacks sustainable.
 
 ## 3. Essence, satellites, reflux
 - [CANON] Each **star is an independent tank** (100 units each). Abilities cost units (instant) or units/second (sustained).
@@ -54,8 +57,16 @@ As in concept draft §4 (seal, halfway gate, escalation, contribution loot, dimi
 ## 7. Gear
 - [CANON] Secondary to the body. One small effect per item; three-item sets; growing uniques. Sources: crafted, quest, reward, drop.
 
+## 7b. Death `[B, 2026-09-19]`
+- **Standard mode**: dying in a dungeon does not end the character. You are dragged out and patched up, and wake up **in debt** — a healer bill, a bad contract, or indentured work until it is paid `[F: canon has indentured mining for debtors]`. Catastrophic wounds taken stay until treated.
+- **Hardcore mode** (opt-in at character creation): permadeath.
+
+## 7c. Session shape `[B, 2026-09-19]`
+A sitting is **20–30 minutes**: one delve plus a quick stop in town. Dungeon length, town interactions and save points are sized to that.
+
 ## 8. What the first playable must prove
-1. 1% feels useless in a fight and essential between fights.
+0. `[B]` Top priority: it feels like living in that world — judged by Brent, above the four below.
+1. 1% feels useless in a fight and essential between fights (now meaning: it saves you the resting time, and regrows what rest cannot).
 2. Limb-cost overcharge + reflux heat make aggression the right answer.
 3. The Supreme→Dynamic evolution at 2★ is a felt power spike.
 4. Hidden aura pushes players toward risk without a visible bar.

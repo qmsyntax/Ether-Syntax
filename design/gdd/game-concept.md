@@ -63,14 +63,16 @@ Talent permanence and unknown fine print `[C]`; flags-as-discoverable-mechanic `
 
 ### Target Aesthetics (What the player FEELS)
 
-**PROPOSED ranking — Brent to confirm.** Derived from what readers say they value in the books
-(`research/audience-and-comparables.md` §1, `[F]`) and what the mechanics spec is built to do.
+**Top priority CONFIRMED by Brent 2026-09-19: living in that world comes first** `[B]`. When goals
+conflict, the fantasy of being an archhuman in that city wins over system opacity and over
+economic harshness. The order of ranks 2–4 below is proposed, not yet confirmed.
+Evidence base: `research/audience-and-comparables.md` §1, `[F]`.
 
 | Aesthetic | Priority | How We Deliver It |
 | ---- | ---- | ---- |
-| **Discovery** | 1 | Hidden talent flags, invisible latent aura, item histories, dungeon rule cards. Readers' top praise is the power system, and their recurring complaint is that the protagonist never systematically *tests* his talent — the game hands the player that experiment. |
-| **Challenge** | 2 | Attrition: three-layer wounds, ruinous healing, reflux heat, the halfway gate. Mastery means staying solvent as well as staying alive. |
-| **Fantasy** | 3 | A nobody-turned-archhuman in a might-makes-right city. Readers rate the world highly and the books' protagonist lowest — an original player character keeps the first and drops the second. |
+| **Fantasy** | 1 `[B]` | A nobody-turned-archhuman in a might-makes-right city. Readers rate the world highly and the books' protagonist lowest — an original player character keeps the first and drops the second. Every system is judged first on whether it makes the player feel they live there. |
+| **Discovery** | 2 | A talent whose core rule is visible and whose fine print still holds a few surprises; invisible latent aura, item histories, dungeon rule cards. Readers' top praise is the power system, and their recurring complaint is that the protagonist never systematically *tests* his talent — the game hands the player that experiment. |
+| **Challenge** | 3 | Attrition with a floor: three-layer wounds, free-but-slow natural healing that never regrows what is lost, costly fast healing, reflux heat, the halfway gate. Pressure, not punishment. |
 | **Expression** | 4 | One talent out of many, scroll loadouts, which constructs you bind, whether you take spirit abilities and stall your own ascension. |
 | **Sensation** | 5 | Body-horror feedback: limb-cost overcharge, self-damage past reflux 80, tempering sessions. Low-poly keeps it readable rather than gory. |
 | **Narrative** | 6 | Emergent only — debts, contracts, scars. No authored plot and no canon cast. |
@@ -130,7 +132,7 @@ Behaviours the mechanics in `design/03-core-mechanics-spec-v0.1.md` are built to
 - **Onboarding curve**: start as a broke 1★ with one talent and no explanation of its fine print. The first room teaches combat; the first heal bill teaches the economy; the first meadow teaches the talent. `[MODEL]` — untested.
 - **Difficulty scaling**: by ticket choice, not a slider. Difficulty is shown only as a recommendation ("high 2★ solo") `[C]`. Stages spike past the midpoint and the adaptation director counters habits `[C]`.
 - **Feedback clarity**: the weak point, on purpose. Latent aura is never a number `[C]`; the notebook gives qualitative reads and records each proven flag. The notebook has to carry the whole job of telling the player they are improving.
-- **Recovery from failure**: `[?]` — whether death ends the save is undecided (see Open Questions). Noita's lesson applies: hidden rules are fun when experiments are cheap and fast, which argues against expensive failure during discovery.
+- **Recovery from failure**: DECIDED by Brent 2026-09-19 `[B]` — **two modes**. *Standard*: dying in a dungeon means you are dragged out and patched up, and you wake up owing someone — a healer bill, a bad contract, or indentured work until it is paid (canon has indentured mining for debtors `[F]`). The character survives; failure becomes content, and experiments stay cheap. *Hardcore* (opt-in): permadeath.
 
 ---
 
@@ -164,25 +166,37 @@ faction standing; scars and soul damage carried across runs. `[C/F/MODEL]`
 
 ## Game Pillars
 
-**DRAFT — not yet confirmed by Brent.** Pillars are tie-breakers; do not cite these as
-binding until this note is removed. `[MODEL]` synthesis of draft §2.
+**Direction CONFIRMED by Brent 2026-09-19** `[B]`; the exact wording below is Claude's and can
+still be edited. Pillars are tie-breakers, listed in priority order.
 
-### Pillar 1: Discoverable build, not a build guide
-The talent's real rules are found by playing, never looked up.
+### Pillar 1: You live in that world
+The fantasy of being a nobody-turned-archhuman in a might-makes-right city comes first.
 
-*Design test*: if a system would let the player know their talent's rules before a run, cut it.
+*Design test*: when a system's opacity or harshness fights the feeling of living there, the feeling wins.
 
-### Pillar 2: A heal too slow to save you, that makes every other cost affordable
-Sustain is the budget answer to an attrition economy, never a rescue button.
+### Pillar 2: A talent with fine print worth finding
+The talent's core rule and most of its behaviour are visible up front. A few surprises remain
+to be proven by play — enough for discovery, not enough to feel arbitrary. (Softened from
+"never looked up" at Brent's direction.)
 
-*Design test*: if an option makes healing free or instant, reject it.
+*Design test*: if a player cannot tell roughly what their talent does at creation, show more; if nothing is left to find, hide one thing.
 
-### Pillar 3: Everyone scams the newcomer
-Hub economy friction is a feature.
+### Pillar 3: The body mends itself; miracles cost
+Natural healing is free and happens over time, as a healthy body's would — and like a body, it
+never regrows a limb or a ruined organ. Fast healing, and anything catastrophic, costs money, a
+talent, or both. Time is the hidden price of "free": rent, contracts and break pressure keep
+ticking while you rest.
 
-*Design test*: if simplifying the hub removes a way the world can take advantage of you, don't.
+*Design test*: if an option makes in-combat or catastrophic healing free or instant, reject it. If it makes ordinary recovery cost money, reject that too.
 
-### Pillar 4: One hit from disaster, one room from profit
+### Pillar 4: A hard town, not a crooked one
+The hub bargains hard and the newcomer pays for ignorance, but the game itself never cheats:
+prices are honest once known, and every bad deal could have been seen coming. (Softened from
+"everyone scams the newcomer" at Brent's direction.)
+
+*Design test*: if the player loses money to something they had no way to anticipate, fix it.
+
+### Pillar 5: One hit from disaster, one room from profit
 Netherecho risk-reward sits alongside grounded tactical combat.
 
 *Design test*: if a Netherecho reward feels safe, it doesn't belong there.
@@ -225,7 +239,7 @@ traffic and author commentary, not surveys). Reddit sentiment could not be reach
 | ---- | ---- |
 | **Age range** | 18–40. Royal Road traffic peaks at 18–24; genre commentary describes millennial and Gen X readers with gaming backgrounds. |
 | **Gaming experience** | Mid-core to hardcore. Comfortable with opaque systems and punishing economies. |
-| **Time availability** | `[?]` — not decided. Comparable small-team isometric games run 15–45 minutes and players ask for shorter. The audience is audiobook-heavy (16–23 h per book), so long-form tolerance exists. |
+| **Time availability** | DECIDED by Brent 2026-09-19 `[B]`: **a sitting is 20–30 minutes** — one delve plus a quick stop in town. Comparable small-team isometric games run 15–45 minutes and players ask for shorter. |
 | **Platform preference** | PC |
 | **Current games they play** | Darkest Dungeon, Stoneshard, Battle Brothers, Path of Exile / Diablo 2, Noita |
 | **What they're looking for** | A power system worth working out; a weak start exploited cleverly; consequences that stick |

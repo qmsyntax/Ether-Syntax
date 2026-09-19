@@ -7,8 +7,10 @@ varied talent pool; the title talent is one entry among many. The roster lives i
 ## What makes something feel like a talent from this universe
 1. **One sentence, permanent, and narrow.** A talent is a single odd rule, not a class or a kit.
 2. **The vestige states it cryptically** (`verse`) and cannot or will not clarify edge cases.
-3. **Its worth lives in the technicalities.** Each talent carries 3–5 `hidden` yes/no flags that are
-   rolled per save and proven only by experiment. Two players with the same talent may not have the same talent.
+3. **Its worth lives in the technicalities.** Each talent carries 3–5 yes/no flags rolled per save, so two
+   players with the same talent may not have the same talent. `[B, 2026-09-19]` Most flags are **shown at
+   creation**; only **one or two stay hidden** per talent, to be proven by experiment. (The roster's
+   `hidden` arrays list candidates — which ones are actually concealed is decided per talent.)
 4. **Looks weak, isn't (or looks strong, has a catch).** The market misprices talents; the player can profit from understanding theirs.
 5. **It evolves at each star** (`evolve_2`, later `evolve_3`…). Evolutions widen the rule or remove its sharpest limit — they never replace it.
 6. **It pairs with affinities it didn't choose.** Affinities are rolled separately (1 common, 2 uncommon, 3 rare), so the same talent plays differently as water, blood, earth…
