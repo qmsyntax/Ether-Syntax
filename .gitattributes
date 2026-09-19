@@ -1,0 +1,32 @@
+# Normalise line endings in the repo; this machine has core.autocrlf=true.
+* text=auto
+
+# Bash hooks break if checked out with CRLF.
+*.sh text eol=lf
+
+# Godot text formats: keep LF so diffs stay clean across machines.
+*.gd text eol=lf
+*.tscn text eol=lf
+*.tres text eol=lf
+*.godot text eol=lf
+*.gdshader text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# Windows launchers want CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary assets.
+*.png binary
+*.jpg binary
+*.webp binary
+*.ogg binary
+*.wav binary
+*.mp3 binary
+*.glb binary
+*.blend binary
+*.ttf binary
+*.otf binary
