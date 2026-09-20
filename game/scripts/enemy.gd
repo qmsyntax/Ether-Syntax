@@ -22,11 +22,23 @@ var _mat: StandardMaterial3D
 var _label: Label3D
 
 
-func setup(kind: String, player: Node3D) -> void:
+## `strength` scales health and damage - dungeon stages past the midpoint hit harder.
+func setup(kind: String, player: Node3D, strength: float = 1.0) -> void:
 	target = player
 	var height := 1.6
-	if kind == "brute":
-		body = Body.new(700.0)
+	var hp := 240.0
+	if kind == "commander":
+		hp = 1400.0
+		radius = 0.9
+		speed = 3.0
+		damage = 28.0
+		heavy = true
+		aura_value = 30.0
+		bounty = 1500
+		height = 2.8
+		_base_color = Color(0.75, 0.55, 0.1)
+	elif kind == "brute":
+		hp = 700.0
 		radius = 0.8
 		speed = 2.3
 		damage = 22.0
@@ -35,8 +47,8 @@ func setup(kind: String, player: Node3D) -> void:
 		bounty = 500
 		height = 2.4
 		_base_color = Color(0.5, 0.1, 0.3)
-	else:
-		body = Body.new(240.0)
+	body = Body.new(hp * strength)
+	damage *= strength
 
 	var mesh := MeshInstance3D.new()
 	var capsule := CapsuleMesh.new()

@@ -16,6 +16,7 @@ func _ready() -> void:
 	_test_natural_healing()
 	_test_arm_loss_and_regrowth()
 	_test_healer_credit_and_rent()
+	_test_death_and_rest()
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
 
@@ -125,4 +126,25 @@ func _test_healer_credit_and_rent() -> void:
 	_check("credit limit refuses a second arm", bool(p.get("arm_right_lost")) and int(p.get("money")) == -1200, "money %d" % int(p.get("money")))
 	p.call("charge", 50)
 	_check("rent pushes further into debt", int(p.get("money")) == -1250)
+	_check("town refuses a ticket past the credit limit", not bool(p.call("can_afford", 800)) and bool(p.call("can_afford", 700)))
+	p.queue_free()
+
+
+func _test_death_and_rest() -> void:
+	print("death into debt / night's rest:")
+	var p := _new_player()
+	var b: Body = p.get("body")
+	p.set("money", 100)
+	p.set("arm_right_lost", true)
+	b.apply_damage(1000.0)
+	p.set("dead", true)
+	p.call("revive_in_debt", 600)
+	_check("revived character is alive", not bool(p.get("dead")) and not b.is_dead())
+	_check("the rescue fee is charged with no credit check", int(p.get("money")) == -500, "money %d" % int(p.get("money")))
+	_check("patched up, not healed", _near(float(b.hp["superficial"]), 30.0) and _near(float(b.hp["structural"]), 12.0) and _near(float(b.hp["catastrophic"]), 2.0),
+		"%f / %f / %f" % [float(b.hp["superficial"]), float(b.hp["structural"]), float(b.hp["catastrophic"])])
+	_check("a lost arm stays lost through rescue", bool(p.get("arm_right_lost")))
+	p.call("rest_night")
+	_check("a night's rest closes cuts and knits some bone", _near(float(b.hp["superficial"]), 60.0) and _near(float(b.hp["structural"]), 27.0))
+	_check("a night's rest restores nothing catastrophic, and no arm", _near(float(b.hp["catastrophic"]), 2.0) and bool(p.get("arm_right_lost")))
 	p.queue_free()

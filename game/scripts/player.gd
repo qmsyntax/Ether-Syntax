@@ -46,6 +46,13 @@ var meditating := false
 var active := false
 var dead := false
 var heal_points_total := 0.0
+# Headless test driver only (see main.gd --bot-dungeon): steers toward bot_goal, swings at
+# anything in reach, hits absurdly hard and cannot be hurt. Never enabled in normal play.
+var bot := false
+var bot_goal := Vector3.ZERO
+var bot_damage_mult := 25.0
+var _bot_dir := Vector3.ZERO
+
 var arm_right := ARM_MAX          # striking arm integrity; overcharging spends it
 var arm_right_lost := false
 var _arm_regrow := 0.0
@@ -116,7 +123,11 @@ func _physics_process(delta: float) -> void:
 
 	essence = minf(essence_max, essence + satellite_rate * delta)
 	_process_pending(delta)
-	_update_aim()
+	var bot_swing := false
+	if bot:
+		bot_swing = _bot_think()
+	else:
+		_update_aim()
 
 	var want_meditate: bool = Input.is_physical_key_pressed(KEY_M) and _meditate_block <= 0.0
 	meditating = want_meditate and not _charging
@@ -142,7 +153,7 @@ func _physics_process(delta: float) -> void:
 	elif _charging:
 		_release_overcharge()
 
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and _melee_cd <= 0.0 and not meditating and not _charging:
+	if (Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or bot_swing) and _melee_cd <= 0.0 and not meditating and not _charging:
 		_swing(OFF_HAND_FACTOR if arm_right_lost else 1.0, MELEE_RANGE)
 		_melee_cd = MELEE_COOLDOWN
 
@@ -157,6 +168,8 @@ func _physics_process(delta: float) -> void:
 		if Input.is_physical_key_pressed(KEY_D):
 			input.x += 1.0
 	var dir := Vector3(input.x, 0.0, input.y).normalized().rotated(Vector3.UP, ISO_YAW)
+	if bot:
+		dir = _bot_dir
 	var speed: float = MOVE_SPEED * (0.45 if _charging else 1.0)
 	velocity = dir * speed
 	move_and_slide()
@@ -188,6 +201,8 @@ func deal_damage(target: Node, base: float) -> void:
 			if in_combat and fight_time < 6.0:
 				mult *= 3.0
 
+	if bot:
+		mult *= bot_damage_mult
 	var pos: Vector3 = (target as Node3D).global_position
 	var scenery: bool = bool(target.get("is_scenery"))
 	var applied: float = target.call("take_hit", base * mult, false, self)
@@ -319,7 +334,7 @@ func _vent() -> void:
 # --- taking damage ------------------------------------------------------------
 
 func take_hit(amount: float, heavy: bool, source: Node) -> float:
-	if dead:
+	if dead or bot:
 		return 0.0
 	var amt: float = amount
 	if talent_id == "glass_hour" and in_combat and fight_time < 6.0:
@@ -382,6 +397,11 @@ func _can_afford(cost: int) -> bool:
 	return money - cost >= DEBT_LIMIT
 
 
+## Public form for the town: will anyone extend this much credit?
+func can_afford(cost: int) -> bool:
+	return _can_afford(cost)
+
+
 ## The healer sells speed, and the one thing rest cannot do: regrowth. Credit is extended to a limit.
 func buy_healing() -> void:
 	if arm_right_lost:
@@ -408,6 +428,66 @@ func buy_healing() -> void:
 		note("Healer: -$%d for %d %s HP." % [cost, int(amount), layer])
 		return
 	note("Healer: nothing to mend.")
+
+
+## Standard-mode death (design/03 section 7b): dragged out, patched up, and billed for it.
+## The fee is charged with no credit check - this is how a character ends up in debt.
+func revive_in_debt(fee: int) -> void:
+	dead = false
+	in_combat = false
+	meditating = false
+	_pending.clear()
+	_charging = false
+	_charge = 0.0
+	reflux = 0.0
+	reflux_locked = false
+	money -= fee
+	# Patched up, not healed: enough to stand, and nothing lost comes back.
+	body.hp["superficial"] = maxf(float(body.hp["superficial"]), float(body.max_hp["superficial"]) * 0.5)
+	body.hp["structural"] = maxf(float(body.hp["structural"]), float(body.max_hp["structural"]) * 0.4)
+	body.hp["catastrophic"] = maxf(float(body.hp["catastrophic"]), 2.0)
+	note("You wake on a cot. Someone dragged you out. The bill is $%d." % fee)
+
+
+## A night in town: the body does what bodies do. Rent for the night is charged by the caller.
+func rest_night() -> void:
+	body.heal_layer("superficial", float(body.max_hp["superficial"]))
+	body.heal_layer("structural", 15.0)
+	if not arm_right_lost:
+		arm_right = minf(ARM_MAX, arm_right + 40.0)
+	reflux = 0.0
+	reflux_locked = false
+	essence = essence_max
+	note("You sleep. Cuts close; bones knit a little. What is gone stays gone.")
+
+
+func _nearest_enemy() -> Node3D:
+	var best: Node3D = null
+	var best_d := INF
+	for node: Node in get_tree().get_nodes_in_group("enemies"):
+		var e := node as Node3D
+		if e == null or bool(e.call("is_dead")):
+			continue
+		var d: float = e.global_position.distance_to(global_position)
+		if d < best_d:
+			best_d = d
+			best = e
+	return best
+
+
+## Test bot: returns true when it wants to swing.
+func _bot_think() -> bool:
+	var near: Node3D = _nearest_enemy()
+	var goal: Vector3 = near.global_position if near != null else bot_goal
+	var to: Vector3 = goal - global_position
+	to.y = 0.0
+	var dist: float = to.length()
+	_bot_dir = to / dist if dist > 0.6 else Vector3.ZERO
+	if dist > 0.2:
+		_facing = to / dist
+	if near == null:
+		return false
+	return dist <= MELEE_RANGE + float(near.get("radius"))
 
 
 func start_fight() -> void:

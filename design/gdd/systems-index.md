@@ -46,7 +46,7 @@ been played for feel.
 | 11 | Talent System | Gameplay | MVP | Not Started | — | Rough — 40 defined, 6 wired, flags not rolled or hidden yet | 1, 2, 6, 7 |
 | 12 | Enemy AI & Monster Definitions (inferred) | Gameplay | MVP | Not Started | — | Rough — two enemy kinds, chase-telegraph-strike | 1, 2, 6 |
 | 13 | Living Scenery (inferred) | Gameplay | MVP | Not Started | — | Yes — grass and bushes, alive, destructible | 1, 6 |
-| 14 | Dungeon Structure & Rule Cards | Gameplay | MVP | Not Started | — | **No** — wave arena instead; the one MVP gap | 2, 4, 12 |
+| 14 | Dungeon Structure & Rule Cards | Gameplay | MVP | Not Started | — | Rough (since `v0.3.0`) — one hand-built assault passage: sealed entrance, 10 walls, exit after 5, late-stage strength, commanders, banked payout, repeat penalty. Rule card is text only; one template | 2, 4, 12 |
 | 15 | Healer Service | Economy | MVP | Not Started | — | Yes — layered prices, arm regrowth, credit | 6, 8 |
 | 16 | Notebook HUD & Discovery Log | UI | MVP | Not Started | — | Rough — text panel; "Proven" lines for 3 discoveries | 6, 7, 11 |
 | 17 | Combat Feedback (inferred) | UI | MVP | Not Started | — | Rough — float text, hit flash, wind-up colour | 1, 10 |
@@ -270,7 +270,7 @@ Also a **tier inversion**: Abilities (Vertical Slice) advance a stage only by bi
 | Metric | Count |
 |--------|-------|
 | Total systems identified | 41 (25 explicit in the concept, 16 inferred) |
-| MVP systems | 17 — 8 run in the prototype, 8 rough, **1 not built** (Dungeon Structure & Rule Cards) |
+| MVP systems | 17 — 8 run in the prototype, 9 rough, 0 not built (the assault passage landed in `v0.3.0`). None designed; none played for feel. |
 | Vertical Slice systems | 9 |
 | Alpha systems | 11 |
 | Full Vision systems | 4 |
