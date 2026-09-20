@@ -32,7 +32,7 @@ Premise `[C/F]`; phrasing `[MODEL]`.
 | **Platform** | PC (Windows first) `[B]` — see `.claude/docs/technical-preferences.md` |
 | **Target Audience** | Mid-core to hardcore PC players who like opaque systems and punishing economies; progression-fantasy readers second (proposed — see Target Player Profile) |
 | **Player Count** | Single-player, solo-first; optional hired party that raises income and lowers growth `[B]` |
-| **Session Length** | `[?]` not decided |
+| **Session Length** | 20–30 minutes — one delve plus a quick stop in town `[B, 2026-09-19]` |
 | **Monetization** | None. Unlicensed prototype; nothing ships or is sold without a written licence (CLAUDE.md Rule 1) |
 | **Estimated Scope** | Small — prototype / first playable `[B]` |
 | **Comparable Titles** | Diablo 2 (isometric combat feel) and Baldur's Gate 3 (hub depth) `[B]`; Darkest Dungeon and Stoneshard (attrition economy), Noita (rules learned by experiment) — proposed |
@@ -51,10 +51,14 @@ finding them out, one bruise at a time. `[MODEL]` synthesis of `[C/F]` premises.
 
 It's like Diablo 2, **and also** your build is a single permanent talent with hidden
 "technicality" flags — does bleed count? does overkill count? does it cure poison? — that
-can only be learned by experiment, inside a healing economy so punishing that lifesteal-type
-sustain is the *correct* survival answer rather than a numbers pick.
+are partly yours to discover by experiment, in a world where your body mends itself for free
+but slowly, never regrows what it loses, and the rent keeps ticking while you rest. Talents
+are different answers to that pressure, not different damage numbers.
 
 Talent permanence and unknown fine print `[C]`; flags-as-discoverable-mechanic `[MODEL]`.
+Revised 2026-09-19 after Brent's rulings: most fine print is visible at creation with one or two
+flags hidden (Pillar 2), and natural healing is free (Pillar 3) — the earlier "healing so punishing
+that lifesteal is the correct answer" framing is retired.
 1% Lifesteal is one talent among many (`game/data/talents.json`), not the premise — CLAUDE.md Rule 5.
 
 ---
@@ -328,9 +332,9 @@ shown, or is pitched, and nobody is contacted, unless Brent explicitly decides t
   spells, Q15 scrolls and teaching, Q17 soul-construct upgrade path, Q21 why passages break,
   Q26 early-game prices, Q29 how spirit abilities are acquired (**A** priority), Q30 Unholy
   Blessing (**A**), Q31–36. Q13 and Q28 parked. Reflux is a working model, only partly understood.
-- **Permadeath or persistence?** The draft says "each run/character" and also "long-term scar
-  system across runs". Whether death ends a save is not stated anywhere `[?]`.
-- **Session length and content volume** — both `[?]`.
+- ~~Permadeath or persistence?~~ **Resolved 2026-09-19** `[B]`: two modes — standard wakes you up
+  in debt, hardcore is opt-in permadeath (see Flow State Design).
+- ~~Session length~~ **Resolved 2026-09-19** `[B]`: 20–30 minutes. **Content volume** is still `[?]`.
 
 ---
 
@@ -354,6 +358,25 @@ ascension to 2-star, and six wired talents, and it is a wave arena rather than a
 assault dungeon. Whether the MVP definition moves to match the build, or the build is
 treated as having drifted, is Brent's call. The v0 text above is left unchanged until then.
 
+**PROPOSED resolution (Claude, 2026-09-20 — Brent to confirm or overrule).** Move the MVP to
+match the build, because the "drift" came from Brent's own direction, not from wandering:
+he asked for many varied talents (CLAUDE.md Rule 5), and his healing ruling (Pillar 3) needs a
+healer and a time cost to mean anything. Under the revised pillars the core hypothesis becomes:
+*"your body mends for free but slowly and never regrows what it loses; talents are different
+answers to that pressure."* Proposed MVP:
+1. One affinity (water)
+2. Six wired talents, each with one or two hidden flags (not one talent with 4–5)
+3. **One assault-type dungeon with the halfway-gate rule — the only MVP item not yet built**
+4. Reflux heat
+5. Limb-cost overcharge, with arm loss and regrowth
+6. Natural healing at rest, rent as the time cost, a healer who sells speed and regrowth, debt
+7. Living scenery
+8. The notebook
+
+Ascension to 2★ stays in the build but is **not** an MVP acceptance requirement (it belongs to
+the Vertical Slice). Still out of MVP: Netherecho, relics, hub depth, the other five dungeon
+templates, multiple affinities. `design/gdd/systems-index.md` is prioritised on this proposal.
+
 ### Scope Tiers
 
 Timelines are `[?]` — no velocity data exists yet for this project. Content per tier is a
@@ -374,9 +397,9 @@ Timelines are `[?]` — no velocity data exists yet for this project. Content pe
 - [x] Concept prototype built (`game/`) — runs headless without script errors; **feel untested**
 - [ ] **Brent plays the build** and answers the four questions in `design/03-core-mechanics-spec-v0.1.md` §8
 - [ ] Write the prototype report with a PROCEED / PIVOT / KILL verdict (`/playtest-report`)
-- [ ] Brent confirms or rewrites the four draft pillars above
-- [ ] Resolve the MVP scope drift (see MVP Definition)
-- [ ] If PROCEED: decompose into systems (`/map-systems`) → `design/gdd/systems-index.md`
+- [x] Brent set the direction of the pillars (2026-09-19) — now five; wording still editable
+- [ ] Resolve the MVP scope drift — a resolution is **proposed** in MVP Definition; Brent to confirm
+- [x] Decompose into systems (`/map-systems`, 2026-09-20) → `design/gdd/systems-index.md` — 41 systems, draft, **awaiting Brent's review**. Done ahead of the PROCEED verdict at Brent's instruction to push on.
 - [ ] Author system GDDs (`/design-system [system]`), carrying provenance tags and open questions across
 - [ ] Remaining adoption steps: `docs/adoption-plan-2026-09-18.md`
 - [ ] Rights and outreach stay parked until the fun gate is passed (CLAUDE.md Rule 4)

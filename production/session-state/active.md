@@ -28,7 +28,13 @@
 - **Talents**: core rule and most fine print visible at creation; only one or two flags per talent stay hidden.
 - Pillars rewritten to five (direction confirmed; wording is Claude's and editable).
 
+## Done autonomously 2026-09-20 (Brent: "keep going, get this as far as you can") — all awaiting his review
+- `/map-systems` run in lean mode: `design/gdd/systems-index.md` — 41 systems (25 explicit, 16 inferred), 17 MVP. Of the MVP set, 8 run in the prototype, 8 are rough, and **one is not built: Dungeon Structure & Rule Cards** (the build is a wave arena). Director gates skipped (lean). Design order starts with Damage & Hook Pipeline → Data Definitions → Wound & Body Model.
+- `game-concept.md`: stale text reconciled with the 2026-09-19 rulings (session length, unique hook, resolved open questions); a **PROPOSED** MVP redefinition added beneath the unchanged v0 text.
+- Top technical risk recorded: talent effects are a `match` inside `player.gd`; needs a hook pipeline before more talents are wired.
+
 ## Still waiting on Brent
+- Review the systems index (missing / merge / split / cut, priorities) and confirm or overrule the proposed MVP.
 - **Hands-on playtest of the arena build `v0.2.0`** — the real fun gate. Nothing about feel is verified. The build now has the NEW rules (2026-09-19): free natural healing at rest (superficial fast, structural slow, catastrophic never), rent ticking during rest with Space = go now / E = rest longer, a striking arm that overcharging wears out and can destroy (off-hand blows at 60%, no overcharge, until a healer or the Lifesteal talent regrows it), and healer credit down to -$2000 debt. Rules proven by `game/tests/selftest.tscn` (19 checks); tuning numbers are first guesses.
 - Motivation profile and target-player sections in `game-concept.md` are still marked PROPOSED; ranks 2–4 of the aesthetics table are proposed.
 - MVP scope: the build has outgrown the v0 MVP definition — settle at sprint planning.
