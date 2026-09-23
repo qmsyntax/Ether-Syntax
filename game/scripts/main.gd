@@ -5,6 +5,8 @@ extends Node3D
 const PlayerScript := preload("res://scripts/player.gd")
 const EnemyScript := preload("res://scripts/enemy.gd")
 const SceneryScript := preload("res://scripts/scenery.gd")
+const HudScript := preload("res://scripts/hud.gd")
+const SettingsMenuScript := preload("res://scripts/settings_menu.gd")
 
 const CAMERA_OFFSET := Vector3(12.0, 12.0, 12.0)
 const TALENT_CHOICES: Array[String] = [
@@ -38,9 +40,11 @@ const NIGHT_RENT := 150
 
 var player: CharacterBody3D
 var camera: Camera3D
-var notebook: Label
+var hud: Control
+var hud_layer: CanvasLayer
 var banner: Label
 var level: Node3D
+var settings_menu: Control
 
 var state := "select"
 var hardcore := false
@@ -90,6 +94,13 @@ func _ready() -> void:
 		_select_talent(0)
 		_enter_arena()
 		rest_timer = 0.5
+	elif args.has("--shot-settings"):
+		# Screenshot the controls menu over the town. Not paused, so the countdown can tick.
+		_select_talent(0)
+		_enter_town()
+		_open_settings()
+		get_tree().paused = false
+		_shot_countdown = 25
 	elif args.has("--bot-dungeon") or args.has("--bot-full") or args.has("--bot-die") or args.has("--shot-dungeon"):
 		_shot_dungeon = args.has("--shot-dungeon")
 		_bot_scenario = "full" if args.has("--bot-full") else ("die" if args.has("--bot-die") else "gate")
@@ -114,7 +125,9 @@ func _process(delta: float) -> void:
 			# Rest is free for the body and costly for the wallet: rent ticks while you recover.
 			if wave >= 1:
 				_charge_rent(ARENA_RENT_PER_SECOND, delta)
-			banner.text = "PRACTICE ARENA - wave %d in %d...   resting heals you for free, but rent is $%d/s\n[Space] go now   [E] rest 10s longer   [H] healer   hold [M] meditate   [F] back to town" % [wave + 1, int(ceil(rest_timer)), int(ARENA_RENT_PER_SECOND)]
+			banner.text = "PRACTICE ARENA - wave %d in %d...   resting heals you for free, but rent is $%d/s\n%s go now   %s rest 10s longer   %s healer   hold %s meditate   %s back to town" % [
+				wave + 1, int(ceil(rest_timer)), int(ARENA_RENT_PER_SECOND),
+				_k("go_now"), _k("rest"), _k("healer"), _k("meditate"), _k("interact")]
 			if rest_timer <= 0.0:
 				_start_wave()
 		"arena_fight":
@@ -127,7 +140,7 @@ func _process(delta: float) -> void:
 		"dungeon":
 			_tick_dungeon(delta)
 
-	_refresh_notebook()
+	hud.call("refresh", player, _where())
 
 	if _shot_mode:
 		_frames += 1
@@ -142,11 +155,16 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	var key := event as InputEventKey
-	if key == null or not key.pressed or key.echo:
+	if event.is_echo():
 		return
-	var code: Key = key.physical_keycode
+	if event.is_action_pressed("settings"):
+		_open_settings()
+		return
 
+	var key := event as InputEventKey
+	var code: Key = key.physical_keycode if (key != null and key.pressed) else KEY_NONE
+
+	# Menu choices are number keys and are not rebindable.
 	if state == "select":
 		if code == KEY_X:
 			hardcore = not hardcore
@@ -158,64 +176,84 @@ func _unhandled_input(event: InputEvent) -> void:
 			_enter_town()
 		return
 
-	if code == KEY_R:
+	if event.is_action_pressed("restart"):
 		Engine.time_scale = 1.0
 		get_tree().reload_current_scene()
 		return
 
 	match state:
 		"town":
-			match code:
-				KEY_1:
-					if bool(player.call("can_afford", TICKET_PRICE)):
-						player.call("charge", TICKET_PRICE)
-						_enter_dungeon()
-					else:
-						player.call("note", "No one will sell you a ticket on that much debt.")
-				KEY_2:
-					_enter_arena()
-				KEY_E:
-					player.call("rest_night")
-					player.call("charge", NIGHT_RENT)
-					day += 1
-				KEY_H:
-					player.call("buy_healing")
+			if code == KEY_1:
+				if bool(player.call("can_afford", TICKET_PRICE)):
+					player.call("charge", TICKET_PRICE)
+					_enter_dungeon()
+				else:
+					player.call("note", "No one will sell you a ticket on that much debt.")
+			elif code == KEY_2:
+				_enter_arena()
+			elif event.is_action_pressed("rest"):
+				player.call("rest_night")
+				player.call("charge", NIGHT_RENT)
+				day += 1
+			elif event.is_action_pressed("healer"):
+				player.call("buy_healing")
 		"arena_rest", "arena_fight":
-			match code:
-				KEY_Q:
-					player.call("cast_bolt")
-				KEY_T:
-					player.call("try_ascend")
-				KEY_SPACE:
-					if state == "arena_rest":
-						rest_timer = 0.0
-				KEY_E:
-					if state == "arena_rest":
-						rest_timer += 10.0
-						player.call("note", "You rest a while longer. The landlord notices.")
-				KEY_H:
-					if state == "arena_rest":
-						player.call("buy_healing")
-					else:
-						player.call("note", "The healer won't come in here mid-fight.")
-				KEY_F:
-					if state == "arena_rest":
-						_enter_town()
+			if event.is_action_pressed("bolt"):
+				player.call("cast_bolt")
+			elif event.is_action_pressed("ascend"):
+				player.call("try_ascend")
+			elif event.is_action_pressed("go_now"):
+				if state == "arena_rest":
+					rest_timer = 0.0
+			elif event.is_action_pressed("rest"):
+				if state == "arena_rest":
+					rest_timer += 10.0
+					player.call("note", "You rest a while longer. The landlord notices.")
+			elif event.is_action_pressed("healer"):
+				if state == "arena_rest":
+					player.call("buy_healing")
+				else:
+					player.call("note", "The healer won't come in here mid-fight.")
+			elif event.is_action_pressed("interact"):
+				if state == "arena_rest":
+					_enter_town()
 		"dungeon":
-			match code:
-				KEY_Q:
-					player.call("cast_bolt")
-				KEY_T:
-					player.call("try_ascend")
-				KEY_H:
-					player.call("note", "No healer in here. The entrance is sealed.")
-				KEY_F:
-					if _pad_in_reach():
-						_extract()
-					elif pads.is_empty():
-						player.call("note", "No exit yet. %d more walls." % maxi(0, GATE_AT - cleared))
-					else:
-						player.call("note", "Stand on a glowing exit to leave.")
+			if event.is_action_pressed("bolt"):
+				player.call("cast_bolt")
+			elif event.is_action_pressed("ascend"):
+				player.call("try_ascend")
+			elif event.is_action_pressed("healer"):
+				player.call("note", "No healer in here. The entrance is sealed.")
+			elif event.is_action_pressed("interact"):
+				if _pad_in_reach():
+					_extract()
+				elif pads.is_empty():
+					player.call("note", "No exit yet. %d more walls." % maxi(0, GATE_AT - cleared))
+				else:
+					player.call("note", "Stand on a glowing exit to leave.")
+
+
+func _open_settings() -> void:
+	if settings_menu != null:
+		return
+	settings_menu = SettingsMenuScript.new()
+	settings_menu.connect("closed", _on_settings_closed)
+	hud_layer.add_child(settings_menu)
+	banner.visible = false
+	get_tree().paused = true
+
+
+func _on_settings_closed() -> void:
+	settings_menu = null
+	banner.visible = true
+	get_tree().paused = false
+	if state == "select":
+		_show_select()
+
+
+## "[W]"-style tag for the current binding of an action, for on-screen prompts.
+func _k(action: String) -> String:
+	return "[%s]" % Keybinds.binding_text(action)
 
 
 # --- select / town --------------------------------------------------------------
@@ -226,6 +264,7 @@ func _show_select() -> void:
 		var t: Dictionary = TalentDB.get_talent(TALENT_CHOICES[i])
 		lines.append("[%d]  %s\n      \"%s\"\n" % [i + 1, str(t.get("name", "?")), str(t.get("verse", ""))])
 	lines.append("[X]  Hardcore (death is permanent): %s" % ("ON" if hardcore else "off - dying leaves you in debt instead"))
+	lines.append("%s  Controls" % _k("settings"))
 	banner.text = "\n".join(lines)
 
 
@@ -253,9 +292,9 @@ func _town_text() -> String:
 	lines.append("       an exit. Pay is handed over only at the exit and grows with every wall.")
 	lines.append("       Rent runs while you are inside. This passage now pays x%.2f (repeats pay less)." % mult)
 	lines.append("[2]  Practice arena (free, kill bounties only)")
-	lines.append("[E]  Rest the night - heals what a body can heal. Rent $%d." % NIGHT_RENT)
-	lines.append("[H]  Healer - fast, priced by how deep the wound is; the only way to regrow a limb without a talent")
-	lines.append("[R]  Start over with a new character")
+	lines.append("%s  Rest the night - heals what a body can heal. Rent $%d." % [_k("rest"), NIGHT_RENT])
+	lines.append("%s  Healer - fast, priced by how deep the wound is; the only way to regrow a limb without a talent" % _k("healer"))
+	lines.append("%s  Start over with a new character      %s  Controls" % [_k("restart"), _k("settings")])
 	return "\n".join(lines)
 
 
@@ -336,7 +375,7 @@ func _enter_dungeon() -> void:
 	player.global_position = level.to_global(Vector3(0.0, 0.0, -4.0))
 	player.set("active", true)
 	state = "dungeon"
-	player.call("note", "You step through. Walk up the corridor (W).")
+	player.call("note", "You step through. Walk up the corridor (%s)." % Keybinds.binding_text("move_up"))
 
 
 func _add_barrier(c: int) -> void:
@@ -468,13 +507,13 @@ func _extract() -> void:
 
 func _set_dungeon_banner() -> void:
 	if not sealed:
-		banner.text = "ASSAULT PASSAGE - the antechamber.\nWalk up the corridor (W) to begin; the entrance seals behind you. Last chance to cut grass in peace."
+		banner.text = "ASSAULT PASSAGE - the antechamber.\nWalk up the corridor (%s) to begin; the entrance seals behind you. Last chance to cut grass in peace." % Keybinds.binding_text("move_up")
 	elif current > cleared:
 		banner.text = "Wall %d of %d" % [current, CHAMBERS]
 	elif cleared >= CHAMBERS:
-		banner.text = "All %d walls down. [F] on a glowing exit to leave with $%d (full-clear bonus included)." % [CHAMBERS, _payout_now()]
+		banner.text = "All %d walls down. %s on a glowing exit to leave with $%d (full-clear bonus included)." % [CHAMBERS, _k("interact"), _payout_now()]
 	elif cleared >= GATE_AT:
-		banner.text = "Wall %d cleared. [F] on a glowing exit to leave with $%d - or push on: wall %d banks $%d more.\nRent is $%d/s while you stand here." % [cleared, _payout_now(), cleared + 1, STAGE_VALUE * (cleared + 1), int(DUNGEON_RENT_PER_SECOND)]
+		banner.text = "Wall %d cleared. %s on a glowing exit to leave with $%d - or push on: wall %d banks $%d more.\nRent is $%d/s while you stand here." % [cleared, _k("interact"), _payout_now(), cleared + 1, STAGE_VALUE * (cleared + 1), int(DUNGEON_RENT_PER_SECOND)]
 	else:
 		banner.text = "Wall %d cleared. $%d banked, but no exit until wall %d.\nRest if you need it - rent is $%d/s." % [cleared, bank, GATE_AT, int(DUNGEON_RENT_PER_SECOND)]
 
@@ -508,7 +547,7 @@ func _spawn_scenery(kind: String, local_pos: Vector3) -> void:
 func _on_player_died() -> void:
 	if hardcore:
 		state = "dead"
-		banner.text = "You died. Hardcore: that was the only life this character had.\n\n[R] to begin again."
+		banner.text = "You died. Hardcore: that was the only life this character had.\n\n%s to begin again." % _k("restart")
 		return
 	var lost: int = bank if state == "dungeon" else 0
 	_bot_died = true
@@ -598,30 +637,21 @@ func _build_player() -> void:
 
 
 func _build_hud() -> void:
-	var layer := CanvasLayer.new()
-	add_child(layer)
+	hud_layer = CanvasLayer.new()
+	add_child(hud_layer)
 
-	var panel := ColorRect.new()
-	panel.color = Color(0.05, 0.05, 0.07, 0.72)
-	panel.position = Vector2(12, 12)
-	panel.size = Vector2(560, 560)
-	layer.add_child(panel)
-
-	notebook = Label.new()
-	notebook.position = Vector2(24, 20)
-	notebook.size = Vector2(540, 545)
-	notebook.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	notebook.add_theme_font_size_override("font_size", 16)
-	layer.add_child(notebook)
+	hud = HudScript.new()
+	hud.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hud_layer.add_child(hud)
 
 	banner = Label.new()
-	banner.position = Vector2(620, 40)
-	banner.size = Vector2(940, 600)
+	banner.position = Vector2(460, 40)
+	banner.size = Vector2(1100, 600)
 	banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	banner.add_theme_font_size_override("font_size", 20)
 	banner.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 	banner.add_theme_constant_override("outline_size", 8)
-	layer.add_child(banner)
+	hud_layer.add_child(banner)
 
 
 func _where() -> String:
@@ -633,54 +663,6 @@ func _where() -> String:
 		"dungeon":
 			return "Passage: %d/%d walls, $%d banked" % [cleared, CHAMBERS, bank]
 	return ""
-
-
-func _refresh_notebook() -> void:
-	if str(player.get("talent_id")) == "":
-		notebook.text = "- NOTEBOOK -\n\n(blank pages)"
-		return
-	var b: Body = player.get("body")
-	var t: Dictionary = player.get("talent")
-	var lines: Array[String] = []
-	lines.append("- NOTEBOOK -")
-	lines.append("Talent: %s   (%d-star)" % [str(t.get("name", "?")), int(player.get("stars"))])
-	lines.append("  \"%s\"" % str(t.get("verse", "")))
-	lines.append("")
-	lines.append("Body:  superficial %d/%d   structural %d/%d   catastrophic %d/%d" % [
-		int(ceil(float(b.hp["superficial"]))), int(float(b.max_hp["superficial"])),
-		int(ceil(float(b.hp["structural"]))), int(float(b.max_hp["structural"])),
-		int(ceil(float(b.hp["catastrophic"]))), int(float(b.max_hp["catastrophic"])),
-	])
-	var pending: float = player.call("pending_damage")
-	if pending > 0.0:
-		lines.append("  ...%d damage still owed" % int(pending))
-	var lock: String = "  LOCKED" if bool(player.get("reflux_locked")) else ""
-	lines.append("Essence: %d/%d  (satellite +%d/s)     Reflux [water]: %d%s" % [
-		int(float(player.get("essence"))), int(float(player.get("essence_max"))),
-		int(float(player.get("satellite_rate"))), int(float(player.get("reflux"))), lock,
-	])
-	if bool(player.get("arm_right_lost")):
-		lines.append("Striking arm: LOST - off-hand blows only, no overcharge")
-	else:
-		lines.append("Striking arm: %d%%" % int(float(player.get("arm_right"))))
-	var cash: int = int(player.get("money"))
-	lines.append("%s        %s" % ["DEBT: $%d" % -cash if cash < 0 else "Money: $%d" % cash, _where()])
-	if str(player.get("talent_id")) == "one_percent_lifesteal":
-		lines.append("Heal points drawn so far: %.1f" % float(player.get("heal_points_total")))
-	lines.append("")
-	lines.append(str(player.call("aura_read")))
-	var proven: Array = player.get("discoveries")
-	if not proven.is_empty():
-		lines.append("")
-		for p: String in proven:
-			lines.append("Proven: %s" % p)
-	lines.append("")
-	for l: String in player.get("log_lines"):
-		lines.append("> %s" % l)
-	lines.append("")
-	lines.append("WASD move   LMB strike   hold RMB overcharge (wears out your arm)")
-	lines.append("Q water bolt   hold M meditate   F use exit   R start over")
-	notebook.text = "\n".join(lines)
 
 
 # --- test harness ---------------------------------------------------------------

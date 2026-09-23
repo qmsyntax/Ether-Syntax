@@ -16,6 +16,7 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 
 [autoload]
 
+Keybinds="*res://scripts/keybinds.gd"
 TalentDB="*res://scripts/talent_db.gd"
 
 [display]

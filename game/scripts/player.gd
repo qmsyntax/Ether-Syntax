@@ -129,7 +129,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		_update_aim()
 
-	var want_meditate: bool = Input.is_physical_key_pressed(KEY_M) and _meditate_block <= 0.0
+	var want_meditate: bool = Input.is_action_pressed("meditate") and _meditate_block <= 0.0
 	meditating = want_meditate and not _charging
 
 	# The body sheds reflux on its own; meditation purges it much faster.
@@ -146,27 +146,20 @@ func _physics_process(delta: float) -> void:
 		if not arm_right_lost:
 			arm_right = minf(ARM_MAX, arm_right + ARM_NATURAL_PER_S * delta)
 
-	var rmb: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and not arm_right_lost
+	var rmb: bool = Input.is_action_pressed("overcharge") and not arm_right_lost
 	if rmb and not meditating:
 		_charging = true
 		_charge = minf(CHARGE_MAX, _charge + delta)
 	elif _charging:
 		_release_overcharge()
 
-	if (Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or bot_swing) and _melee_cd <= 0.0 and not meditating and not _charging:
+	if (Input.is_action_pressed("strike") or bot_swing) and _melee_cd <= 0.0 and not meditating and not _charging:
 		_swing(OFF_HAND_FACTOR if arm_right_lost else 1.0, MELEE_RANGE)
 		_melee_cd = MELEE_COOLDOWN
 
 	var input := Vector2.ZERO
 	if not meditating:
-		if Input.is_physical_key_pressed(KEY_W):
-			input.y -= 1.0
-		if Input.is_physical_key_pressed(KEY_S):
-			input.y += 1.0
-		if Input.is_physical_key_pressed(KEY_A):
-			input.x -= 1.0
-		if Input.is_physical_key_pressed(KEY_D):
-			input.x += 1.0
+		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var dir := Vector3(input.x, 0.0, input.y).normalized().rotated(Vector3.UP, ISO_YAW)
 	if bot:
 		dir = _bot_dir
@@ -292,7 +285,7 @@ func cast_bolt() -> void:
 	if not active or dead or meditating:
 		return
 	if reflux_locked:
-		note("Water affinity is locked by reflux. Meditate (hold M).")
+		note("Water affinity is locked by reflux. Meditate (hold %s)." % Keybinds.binding_text("meditate"))
 		return
 	var cost: float = BOLT_COST * (1.25 if reflux >= 50.0 else 1.0)
 	if essence < cost:

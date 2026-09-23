@@ -17,6 +17,7 @@ func _ready() -> void:
 	_test_arm_loss_and_regrowth()
 	_test_healer_credit_and_rent()
 	_test_death_and_rest()
+	_test_keybinds()
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
 
@@ -128,6 +129,26 @@ func _test_healer_credit_and_rent() -> void:
 	_check("rent pushes further into debt", int(p.get("money")) == -1250)
 	_check("town refuses a ticket past the credit limit", not bool(p.call("can_afford", 800)) and bool(p.call("can_afford", 700)))
 	p.queue_free()
+
+
+func _test_keybinds() -> void:
+	print("keybinds:")
+	Keybinds.reset_defaults()
+	_check("defaults registered", Keybinds.binding_text("bolt") == "Q" and Keybinds.binding_text("strike") == "LMB")
+	var g := InputEventKey.new()
+	g.physical_keycode = KEY_G
+	var displaced: String = Keybinds.rebind("bolt", g)
+	_check("rebind changes the binding", Keybinds.binding_text("bolt") == "G" and displaced == "")
+	var displaced2: String = Keybinds.rebind("ascend", g)
+	_check("a key held by another action is taken from it", displaced2 == "bolt" and Keybinds.binding_text("bolt") == "(none)" and Keybinds.binding_text("ascend") == "G")
+	var mmb := InputEventMouseButton.new()
+	mmb.button_index = MOUSE_BUTTON_MIDDLE
+	Keybinds.rebind("meditate", mmb)
+	_check("mouse buttons bind too", Keybinds.binding_text("meditate") == "MMB")
+	Keybinds.call("_load")
+	_check("bindings survive a save/load round trip", Keybinds.binding_text("ascend") == "G" and Keybinds.binding_text("meditate") == "MMB")
+	Keybinds.reset_defaults()
+	_check("reset restores defaults", Keybinds.binding_text("bolt") == "Q" and Keybinds.binding_text("ascend") == "T" and Keybinds.binding_text("meditate") == "M")
 
 
 func _test_death_and_rest() -> void:
