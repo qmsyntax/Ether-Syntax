@@ -245,7 +245,7 @@ None survive once a contract is defined. Three near-cycles to watch:
 - **Dungeon Structure ↔ Loot & Contribution** — rewards appear at the exit scaled to contribution, so each seems to need the other. *Resolution*: the dungeon emits an exit event carrying the contribution ledger; Loot subscribes. Loot depends on Dungeon only.
 - **Death, Debt & Indenture (Vertical Slice) ↔ Appraisal & Contracts (Alpha)** — death creates a debt before any contract system exists. *Resolution*: a plain debt ledger lives in Currency, Debt & Credit (MVP); Contracts later extends it rather than replacing it. A sequencing risk, not a true cycle.
 
-Also a **tier inversion**: Abilities (Vertical Slice) advance a stage only by binding a construct, and Construct Binding and the Netherecho are Alpha. In the Vertical Slice, abilities stay at Stage 0 or stage-ups are stubbed — the Abilities GDD must say which.
+Also a **tier inversion**: Abilities (Vertical Slice) advance a stage only by binding a construct, and Construct Binding and the Netherecho are Alpha. In the Vertical Slice, abilities stay at Stage 0 or stage-ups are stubbed — the Abilities GDD must say which. Note that *progress within* a stage is a separate matter and is Vertical Slice work: per Brent (2026-09-23) it is bought with essence spent through the ability plus use, which is what makes a wide build costly. That couples Abilities to Essence, Satellite & Reflux (#7) more tightly than the dependency list suggests.
 
 ---
 

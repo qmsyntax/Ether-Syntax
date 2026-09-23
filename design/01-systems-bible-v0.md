@@ -155,7 +155,7 @@ Late series adds: absurd wealth inflation (billions), status theatre, and a stat
 2. **Costs, not cooldowns.** Strong abilities charge HP, limbs, growth, or future options. The title talent is what lets the player afford them — *between* rooms/fights, by harming living things (yes, including the scenery).
 3. **Sockets are creatures.** Upgrading an ability means hunting/bargaining for a construct with the right *concept* in the Netherecho layer.
 4. **Two currencies that fight each other:** dollars (parties, hubs, hauling) vs latent aura (solo, hardship, no shortcuts).
-5. **Anti-bloat is canon:** ability cap pressure means builds stay tight.
+5. **Anti-bloat is canon, but soft:** there is no cap. Each ability competes for the same essence and the same play time to level, so builds stay tight because a wide build ascends with half-finished abilities `[B]`.
 6. **Break clock:** the overworld punishes ignoring passages.
 7. **Dungeons are already game-shaped in canon.** Anomalous realms reset, seal behind you, demand minimum progress to open the exit, scale loot to personal contribution, pay less on repeats, and sometimes close forever after a feat. We don't have to invent crawler rules — we have to implement his.
 8. **Heat, not mana.** Per-affinity reflux is the pacing system; kills purge it (with the right construct). Aggression is the cooldown reset.
@@ -175,7 +175,7 @@ These override fan sources where they conflict.
 - [B] **Reflux essence** is shed by the body naturally and **purged faster by meditation**. It is a genuine limiting mechanic.
 - [B] **Stars are independent essence tanks.** More stars = more tanks.
 - [B] **Satellite** = passive essence throughput. A 2★ satellite supplies **2% essence per second**; an ability that costs ≤2%/s drains nothing from the tanks. Satellite flow **also produces reflux**. (Reflux itself is still not fully understood — see spec for our working model.)
-- [B] The "too many abilities" growth penalty is **not really a thing** — dropped in later books; by Book 4 he has ~16 completed abilities. **Remove from design.** (Supersedes fan-wiki limiter list.)
+- [B] The "too many abilities" growth penalty is **not a rule, it is an opportunity cost** (clarified 2026-09-23; supersedes the wiki's limiter list and my earlier "remove from design" note). Abilities are skilled up by **spending essence through them and using them**. Take on too many and you cannot get them all up before ascension — too many plates to spin. By Book 4 he has ~16 *completed* abilities, which is the point: he had the essence supply and the delving hours to finish them.
 
 **The talent**
 - [B] Evolution confirmed: **1★ = Supreme-quality healing only → 2★ = Dynamic-quality.** Meaning: healing arrives as a budget. Supreme spends ~100 points per unit of tissue no matter what; lower grades (first-aid/natural) spend ~1. Dynamic lets the budget be spent at whatever grade each wound actually needs, so the same income heals far more of the body.

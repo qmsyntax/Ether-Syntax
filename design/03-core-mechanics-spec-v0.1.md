@@ -46,6 +46,8 @@ canon idea playable (numbers are starting values for tuning, not lore).
 - [CANON] Advancing a stage requires **binding a construct** of the matching tier (vestige 0→1, remnant 1→2, spirit 2→3, eidolon 3→4). The construct's **concept** determines the named upgrade (tension, acceleration, piercing…).
 - [CANON] Binding = find it in the Netherecho, **subdue** it, bind. Irreversible. Can fail. It can kill you. [MODEL] Netherecho encounters are short, brutal duels fought with the soul construct; your projection has tiny HP.
 - [CANON] No cap on ability count. **Tempering techniques all run at once**; [MODEL] each is trained in sessions that deal real structural damage to you — affordable only because of §2.
+- [CANON, Brent 2026-09-23] **Ability progress is bought with essence and use.** Each ability's stage progress bar advances only when essence is spent *through that ability* and it is used. [MODEL] progress per cast = essence spent × a use multiplier (higher against things that can hurt you, near zero on scenery — training dummies teach little). Every ability therefore competes for the same essence pool and the same fighting time. The penalty for a wide build is that ascension arrives with abilities half-finished — "too many plates to spin". No hard cap, no aura penalty.
+- [?] Whether unfinished abilities suffer anything *at* ascension beyond being unfinished (e.g. carry their progress over, or reset) is unknown — ask Brent before designing the Abilities GDD.
 - [CANON] Using a technique above your tempering injures you.
 
 ## 6. Dungeons

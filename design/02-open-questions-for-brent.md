@@ -35,7 +35,7 @@ New questions Book 5 raised (all **B** unless marked):
 2. **A** — Latent aura: is it a number characters can see/measure, or only inferred? Does anyone quote figures?
 3. **A** — What is a **"satellite"** (wiki lists Freddy as having a 2★ satellite)?
 4. **B** — When a new star forms, does the old one stay and the new one orbit it? Do different stars hold different affinities?
-5. **B** — The "too many abilities" penalty — is there a stated number, and does dropping/forgetting abilities exist?
+5. **B** — ~~The "too many abilities" penalty~~ **Answered 2026-09-23**: not a rule, an opportunity cost — abilities level by essence spent through them plus use, so too many can't all be finished before ascension. *Follow-up*: do unfinished abilities carry progress across ascension or reset? Does dropping/forgetting an ability exist?
 6. **B** — How do talents *evolve* at rank-up? Did 1% Lifesteal change at 2★ (rate, scope, new clause)?
 
 ## The talent
