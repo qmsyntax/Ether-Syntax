@@ -139,6 +139,14 @@ conflicting — needs Brent (audiobooks) or a targeted Kindle read.
 - Heals only through **significant lived experience** (grief counts more than fun); sleep does nothing. **Soul elixirs** patch with blank tissue — fast, but for severe damage you gradually become someone else.
 - How it works is a **legal infohazard**.
 
+## LAW 4c — Runes (Book 5 ch 230, read directly 2026-09-23; Brent: "like the incantations that define a skill")
+- [C] An ability is a spherical **ether cage** holding its concepts. Unravelled onto a flat surface it is a structure of **runes**; there is a known rune and **microrune alphabet** with grammar, and essence-imprint forms of each.
+- [C] **Runechains** are linear strings of concepts progressing from less to more sophisticated — the part of an ability that *levels*. When a chain "suffulates", spacer microconcepts appear at prime positions and the chain must grow exponentially to improve further. The first ten spacers have short names (em, in, sum, ol, lun, slo, efi, ofo, gi, al). Concepts gated behind manipulation talents live almost entirely in these chains.
+- [C] Disciplines: **runesetting** (building abilities, enchanting, making cursed items), **runeology** (the study; taught per affinity and in basic/advanced levels), **auragraphy** (writing runes), **enchanting** (runes written onto items), **abilitycrafting**. A full "runepedia" costs millions; a self-taught fighter has the instinct but not the theory.
+- [C] The empress fears an uneducated fighter making an **irreversible mistake in his development** (ch 227) — ability construction has permanent consequences.
+- → *Game reading*: the ethercosm screen shows each ability as a ring of runes around the star; the runechain is its progress bar with visible spacer gaps past each stage; runesetting is the eventual ability-crafting system. Details and open items in `research/book5-ch226-230-notes.md`.
+- [C, ch 226–229] Also new: storage rings are used by sinking attention into them, have an internal layout (items can be stowed "deep" to avoid mis-pulls) and fully mask an item's aura; **two tiers of ascension elixir** — ordinary aids inject blank aura and can degrade a talent with overuse, a true elixir also amplifies the evolution; more badge tracks (Guardian, Entrepreneur, Adventurer). Body durability and especially the nervous system scale with rank.
+
 ## LAW 10 — Deep cosmology
 - Each affinity has a **primordial domain** (water's: an endless storm ocean under a leviathan-scale watcher); time runs long inside; trials happen there; prime remnants come from there.
 - A person can birth a **fate** through extreme drive.

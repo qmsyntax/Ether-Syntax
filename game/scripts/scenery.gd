@@ -15,7 +15,7 @@ func setup(kind: String) -> void:
 	_mesh = MeshInstance3D.new()
 	var mat := StandardMaterial3D.new()
 	if kind == "bush":
-		body = Body.new(80.0)
+		body = Body.new(GameData.num("scenery", "bush_hp"))
 		radius = 0.7
 		var sphere := SphereMesh.new()
 		sphere.radius = 0.65
@@ -24,7 +24,7 @@ func setup(kind: String) -> void:
 		_mesh.position.y = 0.5
 		mat.albedo_color = Color(0.16, 0.38, 0.14)
 	else:
-		body = Body.new(25.0)
+		body = Body.new(GameData.num("scenery", "grass_hp"))
 		var cone := CylinderMesh.new()
 		cone.top_radius = 0.0
 		cone.bottom_radius = 0.22

@@ -14,29 +14,29 @@ const TALENT_CHOICES: Array[String] = [
 ]
 
 # Practice arena.
-const ARENA_HALF := 18.0
-const ARENA_RENT_PER_SECOND := 5.0
+var arena_half: float = GameData.num("arena", "half_size")
+var arena_rent_per_second: float = GameData.num("arena", "rent_per_s")
 
 # Assault passage. Rules follow design/01-systems-bible LAW 6b [C]: the entrance seals, a minimum
 # of progress unlocks the exit, stages escalate and spike past the midpoint, the reward is paid
 # only at the exit, and repeats pay less. Every number here is a first guess [MODEL].
-const CH_LEN := 14.0
-const CH_HALF_W := 8.0
-const CHAMBERS := 10
-const GATE_AT := 5
-const GAP_HALF := 2.0
-const DUNGEON_RENT_PER_SECOND := 3.0
-const TICKET_PRICE := 300
-const STAGE_VALUE := 200            # wall n banks STAGE_VALUE * n
-const FULL_CLEAR_BONUS := 1.5
-const REPEAT_FACTOR := 0.8
-const REPEAT_FLOOR := 0.4
-const LATE_STRENGTH := 1.3          # walls past the gate
-const EXIT_REACH := 2.4
+var ch_len: float = GameData.num("passage", "chamber_length")
+var ch_half_w: float = GameData.num("passage", "half_width")
+var chambers: int = GameData.inum("passage", "chambers")
+var gate_at: int = GameData.inum("passage", "gate_at")
+var gap_half: float = GameData.num("passage", "gap_half")
+var dungeon_rent_per_second: float = GameData.num("passage", "rent_per_s")
+var ticket_price: int = GameData.inum("passage", "ticket_price")
+var stage_value: int = GameData.inum("passage", "stage_value")
+var full_clear_bonus: float = GameData.num("passage", "full_clear_bonus")
+var repeat_factor: float = GameData.num("passage", "repeat_factor")
+var repeat_floor: float = GameData.num("passage", "repeat_floor")
+var late_strength: float = GameData.num("passage", "late_strength")
+var exit_reach: float = GameData.num("passage", "exit_reach")
 
 # Town.
-const RESCUE_FEE := 600
-const NIGHT_RENT := 150
+var rescue_fee: int = GameData.inum("town", "rescue_fee")
+var night_rent: int = GameData.inum("night", "rent")
 
 var player: CharacterBody3D
 var camera: Camera3D
@@ -108,7 +108,7 @@ func _ready() -> void:
 		_bot_started_ms = Time.get_ticks_msec()
 		Engine.time_scale = 5.0
 		_select_talent(0)
-		player.set("money", TICKET_PRICE)
+		player.set("money", ticket_price)
 		_enter_dungeon()
 		player.set("bot", true)
 
@@ -124,9 +124,9 @@ func _process(delta: float) -> void:
 			rest_timer -= delta
 			# Rest is free for the body and costly for the wallet: rent ticks while you recover.
 			if wave >= 1:
-				_charge_rent(ARENA_RENT_PER_SECOND, delta)
+				_charge_rent(arena_rent_per_second, delta)
 			banner.text = "PRACTICE ARENA - wave %d in %d...   resting heals you for free, but rent is $%d/s\n%s go now   %s rest 10s longer   %s healer   hold %s meditate   %s back to town" % [
-				wave + 1, int(ceil(rest_timer)), int(ARENA_RENT_PER_SECOND),
+				wave + 1, int(ceil(rest_timer)), int(arena_rent_per_second),
 				_k("go_now"), _k("rest"), _k("healer"), _k("meditate"), _k("interact")]
 			if rest_timer <= 0.0:
 				_start_wave()
@@ -135,7 +135,7 @@ func _process(delta: float) -> void:
 			if get_tree().get_nodes_in_group("enemies").is_empty():
 				player.call("end_fight")
 				state = "arena_rest"
-				rest_timer = 10.0
+				rest_timer = GameData.num("arena", "rest_between_waves")
 				player.call("note", "Wave %d cleared." % wave)
 		"dungeon":
 			_tick_dungeon(delta)
@@ -184,8 +184,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	match state:
 		"town":
 			if code == KEY_1:
-				if bool(player.call("can_afford", TICKET_PRICE)):
-					player.call("charge", TICKET_PRICE)
+				if bool(player.call("can_afford", ticket_price)):
+					player.call("charge", ticket_price)
 					_enter_dungeon()
 				else:
 					player.call("note", "No one will sell you a ticket on that much debt.")
@@ -193,7 +193,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_enter_arena()
 			elif event.is_action_pressed("rest"):
 				player.call("rest_night")
-				player.call("charge", NIGHT_RENT)
+				player.call("charge", night_rent)
 				day += 1
 			elif event.is_action_pressed("healer"):
 				player.call("buy_healing")
@@ -207,7 +207,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					rest_timer = 0.0
 			elif event.is_action_pressed("rest"):
 				if state == "arena_rest":
-					rest_timer += 10.0
+					rest_timer += GameData.num("arena", "rest_extend")
 					player.call("note", "You rest a while longer. The landlord notices.")
 			elif event.is_action_pressed("healer"):
 				if state == "arena_rest":
@@ -228,7 +228,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				if _pad_in_reach():
 					_extract()
 				elif pads.is_empty():
-					player.call("note", "No exit yet. %d more walls." % maxi(0, GATE_AT - cleared))
+					player.call("note", "No exit yet. %d more walls." % maxi(0, gate_at - cleared))
 				else:
 					player.call("note", "Stand on a glowing exit to leave.")
 
@@ -287,43 +287,43 @@ func _town_text() -> String:
 	if _last_payout > 0:
 		lines.append("Last delve paid $%d." % _last_payout)
 	lines.append("")
-	lines.append("[1]  Buy an assault-passage ticket ($%d) and go in" % TICKET_PRICE)
-	lines.append("       Rule card: solo. The entrance seals behind you. Clear %d of %d walls to unlock" % [GATE_AT, CHAMBERS])
+	lines.append("[1]  Buy an assault-passage ticket ($%d) and go in" % ticket_price)
+	lines.append("       Rule card: solo. The entrance seals behind you. Clear %d of %d walls to unlock" % [gate_at, chambers])
 	lines.append("       an exit. Pay is handed over only at the exit and grows with every wall.")
 	lines.append("       Rent runs while you are inside. This passage now pays x%.2f (repeats pay less)." % mult)
 	lines.append("[2]  Practice arena (free, kill bounties only)")
-	lines.append("%s  Rest the night - heals what a body can heal. Rent $%d." % [_k("rest"), NIGHT_RENT])
+	lines.append("%s  Rest the night - heals what a body can heal. Rent $%d." % [_k("rest"), night_rent])
 	lines.append("%s  Healer - fast, priced by how deep the wound is; the only way to regrow a limb without a talent" % _k("healer"))
 	lines.append("%s  Start over with a new character      %s  Controls" % [_k("restart"), _k("settings")])
 	return "\n".join(lines)
 
 
 func _repeat_mult() -> float:
-	return maxf(REPEAT_FLOOR, pow(REPEAT_FACTOR, float(delves)))
+	return maxf(repeat_floor, pow(repeat_factor, float(delves)))
 
 
 # --- practice arena -------------------------------------------------------------
 
 func _enter_arena() -> void:
 	_new_level(0.0)
-	_static_box(Vector3(0, -0.5, 0), Vector3(ARENA_HALF * 2.0, 1.0, ARENA_HALF * 2.0), Color(0.62, 0.53, 0.22))
+	_static_box(Vector3(0, -0.5, 0), Vector3(arena_half * 2.0, 1.0, arena_half * 2.0), Color(0.62, 0.53, 0.22))
 	var wall_color := Color(0.3, 0.3, 0.34)
-	var span: float = ARENA_HALF * 2.0 + 2.0
-	_static_box(Vector3(0, 1.0, -ARENA_HALF - 0.5), Vector3(span, 2.0, 1.0), wall_color)
-	_static_box(Vector3(0, 1.0, ARENA_HALF + 0.5), Vector3(span, 2.0, 1.0), wall_color)
-	_static_box(Vector3(-ARENA_HALF - 0.5, 1.0, 0), Vector3(1.0, 2.0, span), wall_color)
-	_static_box(Vector3(ARENA_HALF + 0.5, 1.0, 0), Vector3(1.0, 2.0, span), wall_color)
-	for i: int in 90:
+	var span: float = arena_half * 2.0 + 2.0
+	_static_box(Vector3(0, 1.0, -arena_half - 0.5), Vector3(span, 2.0, 1.0), wall_color)
+	_static_box(Vector3(0, 1.0, arena_half + 0.5), Vector3(span, 2.0, 1.0), wall_color)
+	_static_box(Vector3(-arena_half - 0.5, 1.0, 0), Vector3(1.0, 2.0, span), wall_color)
+	_static_box(Vector3(arena_half + 0.5, 1.0, 0), Vector3(1.0, 2.0, span), wall_color)
+	for i: int in GameData.inum("arena", "scenery_count"):
 		var pos := Vector3.ZERO
 		for attempt: int in 8:
-			pos = Vector3(rng.randf_range(-ARENA_HALF + 1.5, ARENA_HALF - 1.5), 0.0, rng.randf_range(-ARENA_HALF + 1.5, ARENA_HALF - 1.5))
+			pos = Vector3(rng.randf_range(-arena_half + 1.5, arena_half - 1.5), 0.0, rng.randf_range(-arena_half + 1.5, arena_half - 1.5))
 			if pos.length() > 3.0:
 				break
-		_spawn_scenery("bush" if i % 9 == 0 else "grass", pos)
+		_spawn_scenery("bush" if i % GameData.inum("arena", "bush_every_n") == 0 else "grass", pos)
 	player.global_position = Vector3.ZERO
 	player.set("active", true)
 	wave = 0
-	rest_timer = 4.0
+	rest_timer = GameData.num("arena", "first_rest")
 	state = "arena_rest"
 
 
@@ -331,15 +331,15 @@ func _start_wave() -> void:
 	wave += 1
 	state = "arena_fight"
 	player.call("start_fight")
-	for i: int in 2 + wave:
+	for i: int in GameData.inum("arena", "grunts_base") + wave:
 		_spawn_arena_enemy("grunt")
-	for i: int in wave / 3:
+	for i: int in wave / GameData.inum("arena", "brute_every_n_waves"):
 		_spawn_arena_enemy("brute")
 
 
 func _spawn_arena_enemy(kind: String) -> void:
 	var angle: float = rng.randf() * TAU
-	_spawn_enemy(kind, Vector3(cos(angle), 0.0, sin(angle)) * (ARENA_HALF - 3.0), 1.0)
+	_spawn_enemy(kind, Vector3(cos(angle), 0.0, sin(angle)) * (arena_half - 3.0), 1.0)
 
 
 # --- assault passage ------------------------------------------------------------
@@ -347,29 +347,29 @@ func _spawn_arena_enemy(kind: String) -> void:
 func _enter_dungeon() -> void:
 	# Rotated so the corridor runs straight "up" the isometric screen: W alone walks it.
 	_new_level(45.0)
-	var total: float = float(CHAMBERS + 1) * CH_LEN
+	var total: float = float(chambers + 1) * ch_len
 	var mid_z: float = -total * 0.5
 	var wall_color := Color(0.26, 0.26, 0.3)
-	_static_box(Vector3(0, -0.5, mid_z), Vector3(CH_HALF_W * 2.0, 1.0, total), Color(0.5, 0.44, 0.22))
-	_static_box(Vector3(-CH_HALF_W - 0.5, 1.0, mid_z), Vector3(1.0, 2.0, total + 2.0), wall_color)
-	_static_box(Vector3(CH_HALF_W + 0.5, 1.0, mid_z), Vector3(1.0, 2.0, total + 2.0), wall_color)
-	_static_box(Vector3(0, 1.0, 0.5), Vector3(CH_HALF_W * 2.0, 2.0, 1.0), wall_color)
-	_static_box(Vector3(0, 1.0, -total - 0.5), Vector3(CH_HALF_W * 2.0, 2.0, 1.0), wall_color)
+	_static_box(Vector3(0, -0.5, mid_z), Vector3(ch_half_w * 2.0, 1.0, total), Color(0.5, 0.44, 0.22))
+	_static_box(Vector3(-ch_half_w - 0.5, 1.0, mid_z), Vector3(1.0, 2.0, total + 2.0), wall_color)
+	_static_box(Vector3(ch_half_w + 0.5, 1.0, mid_z), Vector3(1.0, 2.0, total + 2.0), wall_color)
+	_static_box(Vector3(0, 1.0, 0.5), Vector3(ch_half_w * 2.0, 2.0, 1.0), wall_color)
+	_static_box(Vector3(0, 1.0, -total - 0.5), Vector3(ch_half_w * 2.0, 2.0, 1.0), wall_color)
 
-	var side_w: float = CH_HALF_W - GAP_HALF
-	var side_x: float = GAP_HALF + side_w * 0.5
-	for c: int in range(1, CHAMBERS + 1):
-		var z: float = -float(c) * CH_LEN
+	var side_w: float = ch_half_w - gap_half
+	var side_x: float = gap_half + side_w * 0.5
+	for c: int in range(1, chambers + 1):
+		var z: float = -float(c) * ch_len
 		_static_box(Vector3(-side_x, 1.0, z), Vector3(side_w, 2.0, 1.0), wall_color)
 		_static_box(Vector3(side_x, 1.0, z), Vector3(side_w, 2.0, 1.0), wall_color)
 		if c >= 2:
 			_add_barrier(c)
 
-	for c: int in range(0, CHAMBERS + 1):
-		var tufts: int = 14 if c == 0 else 7
+	for c: int in range(0, chambers + 1):
+		var tufts: int = GameData.inum("passage", "antechamber_tufts") if c == 0 else GameData.inum("passage", "chamber_tufts")
 		for i: int in tufts:
-			var pos := Vector3(rng.randf_range(-CH_HALF_W + 1.0, CH_HALF_W - 1.0), 0.0,
-				-float(c) * CH_LEN - rng.randf_range(1.5, CH_LEN - 1.5))
+			var pos := Vector3(rng.randf_range(-ch_half_w + 1.0, ch_half_w - 1.0), 0.0,
+				-float(c) * ch_len - rng.randf_range(1.5, ch_len - 1.5))
 			_spawn_scenery("bush" if i == 0 else "grass", pos)
 
 	player.global_position = level.to_global(Vector3(0.0, 0.0, -4.0))
@@ -379,7 +379,7 @@ func _enter_dungeon() -> void:
 
 
 func _add_barrier(c: int) -> void:
-	var b: StaticBody3D = _static_box(Vector3(0, 1.0, -float(c) * CH_LEN), Vector3(GAP_HALF * 2.0, 2.0, 0.6), Color(0.75, 0.15, 0.15))
+	var b: StaticBody3D = _static_box(Vector3(0, 1.0, -float(c) * ch_len), Vector3(gap_half * 2.0, 2.0, 0.6), Color(0.75, 0.15, 0.15))
 	barriers[c] = b
 
 
@@ -390,7 +390,7 @@ func _tick_dungeon(delta: float) -> void:
 
 	if not fighting:
 		var next_c: int = cleared + 1
-		if next_c <= CHAMBERS and depth > float(next_c) * CH_LEN + 1.5:
+		if next_c <= chambers and depth > float(next_c) * ch_len + 1.5:
 			if not sealed:
 				sealed = true
 				_add_barrier(1)
@@ -400,7 +400,7 @@ func _tick_dungeon(delta: float) -> void:
 			return
 		if sealed:
 			# The town clock does not stop because you are underground.
-			_charge_rent(DUNGEON_RENT_PER_SECOND, delta)
+			_charge_rent(dungeon_rent_per_second, delta)
 	elif get_tree().get_nodes_in_group("enemies").is_empty():
 		_on_wall_cleared()
 
@@ -413,7 +413,7 @@ func _tick_dungeon(delta: float) -> void:
 			(player.get("body") as Body).apply_damage(99999.0)
 			player.call("_check_death")
 			return
-		var leave_now: bool = _bot_scenario == "gate" or cleared >= CHAMBERS
+		var leave_now: bool = _bot_scenario == "gate" or cleared >= chambers
 		if leave_now and _pad_in_reach():
 			_extract()
 			return
@@ -423,26 +423,26 @@ func _tick_dungeon(delta: float) -> void:
 		elif absf(local.x) > 0.8:
 			goal_local = Vector3(0.0, 0.0, local.z)
 		else:
-			goal_local = Vector3(0.0, 0.0, -(float(cleared + 1) * CH_LEN + 4.0))
+			goal_local = Vector3(0.0, 0.0, -(float(cleared + 1) * ch_len + 4.0))
 		player.set("bot_goal", level.to_global(goal_local))
 
 
 func _activate(c: int) -> void:
 	current = c
-	var strength: float = LATE_STRENGTH if c > GATE_AT else 1.0
+	var strength: float = late_strength if c > gate_at else 1.0
 	var kinds: Array[String] = []
-	for i: int in 2 + c / 2:
+	for i: int in GameData.inum("passage", "grunts_base") + c / 2:
 		kinds.append("grunt")
-	for i: int in maxi(0, (c - 1) / 3):
+	for i: int in maxi(0, (c - GameData.inum("passage", "brute_offset")) / GameData.inum("passage", "brute_every")):
 		kinds.append("brute")
-	if c == GATE_AT or c == CHAMBERS:
+	if c == gate_at or c == chambers:
 		kinds.append("commander")
 	for kind: String in kinds:
-		var local := Vector3(rng.randf_range(-CH_HALF_W + 2.0, CH_HALF_W - 2.0), 0.0,
-			rng.randf_range(-float(c + 1) * CH_LEN + 2.0, -float(c) * CH_LEN - 7.0))
+		var local := Vector3(rng.randf_range(-ch_half_w + 2.0, ch_half_w - 2.0), 0.0,
+			rng.randf_range(-float(c + 1) * ch_len + 2.0, -float(c) * ch_len - 7.0))
 		_spawn_enemy(kind, local, strength)
 	player.call("start_fight")
-	player.call("note", "Wall %d of %d." % [c, CHAMBERS])
+	player.call("note", "Wall %d of %d." % [c, chambers])
 	if _shot_dungeon and c == 2:
 		Engine.time_scale = 1.0
 		player.set("bot", false)
@@ -451,13 +451,13 @@ func _activate(c: int) -> void:
 
 func _on_wall_cleared() -> void:
 	cleared = current
-	bank += STAGE_VALUE * cleared
+	bank += stage_value * cleared
 	player.call("end_fight")
 	var next_c: int = cleared + 1
 	if barriers.has(next_c):
 		(barriers[next_c] as Node).queue_free()
 		barriers.erase(next_c)
-	if cleared >= GATE_AT:
+	if cleared >= gate_at:
 		_spawn_pad(cleared)
 	player.call("note", "Wall %d cleared. $%d banked - yours only if you walk out." % [cleared, bank])
 
@@ -474,7 +474,7 @@ func _spawn_pad(c: int) -> void:
 	mat.emission_enabled = true
 	mat.emission = Color(0.2, 0.9, 0.4)
 	pad.material_override = mat
-	pad.position = Vector3(0.0, 0.06, -(float(c) + 0.5) * CH_LEN)
+	pad.position = Vector3(0.0, 0.06, -(float(c) + 0.5) * ch_len)
 	level.add_child(pad)
 	pads.append(pad)
 
@@ -483,13 +483,13 @@ func _pad_in_reach() -> bool:
 	for pad: Node3D in pads:
 		var d: Vector3 = pad.global_position - player.global_position
 		d.y = 0.0
-		if d.length() <= EXIT_REACH:
+		if d.length() <= exit_reach:
 			return true
 	return false
 
 
 func _payout_now() -> int:
-	var bonus: float = FULL_CLEAR_BONUS if cleared == CHAMBERS else 1.0
+	var bonus: float = full_clear_bonus if cleared == chambers else 1.0
 	return int(float(bank) * _repeat_mult() * bonus)
 
 
@@ -509,13 +509,13 @@ func _set_dungeon_banner() -> void:
 	if not sealed:
 		banner.text = "ASSAULT PASSAGE - the antechamber.\nWalk up the corridor (%s) to begin; the entrance seals behind you. Last chance to cut grass in peace." % Keybinds.binding_text("move_up")
 	elif current > cleared:
-		banner.text = "Wall %d of %d" % [current, CHAMBERS]
-	elif cleared >= CHAMBERS:
-		banner.text = "All %d walls down. %s on a glowing exit to leave with $%d (full-clear bonus included)." % [CHAMBERS, _k("interact"), _payout_now()]
-	elif cleared >= GATE_AT:
-		banner.text = "Wall %d cleared. %s on a glowing exit to leave with $%d - or push on: wall %d banks $%d more.\nRent is $%d/s while you stand here." % [cleared, _k("interact"), _payout_now(), cleared + 1, STAGE_VALUE * (cleared + 1), int(DUNGEON_RENT_PER_SECOND)]
+		banner.text = "Wall %d of %d" % [current, chambers]
+	elif cleared >= chambers:
+		banner.text = "All %d walls down. %s on a glowing exit to leave with $%d (full-clear bonus included)." % [chambers, _k("interact"), _payout_now()]
+	elif cleared >= gate_at:
+		banner.text = "Wall %d cleared. %s on a glowing exit to leave with $%d - or push on: wall %d banks $%d more.\nRent is $%d/s while you stand here." % [cleared, _k("interact"), _payout_now(), cleared + 1, stage_value * (cleared + 1), int(dungeon_rent_per_second)]
 	else:
-		banner.text = "Wall %d cleared. $%d banked, but no exit until wall %d.\nRest if you need it - rent is $%d/s." % [cleared, bank, GATE_AT, int(DUNGEON_RENT_PER_SECOND)]
+		banner.text = "Wall %d cleared. $%d banked, but no exit until wall %d.\nRest if you need it - rent is $%d/s." % [cleared, bank, gate_at, int(dungeon_rent_per_second)]
 
 
 # --- shared ---------------------------------------------------------------------
@@ -552,7 +552,7 @@ func _on_player_died() -> void:
 	var lost: int = bank if state == "dungeon" else 0
 	_bot_died = true
 	_bot_finished = _bot_mode
-	player.call("revive_in_debt", RESCUE_FEE)
+	player.call("revive_in_debt", rescue_fee)
 	if lost > 0:
 		player.call("note", "The $%d you had banked stayed in the passage." % lost)
 	_last_payout = 0
@@ -661,7 +661,7 @@ func _where() -> String:
 		"arena_rest", "arena_fight":
 			return "Arena, wave %d" % wave
 		"dungeon":
-			return "Passage: %d/%d walls, $%d banked" % [cleared, CHAMBERS, bank]
+			return "Passage: %d/%d walls, $%d banked" % [cleared, chambers, bank]
 	return ""
 
 
@@ -673,15 +673,15 @@ func _tick_bot_report() -> void:
 		var ok := false
 		if _bot_scenario == "die":
 			var money_now: int = int(player.get("money"))
-			ok = not bool(player.get("dead")) and money_now == _bot_money_before - RESCUE_FEE and _last_payout == 0
+			ok = not bool(player.get("dead")) and money_now == _bot_money_before - rescue_fee and _last_payout == 0
 			print("BOT[die]: alive=%s money %d -> %d (fee %d) payout=%d state=%s -> %s" % [
-				str(not bool(player.get("dead"))), _bot_money_before, money_now, RESCUE_FEE, _last_payout, state, "PASS" if ok else "FAIL"])
+				str(not bool(player.get("dead"))), _bot_money_before, money_now, rescue_fee, _last_payout, state, "PASS" if ok else "FAIL"])
 		else:
-			var walls: int = CHAMBERS if _bot_scenario == "full" else GATE_AT
+			var walls: int = chambers if _bot_scenario == "full" else gate_at
 			var banked: int = 0
 			for c: int in range(1, walls + 1):
-				banked += STAGE_VALUE * c
-			var expected: int = int(float(banked) * (FULL_CLEAR_BONUS if walls == CHAMBERS else 1.0))
+				banked += stage_value * c
+			var expected: int = int(float(banked) * (full_clear_bonus if walls == chambers else 1.0))
 			ok = _last_sealed and _last_cleared == walls and _last_payout == expected
 			print("BOT[%s]: sealed=%s walls=%d payout=%d expected=%d money=%d -> %s" % [
 				_bot_scenario, str(_last_sealed), _last_cleared, _last_payout, expected, int(player.get("money")), "PASS" if ok else "FAIL"])

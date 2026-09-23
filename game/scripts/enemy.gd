@@ -1,9 +1,10 @@
 extends CharacterBody3D
-## Placeholder realm invader: chase, telegraph, strike.
+## Realm invader: chase, telegraph, strike. Kinds and numbers come from game/data/enemies.json.
 
 signal killed(enemy: Node)
 
 var body: Body
+var kind := "grunt"
 var is_living := true
 var is_scenery := false
 var radius := 0.5
@@ -15,6 +16,9 @@ var bounty := 150
 var target: Node3D
 
 var _attack_cd := 0.6
+var _cooldown := 1.3
+var _windup_time := 0.45
+var _reach := 2.3
 var _windup := -1.0
 var _flash := 0.0
 var _base_color := Color(0.75, 0.2, 0.2)
@@ -23,32 +27,23 @@ var _label: Label3D
 
 
 ## `strength` scales health and damage - dungeon stages past the midpoint hit harder.
-func setup(kind: String, player: Node3D, strength: float = 1.0) -> void:
+func setup(enemy_kind: String, player: Node3D, strength: float = 1.0) -> void:
+	kind = enemy_kind
 	target = player
-	var height := 1.6
-	var hp := 240.0
-	if kind == "commander":
-		hp = 1400.0
-		radius = 0.9
-		speed = 3.0
-		damage = 28.0
-		heavy = true
-		aura_value = 30.0
-		bounty = 1500
-		height = 2.8
-		_base_color = Color(0.75, 0.55, 0.1)
-	elif kind == "brute":
-		hp = 700.0
-		radius = 0.8
-		speed = 2.3
-		damage = 22.0
-		heavy = true
-		aura_value = 12.0
-		bounty = 500
-		height = 2.4
-		_base_color = Color(0.5, 0.1, 0.3)
-	body = Body.new(hp * strength)
-	damage *= strength
+	var d: Dictionary = GameData.enemy(enemy_kind)
+	var height: float = float(d.get("height", 1.6))
+	radius = float(d.get("radius", 0.5))
+	speed = float(d.get("speed", 3.4))
+	damage = float(d.get("damage", 10.0)) * strength
+	heavy = bool(d.get("heavy", false))
+	aura_value = float(d.get("aura_value", 4.0))
+	bounty = int(d.get("bounty", 150))
+	_cooldown = float(d.get("attack_cooldown", 1.3))
+	_windup_time = float(d.get("windup", 0.45))
+	_reach = float(d.get("reach", 2.3))
+	var c: Array = d.get("color", [0.75, 0.2, 0.2])
+	_base_color = Color(float(c[0]), float(c[1]), float(c[2]))
+	body = Body.new(float(d.get("hp", 240.0)) * strength)
 
 	var mesh := MeshInstance3D.new()
 	var capsule := CapsuleMesh.new()
@@ -119,9 +114,9 @@ func _physics_process(delta: float) -> void:
 		_windup -= delta
 		velocity = Vector3.ZERO
 		if _windup < 0.0:
-			if dist <= 2.3 + radius and not target_dead:
+			if dist <= _reach + radius and not target_dead:
 				target.take_hit(damage, heavy, self)
-			_attack_cd = 1.3
+			_attack_cd = _cooldown
 	elif target_dead:
 		velocity = Vector3.ZERO
 	elif dist > 1.5 + radius:
@@ -130,7 +125,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity = Vector3.ZERO
 		if _attack_cd <= 0.0:
-			_windup = 0.45
+			_windup = _windup_time
 
 	move_and_slide()
 

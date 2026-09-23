@@ -56,9 +56,9 @@ func refresh(player: Node, where: String) -> void:
 
 	for layer: String in ["superficial", "structural", "catastrophic"]:
 		_set_bar(layer, float(b.hp[layer]), float(b.max_hp[layer]), "%d / %d" % [int(ceil(float(b.hp[layer]))), int(float(b.max_hp[layer]))])
-	var pending: float = player.call("pending_damage")
-	if pending > 0.0:
-		_bars["superficial"]["text"].text += "   (%d owed)" % int(pending)
+	var extra: Array[String] = player.call("status_lines")
+	if not extra.is_empty():
+		_bars["superficial"]["text"].text += "   (" + ", ".join(extra) + ")"
 
 	if bool(player.get("arm_right_lost")):
 		_set_bar("arm", 0.0, 1.0, "LOST - off-hand only")

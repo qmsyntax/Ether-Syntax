@@ -18,6 +18,7 @@ func _ready() -> void:
 	_test_healer_credit_and_rent()
 	_test_death_and_rest()
 	_test_keybinds()
+	_test_pipeline()
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
 
@@ -128,6 +129,83 @@ func _test_healer_credit_and_rent() -> void:
 	p.call("charge", 50)
 	_check("rent pushes further into debt", int(p.get("money")) == -1250)
 	_check("town refuses a ticket past the credit limit", not bool(p.call("can_afford", 800)) and bool(p.call("can_afford", 700)))
+	p.queue_free()
+
+
+const EnemyScript := preload("res://scripts/enemy.gd")
+
+
+func _dummy_enemy(p: Node3D) -> CharacterBody3D:
+	var e: CharacterBody3D = EnemyScript.new()
+	add_child(e)
+	e.call("setup", "brute", p, 1.0)
+	e.set("target", null)      # never fights back on its own
+	e.global_position = p.global_position + Vector3(0, 0, -1.5)
+	return e
+
+
+func _test_pipeline() -> void:
+	print("hook pipeline:")
+	for id: String in ["one_percent_lifesteal", "tenth_strike", "grudge", "glass_hour", "debt_of_pain", "furnace_gut"]:
+		var q := _new_player(id)
+		_check("effect loads for %s" % id, (q.get("effects") as Array).size() == 1)
+		q.queue_free()
+
+	var p := _new_player("tenth_strike")
+	var e := _dummy_enemy(p)
+	var eb: Body = e.get("body")
+	for i: int in 10:
+		p.call("deal_damage", e, 1.0, ["melee"])
+	_check("tenth strike: 9 x1 + 1 x5 = 14", _near(eb.missing("superficial"), 14.0), "got %f" % eb.missing("superficial"))
+	e.queue_free()
+	p.queue_free()
+
+	p = _new_player("glass_hour")
+	e = _dummy_enemy(p)
+	eb = e.get("body")
+	p.call("start_fight")
+	var ctx: HitContext = p.call("deal_damage", e, 10.0, ["melee"])
+	_check("glass hour: x3 outgoing in the window", _near(ctx.applied, 30.0), "got %f" % ctx.applied)
+	var pb: Body = p.get("body")
+	p.call("take_hit", 5.0, false, e)
+	_check("glass hour: x3 incoming in the window", _near(pb.missing("superficial"), 15.0), "got %f" % pb.missing("superficial"))
+	p.set("fight_time", 10.0)
+	ctx = p.call("deal_damage", e, 10.0, ["melee"])
+	_check("glass hour: normal after the window", _near(ctx.applied, 10.0))
+	e.queue_free()
+	p.queue_free()
+
+	p = _new_player("grudge")
+	e = _dummy_enemy(p)
+	for i: int in 3:
+		p.call("take_hit", 1.0, false, e)
+	ctx = p.call("deal_damage", e, 100.0, ["melee"])
+	_check("grudge: +2% per hit taken from that enemy", _near(ctx.applied, 106.0), "got %f" % ctx.applied)
+	e.queue_free()
+	p.queue_free()
+
+	p = _new_player("debt_of_pain")
+	pb = p.get("body")
+	p.call("start_fight")      # no natural healing while the debt is outstanding
+	var returned: float = p.call("take_hit", 10.0, false, null)
+	_check("debt: the hit is swallowed for now", _near(returned, 0.0) and _near(pb.missing("superficial"), 0.0))
+	_check("debt: notebook shows what is owed", (p.call("status_lines") as Array).size() == 1)
+	for i: int in 6:
+		p.call("_physics_process", 1.0)
+	_check("debt: 80% arrives after 5 s", _near(pb.missing("superficial"), 8.0), "got %f" % pb.missing("superficial"))
+	p.queue_free()
+
+	p = _new_player("furnace_gut")
+	p.set("reflux", 99.0)
+	p.set("essence", 100.0)
+	p.call("cast_bolt")
+	_check("furnace gut: cap vents to 50 instead of locking", not bool(p.get("reflux_locked")) and _near(float(p.get("reflux")), 50.0), "reflux %f" % float(p.get("reflux")))
+	p.queue_free()
+
+	p = _new_player("tenth_strike")
+	p.set("reflux", 99.0)
+	p.call("cast_bolt")
+	_check("without furnace gut the cap locks the affinity", bool(p.get("reflux_locked")))
 	p.queue_free()
 
 

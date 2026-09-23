@@ -31,10 +31,10 @@ New questions Book 5 raised (all **B** unless marked):
 - 36. "**Concepts**" — is there a stated theory (items, constructs and abilities all have them; "sister concepts" can be fused)?
 
 New 2026-09-23:
-- 37. **A** — With satellites now items, **what refills essence for a character who has none?** Proposal: meditation gathers wisps (canon "gathering") and refills slowly. Yes/no/other?
-- 38. **A** — **Runes.** You described the ethercosm view as stars with skills and runes around them. What is a rune in the books — an ability's stage marker, a bound construct, an inscription, something else?
-- 39. **B** — Satellite ranks: does a 1★ character use a 2★ satellite at full rate, or is it capped by the user's stars?
-- 40. **B** — Inventory in canon: storage rings are owner-synced — is a starting character expected to have one, or is bag space itself an early purchase?
+- 37. ~~Essence without a satellite~~ **Answered 2026-09-23**: yes — meditation gathers wisps and refills essence.
+- 38. ~~Runes~~ **Answered 2026-09-23**: runes are like the incantations that define a skill; see the latest Book 5 chapters on Royal Road (notes in `research/book5-runes-notes.md`).
+- 39. ~~Satellite ranks~~ **Answered 2026-09-23**: a 1★ can use a 2★ satellite at full rate.
+- 40. ~~Storage ring at start~~ **Answered 2026-09-23**: no ring — a backpack that occupies the back equipment slot.
 
 ## Progression
 1. **A** — What actually happens at the 99% wall? What does Freddy have to *do* to ascend from 1★ to 2★ (event, trial, item, insight)?

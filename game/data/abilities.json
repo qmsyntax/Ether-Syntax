@@ -1,0 +1,9 @@
+{
+  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind (1.0 = all of it). Stage/progress rules come in sprint 2b.",
+  "abilities": {
+    "water_bolt": {
+      "name": "Water Bolt", "affinity": "water", "cost": 12.0, "reflux_per_cost": 1.0,
+      "damage": 90.0, "speed": 20.0, "life": 1.5
+    }
+  }
+}
