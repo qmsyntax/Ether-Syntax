@@ -11,6 +11,10 @@ var _money: Label
 var _aura: Label
 var _notebook: Label
 var _hint: Label
+var _slots: Array = []              # per hotbar slot: {panel, key, name, fill, back, info}
+
+const SLOT_W := 150.0
+const SLOT_H := 64.0
 
 
 func _ready() -> void:
@@ -44,6 +48,64 @@ func _ready() -> void:
 	_notebook.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_hint = _label(Vector2(24, panel.size.y - 14), 13)
 	_hint.add_theme_color_override("font_color", Color(0.65, 0.65, 0.7))
+
+
+## The hotbar is built on first refresh, once the player's slot count is known.
+func _build_hotbar(count: int) -> void:
+	var total_w: float = count * SLOT_W + (count - 1) * 8.0
+	var x0: float = (get_viewport_rect().size.x - total_w) * 0.5
+	var y: float = get_viewport_rect().size.y - SLOT_H - 16.0
+	for i: int in count:
+		var x: float = x0 + i * (SLOT_W + 8.0)
+		var bg := ColorRect.new()
+		bg.color = Color(0.05, 0.05, 0.07, 0.8)
+		bg.position = Vector2(x, y)
+		bg.size = Vector2(SLOT_W, SLOT_H)
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(bg)
+		var key := _label(Vector2(x + 6, y + 3), 13)
+		key.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
+		var nm := _label(Vector2(x + 6, y + 20), 14)
+		var back := ColorRect.new()
+		back.color = Color(0.15, 0.15, 0.18)
+		back.position = Vector2(x + 6, y + SLOT_H - 12)
+		back.size = Vector2(SLOT_W - 12, 6)
+		back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(back)
+		var fill := ColorRect.new()
+		fill.color = Color(0.55, 0.8, 1.0)
+		fill.position = back.position
+		fill.size = Vector2(0, 6)
+		fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(fill)
+		var info := _label(Vector2(x + 6, y + 38), 11)
+		info.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
+		_slots.append({"bg": bg, "key": key, "name": nm, "fill": fill, "back": back, "info": info})
+
+
+func _refresh_hotbar(player: Node) -> void:
+	var hotbar: Array = player.get("hotbar")
+	if _slots.is_empty():
+		_build_hotbar(hotbar.size())
+	var abilities: Array = player.get("abilities")
+	var essence: float = float(player.get("essence"))
+	var locked: bool = bool(player.get("reflux_locked"))
+	for i: int in _slots.size():
+		var s: Dictionary = _slots[i]
+		(s["key"] as Label).text = Keybinds.binding_text("ability_%d" % (i + 1))
+		var idx: int = int(hotbar[i])
+		if idx < 0 or idx >= abilities.size():
+			(s["name"] as Label).text = "(empty)"
+			(s["info"] as Label).text = ""
+			(s["fill"] as ColorRect).size.x = 0.0
+			continue
+		var st: Dictionary = abilities[idx]
+		var ab: Dictionary = GameData.ability(str(st["id"]))
+		(s["name"] as Label).text = str(ab.get("name", "?"))
+		(s["info"] as Label).text = "stage %d   %d essence" % [int(st["stage"]), int(float(ab.get("cost", 0)))]
+		(s["fill"] as ColorRect).size.x = (s["back"] as ColorRect).size.x * clampf(float(st["progress"]) / 100.0, 0.0, 1.0)
+		var usable: bool = not locked and essence >= float(ab.get("cost", 0.0))
+		(s["bg"] as ColorRect).color = Color(0.05, 0.05, 0.07, 0.8) if usable else Color(0.25, 0.05, 0.05, 0.8)
 
 
 func refresh(player: Node, where: String) -> void:
@@ -97,6 +159,7 @@ func refresh(player: Node, where: String) -> void:
 	_notebook.text = "\n".join(lines)
 
 	_hint.text = "%s controls   %s start over" % [Keybinds.binding_text("settings"), Keybinds.binding_text("restart")]
+	_refresh_hotbar(player)
 
 
 func _add_bar(name: String, title: String, color: Color, y: float) -> float:

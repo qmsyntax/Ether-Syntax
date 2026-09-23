@@ -19,6 +19,7 @@ func _ready() -> void:
 	_test_death_and_rest()
 	_test_keybinds()
 	_test_pipeline()
+	await _test_abilities()
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
 
@@ -198,35 +199,87 @@ func _test_pipeline() -> void:
 	p = _new_player("furnace_gut")
 	p.set("reflux", 99.0)
 	p.set("essence", 100.0)
-	p.call("cast_bolt")
+	p.call("cast_slot", 0)
 	_check("furnace gut: cap vents to 50 instead of locking", not bool(p.get("reflux_locked")) and _near(float(p.get("reflux")), 50.0), "reflux %f" % float(p.get("reflux")))
 	p.queue_free()
 
 	p = _new_player("tenth_strike")
 	p.set("reflux", 99.0)
-	p.call("cast_bolt")
+	p.call("cast_slot", 0)
 	_check("without furnace gut the cap locks the affinity", bool(p.get("reflux_locked")))
+	p.queue_free()
+
+
+func _test_abilities() -> void:
+	# awaits a frame so a freed dummy enemy leaves the groups before the "nothing to fight" cast
+	print("abilities:")
+	var p := _new_player("tenth_strike")
+	var ab: Array = p.get("abilities")
+	_check("starting loadout has three abilities", ab.size() == 3 and str(ab[0]["id"]) == "water_bolt")
+	# Progress: essence spent through the ability x use multiplier. Bolt costs 12; vs a monster x1.0.
+	var e := _dummy_enemy(p)
+	p.call("start_fight")
+	p.call("cast_slot", 0)
+	_check("bolt spends its cost and leaves reflux", _near(float(p.get("essence")), 88.0) and _near(float(p.get("reflux")), 12.0))
+	_check("progress = essence spent x1 with a monster present", _near(float(ab[0]["progress"]), 12.0), "got %f" % float(ab[0]["progress"]))
+	p.call("end_fight")
+	e.queue_free()
+	await get_tree().process_frame
+	p.set("essence", 100.0)
+	p.call("cast_slot", 0)
+	_check("progress x0.25 with nothing to fight", _near(float(ab[0]["progress"]), 15.0), "got %f" % float(ab[0]["progress"]))
+	ab[0]["progress"] = 99.0
+	p.set("essence", 100.0)
+	p.set("reflux", 0.0)
+	p.call("cast_slot", 0)
+	_check("a full bar advances the stage (stubbed binding) and carries the remainder", int(ab[0]["stage"]) == 1 and _near(float(ab[0]["progress"]), 2.0), "stage %d progress %f" % [int(ab[0]["stage"]), float(ab[0]["progress"])])
+	ab[0]["progress"] = 99.0
+	ab[0]["stage"] = 2
+	p.set("essence", 100.0)
+	p.set("reflux", 0.0)
+	p.call("cast_slot", 0)
+	_check("stage cap is stars + 1", int(ab[0]["stage"]) == 2 and _near(float(ab[0]["progress"]), 100.0), "stage %d progress %f" % [int(ab[0]["stage"]), float(ab[0]["progress"])])
+	_check("stage raises damage", _near(float(p.call("ability_damage_mult", 2)), 1.2))
+
+	# Tsunami strike: a big blow that costs the body.
+	var e2 := _dummy_enemy(p)
+	var eb: Body = e2.get("body")
+	var pb: Body = p.get("body")
+	p.set("essence", 100.0)
+	p.set("reflux", 0.0)
+	ab[0]["stage"] = 0
+	p.set("_facing", Vector3(0, 0, -1))
+	p.call("cast_slot", 1)
+	_check("tsunami strike lands x3 melee damage", eb.missing("superficial") >= 179.0, "got %f" % eb.missing("superficial"))
+	_check("tsunami strike wounds the caster", pb.missing("structural") > 0.0)
+	e2.queue_free()
+
+	# Meditation gathers wisps.
+	p.set("essence", 20.0)
+	p.set("meditating", true)
+	p.call("_meditate_gather", 1.0)
+	_check("meditation refills essence", _near(float(p.get("essence")), 24.0), "got %f" % float(p.get("essence")))
 	p.queue_free()
 
 
 func _test_keybinds() -> void:
 	print("keybinds:")
 	Keybinds.reset_defaults()
-	_check("defaults registered", Keybinds.binding_text("bolt") == "Q" and Keybinds.binding_text("strike") == "LMB")
+	_check("defaults registered", Keybinds.binding_text("ability_1") == "Q" and Keybinds.binding_text("strike") == "LMB")
 	var g := InputEventKey.new()
-	g.physical_keycode = KEY_G
-	var displaced: String = Keybinds.rebind("bolt", g)
-	_check("rebind changes the binding", Keybinds.binding_text("bolt") == "G" and displaced == "")
+	g.physical_keycode = KEY_K
+	var displaced: String = Keybinds.rebind("ability_1", g)
+	_check("rebind changes the binding", Keybinds.binding_text("ability_1") == "K" and displaced == "")
 	var displaced2: String = Keybinds.rebind("ascend", g)
-	_check("a key held by another action is taken from it", displaced2 == "bolt" and Keybinds.binding_text("bolt") == "(none)" and Keybinds.binding_text("ascend") == "G")
+	_check("a key held by another action is taken from it", displaced2 == "ability_1" and Keybinds.binding_text("ability_1") == "(none)" and Keybinds.binding_text("ascend") == "K")
 	var mmb := InputEventMouseButton.new()
 	mmb.button_index = MOUSE_BUTTON_MIDDLE
 	Keybinds.rebind("meditate", mmb)
 	_check("mouse buttons bind too", Keybinds.binding_text("meditate") == "MMB")
 	Keybinds.call("_load")
-	_check("bindings survive a save/load round trip", Keybinds.binding_text("ascend") == "G" and Keybinds.binding_text("meditate") == "MMB")
+	_check("bindings survive a save/load round trip", Keybinds.binding_text("ascend") == "K" and Keybinds.binding_text("meditate") == "MMB")
 	Keybinds.reset_defaults()
-	_check("reset restores defaults", Keybinds.binding_text("bolt") == "Q" and Keybinds.binding_text("ascend") == "T" and Keybinds.binding_text("meditate") == "M")
+	_check("reset restores defaults", Keybinds.binding_text("ability_1") == "Q" and Keybinds.binding_text("ascend") == "T" and Keybinds.binding_text("meditate") == "M")
 
 
 func _test_death_and_rest() -> void:

@@ -5,6 +5,7 @@ extends Node
 var balance: Dictionary = {}
 var enemies: Dictionary = {}
 var abilities: Dictionary = {}
+var _starting_loadout: Array = []
 
 
 ## Loaded in the constructor: the singleton name resolves before the node enters the tree,
@@ -18,7 +19,15 @@ func _ensure() -> void:
 		return
 	balance = _load("res://data/balance.json")
 	enemies = _load("res://data/enemies.json").get("enemies", {})
-	abilities = _load("res://data/abilities.json").get("abilities", {})
+	var ab_file: Dictionary = _load("res://data/abilities.json")
+	abilities = ab_file.get("abilities", {})
+	_starting_loadout = ab_file.get("starting_loadout", [])
+
+
+## Ability ids a new character starts with, in hotbar order.
+func ability_loadout() -> Array:
+	_ensure()
+	return _starting_loadout
 
 
 ## A number from balance.json. Missing keys are a loud error, not a silent zero.

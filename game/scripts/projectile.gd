@@ -35,6 +35,6 @@ func _process(delta: float) -> void:
 		var reach: float = 0.6 + float(enemy.get("radius"))
 		if global_position.distance_to(enemy.global_position + Vector3.UP * 0.9) <= reach + 0.6:
 			if is_instance_valid(shooter):
-				shooter.deal_damage(enemy, damage, ["bolt"])
+				shooter.deal_damage(enemy, damage, ["projectile"])
 			queue_free()
 			return

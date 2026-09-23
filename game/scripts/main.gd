@@ -198,8 +198,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif event.is_action_pressed("healer"):
 				player.call("buy_healing")
 		"arena_rest", "arena_fight":
-			if event.is_action_pressed("bolt"):
-				player.call("cast_bolt")
+			if _cast_from_hotbar(event):
+				pass
 			elif event.is_action_pressed("ascend"):
 				player.call("try_ascend")
 			elif event.is_action_pressed("go_now"):
@@ -218,8 +218,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				if state == "arena_rest":
 					_enter_town()
 		"dungeon":
-			if event.is_action_pressed("bolt"):
-				player.call("cast_bolt")
+			if _cast_from_hotbar(event):
+				pass
 			elif event.is_action_pressed("ascend"):
 				player.call("try_ascend")
 			elif event.is_action_pressed("healer"):
@@ -231,6 +231,15 @@ func _unhandled_input(event: InputEvent) -> void:
 					player.call("note", "No exit yet. %d more walls." % maxi(0, gate_at - cleared))
 				else:
 					player.call("note", "Stand on a glowing exit to leave.")
+
+
+## Hotbar slots are the actions ability_1..N. Returns true if the event cast something.
+func _cast_from_hotbar(event: InputEvent) -> bool:
+	for i: int in (player.get("hotbar") as Array).size():
+		if event.is_action_pressed("ability_%d" % (i + 1)):
+			player.call("cast_slot", i)
+			return true
+	return false
 
 
 func _open_settings() -> void:

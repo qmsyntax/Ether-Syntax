@@ -14,7 +14,7 @@ var applied: float = 0.0    # damage that actually landed (never more than remai
 var killed: bool = false
 var is_living: bool = true
 var is_scenery: bool = false
-var tags: PackedStringArray = []   # "melee", "overcharge", "bolt", "vent", "dot", "summon", ...
+var tags: PackedStringArray = []   # "melee", "overcharge", "projectile", "ability", "vent", "dot", "summon", ...
 var cancelled: bool = false        # an incoming effect swallowed it (e.g. deferred to later)
 
 

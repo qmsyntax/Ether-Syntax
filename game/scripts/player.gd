@@ -32,6 +32,9 @@ var arm_right := 100.0            # striking arm integrity; overcharging spends 
 var arm_right_lost := false
 var discoveries: Array[String] = []
 var log_lines: Array[String] = []
+## Learned abilities: [{id, stage, progress}]. Hotbar slot i casts abilities[hotbar[i]].
+var abilities: Array = []
+var hotbar: Array[int] = []
 
 # Headless test driver only (see main.gd --bot-dungeon): steers toward bot_goal, swings at
 # anything in reach, hits absurdly hard and cannot be hurt. Never enabled in normal play.
@@ -50,6 +53,8 @@ var _melee_cd := 0.0
 var _charge := 0.0
 var _charging := false
 var _meditate_block := 0.0
+var _dash_time := 0.0
+var _dash_vel := Vector3.ZERO
 var _mat: StandardMaterial3D
 
 # Tuning (GameData).
@@ -76,6 +81,14 @@ func _init() -> void:
 	arm_right = float(_arm["max"])
 	melee_range = float(_p["melee_range"])
 	melee_arc = deg_to_rad(float(_p["melee_arc_deg"]))
+	var slots: int = GameData.inum("abilities", "hotbar_slots")
+	for i: int in slots:
+		hotbar.append(-1)
+	var loadout: Array = GameData.ability_loadout()
+	for i: int in loadout.size():
+		abilities.append({"id": str(loadout[i]), "stage": 0, "progress": 0.0})
+		if i < slots:
+			hotbar[i] = i
 
 
 func _ready() -> void:
@@ -151,6 +164,7 @@ func _physics_process(delta: float) -> void:
 	var shed: float = float(_reflux_cfg["shed_meditating"]) if meditating else (
 		float(_reflux_cfg["shed_in_combat"]) if in_combat else float(_reflux_cfg["shed_resting"]))
 	reflux = maxf(0.0, reflux - shed * delta)
+	_meditate_gather(delta)
 	if reflux_locked and reflux < float(_reflux_cfg["unlock_below"]):
 		reflux_locked = false
 		note("Water affinity unlocks.")
@@ -181,6 +195,9 @@ func _physics_process(delta: float) -> void:
 		dir = _bot_dir
 	var speed: float = float(_p["move_speed"]) * (float(_p["charge_move_factor"]) if _charging else 1.0)
 	velocity = dir * speed
+	if _dash_time > 0.0:
+		_dash_time -= delta
+		velocity = _dash_vel
 	move_and_slide()
 
 	rotation.y = atan2(-_facing.x, -_facing.z)
@@ -319,31 +336,52 @@ func _release_overcharge() -> void:
 	_check_death()
 
 
-func cast_bolt() -> void:
-	if not active or dead or meditating:
+# --- abilities --------------------------------------------------------------------
+
+## Cast whatever ability sits in hotbar slot `slot` (0-based).
+func cast_slot(slot: int) -> void:
+	if slot < 0 or slot >= hotbar.size() or hotbar[slot] < 0:
+		return
+	cast_ability(hotbar[slot])
+
+
+func cast_ability(index: int) -> void:
+	if not active or dead or meditating or index < 0 or index >= abilities.size():
+		return
+	var state: Dictionary = abilities[index]
+	var ab: Dictionary = GameData.ability(str(state["id"]))
+	if ab.is_empty():
 		return
 	if reflux_locked:
 		note("Water affinity is locked by reflux. Meditate (hold %s)." % Keybinds.binding_text("meditate"))
 		return
-	var ab: Dictionary = GameData.ability("water_bolt")
 	var cost: float = float(ab["cost"]) * (float(_reflux_cfg["pain_cost_mult"]) if reflux >= float(_reflux_cfg["pain_at"]) else 1.0)
 	if essence < cost:
-		note("Not enough essence.")
+		note("Not enough essence for %s." % str(ab["name"]))
 		return
 	if reflux >= float(_reflux_cfg["burn_at"]):
 		var burn: float = body.apply_self_harm(float(_reflux_cfg["burn_self_damage"]))
 		_float("reflux -%d" % int(burn), Color(1, 0.5, 0.2))
 	essence -= cost
 	reflux += cost * float(ab["reflux_per_cost"])
+	_advance(state, cost)
 
-	var bolt: Node3D = Projectile.new()
-	bolt.set("dir", _facing)
-	bolt.set("damage", float(ab["damage"]))
-	bolt.set("speed", float(ab["speed"]))
-	bolt.set("life", float(ab["life"]))
-	bolt.set("shooter", self)
-	get_parent().add_child(bolt)
-	bolt.global_position = global_position + Vector3.UP * 1.0 + _facing * 0.8
+	var stage_mult: float = ability_damage_mult(int(state["stage"]))
+	match str(ab["kind"]):
+		"projectile":
+			_fire_projectile(ab, stage_mult)
+		"melee_burst":
+			var hurt: float = body.apply_self_harm(float(ab["self_harm"]))
+			_float("-%d" % int(hurt), Color(1, 0.4, 0.3))
+			_swing(float(ab["damage_mult"]) * stage_mult, melee_range + float(ab["reach_bonus"]), ["melee", "ability", str(state["id"])])
+			_melee_cd = float(_p["melee_cooldown"]) * float(_p["overcharge_cooldown_factor"])
+		"dash":
+			var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+			var dir := Vector3(input.x, 0.0, input.y).normalized().rotated(Vector3.UP, ISO_YAW)
+			if dir == Vector3.ZERO:
+				dir = _facing
+			_dash_vel = dir * float(ab["dash_speed"])
+			_dash_time = float(ab["dash_time"])
 
 	if reflux >= float(_reflux_cfg["lock_at"]):
 		var handled := false
@@ -355,6 +393,52 @@ func cast_bolt() -> void:
 			reflux_locked = true
 			note("Reflux at %d - water affinity LOCKED." % int(_reflux_cfg["lock_at"]))
 	_check_death()
+
+
+## Damage multiplier an ability gets from its stage.
+func ability_damage_mult(stage: int) -> float:
+	return 1.0 + GameData.num("abilities", "stage_damage_bonus") * float(stage)
+
+
+## Progress is bought with essence spent through the ability, and counts for more when
+## something is actually trying to kill you (Brent 2026-09-23). A full bar advances the stage -
+## STUBBED: in canon a stage needs a bound construct; binding does not exist yet.
+func _advance(state: Dictionary, essence_spent: float) -> void:
+	var use_mult: float = GameData.num("abilities", "use_mult_monster") if _enemy_nearby() else GameData.num("abilities", "use_mult_nothing")
+	var gain: float = essence_spent * GameData.num("abilities", "progress_per_essence") * use_mult
+	var cap: int = stars + 1
+	var p: float = float(state["progress"]) + gain
+	while p >= 100.0 and int(state["stage"]) < cap:
+		p -= 100.0
+		state["stage"] = int(state["stage"]) + 1
+		note("%s reaches stage %d." % [str(GameData.ability(str(state["id"])).get("name", "?")), int(state["stage"])])
+	if int(state["stage"]) >= cap:
+		p = minf(p, 100.0)
+	state["progress"] = p
+
+
+func _enemy_nearby() -> bool:
+	for node: Node in get_tree().get_nodes_in_group("enemies"):
+		if not bool(node.call("is_dead")):
+			return true
+	return false
+
+
+func _fire_projectile(ab: Dictionary, stage_mult: float) -> void:
+	var bolt: Node3D = Projectile.new()
+	bolt.set("dir", _facing)
+	bolt.set("damage", float(ab["damage"]) * stage_mult)
+	bolt.set("speed", float(ab["speed"]))
+	bolt.set("life", float(ab["life"]))
+	bolt.set("shooter", self)
+	get_parent().add_child(bolt)
+	bolt.global_position = global_position + Vector3.UP * 1.0 + _facing * 0.8
+
+
+## Meditation gathers wisps and refills essence (Brent 2026-09-23).
+func _meditate_gather(delta: float) -> void:
+	if meditating:
+		essence = minf(essence_max, essence + GameData.num("meditation", "gather_per_s") * delta)
 
 
 func _check_death() -> void:
