@@ -325,6 +325,35 @@ func _test_click_melee() -> void:
 		"a %f b %f" % [ab_body.missing("superficial"), bb_body.missing("superficial")])
 	p.call("_click", p.global_position + Vector3(5, 0, 5))
 	_check("a click on empty ground becomes a walk goal", bool(p.get("has_move_goal")) and p.get("attack_target") == null)
+
+	# Screen-space picking with the game's isometric camera: clicking the upper body counts.
+	# The headless window is 64x64 px; give the camera the game's real 1600x900 screen so a
+	# pixel margin means what it means in play.
+	var screen := SubViewport.new()
+	screen.size = Vector2i(1600, 900)
+	screen.world_3d = get_viewport().world_3d
+	add_child(screen)
+	var cam := Camera3D.new()
+	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+	cam.size = 24.0
+	screen.add_child(cam)
+	cam.global_position = p.global_position + Vector3(12, 12, 12)
+	cam.look_at(p.global_position + Vector3.UP, Vector3.UP)
+	var chest: Vector2 = cam.unproject_position(a.global_position + Vector3.UP * 1.9)
+	var floor_behind: Node3D = p.call("pick_at", a.global_position + Vector3(-2.5, 0, -2.5))
+	_check("the old floor pick misses a click aimed at the upper body", floor_behind == null)
+	_check("a click on the upper body picks that enemy in screen space", p.call("pick_screen", chest, cam) == a)
+	var far: Vector2 = cam.unproject_position(a.global_position + Vector3(6, 0, 6))
+	_check("empty screen space picks nothing", p.call("pick_screen", far, cam) == null)
+	p.set("hovered", a)
+	p.call("_refresh_highlights")
+	_check("the hovered enemy is highlighted", int(a.get("highlight")) == 1 and int(b.get("highlight")) == 0)
+	p.call("_click_cursor")
+	_check("clicking while hovering locks that enemy as the attack target", p.get("attack_target") == a)
+	p.set("hovered", null)
+	p.call("_refresh_highlights")
+	_check("the locked target keeps a dimmer highlight", int(a.get("highlight")) == 2)
+	screen.queue_free()
 	a.queue_free()
 	b.queue_free()
 	await get_tree().process_frame
@@ -334,7 +363,7 @@ func _test_click_melee() -> void:
 func _test_keybinds() -> void:
 	print("keybinds:")
 	Keybinds.reset_defaults()
-	_check("defaults registered", Keybinds.binding_text("ability_1") == "Q" and Keybinds.binding_text("strike") == "LMB")
+	_check("defaults registered", Keybinds.binding_text("ability_1") == "1" and Keybinds.binding_text("ability_6") == "6" and Keybinds.binding_text("strike") == "LMB")
 	var g := InputEventKey.new()
 	g.physical_keycode = KEY_K
 	var displaced: String = Keybinds.rebind("ability_1", g)
@@ -348,7 +377,7 @@ func _test_keybinds() -> void:
 	Keybinds.call("_load")
 	_check("bindings survive a save/load round trip", Keybinds.binding_text("ascend") == "K" and Keybinds.binding_text("meditate") == "MMB")
 	Keybinds.reset_defaults()
-	_check("reset restores defaults", Keybinds.binding_text("ability_1") == "Q" and Keybinds.binding_text("ascend") == "T" and Keybinds.binding_text("meditate") == "M")
+	_check("reset restores defaults", Keybinds.binding_text("ability_1") == "1" and Keybinds.binding_text("ascend") == "T" and Keybinds.binding_text("meditate") == "M")
 
 
 func _test_death_and_rest() -> void:

@@ -24,3 +24,14 @@ queue_freed stays in its groups until the frame ends.
 ## Not verified
 The feel of click-to-attack and click-to-move with WASD mixed in; whether a 20-essence start is too tight; whether
 placeholder drop rates make binding happen often enough to matter in a 20–30 minute sitting.
+
+## Follow-ups the same day (v0.7.1)
+- Skill slots default to the number keys 1–6 (Brent); hotbar grows to six slots.
+- Clicking was hard because the click was converted to a floor point, and with the isometric camera a click on an
+  enemy's upper body lands on the floor *behind* it. Picking is now screen-space: any point on the drawn body plus a
+  14 px margin counts (`player.pick_margin_px`). Whatever is under the cursor glows bright; the locked attack target
+  glows dimmer. Scenery highlights too but with a smaller margin so enemies win.
+- Test gotcha: the headless window is 64×64 px, so pixel margins cover the whole screen; the picking test renders
+  through its own 1600×900 SubViewport.
+- Verified by self-test (81/81, six new picking/highlight checks), smoke, bots. The glow itself has not been seen on
+  screen yet.

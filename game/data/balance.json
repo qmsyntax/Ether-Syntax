@@ -21,7 +21,8 @@
     "starter_satellite_rate": 1.0,
     "debt_limit": -2000,
     "aura_threshold": 100.0,
-    "aura_hurt_risk_bonus": 2.0
+    "aura_hurt_risk_bonus": 2.0,
+    "pick_margin_px": 14.0
   },
   "natural_healing": {
     "superficial_per_s": 3.0,
@@ -109,7 +110,7 @@
     "use_mult_scenery": 0.1,
     "use_mult_nothing": 0.25,
     "stage_damage_bonus": 0.1,
-    "hotbar_slots": 4
+    "hotbar_slots": 6
   },
   "meditation": {
     "_note": "Meditation gathers wisps (Brent 2026-09-23): refills essence while you sit still.",

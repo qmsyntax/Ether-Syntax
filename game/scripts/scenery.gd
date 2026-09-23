@@ -5,6 +5,10 @@ var body: Body
 var is_living := true
 var is_scenery := true
 var radius := 0.4
+var height := 0.8
+var highlight := 0
+var _base_color := Color(1, 1, 1)
+var _smat: StandardMaterial3D
 var aura_value := 0.0
 var bounty := 0
 
@@ -32,6 +36,9 @@ func setup(kind: String) -> void:
 		_mesh.mesh = cone
 		_mesh.position.y = 0.4
 		mat.albedo_color = Color(0.35, 0.62, 0.2)
+	_base_color = mat.albedo_color
+	_smat = mat
+	height = 1.1 if kind == "bush" else 0.8
 	_mesh.material_override = mat
 	add_child(_mesh)
 	add_to_group("hittable")
@@ -49,3 +56,10 @@ func take_hit(amount: float, _heavy: bool, _source: Node) -> float:
 		remove_from_group("hittable")
 		queue_free()
 	return applied
+
+
+## Called by the player's hover logic; scenery has no per-frame update of its own.
+func set_highlight(level: int) -> void:
+	highlight = level
+	if _smat != null:
+		_smat.albedo_color = _base_color.lightened(0.35) if level > 0 else _base_color

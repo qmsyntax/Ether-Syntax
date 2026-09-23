@@ -14,6 +14,9 @@ var heavy := false
 var aura_value := 4.0
 var bounty := 150
 var target: Node3D
+var height := 1.6
+## 0 = none, 1 = hovered by the cursor, 2 = the player's locked attack target.
+var highlight := 0
 
 var _attack_cd := 0.6
 var _cooldown := 1.3
@@ -31,7 +34,7 @@ func setup(enemy_kind: String, player: Node3D, strength: float = 1.0) -> void:
 	kind = enemy_kind
 	target = player
 	var d: Dictionary = GameData.enemy(enemy_kind)
-	var height: float = float(d.get("height", 1.6))
+	height = float(d.get("height", 1.6))
 	radius = float(d.get("radius", 0.5))
 	speed = float(d.get("speed", 3.4))
 	damage = float(d.get("damage", 10.0)) * strength
@@ -53,6 +56,8 @@ func setup(enemy_kind: String, player: Node3D, strength: float = 1.0) -> void:
 	mesh.position.y = height * 0.5
 	_mat = StandardMaterial3D.new()
 	_mat.albedo_color = _base_color
+	_mat.emission_enabled = true
+	_mat.emission = Color(0, 0, 0)
 	mesh.material_override = _mat
 	add_child(mesh)
 
@@ -133,8 +138,15 @@ func _physics_process(delta: float) -> void:
 		_mat.albedo_color = Color(1, 1, 1)
 	elif _windup >= 0.0:
 		_mat.albedo_color = Color(1.0, 0.75, 0.2)
+	elif highlight > 0:
+		_mat.albedo_color = _base_color.lightened(0.45 if highlight == 1 else 0.3)
 	else:
 		_mat.albedo_color = _base_color
+	# A warm glow marks what the cursor is on (bright) and what you are attacking (dimmer).
+	if highlight > 0 and _flash <= 0.0:
+		_mat.emission = Color(0.9, 0.8, 0.3) * (0.55 if highlight == 1 else 0.35)
+	else:
+		_mat.emission = Color(0, 0, 0)
 
 
 func _refresh_label() -> void:

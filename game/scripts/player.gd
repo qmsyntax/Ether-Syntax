@@ -45,6 +45,9 @@ var attack_target: Node3D = null
 var move_goal := Vector3.ZERO
 var has_move_goal := false
 var _strike_once := false
+## What is under the cursor right now (highlighted). Picked in screen space, so clicking any
+## part of a drawn body counts - not just its footprint on the floor (Brent 2026-09-23).
+var hovered: Node3D = null
 
 # Headless test driver only (see main.gd --bot-dungeon): steers toward bot_goal, swings at
 # anything in reach, hits absurdly hard and cannot be hurt. Never enabled in normal play.
@@ -200,8 +203,10 @@ func _physics_process(delta: float) -> void:
 	if bot:
 		attack_target = _nearest_enemy()
 		_strike_once = false
-	elif Input.is_action_just_pressed("strike") and not meditating:
-		_click(_cursor_ground())
+	else:
+		_update_hover()
+	if not bot and Input.is_action_just_pressed("strike") and not meditating:
+		_click_cursor()
 	if not bot and Input.is_action_pressed("strike") and attack_target == null and has_move_goal:
 		move_goal = _cursor_ground()          # holding on the ground keeps steering
 
@@ -349,6 +354,17 @@ func _on_kill(target: Node) -> void:
 
 # --- click targeting ------------------------------------------------------------
 
+## Click at the cursor: the hovered thing if there is one, otherwise the floor under the cursor.
+func _click_cursor() -> void:
+	if hovered != null and is_instance_valid(hovered) and not bool(hovered.call("is_dead")):
+		attack_target = hovered
+		has_move_goal = false
+		_strike_once = true
+	else:
+		_click(_cursor_ground())
+	_refresh_highlights()
+
+
 ## Handle a click at a ground point: a hittable there becomes the attack target (enemies win
 ## over scenery), otherwise the point becomes a walk goal.
 func _click(point: Vector3) -> void:
@@ -361,6 +377,61 @@ func _click(point: Vector3) -> void:
 		attack_target = null
 		move_goal = point
 		has_move_goal = true
+
+
+## Screen-space pick: the hittable whose drawn body (base-to-top segment, widened by its radius
+## and a margin) contains `screen_pos`. Enemies win over scenery; closest to the cursor wins.
+func pick_screen(screen_pos: Vector2, cam: Camera3D) -> Node3D:
+	if cam == null:
+		return null
+	var margin: float = GameData.num("player", "pick_margin_px")
+	var best: Node3D = null
+	var best_d := INF
+	var best_is_enemy := false
+	for node: Node in get_tree().get_nodes_in_group("hittable"):
+		var t := node as Node3D
+		if t == null or bool(t.call("is_dead")):
+			continue
+		if cam.is_position_behind(t.global_position):
+			continue
+		var h: float = float(t.get("height")) if t.get("height") != null else 1.0
+		var r: float = float(t.get("radius"))
+		var base: Vector2 = cam.unproject_position(t.global_position)
+		var top: Vector2 = cam.unproject_position(t.global_position + Vector3.UP * h)
+		var side: Vector2 = cam.unproject_position(t.global_position + cam.global_transform.basis.x * r)
+		var r_px: float = base.distance_to(side)
+		var d: float = Geometry2D.get_closest_point_to_segment(screen_pos, base, top).distance_to(screen_pos)
+		var is_enemy: bool = not bool(t.get("is_scenery"))
+		if d > r_px + (margin if is_enemy else margin * 0.4):
+			continue
+		if (is_enemy and not best_is_enemy) or (is_enemy == best_is_enemy and d < best_d):
+			best = t
+			best_d = d
+			best_is_enemy = is_enemy
+	return best
+
+
+func _update_hover() -> void:
+	var cam: Camera3D = get_viewport().get_camera_3d() if is_inside_tree() else null
+	var now: Node3D = pick_screen(get_viewport().get_mouse_position(), cam) if cam != null else null
+	if now != hovered:
+		hovered = now
+	_refresh_highlights()
+
+
+## Hovered = bright, locked attack target = dimmer; everything else plain.
+func _refresh_highlights() -> void:
+	for node: Node in get_tree().get_nodes_in_group("hittable"):
+		var level := 0
+		if node == hovered:
+			level = 1
+		elif node == attack_target:
+			level = 2
+		if node.has_method("set_highlight"):
+			if int(node.get("highlight")) != level:
+				node.call("set_highlight", level)
+		elif node.get("highlight") != null:
+			node.set("highlight", level)
 
 
 ## The hittable whose footprint contains `point`, preferring enemies over scenery.
@@ -398,7 +469,7 @@ func _overcharge_target(reach: float) -> Node3D:
 	if attack_target != null and is_instance_valid(attack_target):
 		candidates.append(attack_target)
 	if not bot and is_inside_tree():
-		var under: Node3D = pick_at(_cursor_ground())
+		var under: Node3D = hovered
 		if under != null:
 			candidates.append(under)
 	var near: Node3D = _nearest_enemy()
