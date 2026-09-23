@@ -30,6 +30,12 @@ New questions Book 5 raised (all **B** unless marked):
 - 35. The full **realm class ladder** and what a class implies (size? danger? ether density?).
 - 36. "**Concepts**" — is there a stated theory (items, constructs and abilities all have them; "sister concepts" can be fused)?
 
+New 2026-09-23:
+- 37. **A** — With satellites now items, **what refills essence for a character who has none?** Proposal: meditation gathers wisps (canon "gathering") and refills slowly. Yes/no/other?
+- 38. **A** — **Runes.** You described the ethercosm view as stars with skills and runes around them. What is a rune in the books — an ability's stage marker, a bound construct, an inscription, something else?
+- 39. **B** — Satellite ranks: does a 1★ character use a 2★ satellite at full rate, or is it capped by the user's stars?
+- 40. **B** — Inventory in canon: storage rings are owner-synced — is a starting character expected to have one, or is bag space itself an early purchase?
+
 ## Progression
 1. **A** — What actually happens at the 99% wall? What does Freddy have to *do* to ascend from 1★ to 2★ (event, trial, item, insight)?
 2. **A** — Latent aura: is it a number characters can see/measure, or only inferred? Does anyone quote figures?

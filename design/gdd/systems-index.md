@@ -74,6 +74,11 @@ been played for feel.
 | 39 | Badges & Reputation | Progression | Full Vision | Not Started | — | No | 14, 18, 23 |
 | 40 | Break Events (district pressure) | Gameplay | Full Vision | Not Started | — | No | 9, 14, 23 |
 | 41 | Hired Party (optional) | Gameplay | Full Vision | Not Started | — | No | 12, 19, 21 |
+| 42 | Inventory & Equipment Slots (added 2026-09-23, Brent) | Economy | Vertical Slice | Not Started | — | No | 2, 18, 21 |
+| 43 | Ethercosm Screen — stars, abilities and their progress, runes, satellite (added 2026-09-23, Brent) | UI | Vertical Slice | Not Started | — | No | 7, 11, 19, 20 |
+| 44 | Ability Hotbar & Casting Input (added 2026-09-23, Brent) | UI | Vertical Slice | Not Started | — | Rough — one bolt on one key; keybinds are rebindable | 20, 26 |
+
+Rulings folded in on 2026-09-23: **satellites are items** (found or bought, never from ascension) — they belong to #42 Inventory and #32 Gear, and #7 Essence must define what refills the tanks without one.
 
 Why the inferred systems exist:
 - **Damage & Hook Pipeline** — forty talents each change one rule about dealing or taking damage. Without a shared damage event that talents subscribe to, every talent is an edit to the player script (which is exactly what the prototype does today).
@@ -269,9 +274,9 @@ Also a **tier inversion**: Abilities (Vertical Slice) advance a stage only by bi
 
 | Metric | Count |
 |--------|-------|
-| Total systems identified | 41 (25 explicit in the concept, 16 inferred) |
+| Total systems identified | 44 (25 explicit in the concept, 16 inferred, 3 added by Brent 2026-09-23) |
 | MVP systems | 17 — 8 run in the prototype, 9 rough, 0 not built (the assault passage landed in `v0.3.0`). None designed; none played for feel. |
-| Vertical Slice systems | 9 |
+| Vertical Slice systems | 12 |
 | Alpha systems | 11 |
 | Full Vision systems | 4 |
 | Design docs started | 0 |

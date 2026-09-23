@@ -26,7 +26,8 @@ canon idea playable (numbers are starting values for tuning, not lore).
 
 ## 3. Essence, satellites, reflux
 - [CANON] Each **star is an independent tank** (100 units each). Abilities cost units (instant) or units/second (sustained).
-- [CANON] **Satellite** supplies free throughput: rank N satellite = **N units/second**. Sustained abilities at or under that rate never touch the tanks.
+- [CANON] **Satellite** supplies throughput: rank N satellite = **N units/second**. Sustained abilities at or under that rate never touch the tanks.
+- [B, 2026-09-23] A satellite is an **item**: found as loot or bought, never granted by ascension. Start with none. [MODEL] One satellite slot; rank is the item's property; a higher-rank satellite is a major purchase and a headline drop. → *Open question for Brent*: with no satellite, what refills the tanks between fights? Proposal: **meditation gathers wisps** (canon "gathering") and refills essence slowly, so a satellite buys you the freedom not to sit down.
 - [CANON] Every unit that flows through the body — from a tank *or* the satellite — leaves **reflux** in that affinity's gauge.
 - [CANON, Brent] The body **sheds reflux naturally**, and **meditation purges it faster**. It is a real limiting mechanic, not flavour.
 - [MODEL] Reflux: +1 per unit spent; natural shedding 0.05/s in combat, 0.2/s out of combat; **meditating: 2/s**, but you are stationary and defenceless — so where you stop to meditate inside a sealed dungeon is a tactical decision (and meditation is also how you enter the Netherecho, so the two risks stack). 50 = pain (costs +25%), 80 = each cast deals structural self-damage, 100 = that affinity locks until below 60. A tempering technique improves decay. An awakened construct purges ~1 per kill. [CANON for the last two]
