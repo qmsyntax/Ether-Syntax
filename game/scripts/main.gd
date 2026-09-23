@@ -202,6 +202,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				pass
 			elif event.is_action_pressed("ascend"):
 				player.call("try_ascend")
+			elif event.is_action_pressed("bind"):
+				player.call("bind_first_ready")
 			elif event.is_action_pressed("go_now"):
 				if state == "arena_rest":
 					rest_timer = 0.0
@@ -222,6 +224,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				pass
 			elif event.is_action_pressed("ascend"):
 				player.call("try_ascend")
+			elif event.is_action_pressed("bind"):
+				player.call("bind_first_ready")
 			elif event.is_action_pressed("healer"):
 				player.call("note", "No healer in here. The entrance is sealed.")
 			elif event.is_action_pressed("interact"):

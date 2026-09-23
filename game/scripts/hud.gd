@@ -102,9 +102,13 @@ func _refresh_hotbar(player: Node) -> void:
 		var st: Dictionary = abilities[idx]
 		var ab: Dictionary = GameData.ability(str(st["id"]))
 		(s["name"] as Label).text = str(ab.get("name", "?"))
-		(s["info"] as Label).text = "stage %d   %d essence" % [int(st["stage"]), int(float(ab.get("cost", 0)))]
+		var need: String = player.call("pending_tier", st)
+		if need != "":
+			(s["info"] as Label).text = "stage %d FULL - needs a %s" % [int(st["stage"]), need]
+		else:
+			(s["info"] as Label).text = "stage %d   %d essence" % [int(st["stage"]), int(float(player.call("ability_stats", st).get("cost", 0)))]
 		(s["fill"] as ColorRect).size.x = (s["back"] as ColorRect).size.x * clampf(float(st["progress"]) / 100.0, 0.0, 1.0)
-		var usable: bool = not locked and essence >= float(ab.get("cost", 0.0))
+		var usable: bool = not locked and essence >= float(player.call("ability_stats", st).get("cost", 0.0))
 		(s["bg"] as ColorRect).color = Color(0.05, 0.05, 0.07, 0.8) if usable else Color(0.25, 0.05, 0.05, 0.8)
 
 
@@ -148,9 +152,19 @@ func refresh(player: Node, where: String) -> void:
 
 	var cash: int = int(player.get("money"))
 	_money.text = ("DEBT  $%d" % -cash if cash < 0 else "Money  $%d" % cash) + "      " + where
-	_aura.text = str(player.call("aura_read"))
+	var pcts: Array = player.get("star_pct")
+	var star_txt: Array[String] = []
+	for i: int in pcts.size():
+		star_txt.append("star %d  %d%%" % [i + 1, int(float(pcts[i]))])
+	_aura.text = "%s      %s" % ["   ".join(star_txt), str(player.call("aura_read"))]
 
 	var lines: Array[String] = []
+	var held: Array = player.get("constructs")
+	if not held.is_empty():
+		var names: Array[String] = []
+		for c: Dictionary in held:
+			names.append("%s of %s" % [str(c["tier"]), str(GameData.concept(str(c["concept"])).get("label", c["concept"]))])
+		lines.append("Carrying: %s   (%s to bind)" % [", ".join(names), Keybinds.binding_text("bind")])
 	for p: String in player.get("discoveries"):
 		lines.append("Proven: %s" % p)
 	var log: Array = player.get("log_lines")

@@ -1,20 +1,67 @@
 {
-  "_note": "Enemy kinds. hp and damage are multiplied by the spawn's strength factor (walls past the gate use passage.late_strength). aura_value feeds hidden latent aura on kill; bounty is cash.",
+  "_note": "Enemy kinds. hp and damage are multiplied by the spawn's strength factor (walls past the gate use passage.late_strength). aura_value feeds hidden latent aura on kill; bounty is cash. drops: chance to leave a construct - PLACEHOLDER until the Netherecho exists (constructs should be subdued there, not looted).",
   "enemies": {
     "grunt": {
-      "hp": 240.0, "radius": 0.5, "height": 1.6, "speed": 3.4, "damage": 10.0, "heavy": false,
-      "aura_value": 4.0, "bounty": 150, "color": [0.75, 0.2, 0.2],
-      "attack_cooldown": 1.3, "windup": 0.45, "reach": 2.3
+      "hp": 240.0,
+      "radius": 0.5,
+      "height": 1.6,
+      "speed": 3.4,
+      "damage": 10.0,
+      "heavy": false,
+      "aura_value": 4.0,
+      "bounty": 150,
+      "color": [
+        0.75,
+        0.2,
+        0.2
+      ],
+      "attack_cooldown": 1.3,
+      "windup": 0.45,
+      "reach": 2.3,
+      "drops": {}
     },
     "brute": {
-      "hp": 700.0, "radius": 0.8, "height": 2.4, "speed": 2.3, "damage": 22.0, "heavy": true,
-      "aura_value": 12.0, "bounty": 500, "color": [0.5, 0.1, 0.3],
-      "attack_cooldown": 1.3, "windup": 0.45, "reach": 2.3
+      "hp": 700.0,
+      "radius": 0.8,
+      "height": 2.4,
+      "speed": 2.3,
+      "damage": 22.0,
+      "heavy": true,
+      "aura_value": 12.0,
+      "bounty": 500,
+      "color": [
+        0.5,
+        0.1,
+        0.3
+      ],
+      "attack_cooldown": 1.3,
+      "windup": 0.45,
+      "reach": 2.3,
+      "drops": {
+        "vestige": 0.15
+      }
     },
     "commander": {
-      "hp": 1400.0, "radius": 0.9, "height": 2.8, "speed": 3.0, "damage": 28.0, "heavy": true,
-      "aura_value": 30.0, "bounty": 1500, "color": [0.75, 0.55, 0.1],
-      "attack_cooldown": 1.3, "windup": 0.45, "reach": 2.3
+      "hp": 1400.0,
+      "radius": 0.9,
+      "height": 2.8,
+      "speed": 3.0,
+      "damage": 28.0,
+      "heavy": true,
+      "aura_value": 30.0,
+      "bounty": 1500,
+      "color": [
+        0.75,
+        0.55,
+        0.1
+      ],
+      "attack_cooldown": 1.3,
+      "windup": 0.45,
+      "reach": 2.3,
+      "drops": {
+        "vestige": 1.0,
+        "remnant": 0.35
+      }
     }
   }
 }

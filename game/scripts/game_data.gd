@@ -6,6 +6,8 @@ var balance: Dictionary = {}
 var enemies: Dictionary = {}
 var abilities: Dictionary = {}
 var _starting_loadout: Array = []
+var construct_tiers: Array = []
+var concepts: Dictionary = {}
 
 
 ## Loaded in the constructor: the singleton name resolves before the node enters the tree,
@@ -22,6 +24,25 @@ func _ensure() -> void:
 	var ab_file: Dictionary = _load("res://data/abilities.json")
 	abilities = ab_file.get("abilities", {})
 	_starting_loadout = ab_file.get("starting_loadout", [])
+	var con: Dictionary = _load("res://data/constructs.json")
+	construct_tiers = con.get("tiers", [])
+	concepts = con.get("concepts", {})
+
+
+## The construct tier an ability at `stage` needs to advance (stage 0 -> "vestige").
+func tier_for_stage(stage: int) -> String:
+	_ensure()
+	return str(construct_tiers[stage]) if stage >= 0 and stage < construct_tiers.size() else ""
+
+
+func concept(id: String) -> Dictionary:
+	_ensure()
+	return concepts.get(id, {})
+
+
+func concept_ids() -> Array:
+	_ensure()
+	return concepts.keys()
 
 
 ## Ability ids a new character starts with, in hotbar order.

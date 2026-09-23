@@ -139,6 +139,11 @@ conflicting — needs Brent (audiobooks) or a targeted Kindle read.
 - Heals only through **significant lived experience** (grief counts more than fun); sleep does nothing. **Soul elixirs** patch with blank tissue — fast, but for severe damage you gradually become someone else.
 - How it works is a **legal infohazard**.
 
+## Rulings 2026-09-23 (Brent, after playing v0.6.0)
+- [B] **Base melee is single-target and Diablo-style**: click an enemy to walk to it and hit *that* enemy (hold to keep hitting); click ground to walk there. Area hits belong to skills (Tsunami Strike), never to the base attack.
+- [B] **Stages are gated by constructs.** An ability's bar fills to 100 and then waits: stage 0 full needs a **vestige**, stage 1 full a **remnant**, and so on up the tiers. Each construct's **concept** shapes the upgrade.
+- [B] **You start with a baby star.** Each star's essence capacity grows toward 99%; a new star after ascension starts at **1%**. [MODEL] the tank is full_tank × capacity; capacity grows from kills (by the enemy's aura value) and from meditation; ascension needs the newest star at 99% *and* the hidden latent aura.
+
 ## LAW 4c — Runes (Book 5 ch 230, read directly 2026-09-23; Brent: "like the incantations that define a skill")
 - [C] An ability is a spherical **ether cage** holding its concepts. Unravelled onto a flat surface it is a structure of **runes**; there is a known rune and **microrune alphabet** with grammar, and essence-imprint forms of each.
 - [C] **Runechains** are linear strings of concepts progressing from less to more sophisticated — the part of an ability that *levels*. When a chain "suffulates", spacer microconcepts appear at prime positions and the chain must grow exponentially to improve further. The first ten spacers have short names (em, in, sum, ol, lun, slo, efi, ofo, gi, al). Concepts gated behind manipulation talents live almost entirely in these chains.

@@ -35,6 +35,16 @@ var log_lines: Array[String] = []
 ## Learned abilities: [{id, stage, progress}]. Hotbar slot i casts abilities[hotbar[i]].
 var abilities: Array = []
 var hotbar: Array[int] = []
+## Each star's capacity, 1..99 %. The essence tank is the sum of full_tank x capacity (Brent 2026-09-23).
+var star_pct: Array[float] = []
+## Constructs carried, waiting to be bound: [{tier, concept}]. Placeholder source: enemy drops.
+var constructs: Array = []
+var rng := RandomNumberGenerator.new()
+## Diablo-style click targeting (Brent 2026-09-23): the thing you clicked, and where you clicked.
+var attack_target: Node3D = null
+var move_goal := Vector3.ZERO
+var has_move_goal := false
+var _strike_once := false
 
 # Headless test driver only (see main.gd --bot-dungeon): steers toward bot_goal, swings at
 # anything in reach, hits absurdly hard and cannot be hurt. Never enabled in normal play.
@@ -74,7 +84,9 @@ func _init() -> void:
 	_heal_cfg = GameData.balance["healer"]
 	_natural = GameData.balance["natural_healing"]
 	body = Body.new(float(_p["body_superficial"]), float(_p["body_structural"]), float(_p["body_catastrophic"]))
-	essence_max = float(_p["essence_max"])
+	rng.randomize()
+	star_pct = [GameData.num("stars", "first_star_start_pct")]
+	_recompute_essence_max()
 	essence = essence_max
 	satellite_rate = float(_p["starter_satellite_rate"])   # placeholder until satellites are items
 	_aura_threshold = float(_p["aura_threshold"])
@@ -151,9 +163,8 @@ func _physics_process(delta: float) -> void:
 	essence = minf(essence_max, essence + satellite_rate * delta)
 	for e: TalentEffect in effects:
 		e.on_tick(delta)
-	var bot_swing := false
 	if bot:
-		bot_swing = _bot_think()
+		_bot_think()
 	else:
 		_update_aim()
 
@@ -165,6 +176,8 @@ func _physics_process(delta: float) -> void:
 		float(_reflux_cfg["shed_in_combat"]) if in_combat else float(_reflux_cfg["shed_resting"]))
 	reflux = maxf(0.0, reflux - shed * delta)
 	_meditate_gather(delta)
+	if meditating:
+		grow_star(GameData.num("stars", "growth_pct_per_s_meditating") * delta)
 	if reflux_locked and reflux < float(_reflux_cfg["unlock_below"]):
 		reflux_locked = false
 		note("Water affinity unlocks.")
@@ -183,16 +196,52 @@ func _physics_process(delta: float) -> void:
 	elif _charging:
 		_release_overcharge()
 
-	if (Input.is_action_pressed("strike") or bot_swing) and _melee_cd <= 0.0 and not meditating and not _charging:
-		_swing(float(_p["off_hand_factor"]) if arm_right_lost else 1.0, melee_range, ["melee"])
-		_melee_cd = float(_p["melee_cooldown"])
+	# Diablo-style: click something to walk to it and hit it; click ground to walk there.
+	if bot:
+		attack_target = _nearest_enemy()
+		_strike_once = false
+	elif Input.is_action_just_pressed("strike") and not meditating:
+		_click(_cursor_ground())
+	if not bot and Input.is_action_pressed("strike") and attack_target == null and has_move_goal:
+		move_goal = _cursor_ground()          # holding on the ground keeps steering
 
 	var input := Vector2.ZERO
 	if not meditating:
 		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var dir := Vector3(input.x, 0.0, input.y).normalized().rotated(Vector3.UP, ISO_YAW)
+	if input != Vector2.ZERO:
+		has_move_goal = false                  # WASD takes over from click-to-move
+		if not Input.is_action_pressed("strike"):
+			attack_target = null
+
+	if attack_target != null and (not is_instance_valid(attack_target) or bool(attack_target.call("is_dead"))):
+		attack_target = null
+	if attack_target != null and not meditating and not _charging:
+		var to: Vector3 = attack_target.global_position - global_position
+		to.y = 0.0
+		var reach: float = melee_range + float(attack_target.get("radius"))
+		if to.length() > 0.2:
+			_facing = to.normalized()
+		if to.length() <= reach:
+			dir = Vector3.ZERO if input == Vector2.ZERO else dir
+			if _melee_cd <= 0.0:
+				_strike_target(attack_target, float(_p["off_hand_factor"]) if arm_right_lost else 1.0, ["melee"])
+				_melee_cd = float(_p["melee_cooldown"])
+				if _strike_once and not Input.is_action_pressed("strike"):
+					attack_target = null
+		elif input == Vector2.ZERO:
+			dir = to.normalized()                  # walk into reach
+	elif has_move_goal and input == Vector2.ZERO:
+		var to_goal: Vector3 = move_goal - global_position
+		to_goal.y = 0.0
+		if to_goal.length() < 0.3:
+			has_move_goal = false
+		else:
+			dir = to_goal.normalized()
+			_facing = dir
+
 	if bot:
-		dir = _bot_dir
+		dir = _bot_dir if attack_target == null else dir
 	var speed: float = float(_p["move_speed"]) * (float(_p["charge_move_factor"]) if _charging else 1.0)
 	velocity = dir * speed
 	if _dash_time > 0.0:
@@ -294,10 +343,78 @@ func _on_kill(target: Node) -> void:
 	var hurt: float = 1.0 - body.total() / body.total_max()
 	var risk: float = 1.0 + hurt * float(_p["aura_hurt_risk_bonus"])
 	_latent_aura += float(target.get("aura_value")) * risk
+	grow_star(float(target.get("aura_value")) * GameData.num("stars", "growth_pct_per_aura"))
+	_roll_drops(target)
 
 
+# --- click targeting ------------------------------------------------------------
+
+## Handle a click at a ground point: a hittable there becomes the attack target (enemies win
+## over scenery), otherwise the point becomes a walk goal.
+func _click(point: Vector3) -> void:
+	var hit: Node3D = pick_at(point)
+	if hit != null:
+		attack_target = hit
+		has_move_goal = false
+		_strike_once = true
+	else:
+		attack_target = null
+		move_goal = point
+		has_move_goal = true
+
+
+## The hittable whose footprint contains `point`, preferring enemies over scenery.
+func pick_at(point: Vector3) -> Node3D:
+	var best: Node3D = null
+	var best_d := INF
+	var best_is_enemy := false
+	for node: Node in get_tree().get_nodes_in_group("hittable"):
+		var t := node as Node3D
+		if t == null or bool(t.call("is_dead")):
+			continue
+		var d: Vector3 = t.global_position - point
+		d.y = 0.0
+		var dist: float = d.length()
+		if dist > float(t.get("radius")) + 0.45:
+			continue
+		var is_enemy: bool = not bool(t.get("is_scenery"))
+		if (is_enemy and not best_is_enemy) or (is_enemy == best_is_enemy and dist < best_d):
+			best = t
+			best_d = dist
+			best_is_enemy = is_enemy
+	return best
+
+
+## One blow on one target (Brent 2026-09-23: base attacks are single target).
+func _strike_target(target: Node3D, multiplier: float, tags: Array) -> void:
+	_swing_visual(melee_range, multiplier > 1.0, true)
+	deal_damage(target, float(_p["melee_damage"]) * multiplier, tags)
+
+
+## The overcharged blow lands on the clicked target, else whatever is under the cursor, else the
+## nearest enemy in front of you - but only within reach.
+func _overcharge_target(reach: float) -> Node3D:
+	var candidates: Array[Node3D] = []
+	if attack_target != null and is_instance_valid(attack_target):
+		candidates.append(attack_target)
+	if not bot and is_inside_tree():
+		var under: Node3D = pick_at(_cursor_ground())
+		if under != null:
+			candidates.append(under)
+	var near: Node3D = _nearest_enemy()
+	if near != null:
+		candidates.append(near)
+	for t: Node3D in candidates:
+		var to: Vector3 = t.global_position - global_position
+		to.y = 0.0
+		if to.length() <= reach + float(t.get("radius")):
+			return t
+	return null
+
+
+## Area melee - used by skills such as Tsunami Strike, never by the base attack.
 func _swing(multiplier: float, reach: float, tags: Array) -> void:
-	_swing_visual(reach, multiplier > 1.0)
+	_swing_visual(reach, multiplier > 1.0, false)
 	for node: Node in get_tree().get_nodes_in_group("hittable"):
 		var t := node as Node3D
 		if t == null:
@@ -322,7 +439,11 @@ func _release_overcharge() -> void:
 	var self_cost: float = float(_p["overcharge_self_cost_base"]) + c * float(_p["overcharge_self_cost_per_charge"])
 	var applied: float = body.apply_self_harm(self_cost)
 	_float("arm -%d" % int(applied), Color(1, 0.4, 0.3))
-	_swing(1.0 + c * float(_p["overcharge_damage_per_charge"]), melee_range + float(_p["overcharge_reach_bonus"]), ["melee", "overcharge"])
+	var heavy_target: Node3D = _overcharge_target(melee_range + float(_p["overcharge_reach_bonus"]))
+	if heavy_target != null:
+		_strike_target(heavy_target, 1.0 + c * float(_p["overcharge_damage_per_charge"]), ["melee", "overcharge"])
+	else:
+		_swing_visual(melee_range, true, true)
 	_melee_cd = float(_p["melee_cooldown"]) * float(_p["overcharge_cooldown_factor"])
 
 	arm_right -= self_cost * float(_arm["cost_per_self_harm"])
@@ -349,7 +470,7 @@ func cast_ability(index: int) -> void:
 	if not active or dead or meditating or index < 0 or index >= abilities.size():
 		return
 	var state: Dictionary = abilities[index]
-	var ab: Dictionary = GameData.ability(str(state["id"]))
+	var ab: Dictionary = ability_stats(state)
 	if ab.is_empty():
 		return
 	if reflux_locked:
@@ -366,7 +487,7 @@ func cast_ability(index: int) -> void:
 	reflux += cost * float(ab["reflux_per_cost"])
 	_advance(state, cost)
 
-	var stage_mult: float = ability_damage_mult(int(state["stage"]))
+	var stage_mult: float = ability_damage_mult(int(state["stage"])) * float(ab.get("damage_all", 1.0))
 	match str(ab["kind"]):
 		"projectile":
 			_fire_projectile(ab, stage_mult)
@@ -401,20 +522,126 @@ func ability_damage_mult(stage: int) -> float:
 
 
 ## Progress is bought with essence spent through the ability, and counts for more when
-## something is actually trying to kill you (Brent 2026-09-23). A full bar advances the stage -
-## STUBBED: in canon a stage needs a bound construct; binding does not exist yet.
+## something is actually trying to kill you (Brent 2026-09-23). The bar stops at 100: the stage
+## only advances when a construct of the matching tier is bound into it (Brent 2026-09-23).
 func _advance(state: Dictionary, essence_spent: float) -> void:
+	var was_full: bool = float(state["progress"]) >= 100.0
 	var use_mult: float = GameData.num("abilities", "use_mult_monster") if _enemy_nearby() else GameData.num("abilities", "use_mult_nothing")
 	var gain: float = essence_spent * GameData.num("abilities", "progress_per_essence") * use_mult
-	var cap: int = stars + 1
-	var p: float = float(state["progress"]) + gain
-	while p >= 100.0 and int(state["stage"]) < cap:
-		p -= 100.0
-		state["stage"] = int(state["stage"]) + 1
-		note("%s reaches stage %d." % [str(GameData.ability(str(state["id"])).get("name", "?")), int(state["stage"])])
-	if int(state["stage"]) >= cap:
-		p = minf(p, 100.0)
-	state["progress"] = p
+	state["progress"] = minf(100.0, float(state["progress"]) + gain)
+	if not was_full and float(state["progress"]) >= 100.0:
+		note("%s is full. It needs a %s bound into it to advance." % [
+			str(GameData.ability(str(state["id"])).get("name", "?")), GameData.tier_for_stage(int(state["stage"]))])
+
+
+## What an ability needs next: "" if its bar is not full (or it is at the stage cap);
+## otherwise the construct tier that advances it.
+func pending_tier(state: Dictionary) -> String:
+	if float(state["progress"]) < 100.0 or int(state["stage"]) >= stars + 1:
+		return ""
+	return GameData.tier_for_stage(int(state["stage"]))
+
+
+## An ability's numbers after every bound construct's concept has shaped it.
+func ability_stats(state: Dictionary) -> Dictionary:
+	var ab: Dictionary = GameData.ability(str(state["id"])).duplicate()
+	if ab.is_empty():
+		return ab
+	var damage_all := 1.0
+	for up: Dictionary in state.get("bound", []):
+		var c: Dictionary = GameData.concept(str(up["concept"]))
+		var mods: Dictionary = c.get("mods", {})
+		var applied := false
+		for key: String in mods:
+			if ab.has(key):
+				ab[key] = float(ab[key]) * float(mods[key])
+				applied = true
+		if not applied:
+			damage_all *= float((c.get("fallback", {}) as Dictionary).get("damage_all", 1.0))
+	ab["damage_all"] = damage_all
+	return ab
+
+
+## Bind a carried construct into an ability. Irreversible; can fail, and failure hurts
+## (Brent 2026-09-23). `roll` < 0 means roll randomly (tests pass a fixed roll).
+func bind_construct(ability_index: int, construct_index: int, roll: float = -1.0) -> String:
+	if ability_index < 0 or ability_index >= abilities.size() or construct_index < 0 or construct_index >= constructs.size():
+		return "nothing to bind"
+	var state: Dictionary = abilities[ability_index]
+	var con: Dictionary = constructs[construct_index]
+	var need: String = pending_tier(state)
+	if need == "":
+		return "not ready"
+	if need != str(con["tier"]):
+		return "needs a %s" % need
+	constructs.remove_at(construct_index)
+	var r: float = rng.randf() if roll < 0.0 else roll
+	var ab_name: String = str(GameData.ability(str(state["id"])).get("name", "?"))
+	var label: String = str(GameData.concept(str(con["concept"])).get("label", con["concept"]))
+	if r >= GameData.num("binding", "success_chance"):
+		var hurt: float = body.apply_self_harm(GameData.num("binding", "fail_self_harm"))
+		_float("-%d" % int(hurt), Color(1, 0.3, 0.6))
+		note("The %s of %s tears free. The bind fails and it is gone." % [con["tier"], label])
+		_check_death()
+		return "failed"
+	var bound: Array = state.get("bound", [])
+	bound.append({"stage": int(state["stage"]), "tier": con["tier"], "concept": con["concept"]})
+	state["bound"] = bound
+	state["stage"] = int(state["stage"]) + 1
+	state["progress"] = 0.0
+	note("%s binds a %s of %s. Now stage %d." % [ab_name, con["tier"], label, int(state["stage"])])
+	return "bound"
+
+
+## Placeholder binding flow until the ethercosm screen exists: bind the first carried construct
+## into the first ability that is full and waiting for that tier.
+func bind_first_ready() -> void:
+	if constructs.is_empty():
+		note("You carry no constructs.")
+		return
+	for ci: int in constructs.size():
+		for ai: int in abilities.size():
+			if pending_tier(abilities[ai]) == str(constructs[ci]["tier"]):
+				bind_construct(ai, ci)
+				return
+	note("No ability is full and waiting for what you carry.")
+
+
+## PLACEHOLDER source of constructs until the Netherecho exists: some enemies leave one behind.
+func _roll_drops(target: Node) -> void:
+	var kind_v: Variant = target.get("kind")
+	if kind_v == null or str(kind_v) == "":
+		return
+	var drops: Dictionary = GameData.enemy(str(kind_v)).get("drops", {})
+	for tier: String in drops:
+		if rng.randf() < float(drops[tier]):
+			var ids: Array = GameData.concept_ids()
+			var concept_id: String = str(ids[rng.randi() % ids.size()])
+			constructs.append({"tier": tier, "concept": concept_id})
+			note("It leaves a %s of %s behind." % [tier, str(GameData.concept(concept_id).get("label", concept_id))])
+
+
+# --- stars ----------------------------------------------------------------------
+
+func _recompute_essence_max() -> void:
+	var total := 0.0
+	for pct: float in star_pct:
+		total += GameData.num("stars", "full_tank") * pct / 100.0
+	essence_max = total
+
+
+## Grow the newest star's capacity by `pct` points, capped at max_pct.
+func grow_star(pct: float) -> void:
+	if star_pct.is_empty():
+		return
+	var i: int = star_pct.size() - 1
+	var before: float = star_pct[i]
+	var cap: float = GameData.num("stars", "max_pct")
+	star_pct[i] = minf(cap, star_pct[i] + pct)
+	if star_pct[i] != before:
+		_recompute_essence_max()
+		if before < cap and star_pct[i] >= cap:
+			note("Your newest star is full. It will grow no further without ascending.")
 
 
 func _enemy_nearby() -> bool:
@@ -573,27 +800,29 @@ func aura_read() -> String:
 		return "The star is quiet."
 	if frac < 0.6:
 		return "The star stirs."
-	if frac < 1.0:
-		return "The star feels heavy."
+	if frac < 1.0 or star_pct.back() < GameData.num("stars", "max_pct"):
+		return "The star feels heavy." if frac >= 0.6 else "The star stirs."
 	return "The star strains against itself.  %s to ascend" % Keybinds.binding_text("ascend")
 
 
 func try_ascend() -> void:
-	if stars >= 2 or _latent_aura < _aura_threshold:
+	var full: bool = star_pct.back() >= GameData.num("stars", "max_pct")
+	if stars >= 2 or not full or _latent_aura < _aura_threshold:
 		note("Nothing happens. The star is not ready.")
 		return
 	var asc: Dictionary = GameData.balance["ascension_2"]
 	_latent_aura -= _aura_threshold
 	stars = 2
-	essence_max = float(asc["essence_max"])
+	# A new star is born tiny (Brent 2026-09-23) and grows from here.
+	star_pct.append(GameData.num("stars", "new_star_start_pct"))
+	_recompute_essence_max()
 	essence = essence_max
-	satellite_rate = float(asc["satellite_rate"])   # placeholder: satellites become items (Brent 2026-09-23)
 	body.scale_max(float(asc["body_scale"]))
 	reflux = 0.0
 	reflux_locked = false
 	for e: TalentEffect in effects:
 		e.on_ascend(stars)
-	note("ASCENDED to two stars. A second tank.")
+	note("ASCENDED. A second star splits off - tiny, for now.")
 	note("Talent evolves: %s" % str(talent.get("evolve_2", "?")))
 	if talent_id != "one_percent_lifesteal":
 		note("(this talent's evolution is not wired into the prototype yet)")
@@ -631,27 +860,35 @@ func _text(target: Node, txt: String, color: Color) -> void:
 		FloatText.spawn(get_parent(), (target as Node3D).global_position + Vector3.UP * 0.6, txt, color)
 
 
-func _update_aim() -> void:
-	var cam: Camera3D = get_viewport().get_camera_3d()
+## Where the mouse cursor meets the floor the player stands on.
+func _cursor_ground() -> Vector3:
+	var cam: Camera3D = get_viewport().get_camera_3d() if is_inside_tree() else null
 	if cam == null:
-		return
+		return global_position
 	var mouse: Vector2 = get_viewport().get_mouse_position()
 	var origin: Vector3 = cam.project_ray_origin(mouse)
 	var normal: Vector3 = cam.project_ray_normal(mouse)
 	if absf(normal.y) < 0.0001:
-		return
+		return global_position
 	var t: float = (global_position.y - origin.y) / normal.y
-	var point: Vector3 = origin + normal * t
-	var to: Vector3 = point - global_position
+	return origin + normal * t
+
+
+func _update_aim() -> void:
+	if attack_target != null or has_move_goal:
+		return                                 # facing follows the click target / walk goal
+	var to: Vector3 = _cursor_ground() - global_position
 	to.y = 0.0
 	if to.length() > 0.2:
 		_facing = to.normalized()
 
 
-func _swing_visual(reach: float, heavy: bool) -> void:
+func _swing_visual(reach: float, heavy: bool, narrow: bool) -> void:
+	if not is_inside_tree():
+		return
 	var arc := MeshInstance3D.new()
 	var box := BoxMesh.new()
-	box.size = Vector3(reach * 1.4, 0.08, reach)
+	box.size = Vector3(0.5 if narrow else reach * 1.4, 0.08, reach)
 	arc.mesh = box
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(1.0, 0.5, 0.2, 0.6) if heavy else Color(1, 1, 1, 0.45)

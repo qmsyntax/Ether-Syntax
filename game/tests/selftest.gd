@@ -20,6 +20,8 @@ func _ready() -> void:
 	_test_keybinds()
 	_test_pipeline()
 	await _test_abilities()
+	_test_stars()
+	await _test_click_melee()
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
 
@@ -214,6 +216,9 @@ func _test_abilities() -> void:
 	# awaits a frame so a freed dummy enemy leaves the groups before the "nothing to fight" cast
 	print("abilities:")
 	var p := _new_player("tenth_strike")
+	p.set("star_pct", [99.0] as Array[float])     # a grown star, so the tank is not the baby 20
+	p.call("_recompute_essence_max")
+	p.set("essence", 100.0)
 	var ab: Array = p.get("abilities")
 	_check("starting loadout has three abilities", ab.size() == 3 and str(ab[0]["id"]) == "water_bolt")
 	# Progress: essence spent through the ability x use multiplier. Bolt costs 12; vs a monster x1.0.
@@ -232,14 +237,30 @@ func _test_abilities() -> void:
 	p.set("essence", 100.0)
 	p.set("reflux", 0.0)
 	p.call("cast_slot", 0)
-	_check("a full bar advances the stage (stubbed binding) and carries the remainder", int(ab[0]["stage"]) == 1 and _near(float(ab[0]["progress"]), 2.0), "stage %d progress %f" % [int(ab[0]["stage"]), float(ab[0]["progress"])])
-	ab[0]["progress"] = 99.0
+	_check("a full bar waits at 100 - the stage does not advance by itself", int(ab[0]["stage"]) == 0 and _near(float(ab[0]["progress"]), 100.0))
+	_check("stage 0 full needs a vestige", str(p.call("pending_tier", ab[0])) == "vestige")
+
+	var cons: Array = p.get("constructs")
+	cons.append({"tier": "remnant", "concept": "piercing"})
+	_check("the wrong tier is refused", str(p.call("bind_construct", 0, 0, 0.0)) == "needs a vestige" and cons.size() == 1)
+	cons.clear()
+	cons.append({"tier": "vestige", "concept": "acceleration"})
+	var pb0: Body = p.get("body")
+	var hurt_before: float = pb0.missing("structural")
+	_check("a failed bind loses the construct", str(p.call("bind_construct", 0, 0, 0.99)) == "failed" and cons.is_empty() and int(ab[0]["stage"]) == 0)
+	_check("a failed bind wounds you", pb0.missing("structural") > hurt_before)
+	cons.append({"tier": "vestige", "concept": "acceleration"})
+	_check("a vestige binds into stage 0 and advances it", str(p.call("bind_construct", 0, 0, 0.0)) == "bound" and int(ab[0]["stage"]) == 1 and _near(float(ab[0]["progress"]), 0.0))
+	var stats: Dictionary = p.call("ability_stats", ab[0])
+	_check("the concept shapes the skill (acceleration: bolt speed x1.5)", _near(float(stats["speed"]), 30.0), "speed %f" % float(stats["speed"]))
+	_check("stage 1 full now needs a remnant", (func() -> bool:
+		ab[0]["progress"] = 100.0
+		return str(p.call("pending_tier", ab[0])) == "remnant").call())
 	ab[0]["stage"] = 2
-	p.set("essence", 100.0)
-	p.set("reflux", 0.0)
-	p.call("cast_slot", 0)
-	_check("stage cap is stars + 1", int(ab[0]["stage"]) == 2 and _near(float(ab[0]["progress"]), 100.0), "stage %d progress %f" % [int(ab[0]["stage"]), float(ab[0]["progress"])])
+	_check("stage cap is stars + 1: a 1-star's stage-2 skill waits for nothing", str(p.call("pending_tier", ab[0])) == "")
 	_check("stage raises damage", _near(float(p.call("ability_damage_mult", 2)), 1.2))
+	ab[0]["stage"] = 1
+	ab[0]["progress"] = 0.0
 
 	# Tsunami strike: a big blow that costs the body.
 	var e2 := _dummy_enemy(p)
@@ -255,10 +276,58 @@ func _test_abilities() -> void:
 	e2.queue_free()
 
 	# Meditation gathers wisps.
+	p.set("star_pct", [99.0] as Array[float])
+	p.call("_recompute_essence_max")
 	p.set("essence", 20.0)
 	p.set("meditating", true)
 	p.call("_meditate_gather", 1.0)
 	_check("meditation refills essence", _near(float(p.get("essence")), 24.0), "got %f" % float(p.get("essence")))
+	p.queue_free()
+
+
+func _test_stars() -> void:
+	print("stars:")
+	var p := _new_player("tenth_strike")
+	_check("you start with a baby star", _near(float((p.get("star_pct") as Array)[0]), 5.0) and _near(float(p.get("essence_max")), 20.0),
+		"pct %f max %f" % [float((p.get("star_pct") as Array)[0]), float(p.get("essence_max"))])
+	p.call("grow_star", 10.0)
+	_check("growing the star grows the tank", _near(float(p.get("essence_max")), 60.0))
+	p.call("grow_star", 500.0)
+	_check("a star stops at 99%", _near(float((p.get("star_pct") as Array)[0]), 99.0))
+	p.call("try_ascend")
+	_check("a full star alone does not ascend without latent aura", int(p.get("stars")) == 1)
+	p.set("_latent_aura", 1000.0)
+	p.call("try_ascend")
+	var pcts: Array = p.get("star_pct")
+	_check("ascension adds a second star at 1%", int(p.get("stars")) == 2 and pcts.size() == 2 and _near(float(pcts[1]), 1.0))
+	_check("the tank is 99% of one star plus 1% of another", _near(float(p.get("essence_max")), 400.0), "got %f" % float(p.get("essence_max")))
+	p.call("grow_star", 20.0)
+	_check("only the newest star grows after ascension", _near(float(pcts[0]), 99.0) and _near(float(pcts[1]), 21.0))
+	p.queue_free()
+
+
+func _test_click_melee() -> void:
+	# let enemies freed by earlier tests leave the scene first - a queued-for-deletion dummy at the
+	# same spot is still clickable for the rest of its frame
+	await get_tree().process_frame
+	print("click-to-attack melee:")
+	var p := _new_player("tenth_strike")
+	var a := _dummy_enemy(p)
+	var b := _dummy_enemy(p)
+	b.global_position = p.global_position + Vector3(0.6, 0, -1.2)
+	var ab_body: Body = a.get("body")
+	var bb_body: Body = b.get("body")
+	_check("a click on an enemy's footprint picks that enemy", p.call("pick_at", b.global_position + Vector3(0.2, 0, 0)) == b)
+	p.call("_click", a.global_position)
+	p.set("_melee_cd", 0.0)
+	p.call("_physics_process", 0.016)
+	_check("the base strike hits only the clicked enemy", ab_body.missing("superficial") > 0.0 and _near(bb_body.missing("superficial"), 0.0),
+		"a %f b %f" % [ab_body.missing("superficial"), bb_body.missing("superficial")])
+	p.call("_click", p.global_position + Vector3(5, 0, 5))
+	_check("a click on empty ground becomes a walk goal", bool(p.get("has_move_goal")) and p.get("attack_target") == null)
+	a.queue_free()
+	b.queue_free()
+	await get_tree().process_frame
 	p.queue_free()
 
 
