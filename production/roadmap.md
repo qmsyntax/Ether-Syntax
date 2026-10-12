@@ -60,3 +60,19 @@ gear sets and uniques, soul damage, badges, break events, hired party, audio, on
 - Rights and outreach stay parked (CLAUDE.md Rule 1, 4).
 - Each sprint: stories via `/create-stories`, smoke + self-test + bots green before every commit, tag at the end.
 - Brent plays every tagged build; his notes beat any number in the design docs.
+
+## Build targets added 2026-10-11 (the playtest day)
+Standing instruction from Brent: add these to the build target. Design docs first, then build in the staged order
+each doc proposes; nothing here is started in code unless marked.
+
+1. **Affinity skills, combat depth, tempering rethought** - `design/05-affinity-skills-and-combat-v0.md` (written
+   by a design agent; awaiting Brent's read). One signature mechanic per affinity, 40 skills, cross-affinity rules,
+   seven enemy archetypes, poise / stagger / interrupts. Proposed first step: water versus lightning in the arena.
+2. **Loot, equipment slots, armour, ranged weapons** - `design/06-loot-and-equipment-v0.md` and
+   `design/data-drafts/items-v2.json` (design agent, in progress). More slots, armour, ranged weapon families that
+   change the basic attack, a full loot list.
+3. **Biomes** - dungeon, snow, swamp, mountain, city, scrubland kits (art agent, in progress on branch
+   `art/environments`), then wiring into the level builder.
+4. **Learning skills and techniques** - scrolls or a trainer; today a character only has its starter kits.
+5. **Pacing pass** - measure the real time to the second star against the two-hour target; slow skill progress.
+6. **Enemy art** - bring the three enemies up to the player model's fidelity.

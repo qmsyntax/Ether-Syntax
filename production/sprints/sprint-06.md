@@ -170,3 +170,27 @@ merging main) and the cause was not found - most likely it ran while files were 
 Verified: self-test 223/223 (every sex x body builds; slowest first build of a look 103 ms), smoke, three bots,
 inventory and creation click tests; creator screenshots inspected. Not verified: by hand; animation in motion;
 weapons and the lost arm on the female and non-default bodies.
+
+## Part L — one health bar plus wounds; slower ascension (Brent 2026-10-11)
+
+Brent: the three health buckets never made a noticeable difference; wounds, each with "an invisible HP hole that
+needs to be filled with healing that is not visible in the HP bar"; lifesteal "should go toward the sink first if
+its not dynamic. If it is dynamic, it should go for the health bar up to 50% then to the sink"; the second star
+"only took about 10 mins ... it should be after like 2 hours".
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-39 | `Body` rebuilt: one bar; wounds that cut its ceiling and carry a hidden sink; fill, merge, close, cap, save, and reading of old three-layer saves | selftest (body: 15 checks) | Done |
+| S06-40 | What wounds you: one blow worth a fifth of your full health, or one that leaves you under a fifth; a failed bind; a lost arm (a wound rest cannot mend); a tempering session (a strain wound) | selftest | Done |
+| S06-41 | What mends: the bar refills at rest, never a wound; a night closes 15 points of sink; the healer works on the oldest wound (10 points a visit) or patches the bar; talent healing in Brent's order for Supreme and Dynamic | selftest (natural healing, healer, arm, death) | Done |
+| S06-42 | HUD: a single-colour orb showing the whole body, one mark per wound, a tooltip naming each wound and how it is doing in words; town ledger and tempering yard reworded | `shots/ui-hud-low.png`, `ui-temper.png` | Done |
+| S06-43 | Tempering on the new model: a session leaves a strain wound instead of structural damage; Callus adds health; Bedrock Bones makes wounds shallower | selftest | Done |
+| S06-44 | Ascension slowed about twelvefold (aura threshold 100 -> 1200, star growth per kill 0.5 -> 0.04, meditating 0.05 -> 0.005, attuned wisp 1.5 -> 0.12). Skill progress left fast for testing | selftest (a guard on the numbers only) | Done - UNMEASURED |
+
+Found on the way: ascending called a body function the rebuild had removed, so it would have stopped half-way
+(star added, body not remade, reflux not cleared). The old test did not notice. Fixed, and the test now checks the
+body after ascension.
+
+Not verified: any of it by hand. The two-hour target is arithmetic from one data point (ten minutes), not a
+measurement - it needs a real play session. Whether a fifth of your health is the right size for a wounding blow
+is a guess. Enemies still only walk up and swing, so wounds will mostly come from brutes and commanders.

@@ -1,99 +1,166 @@
 class_name Body
 extends RefCounted
-## Three-layer wound model (spec section 1). Damage works down through the layers;
-## healing works back up from the worst layer first.
+## One health bar, plus lasting wounds (Brent 2026-10-11, replacing the three wound layers).
+##
+## Health is what the bar shows; rest refills it. A wound is a lasting injury: while it is there
+## it cuts the maximum of the bar, and it has a hidden pool - its "sink" - that healing has to
+## fill before the wound closes. The sink is never part of the bar. What may fill a sink (a
+## night's rest, the healer, a talent) is decided by whoever owns the body; this class only
+## keeps the arithmetic.
 
-const ORDER_DAMAGE: Array[String] = ["superficial", "structural", "catastrophic"]
-const ORDER_HEAL: Array[String] = ["catastrophic", "structural", "superficial"]
-const ORDER_SELF_HARM: Array[String] = ["structural", "catastrophic", "superficial"]
-
-## Dynamic-quality healing: HP restored per heal point, by layer.
-## Supreme-quality healing restores 1 HP per point in every layer.
-const DYNAMIC_HP_PER_POINT := {"superficial": 100.0, "structural": 10.0, "catastrophic": 1.0}
-
-var max_hp: Dictionary = {}
-var hp: Dictionary = {}
+## The bar's ceiling before wounds.
+var max_hp := 1.0
+var hp := 1.0
+## Each: {"id", "name", "sink", "sink_max", "max_cut", "natural": bool, ...}. Oldest first.
+var wounds: Array[Dictionary] = []
+## Wounds can never cut the bar below this share of max_hp.
+var min_max_frac := 0.25
 
 
-func _init(superficial: float, structural: float = 0.0, catastrophic: float = 0.0) -> void:
-	max_hp = {"superficial": superficial, "structural": structural, "catastrophic": catastrophic}
-	hp = max_hp.duplicate()
+func _init(health: float) -> void:
+	max_hp = health
+	hp = health
 
 
 func total() -> float:
-	return float(hp["superficial"]) + float(hp["structural"]) + float(hp["catastrophic"])
+	return hp
 
 
+## The bar's ceiling right now: max_hp less what the wounds cut.
 func total_max() -> float:
-	return float(max_hp["superficial"]) + float(max_hp["structural"]) + float(max_hp["catastrophic"])
+	return maxf(max_hp * min_max_frac, max_hp - max_cut())
+
+
+func max_cut() -> float:
+	var cut := 0.0
+	for w: Dictionary in wounds:
+		cut += float(w.get("max_cut", 0.0))
+	return cut
 
 
 func is_dead() -> bool:
-	return total() <= 0.0
+	return hp <= 0.0
 
 
-func missing(layer: String) -> float:
-	return float(max_hp[layer]) - float(hp[layer])
+## Health missing from the bar. The argument is ignored; it is kept so older callers that asked
+## about one wound layer still read the whole bar.
+func missing(_layer: String = "") -> float:
+	return total_max() - hp
 
 
 ## Returns the damage actually applied (never more than what was left - no overkill).
-func apply_damage(amount: float, heavy: bool = false) -> float:
-	var applied: float = minf(amount, total())
-	var remaining: float = applied
-	if heavy:
-		remaining -= _drain("structural", remaining * 0.5)
-	for layer: String in ORDER_DAMAGE:
-		if remaining <= 0.0:
-			break
-		remaining -= _drain(layer, remaining)
+func apply_damage(amount: float, _heavy: bool = false) -> float:
+	var applied: float = clampf(amount, 0.0, hp)
+	hp -= applied
 	return applied
 
 
-## Self-inflicted costs (overcharge, reflux burn) go straight to the deep layers.
+## Self-inflicted costs (overcharge, reflux burn) come off the same bar.
 func apply_self_harm(amount: float) -> float:
-	var applied: float = minf(amount, total())
-	var remaining: float = applied
-	for layer: String in ORDER_SELF_HARM:
-		if remaining <= 0.0:
-			break
-		remaining -= _drain(layer, remaining)
-	return applied
+	return apply_damage(amount)
 
 
-## Spends heal points, worst layer first. Returns points actually used.
-func heal(points: float, dynamic_quality: bool) -> float:
-	var left: float = points
-	for layer: String in ORDER_HEAL:
-		if left <= 0.0:
-			break
-		var gap: float = missing(layer)
-		if gap <= 0.0:
-			continue
-		var rate: float = float(DYNAMIC_HP_PER_POINT[layer]) if dynamic_quality else 1.0
-		var healed: float = minf(gap, left * rate)
-		hp[layer] = float(hp[layer]) + healed
-		left -= healed / rate
-	return points - left
-
-
-func heal_layer(layer: String, amount: float) -> float:
-	var healed: float = minf(amount, missing(layer))
-	hp[layer] = float(hp[layer]) + healed
+## Refill the bar, up to `cap` (default: its current ceiling). Returns the health restored.
+func heal(amount: float, cap: float = -1.0) -> float:
+	var ceiling: float = total_max() if cap < 0.0 else minf(cap, total_max())
+	var healed: float = clampf(amount, 0.0, maxf(0.0, ceiling - hp))
+	hp += healed
 	return healed
 
 
-## Damage aimed at one layer (e.g. a destroyed limb is catastrophic by definition).
-func damage_layer(layer: String, amount: float) -> float:
-	return _drain(layer, amount)
-
-
+## Ascension remakes the body: a bigger bar, refilled. Wounds are carried over.
 func scale_max(factor: float) -> void:
-	for layer: String in max_hp:
-		max_hp[layer] = float(max_hp[layer]) * factor
-	hp = max_hp.duplicate()
+	max_hp *= factor
+	hp = total_max()
 
 
-func _drain(layer: String, amount: float) -> float:
-	var took: float = minf(amount, float(hp[layer]))
-	hp[layer] = float(hp[layer]) - took
-	return took
+# --- wounds -----------------------------------------------------------------------------
+
+func has_wound(id: String) -> bool:
+	return not wound(id).is_empty()
+
+
+func wound(id: String) -> Dictionary:
+	for w: Dictionary in wounds:
+		if str(w["id"]) == id:
+			return w
+	return {}
+
+
+## The healing still owed to wounds. `natural_only` counts only those rest can mend.
+func sink_total(natural_only: bool = false) -> float:
+	var total_sink := 0.0
+	for w: Dictionary in wounds:
+		if not natural_only or bool(w.get("natural", true)):
+			total_sink += float(w["sink"])
+	return total_sink
+
+
+## Add a wound, or deepen one with the same id when `merge` is set. Health above the new
+## ceiling is lost with it. Returns the wound.
+func add_wound(id: String, wound_name: String, sink: float, cut: float, natural: bool = true, merge: bool = false) -> Dictionary:
+	var w: Dictionary = wound(id) if merge else {}
+	if w.is_empty():
+		w = {"id": id, "name": wound_name, "sink": 0.0, "sink_max": 0.0, "max_cut": 0.0, "natural": natural}
+		wounds.append(w)
+	w["sink"] = float(w["sink"]) + sink
+	w["sink_max"] = float(w["sink_max"]) + sink
+	w["max_cut"] = float(w["max_cut"]) + cut
+	hp = minf(hp, total_max())
+	return w
+
+
+func remove_wound(id: String) -> void:
+	for i: int in wounds.size():
+		if str(wounds[i]["id"]) == id:
+			wounds.remove_at(i)
+			return
+
+
+## Pour healing into the wounds, oldest first; a wound whose sink is full closes and gives its
+## share of the bar back (empty, to be refilled). `natural_only` skips wounds rest cannot mend.
+## Returns {"used": float, "closed": Array of wound ids}.
+func fill_sinks(points: float, natural_only: bool = false) -> Dictionary:
+	var left: float = maxf(0.0, points)
+	var closed: Array[String] = []
+	for w: Dictionary in wounds.duplicate():
+		if left <= 0.0:
+			break
+		if natural_only and not bool(w.get("natural", true)):
+			continue
+		var into: float = minf(left, float(w["sink"]))
+		w["sink"] = float(w["sink"]) - into
+		left -= into
+		if float(w["sink"]) <= 0.0001:
+			closed.append(str(w["id"]))
+			wounds.erase(w)
+	return {"used": maxf(0.0, points) - left, "closed": closed}
+
+
+## How far along a wound is, in words - the sink itself is never shown as a number.
+static func wound_state(w: Dictionary) -> String:
+	var frac: float = float(w["sink"]) / maxf(0.001, float(w["sink_max"]))
+	return "fresh" if frac > 0.75 else ("mending" if frac > 0.3 else "nearly closed")
+
+
+func to_dict() -> Dictionary:
+	return {"hp": hp, "max": max_hp, "wounds": wounds.duplicate(true)}
+
+
+## Reads a save. Saves from before wounds stored three layers; their totals become the bar.
+func from_dict(d: Dictionary, legacy_hp: Dictionary = {}, legacy_max: Dictionary = {}) -> void:
+	if d.is_empty():
+		if legacy_max.is_empty():
+			return
+		max_hp = 0.0
+		hp = 0.0
+		for layer: String in legacy_max:
+			max_hp += float(legacy_max[layer])
+			hp += float(legacy_hp.get(layer, legacy_max[layer]))
+		wounds.clear()
+		return
+	max_hp = float(d.get("max", max_hp))
+	wounds.clear()
+	for w: Variant in d.get("wounds", []):
+		wounds.append((w as Dictionary).duplicate())
+	hp = clampf(float(d.get("hp", max_hp)), 0.0, total_max())

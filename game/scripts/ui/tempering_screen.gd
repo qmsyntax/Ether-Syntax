@@ -1,7 +1,8 @@
 class_name TemperingScreen
 extends UiScreen
 ## The tempering yard. Every technique the character knows runs all the time; what happens here
-## is the training - a session hurts (structural damage) and moves that technique's stage along.
+## is the training - a session strains the body (a wound that rest mends) and moves that
+## technique's stage along.
 
 
 func backdrop() -> float:
@@ -17,12 +18,12 @@ func build(root: Control) -> void:
 	var title := UiTheme.heading("Tempering yard", 30)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
-	var state := UiTheme.body("structural  %d / %d" % [int(b.hp["structural"]), int(b.max_hp["structural"])], 16,
-		UiTheme.BAD if float(b.hp["structural"]) < float(b.max_hp["structural"]) * 0.4 else UiTheme.TEXT)
+	var state := UiTheme.body("health  %d of %d%s" % [int(b.total_max()), int(b.max_hp), "   -   strained" if b.has_wound("temper_strain") else ""], 16,
+		UiTheme.BAD if b.max_cut() > 0.0 else UiTheme.TEXT)
 	state.autowrap_mode = TextServer.AUTOWRAP_OFF
 	state.size_flags_vertical = Control.SIZE_SHRINK_END
 	head.add_child(state)
-	box.add_child(UiTheme.body("A body is made tougher by being broken a little, on purpose, and mending. Everything you have tempered works at once, always. A session costs you bone; a night's rest or the healer gives it back.", 14, UiTheme.TEXT_DIM))
+	box.add_child(UiTheme.body("A body is made tougher by being broken a little, on purpose, and mending. Everything you have tempered works at once, always. A session strains you: it takes a slice off your health until a night's rest or the healer mends it.", 14, UiTheme.TEXT_DIM))
 	box.add_child(UiTheme.rule())
 
 	var list: VBoxContainer = scroller(box)
@@ -85,7 +86,7 @@ func _row(id: String) -> Control:
 	train.set_meta("technique", id)
 	train.custom_minimum_size = Vector2(120, 44)
 	side.add_child(train)
-	var cost := UiTheme.body(why if why != "" else "costs %d structural   +%d%%" % [int(round(float(player.call("temper_session_damage", id)))), int(round(float(player.call("temper_session_progress", id))))],
+	var cost := UiTheme.body(why if why != "" else "strains you by %d   +%d%%" % [int(round(float(player.call("temper_session_damage", id)))), int(round(float(player.call("temper_session_progress", id))))],
 		12, UiTheme.BAD if why != "" else UiTheme.TEXT_DIM)
 	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cost.custom_minimum_size = Vector2(170, 0)

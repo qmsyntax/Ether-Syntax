@@ -83,10 +83,12 @@ func build(root: Control) -> void:
 	right.add_child(Control.new())
 	right.add_child(UiTheme.heading("Condition", 18))
 	right.add_child(UiTheme.rule())
-	for layer: String in ["superficial", "structural", "catastrophic"]:
-		var col: Color = {"superficial": UiTheme.HEALTH_SUPERFICIAL, "structural": UiTheme.HEALTH_STRUCTURAL, "catastrophic": UiTheme.HEALTH_CATASTROPHIC.lightened(0.2)}[layer]
-		right.add_child(UiWidgets.Bar.new(float(body.hp[layer]) / float(body.max_hp[layer]), col,
-			"%s  %d / %d" % [layer, int(ceil(float(body.hp[layer]))), int(float(body.max_hp[layer]))], 20.0))
+	right.add_child(UiWidgets.Bar.new(body.total() / body.total_max(), UiTheme.HEALTH_SUPERFICIAL,
+		"health  %d / %d" % [int(ceil(body.total())), int(body.total_max())], 20.0))
+	if body.wounds.is_empty():
+		right.add_child(UiTheme.body("No wounds.", 14, UiTheme.TEXT_DIM))
+	for w: Dictionary in body.wounds:
+		right.add_child(UiTheme.body("%s  -  costs you %d health  -  %s" % [str(w["name"]), int(round(float(w["max_cut"]))), Body.wound_state(w)], 14, Color("ff8a5c")))
 	if bool(player.get("arm_right_lost")):
 		right.add_child(UiTheme.body("Striking arm: LOST. Rest will not bring it back.", 14, UiTheme.BAD))
 	else:

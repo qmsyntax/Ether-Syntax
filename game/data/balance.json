@@ -15,25 +15,22 @@
     "overcharge_reach_bonus": 0.5,
     "overcharge_cooldown_factor": 1.5,
     "off_hand_factor": 0.6,
-    "body_superficial": 60.0,
-    "body_structural": 30.0,
-    "body_catastrophic": 10.0,
     "starter_satellite_rate": 0.0,
     "debt_limit": -2000,
-    "aura_threshold": 100.0,
+    "aura_threshold": 1200.0,
     "aura_hurt_risk_bonus": 2.0,
     "pick_margin_px": 14.0,
-    "pickup_reach": 1.4
+    "pickup_reach": 1.4,
+    "health": 100.0
   },
   "natural_healing": {
-    "superficial_per_s": 3.0,
-    "structural_per_s": 0.4,
+    "_note": "Out of combat the health bar refills on its own, for free. It never touches a wound's sink, and never regrows a limb.",
+    "health_per_s": 3.0,
     "arm_per_s": 2.0
   },
   "arm": {
     "max": 100.0,
     "cost_per_self_harm": 4.0,
-    "loss_catastrophic_damage": 4.0,
     "regrow_heal_points": 25.0,
     "regrow_price": 1200,
     "regrown_by_talent_integrity": 0.4
@@ -50,25 +47,25 @@
     "lock_at": 100.0
   },
   "healer": {
-    "price_superficial": 15,
-    "price_structural": 60,
-    "price_catastrophic": 300,
-    "hp_per_visit": 10.0
+    "_note": "The healer sells speed. Wounds first: sink_per_visit points of the oldest wound at price_per_sink_point. With no wounds, health_per_visit points of the bar at price_per_health_point (rest does that for free).",
+    "sink_per_visit": 10.0,
+    "price_per_sink_point": 60,
+    "health_per_visit": 25.0,
+    "price_per_health_point": 6
   },
   "ascension_2": {
     "body_scale": 1.3
   },
   "night": {
     "rent": 150,
-    "structural_healed": 15.0,
-    "arm_restored": 40.0
+    "arm_restored": 40.0,
+    "sink_healed": 15.0,
+    "_note": "A night in town: the bar refills, sink_healed points go into wounds that rest can mend (never a lost limb), the arm recovers arm_restored."
   },
   "town": {
     "starting_money": 10000,
     "rescue_fee": 600,
-    "revive_superficial_frac": 0.5,
-    "revive_structural_frac": 0.4,
-    "revive_catastrophic_min": 2.0
+    "revive_health_frac": 0.5
   },
   "arena": {
     "half_size": 18.0,
@@ -106,7 +103,7 @@
     "bush_hp": 80.0
   },
   "abilities": {
-    "_note": "Stage progress = essence spent x use multiplier, capped at 100. A full bar does NOT advance the stage: it waits for a construct of the matching tier (stage 0 needs a vestige, 1 a remnant, ...). Stage cap = stars + 1.",
+    "_note": "Stage progress = essence spent x use multiplier, capped at 100. A full bar does NOT advance the stage: it waits for a construct of the matching tier (stage 0 needs a vestige, 1 a remnant, ...). Stage cap = stars + 1. Brent 2026-10-11: skill progress should slow down too, but is left fast for now because it is useful for testing - progress_per_essence is the knob.",
     "progress_per_essence": 1.0,
     "use_mult_monster": 1.0,
     "use_mult_scenery": 0.1,
@@ -120,24 +117,31 @@
     "settle_s": 0.8
   },
   "stars": {
-    "_note": "Brent 2026-09-23: you start with a baby star. Each star's capacity grows from a low % to 99%; the essence tank is full_tank x capacity. A new star after ascension starts at 1%. Growth sources are [MODEL]: essence gathered from kills and from meditation. Ascension needs the newest star at max_pct AND the hidden latent aura threshold. Brent 2026-10-11: one star must not hold more than 100 essence, so full_tank is 100 (a full first star is 99); the baby star starts at 20% so it can still pay for one ability.",
+    "_note": "Brent 2026-09-23: you start with a baby star. Each star's capacity grows from a low % to 99%; the essence tank is full_tank x capacity. A new star after ascension starts at 1%. Growth sources are [MODEL]: essence gathered from kills and from meditation. Ascension needs the newest star at max_pct AND the hidden latent aura threshold. Brent 2026-10-11: one star must not hold more than 100 essence, so full_tank is 100 (a full first star is 99); the baby star starts at 20% so it can still pay for one ability. Brent 2026-10-11: the second star came in about ten minutes and should take about two hours, so star growth and the latent-aura threshold were slowed roughly twelvefold (growth_pct_per_aura 0.5 -> 0.04, meditating 0.05 -> 0.005, player.aura_threshold 100 -> 1200, nether.wisp_attuned_star_pct 1.5 -> 0.12). Unmeasured - a first guess at the target.",
     "full_tank": 100.0,
     "first_star_start_pct": 20.0,
     "new_star_start_pct": 1.0,
     "max_pct": 99.0,
-    "growth_pct_per_aura": 0.5,
-    "growth_pct_per_s_meditating": 0.05
+    "growth_pct_per_aura": 0.04,
+    "growth_pct_per_s_meditating": 0.005
   },
   "binding": {
     "_note": "Binding a construct into a full ability (Brent: irreversible, can fail, the construct can kill you). Failure loses the construct and wounds you.",
-    "success_chance": 0.8,
-    "fail_self_harm": 10.0
+    "success_chance": 0.8
   },
   "primes": {
     "_note": "Character creation (Brent 2026-10-11): three primes are rolled from the table of playable talents; each then rolls a number of affinity slots - one is common, two rare, three 'VERY VERY rare' - and each slot is filled with a random affinity, unrelated to the talent. slot_weights are the chances of 1, 2 and 3 slots; the exact numbers are ours [MODEL]. talent_weight_by_value makes high-value talents turn up less often. rerolls is how many times the three offers may be rolled again - a testing convenience, set to 0 to make the first roll final.",
     "offered": 3,
-    "slot_weights": [0.875, 0.12, 0.005],
-    "talent_weight_by_value": {"low": 3.0, "mid": 2.0, "high": 1.0},
+    "slot_weights": [
+      0.875,
+      0.12,
+      0.005
+    ],
+    "talent_weight_by_value": {
+      "low": 3.0,
+      "mid": 2.0,
+      "high": 1.0
+    },
     "rerolls": 3
   },
   "camera": {
@@ -157,7 +161,7 @@
     "return_distance": 1.3,
     "return_arm_distance": 3.0,
     "wisp_reach": 1.1,
-    "wisp_attuned_star_pct": 1.5,
+    "wisp_attuned_star_pct": 0.12,
     "wisp_attuned_essence": 12.0,
     "wisp_plain_essence": 5.0,
     "wisps_per_site": 3,
@@ -169,5 +173,43 @@
     "docile_chance": 0.4,
     "docile_snap_chance_per_s": 0.06,
     "wander_radius": 3.0
+  },
+  "wounds": {
+    "_note": "Brent 2026-10-11: one health bar plus wounds. A wound cuts the bar's maximum while it lasts and has a hidden pool of healing (its sink) that must be filled before it closes; the sink is never shown in the bar. Everything numeric here is ours [MODEL]. A blow that takes big_hit_frac of your full health in one go, or one that leaves you under low_health_frac, wounds you. sink = the blow x sink_per_damage (at least sink_min); the bar loses cut_frac of full health. max_cut_frac caps what wounds together may take from the bar. wound_cooldown_s stops one flurry from stacking several.",
+    "big_hit_frac": 0.2,
+    "low_health_frac": 0.2,
+    "sink_per_damage": 0.6,
+    "sink_min": 6.0,
+    "cut_frac": 0.08,
+    "max_cut_frac": 0.6,
+    "wound_cooldown_s": 4.0,
+    "names_big_hit": [
+      "Cracked ribs",
+      "Torn shoulder",
+      "Split brow",
+      "Bruised kidney",
+      "Wrenched knee"
+    ],
+    "names_low": [
+      "Deep gash",
+      "Concussion",
+      "Punctured side"
+    ],
+    "bind_fail": {
+      "name": "Soul-burn",
+      "sink": 10.0,
+      "cut": 6.0
+    },
+    "lost_arm": {
+      "name": "Lost arm",
+      "cut": 8.0
+    },
+    "temper": {
+      "name": "Tempering strain"
+    }
+  },
+  "talent_healing": {
+    "_note": "Brent 2026-10-11: healing from a talent (lifesteal). Supreme quality (one star): wound sinks first, then the bar. Dynamic quality (two stars and up): the bar up to dynamic_health_first_frac of its ceiling, then the sinks, then the rest of the bar. One heal point is one point of either.",
+    "dynamic_health_first_frac": 0.5
   }
 }

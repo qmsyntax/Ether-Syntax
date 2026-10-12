@@ -208,11 +208,9 @@ func _draw_slot(r: Rect2, i: int, idx: int, abilities: Array, essence: float, lo
 func _draw_health_orb(c: Vector2) -> void:
 	var b: Body = player.get("body")
 	var total_max: float = b.total_max()
-	var bands: Array = [
-		[float(b.hp["catastrophic"]) / total_max, UiTheme.HEALTH_CATASTROPHIC],
-		[float(b.hp["structural"]) / total_max, UiTheme.HEALTH_STRUCTURAL],
-		[float(b.hp["superficial"]) / total_max, UiTheme.HEALTH_SUPERFICIAL],
-	]
+	# the orb is the whole body: what wounds have taken stays empty at the top
+	var frac: float = b.total() / b.max_hp
+	var bands: Array = [[frac * 0.4, UiTheme.HEALTH_STRUCTURAL], [frac * 0.6, UiTheme.HEALTH_SUPERFICIAL]]
 	# ring = striking arm
 	var arm_lost: bool = bool(player.get("arm_right_lost"))
 	var arm: float = 0.0 if arm_lost else float(player.get("arm_right")) / 100.0
@@ -221,7 +219,13 @@ func _draw_health_orb(c: Vector2) -> void:
 	if _hurt_flash > 0.0:
 		draw_circle(c, ORB_R, Color(1, 0.2, 0.15, 0.35 * _hurt_flash))
 	_centre_text(c + Vector2(0, 6.0), "%d" % int(ceil(b.total())), 24, UiTheme.TEXT)
-	_centre_text(c + Vector2(0, 22.0), "of %d" % int(total_max), 12, UiTheme.TEXT_DIM)
+	_centre_text(c + Vector2(0, 22.0), "of %d" % int(total_max), 12, UiTheme.TEXT_DIM if b.wounds.is_empty() else UiTheme.BAD)
+	# one mark per wound along the top of the orb; how deep each one is, is not shown
+	for i: int in b.wounds.size():
+		var a: float = -PI * 0.5 + (float(i) - float(b.wounds.size() - 1) * 0.5) * 0.24
+		var at: Vector2 = c + Vector2(cos(a), sin(a)) * (ORB_R - 13.0)
+		draw_line(at + Vector2(-4, -4), at + Vector2(4, 4), Color("ff8a5c"), 2.5, true)
+		draw_line(at + Vector2(-4, 4), at + Vector2(4, -4), Color("ff8a5c"), 2.5, true)
 	var extra: Array[String] = player.call("status_lines")
 	if not extra.is_empty():
 		_centre_text(c + Vector2(0, -ORB_R - 34.0), extra[0], 13, Color(0.75, 0.75, 1.0))
@@ -578,9 +582,14 @@ func _draw_tooltip(vs: Vector2) -> void:
 	elif what == "health":
 		var b: Body = player.get("body")
 		lines.append(["Your body", 18, UiTheme.GOLD])
-		lines.append(["Superficial   %d / %d     heals fast when you rest" % [int(ceil(float(b.hp["superficial"]))), int(float(b.max_hp["superficial"]))], 13, UiTheme.HEALTH_SUPERFICIAL.lightened(0.3)])
-		lines.append(["Structural   %d / %d     heals slowly" % [int(ceil(float(b.hp["structural"]))), int(float(b.max_hp["structural"]))], 13, UiTheme.HEALTH_STRUCTURAL.lightened(0.45)])
-		lines.append(["Catastrophic   %d / %d     never heals on its own" % [int(ceil(float(b.hp["catastrophic"]))), int(float(b.max_hp["catastrophic"]))], 13, UiTheme.HEALTH_CATASTROPHIC.lightened(0.6)])
+		lines.append(["Health   %d / %d     refills on its own when nothing is trying to kill you" % [int(ceil(b.total())), int(b.total_max())], 13, UiTheme.HEALTH_SUPERFICIAL.lightened(0.3)])
+		if b.wounds.is_empty():
+			lines.append(["No wounds.", 13, UiTheme.TEXT_DIM])
+		for w: Dictionary in b.wounds:
+			lines.append(["%s   -%d health while it lasts   (%s)" % [str(w["name"]), int(round(float(w["max_cut"]))), Body.wound_state(w)], 13, Color("ff8a5c")])
+		if not b.wounds.is_empty():
+			lines.append(["Wounds do not close by resting in the field: a night in town,", 13, UiTheme.TEXT_DIM])
+			lines.append(["the healer, or a talent that heals.", 13, UiTheme.TEXT_DIM])
 		lines.append(["The ring is your striking arm. Overcharging wears it out;" , 13, UiTheme.TEXT_DIM])
 		lines.append(["lose it and only a healer or a talent brings it back.", 13, UiTheme.TEXT_DIM])
 	elif what == "essence":

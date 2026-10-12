@@ -19,6 +19,7 @@ var talent_id := ""
 var char_name := ""
 var identity := ""
 var look: Dictionary = {}
+var _wound_seq := 0
 ## Tempering techniques known: id -> {"stage": int, "progress": 0..100}. All of them work at once.
 var tempering: Dictionary = {}
 ## Affinities the prime vestige came with; abilities outside them cannot be learned.
@@ -93,7 +94,7 @@ var _bot_dir := Vector3.ZERO
 var _latent_aura := 0.0
 var _aura_threshold := 100.0
 
-var _arm_regrow := 0.0
+var _wound_cd := 0.0                 # seconds until another blow can wound
 var _facing := Vector3.FORWARD
 var _melee_cd := 0.0
 var _charge := 0.0
@@ -126,7 +127,8 @@ func _init() -> void:
 	_reflux_cfg = GameData.balance["reflux"]
 	_heal_cfg = GameData.balance["healer"]
 	_natural = GameData.balance["natural_healing"]
-	body = Body.new(float(_p["body_superficial"]), float(_p["body_structural"]), float(_p["body_catastrophic"]))
+	body = Body.new(float(_p["health"]))
+	body.min_max_frac = 1.0 - float(GameData.balance["wounds"]["max_cut_frac"])
 	rng.randomize()
 	star_pct = [GameData.num("stars", "first_star_start_pct")]
 	_recompute_essence_max()
@@ -240,7 +242,7 @@ func temper_stat(stat: String) -> float:
 	return v
 
 
-## "+16 superficial health", "reflux sheds 32% faster" ... what a technique gives at `stage`.
+## "+16 health", "reflux sheds 32% faster" ... what a technique gives at `stage`.
 func temper_effect_text(id: String, stage: int) -> String:
 	var eff: Dictionary = GameData.technique(id).get("effect", {})
 	var per: float = float(eff.get("per_stage", 0.0))
@@ -252,9 +254,10 @@ func temper_effect_text(id: String, stage: int) -> String:
 	return str(eff.get("text", "%d")) % int(round(amount))
 
 
+## What one session strains the body by: taken off the health bar's maximum until it is mended.
 func temper_session_damage(id: String) -> float:
 	var s: Dictionary = GameData.tempering_session()
-	return float(s["damage_base"]) + float(s["damage_per_stage"]) * float(int((tempering[id] as Dictionary)["stage"]))
+	return float(s["strain_base"]) + float(s["strain_per_stage"]) * float(int((tempering[id] as Dictionary)["stage"]))
 
 
 func temper_session_progress(id: String) -> float:
@@ -268,7 +271,7 @@ func cannot_temper_reason(id: String) -> String:
 		return "You do not know it."
 	if int((tempering[id] as Dictionary)["stage"]) >= temper_stage_cap():
 		return "Needs another star."
-	if float(body.hp["structural"]) - temper_session_damage(id) < float(GameData.tempering_session()["min_structural_left"]):
+	if body.max_cut() + temper_session_damage(id) > body.max_hp * float(GameData.tempering_session()["max_cut_frac"]):
 		return "Your body cannot take it. Mend first."
 	return ""
 
@@ -279,7 +282,8 @@ func temper_session(id: String) -> bool:
 	if cannot_temper_reason(id) != "":
 		return false
 	var st: Dictionary = tempering[id]
-	body.damage_layer("structural", temper_session_damage(id))
+	var strain: float = temper_session_damage(id)
+	body.add_wound("temper_strain", str(GameData.balance["wounds"]["temper"]["name"]), strain, strain, true, true)
 	st["progress"] = float(st["progress"]) + temper_session_progress(id)
 	if float(st["progress"]) >= 99.999:
 		st["progress"] = 0.0
@@ -293,12 +297,11 @@ func temper_session(id: String) -> bool:
 func _apply_temper_health(id: String, stages: int) -> void:
 	var eff: Dictionary = GameData.technique(id).get("effect", {})
 	var stat: String = str(eff.get("stat", ""))
-	if not stat.begins_with("max_") or stages == 0:
+	if stat != "max_health" or stages == 0:
 		return
-	var layer: String = stat.trim_prefix("max_")
 	var add: float = float(eff["per_stage"]) * float(stages)
-	body.max_hp[layer] = maxf(1.0, float(body.max_hp[layer]) + add)
-	body.hp[layer] = clampf(float(body.hp[layer]) + add, 0.0, float(body.max_hp[layer]))
+	body.max_hp = maxf(1.0, body.max_hp + add)
+	body.hp = clampf(body.hp + add, 0.0, body.total_max())
 
 
 ## Start over with the kits of the current affinities, on the bar in order.
@@ -382,6 +385,7 @@ func _physics_process(delta: float) -> void:
 		fight_time += delta
 
 	essence = minf(essence_max, essence + satellite_rate * delta)
+	_wound_cd -= delta
 	for e: TalentEffect in effects:
 		e.on_tick(delta)
 	if projecting:
@@ -420,8 +424,7 @@ func _physics_process(delta: float) -> void:
 
 	# The body mends itself between fights - but only what a body can mend.
 	if not in_combat:
-		body.heal_layer("superficial", float(_natural["superficial_per_s"]) * delta)
-		body.heal_layer("structural", float(_natural["structural_per_s"]) * delta)
+		body.heal(float(_natural["health_per_s"]) * delta)      # the bar only - never a wound
 		if not arm_right_lost:
 			arm_right = minf(float(_arm["max"]), arm_right + float(_natural["arm_per_s"]) * delta)
 
@@ -563,27 +566,62 @@ func _apply_damage(amount: float, heavy: bool) -> float:
 	if _rig != null and applied > 0.0:
 		_rig.flash(0.1)
 	_float("-%d" % int(applied), Color(1, 0.25, 0.25))
+	_maybe_wound(applied)
 	_check_death()
 	return applied
 
 
-## Talent healing: worst first. A lost limb is catastrophic-class, so it is always 1 point per
-## unit even at Dynamic quality - this is the one thing natural healing can never do.
-func _spend_heal_points(points: float) -> float:
-	var left: float = points
-	left -= body.heal(minf(left, body.missing("catastrophic")), false)
-	if arm_right_lost and left > 0.0:
-		var need: float = float(_arm["regrow_heal_points"])
-		var into_arm: float = minf(left, need - _arm_regrow)
-		_arm_regrow += into_arm
-		left -= into_arm
-		if _arm_regrow >= need:
+# --- wounds -----------------------------------------------------------------------------
+
+## A heavy enough blow, or one that leaves you nearly dead, leaves a wound behind.
+func _maybe_wound(applied: float) -> void:
+	var w: Dictionary = GameData.balance["wounds"]
+	if applied <= 0.0 or body.is_dead() or _wound_cd > 0.0:
+		return
+	var big: bool = applied >= body.max_hp * float(w["big_hit_frac"])
+	var low: bool = body.hp <= body.max_hp * float(w["low_health_frac"])
+	if not big and not low:
+		return
+	var names: Array = w["names_big_hit"] if big else w["names_low"]
+	var wound_name: String = str(names[rng.randi() % names.size()])
+	_wound_seq += 1
+	take_wound("hit_%d" % _wound_seq, wound_name, maxf(float(w["sink_min"]), applied * float(w["sink_per_damage"])), body.max_hp * float(w["cut_frac"]))
+	_wound_cd = float(w["wound_cooldown_s"])
+
+
+## Add a wound. Tempering can make every wound shallower. `merge` deepens an existing one.
+func take_wound(id: String, wound_name: String, sink: float, cut: float, natural: bool = true, merge: bool = false) -> void:
+	body.add_wound(id, wound_name, sink * temper_stat("wound_sink_mult"), cut, natural, merge)
+	_float(wound_name.to_upper(), Color(1, 0.35, 0.2))
+	note("%s. It will not close on its own." % wound_name if not natural else "%s. Rest alone will not close it in the field." % wound_name)
+
+
+## Wounds that closed: tell the player, and a regrown arm comes back weak.
+func _wounds_closed(ids: Array) -> void:
+	for id: String in ids:
+		if id == "lost_arm":
 			arm_right_lost = false
 			arm_right = float(_arm["max"]) * float(_arm["regrown_by_talent_integrity"])
 			_float("ARM REGROWN", Color(0.4, 1, 0.5))
 			discover("Regrows lost limbs: YES")
+		else:
+			_float("WOUND CLOSED", Color(0.5, 1, 0.6))
+
+
+## Talent healing (Brent 2026-10-11). Supreme quality, one star: the wounds' hidden sinks first,
+## then the health bar. Dynamic, two stars: the bar up to half, then the sinks, then the rest of
+## the bar. A lost limb is a wound like any other here - this is what natural healing cannot do.
+func _spend_heal_points(points: float) -> float:
+	var left: float = points
+	if stars >= 2:
+		# Dynamic: keep the body on its feet first - the bar to half - then mend what is broken.
+		left -= body.heal(left, body.total_max() * float(GameData.balance["talent_healing"]["dynamic_health_first_frac"]))
 	if left > 0.0:
-		left -= body.heal(left, stars >= 2)
+		var filled: Dictionary = body.fill_sinks(left)
+		left -= float(filled["used"])
+		_wounds_closed(filled["closed"])
+	if left > 0.0:
+		left -= body.heal(left)
 	return points - left
 
 
@@ -784,8 +822,9 @@ func _release_overcharge() -> void:
 	if arm_right <= 0.0:
 		arm_right = 0.0
 		arm_right_lost = true
-		_arm_regrow = 0.0
-		body.damage_layer("catastrophic", float(_arm["loss_catastrophic_damage"]))
+		var arm_wound: Dictionary = GameData.balance["wounds"]["lost_arm"]
+		body.remove_wound("lost_arm")
+		body.add_wound("lost_arm", str(arm_wound["name"]), float(_arm["regrow_heal_points"]), float(arm_wound["cut"]), false)
 		FloatText.spawn(get_parent(), global_position + Vector3.UP * 0.6, "ARM LOST", Color(1, 0.1, 0.1))
 		note("Your striking arm is destroyed. Rest will not bring it back.")
 	_check_death()
@@ -986,8 +1025,9 @@ func bind_construct(ability_index: int, construct_index: int, roll: float = -1.0
 	var ab_name: String = str(GameData.ability(str(state["id"])).get("name", "?"))
 	var label: String = str(GameData.concept(str(con["concept"])).get("label", con["concept"]))
 	if r >= GameData.num("binding", "success_chance"):
-		var hurt: float = body.apply_self_harm(GameData.num("binding", "fail_self_harm"))
-		_float("-%d" % int(hurt), Color(1, 0.3, 0.6))
+		var burn_wound: Dictionary = GameData.balance["wounds"]["bind_fail"]
+		_wound_seq += 1
+		take_wound("bind_%d" % _wound_seq, str(burn_wound["name"]), float(burn_wound["sink"]), float(burn_wound["cut"]))
 		note("The %s of %s tears free. The bind fails and it is gone." % [con["tier"], label])
 		_check_death()
 		return "failed"
@@ -1104,8 +1144,8 @@ func to_save() -> Dictionary:
 		"tempering": tempering.duplicate(true),
 		"talent_id": talent_id, "stars": stars, "star_pct": star_pct.duplicate(), "money": money,
 		"essence": essence, "latent_aura": _latent_aura,
-		"body_hp": body.hp.duplicate(), "body_max": body.max_hp.duplicate(),
-		"arm_right": arm_right, "arm_right_lost": arm_right_lost, "arm_regrow": _arm_regrow,
+		"body": body.to_dict(),
+		"arm_right": arm_right, "arm_right_lost": arm_right_lost,
 		"abilities": abilities.duplicate(true), "hotbar": hotbar.duplicate(),
 		"constructs": constructs.duplicate(true), "discoveries": discoveries.duplicate(),
 		"heal_points_total": heal_points_total, "inventory": inventory.to_dict(),
@@ -1142,16 +1182,14 @@ func from_save(d: Dictionary) -> void:
 	money = int(d.get("money", 0))
 	essence = minf(essence_max, float(d.get("essence", essence_max)))
 	_latent_aura = float(d.get("latent_aura", 0.0))
-	var hp: Dictionary = d.get("body_hp", {})
-	var mx: Dictionary = d.get("body_max", {})
-	for layer: String in body.hp:
-		if mx.has(layer):
-			body.max_hp[layer] = float(mx[layer])
-		if hp.has(layer):
-			body.hp[layer] = float(hp[layer])
+	# older saves kept three wound layers; their totals become the bar
+	body.from_dict(d.get("body", {}), d.get("body_hp", {}), d.get("body_max", {}))
 	arm_right = float(d.get("arm_right", arm_right))
 	arm_right_lost = bool(d.get("arm_right_lost", false))
-	_arm_regrow = float(d.get("arm_regrow", 0.0))
+	if arm_right_lost and not body.has_wound("lost_arm"):
+		var arm_wound: Dictionary = GameData.balance["wounds"]["lost_arm"]
+		body.add_wound("lost_arm", str(arm_wound["name"]), maxf(1.0, float(_arm["regrow_heal_points"]) - float(d.get("arm_regrow", 0.0))), float(arm_wound["cut"]), false)
+	_wound_seq = body.wounds.size()
 	var saved_abilities: Array = d.get("abilities", [])
 	if not saved_abilities.is_empty():
 		abilities.clear()
@@ -1249,13 +1287,25 @@ func can_afford(cost: int) -> bool:
 func next_healing() -> Dictionary:
 	if arm_right_lost:
 		return {"desc": "Regrow your striking arm. The only way without a talent.", "cost": int(_arm["regrow_price"])}
-	for layer: String in Body.ORDER_HEAL:
-		var gap: float = body.missing(layer)
-		if gap > 0.0:
-			var amount: float = minf(float(_heal_cfg["hp_per_visit"]), gap)
-			return {"desc": "Mend %d points of %s damage. Fast, and priced by how deep the wound is." % [int(ceil(amount)), layer],
-				"cost": int(ceil(amount * float(_heal_cfg["price_" + layer])))}
+	var w: Dictionary = _healer_wound()
+	if not w.is_empty():
+		var work: float = minf(float(_heal_cfg["sink_per_visit"]), float(w["sink"]))
+		return {"desc": "Work on your %s (%s). Slow, careful, and not cheap." % [str(w["name"]).to_lower(), Body.wound_state(w)],
+			"cost": int(ceil(work * float(_heal_cfg["price_per_sink_point"])))}
+	var gap: float = body.missing()
+	if gap > 0.5:
+		var amount: float = minf(float(_heal_cfg["health_per_visit"]), gap)
+		return {"desc": "Patch you up: %d health now. A night's rest does it for the price of a bed." % int(ceil(amount)),
+			"cost": int(ceil(amount * float(_heal_cfg["price_per_health_point"])))}
 	return {"desc": "Nothing to mend. You are whole.", "cost": 0}
+
+
+## The wound the healer would work on next: the oldest that is not a lost limb.
+func _healer_wound() -> Dictionary:
+	for w: Dictionary in body.wounds:
+		if str(w["id"]) != "lost_arm":
+			return w
+	return {}
 
 
 ## The healer sells speed, and the one thing rest cannot do: regrowth. Credit is extended to a limit.
@@ -1268,23 +1318,31 @@ func buy_healing() -> void:
 		money -= price
 		arm_right_lost = false
 		arm_right = float(_arm["max"])
-		_arm_regrow = 0.0
+		body.remove_wound("lost_arm")
 		note("Healer: -$%d, arm regrown." % price)
 		return
-	for layer: String in Body.ORDER_HEAL:
-		var gap: float = body.missing(layer)
-		if gap <= 0.0:
-			continue
-		var amount: float = minf(float(_heal_cfg["hp_per_visit"]), gap)
-		var cost: int = int(ceil(amount * float(_heal_cfg["price_" + layer])))
-		if not _can_afford(cost):
-			note("Healer: %s work costs $%d. You have $%d and no more credit." % [layer, cost, money])
-			return
-		money -= cost
-		body.heal_layer(layer, amount)
-		note("Healer: -$%d for %d %s HP." % [cost, int(amount), layer])
+	var next: Dictionary = next_healing()
+	var cost: int = int(next["cost"])
+	if cost <= 0:
+		note("Healer: nothing to mend.")
 		return
-	note("Healer: nothing to mend.")
+	if not _can_afford(cost):
+		note("Healer: that is $%d. You have $%d and no more credit." % [cost, money])
+		return
+	money -= cost
+	var w: Dictionary = _healer_wound()
+	if not w.is_empty():
+		var wound_name: String = str(w["name"])
+		var work: float = minf(float(_heal_cfg["sink_per_visit"]), float(w["sink"]))
+		w["sink"] = float(w["sink"]) - work
+		if float(w["sink"]) <= 0.0001:
+			body.remove_wound(str(w["id"]))
+			note("Healer: -$%d. Your %s is closed." % [cost, wound_name.to_lower()])
+		else:
+			note("Healer: -$%d of work on your %s. It is %s." % [cost, wound_name.to_lower(), Body.wound_state(w)])
+		return
+	var healed: float = body.heal(float(_heal_cfg["health_per_visit"]))
+	note("Healer: -$%d, patched up %d health." % [cost, int(round(healed))])
 
 
 ## Standard-mode death (design/03 section 7b): dragged out, patched up, and billed for it.
@@ -1301,9 +1359,7 @@ func revive_in_debt(fee: int) -> void:
 	clear_reflux()
 	money -= fee
 	# Patched up, not healed: enough to stand, and nothing lost comes back.
-	body.hp["superficial"] = maxf(float(body.hp["superficial"]), float(body.max_hp["superficial"]) * float(town["revive_superficial_frac"]))
-	body.hp["structural"] = maxf(float(body.hp["structural"]), float(body.max_hp["structural"]) * float(town["revive_structural_frac"]))
-	body.hp["catastrophic"] = maxf(float(body.hp["catastrophic"]), float(town["revive_catastrophic_min"]))
+	body.hp = maxf(body.hp, body.total_max() * float(town["revive_health_frac"]))
 	_build_model()
 	note("You wake on a cot. Someone dragged you out. The bill is $%d." % fee)
 
@@ -1311,13 +1367,14 @@ func revive_in_debt(fee: int) -> void:
 ## A night in town: the body does what bodies do. Rent for the night is charged by the caller.
 func rest_night() -> void:
 	var night: Dictionary = GameData.balance["night"]
-	body.heal_layer("superficial", float(body.max_hp["superficial"]))
-	body.heal_layer("structural", float(night["structural_healed"]))
+	var mended: Dictionary = body.fill_sinks(float(night["sink_healed"]), true)      # never a lost limb
+	_wounds_closed(mended["closed"])
+	body.heal(body.total_max())
 	if not arm_right_lost:
 		arm_right = minf(float(_arm["max"]), arm_right + float(night["arm_restored"]))
 	clear_reflux()
 	essence = essence_max
-	note("You sleep. Cuts close; bones knit a little. What is gone stays gone.")
+	note("You sleep. The body refills; wounds knit a little. What is gone stays gone.")
 
 
 func _nearest_enemy() -> Node3D:
