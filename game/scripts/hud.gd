@@ -251,6 +251,9 @@ func _draw_essence_orb(c: Vector2) -> void:
 		var a_locked: bool = bool(player.call("is_locked", a))
 		var a_hot: bool = a_locked or heat >= 80.0
 		var ring_col: Color = UiTheme.REFLUX_HOT if a_hot else (UiTheme.REFLUX if heat >= 50.0 else UiTheme.REFLUX.darkened(0.25))
+		if float(GameData.affinity(a).get("damage_per_reflux", 0.0)) > 0.0 and not a_locked:
+			# this affinity's heat is its damage: the ring brightens as the bonus climbs
+			ring_col = GameData.affinity_color(a).darkened(0.35).lerp(Color(1.0, 0.86, 0.5), clampf(heat / 100.0, 0.0, 1.0))
 		if a_locked:
 			ring_col = ring_col.lerp(Color(1, 1, 1), 0.3 + 0.3 * sin(_time * 8.0))
 		UiDraw.ring(self, c, ORB_R + 12.0 + i * 9.0, heat / 100.0, ring_col, [0.5, 0.8])
@@ -273,11 +276,20 @@ func _draw_essence_orb(c: Vector2) -> void:
 		note_text = "%sLOCKED - meditate (%s)" % [which.to_upper(), Keybinds.binding_text("meditate")]
 		note_col = UiTheme.REFLUX_HOT
 	elif reflux >= 80.0:
-		note_text = "%sreflux %d - burning" % [which, int(reflux)]
+		note_text = "%sreflux %d - slow to recover" % [which, int(reflux)]
 		note_col = UiTheme.REFLUX_HOT
 	elif reflux >= 50.0:
 		note_text = "%sreflux %d - costs more" % [which, int(reflux)]
 		note_col = UiTheme.REFLUX
+	# heat as a damage bonus, for an affinity that has one (shown for the hottest such affinity)
+	var bonus_aff := ""
+	for a2: Variant in affs:
+		if float(GameData.affinity(str(a2)).get("damage_per_reflux", 0.0)) > 0.0 and (bonus_aff == "" or float(player.call("reflux_of", str(a2))) > float(player.call("reflux_of", bonus_aff))):
+			bonus_aff = str(a2)
+	if bonus_aff != "" and not locked:
+		var bonus: int = int(round((float(player.call("heat_mult", bonus_aff)) - 1.0) * 100.0))
+		_centre_text(c + Vector2(0, -ORB_R - 52.0 - lift), "%s +%d%%" % [str(GameData.affinity(bonus_aff).get("label", bonus_aff)).to_lower(), bonus], 13,
+			GameData.affinity_color(bonus_aff).lightened(0.25) if bonus > 0 else UiTheme.TEXT_FAINT)
 	_centre_text(c + Vector2(0, -ORB_R - 20.0 - lift), note_text, 12 if not locked else 14, note_col)
 	if bool(player.get("meditating")):
 		_centre_text(c + Vector2(0, -ORB_R - 36.0 - lift), "gathering", 13, UiTheme.ESSENCE.lightened(0.4))
@@ -480,6 +492,14 @@ func _draw_statuses(e: Node3D, at: Vector2) -> void:
 			pip.append(pip[0])
 			draw_polyline(pip, Color(col, 0.9) if i < n else Color(col, 0.35), 1.5, true)
 		x = at.x + float(total - 1) * 6.0 + 16.0
+	if have.has("alight"):
+		# one small flame per stack
+		var fire := Color(str(GameData.status("alight").get("color", "ff8a3c")))
+		var stacks: int = int((have["alight"] as Dictionary)["stacks"])
+		for i: int in stacks:
+			var fc := Vector2(x + float(i) * 8.0, at.y + sin(_time * 9.0 + float(i)) * 1.2)
+			draw_colored_polygon(PackedVector2Array([fc + Vector2(0, -6), fc + Vector2(3.5, 2), fc + Vector2(0, 5), fc + Vector2(-3.5, 2)]), fire)
+		x += float(stacks) * 8.0 + 6.0
 	if have.has("soaked"):
 		UiDraw.icon(self, "drop", Vector2(x, at.y - 1.0), 13.0, Color(str(GameData.status("soaked").get("color", "4f9be8"))))
 		x += 15.0

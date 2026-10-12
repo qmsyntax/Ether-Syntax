@@ -1,5 +1,5 @@
 {
-  "_note": "Statuses a skill can leave on an enemy (design/05 Appendix B, approved by Brent 2026-10-12). All of it is ours [MODEL]. Each: max stacks, how long it lasts (refreshed when applied again), and the numbers its rule reads. soaked: shoves on the target go shove_mult as far, and it conducts lightning (cross rule 1: a lightning hit on a soaked target puts conduct_marks on every other soaked enemy within conduct_radius). live: lightning's marks; at max stacks the target Overloads - overload_damage to it, stunned for stun seconds, arc_damage to every other marked enemy within arc_radius, and the caster's lightning reflux drops by grounds. stunned: cannot move or act. staggered: poise broken - cannot act, takes damage_taken_mult, and a bare strike on it is an Opening (balance.combat.opening_mult).",
+  "_note": "Statuses a skill can leave on an enemy (design/05 Appendix B, approved by Brent 2026-10-12). All of it is ours [MODEL]. Each: max stacks, how long it lasts (refreshed when applied again), and the numbers its rule reads. soaked: shoves on the target go shove_mult as far, and it conducts lightning (cross rule 1: a lightning hit on a soaked target puts conduct_marks on every other soaked enemy within conduct_radius). live: lightning's marks; at max stacks the target Overloads - overload_damage to it, stunned for stun seconds, arc_damage to every other marked enemy within arc_radius, and the caster's lightning reflux drops by grounds. stunned: cannot move or act. staggered: poise broken - cannot act, takes damage_taken_mult, and a bare strike on it is an Opening (balance.combat.opening_mult). alight: burning - dps_per_stack damage a second per stack, dealt every tick_s through whoever lit it (so talents that care about damage dealt are paid, and fire's Heat scales it). One stack jumps to another enemy that stands within spread_radius for spread_time, and to the nearest one in that radius when the burning enemy dies.",
   "statuses": {
     "soaked": {
       "label": "Soaked",
@@ -33,6 +33,16 @@
       "lasts": 1.5,
       "color": "ffd27a",
       "damage_taken_mult": 1.3
+    },
+    "alight": {
+      "label": "Alight",
+      "stacks": 5,
+      "lasts": 5.0,
+      "color": "ff8a3c",
+      "dps_per_stack": 8.0,
+      "tick_s": 0.5,
+      "spread_radius": 1.2,
+      "spread_time": 1.0
     }
   }
 }

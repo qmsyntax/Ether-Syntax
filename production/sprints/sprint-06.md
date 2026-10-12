@@ -327,3 +327,29 @@ Verified: self-test 383/383, four runs; the full-passage bot twelve times; the g
 bot; the Netherecho death test in both modes; inventory and creation click tests; `ui-combat.png` inspected.
 Not verified: any of it by hand. Whether fights now feel less like "kite and area-hit the clump" is the point of the
 step and is Brent's call. Arena waves with the new enemies were not run by a bot.
+
+## Part R — skills step 3a: fire (design/05 2.2 and 3.2; Brent 2026-10-12: "go with that order")
+
+Step 3 is the largest so far, so it is built and merged one affinity at a time. Fire first.
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-74 | Heat: fire reflux multiplies fire damage (+30% at 50, +48% at 80) and sheds at half speed in a fight. Counted at the moment of impact | selftest | Done |
+| S06-75 | Alight: up to five stacks, 8 damage a second each for 5 s, dealt in the caster's name (so it pays talents and scales with heat). One stack jumps to an enemy that stands within 1.2 m for a second, and to the nearest such enemy when the burning one dies | selftest | Done |
+| S06-76 | Cinder Spit: a quick cheap bolt, 55 and one Alight, half the recovery of other bolts | selftest | Done |
+| S06-77 | Kiln Fist: one enemy in reach, three strikes' worth, two Alight, interrupts. On a burning enemy every stack is spent for +40 and the blow bursts 2 m, lighting those beside it | selftest | Done |
+| S06-78 | Flashover: a 4.2 m dash that leaves a strip of flame for 3 s (one Alight a second to anything in it) and does not carry you through enemies | selftest | Done |
+| S06-79 | HUD: the reflux ring warms with heat, "fire +N%" above the essence orb, flames over burning enemies; the stale "burning" label at 80 reflux now reads "slow to recover" | `shots/ui-fire.png` | Done |
+
+Found on the way: the player's dash travelled 23 m on a 4.2 m budget in a test - the same cause as the earlier
+shove bug (movement by velocity, with the engine choosing the time step). Dashes now cover an exact distance, which
+also holds on a frame hitch in real play. The first fire screenshot hid the heat readout behind a tooltip I had
+forced on; it was re-shot.
+
+Rough edges: the flame trail is a flat orange strip. Backdraft (the skill that spends heat on purpose) is one of
+the later five. Furnace Gut still vents reflux at the cap and wants a second look now that fire runs on heat.
+Kiln Fist's 0.2 s wind-up is not built - it lands at once.
+
+Verified: self-test 416/416, three runs; gate, death and four full-passage bot runs; Netherecho death test; inventory
+and creation click tests; `ui-fire.png` inspected. Not verified: by hand - whether riding heat near the lock
+actually feels like a gamble.

@@ -32,6 +32,7 @@ func _ready() -> void:
 	_test_tempering()
 	await _test_water_and_lightning()
 	await _test_gear_step_1()
+	await _test_fire()
 	await _test_combat_rules()
 	_test_affinities()
 	_test_models()
@@ -1274,6 +1275,180 @@ func _test_combat_rules() -> void:
 	await get_tree().process_frame
 
 
+func _test_fire() -> void:
+	print("fire (design/05 step 3):")
+	await get_tree().process_frame
+	var alight: Dictionary = GameData.status("alight")
+	var strike: float = float(GameData.balance["player"]["melee_damage"])
+	var f := _new_player()
+	f.call("set_affinities", ["fire"])
+	f.global_position = Vector3(800, 0, 0)
+	f.set("effects", [] as Array[TalentEffect])
+	f.set("star_pct", [99.0] as Array[float])
+	f.call("_recompute_essence_max")
+	f.set("essence", 99.0)
+	f.set("_facing", Vector3(0, 0, -1))
+	var kit: Array = f.get("abilities")
+	_check("a fire character starts with Cinder Spit, Kiln Fist and Flashover", kit.size() == 3 and str(kit[0]["id"]) == "cinder_spit" and str(kit[1]["id"]) == "kiln_fist" and str(kit[2]["id"]) == "flashover")
+
+	# ---------- Heat: reflux is the damage bonus
+	var a := _foe(f, Vector3(0, 0, -2.0))
+	_check("cold, fire does plain damage", _near(float(f.call("heat_mult", "fire")), 1.0))
+	(f.get("reflux_by") as Dictionary)["fire"] = 50.0
+	_check("at 50 heat, +30%", _near(float(f.call("heat_mult", "fire")), 1.3))
+	(f.get("reflux_by") as Dictionary)["fire"] = 80.0
+	_check("at 80 heat, +48%", _near(float(f.call("heat_mult", "fire")), 1.48))
+	f.call("deal_damage", a, 100.0, ["ability", "fire"])
+	_check("a fire hit is multiplied by the heat", _near(_lost(a), 148.0), "lost %f" % _lost(a))
+	(a.get("body") as Body).hp = 5000.0
+	f.call("deal_damage", a, 100.0, ["melee"])
+	_check("a bare strike is not fire and is not", _near(_lost(a), 100.0), "lost %f" % _lost(a))
+	_check("water has no heat", _near(float(f.call("heat_mult", "water")), 1.0))
+	f.set("in_combat", true)
+	(f.get("reflux_by") as Dictionary)["fire"] = 50.0
+	f.call("_shed_reflux", 10.0)
+	_check("fire reflux sheds at half speed in a fight, so heat stays", _near(float(f.call("reflux_of", "fire")), 45.0))
+	f.set("in_combat", false)
+	(f.get("reflux_by") as Dictionary)["fire"] = 0.0
+
+	# ---------- Alight: burns, in the caster's name
+	(a.get("body") as Body).hp = 5000.0
+	_check("alight stacks to five", int(a.call("add_status", "alight", 3, f)) == 3 and int(a.call("add_status", "alight", 9, f)) == 5)
+	a.call("clear_status", "alight")
+	a.call("add_status", "alight", 2, f)
+	for i: int in 10:
+		a.call("_tick_statuses", 0.1)                     # one second
+	_check("two stacks burn for 16 in a second", _near(_lost(a), 16.0), "lost %f" % _lost(a))
+	(f.get("reflux_by") as Dictionary)["fire"] = 50.0
+	(a.get("body") as Body).hp = 5000.0
+	for i: int in 10:
+		a.call("_tick_statuses", 0.1)
+	_check("the burn is the caster's fire damage, so heat scales it", _near(_lost(a), 16.0 * 1.3), "lost %f" % _lost(a))
+	(f.get("reflux_by") as Dictionary)["fire"] = 0.0
+	a.call("add_status", "alight", 1, f)
+	for i: int in 60:
+		a.call("_tick_statuses", 0.1)
+	_check("it burns out after five seconds", not bool(a.call("has_status", "alight")))
+	var lifesteal := _new_player("one_percent_lifesteal")
+	lifesteal.global_position = Vector3(800, 0, 40)
+	var burning := _foe(lifesteal, Vector3(0, 0, -2.0))
+	burning.call("add_status", "alight", 5, lifesteal)
+	var pts: float = float(lifesteal.get("heal_points_total"))
+	for i: int in 10:
+		burning.call("_tick_statuses", 0.1)
+	_check("damage over time pays a talent that cares about damage dealt", _near(float(lifesteal.get("heal_points_total")) - pts, 40.0 * 0.01), "paid %f" % (float(lifesteal.get("heal_points_total")) - pts))
+	burning.queue_free()
+	lifesteal.queue_free()
+
+	# ---------- spread
+	(a.get("body") as Body).hp = 5000.0
+	var close := _foe(f, Vector3(1.6, 0, -2.0))              # radii 0.5 each: 0.6 m apart, inside 1.2
+	var apart := _foe(f, Vector3(-5.0, 0, -2.0))
+	a.call("add_status", "alight", 3, f)
+	for i: int in 9:
+		a.call("_tick_statuses", 0.1)
+	_check("an enemy standing close does not catch at once", not bool(close.call("has_status", "alight")))
+	for i: int in 3:
+		a.call("_tick_statuses", 0.1)
+	_check("after a full second beside it, one stack jumps across", int(close.call("status_stacks", "alight")) == 1 and int(a.call("status_stacks", "alight")) == 3)
+	_check("an enemy standing apart stays unlit", not bool(apart.call("has_status", "alight")))
+	close.call("clear_status", "alight")
+	(a.get("body") as Body).hp = 1.0
+	f.call("deal_damage", a, 50.0, ["test"])
+	_check("when a burning enemy dies, one stack jumps to the nearest beside it", int(close.call("status_stacks", "alight")) == 1 and not bool(apart.call("has_status", "alight")))
+	await get_tree().process_frame
+
+	# ---------- Cinder Spit
+	close.call("clear_status", "alight")
+	(close.get("body") as Body).hp = 5000.0
+	var ctx: HitContext = f.call("apply_hit", close, (f.call("_payload", GameData.ability("cinder_spit"), "on_hit") as Dictionary), ["ability", "fire"])
+	_check("cinder spit: 55 and one Alight", _near(ctx.applied, 55.0) and int(close.call("status_stacks", "alight")) == 1)
+	_check("it recovers in half the time of other bolts", float(GameData.ability("cinder_spit")["recovery"]) <= GameData.num("abilities", "cast_recovery") * 0.5)
+
+	# ---------- Kiln Fist: cash in the burn
+	var t := _foe(f, Vector3(0, 0, -2.0))
+	var beside := _foe(f, Vector3(1.5, 0, -2.0))
+	var far := _foe(f, Vector3(8.0, 0, -2.0))
+	f.set("hovered", t)
+	_rested(f)
+	f.call("cast_slot", 1)
+	# the blow lands with the heat its own casting just made: heat counts at the moment of impact
+	var cast_heat: float = float(GameData.ability("kiln_fist")["cost"]) * float(GameData.ability("kiln_fist")["reflux_per_cost"])
+	var hot: float = 1.0 + 0.6 * cast_heat / 100.0
+	var plain: float = strike * 3.0 * hot
+	_check("kiln fist on an unlit enemy: three strikes' worth (at the heat of the moment), and it lights it twice", _near(_lost(t), plain, 0.05) and int(t.call("status_stacks", "alight")) == 2, "lost %f want %f" % [_lost(t), plain])
+	_check("with nothing to spend there is no burst", not bool(beside.call("has_status", "alight")))
+	(f.get("reflux_by") as Dictionary)["fire"] = 0.0
+	(t.get("body") as Body).hp = 5000.0
+	t.call("add_status", "alight", 2, f)                     # now 4
+	_rested(f)
+	f.call("cast_slot", 1)
+	_check("on a burning enemy every stack is spent for +40", _near(_lost(t), plain + 4.0 * 40.0 * hot, 0.05), "lost %f want %f" % [_lost(t), plain + 160.0 * hot])
+	_check("and the blow leaves it lit afresh, twice", int(t.call("status_stacks", "alight")) == 2)
+	_check("the burst lights whoever stands within 2 m, and no further", int(beside.call("status_stacks", "alight")) == 1 and not bool(far.call("has_status", "alight")))
+	t.set("target", f)
+	t.set("_windup", 0.3)
+	(f.get("reflux_by") as Dictionary)["fire"] = 0.0
+	_rested(f)
+	f.call("cast_slot", 1)
+	_check("fire has an interrupt now: kiln fist breaks a wind-up", float(t.get("_windup")) < 0.0)
+	for n: Node in [t, beside, far, close, apart]:
+		n.queue_free()
+	await get_tree().process_frame
+
+	# ---------- Flashover: a trail, and no passing through
+	(f.get("reflux_by") as Dictionary)["fire"] = 0.0
+	f.set("essence", 99.0)
+	f.set("_winded_t", 0.0)
+	f.global_position = Vector3(800, 0, 0)
+	f.set("_facing", Vector3(0, 0, -1))
+	var start: Vector3 = f.global_position
+	_rested(f)
+	f.call("cast_slot", 2)
+	for i: int in 30:
+		f.call("_physics_process", 1.0 / 60.0)
+	var gone: float = start.z - f.global_position.z
+	_check("flashover carries you exactly 4.2 m", _near(gone, 30.0 * 0.14, 0.02), "moved %f" % gone)
+	var zone: GroundZone = null
+	for n: Node in get_tree().get_nodes_in_group("ground_zones"):
+		zone = n as GroundZone
+	_check("and leaves a strip of flame from where you started to where you stopped", zone != null and zone.from.distance_to(start) < 0.1 and zone.to.distance_to(f.global_position) < 0.6
+		and _near(zone.width, 1.0) and zone.life > 2.0)
+	if zone != null:
+		var in_it := _foe(f, Vector3(0.3, 0, 0))
+		in_it.global_position = (zone.from + zone.to) * 0.5 + Vector3(0.3, 0, 0)
+		var out_of_it := _foe(f, Vector3(0, 0, 0))
+		out_of_it.global_position = (zone.from + zone.to) * 0.5 + Vector3(4.0, 0, 0)
+		zone.tick(0.01)
+		_check("anything standing in the flame catches; anything beside it does not", int(in_it.call("status_stacks", "alight")) == 1 and not bool(out_of_it.call("has_status", "alight")))
+		zone.tick(0.5)
+		_check("once a second, not every frame", int(in_it.call("status_stacks", "alight")) == 1)
+		zone.tick(0.6)
+		_check("and again the next second", int(in_it.call("status_stacks", "alight")) == 2)
+		zone.tick(5.0)
+		_check("the flame dies after three seconds", zone.is_queued_for_deletion())
+		in_it.queue_free()
+		out_of_it.queue_free()
+	await get_tree().process_frame
+	# it stops at a body instead of going through
+	f.set("essence", 99.0)
+	f.set("_winded_t", 0.0)
+	f.global_position = Vector3(800, 0, 0)
+	f.set("_facing", Vector3(0, 0, -1))
+	var blocker := _foe(f, Vector3(0, 0, -1.6))
+	_rested(f)
+	f.call("cast_slot", 2)
+	for i: int in 30:
+		f.call("_physics_process", 1.0 / 60.0)
+	_check("flashover does not carry you through an enemy", f.global_position.z > blocker.global_position.z, "player z %f blocker z %f" % [f.global_position.z, blocker.global_position.z])
+	blocker.queue_free()
+	for n: Node in get_tree().get_nodes_in_group("ground_zones"):
+		n.queue_free()
+	_check("none of it hurts the caster", (f.get("body") as Body).wounds.is_empty() and _near((f.get("body") as Body).missing(), 0.0))
+	f.queue_free()
+	await get_tree().process_frame
+
+
 func _test_gear_step_1() -> void:
 	print("a coat and a sling (design/06 step 1):")
 	await get_tree().process_frame
@@ -1483,7 +1658,7 @@ func _test_water_and_lightning() -> void:
 	w.call("cast_slot", 2)
 	for i: int in 30:
 		w.call("_physics_process", 1.0 / 60.0)
-	_check("sluice step carries you through an enemy", start.z - w.global_position.z > 4.0, "moved %f" % (start.z - w.global_position.z))
+	_check("sluice step carries you through an enemy, exactly its 4.7 m", _near(start.z - w.global_position.z, 26.0 * 0.18, 0.02), "moved %f" % (start.z - w.global_position.z))
 	_check("and soaks it on the way, without hurting it", bool(a.call("has_status", "soaked")) and _near(_lost(a), 0.0))
 	_check("no skill of the new kits hurts its caster", (w.get("body") as Body).wounds.is_empty() and _near((w.get("body") as Body).missing(), 0.0))
 	a.queue_free()

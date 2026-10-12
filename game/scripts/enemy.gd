@@ -62,6 +62,8 @@ var _leap_left := 0.0                # pouncer: metres of leap still to cover
 var _leap_hit := false
 var _retreat_t := 0.0                # pouncer: how long the player has been running from the pack
 var _circle_sign := 1.0
+var _burn_t := 0.0                   # alight: time toward the next tick of burning
+var _spread_t := 0.0                 # alight: how long someone has stood close enough to catch
 var _walk_dir := Vector3.ZERO        # the way to walk to reach the player: through a doorway if need be
 var _router: Node
 var _flash := 0.0
@@ -183,6 +185,11 @@ func take_hit(amount: float, _heavy: bool, source: Node) -> float:
 	if body.is_dead():
 		_release_slot()
 		telegraph = {}
+		if statuses.has("alight"):
+			var heir: Node3D = _nearest_enemy_within(float(GameData.status("alight").get("spread_radius", 1.2)))
+			if heir != null:
+				var lit: Variant = (statuses["alight"] as Dictionary).get("by")
+				heir.call("add_status", "alight", 1, lit if (lit != null and is_instance_valid(lit)) else null)
 		remove_from_group("hittable")
 		remove_from_group("enemies")
 		killed.emit(self)
@@ -223,14 +230,15 @@ func _knock_down() -> void:
 
 # --- statuses, stun, shove ----------------------------------------------------------------
 
-## Add `stacks` of a status (capped at its maximum) and refresh how long it lasts.
-## Returns the stacks it now has.
-func add_status(id: String, stacks: int = 1) -> int:
+## Add `stacks` of a status (capped at its maximum) and refresh how long it lasts. `by` is who
+## applied it: a status that does damage does it in their name. Returns the stacks it now has.
+func add_status(id: String, stacks: int = 1, by: Node = null) -> int:
 	var def: Dictionary = GameData.status(id)
 	if def.is_empty() or body.is_dead():
 		return 0
 	var now: int = mini(int(def.get("stacks", 1)), status_stacks(id) + stacks)
-	statuses[id] = {"stacks": now, "t": float(def.get("lasts", 1.0))}
+	var who: Node = by if by != null else ((statuses.get(id, {}) as Dictionary).get("by") as Node)
+	statuses[id] = {"stacks": now, "t": float(def.get("lasts", 1.0)), "by": who}
 	return now
 
 
@@ -303,6 +311,52 @@ func _tick_statuses(delta: float) -> void:
 		s["t"] = float(s["t"]) - delta
 		if float(s["t"]) <= 0.0:
 			statuses.erase(id)
+	if statuses.has("alight"):
+		_tick_alight(delta)
+	else:
+		_burn_t = 0.0
+		_spread_t = 0.0
+
+
+## Burning: damage every tick in the name of whoever lit it, and it catches on whoever stands close.
+func _tick_alight(delta: float) -> void:
+	var def: Dictionary = GameData.status("alight")
+	var s: Dictionary = statuses["alight"]
+	var by: Variant = s.get("by")
+	var lit_by: Node = by if (by != null and is_instance_valid(by)) else null
+	# spread: one stack jumps to an enemy that has stood close for long enough
+	var near: Node3D = _nearest_enemy_within(float(def.get("spread_radius", 1.2)))
+	_spread_t = _spread_t + delta if near != null else 0.0
+	if near != null and _spread_t >= float(def.get("spread_time", 1.0)):
+		_spread_t = 0.0
+		near.call("add_status", "alight", 1, lit_by)
+	_burn_t += delta
+	var every: float = float(def.get("tick_s", 0.5))
+	if _burn_t < every:
+		return
+	_burn_t -= every
+	var dmg: float = float(def.get("dps_per_stack", 8.0)) * float(int(s["stacks"])) * every
+	if lit_by != null and lit_by.has_method("deal_damage"):
+		lit_by.call("deal_damage", self, dmg, ["dot", "fire", "alight"])
+	else:
+		take_hit(dmg, false, null)
+
+
+## The closest other living enemy within `reach` of this one, or null.
+func _nearest_enemy_within(reach: float) -> Node3D:
+	if not is_inside_tree():
+		return null
+	var best: Node3D = null
+	var best_d: float = reach
+	for node: Node in get_tree().get_nodes_in_group("enemies"):
+		var e := node as Node3D
+		if e == null or e == self or bool(e.call("is_dead")):
+			continue
+		var d: float = e.global_position.distance_to(global_position) - float(e.get("radius")) - radius
+		if d <= best_d:
+			best_d = d
+			best = e
+	return best
 
 
 ## One physics step of a shove. The body is moved an exact distance (not by velocity, whose time
@@ -342,6 +396,8 @@ func _physics_process(delta: float) -> void:
 	if body.is_dead():
 		return
 	_tick_statuses(delta)
+	if body.is_dead():
+		return                                  # the burning finished it
 	if _shove_left > 0.0:
 		_tick_shove(delta)
 		return
