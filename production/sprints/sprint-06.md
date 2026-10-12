@@ -151,3 +151,22 @@ tempered for injures you" [C], and the clinic's tempering aid.
 
 Verified: self-test 220/220, smoke, three bots, inventory and creation click tests; `ui-temper.png` inspected.
 Not verified: the Train button by hand, or whether the costs feel right.
+
+## Part K — art pass 4 and the female body (Brent 2026-10-11: "Really want this to look better quality ... the female setting does nothing")
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-36 | Player model rebuilt at higher fidelity: smooth lofted anatomy, a sculpted head with eyes, nose, lips and ears, fingered hands, layered hair, clothing with collar, folds, belt and buckles, per-material surface detail. About 39,000 triangles, 14 draw calls | `shots/ui-create-1.png`, `ui-create-2-face.png`, `art-looks-body.png` | Done (sub-agent) |
+| S06-37 | Female body for all four body types and every face (look key `sex`); choosing Woman switches to it, and it carries into play and saves | `creation_probe` (2 new checks), `shots/ui-create-1.png` | Done |
+| S06-38 | Stubble and beard are not offered on the female face; a "Face" button zooms the turntable to head and shoulders; better turntable lighting | selftest, `shots/ui-create-2-face.png` | Done |
+
+Rough edges: eyebrows alias badly at face zoom and faces are still stylised; upper arms a little tubular; gauntlet
+fingers claw-like; male and female differ clearly side by side but subtly alone on the Heavy body. Enemies were
+not touched this pass. At gameplay zoom almost none of the new detail is visible.
+
+The art agent reported the creator click test failing during its run; it passes now (re-run three times after
+merging main) and the cause was not found - most likely it ran while files were mid-edit.
+
+Verified: self-test 223/223 (every sex x body builds; slowest first build of a look 103 ms), smoke, three bots,
+inventory and creation click tests; creator screenshots inspected. Not verified: by hand; animation in motion;
+weapons and the lost arm on the female and non-default bodies.

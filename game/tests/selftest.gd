@@ -834,6 +834,25 @@ func _test_affinities() -> void:
 
 func _test_models() -> void:
 	print("models:")
+	# every look must build, and building one must not stall the creator
+	var opts: Dictionary = CharacterLook.options()
+	if opts.has("sex"):
+		var slowest := 0
+		for sex: Dictionary in opts["sex"]:
+			for body_opt: Dictionary in opts.get("body", []):
+				var look: Dictionary = CharacterLook.default_look()
+				look["sex"] = str(sex["id"])
+				look["body"] = str(body_opt["id"])
+				look["face"] = str((opts["face"][opts["face"].size() - 1] as Dictionary)["id"])
+				var t0: int = Time.get_ticks_msec()
+				var m: ModelRig = CharacterLook.build(look)
+				slowest = maxi(slowest, Time.get_ticks_msec() - t0)
+				if m == null or m.height < 1.7 or m.height > 1.95 or not m.has_part("arm_right"):
+					_check("every sex and body builds a usable model", false, str(look))
+				m.free()
+		print("  note slowest first build of a look: %d ms" % slowest)
+		_check("male and female are both offered", (opts["sex"] as Array).size() == 2 and str((opts["sex"][0] as Dictionary)["id"]) == "male")
+		_check("building a new look takes well under a second", slowest < 700, "%d ms" % slowest)
 	var p := _new_player()
 	var rig: ModelRig = p.get("_rig")
 	var inv: Inventory = p.get("inventory")

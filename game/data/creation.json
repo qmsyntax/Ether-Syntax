@@ -77,5 +77,14 @@
     "Thane",
     "Vesper",
     "Zell"
-  ]
+  ],
+  "hidden_options": {
+    "_note": "look options not offered for a given sex: sex -> key -> [ids]. Beards on the female face were the art agent's recommendation to hide; the model can still render them.",
+    "female": {
+      "face": [
+        "stubble",
+        "bearded"
+      ]
+    }
+  }
 }

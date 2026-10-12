@@ -1024,6 +1024,9 @@ func _setup_ui_shot(which: String) -> void:
 			{"talent_id": "one_percent_lifesteal", "affinities": ["water", "lightning", "earth"]}] as Array[Dictionary])
 		screen.call("set_spec", {"name": "Maren", "identity": "woman", "look": CharacterLook.default_look(), "talent_id": "tenth_strike", "affinities": ["wind", "fire"]})
 		screen.call("_go", int(which.get_slice("-", 1)) - 1)
+		if which.ends_with("-face"):
+			screen.call("set_zoom", true)
+			_shot_countdown = 90                # let the camera ease in
 		return
 	_select_talent(0)
 	var inv: Inventory = player.get("inventory")

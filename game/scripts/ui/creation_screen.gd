@@ -185,6 +185,19 @@ func _build_preview(root: Control) -> void:
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(hint)
 
+	var zoom := UiWidgets.small_button("Face", func() -> void: pass)
+	zoom.name = "ZoomButton"
+	zoom.anchor_left = 0.615
+	zoom.anchor_right = 0.662
+	zoom.anchor_top = 0.05
+	zoom.anchor_bottom = 0.05
+	zoom.offset_bottom = 38.0
+	zoom.pressed.connect(func() -> void:
+		var close: bool = not bool(get_meta("zoom_close", false))
+		set_zoom(close)
+		zoom.text = "Full" if close else "Face")
+	root.add_child(zoom)
+
 
 func _on_preview_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
@@ -230,6 +243,9 @@ func _refresh() -> void:
 func set_spec(new_spec: Dictionary) -> void:
 	_name_edit = null
 	spec = new_spec
+	for idn: Dictionary in GameData.creation["identities"]:
+		if str(idn["id"]) == str(spec.get("identity", "")) and CharacterLook.options().has("sex"):
+			(spec["look"] as Dictionary)["sex"] = str(idn.get("sex", "male"))
 	_refresh_model()
 	_refresh()
 
@@ -359,6 +375,7 @@ func _set_identity(id: String) -> void:
 	for idn: Dictionary in GameData.creation["identities"]:
 		if str(idn["id"]) == id and CharacterLook.options().has("sex"):
 			(spec["look"] as Dictionary)["sex"] = str(idn.get("sex", "male"))
+			_drop_hidden()
 			_refresh_model()
 	_refresh()
 
@@ -422,13 +439,13 @@ func _build_appearance() -> void:
 		else:
 			var row2 := HBoxContainer.new()
 			list.add_child(row2)
-			row2.add_child(UiWidgets.small_button("  <  ", func() -> void: _set_look(key, CharacterLook.cycle(spec["look"], key, -1))))
+			row2.add_child(UiWidgets.small_button("  <  ", func() -> void: _set_look(key, _cycle(key, -1))))
 			var mid := UiTheme.body(CharacterLook.label(key, current), 16)
 			mid.autowrap_mode = TextServer.AUTOWRAP_OFF
 			mid.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			row2.add_child(mid)
-			row2.add_child(UiWidgets.small_button("  >  ", func() -> void: _set_look(key, CharacterLook.cycle(spec["look"], key, 1))))
+			row2.add_child(UiWidgets.small_button("  >  ", func() -> void: _set_look(key, _cycle(key, 1))))
 	if shown == 0:
 		list.add_child(UiTheme.body("No appearance options are available in this build.", 15, UiTheme.TEXT_DIM))
 	else:
@@ -438,8 +455,33 @@ func _build_appearance() -> void:
 			for key: String in ["body", "sex"]:              # chosen on the Origin step, not here
 				if keep.has(key):
 					(spec["look"] as Dictionary)[key] = keep[key]
+			_drop_hidden()
 			_refresh_model()
 			_refresh()))
+
+
+## Ids of `key` that are not offered to the current sex (creation.json "hidden_options").
+func _hidden(key: String) -> Array:
+	var sex: String = str((spec["look"] as Dictionary).get("sex", ""))
+	return ((GameData.creation.get("hidden_options", {}) as Dictionary).get(sex, {}) as Dictionary).get(key, [])
+
+
+## The next option for `key` in that direction, stepping over the ones hidden for this sex.
+func _cycle(key: String, step: int) -> String:
+	var trial: Dictionary = (spec["look"] as Dictionary).duplicate()
+	var hidden: Array = _hidden(key)
+	for i: int in (CharacterLook.options().get(key, []) as Array).size():
+		trial[key] = CharacterLook.cycle(trial, key, step)
+		if not hidden.has(trial[key]):
+			break
+	return str(trial[key])
+
+
+## After the sex changes (or a random roll), move any option that is now hidden to one that is not.
+func _drop_hidden() -> void:
+	for key: String in (spec["look"] as Dictionary).keys():
+		if _hidden(key).has((spec["look"] as Dictionary)[key]):
+			(spec["look"] as Dictionary)[key] = _cycle(key, 1)
 
 
 func _swatch(key: String, option: Dictionary, chosen: bool) -> Button:
