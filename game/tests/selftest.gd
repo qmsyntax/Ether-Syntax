@@ -33,6 +33,7 @@ func _ready() -> void:
 	await _test_water_and_lightning()
 	await _test_gear_step_1()
 	await _test_fire()
+	await _test_wind()
 	await _test_combat_rules()
 	_test_affinities()
 	_test_models()
@@ -862,6 +863,10 @@ func _foe(p: Node3D, offset: Vector3, kind: String = "grunt") -> CharacterBody3D
 	e.set("target", null)
 	(e.get("body") as Body).max_hp = 5000.0
 	(e.get("body") as Body).hp = 5000.0
+	# and it is never staggered: repeated hits would otherwise break its poise and add 30% to
+	# every later number in the same test (use _fighter when poise is what is being tested)
+	e.set("poise_max", 100000.0)
+	e.set("poise", 100000.0)
 	return e
 
 
@@ -1446,6 +1451,223 @@ func _test_fire() -> void:
 		n.queue_free()
 	_check("none of it hurts the caster", (f.get("body") as Body).wounds.is_empty() and _near((f.get("body") as Body).missing(), 0.0))
 	f.queue_free()
+	await get_tree().process_frame
+
+
+## Move a player by hand and let Slipstream see it, as a step of walking would.
+func _walk(p: Node3D, metres: Vector3, steps: int = 1) -> void:
+	for i: int in steps:
+		p.global_position += metres / float(steps)
+		p.call("_tick_slipstream", 1.0 / 60.0)
+
+
+func _test_wind() -> void:
+	print("wind (design/05 step 3):")
+	await get_tree().process_frame
+	var cfg: Dictionary = GameData.balance["slipstream"]
+	var combat: Dictionary = GameData.balance["combat"]
+	var strike: float = float(GameData.balance["player"]["melee_damage"])
+	var w := _new_player()
+	w.call("set_affinities", ["wind"])
+	w.global_position = Vector3(900, 0, 0)
+	var world := _test_floor(w.global_position, w.global_position.z - 9.0)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	w.set("effects", [] as Array[TalentEffect])
+	w.set("star_pct", [99.0] as Array[float])
+	w.call("_recompute_essence_max")
+	w.set("essence", 99.0)
+	w.set("_facing", Vector3(0, 0, -1))
+	w.set("_last_pos", w.global_position)
+	var kit: Array = w.get("abilities")
+	_check("a wind character starts with Cutting Gust, Crosscut and Tailwind", kit.size() == 3 and str(kit[0]["id"]) == "cutting_gust" and str(kit[1]["id"]) == "crosscut" and str(kit[2]["id"]) == "tailwind")
+
+	# ---------- Slipstream
+	_check("wind runs on Slipstream; water does not", bool(w.call("has_slipstream")))
+	_walk(w, Vector3(1.4, 0, 0), 4)
+	_check("no pip until a metre and a half is covered", int(w.get("pips")) == 0)
+	_walk(w, Vector3(0.2, 0, 0))
+	_check("then one", int(w.get("pips")) == 1)
+	_walk(w, Vector3(30.0, 0, 0), 40)
+	_check("and never more than ten", int(w.get("pips")) == int(cfg["max"]) and int(cfg["max"]) == 10)
+	for i: int in 29:
+		w.call("_tick_slipstream", 1.0 / 60.0)             # just under half a second standing
+	_check("a moment's pause costs nothing", int(w.get("pips")) == 10)
+	for i: int in 32:
+		w.call("_tick_slipstream", 1.0 / 60.0)             # past the delay and one decay step
+	_check("stand to think and they drain, one every half second", int(w.get("pips")) == 9)
+	for i: int in 60:
+		w.call("_tick_slipstream", 1.0 / 60.0)
+	_check("and keep draining", int(w.get("pips")) == 7)
+	_walk(w, Vector3(0.1, 0, 0))
+	for i: int in 20:
+		w.call("_tick_slipstream", 1.0 / 60.0)
+	_check("moving again stops the drain at once", int(w.get("pips")) == 7)
+	_check("spending takes what is there and no more", int(w.call("spend_pips", 3)) == 3 and int(w.get("pips")) == 4 and int(w.call("spend_pips", 9)) == 4 and int(w.get("pips")) == 0)
+	w.global_position += Vector3(900, 0, 0)
+	w.call("_tick_slipstream", 1.0 / 60.0)
+	_check("being put somewhere new is not travelling", int(w.get("pips")) == 0)
+	w.global_position = Vector3(900, 0, 0)
+	w.set("_last_pos", w.global_position)
+	var plain := _new_player()
+	plain.set("_last_pos", plain.global_position)
+	_walk(plain, Vector3(20, 0, 0), 20)
+	_check("a character without wind earns none", int(plain.get("pips")) == 0 and not bool(plain.call("has_slipstream")))
+	plain.queue_free()
+
+	# ---------- wind's reflux: sheds on the move, sits when you stand
+	w.set("in_combat", true)
+	(w.get("reflux_by") as Dictionary)["wind"] = 50.0
+	w.set("_moving", false)
+	w.call("_shed_reflux", 5.0)
+	_check("in a fight, standing still, wind reflux does not shed", _near(float(w.call("reflux_of", "wind")), 50.0))
+	w.set("_moving", true)
+	w.call("_shed_reflux", 5.0)
+	_check("moving, it sheds three times as fast", _near(float(w.call("reflux_of", "wind")), 35.0))
+	w.set("in_combat", false)
+	w.set("_moving", false)
+	w.call("_shed_reflux", 5.0)
+	_check("out of a fight it sheds as any other", _near(float(w.call("reflux_of", "wind")), 30.0))
+	(w.get("reflux_by") as Dictionary)["wind"] = 0.0
+
+	# ---------- Cutting Gust: through everything, and it wants pips
+	var g1 := _foe(w, Vector3(0, 0, -3.0))
+	var g2 := _foe(w, Vector3(0.2, 0, -5.0))
+	var g3 := _foe(w, Vector3(0, 0, -7.5))
+	var off := _foe(w, Vector3(4.0, 0, -4.0))
+	w.set("pips", 0)
+	w.call("cast_slot", 0)
+	var gust: Node = null
+	for n: Node in w.get_parent().get_children():
+		if n.get("shooter") == w and not n.is_queued_for_deletion():
+			gust = n
+	for i: int in 40:
+		if gust == null or not is_instance_valid(gust) or gust.is_queued_for_deletion():
+			break
+		gust.call("tick", 1.0 / 60.0)
+	_check("cutting gust passes through every enemy in its line", _near(_lost(g1), 45.0) and _near(_lost(g2), 45.0) and _near(_lost(g3), 45.0), "g1 %f g2 %f g3 %f" % [_lost(g1), _lost(g2), _lost(g3)])
+	_check("and touches nothing off the line, and no one twice", _near(_lost(off), 0.0))
+	await get_tree().process_frame
+	for g: Node in [g1, g2, g3]:
+		(g.get("body") as Body).hp = 5000.0
+	w.set("pips", 5)
+	_rested(w)
+	w.call("cast_slot", 0)
+	_check("it spends up to three pips", int(w.get("pips")) == 2)
+	gust = null
+	for n: Node in w.get_parent().get_children():
+		if n.get("shooter") == w and not n.is_queued_for_deletion():
+			gust = n
+	for i: int in 40:
+		if gust == null or not is_instance_valid(gust) or gust.is_queued_for_deletion():
+			break
+		gust.call("tick", 1.0 / 60.0)
+	_check("for +15 each", _near(_lost(g1), 90.0), "lost %f" % _lost(g1))
+	_check("it is short: 12 m, and the wall beyond stops nothing it would reach", _near(float(GameData.ability("cutting_gust")["speed"]) * float(GameData.ability("cutting_gust")["life"]), 12.0))
+	await get_tree().process_frame
+
+	# a shot stops on a wall (any shot: the same code flies them all)
+	var behind_wall := _foe(w, Vector3(0, 0, -11.0))           # the wall is at -9
+	w.set("pips", 0)
+	_rested(w)
+	w.call("cast_slot", 0)
+	gust = null
+	for n: Node in w.get_parent().get_children():
+		if n.get("shooter") == w and not n.is_queued_for_deletion():
+			gust = n
+	for i: int in 60:
+		if gust == null or not is_instance_valid(gust) or gust.is_queued_for_deletion():
+			break
+		gust.call("tick", 1.0 / 60.0)
+	_check("a shot does not pass through a wall", _near(_lost(behind_wall), 0.0))
+	behind_wall.queue_free()
+	for g: Node in [g1, g2, g3, off]:
+		g.queue_free()
+	await get_tree().process_frame
+
+	# ---------- Tailwind
+	w.set("essence", 99.0)
+	w.set("_winded_t", 0.0)
+	w.set("pips", 0)
+	w.global_position = Vector3(900, 0, 0)
+	w.set("_last_pos", w.global_position)
+	w.set("_facing", Vector3(1, 0, 0))
+	var start: Vector3 = w.global_position
+	_rested(w)
+	w.call("cast_slot", 2)
+	_check("tailwind gives three pips at once", int(w.get("pips")) == 3)
+	_check("and has no recovery beyond the dash itself", _near(float(w.get("_recover_t")), float(GameData.ability("tailwind")["dash_time"])))
+	for i: int in 30:
+		w.call("_physics_process", 1.0 / 60.0)
+	var went: float = w.global_position.x - start.x
+	_check("it is the longest dash: 6.6 m", _near(went, 30.0 * 0.22, 0.02), "moved %f" % went)
+	_check("and the distance it covers earns pips of its own", int(w.get("pips")) >= 3 + 4, "pips %d" % int(w.get("pips")))
+
+	# ---------- Crosscut
+	w.global_position = Vector3(900, 0, 0)
+	w.set("_last_pos", w.global_position)
+	w.set("_facing", Vector3(0, 0, -1))
+	w.set("essence", 99.0)
+	(w.get("reflux_by") as Dictionary)["wind"] = 0.0
+	var c := _foe(w, Vector3(0, 0, -4.0))
+	c.set("facing", Vector3(0, 0, 1))                          # looking straight at the player
+	w.set("hovered", c)
+	w.set("pips", 0)
+	_rested(w)
+	w.call("cast_slot", 1)
+	var lee: float = 1.0 + float(GameData.affinity("wind")["rear_bonus"])
+	var base_cut: float = strike * 1.6 * float(combat["rear_mult"]) * lee
+	_check("crosscut always lands on the back, Lee and all, though they were facing you", _near(_lost(c), base_cut, 0.05), "lost %f want %f" % [_lost(c), base_cut])
+	_check("and you end up 2 m behind them", _near(w.global_position.z, c.global_position.z - 2.0 - float(c.get("radius")), 0.05), "player z %f" % w.global_position.z)
+	_check("it has a recovery of a quarter second", _near(float(w.get("_recover_t")), 0.25))
+	(c.get("body") as Body).hp = 5000.0
+	w.global_position = Vector3(900, 0, 0)
+	w.set("_facing", Vector3(0, 0, -1))
+	w.set("pips", 6)
+	_rested(w)
+	w.call("cast_slot", 1)
+	_check("it spends every pip for +10% each", int(w.get("pips")) == 0 and _near(_lost(c), base_cut * 1.6, 0.05), "pips %d lost %f want %f" % [int(w.get("pips")), _lost(c), base_cut * 1.6])
+	var out_of_reach := _foe(w, Vector3(0, 0, 0))
+	out_of_reach.global_position = w.global_position + Vector3(9.0, 0, 0)
+	w.set("hovered", out_of_reach)
+	var ess: float = float(w.get("essence"))
+	_rested(w)
+	w.call("cast_slot", 1)
+	_check("beyond 7 m it does not fire and costs nothing", _near(float(w.get("essence")), ess))
+	# a wall behind the target: you strike but stay on your side
+	(c.get("body") as Body).hp = 5000.0
+	c.global_position = Vector3(900, 0, -7.6)                  # wall face at -8.5: no room to stand behind it
+	w.global_position = Vector3(900, 0, -3.0)
+	w.set("_facing", Vector3(0, 0, -1))
+	w.set("hovered", c)
+	w.set("pips", 0)
+	_rested(w)
+	w.call("cast_slot", 1)
+	_check("with a wall behind them you still strike, but do not pass into it", _lost(c) > 0.0 and _near(w.global_position.z, -3.0, 0.01), "player z %f" % w.global_position.z)
+
+	# a plain rear hit from a non-wind source gets the ordinary bonus only
+	(c.get("body") as Body).hp = 5000.0
+	c.set("facing", Vector3(0, 0, -1))
+	w.call("deal_damage", c, 100.0, ["test"])
+	_check("Lee is wind's alone: another hit on a back gets only the ordinary bonus", _near(_lost(c), 100.0 * float(combat["rear_mult"])), "lost %f" % _lost(c))
+
+	# ---------- Aloft
+	(c.get("body") as Body).hp = 5000.0
+	_check("a light enemy is thrown aloft", int(c.call("add_status", "aloft")) == 1 and bool(c.call("has_status", "aloft")))
+	c.set("facing", Vector3(0, 0, 1))
+	w.global_position = c.global_position + Vector3(0, 0, 3.0)
+	w.call("deal_damage", c, 100.0, ["test"])
+	_check("and takes a quarter more while it is up", _near(_lost(c), 125.0), "lost %f" % _lost(c))
+	var heavy := _fighter(w, Vector3(3.0, 0, 0), "brute")
+	heavy.set("target", null)
+	var poise0: float = float(heavy.get("poise"))
+	_check("a heavy one does not leave the ground - it loses 50 poise instead", int(heavy.call("add_status", "aloft")) == 0 and not bool(heavy.call("has_status", "aloft"))
+		and _near(poise0 - float(heavy.get("poise")), 50.0))
+	for n: Node in [c, out_of_reach, heavy]:
+		n.queue_free()
+	_check("none of it hurts the caster", (w.get("body") as Body).wounds.is_empty() and _near((w.get("body") as Body).missing(), 0.0))
+	w.queue_free()
+	world.queue_free()
 	await get_tree().process_frame
 
 

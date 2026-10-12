@@ -10,6 +10,9 @@ var color := Color(0.3, 0.7, 1.0)
 ## What it does to the first enemy it meets (see Player.apply_hit). Empty = plain damage.
 var payload: Dictionary = {}
 var tags: Array = ["projectile"]
+## Passes through every enemy in its line instead of stopping at the first.
+var pierce := false
+var _struck: Array = []
 
 
 func _ready() -> void:
@@ -27,21 +30,45 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	tick(delta)
+
+
+## One step of flight. The whole stretch covered is checked, so a fast shot cannot step over a
+## body, and it stops on walls and blocks. Public so a test can fly it by hand.
+func tick(delta: float) -> void:
+	var step: float = minf(life, delta) * speed
 	life -= delta
-	if life <= 0.0:
-		queue_free()
-		return
-	global_position += dir * speed * delta
+	var from: Vector3 = global_position
+	var to: Vector3 = from + dir * step
+	var stopped := false
+	if is_inside_tree():
+		var q := PhysicsRayQueryParameters3D.create(from, to, 1)
+		var wall: Dictionary = get_world_3d().direct_space_state.intersect_ray(q)
+		if not wall.is_empty():
+			to = wall["position"]
+			stopped = true
+	var a := Vector2(from.x, from.z)
+	var b := Vector2(to.x, to.z)
+	# nearest first, so a shot that stops at the first body stops at the right one
+	var in_path: Array = []
 	for e: Node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := e as Node3D
-		if enemy == null:
+		if enemy == null or _struck.has(enemy) or bool(enemy.call("is_dead")):
 			continue
-		var reach: float = 0.6 + float(enemy.get("radius"))
-		if global_position.distance_to(enemy.global_position + Vector3.UP * 0.9) <= reach + 0.6:
-			if is_instance_valid(shooter):
-				if payload.is_empty():
-					shooter.deal_damage(enemy, damage, tags)
-				else:
-					shooter.apply_hit(enemy, payload, tags, 1.0, dir)      # shoved the way it was flying
+		var p := Vector2(enemy.global_position.x, enemy.global_position.z)
+		if Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= 0.35 + float(enemy.get("radius")):
+			in_path.append(enemy)
+	in_path.sort_custom(func(x: Node3D, y: Node3D) -> bool: return x.global_position.distance_squared_to(from) < y.global_position.distance_squared_to(from))
+	for enemy: Node3D in in_path:
+		_struck.append(enemy)
+		if is_instance_valid(shooter):
+			if payload.is_empty():
+				shooter.deal_damage(enemy, damage, tags)
+			else:
+				shooter.apply_hit(enemy, payload, tags, 1.0, dir)      # shoved the way it was flying
+		if not pierce:
 			queue_free()
 			return
+	global_position = to
+	if stopped or life <= 0.0:
+		queue_free()

@@ -122,6 +122,13 @@ var _ring: Array = []
 var poise := 100.0
 var _stagger_t := 0.0                # staggered: no moving, striking or casting
 var _winded_t := 0.0                 # a second movement skill inside this costs double
+## Slipstream (wind only): pips earned by moving and lost by standing; wind skills spend them.
+var pips := 0
+var _pip_dist := 0.0                 # metres travelled toward the next pip
+var _still_t := 0.0                  # how long you have been standing
+var _pip_decay_t := 0.0
+var _last_pos := Vector3.ZERO
+var _moving := false                 # moved this step (for wind's reflux rule)
 ## True while the ranged stance is held with a ranged weapon equipped: the strike button shoots.
 var ranged_stance := false
 var _range_ring: MeshInstance3D
@@ -366,7 +373,11 @@ func clear_reflux() -> void:
 func _shed_reflux(amount: float) -> void:
 	var shed: float = amount * inventory.stat("reflux_shed_mult", true) * temper_stat("reflux_shed_mult")
 	for aff: String in reflux_by:
-		var rate: float = float(GameData.affinity(aff).get("reflux_shed_mult_combat", 1.0)) if in_combat else 1.0
+		var a_def: Dictionary = GameData.affinity(aff)
+		var rate: float = float(a_def.get("reflux_shed_mult_combat", 1.0)) if in_combat else 1.0
+		if in_combat and a_def.has("reflux_shed_mult_moving"):
+			# wind: its heat blows off while you run and sits while you stand
+			rate = float(a_def["reflux_shed_mult_moving"]) if _moving else float(a_def.get("reflux_shed_mult_standing", 1.0))
 		reflux_by[aff] = maxf(0.0, float(reflux_by[aff]) - shed * rate)
 		if is_locked(aff) and float(reflux_by[aff]) < float(_reflux_cfg["unlock_below"]):
 			locked_by[aff] = false
@@ -545,6 +556,8 @@ func _physics_process(delta: float) -> void:
 	var speed: float = float(_p["move_speed"]) * temper_stat("move_speed_mult") * (float(_p["charge_move_factor"]) if _charging else 1.0)
 	if ranged_stance:
 		speed *= GameData.num("ranged", "stance_move_factor")
+	if pips >= GameData.inum("slipstream", "speed_pips"):
+		speed *= GameData.num("slipstream", "speed_mult")
 	velocity = dir * speed
 	if _dash_time > 0.0:
 		# A dash covers an exact distance: it is moved by hand, not by velocity, whose time step
@@ -564,6 +577,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		move_and_slide()
 
+	_tick_slipstream(delta)
 	rotation.y = atan2(-_facing.x, -_facing.z)
 	_update_model(delta)
 
@@ -598,7 +612,12 @@ func deal_damage(target: Node, base: float, tags: Array = []) -> HitContext:
 	var pos: Vector3 = (target as Node3D).global_position
 	var combat: Dictionary = GameData.balance["combat"]
 	var bare_strike: bool = ctx.has_tag("melee") and not ctx.has_tag("ability")
-	var from_behind: bool = target.has_method("is_behind") and bool(target.call("is_behind", global_position))
+	var from_behind: bool = ctx.has_tag("rear") or (target.has_method("is_behind") and bool(target.call("is_behind", global_position)))
+	if from_behind:
+		# Lee (wind): a hit from this affinity on a back does more again
+		for aff: String in affinities:
+			if ctx.has_tag(aff):
+				ctx.mult *= 1.0 + float(GameData.affinity(aff).get("rear_bonus", 0.0))
 	var opening: bool = bare_strike and target.has_method("has_status") and bool(target.call("has_status", "staggered"))
 	if from_behind:
 		ctx.mult *= float(combat["rear_mult"])           # where you stand matters, for every affinity
@@ -660,6 +679,51 @@ func take_hit(amount: float, heavy: bool, source: Node) -> float:
 			_dash_time = 0.0
 			_float("STAGGERED", Color(1, 0.7, 0.3))
 	return _apply_damage(ctx.amount(), heavy)
+
+
+## True if the character holds an affinity that runs on Slipstream.
+func has_slipstream() -> bool:
+	for aff: String in affinities:
+		if bool(GameData.affinity(aff).get("slipstream", false)):
+			return true
+	return false
+
+
+## Slipstream: a pip for every stretch travelled, by whatever means; they drain once you stand.
+func _tick_slipstream(delta: float) -> void:
+	var moved: Vector3 = global_position - _last_pos
+	moved.y = 0.0
+	_last_pos = global_position
+	var dist: float = moved.length()
+	if dist > 50.0:
+		dist = 0.0                               # placed somewhere new (a level change), not travelled
+	_moving = dist > 0.001
+	if not has_slipstream():
+		pips = 0
+		return
+	var cfg: Dictionary = GameData.balance["slipstream"]
+	if _moving:
+		_still_t = 0.0
+		_pip_decay_t = 0.0
+		_pip_dist += dist
+		var per: float = float(cfg["metres_per_pip"])
+		while _pip_dist >= per:
+			_pip_dist -= per
+			pips = mini(int(cfg["max"]), pips + 1)
+	else:
+		_still_t += delta
+		if _still_t >= float(cfg["still_delay_s"]):
+			_pip_decay_t += delta
+			if _pip_decay_t >= float(cfg["decay_s"]):
+				_pip_decay_t -= float(cfg["decay_s"])
+				pips = maxi(0, pips - 1)
+
+
+## Take up to `want` pips (all of them if negative). Returns how many were spent.
+func spend_pips(want: int) -> int:
+	var n: int = pips if want < 0 else mini(pips, want)
+	pips -= n
+	return n
 
 
 ## How much an affinity's own reflux multiplies its damage right now (1.0 for most affinities).
@@ -1386,7 +1450,7 @@ func cast_ability(index: int) -> void:
 	var strike_target: Node3D = null
 	var blink_to := Vector3.ZERO
 	if kind == "targeted_strike":
-		strike_target = _skill_target(reach_now() + float(ab.get("range_bonus", 0.0)))
+		strike_target = _skill_target(float(ab["range"]) if ab.has("range") else reach_now() + float(ab.get("range_bonus", 0.0)))
 		if strike_target == null:
 			note("%s needs someone within reach." % str(ab["name"]))
 			return
@@ -1431,6 +1495,8 @@ func cast_ability(index: int) -> void:
 			_dash_trail = ab.get("trail", {})
 			_dash_stops = bool(ab.get("stops_at_bodies", false))
 			_dash_color = GameData.affinity_color(aff)
+			if has_slipstream():
+				pips = mini(GameData.inum("slipstream", "max"), pips + int(ab.get("gain_pips", 0)))
 		"beam":
 			_fire_beam(ab, stage_mult, GameData.affinity_color(aff), tags)
 		"targeted_strike":
@@ -1441,6 +1507,22 @@ func cast_ability(index: int) -> void:
 			_strike_t = 0.25
 			_swing_visual(to_t.length() + 0.4, true, true)
 			var strike_payload: Dictionary = _payload(ab, "on_hit")
+			var strike_tags: Array = tags + ["melee"]
+			if bool(ab.get("force_rear", false)):
+				strike_tags.append("rear")              # it lands on the back whichever way they were facing
+			if ab.has("pip_mult"):
+				var burned: int = spend_pips(-1 if bool(ab.get("spend_all_pips", false)) else int(ab.get("spend_pips", 0)))
+				strike_payload["damage_mult"] = float(strike_payload.get("damage_mult", 1.0)) * (1.0 + float(ab["pip_mult"]) * float(burned))
+			if bool(ab.get("through", false)):
+				# cut through: you end up behind them, unless something solid is there
+				var beyond: Vector3 = strike_target.global_position + _facing * (float(ab.get("through_dist", 2.0)) + float(strike_target.get("radius")))
+				beyond.y = global_position.y
+				var blocked: Dictionary = _ray(global_position + Vector3.UP, beyond + Vector3.UP)
+				_line_visual(global_position + Vector3.UP, (blocked["position"] if not blocked.is_empty() else beyond + Vector3.UP), GameData.affinity_color(aff))
+				if blocked.is_empty():
+					global_position = beyond
+				has_move_goal = false
+				attack_target = null
 			var spent: int = 0
 			if ab.has("consume_status") and strike_target.has_method("status_stacks"):
 				# cash in what is already on the target: each stack spent adds to the blow, and it bursts
@@ -1449,7 +1531,7 @@ func cast_ability(index: int) -> void:
 					strike_target.call("clear_status", str(ab["consume_status"]))
 					deal_damage(strike_target, float(ab.get("per_stack_damage", 0.0)) * float(spent) * stage_mult, tags + ["melee", "burst"])
 			if is_instance_valid(strike_target) and not bool(strike_target.call("is_dead")):
-				apply_hit(strike_target, strike_payload, tags + ["melee"], stage_mult)
+				apply_hit(strike_target, strike_payload, strike_tags, stage_mult)
 			if spent > 0 and ab.has("burst"):
 				var centre: Vector3 = strike_target.global_position if is_instance_valid(strike_target) else global_position + _facing * 1.5
 				for node: Node in get_tree().get_nodes_in_group("enemies"):
@@ -1467,7 +1549,7 @@ func cast_ability(index: int) -> void:
 		_float("seizing", Color(1, 0.5, 0.2))
 	if movement:
 		# the recovery starts when the movement ends, so the dash itself is not eaten by it
-		recovery = maxf(recovery, float(ab.get("dash_time", 0.0)) + GameData.num("combat", "dash_recovery_s"))
+		recovery = maxf(recovery, float(ab.get("dash_time", 0.0)) + (0.0 if bool(ab.get("no_recovery", false)) else GameData.num("combat", "dash_recovery_s")))
 	_recover_t = recovery
 	_melee_cd = maxf(_melee_cd, recovery)
 
@@ -1842,10 +1924,13 @@ func _fire_projectile(ab: Dictionary, stage_mult: float, color: Color, tags: Arr
 	bolt.set("color", color)
 	bolt.set("tags", tags)
 	var payload: Dictionary = _payload(ab, "on_hit")
+	if ab.has("spend_pips") and payload.has("damage"):
+		payload["damage"] = float(payload["damage"]) + float(ab.get("pip_damage", 0.0)) * float(spend_pips(int(ab["spend_pips"])))
 	if payload.has("damage"):
 		payload["damage"] = float(payload["damage"]) * stage_mult        # carried on the bolt, already scaled
 	if ab.has("on_hit"):
 		bolt.set("payload", payload)
+	bolt.set("pierce", bool(ab.get("pierce", false)))
 	bolt.set("dir", _facing)
 	bolt.set("damage", float(ab["damage"]) * stage_mult)
 	bolt.set("speed", float(ab["speed"]))

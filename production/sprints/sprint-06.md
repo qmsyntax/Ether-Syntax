@@ -379,3 +379,28 @@ Triangles / draw calls: grunt 5,661 / 11, brute 14,364 / 11, commander 8,747 / 1
 
 Verified: self-test 416/416; gate, death and three full-passage bot runs; Netherecho death test; inventory and
 creation click tests; `art-enemies-new.png` and the combat screen inspected. Not verified: any of it in motion.
+
+## Part T — skills step 3b: wind (design/05 2.4 and 3.4; Brent 2026-10-12: "keep going with wind then earth")
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-84 | Slipstream: ten pips, one for every 1.5 m actually travelled (walking or dashing); after half a second standing they drain one every half second. Five or more: 10% faster on your feet | selftest | Done |
+| S06-85 | Wind reflux sheds three times as fast while you move and not at all while you stand, in a fight | selftest | Done |
+| S06-86 | Lee: a wind hit on an enemy's back does 50% more, on top of the ordinary rear bonus | selftest | Done |
+| S06-87 | Cutting Gust: a 12 m gust that passes through every enemy in its line; 45, and spends up to 3 pips for +15 each | selftest | Done |
+| S06-88 | Tailwind: the longest dash (6.6 m), +3 pips, and the only one with no recovery after it. It does not carry you through enemies | selftest | Done |
+| S06-89 | Crosscut (replaces Downdraft in the kit): one enemy within 7 m - you cut through and stop 2 m behind it; always counts as a hit from behind; spends every pip for +10% each. With a wall behind the target you strike but stay on your side | selftest | Done |
+| S06-90 | Aloft: a light enemy is thrown up for 1.2 s - it cannot act and takes 25% more; a heavier one loses 50 poise instead. No starter skill applies it yet | selftest | Done (rule only) |
+| S06-91 | Projectiles now fly by exact distance, check the whole stretch covered, strike nearest-first and stop on walls and blocks. Before this, the player's bolts flew through walls | selftest | Done |
+| S06-92 | HUD: a row of pips over the skill bar ("swift" at five), an aloft marker over enemies | `shots/ui-wind.png` | Done |
+
+A consequence worth knowing: your own bolts no longer pass through walls or the arena blocks. That is what the
+design says ("stone blocks shots - theirs and yours") and earth needs it, but it changes water and fire too.
+
+Rough edges: no wind starter skill throws anything Aloft (that arrives with a construct or the later skills), so
+the rule is tested but will not be seen in play yet. Crosscut moves you at once - there is no cutting motion.
+Downdraft sits in the data unused.
+
+Verified: self-test 452/452, three runs (five before the HUD work); gate, death and four full-passage bot runs;
+Netherecho death test; inventory and creation click tests; `ui-wind.png` inspected. Not verified: by hand - and wind
+is the affinity that most depends on feel: whether keeping the pips up while fighting is fun or a chore.

@@ -343,5 +343,14 @@
     "dash_recovery_s": 0.25,
     "winded_s": 2.5,
     "winded_cost_mult": 2.0
+  },
+  "slipstream": {
+    "_note": "Wind's signature (design/05 2.4), only for a character who holds wind: a row of pips earned by moving and lost by standing. +1 pip for every metres_per_pip travelled (walking or dashing); after still_delay_s standing, -1 every decay_s. Wind skills spend pips for their real effect. At speed_pips or more you move speed_mult faster.",
+    "max": 10,
+    "metres_per_pip": 1.5,
+    "still_delay_s": 0.5,
+    "decay_s": 0.5,
+    "speed_pips": 5,
+    "speed_mult": 1.1
   }
 }

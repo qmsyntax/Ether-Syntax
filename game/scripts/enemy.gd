@@ -174,6 +174,8 @@ func take_hit(amount: float, _heavy: bool, source: Node) -> float:
 	var mult := 1.0
 	if has_status("staggered"):
 		mult *= float(GameData.status("staggered").get("damage_taken_mult", 1.0))
+	if has_status("aloft"):
+		mult *= float(GameData.status("aloft").get("damage_taken_mult", 1.0))
 	# hide and plate in front: it shrugs off part of anything that does not come round the side
 	var armour: float = float(_def.get("front_armour", 0.0))
 	if armour > 0.0 and source is Node3D and not has_status("staggered") and is_in_front((source as Node3D).global_position):
@@ -237,6 +239,12 @@ func add_status(id: String, stacks: int = 1, by: Node = null) -> int:
 	var def: Dictionary = GameData.status(id)
 	if def.is_empty() or body.is_dead():
 		return 0
+	if id == "aloft":
+		if shove_resist < 1.0:
+			take_poise(float(def.get("heavy_poise", 50.0)))    # too heavy to leave the ground: it loses its footing instead
+			return 0
+		interrupt()
+		_leap_left = 0.0
 	var now: int = mini(int(def.get("stacks", 1)), status_stacks(id) + stacks)
 	var who: Node = by if by != null else ((statuses.get(id, {}) as Dictionary).get("by") as Node)
 	statuses[id] = {"stacks": now, "t": float(def.get("lasts", 1.0)), "by": who}
@@ -419,7 +427,7 @@ func _physics_process(delta: float) -> void:
 	velocity = Vector3.ZERO
 	_walk_dir = _route_dir(dir)
 
-	if has_status("stunned") or has_status("staggered"):
+	if has_status("stunned") or has_status("staggered") or has_status("aloft"):
 		telegraph = {}
 	elif _stuck_t > 0.0:
 		_stuck_t -= delta                       # it missed, and stands there with its back open
@@ -674,7 +682,7 @@ func _look(delta: float) -> void:
 	if winding != _shown_windup:
 		_shown_windup = winding
 		_rig.set_windup(winding)
-	var down: bool = has_status("staggered") or has_status("stunned")
+	var down: bool = has_status("staggered") or has_status("stunned") or has_status("aloft")
 	if down != _shown_down:
 		_shown_down = down
 		if _rig.has_method("set_staggered"):

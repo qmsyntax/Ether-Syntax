@@ -1217,6 +1217,27 @@ func _setup_ui_shot(which: String) -> void:
 	_shot_countdown = 40
 	if which == "title":
 		return
+	if which == "wind":
+		# a wind character on the move: pips over the bar, an enemy thrown aloft
+		forced_biome = "scrubland"
+		_select_talent(0)
+		player.call("set_affinities", ["wind"])
+		player.call("grow_star", 70.0)
+		player.set("essence", 50.0)
+		_show_screen(null, false)
+		enter_arena()
+		rest_timer = 9999.0
+		player.set("pips", 7)
+		for spec: Array in [[Vector3(-2.5, 0, -3.0), "grunt"], [Vector3(1.0, 0, -4.0), "grunt"], [Vector3(3.5, 0, -1.5), "archer"]]:
+			_spawn_enemy(str(spec[1]), spec[0], 1.0)
+		var foes: Array = get_tree().get_nodes_in_group("enemies")
+		foes[0].call("add_status", "aloft")
+		player.set("hovered", foes[1])
+		for e: Node in foes:
+			e.set_physics_process(false)
+		player.set_physics_process(false)
+		player.call("_refresh_highlights")
+		return
 	if which == "fire":
 		# a fire character running hot: burning enemies, a flame trail, the heat readout
 		forced_biome = "scrubland"

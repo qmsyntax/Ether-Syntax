@@ -1,5 +1,5 @@
 {
-  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind, on that ability's affinity. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities); a full stage waits for a bound construct of the matching tier (design/01 LAW 4). Which abilities a character starts with comes from the kits in affinities.json. kinds: projectile | melee_burst | dash | beam | targeted_strike | blink (design/05 Appendix A). A skill touches an enemy through a hit payload - on_hit / on_pass / on_arrive - with any of: damage or damage_mult (taken from the skill when absent), status, shove (metres), marks (Live), interrupts. 'summary' is the one-line rule shown to the player. Water and lightning are built to design/05 step 1 and fire to step 3 (a dash may carry 'trail', a strip of ground that applies a payload every tick_s, and 'stops_at_bodies'; a targeted_strike may 'consume_status' for per_stack_damage and a 'burst'); earth and wind still use the plain three behaviours. Abilities do NOT hurt their caster (Brent 2026-10-11). Every name and verse is original to this project - the two water skills that carried the books' own names were renamed on 2026-10-12 (ids kept for saves). Numbers are first guesses [MODEL].",
+  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind, on that ability's affinity. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities); a full stage waits for a bound construct of the matching tier (design/01 LAW 4). Which abilities a character starts with comes from the kits in affinities.json. kinds: projectile | melee_burst | dash | beam | targeted_strike | blink (design/05 Appendix A). A skill touches an enemy through a hit payload - on_hit / on_pass / on_arrive - with any of: damage or damage_mult (taken from the skill when absent), status, shove (metres), marks (Live), interrupts. 'summary' is the one-line rule shown to the player. Water and lightning are built to design/05 step 1 and fire to step 3 (a dash may carry 'trail', a strip of ground that applies a payload every tick_s, and 'stops_at_bodies'; a targeted_strike may 'consume_status' for per_stack_damage and a 'burst'); wind to step 3 too (a projectile may 'pierce' and 'spend_pips' for 'pip_damage' each; a dash may 'gain_pips' and have 'no_recovery'; a targeted_strike may have its own 'range', go 'through' to 'through_dist' behind the target, 'force_rear', and take 'pip_mult' per pip with 'spend_all_pips'); earth still uses the plain three behaviours. Abilities do NOT hurt their caster (Brent 2026-10-11). Every name and verse is original to this project - the two water skills that carried the books' own names were renamed on 2026-10-12 (ids kept for saves). Numbers are first guesses [MODEL].",
   "abilities": {
     "water_bolt": {
       "name": "Water Bolt",
@@ -149,12 +149,17 @@
       "name": "Cutting Gust",
       "affinity": "wind",
       "kind": "projectile",
-      "cost": 9.0,
-      "reflux_per_cost": 0.9,
-      "damage": 60.0,
+      "cost": 7.0,
+      "reflux_per_cost": 0.7,
+      "damage": 45.0,
       "speed": 32.0,
-      "life": 1.3,
+      "life": 0.375,
+      "pierce": true,
+      "spend_pips": 3,
+      "pip_damage": 15.0,
+      "on_hit": {},
       "verse": "Air has an edge. Most people never find it.",
+      "summary": "A short gust that passes through everything in its line. Spends up to 3 pips for +15 each - weak from a standstill.",
       "icon": "drop"
     },
     "downdraft": {
@@ -166,7 +171,8 @@
       "damage_mult": 2.4,
       "reach_bonus": 1.6,
       "verse": "Bring the sky down the length of your arm.",
-      "icon": "wave"
+      "icon": "wave",
+      "summary": "Not in the starter kit since Crosscut took its place; it returns with the later skills."
     },
     "tailwind": {
       "name": "Tailwind",
@@ -176,7 +182,11 @@
       "reflux_per_cost": 0.7,
       "dash_speed": 30.0,
       "dash_time": 0.22,
+      "stops_at_bodies": true,
+      "gain_pips": 3,
+      "no_recovery": true,
       "verse": "Something behind you agrees you should leave.",
+      "summary": "The longest dash, +3 pips, and the only one with no recovery: you can strike or cast the instant it ends.",
       "icon": "dash"
     },
     "arc_lash": {
@@ -226,6 +236,25 @@
       "verse": "Find the path first. Then take all of it at once.",
       "summary": "You are simply there, up to 6 m away. 1 Live mark on everything beside where you land.",
       "icon": "dash"
+    },
+    "crosscut": {
+      "name": "Crosscut",
+      "affinity": "wind",
+      "kind": "targeted_strike",
+      "cost": 7.0,
+      "reflux_per_cost": 0.7,
+      "damage_mult": 1.6,
+      "range": 7.0,
+      "through": true,
+      "through_dist": 2.0,
+      "pip_mult": 0.1,
+      "spend_all_pips": true,
+      "force_rear": true,
+      "recovery": 0.25,
+      "on_hit": {},
+      "verse": "Do not meet them. Pass through where they were looking.",
+      "summary": "One enemy within 7 m: you cut through and stop behind it. Always a hit from behind. Spends every pip for +10% each.",
+      "icon": "wave"
     }
   }
 }

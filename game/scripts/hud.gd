@@ -147,6 +147,23 @@ func _draw_action_bar(vs: Vector2) -> void:
 	UiDraw.text(self, Vector2(star_rect.position.x, star_rect.position.y - 5.0),
 		str(player.call("aura_read")), 12, UiTheme.TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT, slots_w)
 
+	# Slipstream (wind): a row of pips over the bar - full while you run, draining when you stop
+	if bool(player.call("has_slipstream")):
+		var cfg: Dictionary = GameData.balance["slipstream"]
+		var total: int = int(cfg["max"])
+		var have: int = int(player.get("pips"))
+		var wind_col: Color = GameData.affinity_color("wind").lightened(0.2)
+		var fast: bool = have >= int(cfg["speed_pips"])
+		var px: float = cx - float(total - 1) * 7.0
+		var py: float = slab.position.y - 30.0
+		for i: int in total:
+			var c := Vector2(px + float(i) * 14.0, py)
+			if i < have:
+				draw_circle(c, 4.5, wind_col if not fast else wind_col.lerp(Color(1, 1, 1), 0.35))
+			else:
+				draw_arc(c, 4.0, 0.0, TAU, 14, Color(wind_col, 0.35), 1.5, true)
+		UiDraw.text(self, Vector2(px + float(total) * 14.0 + 2.0, py + 4.0), "slipstream" + ("  - swift" if fast else ""), 11, Color(wind_col, 0.85 if fast else 0.55))
+
 	# ability slots
 	var abilities: Array = player.get("abilities")
 	var essence: float = float(player.get("essence"))
@@ -503,6 +520,12 @@ func _draw_statuses(e: Node3D, at: Vector2) -> void:
 	if have.has("soaked"):
 		UiDraw.icon(self, "drop", Vector2(x, at.y - 1.0), 13.0, Color(str(GameData.status("soaked").get("color", "4f9be8"))))
 		x += 15.0
+	if have.has("aloft"):
+		# off the ground: two short lines under an upward chevron
+		var air := Color(str(GameData.status("aloft").get("color", "bfe9dc")))
+		var ac := Vector2(at.x, at.y - 15.0)
+		draw_polyline(PackedVector2Array([ac + Vector2(-7, 2), ac + Vector2(0, -6), ac + Vector2(7, 2)]), air, 2.5, true)
+		draw_line(ac + Vector2(-5, 6), ac + Vector2(5, 6), Color(air, 0.7), 2.0, true)
 	if have.has("staggered"):
 		# off its feet: the moment for a bare strike
 		var gold := Color(str(GameData.status("staggered").get("color", "ffd27a")))
