@@ -5,7 +5,6 @@ extends Node
 var balance: Dictionary = {}
 var enemies: Dictionary = {}
 var abilities: Dictionary = {}
-var _starting_loadout: Array = []
 var construct_tiers: Array = []
 var concepts: Dictionary = {}
 var _wild: Dictionary = {}
@@ -29,7 +28,6 @@ func _ensure() -> void:
 	enemies = _load("res://data/enemies.json").get("enemies", {})
 	var ab_file: Dictionary = _load("res://data/abilities.json")
 	abilities = ab_file.get("abilities", {})
-	_starting_loadout = ab_file.get("starting_loadout", [])
 	var con: Dictionary = _load("res://data/constructs.json")
 	construct_tiers = con.get("tiers", [])
 	concepts = con.get("concepts", {})
@@ -85,10 +83,24 @@ func concept_ids() -> Array:
 	return concepts.keys()
 
 
-## Ability ids a new character starts with, in hotbar order.
-func ability_loadout() -> Array:
+## Ability ids a new character with these affinities starts with, in hotbar order: each
+## affinity's kit in turn.
+func ability_loadout(for_affinities: Array) -> Array:
 	_ensure()
-	return _starting_loadout
+	var out: Array = []
+	for a: Variant in for_affinities:
+		for id: Variant in affinity(str(a)).get("kit", []):
+			out.append(str(id))
+	return out
+
+
+func affinity_ids() -> Array:
+	_ensure()
+	return _affinities.keys()
+
+
+func affinity_color(id: String) -> Color:
+	return Color(str(affinity(id).get("color", "9c917b")))
 
 
 ## A number from balance.json. Missing keys are a loud error, not a silent zero.

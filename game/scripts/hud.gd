@@ -147,7 +147,7 @@ func _draw_action_bar(vs: Vector2) -> void:
 	# ability slots
 	var abilities: Array = player.get("abilities")
 	var essence: float = float(player.get("essence"))
-	var locked: bool = bool(player.get("reflux_locked"))
+	var locked := false               # per slot now: an ability is locked when its own affinity is
 	_slot_rects.clear()
 	for i: int in n:
 		var r := Rect2(slab.position.x + 22.0 + i * (SLOT + SLOT_GAP), slab.position.y + 26.0, SLOT, SLOT)
@@ -174,8 +174,10 @@ func _draw_slot(r: Rect2, i: int, idx: int, abilities: Array, essence: float, lo
 		var st: Dictionary = abilities[idx]
 		var ab: Dictionary = player.call("ability_stats", st)
 		var cost: float = float(ab.get("cost", 0.0))
+		var aff: String = str(ab.get("affinity", ""))
+		locked = bool(player.call("is_locked", aff))
 		var usable: bool = not locked and essence >= cost
-		var tint: Color = UiTheme.ESSENCE.lightened(0.35) if usable else Color(0.35, 0.36, 0.4)
+		var tint: Color = GameData.affinity_color(aff).lightened(0.3) if usable else Color(0.35, 0.36, 0.4)
 		UiDraw.icon(self, str(ab.get("icon", "drop")), r.get_center() + Vector2(0, -2), SLOT * 0.5, tint)
 		# stage pips, top right
 		for s: int in int(st["stage"]):
@@ -231,35 +233,51 @@ func _draw_essence_orb(c: Vector2) -> void:
 	var ess_max: float = maxf(1.0, float(player.get("essence_max")))
 	var frac: float = clampf(ess / ess_max, 0.0, 1.0)
 	var bands: Array = [[frac * 0.45, UiTheme.ESSENCE_DEEP], [frac * 0.55, UiTheme.ESSENCE]]
-	var reflux: float = float(player.get("reflux"))
-	var locked: bool = bool(player.get("reflux_locked"))
-	var hot: bool = locked or reflux >= 80.0
-	var ring_col: Color = UiTheme.REFLUX_HOT if hot else (UiTheme.REFLUX if reflux >= 50.0 else UiTheme.REFLUX.darkened(0.25))
-	if locked:
-		ring_col = ring_col.lerp(Color(1, 1, 1), 0.3 + 0.3 * sin(_time * 8.0))
-	UiDraw.ring(self, c, ORB_R + 12.0, reflux / 100.0, ring_col, [0.5, 0.8])
+	# one reflux ring per affinity, the first innermost; the text speaks for the hottest
+	var affs: Array = player.get("affinities")
+	var reflux := 0.0
+	var locked := false
+	var hottest := ""
+	for i: int in affs.size():
+		var a: String = str(affs[i])
+		var heat: float = float(player.call("reflux_of", a))
+		var a_locked: bool = bool(player.call("is_locked", a))
+		var a_hot: bool = a_locked or heat >= 80.0
+		var ring_col: Color = UiTheme.REFLUX_HOT if a_hot else (UiTheme.REFLUX if heat >= 50.0 else UiTheme.REFLUX.darkened(0.25))
+		if a_locked:
+			ring_col = ring_col.lerp(Color(1, 1, 1), 0.3 + 0.3 * sin(_time * 8.0))
+		UiDraw.ring(self, c, ORB_R + 12.0 + i * 9.0, heat / 100.0, ring_col, [0.5, 0.8])
+		if affs.size() > 1:
+			# a pip in the affinity's colour at the ring's start, so the rings can be told apart
+			draw_circle(c + Vector2(0.0, -(ORB_R + 12.0 + i * 9.0)), 3.5, GameData.affinity_color(a))
+		if hottest == "" or heat > reflux or (a_locked and not locked):
+			hottest = a
+			reflux = heat
+			locked = a_locked
+	var which: String = (str(GameData.affinity(hottest).get("label", hottest)).to_lower() + " ") if affs.size() > 1 else ""
+	var lift: float = maxf(0.0, float(affs.size() - 1)) * 9.0
 	UiDraw.orb(self, c, ORB_R, bands, _time + 1.7, UiTheme.BRONZE)
 	_centre_text(c + Vector2(0, 6.0), "%d" % int(ess), 24, UiTheme.TEXT)
 	_centre_text(c + Vector2(0, 22.0), "of %d" % int(ess_max), 12, UiTheme.TEXT_DIM)
 	var rate: float = float(player.get("satellite_rate"))
-	var note_text: String = "reflux %d" % int(reflux)
+	var note_text: String = "%sreflux %d" % [which, int(reflux)]
 	var note_col: Color = UiTheme.TEXT_DIM
 	if locked:
-		note_text = "LOCKED - meditate (%s)" % Keybinds.binding_text("meditate")
+		note_text = "%sLOCKED - meditate (%s)" % [which.to_upper(), Keybinds.binding_text("meditate")]
 		note_col = UiTheme.REFLUX_HOT
 	elif reflux >= 80.0:
-		note_text = "reflux %d - burning" % int(reflux)
+		note_text = "%sreflux %d - burning" % [which, int(reflux)]
 		note_col = UiTheme.REFLUX_HOT
 	elif reflux >= 50.0:
-		note_text = "reflux %d - costs more" % int(reflux)
+		note_text = "%sreflux %d - costs more" % [which, int(reflux)]
 		note_col = UiTheme.REFLUX
-	_centre_text(c + Vector2(0, -ORB_R - 20.0), note_text, 12 if not locked else 14, note_col)
+	_centre_text(c + Vector2(0, -ORB_R - 20.0 - lift), note_text, 12 if not locked else 14, note_col)
 	if bool(player.get("meditating")):
-		_centre_text(c + Vector2(0, -ORB_R - 36.0), "gathering", 13, UiTheme.ESSENCE.lightened(0.4))
+		_centre_text(c + Vector2(0, -ORB_R - 36.0 - lift), "gathering", 13, UiTheme.ESSENCE.lightened(0.4))
 	elif rate > 0.0:
-		_centre_text(c + Vector2(0, -ORB_R - 36.0), "satellite +%d/s" % int(rate), 12, UiTheme.TEXT_FAINT)
+		_centre_text(c + Vector2(0, -ORB_R - 36.0 - lift), "satellite +%d/s" % int(rate), 12, UiTheme.TEXT_FAINT)
 	else:
-		_centre_text(c + Vector2(0, -ORB_R - 36.0), "no satellite", 12, UiTheme.TEXT_FAINT)
+		_centre_text(c + Vector2(0, -ORB_R - 36.0 - lift), "no satellite", 12, UiTheme.TEXT_FAINT)
 
 
 # --- top left: character plate ----------------------------------------------------------
@@ -512,6 +530,7 @@ func _draw_tooltip(vs: Vector2) -> void:
 			var ab: Dictionary = player.call("ability_stats", st)
 			lines.append([str(ab.get("name", "?")), 18, UiTheme.GOLD])
 			lines.append(["\"%s\"" % str(ab.get("verse", "")), 13, UiTheme.STAR])
+			lines.append(["%s affinity" % str(GameData.affinity(str(ab.get("affinity", ""))).get("label", "?")), 13, GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3)])
 			lines.append(["Costs %d essence and leaves %d reflux" % [int(round(float(ab.get("cost", 0.0)))), int(round(float(ab.get("cost", 0.0)) * float(ab.get("reflux_per_cost", 1.0))))], 13, UiTheme.TEXT])
 			match str(ab.get("kind", "")):
 				"projectile":

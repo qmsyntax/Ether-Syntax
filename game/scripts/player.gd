@@ -27,8 +27,21 @@ var stars := 1
 var essence := 100.0
 var essence_max := 100.0
 var satellite_rate := 1.0
-var reflux := 0.0
-var reflux_locked := false
+## Reflux is heat left behind by casting, kept per affinity (design/01 LAW: "tracked per affinity").
+## Overheat one and only that one locks. `reflux` / `reflux_locked` read and write the first
+## affinity, for callers that only care about a single-affinity character.
+var reflux_by: Dictionary = {}       # affinity -> 0..
+var locked_by: Dictionary = {}       # affinity -> true while locked
+var reflux: float:
+	get:
+		return reflux_of(primary_affinity())
+	set(value):
+		reflux_by[primary_affinity()] = value
+var reflux_locked: bool:
+	get:
+		return is_locked(primary_affinity())
+	set(value):
+		locked_by[primary_affinity()] = value
 var money := 0
 var in_combat := false
 var fight_time := 0.0
@@ -125,11 +138,8 @@ func _init() -> void:
 	var slots: int = GameData.inum("abilities", "hotbar_slots")
 	for i: int in slots:
 		hotbar.append(-1)
-	var loadout: Array = GameData.ability_loadout()
-	for i: int in loadout.size():
-		abilities.append({"id": str(loadout[i]), "stage": 0, "progress": 0.0})
-		if i < slots:
-			hotbar[i] = i
+	affinities = GameData.prime_affinities("")
+	_reset_loadout()
 
 
 func _ready() -> void:
@@ -182,6 +192,54 @@ func _update_model(delta: float) -> void:
 	_rig.animate(delta, velocity.length(), _strike_t > 0.0)
 
 
+## Start over with the kits of the current affinities, on the bar in order.
+func _reset_loadout() -> void:
+	abilities.clear()
+	for i: int in hotbar.size():
+		hotbar[i] = -1
+	var loadout: Array = GameData.ability_loadout(affinities)
+	for i: int in loadout.size():
+		abilities.append({"id": str(loadout[i]), "stage": 0, "progress": 0.0})
+		if i < hotbar.size():
+			hotbar[i] = i
+
+
+func primary_affinity() -> String:
+	return affinities[0] if not affinities.is_empty() else "water"
+
+
+func reflux_of(aff: String) -> float:
+	return float(reflux_by.get(aff, 0.0))
+
+
+func is_locked(aff: String) -> bool:
+	return bool(locked_by.get(aff, false))
+
+
+## The affinity whose reflux just hit the cap (valid inside TalentEffect.on_reflux_cap).
+var capping_affinity := ""
+
+
+## Drop the capping affinity's reflux to `value` (a talent venting it).
+func vent_reflux(value: float) -> void:
+	reflux_by[capping_affinity if capping_affinity != "" else primary_affinity()] = value
+
+
+func clear_reflux() -> void:
+	reflux_by.clear()
+	locked_by.clear()
+
+
+## Every affinity cools at once; one that drops far enough unlocks.
+func _shed_reflux(amount: float) -> void:
+	var shed: float = amount * inventory.stat("reflux_shed_mult", true)
+	for aff: String in reflux_by:
+		reflux_by[aff] = maxf(0.0, float(reflux_by[aff]) - shed)
+		if is_locked(aff) and float(reflux_by[aff]) < float(_reflux_cfg["unlock_below"]):
+			locked_by[aff] = false
+			note("%s affinity unlocks." % str(GameData.affinity(aff).get("label", aff)))
+
+
 ## Change what the character looks like and rebuild the model to match.
 func set_look(new_look: Dictionary) -> void:
 	look = CharacterLook.normalize(new_look)
@@ -192,7 +250,11 @@ func set_look(new_look: Dictionary) -> void:
 ## The prime that carries it also carries the character's affinities.
 func set_talent(id: String) -> void:
 	talent_id = id
-	affinities = GameData.prime_affinities(id)
+	var carried: Array[String] = GameData.prime_affinities(id)
+	if carried != affinities:
+		affinities = carried
+		_reset_loadout()
+		clear_reflux()
 	talent = TalentDB.get_talent(id)
 	effects.clear()
 	var path: String = TALENT_SCRIPT_DIR + id + ".gd"
@@ -224,11 +286,9 @@ func _physics_process(delta: float) -> void:
 		attack_target = null
 		pickup_target = null
 		has_move_goal = false
-		reflux = maxf(0.0, reflux - float(_reflux_cfg["shed_meditating"]) * inventory.stat("reflux_shed_mult", true) * delta)
+		_shed_reflux(float(_reflux_cfg["shed_meditating"]) * delta)
 		_meditate_gather(delta)
 		grow_star(GameData.num("stars", "growth_pct_per_s_meditating") * delta)
-		if reflux_locked and reflux < float(_reflux_cfg["unlock_below"]):
-			reflux_locked = false
 		velocity = Vector3.ZERO
 		_update_model(delta)
 		return
@@ -249,13 +309,10 @@ func _physics_process(delta: float) -> void:
 	# The body sheds reflux on its own; meditation purges it much faster.
 	var shed: float = float(_reflux_cfg["shed_meditating"]) if meditating else (
 		float(_reflux_cfg["shed_in_combat"]) if in_combat else float(_reflux_cfg["shed_resting"]))
-	reflux = maxf(0.0, reflux - shed * inventory.stat("reflux_shed_mult", true) * delta)
+	_shed_reflux(shed * delta)
 	_meditate_gather(delta)
 	if meditating:
 		grow_star(GameData.num("stars", "growth_pct_per_s_meditating") * delta)
-	if reflux_locked and reflux < float(_reflux_cfg["unlock_below"]):
-		reflux_locked = false
-		note("Water affinity unlocks.")
 
 	# The body mends itself between fights - but only what a body can mend.
 	if not in_combat:
@@ -646,24 +703,30 @@ func cast_ability(index: int) -> void:
 	var ab: Dictionary = ability_stats(state)
 	if ab.is_empty():
 		return
-	if reflux_locked:
-		note("Water affinity is locked by reflux. Meditate (hold %s)." % Keybinds.binding_text("meditate"))
+	var aff: String = str(ab.get("affinity", ""))
+	var aff_name: String = str(GameData.affinity(aff).get("label", aff))
+	if not affinities.has(aff):
+		note("You have no %s affinity." % aff_name.to_lower())
 		return
-	var cost: float = float(ab["cost"]) * (float(_reflux_cfg["pain_cost_mult"]) if reflux >= float(_reflux_cfg["pain_at"]) else 1.0)
+	if is_locked(aff):
+		note("%s affinity is locked by reflux. Meditate (hold %s)." % [aff_name, Keybinds.binding_text("meditate")])
+		return
+	var heat: float = reflux_of(aff)
+	var cost: float = float(ab["cost"]) * (float(_reflux_cfg["pain_cost_mult"]) if heat >= float(_reflux_cfg["pain_at"]) else 1.0)
 	if essence < cost:
 		note("Not enough essence for %s." % str(ab["name"]))
 		return
-	if reflux >= float(_reflux_cfg["burn_at"]):
+	if heat >= float(_reflux_cfg["burn_at"]):
 		var burn: float = body.apply_self_harm(float(_reflux_cfg["burn_self_damage"]))
 		_float("reflux -%d" % int(burn), Color(1, 0.5, 0.2))
 	essence -= cost
-	reflux += cost * float(ab["reflux_per_cost"])
+	reflux_by[aff] = heat + cost * float(ab["reflux_per_cost"])
 	_advance(state, cost)
 
 	var stage_mult: float = ability_damage_mult(int(state["stage"])) * float(ab.get("damage_all", 1.0))
 	match str(ab["kind"]):
 		"projectile":
-			_fire_projectile(ab, stage_mult)
+			_fire_projectile(ab, stage_mult, GameData.affinity_color(aff))
 		"melee_burst":
 			var hurt: float = body.apply_self_harm(float(ab["self_harm"]))
 			_float("-%d" % int(hurt), Color(1, 0.4, 0.3))
@@ -677,15 +740,16 @@ func cast_ability(index: int) -> void:
 			_dash_vel = dir * float(ab["dash_speed"])
 			_dash_time = float(ab["dash_time"])
 
-	if reflux >= float(_reflux_cfg["lock_at"]):
+	if reflux_of(aff) >= float(_reflux_cfg["lock_at"]):
+		capping_affinity = aff
 		var handled := false
 		for e: TalentEffect in effects:
 			if e.on_reflux_cap():
 				handled = true
 				break
 		if not handled:
-			reflux_locked = true
-			note("Reflux at %d - water affinity LOCKED." % int(_reflux_cfg["lock_at"]))
+			locked_by[aff] = true
+			note("Reflux at %d - %s affinity LOCKED." % [int(_reflux_cfg["lock_at"]), aff_name.to_lower()])
 	_check_death()
 
 
@@ -901,10 +965,12 @@ func from_save(d: Dictionary) -> void:
 	set_talent(str(d.get("talent_id", "")))
 	char_name = str(d.get("name", ""))
 	identity = str(d.get("identity", ""))
-	if d.has("affinities"):
-		affinities.clear()
-		for a: Variant in d["affinities"]:
-			affinities.append(str(a))
+	# a save keeps the affinities it was made with; saves from before affinities were all water
+	affinities.clear()
+	for a: Variant in d.get("affinities", ["water"]):
+		affinities.append(str(a))
+	clear_reflux()
+	_reset_loadout()                  # the kit for those affinities, unless the save lists abilities below
 	set_look(d.get("look", {}))
 	stars = int(d.get("stars", 1))
 	star_pct.clear()
@@ -975,8 +1041,9 @@ func _enemy_nearby() -> bool:
 	return false
 
 
-func _fire_projectile(ab: Dictionary, stage_mult: float) -> void:
+func _fire_projectile(ab: Dictionary, stage_mult: float, color: Color) -> void:
 	var bolt: Node3D = Projectile.new()
+	bolt.set("color", color)
 	bolt.set("dir", _facing)
 	bolt.set("damage", float(ab["damage"]) * stage_mult)
 	bolt.set("speed", float(ab["speed"]))
@@ -1069,8 +1136,7 @@ func revive_in_debt(fee: int) -> void:
 	set_talent(talent_id)
 	_charging = false
 	_charge = 0.0
-	reflux = 0.0
-	reflux_locked = false
+	clear_reflux()
 	money -= fee
 	# Patched up, not healed: enough to stand, and nothing lost comes back.
 	body.hp["superficial"] = maxf(float(body.hp["superficial"]), float(body.max_hp["superficial"]) * float(town["revive_superficial_frac"]))
@@ -1087,8 +1153,7 @@ func rest_night() -> void:
 	body.heal_layer("structural", float(night["structural_healed"]))
 	if not arm_right_lost:
 		arm_right = minf(float(_arm["max"]), arm_right + float(night["arm_restored"]))
-	reflux = 0.0
-	reflux_locked = false
+	clear_reflux()
 	essence = essence_max
 	note("You sleep. Cuts close; bones knit a little. What is gone stays gone.")
 
@@ -1157,8 +1222,7 @@ func try_ascend() -> void:
 	_recompute_essence_max()
 	essence = essence_max
 	body.scale_max(float(asc["body_scale"]))
-	reflux = 0.0
-	reflux_locked = false
+	clear_reflux()
 	for e: TalentEffect in effects:
 		e.on_ascend(stars)
 	note("ASCENDED. A second star splits off - tiny, for now.")

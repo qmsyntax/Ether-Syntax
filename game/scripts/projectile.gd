@@ -1,11 +1,12 @@
 extends Node3D
-## Water bolt. Damage is routed through the shooter so talent hooks apply.
+## A thrown ability, tinted by its affinity. Damage is routed through the shooter so talent hooks apply.
 
 var dir := Vector3.FORWARD
 var speed := 20.0
 var damage := 90.0
 var shooter: Node
 var life := 1.5
+var color := Color(0.3, 0.7, 1.0)
 
 
 func _ready() -> void:
@@ -15,9 +16,9 @@ func _ready() -> void:
 	sphere.height = 0.5
 	mesh.mesh = sphere
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.3, 0.7, 1.0)
+	mat.albedo_color = color.lightened(0.25)
 	mat.emission_enabled = true
-	mat.emission = Color(0.2, 0.5, 1.0)
+	mat.emission = color
 	mesh.material_override = mat
 	add_child(mesh)
 

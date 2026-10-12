@@ -1,7 +1,58 @@
 {
-  "_note": "Affinities a prime vestige can carry (design/01: a prime delivers a talent and 1+ affinities; more affinities is rarer and worth more). Only water has abilities so far, so every prime carries water until the other kits exist - a talent overrides this with its own 'affinities' list in talents.json. Labels and descriptions are ours.",
-  "prime_default": ["water"],
+  "_note": "Affinities a prime vestige can carry (design/01: a prime delivers a talent and 1+ affinities; more affinities is rarer and worth more). Brent 2026-10-11 approved: fire, earth, wind and lightning beside water; affinities are fixed per prime (a talent's 'affinities' list in talents.json, else prime_default); most primes carry one, a couple carry two. 'kit' is the three abilities a character with that affinity starts with: a ranged attack, a melee strike, a movement skill. Labels, descriptions and kits are ours [MODEL].",
+  "prime_default": [
+    "water"
+  ],
   "affinities": {
-    "water": {"label": "Water", "color": "2f7fd6", "desc": "Pressure, flow and weight. Strikes that hit like a wave and movement that slips past a guard."}
+    "water": {
+      "label": "Water",
+      "color": "2f7fd6",
+      "kit": [
+        "water_bolt",
+        "tsunami_strike",
+        "hydraulic_flex"
+      ],
+      "desc": "Pressure, flow and weight. Strikes that hit like a wave and movement that slips past a guard."
+    },
+    "fire": {
+      "label": "Fire",
+      "color": "e2632a",
+      "kit": [
+        "cinder_spit",
+        "kiln_fist",
+        "flashover"
+      ],
+      "desc": "Quick, cheap and hungry. It asks little essence and takes the rest out of you."
+    },
+    "earth": {
+      "label": "Earth",
+      "color": "a8824a",
+      "kit": [
+        "slingstone",
+        "landslide_blow",
+        "bedrock_shove"
+      ],
+      "desc": "Slow, heavy and sure. Nothing arrives fast, and nothing it hits stays standing."
+    },
+    "wind": {
+      "label": "Wind",
+      "color": "9fd6c4",
+      "kit": [
+        "cutting_gust",
+        "downdraft",
+        "tailwind"
+      ],
+      "desc": "Light and far-reaching. Small costs, long reach, and you are never where you were."
+    },
+    "lightning": {
+      "label": "Lightning",
+      "color": "c9b5ff",
+      "kit": [
+        "arc_lash",
+        "thunderclap_palm",
+        "stepped_leader"
+      ],
+      "desc": "All at once or not at all. Short, violent and expensive."
+    }
   }
 }

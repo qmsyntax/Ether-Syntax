@@ -76,3 +76,24 @@ Verified: self-test 168/168, smoke, three bots, both inventory click tests, crea
 screenshots and the looks sheet inspected. Not verified: the creator by hand; every look combination; body types
 other than the default in live play; hair styles "undercut" and "swept" are weak close up (agent's report).
 Open with Brent: which affinities to build next, fixed per prime or chosen, one or two at the start.
+
+## Part G — affinities (Brent 2026-10-11: "go with your recommendations on the affinities")
+
+Rulings recorded [B]: fire, earth, wind and lightning join water; affinities are fixed per prime; most primes carry
+one, a couple carry two.
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-19 | Five affinities, each with a colour, a description and a three-ability kit (ranged, strike, movement): 12 new abilities, all names and verses ours | selftest (affinities) | Done |
+| S06-20 | The six playable primes carry fixed affinities: 1% Lifesteal water, Tenth Strike lightning, Grudge fire, Debt of Pain earth, Glass Hour wind + lightning, Furnace Gut fire + earth. A character starts with its affinities' kits on the bar (a dual prime fills all six slots) | selftest, `shots/ui-create-3.png` | Done |
+| S06-21 | Reflux per affinity: each heats, sheds and locks on its own; one ring per affinity on the essence orb; Furnace Gut vents the affinity that capped | selftest, `shots/ui-hud-dual.png` | Done |
+| S06-22 | An ability can only be cast with its affinity; ability icons, projectiles and tooltips take the affinity's colour | selftest, screenshots | Done |
+| S06-23 | Netherecho wisps carry an affinity: your own grow the star, foreign ones will not come to you, plain ether still refills a little | selftest | Done |
+
+Limits, stated plainly: the new abilities reuse the three existing behaviours (projectile, melee burst, dash) with
+different numbers and colours - no affinity has a mechanic of its own yet (no burning, no chaining, no knockback).
+They share three icons, tinted. Numbers are first guesses and nothing is balanced. The other 34 talents in the
+roster have no affinity list and would default to water. Characters saved before this keep water.
+
+Verified: self-test 186/186, smoke, three bots, both inventory click tests, creation click test; `ui-hud-dual.png`
+and `ui-create-3.png` inspected. Not verified: any new ability by hand.

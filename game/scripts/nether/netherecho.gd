@@ -28,6 +28,7 @@ var subdued_this_trip := 0
 
 var _cfg: Dictionary
 var _armed_return := false
+var _warned_foreign := false
 
 
 func _init() -> void:
@@ -48,12 +49,25 @@ func clear() -> void:
 func populate_site(centre: Vector3, half: Vector2) -> void:
 	for i: int in int(_cfg["wisps_per_site"]):
 		var at := centre + Vector3(rng.randf_range(-half.x, half.x), 0.0, rng.randf_range(-half.y, half.y))
-		spawn_wisp(at, "water" if rng.randf() < float(_cfg["water_wisp_chance"]) else "plain")
+		spawn_wisp(at, _roll_wisp_affinity())
 	if rng.randf() < float(_cfg["construct_chance_per_site"]):
 		var ids: Array = GameData.concept_ids()
 		var tier: String = "remnant" if rng.randf() < float(_cfg["remnant_chance"]) else "vestige"
 		var at2 := centre + Vector3(rng.randf_range(-half.x, half.x) * 0.6, 0.0, rng.randf_range(-half.y, half.y) * 0.6)
 		spawn_construct(at2, tier, str(ids[rng.randi() % ids.size()]), rng.randf() < float(_cfg["docile_chance"]))
+
+
+## What a new wisp is: one of the traveller's own affinities, someone else's, or plain ether.
+func _roll_wisp_affinity() -> String:
+	var mine: Array = player.get("affinities") if player != null else []
+	var roll: float = rng.randf()
+	if not mine.is_empty() and roll < float(_cfg["attuned_wisp_chance"]):
+		return str(mine[rng.randi() % mine.size()])
+	if roll < float(_cfg["attuned_wisp_chance"]) + float(_cfg["foreign_wisp_chance"]):
+		var others: Array = GameData.affinity_ids().filter(func(a: Variant) -> bool: return not mine.has(a))
+		if not others.is_empty():
+			return str(others[rng.randi() % others.size()])
+	return "plain"
 
 
 func spawn_wisp(local_pos: Vector3, affinity: String) -> Node3D:
@@ -92,6 +106,7 @@ func enter() -> bool:
 	gathered_this_trip = 0
 	subdued_this_trip = 0
 	_armed_return = false
+	_warned_foreign = false
 	player.set("projecting", true)
 	projection = ProjectionScript.new()
 	add_child(projection)
@@ -143,10 +158,17 @@ func _gather_wisps() -> void:
 		d.y = 0.0
 		if d.length() > float(_cfg["wisp_reach"]):
 			continue
-		var water: bool = str(w.get("affinity")) == "water"
-		var essence: float = float(_cfg["wisp_water_essence"]) if water else float(_cfg["wisp_plain_essence"])
-		if water:
-			player.call("grow_star", float(_cfg["wisp_water_star_pct"]))
+		var kind: String = str(w.get("affinity"))
+		var attuned: bool = (player.get("affinities") as Array).has(kind)
+		if kind != "plain" and not attuned:
+			# a wisp of an affinity you do not hold slides away from the touch
+			if not _warned_foreign:
+				_warned_foreign = true
+				player.call("note", "A %s wisp. It will not come to you - you have no such affinity." % str(GameData.affinity(kind).get("label", kind)).to_lower())
+			continue
+		var essence: float = float(_cfg["wisp_attuned_essence"]) if attuned else float(_cfg["wisp_plain_essence"])
+		if attuned:
+			player.call("grow_star", float(_cfg["wisp_attuned_star_pct"]))
 		player.set("essence", minf(float(player.get("essence_max")), float(player.get("essence")) + essence))
 		gathered_this_trip += 1
 		w.call("gather")

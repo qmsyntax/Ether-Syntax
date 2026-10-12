@@ -1082,6 +1082,16 @@ func _setup_ui_shot(which: String) -> void:
 			(first_c.get("body") as Body).apply_damage(35.0)
 			nether.projection.set("hovered", first_c)
 			first_c.call("set_highlight", 1)
+		"hud-dual":
+			# a two-affinity character mid-fight: both kits on the bar, one affinity running hot
+			player.call("set_talent", "furnace_gut")
+			player.call("grow_star", 60.0)
+			player.set("essence", 55.0)
+			_show_screen(null, false)
+			_enter_dungeon()
+			(player.get("reflux_by") as Dictionary)["fire"] = 84.0
+			(player.get("reflux_by") as Dictionary)["earth"] = 31.0
+			player.set("ui_blocked", true)
 		"hud", "hud-low":
 			_show_screen(null, false)
 			_enter_dungeon()

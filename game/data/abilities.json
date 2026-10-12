@@ -1,5 +1,5 @@
 {
-  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities). Stage-ups are STUBBED: in canon a stage needs a bound construct (design/01 LAW 4); until binding exists a full bar advances the stage on its own. kinds: projectile | melee_burst | dash.",
+  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind, on that ability's affinity. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities); a full stage waits for a bound construct of the matching tier (design/01 LAW 4). kinds: projectile | melee_burst | dash. Which abilities a character starts with comes from the kits in affinities.json. Every name and verse here is original to this project; numbers are first guesses [MODEL].",
   "abilities": {
     "water_bolt": {
       "name": "Water Bolt",
@@ -35,11 +35,146 @@
       "dash_time": 0.18,
       "verse": "Pressure in the legs, released all at once.",
       "icon": "dash"
+    },
+    "cinder_spit": {
+      "name": "Cinder Spit",
+      "affinity": "fire",
+      "kind": "projectile",
+      "cost": 10.0,
+      "reflux_per_cost": 1.3,
+      "damage": 72.0,
+      "speed": 24.0,
+      "life": 1.3,
+      "verse": "A coal from the mouth. It was never going to stay in.",
+      "icon": "drop"
+    },
+    "kiln_fist": {
+      "name": "Kiln Fist",
+      "affinity": "fire",
+      "kind": "melee_burst",
+      "cost": 20.0,
+      "reflux_per_cost": 1.4,
+      "damage_mult": 3.4,
+      "reach_bonus": 0.4,
+      "self_harm": 8.0,
+      "verse": "Fire the hand like clay. Break it on someone.",
+      "icon": "wave"
+    },
+    "flashover": {
+      "name": "Flashover",
+      "affinity": "fire",
+      "kind": "dash",
+      "cost": 9.0,
+      "reflux_per_cost": 1.0,
+      "dash_speed": 30.0,
+      "dash_time": 0.14,
+      "verse": "The room does not burn slowly. Neither do you.",
+      "icon": "dash"
+    },
+    "slingstone": {
+      "name": "Slingstone",
+      "affinity": "earth",
+      "kind": "projectile",
+      "cost": 14.0,
+      "reflux_per_cost": 0.9,
+      "damage": 125.0,
+      "speed": 14.0,
+      "life": 1.7,
+      "verse": "A stone has all the time there is. Lend it yours.",
+      "icon": "drop"
+    },
+    "landslide_blow": {
+      "name": "Landslide Blow",
+      "affinity": "earth",
+      "kind": "melee_burst",
+      "cost": 24.0,
+      "reflux_per_cost": 1.0,
+      "damage_mult": 3.6,
+      "reach_bonus": 1.2,
+      "self_harm": 4.0,
+      "verse": "The hill does not swing. It simply stops holding on.",
+      "icon": "wave"
+    },
+    "bedrock_shove": {
+      "name": "Bedrock Shove",
+      "affinity": "earth",
+      "kind": "dash",
+      "cost": 10.0,
+      "reflux_per_cost": 0.8,
+      "dash_speed": 18.0,
+      "dash_time": 0.3,
+      "verse": "Put your shoulder where the mountain keeps its own.",
+      "icon": "dash"
+    },
+    "cutting_gust": {
+      "name": "Cutting Gust",
+      "affinity": "wind",
+      "kind": "projectile",
+      "cost": 9.0,
+      "reflux_per_cost": 0.9,
+      "damage": 60.0,
+      "speed": 32.0,
+      "life": 1.3,
+      "verse": "Air has an edge. Most people never find it.",
+      "icon": "drop"
+    },
+    "downdraft": {
+      "name": "Downdraft",
+      "affinity": "wind",
+      "kind": "melee_burst",
+      "cost": 16.0,
+      "reflux_per_cost": 1.0,
+      "damage_mult": 2.4,
+      "reach_bonus": 1.6,
+      "self_harm": 3.0,
+      "verse": "Bring the sky down the length of your arm.",
+      "icon": "wave"
+    },
+    "tailwind": {
+      "name": "Tailwind",
+      "affinity": "wind",
+      "kind": "dash",
+      "cost": 6.0,
+      "reflux_per_cost": 0.7,
+      "dash_speed": 30.0,
+      "dash_time": 0.22,
+      "verse": "Something behind you agrees you should leave.",
+      "icon": "dash"
+    },
+    "arc_lash": {
+      "name": "Arc Lash",
+      "affinity": "lightning",
+      "kind": "projectile",
+      "cost": 15.0,
+      "reflux_per_cost": 1.2,
+      "damage": 115.0,
+      "speed": 42.0,
+      "life": 0.45,
+      "verse": "It does not travel. It was there and now it is here.",
+      "icon": "drop"
+    },
+    "thunderclap_palm": {
+      "name": "Thunderclap Palm",
+      "affinity": "lightning",
+      "kind": "melee_burst",
+      "cost": 20.0,
+      "reflux_per_cost": 1.3,
+      "damage_mult": 3.2,
+      "reach_bonus": 0.6,
+      "self_harm": 7.0,
+      "verse": "The sound arrives after the damage, to apologise.",
+      "icon": "wave"
+    },
+    "stepped_leader": {
+      "name": "Stepped Leader",
+      "affinity": "lightning",
+      "kind": "dash",
+      "cost": 11.0,
+      "reflux_per_cost": 1.1,
+      "dash_speed": 44.0,
+      "dash_time": 0.1,
+      "verse": "Find the path first. Then take all of it at once.",
+      "icon": "dash"
     }
-  },
-  "starting_loadout": [
-    "water_bolt",
-    "tsunami_strike",
-    "hydraulic_flex"
-  ]
+  }
 }

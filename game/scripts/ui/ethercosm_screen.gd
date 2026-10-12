@@ -88,7 +88,7 @@ func _build_detail() -> void:
 	var name_row := HBoxContainer.new()
 	name_row.add_theme_constant_override("separation", 12)
 	box.add_child(name_row)
-	name_row.add_child(UiWidgets.Icon.new(str(ab.get("icon", "drop")), UiTheme.ESSENCE.lightened(0.35), 52.0))
+	name_row.add_child(UiWidgets.Icon.new(str(ab.get("icon", "drop")), GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3), 52.0))
 	var name_col := VBoxContainer.new()
 	name_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_col.add_theme_constant_override("separation", 1)
@@ -294,7 +294,7 @@ class Cosmos extends Control:
 		draw_circle(p, 36.0, Color(0, 0, 0, 0.7))
 		draw_circle(p, 33.0, UiTheme.PANEL_HI if not is_selected else Color("3a3024"))
 		draw_arc(p, 33.0, 0, TAU, 48, UiTheme.GOLD if (is_selected or _hover == index) else UiTheme.BRONZE, 2.0 if is_selected else 1.5, true)
-		UiDraw.icon(self, str(ab.get("icon", "drop")), p, 34.0, UiTheme.ESSENCE.lightened(0.35))
+		UiDraw.icon(self, str(ab.get("icon", "drop")), p, 34.0, GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3))
 		UiDraw.text(self, Vector2(p.x - 110.0, p.y + ring_r + 30.0 + stage * 9.0), str(ab.get("name", "?")), 15, UiTheme.TEXT if not is_selected else UiTheme.GOLD, HORIZONTAL_ALIGNMENT_CENTER, 220.0)
 		var sub: String = ("needs a %s" % need) if need != "" else "stage %d" % stage
 		UiDraw.text(self, Vector2(p.x - 110.0, p.y + ring_r + 47.0 + stage * 9.0), sub, 12, UiTheme.GOLD if need != "" else UiTheme.TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER, 220.0)

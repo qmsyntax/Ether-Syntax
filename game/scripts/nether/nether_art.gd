@@ -26,7 +26,10 @@ static func projection() -> Node3D:
 
 static func wisp(affinity: String) -> Node3D:
 	if _has("wisp"):
-		return _models.call("wisp", affinity)
+		var model: Node3D = _models.call("wisp", affinity)
+		if affinity != "plain" and model.get("color") != null:
+			model.set("color", GameData.affinity_color(affinity).lightened(0.2))
+		return model
 	var n: Node3D = _glow_shape(0.26, 0.13, Color(0.3, 0.6, 1.0) if affinity == "water" else Color(0.9, 0.9, 1.0), false)
 	(n.get_child(0) as Node3D).position.y = 0.7
 	return n

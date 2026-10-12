@@ -26,6 +26,7 @@ func _ready() -> void:
 	_test_slot_assignment()
 	await _test_weapons()
 	_test_character()
+	_test_affinities()
 	_test_models()
 	await _test_netherecho()
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
@@ -221,7 +222,7 @@ func _test_pipeline() -> void:
 func _test_abilities() -> void:
 	# awaits a frame so a freed dummy enemy leaves the groups before the "nothing to fight" cast
 	print("abilities:")
-	var p := _new_player("tenth_strike")
+	var p := _new_player("one_percent_lifesteal")      # a water character: these checks use the water kit
 	p.set("star_pct", [99.0] as Array[float])     # a grown star, so the tank is not the baby 20
 	p.call("_recompute_essence_max")
 	p.set("essence", 100.0)
@@ -390,7 +391,7 @@ func _test_click_melee() -> void:
 func _test_inventory() -> void:
 	await get_tree().process_frame
 	print("inventory / loot / save:")
-	var p := _new_player("tenth_strike")
+	var p := _new_player("one_percent_lifesteal")      # a water character: these checks use the water kit
 	var inv: Inventory = p.get("inventory")
 	_check("you start with a backpack in the back slot and no storage ring", str(inv.equipped.get("back", "")) == "canvas_pack" and inv.bag.is_empty())
 	_check("carry capacity = base 8 + pack 30", _near(inv.capacity(), 38.0), "got %f" % inv.capacity())
@@ -461,7 +462,7 @@ func _test_inventory() -> void:
 	var q := _new_player()
 	q.call("from_save", SaveGame.read(path))
 	var qinv: Inventory = q.get("inventory")
-	_check("a loaded character has the same talent, money and star", str(q.get("talent_id")) == "tenth_strike" and int(q.get("money")) == -321 and _near(float((q.get("star_pct") as Array)[0]), float((p.get("star_pct") as Array)[0])))
+	_check("a loaded character has the same talent, money and star", str(q.get("talent_id")) == str(p.get("talent_id")) and int(q.get("money")) == -321 and _near(float((q.get("star_pct") as Array)[0]), float((p.get("star_pct") as Array)[0])))
 	_check("abilities, constructs and gear survive the round trip", _near(float((q.get("abilities") as Array)[0]["progress"]), 42.0)
 		and (q.get("constructs") as Array).size() == 1 and str(qinv.equipped.get("satellite", "")) == "paired_mote"
 		and qinv.bag.size() == inv.bag.size() and _near(float(q.get("satellite_rate")), 2.0))
@@ -557,14 +558,105 @@ func _test_character() -> void:
 		and (q.get("look") as Dictionary) == chosen and (q.get("affinities") as Array) == (p.get("affinities") as Array))
 	_check("a save names its character", SaveGame.who(p.call("to_save")).begins_with("Maren"))
 	var old: Dictionary = p.call("to_save")
-	for k: String in ["name", "identity", "look", "affinities"]:
+	for k: String in ["name", "identity", "look", "affinities", "abilities", "hotbar"]:
 		old.erase(k)
 	var r := _new_player()
 	r.call("from_save", old)
 	_check("a save from before character creation still loads", str(r.get("talent_id")) == "grudge" and (r.get("look") as Dictionary) == CharacterLook.default_look()
-		and (r.get("affinities") as Array) == GameData.prime_affinities("grudge"))
+		and (r.get("affinities") as Array) == ["water"] and str(((r.get("abilities") as Array)[0] as Dictionary)["id"]) == "water_bolt")
 	for n: Node in [p, q, r]:
 		n.queue_free()
+
+
+func _test_affinities() -> void:
+	print("affinities:")
+	var ids: Array = GameData.affinity_ids()
+	_check("five affinities are defined", ids.size() == 5 and ids.has("water") and ids.has("fire") and ids.has("earth") and ids.has("wind") and ids.has("lightning"))
+	for a: String in ids:
+		var kit: Array = GameData.affinity(a).get("kit", [])
+		var kinds: Array = []
+		var own := true
+		for id: String in kit:
+			var ab: Dictionary = GameData.ability(id)
+			kinds.append(str(ab.get("kind", "")))
+			own = own and str(ab.get("affinity", "")) == a
+		_check("%s has a ranged attack, a strike and a movement skill of its own" % a,
+			kit.size() == 3 and own and kinds == ["projectile", "melee_burst", "dash"], str(kinds))
+	for id: String in ["one_percent_lifesteal", "tenth_strike", "grudge", "glass_hour", "debt_of_pain", "furnace_gut"]:
+		var carried: Array[String] = GameData.prime_affinities(id)
+		if carried.is_empty() or not carried.all(func(a: String) -> bool: return ids.has(a)):
+			_check("every playable prime carries known affinities", false, id)
+
+	# a single-affinity character starts with that affinity's kit
+	var p := _new_player("grudge")
+	var ab0: Array = p.get("abilities")
+	_check("a fire prime starts with the fire kit on the bar", (p.get("affinities") as Array) == ["fire"] and ab0.size() == 3
+		and str(ab0[0]["id"]) == "cinder_spit" and (p.get("hotbar") as Array).slice(0, 3) == [0, 1, 2])
+	p.set("essence", 100.0)
+	p.call("cast_slot", 0)
+	_check("casting heats that affinity only", float(p.call("reflux_of", "fire")) > 0.0 and _near(float(p.call("reflux_of", "water")), 0.0))
+	(p.get("abilities") as Array).append({"id": "water_bolt", "stage": 0, "progress": 0.0})
+	var ess: float = float(p.get("essence"))
+	p.call("cast_ability", 3)
+	_check("an ability outside your affinities cannot be cast", _near(float(p.get("essence")), ess))
+	p.queue_free()
+
+	# two affinities: six abilities, and one overheating leaves the other usable
+	p = _new_player("glass_hour")
+	p.set("star_pct", [99.0] as Array[float])
+	p.call("_recompute_essence_max")
+	_check("a dual prime fills the bar with both kits", (p.get("affinities") as Array) == ["wind", "lightning"] and (p.get("abilities") as Array).size() == 6
+		and not (p.get("hotbar") as Array).has(-1))
+	(p.get("reflux_by") as Dictionary)["wind"] = 99.0
+	p.set("essence", 99.0)
+	p.call("cast_slot", 0)
+	_check("overheating wind locks wind", bool(p.call("is_locked", "wind")) and not bool(p.call("is_locked", "lightning")))
+	ess = float(p.get("essence"))
+	p.call("cast_slot", 0)
+	_check("a locked affinity cannot cast", _near(float(p.get("essence")), ess))
+	p.call("cast_slot", 3)
+	_check("the other affinity still can", float(p.get("essence")) < ess and float(p.call("reflux_of", "lightning")) > 0.0)
+	for i: int in 30:
+		p.call("_shed_reflux", 2.0)
+	_check("reflux sheds on every affinity and the lock lifts", not bool(p.call("is_locked", "wind")) and float(p.call("reflux_of", "wind")) < 60.0
+		and _near(float(p.call("reflux_of", "lightning")), 0.0))
+	p.queue_free()
+
+	# furnace gut vents the affinity that overheated, not the other one
+	p = _new_player("furnace_gut")
+	p.set("star_pct", [99.0] as Array[float])
+	p.call("_recompute_essence_max")
+	p.set("essence", 99.0)
+	(p.get("reflux_by") as Dictionary)["fire"] = 20.0
+	(p.get("reflux_by") as Dictionary)["earth"] = 99.0
+	p.call("cast_slot", 3)                 # the earth projectile
+	_check("furnace gut vents the affinity that capped", _near(float(p.call("reflux_of", "earth")), 50.0) and _near(float(p.call("reflux_of", "fire")), 20.0)
+		and not bool(p.call("is_locked", "earth")), "earth %f fire %f" % [float(p.call("reflux_of", "earth")), float(p.call("reflux_of", "fire"))])
+	p.queue_free()
+
+	# wisps
+	p = _new_player("grudge")
+	var n := Netherecho.new()
+	add_child(n)
+	n.player = p
+	n.enter()
+	var proj: Node3D = n.projection
+	proj.set("input_blocked", true)
+	var pct0: float = float((p.get("star_pct") as Array)[0])
+	n.spawn_wisp(n.to_local(proj.global_position), "water")
+	n.tick(0.01, null)
+	_check("a wisp of an affinity you do not hold will not come to you", n.gathered_this_trip == 0 and _near(float((p.get("star_pct") as Array)[0]), pct0))
+	n.spawn_wisp(n.to_local(proj.global_position), "fire")
+	n.tick(0.01, null)
+	_check("a wisp of your own affinity grows the star", n.gathered_this_trip == 1 and float((p.get("star_pct") as Array)[0]) > pct0)
+	var seen := {}
+	for i: int in 400:
+		seen[n.call("_roll_wisp_affinity")] = true
+	_check("the echo holds your wisps, foreign wisps and plain ether", seen.has("fire") and seen.has("plain") and seen.size() >= 3, str(seen.keys()))
+	n.exit("")
+	n.clear()
+	n.queue_free()
+	p.queue_free()
 
 
 func _test_models() -> void:
@@ -633,7 +725,7 @@ func _test_netherecho() -> void:
 	var w: Node3D = n.spawn_wisp(n.to_local(proj.global_position), "water")
 	n.tick(0.01, null)
 	_check("touching a water wisp grows the star and refills essence",
-		_near(float((p.get("star_pct") as Array)[0]), pct0 + float(cfg["wisp_water_star_pct"])) and _near(float(p.get("essence")), float(cfg["wisp_water_essence"])) and n.gathered_this_trip == 1,
+		_near(float((p.get("star_pct") as Array)[0]), pct0 + float(cfg["wisp_attuned_star_pct"])) and _near(float(p.get("essence")), float(cfg["wisp_attuned_essence"])) and n.gathered_this_trip == 1,
 		"pct %f essence %f" % [float((p.get("star_pct") as Array)[0]), float(p.get("essence"))])
 	n.tick(0.01, null)
 	_check("a wisp is gathered once", n.gathered_this_trip == 1 and w.is_queued_for_deletion())
