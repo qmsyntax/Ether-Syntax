@@ -25,6 +25,7 @@ func _ready() -> void:
 	await _test_inventory()
 	_test_slot_assignment()
 	await _test_weapons()
+	_test_character()
 	_test_models()
 	await _test_netherecho()
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
@@ -532,6 +533,38 @@ func _test_weapons() -> void:
 	e.queue_free()
 	p.queue_free()
 	q.queue_free()
+
+
+func _test_character() -> void:
+	print("character:")
+	var p := _new_player("grudge")
+	_check("a prime brings its affinities", (p.get("affinities") as Array) == GameData.prime_affinities("grudge") and not (p.get("affinities") as Array).is_empty())
+	_check("every affinity a prime carries is defined", GameData.prime_affinities("grudge").all(func(a: String) -> bool: return not GameData.affinity(a).is_empty()))
+	var opts: Dictionary = CharacterLook.options()
+	var norm: Dictionary = CharacterLook.normalize({"hair": "no_such_style", "nonsense": "x"})
+	_check("an unknown look falls back to the defaults", norm == CharacterLook.default_look())
+	var chosen: Dictionary = CharacterLook.default_look()
+	for key: String in opts:
+		chosen[key] = CharacterLook.cycle(chosen, key, 1)
+		_check("cycling back returns to the start (%s)" % key, CharacterLook.cycle(chosen, key, -1) == str(CharacterLook.default_look()[key]))
+	p.set("char_name", "Maren")
+	p.set("identity", "woman")
+	p.call("set_look", chosen)
+	_check("a look can be worn and the model is rebuilt", (p.get("look") as Dictionary) == chosen and p.get("_rig") != null and is_instance_valid(p.get("_rig")))
+	var q := _new_player()
+	q.call("from_save", JSON.parse_string(JSON.stringify(p.call("to_save"))))
+	_check("name, identity, look and affinities survive a save", str(q.get("char_name")) == "Maren" and str(q.get("identity")) == "woman"
+		and (q.get("look") as Dictionary) == chosen and (q.get("affinities") as Array) == (p.get("affinities") as Array))
+	_check("a save names its character", SaveGame.who(p.call("to_save")).begins_with("Maren"))
+	var old: Dictionary = p.call("to_save")
+	for k: String in ["name", "identity", "look", "affinities"]:
+		old.erase(k)
+	var r := _new_player()
+	r.call("from_save", old)
+	_check("a save from before character creation still loads", str(r.get("talent_id")) == "grudge" and (r.get("look") as Dictionary) == CharacterLook.default_look()
+		and (r.get("affinities") as Array) == GameData.prime_affinities("grudge"))
+	for n: Node in [p, q, r]:
+		n.queue_free()
 
 
 func _test_models() -> void:

@@ -286,7 +286,7 @@ func _k(action: String) -> String:
 
 func _show_select() -> void:
 	state = "select"
-	_show_screen(TitleScreen.new(self), false)
+	_show_screen(CreationScreen.new(self), false)
 
 
 func _select_talent(index: int) -> void:
@@ -385,7 +385,7 @@ func close_screen() -> void:
 	if state == "town":
 		_show_screen(TownScreen.new(self), false)
 	elif state == "select":
-		_show_screen(TitleScreen.new(self), false)
+		_show_screen(CreationScreen.new(self), false)
 	else:
 		_show_screen(null, false)
 
@@ -415,8 +415,18 @@ func open_ethercosm() -> void:
 		_show_screen(EthercosmScreen.new(self), state != "town")
 
 
+## Quick start with a default look (tests and bots); the creation screen uses begin_character.
 func start_new_character(index: int) -> void:
-	_select_talent(index)
+	begin_character({"talent_id": TALENT_CHOICES[index]})
+
+
+## Start the character described by the creation screen: {name, identity, look, talent_id}.
+func begin_character(spec: Dictionary) -> void:
+	var talent: String = str(spec.get("talent_id", TALENT_CHOICES[0]))
+	player.call("set_talent", talent if TALENT_CHOICES.has(talent) else TALENT_CHOICES[0])
+	player.set("char_name", str(spec.get("name", "")).strip_edges().left(int(GameData.creation["name_max_length"])))
+	player.set("identity", str(spec.get("identity", "")))
+	player.call("set_look", spec.get("look", {}))
 	player.set("money", GameData.inum("town", "starting_money"))
 	_enter_town()
 
@@ -999,6 +1009,11 @@ func _setup_ui_shot(which: String) -> void:
 	_frames = 1000                      # disable the arena auto-shot; _shot_countdown drives this one
 	_shot_countdown = 40
 	if which == "title":
+		return
+	if which.begins_with("create"):
+		# the creation screen at a given step: create-1 .. create-4
+		screen.call("set_spec", {"name": "Maren", "identity": "woman", "look": CharacterLook.default_look(), "talent_id": "tenth_strike"})
+		screen.call("_go", int(which.get_slice("-", 1)) - 1)
 		return
 	_select_talent(0)
 	var inv: Inventory = player.get("inventory")

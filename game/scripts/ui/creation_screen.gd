@@ -1,0 +1,450 @@
+class_name CreationScreen
+extends UiScreen
+## Character creation, in steps: who you are (name, identity, body type), what you look like, and
+## which prime vestige you take (talent + affinities). A turntable in the middle shows the
+## character as it will appear in play; drag it to turn it. The screen holds a draft `spec` and
+## hands it to main.gd's `begin_character` at the end - it owns no game state.
+
+const STEPS: Array[String] = ["Origin", "Appearance", "Prime", "Embark"]
+
+var spec: Dictionary = {}
+var step := 0
+
+var _rng := RandomNumberGenerator.new()
+var _left: VBoxContainer
+var _right: VBoxContainer
+var _viewport: SubViewport
+var _pivot: Node3D
+var _rig: ModelRig
+var _spin := PI - 0.5                   # start three-quarter on, facing the camera
+var _dragging := false
+var _name_edit: LineEdit
+
+
+func backdrop() -> float:
+	return 0.9
+
+
+func _init(game_node: Node) -> void:
+	super(game_node)
+	_rng.randomize()
+	var cfg: Dictionary = GameData.creation
+	var choices: Array = game.get("TALENT_CHOICES")
+	spec = {
+		"name": "", "identity": str((cfg["identities"][0] as Dictionary)["id"]),
+		"look": CharacterLook.default_look(), "talent_id": str(choices[0]),
+	}
+
+
+func build(root: Control) -> void:
+	_left = framed(root, 0.02, 0.04, 0.3, 0.96)
+	_left.add_theme_constant_override("separation", 8)
+	_right = framed(root, 0.68, 0.04, 0.98, 0.96)
+	_right.add_theme_constant_override("separation", 8)
+	_build_preview(root)
+	_refresh()
+
+
+func _process(delta: float) -> void:
+	if _pivot != null:
+		_pivot.rotation.y = _spin
+	if _rig != null:
+		_rig.animate(delta, 0.0, false)
+
+
+# --- the turntable ------------------------------------------------------------------------
+
+func _build_preview(root: Control) -> void:
+	var holder := SubViewportContainer.new()
+	holder.anchor_left = 0.31
+	holder.anchor_right = 0.67
+	holder.anchor_top = 0.04
+	holder.anchor_bottom = 0.96
+	holder.stretch = true
+	holder.mouse_filter = Control.MOUSE_FILTER_STOP
+	holder.gui_input.connect(_on_preview_input)
+	root.add_child(holder)
+	_viewport = SubViewport.new()
+	_viewport.own_world_3d = true
+	_viewport.transparent_bg = true
+	_viewport.msaa_3d = Viewport.MSAA_4X
+	holder.add_child(_viewport)
+
+	var env := Environment.new()
+	env.background_mode = Environment.BG_CLEAR_COLOR
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.5, 0.56, 0.7)
+	env.ambient_light_energy = 0.7
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_exposure = 1.15
+	var we := WorldEnvironment.new()
+	we.environment = env
+	_viewport.add_child(we)
+	var key := DirectionalLight3D.new()
+	key.rotation_degrees = Vector3(-38.0, 35.0, 0.0)
+	key.light_color = Color(1.0, 0.87, 0.72)
+	key.light_energy = 1.4
+	_viewport.add_child(key)
+	var rim := DirectionalLight3D.new()
+	rim.rotation_degrees = Vector3(-20.0, -150.0, 0.0)
+	rim.light_color = Color(0.55, 0.7, 1.0)
+	rim.light_energy = 0.7
+	_viewport.add_child(rim)
+
+	var cam := Camera3D.new()
+	cam.fov = 30.0
+	cam.position = Vector3(0.0, 1.15, 4.6)
+	_viewport.add_child(cam)
+	cam.look_at(Vector3(0.0, 0.98, 0.0), Vector3.UP)
+
+	var plinth := MeshInstance3D.new()
+	var disc := CylinderMesh.new()
+	disc.top_radius = 0.6
+	disc.bottom_radius = 0.66
+	disc.height = 0.08
+	plinth.mesh = disc
+	plinth.position.y = -0.04
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.07, 0.065, 0.06)
+	mat.roughness = 0.9
+	plinth.material_override = mat
+	_viewport.add_child(plinth)
+
+	_pivot = Node3D.new()
+	_viewport.add_child(_pivot)
+	_refresh_model()
+
+	var hint := UiTheme.body("drag to turn", 13, UiTheme.TEXT_FAINT)
+	hint.anchor_left = 0.31
+	hint.anchor_right = 0.67
+	hint.anchor_top = 0.92
+	hint.anchor_bottom = 0.96
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(hint)
+
+
+func _on_preview_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		_dragging = (event as InputEventMouseButton).pressed
+	elif event is InputEventMouseMotion and _dragging:
+		_spin += (event as InputEventMouseMotion).relative.x * 0.012
+
+
+func _refresh_model() -> void:
+	if _rig != null:
+		_rig.queue_free()
+	_rig = CharacterLook.build(spec["look"])
+	_pivot.add_child(_rig)
+
+
+# --- panels ---------------------------------------------------------------------------------
+
+func _clear(box: Container) -> void:
+	for c: Node in box.get_children():
+		box.remove_child(c)
+		c.queue_free()
+
+
+func _refresh() -> void:
+	_keep_name()
+	_clear(_left)
+	_clear(_right)
+	_name_edit = null
+	_build_left()
+	match step:
+		0:
+			_build_origin()
+		1:
+			_build_appearance()
+		2:
+			_build_prime()
+		_:
+			_build_embark()
+	_build_nav()
+
+
+## Replace the whole draft (screenshots and tests).
+func set_spec(new_spec: Dictionary) -> void:
+	_name_edit = null
+	spec = new_spec
+	_refresh_model()
+	_refresh()
+
+
+func _keep_name() -> void:
+	if _name_edit != null and is_instance_valid(_name_edit):
+		spec["name"] = _name_edit.text.strip_edges()
+
+
+func _go(to: int) -> void:
+	_keep_name()
+	step = clampi(to, 0, STEPS.size() - 1)
+	_refresh()
+
+
+func _build_left() -> void:
+	var title := UiTheme.heading("PASSAGE", 40)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_left.add_child(title)
+	var sub := UiTheme.body("Who goes in?", 15, UiTheme.TEXT_DIM)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_left.add_child(sub)
+	_left.add_child(UiTheme.rule())
+	for i: int in STEPS.size():
+		var b := Button.new()
+		b.text = "%d.   %s" % [i + 1, STEPS[i]]
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.focus_mode = Control.FOCUS_NONE
+		b.set_meta("step", i)
+		if i == step:
+			b.add_theme_color_override("font_color", UiTheme.GOLD)
+			b.add_theme_stylebox_override("normal", UiTheme.box(Color("3a3024"), UiTheme.GOLD, 1, 4, 10))
+		b.pressed.connect(_go.bind(i))
+		_left.add_child(b)
+	_left.add_child(UiTheme.rule())
+
+	# the draft so far
+	var who: String = str(spec["name"]) if str(spec["name"]) != "" else "(unnamed)"
+	_left.add_child(UiTheme.heading(who, 22))
+	_left.add_child(UiTheme.body("%s   -   %s" % [_identity_label(), CharacterLook.label("body", str((spec["look"] as Dictionary).get("body", "")))], 14, UiTheme.TEXT_DIM))
+	var t: Dictionary = TalentDB.get_talent(str(spec["talent_id"]))
+	_left.add_child(UiTheme.body("Prime:  %s" % str(t.get("name", "?")), 15, UiTheme.STAR))
+	_left.add_child(UiTheme.body("Affinity:  %s" % _affinity_text(str(spec["talent_id"])), 14, UiTheme.TEXT_DIM))
+
+	var gap := Control.new()
+	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_left.add_child(gap)
+	_left.add_child(UiTheme.rule())
+	var save: Dictionary = SaveGame.read()
+	if not save.is_empty() and str(save.get("talent_id", "")) != "":
+		_left.add_child(UiWidgets.small_button("Continue  -  %s" % SaveGame.who(save), func() -> void: game.call("continue_game")))
+	for slot: int in range(1, SaveGame.SLOTS + 1):
+		if SaveGame.exists(SaveGame.slot_path(slot)):
+			_left.add_child(UiWidgets.small_button("Load a saved character", func() -> void: game.call("open_saves")))
+			break
+	_left.add_child(UiWidgets.small_button("Controls", func() -> void: game.call("open_settings")))
+
+
+func _build_nav() -> void:
+	if step == 0 or step == STEPS.size() - 1:
+		# the other steps have a scrolling list that takes the spare height itself
+		var gap := Control.new()
+		gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		_right.add_child(gap)
+	_right.add_child(UiTheme.rule())
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_END
+	_right.add_child(row)
+	row.add_child(UiWidgets.small_button("Back", _go.bind(step - 1), step > 0))
+	if step < STEPS.size() - 1:
+		row.add_child(UiWidgets.small_button("Next", _go.bind(step + 1)))
+	else:
+		var go := UiWidgets.small_button("Begin", _begin)
+		go.name = "BeginButton"
+		go.add_theme_color_override("font_color", UiTheme.GOLD)
+		row.add_child(go)
+
+
+func _section(text: String) -> void:
+	_right.add_child(UiTheme.heading(text, 19))
+
+
+# --- step 1: origin ----------------------------------------------------------------------
+
+func _build_origin() -> void:
+	_right.add_child(UiTheme.heading("Origin", 28))
+	_right.add_child(UiTheme.rule())
+	_section("Name")
+	var row := HBoxContainer.new()
+	_right.add_child(row)
+	_name_edit = LineEdit.new()
+	_name_edit.name = "NameEdit"
+	_name_edit.text = str(spec["name"])
+	_name_edit.max_length = int(GameData.creation["name_max_length"])
+	_name_edit.placeholder_text = "a name to be remembered by"
+	_name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_name_edit.text_submitted.connect(func(_t: String) -> void: _refresh())
+	_name_edit.focus_exited.connect(_keep_name)
+	row.add_child(_name_edit)
+	row.add_child(UiWidgets.small_button("Random", func() -> void:
+		spec["name"] = random_name()
+		_name_edit.text = str(spec["name"])
+		_refresh()))
+
+	_section("Identity")
+	var ids := HBoxContainer.new()
+	_right.add_child(ids)
+	for idn: Dictionary in GameData.creation["identities"]:
+		ids.add_child(_choice(str(idn["label"]), str(spec["identity"]) == str(idn["id"]), func() -> void:
+			spec["identity"] = str(idn["id"])
+			_refresh()))
+	_right.add_child(UiTheme.body("How others speak of you. It changes nothing else.", 13, UiTheme.TEXT_FAINT))
+
+	var bodies: Array = CharacterLook.options().get("body", [])
+	if not bodies.is_empty():
+		_section("Body type")
+		var grid := GridContainer.new()
+		grid.columns = 2
+		_right.add_child(grid)
+		for o: Dictionary in bodies:
+			var b := _choice(str(o["label"]), str((spec["look"] as Dictionary).get("body", "")) == str(o["id"]), _set_look.bind("body", str(o["id"])))
+			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			grid.add_child(b)
+		_right.add_child(UiTheme.body("Build only. A body is tempered by what it survives, not by how it starts.", 13, UiTheme.TEXT_FAINT))
+
+
+func random_name() -> String:
+	var names: Array = GameData.creation["names"]
+	return str(names[_rng.randi() % names.size()])
+
+
+func _identity_label() -> String:
+	for idn: Dictionary in GameData.creation["identities"]:
+		if str(idn["id"]) == str(spec["identity"]):
+			return str(idn["label"])
+	return ""
+
+
+func _choice(text: String, chosen: bool, on_press: Callable) -> Button:
+	var b := UiWidgets.small_button(text, on_press)
+	if chosen:
+		b.add_theme_color_override("font_color", UiTheme.GOLD)
+		b.add_theme_stylebox_override("normal", UiTheme.box(Color("3a3024"), UiTheme.GOLD, 1, 4, 10))
+	return b
+
+
+func _set_look(key: String, id: String) -> void:
+	(spec["look"] as Dictionary)[key] = id
+	_refresh_model()
+	_refresh()
+
+
+# --- step 2: appearance ---------------------------------------------------------------------
+
+func _build_appearance() -> void:
+	_right.add_child(UiTheme.heading("Appearance", 28))
+	_right.add_child(UiTheme.rule())
+	var opts: Dictionary = CharacterLook.options()
+	var labels: Dictionary = GameData.creation["look_labels"]
+	var list: VBoxContainer = scroller(_right)
+	list.add_theme_constant_override("separation", 10)
+	var shown := 0
+	for key: String in GameData.creation["look_order"]:
+		var choices: Array = opts.get(key, [])
+		if choices.size() < 2:
+			continue
+		shown += 1
+		var current: String = str((spec["look"] as Dictionary).get(key, ""))
+		var head := HBoxContainer.new()
+		list.add_child(head)
+		var name_label := UiTheme.heading(str(labels.get(key, key.capitalize())), 18)
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		head.add_child(name_label)
+		var value := UiTheme.body(CharacterLook.label(key, current), 14, UiTheme.TEXT_DIM)
+		value.autowrap_mode = TextServer.AUTOWRAP_OFF      # a wrapping label in a row collapses to one letter wide
+		head.add_child(value)
+		if (choices[0] as Dictionary).has("color"):
+			var row := HFlowContainer.new()
+			row.add_theme_constant_override("h_separation", 6)
+			list.add_child(row)
+			for o: Dictionary in choices:
+				row.add_child(_swatch(key, o, current == str(o["id"])))
+		else:
+			var row2 := HBoxContainer.new()
+			list.add_child(row2)
+			row2.add_child(UiWidgets.small_button("  <  ", func() -> void: _set_look(key, CharacterLook.cycle(spec["look"], key, -1))))
+			var mid := UiTheme.body(CharacterLook.label(key, current), 16)
+			mid.autowrap_mode = TextServer.AUTOWRAP_OFF
+			mid.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row2.add_child(mid)
+			row2.add_child(UiWidgets.small_button("  >  ", func() -> void: _set_look(key, CharacterLook.cycle(spec["look"], key, 1))))
+	if shown == 0:
+		list.add_child(UiTheme.body("No appearance options are available in this build.", 15, UiTheme.TEXT_DIM))
+	else:
+		_right.add_child(UiWidgets.small_button("Randomise", func() -> void:
+			var body_now: String = str((spec["look"] as Dictionary).get("body", ""))
+			spec["look"] = CharacterLook.random_look(_rng)
+			if body_now != "":
+				(spec["look"] as Dictionary)["body"] = body_now
+			_refresh_model()
+			_refresh()))
+
+
+func _swatch(key: String, option: Dictionary, chosen: bool) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(38, 38)
+	b.focus_mode = Control.FOCUS_NONE
+	b.tooltip_text = str(option.get("label", ""))
+	var col: Color = option["color"]
+	for state: String in ["normal", "hover", "pressed"]:
+		b.add_theme_stylebox_override(state, UiTheme.box(col, UiTheme.GOLD if (chosen or state == "hover") else UiTheme.BRONZE_DIM, 3 if chosen else 1, 4, 0))
+	b.pressed.connect(_set_look.bind(key, str(option["id"])))
+	return b
+
+
+# --- step 3: prime ------------------------------------------------------------------------
+
+func _build_prime() -> void:
+	_right.add_child(UiTheme.heading("Prime vestige", 28))
+	_right.add_child(UiTheme.body("Ask it what power it holds. You may only ever hold one.", 14, UiTheme.TEXT_DIM))
+	_right.add_child(UiTheme.rule())
+	var list: VBoxContainer = scroller(_right)
+	list.add_theme_constant_override("separation", 6)
+	for id: String in game.get("TALENT_CHOICES"):
+		var t: Dictionary = TalentDB.get_talent(id)
+		var chosen: bool = str(spec["talent_id"]) == id
+		var b := UiWidgets.service_button(str(t.get("name", "?")), "\"%s\"" % str(t.get("verse", "")), _affinity_text(id), func() -> void:
+			spec["talent_id"] = id
+			_refresh())
+		b.set_meta("talent_id", id)
+		if chosen:
+			b.add_theme_stylebox_override("normal", UiTheme.box(Color("3a3024"), UiTheme.GOLD, 2, 4, 10))
+		list.add_child(b)
+
+	# what the chosen prime says about itself
+	var t2: Dictionary = TalentDB.get_talent(str(spec["talent_id"]))
+	_right.add_child(UiTheme.rule())
+	_right.add_child(UiTheme.heading(str(t2.get("name", "?")), 20))
+	_right.add_child(UiTheme.body(str(t2.get("rule", "")), 14))
+	_right.add_child(UiTheme.body("At two stars:  %s" % str(t2.get("evolve_2", "unknown")), 13, UiTheme.TEXT_DIM))
+	var unknowns: Array = t2.get("hidden", [])
+	if not unknowns.is_empty():
+		_right.add_child(UiTheme.body("Still to be proven:  %s" % str(unknowns[0]), 13, UiTheme.TEXT_FAINT))
+	for aff: String in GameData.prime_affinities(str(spec["talent_id"])):
+		var a: Dictionary = GameData.affinity(aff)
+		_right.add_child(UiTheme.body("%s affinity:  %s" % [str(a.get("label", aff)), str(a.get("desc", ""))], 13, Color(str(a.get("color", "9c917b")))))
+
+
+func _affinity_text(talent_id: String) -> String:
+	var parts: Array[String] = []
+	for aff: String in GameData.prime_affinities(talent_id):
+		parts.append(str(GameData.affinity(aff).get("label", aff)))
+	return ", ".join(parts)
+
+
+# --- step 4: embark -------------------------------------------------------------------------
+
+func _build_embark() -> void:
+	_right.add_child(UiTheme.heading("Embark", 28))
+	_right.add_child(UiTheme.rule())
+	var t: Dictionary = TalentDB.get_talent(str(spec["talent_id"]))
+	_right.add_child(UiWidgets.stat_row("Name", str(spec["name"]) if str(spec["name"]) != "" else "(unnamed - one will be given)"))
+	_right.add_child(UiWidgets.stat_row("Identity", _identity_label()))
+	_right.add_child(UiWidgets.stat_row("Prime", str(t.get("name", "?")), UiTheme.STAR))
+	_right.add_child(UiWidgets.stat_row("Affinity", _affinity_text(str(spec["talent_id"]))))
+	_right.add_child(UiWidgets.stat_row("Purse", UiTheme.money_text(GameData.inum("town", "starting_money")), UiTheme.GOLD))
+	_right.add_child(UiWidgets.stat_row("Soul", "one star, barely lit"))
+	_right.add_child(UiTheme.rule())
+	var hardcore: bool = bool(game.get("hardcore"))
+	_right.add_child(UiWidgets.service_button("Hardcore", "Death is permanent. Otherwise you wake in town, in debt.", "ON" if hardcore else "off", func() -> void:
+		game.call("toggle_hardcore")
+		_refresh()))
+
+
+func _begin() -> void:
+	_keep_name()
+	if str(spec["name"]) == "":
+		spec["name"] = random_name()
+	game.call("begin_character", spec.duplicate(true))

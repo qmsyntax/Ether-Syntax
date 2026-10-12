@@ -267,13 +267,18 @@ func _draw_essence_orb(c: Vector2) -> void:
 func _draw_plate() -> void:
 	var t: Dictionary = player.get("talent")
 	var held: Array = player.get("constructs")
-	var h: float = 78.0 + (26.0 if not held.is_empty() else 0.0)
+	var who: String = str(player.get("char_name"))
+	var named: float = 20.0 if who != "" else 0.0          # a named character gets a line for the talent
+	var h: float = 78.0 + named + (26.0 if not held.is_empty() else 0.0)
 	var r := Rect2(14.0, 14.0, 330.0, h)
 	_plate_rect = r
 	draw_rect(r.grow(3.0), Color(0, 0, 0, 0.55))
 	draw_rect(r, Color(UiTheme.PANEL, 0.92))
 	draw_rect(r, UiTheme.BRONZE, false, 2.0)
-	UiDraw.text(self, r.position + Vector2(14.0, 27.0), str(t.get("name", "?")), 21, UiTheme.GOLD)
+	UiDraw.text(self, r.position + Vector2(14.0, 27.0), who if who != "" else str(t.get("name", "?")), 21, UiTheme.GOLD)
+	if who != "":
+		UiDraw.text(self, r.position + Vector2(14.0, 46.0), str(t.get("name", "?")), 14, UiTheme.STAR)
+	r.position.y += named
 	# star pips, right-aligned on the title line
 	var stars: int = int(player.get("stars"))
 	for i: int in stars:

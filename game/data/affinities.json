@@ -1,0 +1,7 @@
+{
+  "_note": "Affinities a prime vestige can carry (design/01: a prime delivers a talent and 1+ affinities; more affinities is rarer and worth more). Only water has abilities so far, so every prime carries water until the other kits exist - a talent overrides this with its own 'affinities' list in talents.json. Labels and descriptions are ours.",
+  "prime_default": ["water"],
+  "affinities": {
+    "water": {"label": "Water", "color": "2f7fd6", "desc": "Pressure, flow and weight. Strikes that hit like a wave and movement that slips past a guard."}
+  }
+}

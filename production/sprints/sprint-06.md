@@ -60,3 +60,19 @@ feels right, and the ability costs against a 99-essence star (costs were tuned a
 Verified in a clean copy of the last commit plus these files (the art agent had the working tree mid-edit):
 self-test 149/149, smoke, three bots, UI click test. Not verified: pressing Save here / Overwrite / Load with a mouse.
 Saving is town-only - there is no mid-passage save.
+
+## Part F — character creation (Brent 2026-10-11: "feel a lot like BG3 ... naming, character design (look), gender ... then the prime selection")
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-15 | Four-step creator replacing the talent card grid: Origin (name with random pool, identity, body type), Appearance, Prime, Embark (summary, hardcore, Begin); draggable 3D turntable of the character | `shots/ui-create-1..4.png`, `creation_probe` (13 checks) | Done |
+| S06-16 | Customisable player model: 4 body types, 8 skin tones, 6 faces, 8 hair styles, 8 hair colours, headband on/off, 8 coats, 6 accents | `shots/art-looks.png` | Done (sub-agent) |
+| S06-17 | Name, identity, look and affinities live on the character, are saved, and older saves load with defaults; name on the HUD plate and in the save list | selftest (character: 15 checks) | Done |
+| S06-18 | Affinity plumbing: `affinities.json`, a prime carries affinities, the character stores them, the creator shows them. Only water is defined, so every prime carries water | selftest | Done - other affinities are NOT built |
+
+Identity and body type are cosmetic: no stat differs. All names and option labels are ours.
+
+Verified: self-test 168/168, smoke, three bots, both inventory click tests, creation click test, four creator
+screenshots and the looks sheet inspected. Not verified: the creator by hand; every look combination; body types
+other than the default in live play; hair styles "undercut" and "swept" are weak close up (agent's report).
+Open with Brent: which affinities to build next, fixed per prime or chosen, one or two at the start.

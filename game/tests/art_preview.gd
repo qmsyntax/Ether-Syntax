@@ -10,6 +10,9 @@ extends Node3D
 ##   ... -- --shot=props    -> shots/art-props.png     scenery and pickups up close
 ##   ... -- --shot=nether   -> shots/art-nether.png    projection, wisps, every construct at every tier
 ##   ... -- --shot=nether-close -> shots/art-nether-close.png  projection, wisp and the six vestiges
+##   ... -- --shot=looks       -> shots/art-looks.png       character-creator looks: varied combos, hair row, body row
+##   ... -- --shot=looks-hair  -> shots/art-looks-hair.png  every hair style, head close-up
+##   ... -- --shot=looks-face  -> shots/art-looks-face.png  every face (and some skins / hair colours), head close-up
 ##   godot --headless --path game res://tests/art_preview.tscn -- --stats   prints triangles / draw calls
 ##
 ## By default the stage uses the RECOMMENDED environment (dark earth floor, cool dim ambient,
@@ -80,6 +83,12 @@ func _ready() -> void:
 			_layout_nether()
 		"nether-close":
 			_layout_nether_close()
+		"looks":
+			_layout_looks()
+		"looks-hair":
+			_layout_heads(true)
+		"looks-face":
+			_layout_heads(false)
 		_:
 			_layout_all()
 
@@ -399,6 +408,66 @@ func _layout_nether_close() -> void:
 		_place(Models.construct("vestige", CONCEPTS[i]), _spot(i, 6, 1.55, -1.6), CONCEPTS[i], 0.0, false)
 
 
+## Character-creator sheet: 12 varied looks, every hair style, every body type.
+func _layout_looks() -> void:
+	_camera.size = 9.6
+	_aim_camera(Vector3(0, 0.55, 0))
+	_facing = Vector3(1.0, 0.0, 0.8)
+	var options: Dictionary = Models.look_options()
+	var combos: Array[Dictionary] = [{}]
+	for i: int in 11:
+		var look: Dictionary = {}
+		for key: String in options:
+			var list: Array = options[key]
+			look[key] = str((list[(i * 3 + 1 + key.length() * (i + 2)) % list.size()] as Dictionary)["id"])
+		combos.append(look)
+	for i: int in combos.size():
+		var rig: ModelRig = Models.player(combos[i])
+		if i == 5:
+			rig.set_part_visible("arm_right", false)
+		if i == 8:
+			rig.set_weapon(Models.weapon("commander_blade"))
+		_place(rig, _spot(i, 12, 1.35, 5.2), "stock" if i == 0 else "#%d" % i, 0.0, false)
+	var hairs: Array = options["hair"]
+	for i: int in hairs.size():
+		var id: String = str((hairs[i] as Dictionary)["id"])
+		var color_list: Array = options["hair_color"]
+		_place(Models.player({"hair": id, "hair_color": str((color_list[i % color_list.size()] as Dictionary)["id"]), "band": "off" if i % 2 == 1 else "on"}), _spot(i, hairs.size(), 1.5, 0.3), id, 0.0, false)
+	var bodies: Array = options["body"]
+	for i: int in bodies.size():
+		var id: String = str((bodies[i] as Dictionary)["id"])
+		_place(Models.player({"body": id}), _spot(i, 8, 1.6, -4.6), "body " + id, 0.0, false)
+		var walker: ModelRig = Models.player({"body": id, "coat": "rust", "skin": "umber"})
+		_place(walker, _spot(i + 4, 8, 1.6, -4.6), "body %s moving" % id, walker.stride_speed, false, _walk_frames(walker, 0))
+
+
+## Head close-ups, the distance the creator's turntable works at: all hair styles, or all
+## faces with a spread of skin tones and hair colours.
+func _layout_heads(hair_row: bool) -> void:
+	_camera.size = 1.75
+	_facing = Vector3(1.0, 0.0, 0.55)
+	_camera.position = Vector3(10, 3.2, 10)
+	_camera.look_at(Vector3(0, 1.5, 0), Vector3.UP)
+	var options: Dictionary = Models.look_options()
+	var list: Array = options["hair" if hair_row else "face"]
+	var skins: Array = options["skin"]
+	var colors: Array = options["hair_color"]
+	var count: int = list.size()
+	for i: int in count:
+		var id: String = str((list[i] as Dictionary)["id"])
+		var look: Dictionary = {"hair": id} if hair_row else {"face": id}
+		if hair_row:
+			look["band"] = "off" if i % 2 == 1 else "on"
+			look["hair_color"] = str((colors[i % colors.size()] as Dictionary)["id"])
+			look["skin"] = str((skins[(i * 3) % skins.size()] as Dictionary)["id"])
+		else:
+			look["skin"] = str((skins[(i * 5 + 1) % skins.size()] as Dictionary)["id"]) if i > 0 else "weathered"
+			look["hair"] = ["messy", "cropped", "shaved", "swept", "undercut", "topknot"][i % 6]
+		var rig: ModelRig = Models.player(look)
+		rig.position.y = 0.0
+		_place(rig, _spot(i, count, 0.4, 0.0), id, 0.0, false)
+
+
 # ---------------------------------------------------------------- helpers
 
 func _spot(index: int, count: int, step: float, depth: float) -> Vector3:
@@ -451,6 +520,9 @@ func _print_stats() -> void:
 		"projection": Models.projection(),
 	}
 	rigs["player + commander_blade"].set_weapon(Models.weapon("commander_blade"))
+	for hair: Dictionary in Models.look_options()["hair"]:
+		rigs["player heavy, bearded, " + str(hair["id"])] = Models.player({"body": "c", "face": "bearded", "hair": str(hair["id"])})
+	print("ART STATS default look == {} : %s" % str(Models.normalize_look({"hair": "nope", "junk": 1}) == Models.default_look()))
 	for id: String in WEAPONS:
 		rigs["weapon " + id] = Models.weapon(id) as ModelRig
 	for tier: String in ["vestige", "remnant", "spirit"]:

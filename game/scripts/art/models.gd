@@ -28,11 +28,29 @@ static var _snaps: Dictionary[String, Dictionary] = {}
 
 ## The hero: a lean brawler (about 7.4 heads tall) in a weathered slate coat with a leather
 ## baldric and one spaulder, linen hand-wraps, a dull steel gauntlet on the right arm and a
-## single cyan accent (headband and gauntlet knuckle). Supports
+## single cyan accent (headband and gauntlet knuckle). `look` customises it (see look_options();
+## {} is the stock look); two different looks never share a mesh. Supports
 ## set_part_visible("arm_right", false), which swaps the arm for a big bandaged stump with a
 ## sling strap across the chest, and set_weapon() (see weapon()).
-static func player() -> ModelRig:
-	return _stamp("player", _build_player)
+static func player(look: Dictionary = {}) -> ModelRig:
+	return _stamp(PlayerLook.cache_key(look), PlayerLook.build.bind(look))
+
+
+## Every customisation option for the character creator: look key -> Array of
+## {"id": String, "label": String} (plus "color": Color for colour options), in display
+## order with the default first. Keys: body, skin, face, hair, hair_color, band, coat, accent.
+static func look_options() -> Dictionary:
+	return PlayerLook.options()
+
+
+## The stock look (first option of every key) - the player as it is without a creator.
+static func default_look() -> Dictionary:
+	return PlayerLook.default_look()
+
+
+## A complete, valid look: missing keys filled, unknown or stale ids replaced by defaults.
+static func normalize_look(look: Dictionary) -> Dictionary:
+	return PlayerLook.normalize(look)
 
 
 ## An enemy model for a kind in data/enemies.json ("grunt", "brute", "commander"). Radius,
@@ -86,142 +104,6 @@ static func wisp(affinity: String) -> Node3D:
 ## supports set_highlight / flash / set_windup / animate, and sets height and radius.
 static func construct(tier: String, concept: String) -> ModelRig:
 	return _stamp("construct:%s:%s" % [tier, concept], NetherModels.build_construct.bind(tier, concept))
-
-
-# ---------------------------------------------------------------- player
-
-static func _build_player() -> ModelRig:
-	var r := ModelRig.new()
-	r.name = "PlayerModel"
-	r.height = 1.85
-	r.radius = 0.4
-	r.stride_speed = 5.0
-	r.stride_rate = 2.6
-	r.swing = 0.7
-	var coat := Color(0.19, 0.25, 0.33)
-	var coat_d := Color(0.15, 0.2, 0.27)
-	var coat_l := Color(0.3, 0.37, 0.45)
-	var cloth := Color(0.12, 0.12, 0.15)
-	var wrap := Color(0.62, 0.57, 0.46)
-	var wrap_d := Color(0.42, 0.37, 0.29)
-	var hair := Color(0.09, 0.07, 0.06)
-	var cyan := Color(0.25, 0.7, 0.8)
-	var sash := Color(0.1, 0.3, 0.34)
-	var boot := Color(0.17, 0.12, 0.08)
-	var brass := Color(0.5, 0.4, 0.2)
-	var none := Vector3.ZERO
-	var one := Vector3.ONE
-
-	# About 7.4 heads tall: hips at 0.96, shoulders at 1.5, a 0.25 head.
-	for side: int in [-1, 1]:
-		var n: String = "left" if side < 0 else "right"
-		var leg: String = "leg_" + n
-		var shin: String = "shin_" + n
-		r.add_part(leg, "", Vector3(0.095 * side, 0.96, 0.0))
-		r.add_shape(leg, lathe([0.062, -0.48, 0.07, -0.4, 0.088, -0.2, 0.095, -0.04, 0.08, 0.05], 10), cloth)
-		r.add_shape(leg, bbox(0.1, 0.11, 0.05, 0.02, 0.8, 1.0), LEATHER, Vector3(0.0, -0.44, -0.055), Vector3(-6, 0, 0))
-		r.add_part(shin, leg, Vector3(0, -0.47, 0))
-		r.add_shape(shin, lathe([0.05, -0.2, 0.066, -0.1, 0.066, 0.0, 0.058, 0.04], 10), cloth)
-		r.add_shape(shin, lathe([0.048, -0.42, 0.052, -0.34, 0.07, -0.18, 0.075, -0.1, 0.07, -0.09], 10), boot, none, none, one, 0.0, 0.2)
-		for y: float in [-0.16, -0.25]:
-			r.add_shape(shin, lathe([0.064, y - 0.012, 0.074, y, 0.064, y + 0.012], 8), LEATHER.lightened(0.12), none, none, one, 0.0, 0.2, true)
-		r.add_shape(shin, bbox(0.105, 0.085, 0.25, 0.028, 0.8, 0.82), boot, Vector3(0, -0.445, -0.045), none, one, 0.0, 0.2, true)
-		r.add_shape(shin, bbox(0.11, 0.022, 0.26, 0.008), boot.darkened(0.4), Vector3(0, -0.478, -0.045))
-
-	r.add_part("body", "", Vector3(0, 0.96, 0))
-	r.add_shape("body", lathe([0.1, -0.12, 0.15, -0.05, 0.165, 0.04, 0.155, 0.14], 12), cloth, none, none, Vector3(1, 1, 0.7))
-	r.add_shape("body", lathe([0.158, 0.07, 0.172, 0.085, 0.172, 0.135, 0.158, 0.15], 12), LEATHER, none, none, Vector3(1, 1, 0.72), 0.0, 0.2)
-	r.add_shape("body", bbox(0.055, 0.06, 0.02, 0.008), brass, Vector3(0.0, 0.11, -0.125), none, one, 0.0, 0.8, true)
-	r.add_shape("body", bbox(0.09, 0.11, 0.06, 0.02, 0.85, 0.85), LEATHER.lightened(0.08), Vector3(-0.15, 0.03, -0.03), Vector3(0, 0, 6), one, 0.0, 0.2, true)
-	r.add_shape("body", MeshKit.sheet(0.11, 0.08, 0.36, 1.0, 0.012, -0.02, 0.05, 4, 4), sash, Vector3(0.1, 0.08, -0.125))
-	r.add_shape("body", MeshKit.sheet(0.08, 0.05, 0.27, 1.0, 0.012, -0.03, 0.04, 4, 3), sash.darkened(0.2), Vector3(0.14, 0.08, -0.105), Vector3(0, -30, -8))
-
-	r.add_part("torso", "body", Vector3(0, 0.14, 0))
-	r.add_shape("torso", lathe([0.15, -0.05, 0.15, 0.05, 0.175, 0.19, 0.205, 0.32, 0.205, 0.39, 0.13, 0.45, 0.055, 0.47], 12), coat, none, none, Vector3(1, 1, 0.62))
-	# Coat skirt, a darker crossed front panel, collar, a leather baldric, one spaulder.
-	r.add_shape("torso", lathe([0.2, -0.2, 0.185, -0.1, 0.16, -0.02, 0.15, 0.02], 12, 6, 0.05, 0.0, 0.035), coat_d, none, none, Vector3(1, 1, 0.72))
-	r.add_shape("torso", MeshKit.extrude(poly([-0.02, 0.44, 0.1, 0.43, 0.11, 0.2, 0.02, 0.0, -0.09, 0.0]), 0.02), coat_d, Vector3(0, 0, -0.118), Vector3(-7, 0, 0))
-	r.add_shape("torso", bbox(0.025, 0.47, 0.022, 0.006), coat_l, Vector3(-0.055, 0.215, -0.125), Vector3(-7, 0, -13), one, 0.0, 0.0, true)
-	r.add_shape("torso", lathe([0.058, 0.44, 0.052, 0.54], 8), SKIN)
-	r.add_shape("torso", lathe([0.07, 0.44, 0.085, 0.47, 0.075, 0.5], 10), coat_l, Vector3(0, 0, 0.01))
-	var strap: Array = []
-	var strap_r: Array = []
-	for i: int in 17:
-		var a: float = TAU * float(i) / 16.0
-		var x: float = cos(a) * (0.19 + 0.02 * cos(a))
-		strap.append_array([x, 0.2 - x * 0.95, sin(a) * 0.135])
-		strap_r.append(0.03)
-	r.add_shape("torso", tube(strap, strap_r, 5, 0.35, Vector3.UP), LEATHER, none, none, one, 0.0, 0.2)
-	r.add_shape("torso", lathe([0.105, -0.05, 0.1, 0.02, 0.06, 0.07, 0.0, 0.085], 6), LEATHER.lightened(0.1), Vector3(-0.215, 0.39, 0), Vector3(0, 0, 18), Vector3(1.0, 1.0, 1.15), 0.0, 0.25, true)
-
-	r.add_part("head", "torso", Vector3(0, 0.5, 0))
-	r.add_shape("head", ball(0.105, 12, 6), SKIN, Vector3(0, 0.125, 0.005), none, Vector3(0.9, 1.12, 1.0))
-	r.add_shape("head", bbox(0.13, 0.11, 0.13, 0.035, 1.25, 1.2), SKIN, Vector3(0, 0.055, -0.03), none, one, 0.0, 0.0, true)
-	r.add_shape("head", bbox(0.026, 0.05, 0.035, 0.008, 0.6, 0.5), SKIN.darkened(0.12), Vector3(0, 0.1, -0.103), none, one, 0.0, 0.0, true)
-	r.add_shape("head", bbox(0.15, 0.022, 0.03, 0.006), SKIN.darkened(0.45), Vector3(0, 0.137, -0.088), Vector3(-8, 0, 0))
-	r.add_shape("head", bbox(0.05, 0.01, 0.02, 0.003), SKIN.darkened(0.4), Vector3(0, 0.048, -0.098))
-	for side: int in [-1, 1]:
-		r.add_shape("head", ball(0.022, 6, 3), SKIN.darkened(0.08), Vector3(0.096 * side, 0.115, 0.0), none, Vector3(0.5, 1.0, 0.8))
-		r.add_shape("head", bbox(0.06, 0.018, 0.02, 0.005), hair, Vector3(0.042 * side, 0.152, -0.092), Vector3(0, 0, 9 * side))
-	r.add_shape("head", ball(0.112, 12, 6), hair, Vector3(0, 0.165, 0.018), none, Vector3(0.95, 0.72, 1.05))
-	r.add_shape("head", ball(0.098, 10, 5), hair, Vector3(0, 0.115, 0.05), none, Vector3(1.0, 1.05, 0.8))
-	var tufts: Array = [[-0.05, 0.215, -0.07, -62, 22, 0.1], [0.03, 0.225, -0.075, -68, -12, 0.11], [0.07, 0.2, -0.04, -40, -40, 0.09], [-0.02, 0.235, 0.02, -15, 10, 0.08], [0.0, 0.2, 0.11, 60, 0, 0.1]]
-	for tuft: Array in tufts:
-		r.add_shape("head", cyl(0.0, 0.04, float(tuft[5]), 5), hair.lightened(0.05), Vector3(float(tuft[0]), float(tuft[1]), float(tuft[2])), Vector3(float(tuft[3]), 0, float(tuft[4])), one, 0.0, 0.0, true)
-	r.add_shape("head", lathe([0.107, 0.168, 0.114, 0.174, 0.114, 0.198, 0.107, 0.204], 12), cyan, Vector3(0, 0.0, 0.012), Vector3(-6, 0, 0), one, 0.3)
-	r.add_part("band_tail", "head", Vector3(0, 0.17, 0.125), Vector3(0.75, 0, 0))
-	r.add_shape("band_tail", tube([-0.01, 0.0, 0.0, -0.03, -0.01, 0.09, -0.045, 0.0, 0.2, -0.03, -0.02, 0.3], [0.016, 0.02, 0.018, 0.006], 4, 0.35, Vector3.RIGHT), cyan, none, none, one, 0.3)
-	r.add_shape("band_tail", tube([0.01, 0.0, 0.0, 0.03, -0.02, 0.08, 0.05, -0.05, 0.16, 0.045, -0.09, 0.22], [0.016, 0.02, 0.016, 0.006], 4, 0.35, Vector3.RIGHT), cyan, none, none, one, 0.3)
-	r.sway_parts["band_tail"] = -0.6
-
-	for side: int in [-1, 1]:
-		var n: String = "left" if side < 0 else "right"
-		var arm: String = "arm_" + n
-		var fore: String = "forearm_" + n
-		r.add_part(arm, "torso", Vector3(0.225 * side, 0.4, 0), Vector3(0, 0, 0.1 * side))
-		r.add_shape(arm, lathe([0.056, -0.31, 0.062, -0.2, 0.072, -0.08, 0.07, 0.0, 0.045, 0.05, 0.0, 0.065], 10), coat)
-		r.add_shape(arm, lathe([0.062, -0.33, 0.068, -0.31, 0.062, -0.29], 8), coat_l)
-		r.add_part(fore, arm, Vector3(0, -0.31, 0), Vector3(0.35, 0, 0))
-		if side < 0:
-			r.add_shape(fore, lathe([0.036, -0.27, 0.046, -0.16, 0.054, -0.05, 0.05, 0.02], 10), SKIN)
-			r.add_shape(fore, lathe([0.04, -0.28, 0.049, -0.17, 0.053, -0.1, 0.05, -0.09], 10), wrap)
-			for y: float in [-0.24, -0.19, -0.14]:
-				r.add_shape(fore, lathe([0.047, y - 0.01, 0.055, y, 0.047, y + 0.01], 8), wrap_d)
-			r.add_shape(fore, bbox(0.075, 0.095, 0.09, 0.025), wrap, Vector3(0, -0.325, -0.008), none, one, 0.0, 0.0, true)
-			r.add_shape(fore, bbox(0.08, 0.03, 0.04, 0.008), wrap_d, Vector3(0, -0.36, -0.035))
-		else:
-			r.add_shape(fore, lathe([0.05, -0.28, 0.055, -0.18, 0.066, -0.06, 0.08, -0.01, 0.074, 0.02, 0.04, 0.03], 8), STEEL, none, none, one, 0.0, 0.9, true)
-			for y: float in [-0.21, -0.13]:
-				r.add_shape(fore, lathe([0.056, y - 0.012, 0.068, y, 0.06, y + 0.012], 8), STEEL.darkened(0.35), none, none, one, 0.0, 0.9, true)
-			r.add_shape(fore, bbox(0.095, 0.105, 0.105, 0.028), IRON.lightened(0.2), Vector3(0, -0.33, -0.008), none, one, 0.0, 0.8, true)
-			r.add_shape(fore, bbox(0.1, 0.022, 0.035, 0.007), cyan, Vector3(0, -0.375, -0.045), none, one, 0.6)
-	# Weapons ride here (see ModelRig.set_weapon): -Z runs forward-and-down out of the fist.
-	r.add_part("hand_right", "forearm_right", Vector3(0, -0.33, 0), Vector3(deg_to_rad(-45.0), 0, 0))
-
-	# Shown instead of the right arm: torn sleeve, a fat bandaged stump with a stained end,
-	# a sling strap wound across the chest and a loose bandage tail.
-	var st: String = "arm_right_stump"
-	var blood := Color(0.4, 0.04, 0.04)
-	r.add_part(st, "torso", Vector3(0.225, 0.4, 0))
-	r.add_shape(st, lathe([0.085, -0.07, 0.078, 0.0, 0.045, 0.05, 0.0, 0.065], 10, 5, 0.12, 0.0, 0.035), coat)
-	r.add_shape(st, ball(0.092, 10, 5), wrap, Vector3(0.012, -0.06, 0), none, Vector3(1.0, 0.95, 1.0))
-	r.add_shape(st, lathe([0.07, -0.21, 0.082, -0.18, 0.086, -0.07, 0.075, -0.02], 10), wrap, Vector3(0.012, 0, 0), Vector3(0, 0, 12))
-	for y: float in [-0.15, -0.1]:
-		r.add_shape(st, lathe([0.084, y - 0.012, 0.094, y, 0.085, y + 0.012], 8), wrap_d, Vector3(0.012, 0, 0), Vector3(0, 0, 12))
-	r.add_shape(st, ball(0.076, 10, 5), blood, Vector3(0.056, -0.205, 0), Vector3(0, 0, 12), Vector3(1.0, 0.5, 1.0), 0.12)
-	var sling: Array = []
-	var sling_r: Array = []
-	for i: int in 17:
-		var a: float = TAU * float(i) / 16.0
-		var x: float = cos(a) * (0.2 + 0.025 * cos(a))
-		sling.append_array([x - 0.225, 0.22 + x * 0.75 - 0.4, sin(a) * 0.142])
-		sling_r.append(0.034)
-	r.add_shape(st, tube(sling, sling_r, 5, 0.35, Vector3.UP), wrap)
-	r.add_shape(st, tube([0.055, -0.2, 0.02, 0.07, -0.28, 0.04, 0.06, -0.36, 0.05, 0.075, -0.41, 0.045], [0.02, 0.024, 0.02, 0.006], 4, 0.3), wrap_d)
-	r.get_part(st).visible = false
-
-	r.finish()
-	return r
 
 
 # ---------------------------------------------------------------- enemies

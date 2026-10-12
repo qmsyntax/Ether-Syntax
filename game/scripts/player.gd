@@ -15,6 +15,12 @@ const ISO_YAW := deg_to_rad(45.0)
 
 var body: Body
 var talent_id := ""
+## Who this is (character creation). `look` is a CharacterLook dictionary of option ids.
+var char_name := ""
+var identity := ""
+var look: Dictionary = {}
+## Affinities the prime vestige came with; abilities outside them cannot be learned.
+var affinities: Array[String] = []
 var talent: Dictionary = {}
 var effects: Array[TalentEffect] = []
 var stars := 1
@@ -146,7 +152,7 @@ func _ready() -> void:
 func _build_model() -> void:
 	if _rig != null:
 		_rig.queue_free()
-	_rig = Models.player()
+	_rig = CharacterLook.build(look)
 	add_child(_rig)
 	_shown_arm_lost = false
 	_shown_glow = 0
@@ -176,9 +182,17 @@ func _update_model(delta: float) -> void:
 	_rig.animate(delta, velocity.length(), _strike_t > 0.0)
 
 
+## Change what the character looks like and rebuild the model to match.
+func set_look(new_look: Dictionary) -> void:
+	look = CharacterLook.normalize(new_look)
+	_build_model()
+
+
 ## Embrace a talent: its rules live in res://scripts/talents/<id>.gd, if that file exists.
+## The prime that carries it also carries the character's affinities.
 func set_talent(id: String) -> void:
 	talent_id = id
+	affinities = GameData.prime_affinities(id)
 	talent = TalentDB.get_talent(id)
 	effects.clear()
 	var path: String = TALENT_SCRIPT_DIR + id + ".gd"
@@ -872,6 +886,7 @@ func take_pickup(drop: Node3D) -> bool:
 ## Everything that must survive between sessions.
 func to_save() -> Dictionary:
 	return {
+		"name": char_name, "identity": identity, "look": look.duplicate(), "affinities": affinities.duplicate(),
 		"talent_id": talent_id, "stars": stars, "star_pct": star_pct.duplicate(), "money": money,
 		"essence": essence, "latent_aura": _latent_aura,
 		"body_hp": body.hp.duplicate(), "body_max": body.max_hp.duplicate(),
@@ -884,6 +899,13 @@ func to_save() -> Dictionary:
 
 func from_save(d: Dictionary) -> void:
 	set_talent(str(d.get("talent_id", "")))
+	char_name = str(d.get("name", ""))
+	identity = str(d.get("identity", ""))
+	if d.has("affinities"):
+		affinities.clear()
+		for a: Variant in d["affinities"]:
+			affinities.append(str(a))
+	set_look(d.get("look", {}))
 	stars = int(d.get("stars", 1))
 	star_pct.clear()
 	for pct: Variant in d.get("star_pct", [GameData.num("stars", "first_star_start_pct")]):

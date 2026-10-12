@@ -13,6 +13,13 @@ static func slot_path(slot: int) -> String:
 	return PATH if slot <= 0 else "user://save_slot_%d.json" % slot
 
 
+## "Name, Talent" for a save (older saves have no name).
+static func who(data: Dictionary) -> String:
+	var talent: String = str(TalentDB.get_talent(str(data.get("talent_id", ""))).get("name", "?"))
+	var char_name: String = str(data.get("name", ""))
+	return talent if char_name == "" else "%s, %s" % [char_name, talent]
+
+
 ## One line for a save list: who, how far along, how rich. "empty" for {}.
 static func describe(data: Dictionary) -> String:
 	if data.is_empty() or str(data.get("talent_id", "")) == "":
@@ -20,7 +27,7 @@ static func describe(data: Dictionary) -> String:
 	var pcts: Array = data.get("star_pct", [])
 	var newest: int = int(float(pcts[pcts.size() - 1])) if not pcts.is_empty() else 0
 	return "%s   -   day %d   -   star %d at %d%%   -   %s%s" % [
-		str(TalentDB.get_talent(str(data["talent_id"])).get("name", "?")), int(data.get("day", 1)),
+		who(data), int(data.get("day", 1)),
 		int(data.get("stars", 1)), newest, UiTheme.money_text(int(data.get("money", 0))),
 		"   -   hardcore" if bool(data.get("hardcore", false)) else ""]
 

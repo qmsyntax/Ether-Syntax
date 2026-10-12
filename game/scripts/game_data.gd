@@ -11,6 +11,9 @@ var concepts: Dictionary = {}
 var _wild: Dictionary = {}
 var items_file: Dictionary = {}
 var items: Dictionary = {}
+var creation: Dictionary = {}
+var _affinities: Dictionary = {}
+var _prime_default: Array = []
 
 
 ## Loaded in the constructor: the singleton name resolves before the node enters the tree,
@@ -33,6 +36,25 @@ func _ensure() -> void:
 	_wild = con.get("wild", {})
 	items_file = _load("res://data/items.json")
 	items = items_file.get("items", {})
+	creation = _load("res://data/creation.json")
+	var aff: Dictionary = _load("res://data/affinities.json")
+	_affinities = aff.get("affinities", {})
+	_prime_default = aff.get("prime_default", [])
+
+
+## An affinity definition (label, color, desc), or {} if the id is unknown.
+func affinity(id: String) -> Dictionary:
+	_ensure()
+	return _affinities.get(id, {})
+
+
+## The affinities the prime vestige carrying `talent_id` comes with.
+func prime_affinities(talent_id: String) -> Array[String]:
+	_ensure()
+	var out: Array[String] = []
+	for a: Variant in TalentDB.get_talent(talent_id).get("affinities", _prime_default):
+		out.append(str(a))
+	return out
 
 
 ## An item definition, or {} if the id is unknown.
