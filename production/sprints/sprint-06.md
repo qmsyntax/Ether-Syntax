@@ -217,3 +217,16 @@ Verified: self-test 250/250; `--bot-dungeon` in all six biomes; `--bot-full` in 
 smoke; inventory and creation click tests; dungeon, snow and mountain screenshots inspected from the game camera.
 Not verified: any of it by hand; frame rate in play; the arena and town in their new look beyond one screenshot;
 gate animation in motion; swamp, city and scrubland were not inspected after integration.
+
+## Part N — crash on death in the Netherecho (Brent 2026-10-12)
+
+| # | Report | Finding / change | Evidence |
+|---|--------|------------------|----------|
+| S06-49 | "when I died in netherecho the game crashed" | A construct's blow destroyed the projection in the middle of the echo's own update; the update then read the position of a projection that no longer existed. In an editor run that script error halts the game. The update now stops once the trip is over | selftest; `nether_death_probe` standard and hardcore; both fail with the fix removed |
+| S06-50 | (found while fixing) tests passed over script errors | `ErrorCatcher`: the self-test and the death probe now fail on any script error. The same blind spot hid the half-finished ascension on 2026-10-11 | proven by removing the fix |
+
+Why the earlier test missed it: it destroyed the projection by calling its damage function directly, not through a
+construct's attack during the update - the one path that matters in play.
+
+Not verified: by hand. The death probe covers the passage; dying in the arena's echo goes through the same code
+but was not run separately.

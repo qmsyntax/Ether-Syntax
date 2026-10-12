@@ -9,9 +9,11 @@ const PlayerScript := preload("res://scripts/player.gd")
 
 var _failed := 0
 var _passed := 0
+var _errors: ErrorCatcher
 
 
 func _ready() -> void:
+	_errors = ErrorCatcher.install()
 	_test_body()
 	_test_natural_healing()
 	_test_arm_loss_and_regrowth()
@@ -31,6 +33,8 @@ func _ready() -> void:
 	_test_affinities()
 	_test_models()
 	await _test_netherecho()
+	# a script error aborts one function and lets the checks around it pass; count it as a failure
+	_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
 
@@ -1043,6 +1047,28 @@ func _test_netherecho() -> void:
 	_check("a destroyed projection ends the trip and is reported as death", torn[0] and not n.active and not bool(p.get("projecting")))
 	_check("constructs calm down once you are gone", not bool(c2.get("hostile")))
 	c2.call("take_hit", 99999.0, false, null)
+	await get_tree().process_frame
+
+	# killed the way it happens in play: by a construct's blow, in the middle of the echo's own update
+	# (Brent 2026-10-12: "when I died in netherecho the game crashed")
+	_check("the soul goes out for the fight", n.enter())
+	var doomed: Node3D = n.projection
+	doomed.set("input_blocked", true)
+	doomed.set("hp", 1.0)
+	var killer: Node3D = n.spawn_construct(n.to_local(doomed.global_position + Vector3(1.0, 0, 0)), "vestige", "piercing", false)
+	killer.set("target", doomed)
+	n.spawn_wisp(n.to_local(doomed.global_position), "plain")
+	var torn_again := [0]
+	n.projection_destroyed.connect(func() -> void: torn_again[0] += 1)
+	for i: int in 60:
+		n.tick(0.1, null)
+		if not n.active:
+			break
+	_check("a construct can destroy the projection during the echo's update", not n.active and torn_again[0] == 1 and n.projection == null)
+	n.tick(0.1, null)
+	n.tick(0.1, null)
+	_check("and the echo keeps running quietly afterwards", not n.active and not bool(p.get("projecting")))
+	killer.call("take_hit", 99999.0, false, null)
 	await get_tree().process_frame
 
 	# pain in the body

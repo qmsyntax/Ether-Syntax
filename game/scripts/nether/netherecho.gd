@@ -141,8 +141,17 @@ func tick(delta: float, cam: Camera3D) -> void:
 	_foreign_note_cd -= delta
 	projection.call("tick", delta, cam)
 	for c: Node in get_tree().get_nodes_in_group("nether_enemies"):
-		c.call("tick", delta)
+		# a construct's blow can destroy the projection, which ends the trip (and may tear the
+		# whole level down) in the middle of this loop - there is then nothing left to update
+		if not active or projection == null:
+			return
+		if is_instance_valid(c) and not c.is_queued_for_deletion():
+			c.call("tick", delta)
+	if not active or projection == null:
+		return
 	_gather_wisps()
+	if not active or projection == null:
+		return
 	# walking back onto the body ends the trip - but only after having left it
 	var d: Vector3 = projection.global_position - player.global_position
 	d.y = 0.0
