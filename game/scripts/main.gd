@@ -1103,7 +1103,7 @@ func _setup_ui_shot(which: String) -> void:
 			known["callus"] = {"stage": 1, "progress": 43.75}
 			known["slow_tide"] = {"stage": 0, "progress": 50.0}
 			known["bedrock_bones"] = {"stage": 2, "progress": 0.0}
-			(player.get("body") as Body).hp["structural"] = 11.0
+			(player.get("body") as Body).add_wound("temper_strain", "Tempering strain", 20.0, 20.0, true, true)
 			open_tempering()
 		"hud-dual":
 			# a two-affinity character mid-fight: both kits on the bar, one affinity running hot
@@ -1132,6 +1132,8 @@ func _setup_ui_shot(which: String) -> void:
 			(first.get("body") as Body).apply_damage(95.0)
 			player.set("attack_target", first)
 			if which == "hud-low":
+				(player.get("body") as Body).add_wound("hit_1", "Cracked ribs", 14.0, 8.0)
+				(player.get("body") as Body).add_wound("lost_arm", "Lost arm", 25.0, 8.0, false)
 				(player.get("body") as Body).apply_damage(52.0)
 				player.set("reflux", 100.0)
 				player.set("reflux_locked", true)

@@ -216,6 +216,8 @@ These override fan sources where they conflict.
 **Gear, drugs**
 - [B] (2026-10-11) **Affinities decide which skills you can learn and are often unrelated to the prime's talent.** At character creation **three primes are rolled** from the table of prime abilities; each rolls a number of **affinity slots - 1 common, 2 rare, 3 very very rare (max 3)** - and each slot is filled at random. [MODEL] the exact odds (87.5 / 12 / 0.5 %), equal chance per affinity, and a limited reroll for testing.
 - [B] (2026-10-11) **Abilities do not harm their caster by default.** Tsunami Strike's self-harm in the books came from one specific combination of concepts and skills the protagonist assembled; it is not a property of the strike.
+- [B] (2026-10-11) **Health is one bar plus wounds.** The three wound layers never made a difference in play. Each wound has an invisible pool of healing that must be filled before it closes, separate from and not shown in the health bar. **Talent healing:** if it is not Dynamic it goes to the wound pools first; if it is Dynamic it fills the health bar to 50%, then the pools. [MODEL] what causes a wound, its size, the cut to maximum health, and what rest and the healer do.
+- [B] (2026-10-11) **The second star should take about two hours of play**, not ten minutes. Skill progress should slow too, later - it is left fast while testing.
 - [B] Gear matters but **less than the body**. It is crafted, quested for, awarded, and dropped by monsters.
 - [B] Drugs have ordinary downsides; archhumans are so healthy they can abuse far more than mortals.
 

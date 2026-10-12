@@ -59,42 +59,102 @@ func _new_player(talent: String = "") -> CharacterBody3D:
 
 func _test_body() -> void:
 	print("body:")
-	var b := Body.new(60.0, 30.0, 10.0)
+	var b := Body.new(100.0)
 	var applied: float = b.apply_damage(70.0)
-	_check("damage spills superficial -> structural", _near(float(b.hp["superficial"]), 0.0) and _near(float(b.hp["structural"]), 20.0))
-	_check("reports damage applied", _near(applied, 70.0))
+	_check("damage comes off the one bar", _near(b.total(), 30.0) and _near(applied, 70.0))
 	applied = b.apply_damage(500.0)
 	_check("no overkill: applied capped at remaining", _near(applied, 30.0), "got %f" % applied)
 	_check("dead at zero", b.is_dead())
 
-	var sup := Body.new(60.0, 30.0, 10.0)
-	sup.apply_damage(80.0)  # superficial 0, structural 10, catastrophic 10
-	var used: float = sup.heal(5.0, false)
-	_check("supreme: 1 point = 1 HP, worst layer first", _near(float(sup.hp["structural"]), 15.0) and _near(used, 5.0))
-	var dyn := Body.new(60.0, 30.0, 10.0)
-	dyn.apply_damage(80.0)
-	dyn.heal(3.0, true)     # 2 pts -> 20 structural (full), 1 pt -> up to 100 superficial (caps at 60)
-	_check("dynamic: 10x structural, 100x superficial", _near(float(dyn.hp["structural"]), 30.0) and _near(float(dyn.hp["superficial"]), 60.0),
-		"struct %f sup %f" % [float(dyn.hp["structural"]), float(dyn.hp["superficial"])])
+	# wounds: a cut to the bar's ceiling, and a hidden sink that healing must fill
+	var w := Body.new(100.0)
+	w.add_wound("ribs", "Cracked ribs", 12.0, 8.0)
+	_check("a wound lowers the bar's ceiling and takes the health above it", _near(w.total_max(), 92.0) and _near(w.total(), 92.0))
+	w.apply_damage(40.0)
+	_check("healing the bar stops at the lowered ceiling and leaves the sink alone", _near(w.heal(500.0), 40.0) and _near(w.total(), 92.0) and _near(w.sink_total(), 12.0))
+	var part: Dictionary = w.fill_sinks(5.0)
+	_check("filling a sink does not move the bar", _near(float(part["used"]), 5.0) and (part["closed"] as Array).is_empty() and _near(w.total(), 92.0) and _near(w.sink_total(), 7.0))
+	var done: Dictionary = w.fill_sinks(50.0)
+	_check("a full sink closes the wound and only uses what it needed", _near(float(done["used"]), 7.0) and (done["closed"] as Array) == ["ribs"] and w.wounds.is_empty())
+	_check("the ceiling comes back, empty, to be refilled", _near(w.total_max(), 100.0) and _near(w.total(), 92.0))
+	w.add_wound("arm", "Lost arm", 25.0, 8.0, false)
+	w.add_wound("cut", "Deep gash", 6.0, 8.0)
+	var rest: Dictionary = w.fill_sinks(100.0, true)
+	_check("rest mends only what rest can mend", (rest["closed"] as Array) == ["cut"] and w.has_wound("arm") and _near(w.sink_total(), 25.0) and _near(w.sink_total(true), 0.0))
+	w.add_wound("strain", "Strain", 8.0, 8.0, true, true)
+	w.add_wound("strain", "Strain", 8.0, 8.0, true, true)
+	_check("a merged wound deepens instead of doubling up", w.wounds.size() == 2 and _near(float(w.wound("strain")["sink"]), 16.0) and _near(float(w.wound("strain")["max_cut"]), 16.0))
+	var deep := Body.new(100.0)
+	deep.min_max_frac = 0.4
+	for i: int in 12:
+		deep.add_wound("w%d" % i, "Wound", 5.0, 8.0)
+	_check("wounds cannot take the whole bar", _near(deep.total_max(), 40.0))
+	_check("a wound says how it is doing without a number", Body.wound_state({"sink": 10.0, "sink_max": 10.0}) == "fresh" and Body.wound_state({"sink": 1.0, "sink_max": 10.0}) == "nearly closed")
+	var copy := Body.new(1.0)
+	copy.from_dict(JSON.parse_string(JSON.stringify(w.to_dict())))
+	_check("a body survives a save", _near(copy.max_hp, 100.0) and copy.wounds.size() == 2 and _near(copy.total(), w.total()) and _near(copy.sink_total(), w.sink_total()))
+	var old := Body.new(1.0)
+	old.from_dict({}, {"superficial": 30.0, "structural": 20.0, "catastrophic": 10.0}, {"superficial": 68.0, "structural": 30.0, "catastrophic": 10.0})
+	_check("a save from the three-layer days becomes one bar", _near(old.max_hp, 108.0) and _near(old.total(), 60.0) and old.wounds.is_empty())
 
 
 func _test_natural_healing() -> void:
 	print("natural healing:")
 	var p := _new_player()
 	var b: Body = p.get("body")
-	b.apply_damage(85.0)                    # superficial 0, structural 5, catastrophic 10
-	b.damage_layer("catastrophic", 6.0)     # catastrophic 4
+	b.add_wound("ribs", "Cracked ribs", 12.0, 8.0)
+	b.apply_damage(70.0)                    # 22 of 92
 	p.set("in_combat", true)
 	for i: int in 5:
 		p.call("_physics_process", 1.0)
-	_check("none while in combat", _near(float(b.hp["superficial"]), 0.0) and _near(float(b.hp["structural"]), 5.0))
+	_check("none while in combat", _near(b.total(), 22.0))
 	p.set("in_combat", false)
 	for i: int in 10:
 		p.call("_physics_process", 1.0)
-	_check("superficial recovers at rest", _near(float(b.hp["superficial"]), 30.0), "got %f" % float(b.hp["superficial"]))
-	_check("structural recovers slowly at rest", _near(float(b.hp["structural"]), 9.0), "got %f" % float(b.hp["structural"]))
-	_check("catastrophic never recovers naturally", _near(float(b.hp["catastrophic"]), 4.0), "got %f" % float(b.hp["catastrophic"]))
+	_check("the bar refills at rest", _near(b.total(), 52.0), "got %f" % b.total())
+	for i: int in 60:
+		p.call("_physics_process", 1.0)
+	_check("but only to the wounded ceiling", _near(b.total(), 92.0), "got %f" % b.total())
+	_check("and a wound never closes by resting in the field", b.has_wound("ribs") and _near(b.sink_total(), 12.0))
 	p.queue_free()
+
+	# what wounds you
+	var q := _new_player()
+	var qb: Body = q.get("body")
+	q.call("take_hit", 15.0, false, null)
+	_check("an ordinary blow leaves no wound", qb.wounds.is_empty() and _near(qb.total(), 85.0))
+	q.call("take_hit", 25.0, false, null)
+	_check("a blow worth a fifth of your health wounds you", qb.wounds.size() == 1 and _near(float(qb.wounds[0]["sink"]), 15.0) and _near(float(qb.wounds[0]["max_cut"]), 8.0),
+		str(qb.wounds))
+	q.call("take_hit", 25.0, false, null)
+	_check("one flurry does not stack wounds", qb.wounds.size() == 1)
+	q.set("_wound_cd", 0.0)
+	qb.hp = 30.0
+	q.call("take_hit", 12.0, false, null)
+	_check("being left nearly dead wounds you too", qb.wounds.size() == 2 and _near(float(qb.wounds[1]["sink"]), 7.2), str(qb.wounds))
+	q.queue_free()
+
+	# talent healing order (Brent 2026-10-11)
+	var s1 := _new_player("one_percent_lifesteal")
+	var sb: Body = s1.get("body")
+	sb.add_wound("ribs", "Cracked ribs", 12.0, 8.0)
+	sb.hp = 20.0
+	_check("supreme: the sink first", _near(float(s1.call("_spend_heal_points", 5.0)), 5.0) and _near(sb.sink_total(), 7.0) and _near(sb.total(), 20.0))
+	s1.call("_spend_heal_points", 10.0)
+	_check("supreme: then the bar, once the wound is closed", sb.wounds.is_empty() and _near(sb.total(), 23.0), "hp %f" % sb.total())
+	s1.queue_free()
+	var s2 := _new_player("one_percent_lifesteal")
+	s2.set("stars", 2)
+	var db: Body = s2.get("body")
+	db.add_wound("ribs", "Cracked ribs", 12.0, 8.0)       # ceiling 92, half is 46
+	db.hp = 20.0
+	s2.call("_spend_heal_points", 10.0)
+	_check("dynamic: the bar first while it is under half", _near(db.total(), 30.0) and _near(db.sink_total(), 12.0))
+	s2.call("_spend_heal_points", 20.0)
+	_check("dynamic: at half the rest goes to the sink", _near(db.total(), 46.0) and _near(db.sink_total(), 8.0), "hp %f sink %f" % [db.total(), db.sink_total()])
+	s2.call("_spend_heal_points", 20.0)
+	_check("dynamic: and once the wound closes, back to the bar", db.wounds.is_empty() and _near(db.total(), 58.0), "hp %f" % db.total())
+	s2.queue_free()
 
 
 func _overcharge(p: Node) -> void:
@@ -112,23 +172,39 @@ func _test_arm_loss_and_regrowth() -> void:
 	_check("one full overcharge wears the arm", float(p.get("arm_right")) < 100.0 and not bool(p.get("arm_right_lost")), "arm %f" % float(p.get("arm_right")))
 	_overcharge(p)
 	_check("repeated overcharge destroys the arm", bool(p.get("arm_right_lost")))
-	_check("losing the arm is catastrophic damage", float(b.hp["catastrophic"]) < 10.0, "cat %f" % float(b.hp["catastrophic"]))
+	_check("a lost arm is a wound that rest cannot mend", b.has_wound("lost_arm") and not bool(b.wound("lost_arm")["natural"]) and _near(float(b.wound("lost_arm")["sink"]), 25.0))
 
 	p.set("in_combat", false)
 	for i: int in 30:
 		p.call("_physics_process", 1.0)
-	_check("rest never regrows a lost arm", bool(p.get("arm_right_lost")))
+	p.call("rest_night")
+	_check("neither rest nor a night regrows a lost arm", bool(p.get("arm_right_lost")) and b.has_wound("lost_arm"))
 
-	var cat_gap: float = b.missing("catastrophic")
-	p.call("_spend_heal_points", cat_gap + 24.0)
-	_check("talent heals catastrophic first, arm not yet regrown", _near(b.missing("catastrophic"), 0.0) and bool(p.get("arm_right_lost")))
+	p.call("_spend_heal_points", 24.0)
+	_check("the talent fills the arm's sink, not yet regrown", bool(p.get("arm_right_lost")) and _near(float(b.wound("lost_arm")["sink"]), 1.0))
 	p.call("_spend_heal_points", 2.0)
-	_check("talent regrows the arm once enough points are spent", not bool(p.get("arm_right_lost")) and float(p.get("arm_right")) > 0.0)
+	_check("talent regrows the arm once enough points are spent", not bool(p.get("arm_right_lost")) and float(p.get("arm_right")) > 0.0 and not b.has_wound("lost_arm"))
 	p.queue_free()
 
 
 func _test_healer_credit_and_rent() -> void:
 	print("healer / debt / rent:")
+	var h := _new_player()
+	var hb: Body = h.get("body")
+	h.set("money", 5000)
+	_check("nothing to mend costs nothing", int((h.call("next_healing") as Dictionary)["cost"]) == 0)
+	hb.add_wound("ribs", "Cracked ribs", 14.0, 8.0)
+	hb.hp = 40.0
+	_check("the healer works on a wound before the bar", int((h.call("next_healing") as Dictionary)["cost"]) == 600)
+	h.call("buy_healing")
+	_check("a visit fills ten of the sink", int(h.get("money")) == 4400 and _near(hb.sink_total(), 4.0) and _near(hb.total(), 40.0))
+	h.call("buy_healing")
+	_check("the last of a wound costs only what is left", int(h.get("money")) == 4160 and hb.wounds.is_empty())
+	_check("with no wounds the healer patches the bar", int((h.call("next_healing") as Dictionary)["cost"]) == 150)
+	h.call("buy_healing")
+	_check("a patch-up is 25 health", int(h.get("money")) == 4010 and _near(hb.total(), 65.0))
+	h.queue_free()
+
 	var p := _new_player()
 	p.set("arm_right_lost", true)
 	p.set("arm_right", 0.0)
@@ -255,9 +331,9 @@ func _test_abilities() -> void:
 	cons.clear()
 	cons.append({"tier": "vestige", "concept": "acceleration"})
 	var pb0: Body = p.get("body")
-	var hurt_before: float = pb0.missing("structural")
+	var wounds_before: int = pb0.wounds.size()
 	_check("a failed bind loses the construct", str(p.call("bind_construct", 0, 0, 0.99)) == "failed" and cons.is_empty() and int(ab[0]["stage"]) == 0)
-	_check("a failed bind wounds you", pb0.missing("structural") > hurt_before)
+	_check("a failed bind wounds you", pb0.wounds.size() == wounds_before + 1 and str(pb0.wounds[pb0.wounds.size() - 1]["name"]) == "Soul-burn")
 	cons.append({"tier": "vestige", "concept": "acceleration"})
 	_check("a vestige binds into stage 0 and advances it", str(p.call("bind_construct", 0, 0, 0.0)) == "bound" and int(ab[0]["stage"]) == 1 and _near(float(ab[0]["progress"]), 0.0))
 	var stats: Dictionary = p.call("ability_stats", ab[0])
@@ -330,10 +406,12 @@ func _test_stars() -> void:
 	_check("one star never holds more than 100 essence", float(p.get("essence_max")) <= 100.0, "got %f" % float(p.get("essence_max")))
 	p.call("try_ascend")
 	_check("a full star alone does not ascend without latent aura", int(p.get("stars")) == 1)
-	p.set("_latent_aura", 1000.0)
+	p.set("_latent_aura", GameData.num("player", "aura_threshold") + 1.0)
 	p.call("try_ascend")
 	var pcts: Array = p.get("star_pct")
 	_check("ascension adds a second star at 1%", int(p.get("stars")) == 2 and pcts.size() == 2 and _near(float(pcts[1]), 1.0))
+	_check("ascension remakes the body: a bigger bar, full", _near((p.get("body") as Body).max_hp, 100.0 * float(GameData.balance["ascension_2"]["body_scale"]))
+		and _near((p.get("body") as Body).total(), (p.get("body") as Body).total_max()), "max %f" % (p.get("body") as Body).max_hp)
 	_check("the tank is 99% of one star plus 1% of another", _near(float(p.get("essence_max")), 100.0), "got %f" % float(p.get("essence_max")))
 	p.call("grow_star", 20.0)
 	_check("only the newest star grows after ascension", _near(float(pcts[0]), 99.0) and _near(float(pcts[1]), 21.0))
@@ -650,19 +728,22 @@ func _test_tempering() -> void:
 		if not (aff == "" or not GameData.affinity(aff).is_empty()) or not (def.get("effect", {}) as Dictionary).has("stat"):
 			_check("every technique names a known affinity and an effect", false, id)
 	var b: Body = p.get("body")
-	var sup_max: float = float(b.max_hp["superficial"])
-	var struct0: float = float(b.hp["structural"])
-	_check("a session costs structural health and moves the bar", bool(p.call("temper_session", "callus")) and _near(float(b.hp["structural"]), struct0 - 8.0)
-		and _near(float(known["callus"]["progress"]), 25.0))
+	var base_max: float = b.max_hp
+	_check("a session strains the body and moves the bar", bool(p.call("temper_session", "callus")) and b.has_wound("temper_strain")
+		and _near(b.total_max(), base_max - 8.0) and _near(float(b.wound("temper_strain")["sink"]), 8.0) and _near(float(known["callus"]["progress"]), 25.0))
+	p.call("rest_night")
+	_check("a night's rest mends the strain", not b.has_wound("temper_strain") and _near(b.total(), base_max))
 	for i: int in 3:
-		b.hp["structural"] = b.max_hp["structural"]
+		b.wounds.clear()
 		p.call("temper_session", "callus")
+	b.wounds.clear()
 	_check("four sessions make stage 1", int(known["callus"]["stage"]) == 1 and _near(float(known["callus"]["progress"]), 0.0))
-	_check("callus stage 1 thickens the skin", _near(float(b.max_hp["superficial"]), sup_max + 8.0))
+	_check("callus stage 1 adds health", _near(b.max_hp, base_max + 8.0))
 	_check("the next stage is slower and hurts more", _near(float(p.call("temper_session_progress", "callus")), 17.5) and _near(float(p.call("temper_session_damage", "callus")), 12.0))
-	b.hp["structural"] = 5.0
-	_check("a body too broken cannot train", not bool(p.call("temper_session", "callus")) and str(p.call("cannot_temper_reason", "callus")) != "" and _near(float(b.hp["structural"]), 5.0))
-	b.hp["structural"] = b.max_hp["structural"]
+	b.add_wound("old", "Old hurts", 30.0, 36.0)
+	_check("a body too broken cannot train", not bool(p.call("temper_session", "callus")) and str(p.call("cannot_temper_reason", "callus")) != "" and not b.has_wound("temper_strain"))
+	b.wounds.clear()
+	b.hp = b.total_max()
 	known["callus"]["stage"] = 2
 	_check("a one-star body stops at stage 2", not bool(p.call("temper_session", "callus")) and int(p.call("temper_stage_cap")) == 2)
 	known["callus"]["stage"] = 1
@@ -676,19 +757,21 @@ func _test_tempering() -> void:
 	_check("and the body takes less", _near(before - b.total(), 18.05), "took %f" % (before - b.total()))
 	_check("thin air lungs quicken the feet", _near(float(p.call("temper_stat", "move_speed_mult")), 1.04))
 	_check("an untrained stat is untouched", _near(float(p.call("temper_stat", "melee_cooldown_mult")), 1.0))
-	var struct_max: float = float(b.max_hp["structural"])
-	b.hp["structural"] = b.max_hp["structural"]
 	for i: int in 4:
-		b.hp["structural"] = b.max_hp["structural"]
+		b.wounds.clear()
 		p.call("temper_session", "bedrock_bones")
-	_check("bedrock bones thicken the frame", int(known["bedrock_bones"]["stage"]) == 1 and _near(float(b.max_hp["structural"]), struct_max + 6.0))
+	b.wounds.clear()
+	p.call("take_wound", "test", "Test wound", 10.0, 4.0)
+	_check("bedrock bones make wounds shallower", int(known["bedrock_bones"]["stage"]) == 1 and _near(float(b.wound("test")["sink"]), 8.8), str(b.wounds))
+	b.wounds.clear()
+	b.hp = b.total_max()
 
 	var w := _new_player()
 	(w.get("tempering") as Dictionary)["slow_tide"]["stage"] = 2
 	(w.get("reflux_by") as Dictionary)["water"] = 50.0
 	w.call("_shed_reflux", 10.0)
 	_check("slow tide sheds reflux faster", _near(float(w.call("reflux_of", "water")), 50.0 - 10.0 * 1.15 * 1.15), "left %f" % float(w.call("reflux_of", "water")))
-	_check("the screen can say what a stage gives", str(w.call("temper_effect_text", "slow_tide", 2)) == "reflux sheds 32% faster" and str(w.call("temper_effect_text", "callus", 3)) == "+24 superficial health")
+	_check("the screen can say what a stage gives", str(w.call("temper_effect_text", "slow_tide", 2)) == "reflux sheds 32% faster" and str(w.call("temper_effect_text", "callus", 3)) == "+24 health")
 	w.queue_free()
 
 	# save round trip; the health a technique added must not be added twice
@@ -696,7 +779,7 @@ func _test_tempering() -> void:
 	q.call("from_save", JSON.parse_string(JSON.stringify(p.call("to_save"))))
 	var qk: Dictionary = q.get("tempering")
 	_check("tempering survives a save", int(qk["callus"]["stage"]) == 1 and int(qk["kiln_cured"]["stage"]) == 2 and int(qk["bedrock_bones"]["stage"]) == 1 and qk.size() == known.size())
-	_check("and its health is not counted twice", _near(float((q.get("body") as Body).max_hp["superficial"]), sup_max + 8.0) and _near(float((q.get("body") as Body).max_hp["structural"]), struct_max + 6.0))
+	_check("and its health is not counted twice", _near((q.get("body") as Body).max_hp, base_max + 8.0))
 	var old: Dictionary = p.call("to_save")
 	old.erase("tempering")
 	var r := _new_player()
@@ -704,7 +787,7 @@ func _test_tempering() -> void:
 	_check("a save from before tempering starts its techniques at stage 0", int((r.get("tempering") as Dictionary)["callus"]["stage"]) == 0 and (r.get("tempering") as Dictionary).has("kiln_cured"))
 	# changing affinities (a new character) gives the health back
 	p.call("set_affinities", ["water"])
-	_check("starting over undoes tempered health", _near(float(b.max_hp["superficial"]), sup_max) and _near(float(b.max_hp["structural"]), struct_max) and int((p.get("tempering") as Dictionary)["callus"]["stage"]) == 0)
+	_check("starting over undoes tempered health", _near(b.max_hp, base_max) and int((p.get("tempering") as Dictionary)["callus"]["stage"]) == 0)
 	for n: Node in [p, q, r]:
 		n.queue_free()
 
@@ -1014,15 +1097,21 @@ func _test_death_and_rest() -> void:
 	var b: Body = p.get("body")
 	p.set("money", 100)
 	p.set("arm_right_lost", true)
+	b.add_wound("lost_arm", "Lost arm", 25.0, 8.0, false)
+	b.add_wound("ribs", "Cracked ribs", 20.0, 8.0)
 	b.apply_damage(1000.0)
 	p.set("dead", true)
 	p.call("revive_in_debt", 600)
 	_check("revived character is alive", not bool(p.get("dead")) and not b.is_dead())
 	_check("the rescue fee is charged with no credit check", int(p.get("money")) == -500, "money %d" % int(p.get("money")))
-	_check("patched up, not healed", _near(float(b.hp["superficial"]), 30.0) and _near(float(b.hp["structural"]), 12.0) and _near(float(b.hp["catastrophic"]), 2.0),
-		"%f / %f / %f" % [float(b.hp["superficial"]), float(b.hp["structural"]), float(b.hp["catastrophic"])])
+	_check("patched up, not healed: half the bar, every wound still there", _near(b.total(), 42.0) and b.wounds.size() == 2, "hp %f" % b.total())
 	_check("a lost arm stays lost through rescue", bool(p.get("arm_right_lost")))
 	p.call("rest_night")
-	_check("a night's rest closes cuts and knits some bone", _near(float(b.hp["superficial"]), 60.0) and _near(float(b.hp["structural"]), 27.0))
-	_check("a night's rest restores nothing catastrophic, and no arm", _near(float(b.hp["catastrophic"]), 2.0) and bool(p.get("arm_right_lost")))
+	_check("a night's rest refills the bar and knits a wound a little", _near(b.total(), b.total_max()) and _near(float(b.wound("ribs")["sink"]), 5.0))
+	_check("a night's rest does nothing for a lost arm", _near(float(b.wound("lost_arm")["sink"]), 25.0) and bool(p.get("arm_right_lost")))
+	p.call("rest_night")
+	_check("a second night closes it", not b.has_wound("ribs") and _near(b.total(), 92.0))
 	p.queue_free()
+
+	# ascension pace (Brent 2026-10-11: ten minutes was far too quick, about two hours is right)
+	_check("the second star is a long road", GameData.num("player", "aura_threshold") >= 1000.0 and GameData.num("stars", "growth_pct_per_aura") <= 0.05)
