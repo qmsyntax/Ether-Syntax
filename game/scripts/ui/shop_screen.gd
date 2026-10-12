@@ -26,6 +26,10 @@ func build(root: Control) -> void:
 	var list: VBoxContainer = scroller(box)
 	for id: Variant in GameData.items_file.get("shop", []):
 		list.add_child(_row(str(id), inv))
+	# scrolls: only the ones this character could read, and does not already own
+	for id: Variant in GameData.items_file.get("shop_scrolls", []):
+		if str(player.call("can_learn", str(GameData.item(str(id)).get("teaches", "")))) == "" and not inv.bag.has(str(id)):
+			list.add_child(_row(str(id), inv))
 
 	box.add_child(UiTheme.rule())
 	var foot := HBoxContainer.new()

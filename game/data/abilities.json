@@ -1,5 +1,5 @@
 {
-  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind, on that ability's affinity. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities); a full stage waits for a bound construct of the matching tier (design/01 LAW 4). Which abilities a character starts with comes from the kits in affinities.json. kinds: projectile | melee_burst | dash | beam | targeted_strike | blink (design/05 Appendix A). A skill touches an enemy through a hit payload - on_hit / on_pass / on_arrive - with any of: damage or damage_mult (taken from the skill when absent), status, shove (metres), marks (Live), interrupts. 'summary' is the one-line rule shown to the player. Water and lightning are built to design/05 step 1 and fire to step 3 (a dash may carry 'trail', a strip of ground that applies a payload every tick_s, and 'stops_at_bodies'; a targeted_strike may 'consume_status' for per_stack_damage and a 'burst'); wind to step 3 too (a projectile may 'pierce' and 'spend_pips' for 'pip_damage' each; a dash may 'gain_pips' and have 'no_recovery'; a targeted_strike may have its own 'range', go 'through' to 'through_dist' behind the target, 'force_rear', and take 'pip_mult' per pip with 'spend_all_pips'); earth to step 3 too: any skill may have a 'windup' (it is paid for at once and goes off that many seconds later; you are rooted and aimed until then) and be 'braced' through it (balance.braced); 'shatters_stone' breaks the caster's own stone (balance.stone); kind 'prop' raises a slab 'width' x 'thickness' x 'height' across your aim at the cursor, between 'min_range' and 'range' away, up in 'rise_time', standing 'life' seconds, and applies 'on_rise' to whoever is standing there. Abilities do NOT hurt their caster (Brent 2026-10-11). Every name and verse is original to this project - the two water skills that carried the books' own names were renamed on 2026-10-12 (ids kept for saves). Numbers are first guesses [MODEL].",
+  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind, on that ability's affinity. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities); a full stage waits for a bound construct of the matching tier (design/01 LAW 4). Which abilities a character starts with comes from the kits in affinities.json. kinds: projectile | melee_burst | dash | beam | targeted_strike | blink (design/05 Appendix A). A skill touches an enemy through a hit payload - on_hit / on_pass / on_arrive - with any of: damage or damage_mult (taken from the skill when absent), status, shove (metres), marks (Live), interrupts. 'summary' is the one-line rule shown to the player. Water and lightning are built to design/05 step 1 and fire to step 3 (a dash may carry 'trail', a strip of ground that applies a payload every tick_s, and 'stops_at_bodies'; a targeted_strike may 'consume_status' for per_stack_damage and a 'burst'); wind to step 3 too (a projectile may 'pierce' and 'spend_pips' for 'pip_damage' each; a dash may 'gain_pips' and have 'no_recovery'; a targeted_strike may have its own 'range', go 'through' to 'through_dist' behind the target, 'force_rear', and take 'pip_mult' per pip with 'spend_all_pips'); earth to step 3 too: any skill may have a 'windup' (it is paid for at once and goes off that many seconds later; you are rooted and aimed until then) and be 'braced' through it (balance.braced); 'shatters_stone' breaks the caster's own stone (balance.stone); kind 'prop' raises a slab 'width' x 'thickness' x 'height' across your aim at the cursor, between 'min_range' and 'range' away, up in 'rise_time', standing 'life' seconds, and applies 'on_rise' to whoever is standing there. Abilities do NOT hurt their caster (Brent 2026-10-11). Every name and verse is original to this project - the two water skills that carried the books' own names were renamed on 2026-10-12 (ids kept for saves). Numbers are first guesses [MODEL]. STEP 5a: skills outside the starter kits are learned from scroll items (items.json kind 'scroll'). New kinds - displace (mode pull_area: enemies within 'radius' of the aimed point are dragged 'pull' metres toward it; pull_target: one enemy is hauled to 'keep' metres in front of you and turned away for 'turn_s'; aloft_area: on_hit to everyone in 'radius', +'pip_seconds' of it per pip spent); delayed_blast (a marked circle of 'radius' at the aimed point goes off after 'delay': on_hit to everyone in it, 'bonus_damage' to those with 'bonus_vs_status', may 'kill_projectiles', shatter stone, and 'leave_prop'); detonate (every enemy within 'range' carrying 'consume_status' loses it: 'per_stack_burst' damage per stack in 'burst_radius', or an Overload scaled by 'overload_fracs'); chain (on_hit to a target and up to 'jumps' more, each within 'jump_radius' of the last). A melee_burst may take its damage from heat ('damage_from_heat' per point above 'heat_floor', and the reflux drops to the floor) and may 'shatters_all_stone'.",
   "abilities": {
     "water_bolt": {
       "name": "Water Bolt",
@@ -182,14 +182,24 @@
     "downdraft": {
       "name": "Downdraft",
       "affinity": "wind",
-      "kind": "melee_burst",
-      "cost": 16.0,
-      "reflux_per_cost": 1.0,
-      "damage_mult": 2.4,
-      "reach_bonus": 1.6,
-      "verse": "Bring the sky down the length of your arm.",
-      "icon": "downdraft",
-      "summary": "Not in the starter kit since Crosscut took its place; it returns with the later skills."
+      "kind": "delayed_blast",
+      "cost": 12.0,
+      "reflux_per_cost": 0.7,
+      "range": 8.0,
+      "radius": 4.0,
+      "delay": 0.25,
+      "on_hit": {
+        "damage": 50.0,
+        "interrupts": true,
+        "status": "pinned"
+      },
+      "bonus_vs_status": "aloft",
+      "bonus_damage": 100.0,
+      "kill_projectiles": true,
+      "shatters_stone": true,
+      "verse": "Bring the sky down.",
+      "summary": "Point, 8 m, 4 m wide: 50, interrupts, pins enemies for 2 s, knocks their shots out of the air, and does +100 to anything Aloft.",
+      "icon": "downdraft"
     },
     "tailwind": {
       "name": "Tailwind",
@@ -295,6 +305,172 @@
       "verse": "Ask the floor to stand up. It remembers how.",
       "summary": "A wall of stone across your aim, up to 8 m away. It blocks movement and shots - theirs and yours - for 12 s. Three at a time.",
       "icon": "wall"
+    },
+    "undertow": {
+      "name": "Undertow",
+      "affinity": "water",
+      "kind": "displace",
+      "mode": "pull_area",
+      "cost": 12.0,
+      "reflux_per_cost": 1.0,
+      "range": 9.0,
+      "radius": 4.0,
+      "pull": 4.0,
+      "on_hit": {
+        "status": "soaked"
+      },
+      "verse": "The floor of the room leans.",
+      "summary": "Point, 9 m: every enemy within 4 m of the spot is dragged up to 4 m toward it and Soaked. No damage of its own - but bodies that collide Crush each other.",
+      "icon": "undertow"
+    },
+    "riptide_lash": {
+      "name": "Riptide Lash",
+      "affinity": "water",
+      "kind": "displace",
+      "mode": "pull_target",
+      "cost": 12.0,
+      "reflux_per_cost": 1.0,
+      "range": 10.0,
+      "pull": 10.0,
+      "keep": 1.5,
+      "turn_s": 1.0,
+      "on_hit": {
+        "damage": 60.0,
+        "status": "soaked",
+        "interrupts": true
+      },
+      "verse": "A rope of water for one throat.",
+      "summary": "One enemy within 10 m is hauled to arm's length, takes 60, is Soaked and interrupted - and arrives with its back to you for a second.",
+      "icon": "lash"
+    },
+    "backdraft": {
+      "name": "Backdraft",
+      "affinity": "fire",
+      "kind": "melee_burst",
+      "cost": 12.0,
+      "reflux_per_cost": 0.0,
+      "windup": 0.3,
+      "arc_deg": 360.0,
+      "reach_bonus": 2.7,
+      "damage_from_heat": 4.0,
+      "heat_floor": 20.0,
+      "on_hit": {},
+      "verse": "Open the door.",
+      "summary": "Everything within 5 m takes 4 x the heat you carry above 20 - and your fire reflux drops to 20. 320 at full heat; nothing when cold.",
+      "icon": "backdraft"
+    },
+    "pyre_call": {
+      "name": "Pyre Call",
+      "affinity": "fire",
+      "kind": "detonate",
+      "cost": 12.0,
+      "reflux_per_cost": 1.0,
+      "range": 10.0,
+      "consume_status": "alight",
+      "per_stack_burst": 35.0,
+      "burst_radius": 2.0,
+      "verse": "Every fire you set answers.",
+      "summary": "Every Alight enemy within 10 m loses its stacks, and each stack bursts for 35 in 2 m. Spread the burns first; call them once.",
+      "icon": "pyre"
+    },
+    "pillar": {
+      "name": "Pillar",
+      "affinity": "earth",
+      "kind": "delayed_blast",
+      "cost": 12.0,
+      "reflux_per_cost": 0.4,
+      "windup": 0.3,
+      "braced": true,
+      "range": 9.0,
+      "radius": 1.2,
+      "delay": 0.5,
+      "on_hit": {
+        "damage": 120.0,
+        "poise": 60.0,
+        "interrupts": true
+      },
+      "leave_prop": {
+        "width": 1.2,
+        "thickness": 1.2,
+        "height": 1.8,
+        "rise_time": 0.05,
+        "life": 12.0
+      },
+      "verse": "The ground has an opinion about where they are standing.",
+      "summary": "Point, 9 m: a circle is marked for half a second, then a column punches up - 120, 60 poise, interrupts - and stays as stone.",
+      "icon": "pillar"
+    },
+    "tremor": {
+      "name": "Tremor",
+      "affinity": "earth",
+      "kind": "melee_burst",
+      "cost": 18.0,
+      "reflux_per_cost": 0.4,
+      "windup": 0.5,
+      "braced": true,
+      "arc_deg": 360.0,
+      "reach_bonus": 2.7,
+      "shatters_all_stone": true,
+      "on_hit": {
+        "damage": 60.0,
+        "interrupts": true,
+        "status": "slowed"
+      },
+      "verse": "Everything standing is standing on your say-so.",
+      "summary": "Everything within 5 m takes 60, is interrupted and slowed for 3 s - and every stone you have standing shatters outward at once.",
+      "icon": "tremor"
+    },
+    "updraft": {
+      "name": "Updraft",
+      "affinity": "wind",
+      "kind": "displace",
+      "mode": "aloft_area",
+      "cost": 12.0,
+      "reflux_per_cost": 0.7,
+      "range": 8.0,
+      "radius": 2.5,
+      "on_hit": {
+        "status": "aloft"
+      },
+      "spend_pips": 4,
+      "pip_seconds": 0.2,
+      "verse": "What goes up is yours until it comes down.",
+      "summary": "Point, 8 m: enemies within 2.5 m are thrown Aloft for 1.2 s (+0.2 s a pip, up to 4) - helpless, and taking 25% more. Heavy ones lose poise instead.",
+      "icon": "updraft"
+    },
+    "forked_path": {
+      "name": "Forked Path",
+      "affinity": "lightning",
+      "kind": "chain",
+      "cost": 12.0,
+      "reflux_per_cost": 1.0,
+      "range": 9.0,
+      "jumps": 3,
+      "jump_radius": 5.0,
+      "on_hit": {
+        "damage": 50.0,
+        "marks": 1
+      },
+      "verse": "It does not choose. It takes every road.",
+      "summary": "One enemy within 9 m, then up to three more within 5 m of each other: 50 and 1 Live mark each. Never the same body twice.",
+      "icon": "fork"
+    },
+    "dead_short": {
+      "name": "Dead Short",
+      "affinity": "lightning",
+      "kind": "detonate",
+      "cost": 18.0,
+      "reflux_per_cost": 1.4,
+      "range": 12.0,
+      "consume_status": "live",
+      "overload_fracs": [
+        0.4,
+        0.7,
+        1.0
+      ],
+      "verse": "Everything you have marked, all at once, for less.",
+      "summary": "Every marked enemy within 12 m Overloads now: 40% of the full blow and stun at 1 mark, 70% at 2, all of it at 3. It grounds no reflux.",
+      "icon": "short"
     }
   }
 }

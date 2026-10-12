@@ -80,6 +80,20 @@
       "lasts": 3.0,
       "color": "fff2a8",
       "damage_taken_mult": 1.5
+    },
+    "pinned": {
+      "label": "Pinned",
+      "stacks": 1,
+      "lasts": 2.0,
+      "color": "bfe9dc",
+      "speed_mult": 0.4
+    },
+    "slowed": {
+      "label": "Slowed",
+      "stacks": 1,
+      "lasts": 3.0,
+      "color": "a8824a",
+      "speed_mult": 0.6
     }
   }
 }

@@ -1282,12 +1282,12 @@ func _setup_ui_shot(which: String) -> void:
 					var ab: Dictionary = GameData.ability(str(id))
 					if str(ab.get("affinity", "")) != str(aff):
 						continue
-					var slot := Rect2(200.0 + col * 300.0, 50.0 + row * 150.0, 116.0, 116.0)
+					var slot := Rect2(170.0 + col * 236.0, 60.0 + row * 150.0, 96.0, 96.0)
 					sheet.draw_rect(slot, UiTheme.INSET)
 					sheet.draw_rect(slot, UiTheme.BRONZE_DIM, false, 2.0)
 					sheet.draw_line(Vector2(slot.get_center().x, slot.position.y), Vector2(slot.get_center().x, slot.end.y), Color(1, 1, 1, 0.08), 1.0)
 					sheet.draw_line(Vector2(slot.position.x, slot.get_center().y), Vector2(slot.end.x, slot.get_center().y), Color(1, 1, 1, 0.08), 1.0)
-					UiDraw.icon(sheet, str(ab.get("icon", "drop")), slot.get_center(), 58.0, GameData.affinity_color(str(aff)).lightened(0.3))
+					UiDraw.icon(sheet, str(ab.get("icon", "drop")), slot.get_center(), 48.0, GameData.affinity_color(str(aff)).lightened(0.3))
 					UiDraw.text(sheet, Vector2(slot.end.x + 10.0, slot.get_center().y), str(ab.get("name", id)), 15, UiTheme.TEXT)
 					UiDraw.text(sheet, Vector2(slot.end.x + 10.0, slot.get_center().y + 20.0), str(ab.get("kind", "")), 12, UiTheme.TEXT_DIM)
 					col += 1

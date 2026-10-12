@@ -633,7 +633,7 @@ func deal_damage(target: Node, base: float, tags: Array = []) -> HitContext:
 	for aff: String in affinities:
 		if ctx.has_tag(aff):
 			var per: float = float(GameData.affinity(aff).get("damage_per_reflux", 0.0))
-			if per > 0.0:
+			if per > 0.0 and not ctx.has_tag("cold"):       # a skill that spends the heat does not also ride it
 				ctx.mult *= heat_mult(aff)
 	var pos: Vector3 = (target as Node3D).global_position
 	var combat: Dictionary = GameData.balance["combat"]
@@ -710,6 +710,214 @@ func take_hit(amount: float, heavy: bool, source: Node) -> float:
 			_windup_t = 0.0
 			_float("STAGGERED", Color(1, 0.7, 0.3))
 	return _apply_damage(ctx.amount(), heavy)
+
+
+# --- learning skills (design/05 step 5: scrolls) ----------------------------------------------
+
+func knows(ability_id: String) -> bool:
+	for st: Dictionary in abilities:
+		if str(st["id"]) == ability_id:
+			return true
+	return false
+
+
+## Why this character cannot learn that skill, or "" if they can.
+func can_learn(ability_id: String) -> String:
+	var ab: Dictionary = GameData.ability(ability_id)
+	if ab.is_empty():
+		return "That is not a skill."
+	if knows(ability_id):
+		return "You already know %s." % str(ab.get("name", ability_id))
+	var aff: String = str(ab.get("affinity", ""))
+	if not affinities.has(aff):
+		return "You have no %s affinity: the words mean nothing to you." % str(GameData.affinity(aff).get("label", aff)).to_lower()
+	return ""
+
+
+## The skill is yours: it goes on the first empty key, or waits in the soul screen if the bar is full.
+func learn(ability_id: String) -> bool:
+	if can_learn(ability_id) != "":
+		return false
+	abilities.append({"id": ability_id, "stage": 0, "progress": 0.0})
+	for i: int in hotbar.size():
+		if hotbar[i] < 0:
+			hotbar[i] = abilities.size() - 1
+			break
+	return true
+
+
+## Read a scroll out of the pack. Returns "" if it taught its skill (and is gone), else why not.
+func read_scroll(item_id: String) -> String:
+	var def: Dictionary = GameData.item(item_id)
+	if str(def.get("kind", "")) != "scroll" or not inventory.bag.has(item_id):
+		return "That is not something you can read."
+	var why: String = can_learn(str(def.get("teaches", "")))
+	if why != "":
+		return why
+	inventory.remove(item_id)
+	learn(str(def["teaches"]))
+	var ab: Dictionary = GameData.ability(str(def["teaches"]))
+	note("You read the scroll. %s is yours%s." % [str(ab.get("name", "?")), "" if hotbar.has(abilities.size() - 1) else " - the bar is full; place it from the soul screen"])
+	_float("LEARNED", GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3))
+	return ""
+
+
+## A scroll this character could read and does not already carry, picked at random; "" if none.
+func scroll_for_me() -> String:
+	var pool: Array[String] = []
+	var items: Dictionary = GameData.items_file.get("items", {})
+	for id: String in items:
+		var def: Dictionary = items[id]
+		if str(def.get("kind", "")) == "scroll" and can_learn(str(def.get("teaches", ""))) == "" and not inventory.bag.has(id):
+			pool.append(id)
+	return pool[rng.randi() % pool.size()] if not pool.is_empty() else ""
+
+
+# --- more skill behaviours (design/05 Appendix A) -------------------------------------------------
+
+## The spot a point-aimed skill lands on: toward the cursor, at most `reach` away.
+func _aim_point(reach: float) -> Vector3:
+	var want: Vector3 = _cursor_ground() - global_position
+	want.y = 0.0
+	if want.length() < 0.5:
+		want = _facing * reach                    # no cursor to speak of (bot, headless): straight ahead
+	if want.length() > reach:
+		want = want.normalized() * reach
+	return global_position + want
+
+
+## Living enemies whose bodies reach within `radius` of `point`.
+func _enemies_near(point: Vector3, radius: float) -> Array[Node3D]:
+	var out: Array[Node3D] = []
+	if not is_inside_tree():
+		return out
+	for node: Node in get_tree().get_nodes_in_group("enemies"):
+		var e := node as Node3D
+		if e == null or bool(e.call("is_dead")):
+			continue
+		var to: Vector3 = e.global_position - point
+		to.y = 0.0
+		if to.length() <= radius + float(e.get("radius")):
+			out.append(e)
+	return out
+
+
+## displace: move enemies instead of hurting them. See abilities.json for the three modes.
+func _displace(point: Vector3, target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> void:
+	var color: Color = GameData.affinity_color(str(ab.get("affinity", "")))
+	var chest: Vector3 = global_position + Vector3.UP
+	_strike_t = 0.2
+	if str(ab.get("mode", "")) == "pull_target":
+		if target == null:
+			return
+		_line_visual(chest, target.global_position + Vector3.UP, color)
+		apply_hit(target, _payload(ab, "on_hit"), tags, stage_mult)
+		if is_instance_valid(target) and not bool(target.call("is_dead")):
+			target.set("shover", self)
+			target.call("pull_toward", global_position, float(ab.get("pull", 10.0)), float(ab.get("keep", 1.5)) + float(target.get("radius")))
+			target.call("turn_away_from", global_position, float(ab.get("turn_s", 1.0)))
+		return
+	_line_visual(chest, point + Vector3.UP * 0.3, color)
+	var burned: int = spend_pips(int(ab["spend_pips"])) if ab.has("spend_pips") else 0
+	for e: Node3D in _enemies_near(point, float(ab.get("radius", 3.0))):
+		apply_hit(e, _payload(ab, "on_hit"), tags, stage_mult)
+		if not is_instance_valid(e) or bool(e.call("is_dead")):
+			continue
+		if str(ab.get("mode", "")) == "pull_area":
+			e.set("shover", self)
+			e.call("pull_toward", point, float(ab.get("pull", 4.0)))
+		elif burned > 0 and bool(e.call("has_status", "aloft")):
+			var up: Dictionary = (e.get("statuses") as Dictionary)["aloft"]
+			up["t"] = float(up["t"]) + float(ab.get("pip_seconds", 0.2)) * float(burned)
+
+
+## delayed_blast: mark the ground now; land_blast() does the rest when the mark comes due.
+func _start_blast(point: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -> void:
+	var blast := DelayedBlast.new()
+	blast.caster = self
+	blast.ab = ab
+	blast.stage_mult = stage_mult
+	blast.tags = tags
+	blast.radius = float(ab.get("radius", 2.0))
+	blast.delay = float(ab.get("delay", 0.5))
+	blast.color = GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3)
+	get_parent().add_child(blast)
+	blast.global_position = Vector3(point.x, global_position.y, point.z)
+	_strike_t = 0.2
+
+
+## A delayed blast goes off at `at` (called by the DelayedBlast).
+func land_blast(at: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -> void:
+	var radius: float = float(ab.get("radius", 2.0))
+	for e: Node3D in _enemies_near(at, radius):
+		var marked: bool = ab.has("bonus_vs_status") and bool(e.call("has_status", str(ab["bonus_vs_status"])))
+		apply_hit(e, _payload(ab, "on_hit"), tags, stage_mult)
+		if marked and is_instance_valid(e) and not bool(e.call("is_dead")):
+			deal_damage(e, float(ab.get("bonus_damage", 0.0)) * stage_mult, tags + ["bonus"])
+	if bool(ab.get("kill_projectiles", false)):
+		for node: Node in get_tree().get_nodes_in_group("enemy_shots"):
+			var shot := node as Node3D
+			if shot != null and Vector2(shot.global_position.x - at.x, shot.global_position.z - at.z).length() <= radius:
+				shot.queue_free()
+	if bool(ab.get("shatters_stone", false)):
+		for s: Variant in stones.duplicate():
+			if is_instance_valid(s) and Vector2((s as Stone).global_position.x - at.x, (s as Stone).global_position.z - at.z).length() <= radius + (s as Stone).size.x * 0.5:
+				(s as Stone).shatter((s as Stone).global_position - at, self)
+	if ab.has("leave_prop"):
+		var away: Vector3 = at - global_position
+		raise_stone(at, away if away.length() > 0.1 else _facing, ab["leave_prop"], stage_mult, tags)
+
+
+## detonate: everything near you carrying the status loses it, and pays for it.
+func _detonate(ab: Dictionary, stage_mult: float, tags: Array) -> void:
+	var status: String = str(ab.get("consume_status", ""))
+	var color: Color = GameData.affinity_color(str(ab.get("affinity", "")))
+	_strike_t = 0.25
+	var carrying: Array = []
+	for e: Node3D in _enemies_near(global_position, float(ab.get("range", 10.0))):
+		var n: int = int(e.call("status_stacks", status))
+		if n > 0:
+			carrying.append([e, n, e.global_position])
+			e.call("clear_status", status)
+	for row: Array in carrying:
+		var stacks: int = row[1]
+		var where: Vector3 = row[2]
+		_line_visual(global_position + Vector3.UP, where + Vector3.UP, color)
+		if ab.has("per_stack_burst"):
+			for near: Node3D in _enemies_near(where, float(ab.get("burst_radius", 2.0))):
+				deal_damage(near, float(ab["per_stack_burst"]) * float(stacks) * stage_mult, tags + ["burst"])
+		if ab.has("overload_fracs"):
+			var fracs: Array = ab["overload_fracs"]
+			var frac: float = float(fracs[mini(stacks, fracs.size()) - 1])
+			var live: Dictionary = GameData.status("live")
+			var e: Node3D = row[0]
+			if is_instance_valid(e) and not bool(e.call("is_dead")):
+				FloatText.spawn(get_parent(), where + Vector3.UP * 0.6, "OVERLOAD", Color(0.85, 0.78, 1.0))
+				deal_damage(e, float(live.get("overload_damage", 150.0)) * frac * stage_mult, tags + ["overload"])
+				if is_instance_valid(e) and not bool(e.call("is_dead")):
+					e.call("stun", float(live.get("stun", 1.0)) * frac)
+
+
+## chain: the target, then the nearest enemy to it not yet struck, and on, `jumps` times.
+func _chain(target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> void:
+	var color: Color = GameData.affinity_color(str(ab.get("affinity", "")))
+	var struck: Array = []
+	var from: Vector3 = global_position + Vector3.UP
+	var cur: Node3D = target
+	_strike_t = 0.2
+	for jump: int in int(ab.get("jumps", 3)) + 1:
+		var at: Vector3 = cur.global_position
+		struck.append(cur)
+		_line_visual(from, at + Vector3.UP, color)
+		from = at + Vector3.UP
+		apply_hit(cur, _payload(ab, "on_hit"), tags, stage_mult)
+		var next: Node3D = null
+		for e: Node3D in _enemies_near(at, float(ab.get("jump_radius", 5.0))):
+			if not struck.has(e) and (next == null or e.global_position.distance_to(at) < next.global_position.distance_to(at)):
+				next = e
+		if next == null:
+			return
+		cur = next
 
 
 ## --- wind-ups, Braced and standing stone (earth, design/05 2.3) ---------------------------------
@@ -1380,8 +1588,20 @@ func _burst(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	_strike_t = 0.25
 	_swing_visual(reach, true, false)
 	var payload: Dictionary = _payload(ab, "on_hit")
+	if ab.has("damage_from_heat"):
+		# the heat is the damage, and it is spent: what you carry above the floor goes into the blow
+		var own: String = str(ab["affinity"])
+		var carried: float = reflux_of(own)
+		var floor_at: float = float(ab.get("heat_floor", 0.0))
+		payload["damage"] = float(ab["damage_from_heat"]) * maxf(0.0, carried - floor_at)
+		reflux_by[own] = minf(carried, floor_at)
+		tags = tags + ["cold"]
 	for t: Node3D in _in_arc(reach, half):
 		apply_hit(t, payload, tags, stage_mult)
+	if bool(ab.get("shatters_all_stone", false)):
+		for s: Variant in stones.duplicate():
+			if is_instance_valid(s):
+				(s as Stone).shatter((s as Stone).global_position - global_position, self)
 	if bool(ab.get("shatters_stone", false)):
 		for s: Variant in stones.duplicate():
 			if is_instance_valid(s) and _stone_in_arc(s as Stone, reach, half):
@@ -1628,7 +1848,7 @@ func cast_ability(index: int) -> void:
 	var kind: String = str(ab["kind"])
 	var strike_target: Node3D = null
 	var blink_to := Vector3.ZERO
-	if kind == "targeted_strike":
+	if kind == "targeted_strike" or kind == "chain" or (kind == "displace" and str(ab.get("mode", "")) == "pull_target"):
 		strike_target = _skill_target(float(ab["range"]) if ab.has("range") else reach_now() + float(ab.get("range_bonus", 0.0)))
 		if strike_target == null:
 			note("%s needs someone within reach." % str(ab["name"]))
@@ -1645,6 +1865,8 @@ func cast_ability(index: int) -> void:
 			note("There is no room to raise stone there.")
 			return
 		blink_to = where
+	elif kind == "displace" or kind == "delayed_blast":
+		blink_to = _aim_point(float(ab.get("range", 8.0)))
 	essence -= cost
 	reflux_by[aff] = heat + cost * float(ab["reflux_per_cost"])
 	_advance(state, cost)
@@ -1656,19 +1878,19 @@ func cast_ability(index: int) -> void:
 	var stage_mult: float = ability_damage_mult(int(state["stage"])) * float(ab.get("damage_all", 1.0))
 	var tags: Array = ["ability", aff, str(state["id"])]
 	var windup: float = float(ab.get("windup", 0.0))
-	if kind == "prop":
+	if kind == "prop" or kind == "delayed_blast" or (kind == "displace" and strike_target == null):
 		var to_spot: Vector3 = blink_to - global_position
 		to_spot.y = 0.0
 		if to_spot.length() > 0.2:
 			_facing = to_spot.normalized()
 	# Stone starts rising at once; everything else with a wind-up goes off when it ends.
-	if windup <= 0.0 or kind == "prop":
+	if windup <= 0.0 or kind == "prop" or kind == "delayed_blast":
 		_perform_cast(ab, kind, aff, stage_mult, tags, strike_target, blink_to)
 	if windup > 0.0:
 		_windup_t = windup
 		_windup_total = windup
 		_windup = {"ab": ab, "kind": kind, "aff": aff, "stage_mult": stage_mult, "tags": tags, "target": strike_target, "point": blink_to,
-			"facing": _facing, "braced": bool(ab.get("braced", false)), "release": kind != "prop"}
+			"facing": _facing, "braced": bool(ab.get("braced", false)), "release": kind != "prop" and kind != "delayed_blast"}
 		has_move_goal = false
 		attack_target = null
 		pickup_target = null
@@ -1702,7 +1924,7 @@ func cast_ability(index: int) -> void:
 ## What a skill does when it goes off: at once, or when its wind-up ends (see _tick_windup).
 ## `blink_to` is the point the skill was aimed at, for the kinds that have one.
 func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float, tags: Array, strike_target: Node3D, blink_to: Vector3) -> void:
-	if kind == "targeted_strike" and strike_target == null:
+	if (kind == "targeted_strike" or kind == "chain") and strike_target == null:
 		return                                   # whoever it was meant for is gone
 	match kind:
 		"projectile":
@@ -1777,6 +1999,14 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 			_blink(blink_to, ab, stage_mult, GameData.affinity_color(aff), tags)
 		"prop":
 			raise_stone(blink_to, _facing, ab, stage_mult, tags)
+		"displace":
+			_displace(blink_to, strike_target, ab, stage_mult, tags)
+		"delayed_blast":
+			_start_blast(blink_to, ab, stage_mult, tags)
+		"detonate":
+			_detonate(ab, stage_mult, tags)
+		"chain":
+			_chain(strike_target, ab, stage_mult, tags)
 
 
 ## Put an ability on a skill slot. An ability lives on one slot at a time; whatever was in the
@@ -2005,6 +2235,11 @@ func _roll_loot(target: Node) -> void:
 		return
 	for entry: Dictionary in GameData.enemy(str(kind_v)).get("loot", []):
 		if rng.randf() < float(entry["chance"]):
+			if bool(entry.get("learnable", false)):
+				var scroll: String = scroll_for_me()
+				if scroll != "":
+					spawn_pickup(parent, scroll, (target as Node3D).global_position + Vector3(rng.randf_range(-0.8, 0.8), 0.0, rng.randf_range(-0.8, 0.8)))
+				continue
 			var at: Vector3 = (target as Node3D).global_position + Vector3(rng.randf_range(-0.8, 0.8), 0.0, rng.randf_range(-0.8, 0.8))
 			spawn_pickup(parent, str(entry["item"]), at)
 

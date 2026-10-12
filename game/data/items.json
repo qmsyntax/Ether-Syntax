@@ -1,5 +1,5 @@
 {
-  "_note": "Items. All names and numbers are original to this project [MODEL]. Canon facts used: carry capacity is an economic stat; a new archhuman has a backpack, not a storage ring (Brent 2026-09-23); satellites are items you find or buy, and a 1-star can use a 2-star satellite at full rate (Brent 2026-09-23). slot: back | satellite | trinket | '' (not equippable). stats are summed over equipped items: carry_capacity (kg), satellite_rate (essence/s), cost_mult (ability essence cost multiplier), reflux_shed_mult. Weapons (slot 'weapon') are held in the striking arm: melee_damage_mult, melee_cooldown_mult (below 1 = faster), melee_range_bonus (metres). They do nothing while that arm is lost. gear_sell_factor is what the merchant pays for gear; loot sells at full value. design/06 step 1 (approved by Brent 2026-10-12): slots 'body' and 'ranged'. armour is the percent of each hit a piece takes off (capped by balance.gear.armour_cap). A ranged weapon's shot does balance.ranged.ranged_damage x ranged_damage_mult every ranged_interval seconds out to ranged_range metres, for no essence. The draft catalogue in design/data-drafts/items-v2.json gives the Husk-Hide Jack 4 wound resistance as well; that stat is not read by the game until step 2, so it is left off the live item rather than listed and ignored. design/06 section 2, the paper doll (2026-10-12): the twelve slots are weapon (main hand), offhand, ranged, head, body, hands, feet, back, belt, satellite, trinket, trinket2 (trinket2 takes any 'trinket' item; the same item is never worn twice). The head, hands, feet, off-hand and belt pieces come from the draft catalogue with ONLY the stats the game reads: armour, cost_mult, reflux_shed_mult, and ranged_interval_mult (multiplies the time between shots; read in Player.ranged_interval). Left off because nothing reads them yet: wound_resist, poise, move_speed_mult, quick_slots, ammo_recover_add, and a glove's melee_cooldown_mult (weapon_stat only reads the main hand). Shields are not here at all - their whole effect is 'block', which is not built. The Rope Belt therefore does nothing yet and says so.",
+  "_note": "Items. All names and numbers are original to this project [MODEL]. Canon facts used: carry capacity is an economic stat; a new archhuman has a backpack, not a storage ring (Brent 2026-09-23); satellites are items you find or buy, and a 1-star can use a 2-star satellite at full rate (Brent 2026-09-23). slot: back | satellite | trinket | '' (not equippable). stats are summed over equipped items: carry_capacity (kg), satellite_rate (essence/s), cost_mult (ability essence cost multiplier), reflux_shed_mult. Weapons (slot 'weapon') are held in the striking arm: melee_damage_mult, melee_cooldown_mult (below 1 = faster), melee_range_bonus (metres). They do nothing while that arm is lost. gear_sell_factor is what the merchant pays for gear; loot sells at full value. design/06 step 1 (approved by Brent 2026-10-12): slots 'body' and 'ranged'. armour is the percent of each hit a piece takes off (capped by balance.gear.armour_cap). A ranged weapon's shot does balance.ranged.ranged_damage x ranged_damage_mult every ranged_interval seconds out to ranged_range metres, for no essence. The draft catalogue in design/data-drafts/items-v2.json gives the Husk-Hide Jack 4 wound resistance as well; that stat is not read by the game until step 2, so it is left off the live item rather than listed and ignored. design/06 section 2, the paper doll (2026-10-12): the twelve slots are weapon (main hand), offhand, ranged, head, body, hands, feet, back, belt, satellite, trinket, trinket2 (trinket2 takes any 'trinket' item; the same item is never worn twice). The head, hands, feet, off-hand and belt pieces come from the draft catalogue with ONLY the stats the game reads: armour, cost_mult, reflux_shed_mult, and ranged_interval_mult (multiplies the time between shots; read in Player.ranged_interval). Left off because nothing reads them yet: wound_resist, poise, move_speed_mult, quick_slots, ammo_recover_add, and a glove's melee_cooldown_mult (weapon_stat only reads the main hand). Shields are not here at all - their whole effect is 'block', which is not built. The Rope Belt therefore does nothing yet and says so. kind 'scroll': an item that 'teaches' a skill - read from the pack, used up, only by a character with that skill's affinity; it is not loot (never sold by 'sell all loot'). shop_scrolls: the scrolls the merchant stocks; the shop shows only those this character could learn.",
   "base_carry_capacity": 8.0,
   "starting_equipped": {
     "back": "canvas_pack",
@@ -290,6 +290,96 @@
         "ranged_interval_mult": 0.96
       },
       "desc": "The next one is always where your hand already is."
+    },
+    "scroll_undertow": {
+      "name": "Scroll: Undertow",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "undertow",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Undertow to someone with the water affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_riptide_lash": {
+      "name": "Scroll: Riptide Lash",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "riptide_lash",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Riptide Lash to someone with the water affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_backdraft": {
+      "name": "Scroll: Backdraft",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "backdraft",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Backdraft to someone with the fire affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_pyre_call": {
+      "name": "Scroll: Pyre Call",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "pyre_call",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Pyre Call to someone with the fire affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_pillar": {
+      "name": "Scroll: Pillar",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "pillar",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Pillar to someone with the earth affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_tremor": {
+      "name": "Scroll: Tremor",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "tremor",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Tremor to someone with the earth affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_downdraft": {
+      "name": "Scroll: Downdraft",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "downdraft",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Downdraft to someone with the wind affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_updraft": {
+      "name": "Scroll: Updraft",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "updraft",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Updraft to someone with the wind affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_forked_path": {
+      "name": "Scroll: Forked Path",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "forked_path",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Forked Path to someone with the lightning affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_dead_short": {
+      "name": "Scroll: Dead Short",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "dead_short",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Dead Short to someone with the lightning affinity. Read once; the scroll is used up. Click it in your pack to read it."
     }
   },
   "shop": [
@@ -341,5 +431,17 @@
     "walls_per_roll": 2.5,
     "bonus_rolls_full_clear": 2
   },
-  "gear_sell_factor": 0.5
+  "gear_sell_factor": 0.5,
+  "shop_scrolls": [
+    "scroll_undertow",
+    "scroll_riptide_lash",
+    "scroll_backdraft",
+    "scroll_pyre_call",
+    "scroll_pillar",
+    "scroll_tremor",
+    "scroll_downdraft",
+    "scroll_updraft",
+    "scroll_forked_path",
+    "scroll_dead_short"
+  ]
 }

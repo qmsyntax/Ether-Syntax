@@ -182,6 +182,64 @@ static func icon(ci: CanvasItem, kind: String, c: Vector2, s: float, color: Colo
 			ci.draw_arc(c + Vector2(-s * 0.4, s * 0.34), s * 0.15, 0.0, TAU, 14, color.darkened(0.3), 2.0, true)
 			ci.draw_polyline(PackedVector2Array([c + Vector2(-s * 0.3, s * 0.24), c + Vector2(-s * 0.02, s * 0.14), c + Vector2(-s * 0.12, -s * 0.06), c + Vector2(s * 0.24, -s * 0.22)]), color.darkened(0.1), 2.5, true)
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.38, -s * 0.56), c + Vector2(s * 0.6, -s * 0.32), c + Vector2(s * 0.38, -s * 0.08), c + Vector2(s * 0.16, -s * 0.32)]), color.lightened(0.3))
+		"scroll":    # a skill scroll: a rolled sheet with writing
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.34, -s * 0.4), Vector2(s * 0.68, s * 0.8)), color.darkened(0.1))
+			ci.draw_circle(c + Vector2(-s * 0.34, -s * 0.4), s * 0.1, color)
+			ci.draw_circle(c + Vector2(s * 0.34, s * 0.4), s * 0.1, color)
+			for k: int in 4:
+				ci.draw_line(c + Vector2(-s * 0.22, -s * 0.22 + k * s * 0.15), c + Vector2(s * (0.22 if k != 3 else 0.02), -s * 0.22 + k * s * 0.15), color.darkened(0.55), 1.5, true)
+		"undertow":  # undertow: everything drawn to one spot
+			ci.draw_circle(c, s * 0.12, color)
+			for k: int in 4:
+				var ua: float = TAU * float(k) / 4.0 + 0.5
+				var tip: Vector2 = c + Vector2(cos(ua), sin(ua)) * s * 0.22
+				var tail: Vector2 = c + Vector2(cos(ua), sin(ua)) * s * 0.58
+				var side := Vector2(-sin(ua), cos(ua)) * s * 0.11
+				ci.draw_line(tail, tip, color.darkened(0.1), 3.0, true)
+				ci.draw_polyline(PackedVector2Array([tip + side + (tail - tip) * 0.3, tip, tip - side + (tail - tip) * 0.3]), color, 3.0, true)
+		"lash":      # riptide lash: a rope with a hook on the end
+			ci.draw_arc(c + Vector2(-s * 0.1, s * 0.1), s * 0.44, -2.6, 0.2, 18, color, 3.5, true)
+			ci.draw_arc(c + Vector2(s * 0.34, -s * 0.06), s * 0.2, 0.4, 3.6, 12, color.lightened(0.2), 3.5, true)
+			ci.draw_circle(c + Vector2(-s * 0.48, -s * 0.12), s * 0.08, color)
+		"backdraft": # backdraft: a ring of fire going outward
+			ci.draw_arc(c, s * 0.24, 0.0, TAU, 24, color.lightened(0.3), 3.0, true)
+			for k: int in 8:
+				var ba: float = TAU * float(k) / 8.0
+				var bo := Vector2(cos(ba), sin(ba))
+				var bs := Vector2(-sin(ba), cos(ba)) * s * 0.1
+				ci.draw_colored_polygon(PackedVector2Array([c + bo * s * 0.34 + bs, c + bo * s * 0.62, c + bo * s * 0.34 - bs]), color)
+		"pyre":      # pyre call: many small fires answering
+			for k: int in 3:
+				var px2: float = -s * 0.36 + k * s * 0.36
+				var py2: float = s * 0.36 if k != 1 else -s * 0.02
+				ci.draw_colored_polygon(PackedVector2Array([c + Vector2(px2 - s * 0.15, py2), c + Vector2(px2 + s * 0.15, py2), c + Vector2(px2 + s * 0.02, py2 - s * 0.44)]), color.lightened(0.1 * k))
+				ci.draw_arc(c + Vector2(px2, py2 - s * 0.14), s * 0.24, -2.4, -0.7, 8, color.darkened(0.2), 1.5, true)
+		"pillar":    # pillar: a column through the floor
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.16, s * 0.36), c + Vector2(-s * 0.2, -s * 0.4), c + Vector2(0, -s * 0.58), c + Vector2(s * 0.2, -s * 0.4), c + Vector2(s * 0.16, s * 0.36)]), color)
+			ci.draw_line(c + Vector2(-s * 0.6, s * 0.38), c + Vector2(s * 0.6, s * 0.38), color.darkened(0.3), 4.0, true)
+			ci.draw_line(c + Vector2(-s * 0.2, s * 0.38), c + Vector2(-s * 0.42, s * 0.16), color.darkened(0.45), 2.0, true)
+			ci.draw_line(c + Vector2(s * 0.2, s * 0.38), c + Vector2(s * 0.44, s * 0.14), color.darkened(0.45), 2.0, true)
+		"tremor":    # tremor: the ground ringing outward
+			ci.draw_circle(c + Vector2(0, s * 0.08), s * 0.1, color)
+			for k: int in 3:
+				ci.draw_arc(c + Vector2(0, s * 0.08), s * (0.24 + 0.16 * k), PI + 0.35, TAU - 0.35, 14, color.darkened(0.15 * k), 3.0, true)
+				ci.draw_arc(c + Vector2(0, s * 0.08), s * (0.24 + 0.16 * k), 0.35, PI - 0.35, 14, color.darkened(0.3 + 0.1 * k), 2.0, true)
+		"updraft":   # updraft: thrown into the air
+			for k: int in 3:
+				var ux: float = c.x - s * 0.36 + k * s * 0.36
+				var uy: float = c.y - (s * 0.42 if k == 1 else s * 0.28)
+				ci.draw_line(Vector2(ux, c.y + s * 0.36), Vector2(ux, uy), color, 3.0, true)
+				ci.draw_polyline(PackedVector2Array([Vector2(ux - s * 0.12, uy + s * 0.14), Vector2(ux, uy), Vector2(ux + s * 0.12, uy + s * 0.14)]), color, 3.0, true)
+			ci.draw_arc(c + Vector2(0, s * 0.5), s * 0.5, PI + 0.5, TAU - 0.5, 12, color.darkened(0.3), 2.5, true)
+		"fork":      # forked path: one stroke, three ends
+			ci.draw_polyline(PackedVector2Array([c + Vector2(-s * 0.56, -s * 0.04), c + Vector2(-s * 0.2, s * 0.06), c + Vector2(-s * 0.08, -s * 0.06)]), color, 4.0, true)
+			ci.draw_polyline(PackedVector2Array([c + Vector2(-s * 0.08, -s * 0.06), c + Vector2(s * 0.2, -s * 0.2), c + Vector2(s * 0.28, -s * 0.5), c + Vector2(s * 0.56, -s * 0.46)]), color.lightened(0.15), 3.0, true)
+			ci.draw_polyline(PackedVector2Array([c + Vector2(-s * 0.08, -s * 0.06), c + Vector2(s * 0.3, s * 0.02), c + Vector2(s * 0.58, s * 0.0)]), color.lightened(0.15), 3.0, true)
+			ci.draw_polyline(PackedVector2Array([c + Vector2(-s * 0.08, -s * 0.06), c + Vector2(s * 0.14, s * 0.26), c + Vector2(s * 0.4, s * 0.3), c + Vector2(s * 0.52, s * 0.52)]), color.lightened(0.15), 3.0, true)
+		"short":     # dead short: the bolt closed on itself
+			ci.draw_arc(c, s * 0.52, 0.5, TAU - 0.3, 26, color.darkened(0.2), 3.0, true)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.1, -s * 0.4), c + Vector2(-s * 0.22, s * 0.06), c + Vector2(-s * 0.02, s * 0.06), c + Vector2(-s * 0.12, s * 0.4),
+				c + Vector2(s * 0.24, -s * 0.08), c + Vector2(s * 0.03, -s * 0.08), c + Vector2(s * 0.22, -s * 0.4)]), color)
 		"wall":      # raise slab: a block standing on broken ground
 			ci.draw_rect(Rect2(c + Vector2(-s * 0.4, -s * 0.44), Vector2(s * 0.8, s * 0.74)), color)
 			ci.draw_line(c + Vector2(-s * 0.4, -s * 0.12), c + Vector2(s * 0.4, -s * 0.18), color.darkened(0.4), 2.0, true)
@@ -256,6 +314,8 @@ static func icon(ci: CanvasItem, kind: String, c: Vector2, s: float, color: Colo
 
 ## Which glyph an item uses.
 static func item_icon(def: Dictionary) -> String:
+	if str(def.get("kind", "")) == "scroll":
+		return "scroll"
 	match str(def.get("slot", "")):
 		"weapon": return "blade"
 		"ranged": return "sling"

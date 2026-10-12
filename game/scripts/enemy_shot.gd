@@ -14,6 +14,7 @@ var shooter: Node
 
 
 func _ready() -> void:
+	add_to_group("enemy_shots")
 	var mesh := MeshInstance3D.new()
 	var shaft := BoxMesh.new()
 	shaft.size = Vector3(0.06, 0.06, 0.9)

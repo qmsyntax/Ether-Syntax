@@ -39,6 +39,7 @@ func _ready() -> void:
 	await _test_earth()
 	await _test_archer_steering()
 	await _test_step4_enemies()
+	await _test_step5a()
 	await _test_combat_rules()
 	_test_affinities()
 	_test_models()
@@ -1572,6 +1573,256 @@ func _test_step4_enemies() -> void:
 		_check("the %s has a model of its own" % kind, rig != null and (rig as ModelRig).triangle_count() > 0)
 		rig.free()
 	p.free()
+	world.free()
+
+
+## Cast a skill by its id (the character must know it).
+func _cast(p: Node, ability_id: String) -> void:
+	var list: Array = p.get("abilities")
+	for i: int in list.size():
+		if str(list[i]["id"]) == ability_id:
+			p.call("cast_ability", i)
+			return
+	_check("the character knows %s" % ability_id, false)
+
+
+func _test_step5a() -> void:
+	print("scrolls and ten more skills (design/05 step 5a):")
+	await get_tree().process_frame
+	# ---------- learning
+	var w := _new_player()
+	var inv: Inventory = w.get("inventory")
+	_check("a water character cannot learn an earth skill", str(w.call("can_learn", "pillar")) != "" and str(w.call("can_learn", "undertow")) == "")
+	inv.add("scroll_pillar")
+	_check("and reading the scroll does nothing but say so", str(w.call("read_scroll", "scroll_pillar")) != "" and inv.bag.has("scroll_pillar") and not bool(w.call("knows", "pillar")))
+	var loot_before: int = inv.loot_value()
+	inv.add("scroll_undertow")
+	_check("a scroll is not loot: it is not counted or sold with the rest", inv.loot_value() == loot_before and not Inventory.is_loot("scroll_undertow"))
+	inv.sell_loot()
+	_check("selling all loot leaves it in the pack", inv.bag.has("scroll_undertow"))
+	_check("reading a scroll of your own affinity teaches the skill", str(w.call("read_scroll", "scroll_undertow")) == "" and bool(w.call("knows", "undertow")))
+	_check("the scroll is used up", not inv.bag.has("scroll_undertow"))
+	_check("the skill lands on the first empty key", int((w.get("hotbar") as Array)[3]) == (w.get("abilities") as Array).size() - 1)
+	inv.add("scroll_undertow")
+	_check("a second copy cannot be read", str(w.call("read_scroll", "scroll_undertow")) != "" and inv.bag.has("scroll_undertow"))
+	inv.remove("scroll_undertow")
+	_check("a drop for this character is a scroll they can still use", str(w.call("scroll_for_me")) == "scroll_riptide_lash")
+	w.call("learn", "riptide_lash")
+	_check("and nothing once they know them all", str(w.call("scroll_for_me")) == "")
+	var saved: Dictionary = w.call("to_save")
+	var again := _new_player()
+	again.call("from_save", saved)
+	_check("learned skills survive a save", bool(again.call("knows", "undertow")) and bool(again.call("knows", "riptide_lash")))
+	again.free()
+	w.free()
+	var icons: Dictionary = {}
+	var each_has_scroll := true
+	var kits: Array = []
+	for a: Variant in GameData.affinity_ids():
+		kits.append_array(GameData.affinity(str(a)).get("kit", []))
+	for id: Variant in GameData.abilities.keys():
+		icons[str(GameData.ability(str(id)).get("icon", ""))] = true
+		if not kits.has(str(id)) and str(id) != "bedrock_shove":
+			each_has_scroll = each_has_scroll and str(GameData.item("scroll_" + str(id)).get("teaches", "")) == str(id)
+	_check("every skill has an icon of its own", icons.size() == GameData.abilities.size(), "%d icons for %d skills" % [icons.size(), GameData.abilities.size()])
+	_check("every skill outside the starter kits has a scroll", each_has_scroll)
+
+	# ---------- the skills
+	var m := _new_player()
+	m.call("set_affinities", ["water", "fire", "earth", "wind", "lightning"])
+	for id: String in ["undertow", "riptide_lash", "backdraft", "pyre_call", "pillar", "tremor", "downdraft", "updraft", "forked_path", "dead_short"]:
+		m.call("learn", id)
+	m.global_position = Vector3(1900, 0, 0)
+	var here: Vector3 = m.global_position
+	var world := _test_floor(here)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	m.set("effects", [] as Array[TalentEffect])
+	_bare(m)
+	m.set("star_pct", [99.0] as Array[float])
+	m.call("_recompute_essence_max")
+	var fresh := func() -> void:
+		_rested(m)
+		m.set("essence", 99.0)
+		m.call("clear_reflux")
+		m.set("_windup", {})
+		m.set("_windup_t", 0.0)
+		m.set("_facing", Vector3(0, 0, -1))
+		m.set("cursor_fixed", null)
+		m.set("hovered", null)
+		m.set("attack_target", null)
+		m.call("drop_stones")
+	var spot: Vector3 = here + Vector3(0, 0, -7.0)
+
+	# Undertow
+	fresh.call()
+	var a := _facing_foe(m, Vector3(3.0, 0, -7.0))
+	var c := _facing_foe(m, Vector3(6.0, 0, -7.0))
+	m.set("cursor_fixed", spot)
+	_cast(m, "undertow")
+	_settle(a)
+	_check("Undertow drags an enemy within 4 m to the spot", a.global_position.distance_to(spot) < 0.45, "%.2f m off" % a.global_position.distance_to(spot))
+	_check("Soaks it, and does no damage of its own", bool(a.call("has_status", "soaked")) and _near(_lost(a), 0.0))
+	_check("and leaves one farther out alone", _near(c.global_position.x - here.x, 6.0) and not bool(c.call("has_status", "soaked")))
+	a.free()
+	c.free()
+
+	# Riptide Lash
+	fresh.call()
+	var t := _facing_foe(m, Vector3(0, 0, -8.0))
+	t.set("target", m)
+	t.set("_windup", 0.3)
+	_cast(m, "riptide_lash")
+	_check("Riptide Lash does 60, Soaks and interrupts", _near(_lost(t), 60.0) and bool(t.call("has_status", "soaked")) and float(t.get("_windup")) < 0.0, "lost %f" % _lost(t))
+	_settle(t)
+	_check("and hauls the enemy to arm's length", _near(t.global_position.distance_to(here), 2.0, 0.1), "%.2f m" % t.global_position.distance_to(here))
+	_check("with its back to you", (t.get("facing") as Vector3).dot(Vector3(0, 0, -1)) > 0.95 and bool(t.call("is_behind", here)))
+	t.call("_turn_toward", Vector3(0, 0, 1), 0.5)
+	_check("for a second it cannot turn round", (t.get("facing") as Vector3).dot(Vector3(0, 0, -1)) > 0.95)
+	t.free()
+	fresh.call()
+	var heavy := _fighter(m, Vector3(0, 0, -8.0), "brute")
+	_cast(m, "riptide_lash")
+	_settle(heavy)
+	_check("a heavy enemy comes only part of the way", _near(heavy.global_position.distance_to(here), 3.0, 0.15), "%.2f m" % heavy.global_position.distance_to(here))
+	heavy.free()
+
+	# Backdraft
+	fresh.call()
+	var f1 := _facing_foe(m, Vector3(0, 0, -4.0))
+	var f2 := _facing_foe(m, Vector3(4.0, 0, 3.0))
+	var f3 := _facing_foe(m, Vector3(0, 0, -7.0))
+	(m.get("reflux_by") as Dictionary)["fire"] = 70.0
+	_cast(m, "backdraft")
+	_check("Backdraft winds up for 0.3 s", _near(float(m.get("_windup_t")), 0.3) and _near(_lost(f1), 0.0))
+	m.call("_tick_windup", 0.31)
+	_check("then everything within 5 m takes 4 x the heat above 20", _near(_lost(f1), 200.0) and _near(_lost(f2), 200.0) and _near(_lost(f3), 0.0), "lost %f / %f / %f" % [_lost(f1), _lost(f2), _lost(f3)])
+	_check("and the heat is spent: fire reflux is 20", _near(float(m.call("reflux_of", "fire")), 20.0))
+	fresh.call()
+	(m.get("reflux_by") as Dictionary)["fire"] = 10.0
+	var was: float = _lost(f1)
+	_cast(m, "backdraft")
+	m.call("_tick_windup", 0.31)
+	_check("cold, it does nothing and takes nothing", _near(_lost(f1), was) and _near(float(m.call("reflux_of", "fire")), 10.0))
+	for n: Node in [f1, f2, f3]:
+		n.free()
+
+	# Pyre Call
+	fresh.call()
+	var x := _facing_foe(m, Vector3(0, 0, -5.0))
+	var y := _facing_foe(m, Vector3(1.5, 0, -5.0))
+	var z := _facing_foe(m, Vector3(-8.0, 0, 0))
+	x.call("add_status", "alight", 3, m)
+	z.call("add_status", "alight", 2, m)
+	_cast(m, "pyre_call")
+	var hot: float = float(m.call("heat_mult", "fire"))
+	_check("Pyre Call: each stack bursts for 35 on the one carrying it", _near(_lost(x), 105.0 * hot, 0.5) and _near(_lost(z), 70.0 * hot, 0.5), "lost %f / %f, heat x%f" % [_lost(x), _lost(z), hot])
+	_check("and on whoever stands within 2 m", _near(_lost(y), 105.0 * hot, 0.5))
+	_check("the fires are spent", not bool(x.call("has_status", "alight")) and not bool(z.call("has_status", "alight")))
+	for n: Node in [x, y, z]:
+		n.free()
+
+	# Pillar
+	fresh.call()
+	var on := _facing_foe(m, Vector3(0, 0, -6.0))
+	var off := _facing_foe(m, Vector3(2.5, 0, -6.0))
+	m.set("cursor_fixed", here + Vector3(0, 0, -6.0))
+	_cast(m, "pillar")
+	var blasts: Array = get_tree().get_nodes_in_group("blasts")
+	_check("Pillar marks the ground and you are Braced", blasts.size() == 1 and bool(m.call("is_braced")) and _near(_lost(on), 0.0))
+	(blasts[0] as Node).call("tick", 0.4)
+	_check("for half a second nothing", _near(_lost(on), 0.0))
+	(blasts[0] as Node).call("tick", 0.15)
+	_check("then the column: 120 to whoever stood there, nobody else", _near(_lost(on), 120.0) and _near(_lost(off), 0.0), "lost %f" % _lost(on))
+	_check("and it stays as one of your stones", int(m.call("stone_count")) == 1 and _near(((m.get("stones") as Array)[0] as Stone).size.x, 1.2))
+	m.call("_tick_windup", 0.31)
+	on.free()
+	off.free()
+
+	# Tremor
+	fresh.call()
+	var slab_ab: Dictionary = GameData.ability("raise_slab")
+	var s1: Node3D = m.call("raise_stone", here + Vector3(0, 0, -3.0), Vector3(0, 0, -1), slab_ab)
+	s1.call("tick", 0.5)
+	var near := _facing_foe(m, Vector3(-3.0, 0, 2.0))
+	var past := _facing_foe(m, Vector3(0, 0, -6.5))                      # outside the ring, inside the shrapnel
+	near.set("target", m)
+	near.set("_windup", 0.3)
+	_cast(m, "tremor")
+	m.call("_tick_windup", 0.51)
+	_check("Tremor: 60 to everything within 5 m, interrupted and slowed", _near(_lost(near), 60.0) and bool(near.call("has_status", "slowed")) and float(near.get("_windup")) < 0.0, "lost %f" % _lost(near))
+	_check("and every stone of yours shatters outward", int(m.call("stone_count")) == 0 and _near(_lost(past), 80.0), "lost %f" % _lost(past))
+	near.set("target", null)
+	near.free()
+	past.free()
+
+	# Downdraft
+	fresh.call()
+	var g := _facing_foe(m, Vector3(0, 0, -6.0))
+	var up := _facing_foe(m, Vector3(2.0, 0, -6.0))
+	var out := _facing_foe(m, Vector3(6.0, 0, -6.0))
+	up.call("add_status", "aloft")
+	var ShotScript: GDScript = load("res://scripts/enemy_shot.gd")
+	var arrow: Node3D = ShotScript.new()
+	add_child(arrow)
+	arrow.set_physics_process(false)
+	arrow.global_position = here + Vector3(1.0, 1.0, -6.0)
+	m.set("cursor_fixed", here + Vector3(0, 0, -6.0))
+	_cast(m, "downdraft")
+	blasts = get_tree().get_nodes_in_group("blasts")
+	(blasts.back() as Node).call("tick", 0.26)
+	var air: float = float(GameData.status("aloft")["damage_taken_mult"])
+	_check("Downdraft: 50 and pinned, within 4 m", _near(_lost(g), 50.0) and bool(g.call("has_status", "pinned")) and _near(_lost(out), 0.0), "lost %f" % _lost(g))
+	_check("+100 to anything Aloft", _near(_lost(up), 150.0 * air, 0.5), "lost %f" % _lost(up))
+	_check("and it knocks their shots out of the air", arrow.is_queued_for_deletion())
+	g.set("target", m)
+	g.set("_attack_cd", 99.0)
+	m.global_position = here + Vector3(0, 0, 14.0)
+	g.call("_physics_process", 1.0 / 60.0)
+	_check("pinned: it walks at 40%", _near(g.velocity.length(), 3.4 * 0.4, 0.1), "speed %f" % g.velocity.length())
+	m.global_position = here
+	g.set("target", null)
+	for n: Node in [g, up, out]:
+		n.free()
+
+	# Updraft
+	fresh.call()
+	m.set("pips", 4)
+	var light := _facing_foe(m, Vector3(0, 0, -6.0))
+	var big := _fighter(m, Vector3(1.5, 0, -6.0), "brute")
+	m.set("cursor_fixed", here + Vector3(0, 0, -6.0))
+	_cast(m, "updraft")
+	_check("Updraft throws a light enemy Aloft, longer for every pip spent", bool(light.call("has_status", "aloft")) and _near(float((light.get("statuses") as Dictionary)["aloft"]["t"]), 2.0) and int(m.get("pips")) == 0)
+	_check("a heavy one keeps its feet and loses poise", not bool(big.call("has_status", "aloft")) and _near(float(big.get("poise_max")) - float(big.get("poise")), 50.0))
+	_check("no damage of its own", _near(_lost(light), 0.0))
+	light.free()
+	big.free()
+
+	# Forked Path
+	fresh.call()
+	var row: Array = []
+	for i: int in 5:
+		row.append(_facing_foe(m, Vector3(3.0 * float(i), 0, -5.0)))
+	_cast(m, "forked_path")
+	var ok := true
+	for i: int in 4:
+		ok = ok and _near(_lost(row[i]), 50.0) and int((row[i] as Node).call("status_stacks", "live")) == 1
+	_check("Forked Path: the target and three more, 50 and one mark each", ok, "lost %f %f %f %f" % [_lost(row[0]), _lost(row[1]), _lost(row[2]), _lost(row[3])])
+	_check("and no further", _near(_lost(row[4]), 0.0) and int((row[4] as Node).call("status_stacks", "live")) == 0)
+
+	# Dead Short
+	fresh.call()
+	(row[1] as Node).call("add_status", "live", 1)                       # two marks now
+	var lost0: float = _lost(row[0])
+	var lost1: float = _lost(row[1])
+	_cast(m, "dead_short")
+	_check("Dead Short: one mark is 40% of an Overload, two is 70%", _near(_lost(row[0]) - lost0, 60.0) and _near(_lost(row[1]) - lost1, 105.0), "lost %f / %f" % [_lost(row[0]) - lost0, _lost(row[1]) - lost1])
+	_check("every mark in reach is spent and its owner stunned", int((row[2] as Node).call("status_stacks", "live")) == 0 and bool((row[0] as Node).call("has_status", "stunned")))
+	_check("and no reflux is grounded", _near(float(m.call("reflux_of", "lightning")), 18.0 * 1.4), "reflux %f" % float(m.call("reflux_of", "lightning")))
+	for n: Node in row:
+		n.free()
+	m.set("cursor_fixed", null)
+	m.free()
 	world.free()
 
 

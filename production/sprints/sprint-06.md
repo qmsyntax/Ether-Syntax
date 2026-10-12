@@ -480,3 +480,31 @@ Verified: self-test 572/572 (three runs); six full-passage bot runs, gate and de
 inventory and creation click tests; `ui-enemies4.png` inspected. Not verified: by hand. The bot does not cast,
 dodge or get hurt, so it proves these packs can be cleared and do not jam - nothing about whether they are fun
 or fair.
+
+
+## Part X — skills step 5a: scrolls, and ten more skills (design/05 3.1-3.5; Brent 2026-10-12: "keep going with skills step 5")
+
+Step 5 is 25 skills and eight new behaviours. This is the first of three slices: learning, and the ten skills whose
+behaviours are instant (two an affinity). Still to come: 5b ground zones, self-buffs, Bedrock Shove, Ground Rod (9
+skills); 5c held skills - channels and charge-and-release (6 skills).
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-116 | Skills are learned from scrolls: click one in the pack to read it. It needs the skill's affinity, is used up, and the skill goes on the first empty key (or waits in the soul screen). A scroll is not loot and is never sold with it | selftest | Done |
+| S06-117 | The merchant stocks scrolls ($1,200) - only those this character could read. Brutes, Pavise Bearers, Censer-Bearers and Drummers sometimes drop one; a Wall Commander usually does. A drop is always one you can use | selftest | Done |
+| S06-118 | Water: Undertow (drag everything within 4 m of a point toward it, Soaked) and Riptide Lash (haul one enemy to arm's length, 60, Soaked, interrupted, its back to you for a second) | selftest | Done |
+| S06-119 | Fire: Backdraft (everything within 5 m takes 4 x your heat above 20, and the heat is spent) and Pyre Call (every Alight enemy within 10 m: each stack bursts for 35 in 2 m) | selftest | Done |
+| S06-120 | Earth: Pillar (a marked circle, then a column: 120, interrupts, and it stays as stone) and Tremor (60 to everything within 5 m, interrupted and slowed, and all your stone shatters outward) | selftest | Done |
+| S06-121 | Wind: Downdraft (a 4 m blast that pins, kills enemy shots in the air, +100 to anything Aloft) and Updraft (throws light enemies Aloft, longer per pip) - Aloft can now be seen in play | selftest | Done |
+| S06-122 | Lightning: Forked Path (one enemy then three more: 50 and a mark each) and Dead Short (every marked enemy Overloads now at 40 / 70 / 100%) | selftest | Done |
+| S06-123 | An icon for each of the ten, and for scrolls | `shots/ui-icons.png` | Done |
+
+Rough edges: the new skills have line flashes and a ground ring, no effects of their own. The bind preview does not
+show rows for the new keys (radius, delay, jumps). Concepts treat the new skills generically (the per-skill concept
+rules in design/05 are not built). A Pillar that comes up under an enemy relies on the engine to push it out. The
+scroll price is a guess. With 4 or 5 skills an affinity, a dual-affinity character has more skills than keys - the
+"too many plates" pressure is now real and untested.
+
+Verified: self-test 646/646 (three runs); three full-passage bot runs, gate and death bots; Netherecho death test;
+inventory and creation click tests; icon sheet and shop inspected. Not verified: by hand - none of the ten has been
+cast by a person. The inventory click that reads a scroll is covered only through `read_scroll`, not by a mouse click.

@@ -73,6 +73,7 @@ var _charge_left := 0.0              # commander: metres of charge still to run
 var _charge_dir := Vector3.ZERO
 var _charge_hit := false
 var _pulse_t := 0.0                  # support: until it strengthens those near it again
+var _turned_t := 0.0                 # hauled round: it cannot turn back until this runs out
 var _leap_left := 0.0                # pouncer: metres of leap still to cover
 var _leap_hit := false
 var _retreat_t := 0.0                # pouncer: how long the player has been running from the pack
@@ -389,6 +390,31 @@ func shove(dir: Vector3, metres: float) -> void:
 	interrupt()
 
 
+## Drag this enemy toward `point`: at most `metres` (heavier ones come less far), stopping `keep`
+## short of it. The same slide as a shove, so it can end in a Crush.
+func pull_toward(point: Vector3, metres: float, keep: float = 0.3) -> void:
+	var to: Vector3 = point - global_position
+	to.y = 0.0
+	var go: float = minf(metres * shove_resist, to.length() - keep)
+	if go <= 0.05 or body.is_dead() or _special == "charge" or _charge_left > 0.0:
+		return
+	_shove_dir = to.normalized()
+	_shove_left = go
+	_leap_left = 0.0
+	interrupt()
+
+
+## Face directly away from `point` and stay that way for `seconds`.
+func turn_away_from(point: Vector3, seconds: float) -> void:
+	var away: Vector3 = global_position - point
+	away.y = 0.0
+	if away.length() < 0.05:
+		return
+	facing = away.normalized()
+	_turned_t = seconds
+	_apply_facing()
+
+
 func is_shoved() -> bool:
 	return _shove_left > 0.0
 
@@ -497,6 +523,7 @@ func _physics_process(delta: float) -> void:
 		pace *= float(GameData.status(id).get("speed_mult", 1.0))
 	_attack_cd -= delta * rate
 	_flash -= delta
+	_turned_t -= delta
 	for key: String in _special_cd:
 		_special_cd[key] = float(_special_cd[key]) - delta
 	_poise_idle += delta
@@ -569,7 +596,7 @@ func _door_dir(straight: Vector3) -> Vector3:
 
 ## Turn toward `want` at the turn rate. Nothing turns while it is committed to an attack.
 func _turn_toward(want: Vector3, delta: float) -> void:
-	if want.length() < 0.001:
+	if want.length() < 0.001 or _turned_t > 0.0:
 		return
 	var from: float = atan2(facing.x, facing.z)
 	var goal: float = atan2(want.x, want.z)

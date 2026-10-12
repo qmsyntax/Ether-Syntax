@@ -197,6 +197,14 @@ func _figure_drop(_at: Vector2, data: Variant) -> void:
 
 ## Equip an item from the pack - into `into`, or wherever it fits - and say why not if it fails.
 func equip_item(id: String, into: String = "") -> void:
+	if str(GameData.item(id).get("kind", "")) == "scroll":
+		# reading it: the skill is yours and the scroll is gone
+		var why: String = player.call("read_scroll", id)
+		if why != "":
+			player.call("note", why)
+		game.call("save_now")
+		rebuild()
+		return
 	var inv: Inventory = player.get("inventory")
 	var result: String = inv.equip(id, into)
 	if result == "equipped":
@@ -343,8 +351,8 @@ func _build_bag(box: VBoxContainer, inv: Inventory) -> void:
 	for id: String in inv.bag:
 		if not counts.has(id):
 			counts[id] = 0
-			if str(GameData.item(id).get("slot", "")) != "":
-				gear.append(id)
+			if not Inventory.is_loot(id):
+				gear.append(id)                    # things you can use: gear, and scrolls to read
 			else:
 				loot.append(id)
 		counts[id] = int(counts[id]) + 1
