@@ -1,9 +1,38 @@
 {
-  "_note": "Statuses a skill can leave on an enemy (design/05 Appendix B, approved by Brent 2026-10-12). All of it is ours [MODEL]. Each: max stacks, how long it lasts (refreshed when applied again), and the numbers its rule reads. soaked: shoves on the target go shove_mult as far, and it conducts lightning (cross rule 1: a lightning hit on a soaked target puts conduct_marks on every other soaked enemy within conduct_radius). live: lightning's marks; at max stacks the target Overloads - overload_damage to it, stunned for stun seconds, arc_damage to every other marked enemy within arc_radius, and the caster's lightning reflux drops by grounds. stunned: cannot move or act.",
+  "_note": "Statuses a skill can leave on an enemy (design/05 Appendix B, approved by Brent 2026-10-12). All of it is ours [MODEL]. Each: max stacks, how long it lasts (refreshed when applied again), and the numbers its rule reads. soaked: shoves on the target go shove_mult as far, and it conducts lightning (cross rule 1: a lightning hit on a soaked target puts conduct_marks on every other soaked enemy within conduct_radius). live: lightning's marks; at max stacks the target Overloads - overload_damage to it, stunned for stun seconds, arc_damage to every other marked enemy within arc_radius, and the caster's lightning reflux drops by grounds. stunned: cannot move or act. staggered: poise broken - cannot act, takes damage_taken_mult, and a bare strike on it is an Opening (balance.combat.opening_mult).",
   "statuses": {
-    "soaked": {"label": "Soaked", "stacks": 1, "lasts": 6.0, "color": "4f9be8", "shove_mult": 1.5, "conduct_radius": 4.0, "conduct_marks": 1},
-    "live": {"label": "Live", "stacks": 3, "lasts": 8.0, "color": "d9c8ff",
-             "overload_damage": 150.0, "stun": 1.0, "arc_damage": 60.0, "arc_radius": 12.0, "grounds": 12.0},
-    "stunned": {"label": "Stunned", "stacks": 1, "lasts": 1.0, "color": "fff2a8"}
+    "soaked": {
+      "label": "Soaked",
+      "stacks": 1,
+      "lasts": 6.0,
+      "color": "4f9be8",
+      "shove_mult": 1.5,
+      "conduct_radius": 4.0,
+      "conduct_marks": 1
+    },
+    "live": {
+      "label": "Live",
+      "stacks": 3,
+      "lasts": 8.0,
+      "color": "d9c8ff",
+      "overload_damage": 150.0,
+      "stun": 1.0,
+      "arc_damage": 60.0,
+      "arc_radius": 12.0,
+      "grounds": 12.0
+    },
+    "stunned": {
+      "label": "Stunned",
+      "stacks": 1,
+      "lasts": 1.0,
+      "color": "fff2a8"
+    },
+    "staggered": {
+      "label": "Staggered",
+      "stacks": 1,
+      "lasts": 1.5,
+      "color": "ffd27a",
+      "damage_taken_mult": 1.3
+    }
   }
 }

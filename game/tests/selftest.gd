@@ -32,6 +32,7 @@ func _ready() -> void:
 	_test_tempering()
 	await _test_water_and_lightning()
 	await _test_gear_step_1()
+	await _test_combat_rules()
 	_test_affinities()
 	_test_models()
 	await _test_netherecho()
@@ -243,11 +244,17 @@ func _test_healer_credit_and_rent() -> void:
 const EnemyScript := preload("res://scripts/enemy.gd")
 
 
+## A plain target for arithmetic: no armour, no poise to speak of, plenty of health, and it
+## never fights back. (It was a brute until brutes grew frontal armour.)
 func _dummy_enemy(p: Node3D) -> CharacterBody3D:
 	var e: CharacterBody3D = EnemyScript.new()
 	add_child(e)
-	e.call("setup", "brute", p, 1.0)
+	e.call("setup", "grunt", p, 1.0)
 	e.set("target", null)      # never fights back on its own
+	e.set("poise_max", 100000.0)
+	e.set("poise", 100000.0)
+	(e.get("body") as Body).max_hp = 700.0
+	(e.get("body") as Body).hp = 700.0
 	e.global_position = p.global_position + Vector3(0, 0, -1.5)
 	return e
 
@@ -867,6 +874,404 @@ func _settle(e: Node, steps: int = 80) -> void:
 
 func _lost(e: Node) -> float:
 	return (e.get("body") as Body).max_hp - (e.get("body") as Body).hp
+
+
+## An enemy that is really fighting `p`: its own health and poise, and `p` as its target.
+func _fighter(p: Node3D, offset: Vector3, kind: String = "grunt") -> CharacterBody3D:
+	var e: CharacterBody3D = EnemyScript.new()
+	e.call("setup", kind, p, 1.0)
+	e.position = p.global_position + offset
+	add_child(e)
+	return e
+
+
+## Run an enemy's thinking by hand for `seconds`.
+func _run(e: Node, seconds: float, step: float = 1.0 / 60.0) -> void:
+	var t := 0.0
+	while t < seconds and is_instance_valid(e) and not e.is_queued_for_deletion():
+		e.call("_physics_process", step)
+		t += step
+
+
+func _test_combat_rules() -> void:
+	print("combat rules (design/05 step 2):")
+	var cfg: Dictionary = GameData.balance["combat"]
+	var strike: float = float(GameData.balance["player"]["melee_damage"])
+	var p := _new_player()
+	_bare(p)
+	p.global_position = Vector3(600, 0, 0)
+	var world := _test_floor(p.global_position)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	p.set("effects", [] as Array[TalentEffect])
+
+	# ---------- a back exists: turning takes time
+	var g := _fighter(p, Vector3(0, 0, -3.0))
+	_check("an enemy starts out facing you", bool(g.call("is_in_front", p.global_position)) and not bool(g.call("is_behind", p.global_position)))
+	g.set("facing", Vector3(0, 0, -1))                       # turned away
+	_check("behind it is behind it", bool(g.call("is_behind", p.global_position)))
+	g.call("_turn_toward", Vector3(0, 0, 1), 0.25)           # a quarter second at 240 degrees a second = 60 degrees
+	var turned: float = rad_to_deg(Vector3(0, 0, -1).angle_to(g.get("facing") as Vector3))
+	_check("it turns at 240 degrees a second, not at once", _near(turned, 60.0, 0.5), "turned %f" % turned)
+
+	# ---------- rear hits
+	g.set("facing", Vector3(0, 0, 1))                        # facing the player
+	var hp: float = (g.get("body") as Body).hp
+	p.call("deal_damage", g, 100.0, ["test"])
+	_check("a hit from the front is a plain hit", _near(hp - (g.get("body") as Body).hp, 100.0))
+	g.set("facing", Vector3(0, 0, -1))
+	hp = (g.get("body") as Body).hp
+	p.call("deal_damage", g, 100.0, ["test"])
+	_check("a hit on its back does 30% more", _near(hp - (g.get("body") as Body).hp, 100.0 * float(cfg["rear_mult"])))
+	g.queue_free()
+
+	# ---------- the brute: armoured in front, open behind
+	var br := _fighter(p, Vector3(0, 0, -3.0), "brute")
+	br.set("target", null)
+	br.set("facing", Vector3(0, 0, 1))
+	hp = (br.get("body") as Body).hp
+	p.call("deal_damage", br, 100.0, ["test"])
+	_check("the brute shrugs off 30% from the front", _near(hp - (br.get("body") as Body).hp, 70.0), "took %f" % (hp - (br.get("body") as Body).hp))
+	br.set("facing", Vector3(0, 0, -1))
+	hp = (br.get("body") as Body).hp
+	p.call("deal_damage", br, 100.0, ["test"])
+	_check("and nothing from behind, where the rear bonus applies instead", _near(hp - (br.get("body") as Body).hp, 130.0), "took %f" % (hp - (br.get("body") as Body).hp))
+
+	# ---------- poise, stagger, the Opening
+	br.set("facing", Vector3(0, 0, 1))
+	_check("the brute has 160 poise", _near(float(br.get("poise_max")), 160.0))
+	p.call("_strike_target", br, 1.0, ["melee"])
+	_check("a bare strike takes 20 poise", _near(float(br.get("poise")), 140.0))
+	p.call("apply_hit", br, {"damage": 10.0}, ["ability"])
+	_check("a skill takes 15 unless it says otherwise", _near(float(br.get("poise")), 125.0))
+	p.call("apply_hit", br, {"damage": 10.0, "poise": 50.0}, ["ability"])
+	_check("or what its payload says", _near(float(br.get("poise")), 75.0))
+	br.set("_poise_idle", 2.9)
+	_run(br, 0.2)
+	_check("poise comes back after three seconds unhit - target or no target", float(br.get("poise")) > 75.0 and float(br.get("poise")) < 85.0, "poise %f" % float(br.get("poise")))
+	br.set("poise", 20.0)
+	_check("taking the last of it breaks the enemy", bool(br.call("take_poise", 20.0)) and bool(br.call("has_status", "staggered")))
+	_check("it finds its feet again with full poise", _near(float(br.get("poise")), 160.0))
+	hp = (br.get("body") as Body).hp
+	p.call("_strike_target", br, 1.0, ["melee"])
+	var opening: float = strike * float(cfg["opening_mult"]) * float(GameData.status("staggered")["damage_taken_mult"])
+	_check("a bare strike on a staggered enemy is an Opening: double, and it takes 30% more", _near(hp - (br.get("body") as Body).hp, opening), "took %f want %f" % [hp - (br.get("body") as Body).hp, opening])
+	_check("a staggered brute's hide does not help it", opening > strike * 2.0)
+	hp = (br.get("body") as Body).hp
+	p.call("apply_hit", br, {"damage": 100.0}, ["ability", "melee"])
+	_check("a skill gets no Opening - that is what the bare strike is for", _near(hp - (br.get("body") as Body).hp, 130.0))
+	for i: int in 100:
+		br.call("_tick_statuses", 0.02)
+	_check("the stagger passes", not bool(br.call("has_status", "staggered")))
+	br.queue_free()
+	await get_tree().process_frame
+
+	# ---------- working it off
+	var d := _dummy_enemy(p)
+	(p.get("reflux_by") as Dictionary)["water"] = 30.0
+	p.call("_strike_target", d, 1.0, ["melee"])
+	_check("each bare strike that lands sheds 1 reflux", _near(float(p.call("reflux_of", "water")), 29.0))
+	p.call("apply_hit", d, {"damage": 10.0}, ["ability", "melee"])
+	_check("a skill sheds none", _near(float(p.call("reflux_of", "water")), 29.0))
+	d.queue_free()
+	await get_tree().process_frame
+
+	# ---------- interrupts
+	var slam := _fighter(p, Vector3(0, 0, -2.5), "brute")
+	slam.set("_attack_cd", 0.0)
+	_run(slam, 0.3)
+	_check("the brute starts its slam: a circle on the ground, flagged interruptible", float(slam.get("_windup")) >= 0.0 and bool(slam.call("is_interruptible"))
+		and str((slam.get("telegraph") as Dictionary).get("kind", "")) == "circle" and bool((slam.get("telegraph") as Dictionary).get("interruptible", false)))
+	p.call("apply_hit", slam, {"interrupts": true}, ["ability"])
+	_check("an interrupting skill cancels it and staggers the brute", float(slam.get("_windup")) < 0.0 and bool(slam.call("has_status", "staggered"))
+		and _near(float((slam.get("statuses") as Dictionary)["staggered"]["t"]), float(cfg["interrupt_stagger_s"])) and (slam.get("telegraph") as Dictionary).is_empty())
+	slam.queue_free()
+	var sw := _fighter(p, Vector3(0, 0, -1.8))
+	sw.set("_attack_cd", 0.0)
+	_run(sw, 0.2)
+	_check("a skirmisher winds up its swing", float(sw.get("_windup")) >= 0.0 and not bool(sw.call("is_interruptible")))
+	p.call("apply_hit", sw, {"interrupts": true}, ["ability"])
+	_check("an ordinary swing is broken off but its owner is not staggered", float(sw.get("_windup")) < 0.0 and not bool(sw.call("has_status", "staggered")))
+	sw.queue_free()
+	await get_tree().process_frame
+
+	# ---------- the brute's slam
+	(p.get("body") as Body).hp = 100.0
+	var b2 := _fighter(p, Vector3(0, 0, -2.6), "brute")
+	b2.set("_attack_cd", 0.0)
+	_run(b2, 0.2)
+	var facing_then: Vector3 = b2.get("facing")
+	p.global_position = b2.global_position + Vector3(1.2, 0, 2.2)   # a sidestep - still 2.5 m from it, inside the 3 m circle
+	_run(b2, 0.6)
+	_check("it does not track you once it has committed", (b2.get("facing") as Vector3).is_equal_approx(facing_then) and float(b2.get("_windup")) >= 0.0)
+	var hp_before: float = (p.get("body") as Body).hp
+	_run(b2, 0.6)
+	_check("the slam lands on anyone still in the circle, for 45", _near(hp_before - (p.get("body") as Body).hp, 45.0), "took %f" % (hp_before - (p.get("body") as Body).hp))
+	_check("a heavy blow takes your feet for a moment", bool(p.call("is_staggered")))
+	var ess: float = float(p.get("essence"))
+	p.call("cast_slot", 0)
+	_check("and you cannot cast while staggered", _near(float(p.get("essence")), ess))
+	p.set("_stagger_t", 0.0)
+	(p.get("body") as Body).wounds.clear()
+	(p.get("body") as Body).hp = 100.0
+	_check("a slam that lands does not leave it stuck", float(b2.get("_stuck_t")) <= 0.0)
+	p.global_position = b2.global_position + Vector3(0, 0, 2.0)
+	b2.set("facing", Vector3(0, 0, 1))
+	b2.set("_attack_cd", 0.0)
+	_run(b2, 0.3)
+	_check("it winds up again", float(b2.get("_windup")) >= 0.0)
+	p.global_position = b2.global_position + Vector3(0, 0, 9.0)      # out of the circle
+	hp_before = (p.get("body") as Body).hp
+	_run(b2, 1.0)
+	_check("stepping out of the circle makes it miss", _near((p.get("body") as Body).hp, hp_before) and float(b2.get("_windup")) < 0.0)
+	_check("and a miss leaves it stuck with its back open", float(b2.get("_stuck_t")) > 1.0, "stuck %f" % float(b2.get("_stuck_t")))
+	b2.queue_free()
+	await get_tree().process_frame
+
+	# ---------- the slot ring
+	p.global_position = Vector3(600, 0, 0)
+	var crowd: Array = []
+	for i: int in 10:
+		var a: float = TAU * float(i) / 10.0
+		crowd.append(_fighter(p, Vector3(cos(a), 0, sin(a)) * 7.0))
+	var held := 0
+	for e: Node in crowd:
+		if bool(p.call("claim_slot", e)):
+			held += 1
+	_check("six may stand in striking range; the rest wait", held == int(cfg["ring_slots"]) and int(cfg["ring_slots"]) == 6)
+	_check("one that has a place keeps it", bool(p.call("claim_slot", crowd[0])) and not bool(p.call("claim_slot", crowd[9])))
+	(crowd[0] as Node).call("take_hit", 99999.0, false, null)
+	_check("a death frees its place for the next", bool(p.call("claim_slot", crowd[9])))
+	for e: Node in crowd:
+		if is_instance_valid(e) and not e.is_queued_for_deletion():
+			e.queue_free()
+	p.set("_ring", [])
+	await get_tree().process_frame
+	var holders: Array = []
+	for i: int in int(cfg["ring_slots"]):
+		var hold := _fighter(p, Vector3(40.0 + float(i) * 2.0, 0, 40.0))   # far off, but each holds a place
+		hold.set("target", null)
+		holders.append(hold)
+		p.call("claim_slot", hold)
+	var waiter := _fighter(p, Vector3(0, 0, -9.0))
+	for i: int in 300:
+		waiter.call("_physics_process", 1.0 / 60.0)
+		await get_tree().physics_frame if i % 60 == 59 else null
+	var stood: float = waiter.global_position.distance_to(p.global_position)
+	_check("an enemy with no place holds a few metres out and never winds up", stood > 3.0 and float(waiter.get("_windup")) < 0.0, "stood at %f" % stood)
+	for hold: Node in holders:
+		hold.queue_free()
+	p.set("_ring", [])
+	waiter.queue_free()
+	await get_tree().process_frame
+
+	# ---------- the archer
+	(p.get("body") as Body).wounds.clear()
+	(p.get("body") as Body).hp = 100.0
+	p.set("_stagger_t", 0.0)
+	var ar := _fighter(p, Vector3(0, 0, -10.0), "archer")
+	_check("an archer keeps its distance and aims along a line", str(ar.get("behaviour")) == "ranged")
+	ar.set("_attack_cd", 0.0)
+	(p as CharacterBody3D).velocity = Vector3(5.0, 0, 0)     # running to the side, straight
+	_run(ar, 0.5)
+	var tele: Dictionary = ar.get("telegraph")
+	_check("while it aims, the line leads where you are going", str(tele.get("kind", "")) == "line" and not bool(tele.get("locked", true))
+		and (tele["to"] as Vector3).x > p.global_position.x + 1.0, str(tele))
+	_run(ar, 0.3)
+	tele = ar.get("telegraph")
+	var locked_at: Vector3 = tele.get("to", Vector3.ZERO)
+	_check("the aim locks 0.3 s before release", bool(tele.get("locked", false)))
+	(p as CharacterBody3D).velocity = Vector3(-5.0, 0, 0)    # a late change of direction
+	_run(ar, 0.1)
+	_check("after that it no longer follows you", ((ar.get("telegraph") as Dictionary).get("to", Vector3.ONE) as Vector3).is_equal_approx(locked_at))
+	_run(ar, 0.25)
+	var shot: Node = null
+	for n: Node in get_children():
+		if n.get("shooter") == ar:
+			shot = n
+	_check("it looses one shot along the locked line", shot != null and float(ar.get("_windup")) < 0.0)
+	hp_before = (p.get("body") as Body).hp
+	for i: int in 60:
+		if shot == null or not is_instance_valid(shot) or shot.is_queued_for_deletion():
+			break
+		shot.call("tick", 1.0 / 60.0)
+	_check("standing where you were when it locked, you are missed", _near((p.get("body") as Body).hp, hp_before), "took %f" % (hp_before - (p.get("body") as Body).hp))
+	await get_tree().process_frame
+	# the same shot, but the player is where the line said they would be
+	var ShotScript: GDScript = load("res://scripts/enemy_shot.gd")
+	var arrow: Node3D = ShotScript.new()
+	arrow.set("dir", (locked_at - ar.global_position).normalized())
+	arrow.set("target", p)
+	arrow.set("shooter", ar)
+	arrow.set("damage", 18.0)
+	arrow.position = ar.global_position + Vector3.UP * 1.1
+	add_child(arrow)
+	p.global_position = Vector3(locked_at.x, p.global_position.y, locked_at.z)
+	for i: int in 60:
+		if not is_instance_valid(arrow) or arrow.is_queued_for_deletion():
+			break
+		arrow.call("tick", 1.0 / 60.0)
+	_check("running straight on, you are where the line said and it hits for 18", _near(hp_before - (p.get("body") as Body).hp, 18.0), "took %f" % (hp_before - (p.get("body") as Body).hp))
+	(p as CharacterBody3D).velocity = Vector3.ZERO
+	p.global_position = ar.global_position + Vector3(0, 0, 2.0)
+	ar.set("_attack_cd", 0.0)
+	ar.set("_windup", -1.0)
+	ar.set("telegraph", {})
+	var aimed_up_close := false
+	var backed := true
+	for i: int in 8:                                         # sampled while it is still inside 4 m
+		ar.call("_physics_process", 1.0 / 60.0)
+		if ar.global_position.distance_to(p.global_position) >= 4.0:
+			break
+		aimed_up_close = aimed_up_close or float(ar.get("_windup")) >= 0.0
+		backed = backed and ar.velocity.dot(p.global_position - ar.global_position) < 0.0
+	_check("come within 4 m and it only backs away - helpless in melee", backed and not aimed_up_close)
+	ar.queue_free()
+	await get_tree().process_frame
+
+	# ---------- the harrier
+	(p.get("body") as Body).wounds.clear()
+	(p.get("body") as Body).hp = 100.0
+	p.set("_stagger_t", 0.0)
+	p.global_position = Vector3(600, 0, 0)
+	var pack := _fighter(p, Vector3(0, 0, -8.0))             # the pack it waits for you to run from
+	pack.set("target", null)
+	var h := _fighter(p, Vector3(6.5, 0, 0), "harrier")
+	h.set("_attack_cd", 0.0)
+	(p as CharacterBody3D).velocity = Vector3.ZERO
+	_run(h, 2.5)
+	_check("while you stand and fight, the harrier only circles", float(h.get("_windup")) < 0.0 and float(h.get("_leap_left")) <= 0.0 and _near(float(h.get("_retreat_t")), 0.0))
+	(p as CharacterBody3D).velocity = Vector3(0, 0, 5.0)     # running away from the pack
+	h.global_position = p.global_position + Vector3(5.0, 0, 0)
+	_run(h, 1.4)
+	_check("run from the pack and it counts", float(h.get("_retreat_t")) > 1.0 and float(h.get("_windup")) < 0.0)
+	_run(h, 0.2)
+	_check("after a second and a half it crouches", float(h.get("_windup")) >= 0.0)
+	p.call("deal_damage", h, 10.0, ["test"])
+	_check("hit it in the crouch and it is knocked down for 2 s", float(h.get("_windup")) < 0.0 and bool(h.call("has_status", "staggered"))
+		and _near(float((h.get("statuses") as Dictionary)["staggered"]["t"]), 2.0))
+	h.call("clear_status", "staggered")
+	# a leap that finds you
+	(p as CharacterBody3D).velocity = Vector3.ZERO
+	h.global_position = p.global_position + Vector3(5.0, 0, 0)
+	h.set("facing", Vector3(-1, 0, 0))
+	h.set("_aim", Vector3(-1, 0, 0))
+	h.set("_leap_left", 8.0)
+	h.set("_leap_hit", false)
+	hp_before = (p.get("body") as Body).hp
+	_run(h, 0.6)
+	_check("a leap that reaches you hits for 20 and staggers you", _near(hp_before - (p.get("body") as Body).hp, 20.0) and bool(p.call("is_staggered")), "took %f" % (hp_before - (p.get("body") as Body).hp))
+	# and one that does not
+	p.set("_stagger_t", 0.0)
+	(p.get("body") as Body).wounds.clear()
+	h.set("_stuck_t", 0.0)
+	h.global_position = p.global_position + Vector3(5.0, 0, 0)
+	h.set("_aim", Vector3(0, 0, -1))                         # leaping past
+	h.set("_leap_left", 8.0)
+	h.set("_leap_hit", false)
+	hp_before = (p.get("body") as Body).hp
+	_run(h, 0.6)
+	_check("a leap that misses leaves it stuck for a second", _near((p.get("body") as Body).hp, hp_before) and float(h.get("_stuck_t")) > 0.5)
+	# alone, it does not wait
+	pack.queue_free()
+	await get_tree().process_frame
+	h.set("_stuck_t", 0.0)
+	h.set("_attack_cd", 0.0)
+	h.set("_retreat_t", 0.0)
+	h.global_position = p.global_position + Vector3(6.0, 0, 0)
+	_run(h, 1.8)
+	_check("with no pack left it comes for you anyway, so a fight can end", float(h.get("_windup")) >= 0.0 or float(h.get("_leap_left")) > 0.0 or float(h.get("_stuck_t")) > 0.0)
+	h.queue_free()
+	await get_tree().process_frame
+
+	# ---------- dash commitment
+	var w := _new_player("one_percent_lifesteal")
+	w.global_position = Vector3(700, 0, 0)
+	w.set("star_pct", [99.0] as Array[float])
+	w.call("_recompute_essence_max")
+	w.set("essence", 99.0)
+	w.set("_facing", Vector3(0, 0, -1))
+	var step_cost: float = float(GameData.ability("hydraulic_flex")["cost"])
+	var step_reflux: float = step_cost * float(GameData.ability("hydraulic_flex")["reflux_per_cost"])
+	w.call("cast_slot", 2)
+	_check("a dash costs what it says the first time", _near(float(w.get("essence")), 99.0 - step_cost) and _near(float(w.call("reflux_of", "water")), step_reflux))
+	_check("and commits you: no striking or casting until just after it ends", _near(float(w.get("_recover_t")), float(GameData.ability("hydraulic_flex")["dash_time"]) + float(cfg["dash_recovery_s"])),
+		"recover %f" % float(w.get("_recover_t")))
+	_rested(w)
+	w.call("cast_slot", 2)
+	_check("a second one too soon costs double, in essence and in heat", _near(float(w.get("essence")), 99.0 - step_cost * 3.0) and _near(float(w.call("reflux_of", "water")), step_reflux * 3.0),
+		"essence %f reflux %f" % [float(w.get("essence")), float(w.call("reflux_of", "water"))])
+	_rested(w)
+	w.set("_winded_t", 0.0)
+	var e3: float = float(w.get("essence"))
+	w.call("cast_slot", 2)
+	_check("wait it out and the price is the plain one again", _near(e3 - float(w.get("essence")), step_cost))
+	_rested(w)
+	e3 = float(w.get("essence"))
+	w.call("cast_slot", 0)
+	_check("being winded does not touch other skills", _near(e3 - float(w.get("essence")), float(GameData.ability("water_bolt")["cost"])))
+	w.queue_free()
+
+	# ---------- getting through a doorway (the full-passage bot stalled against a dividing wall)
+	var L := 14.0
+	var gap := 2.0
+	_check("chambers are counted down the passage", Route.chamber_of(Vector3(0, 0, -3), L) == 0 and Route.chamber_of(Vector3(0, 0, -15), L) == 1 and Route.chamber_of(Vector3(0, 0, -139.1), L) == 9)
+	var same: Vector3 = Route.step_toward(Vector3(5, 0, -20), Vector3(-4, 0, -26), L, gap, 0.4)
+	_check("in the same chamber you walk straight at it", same.is_equal_approx(Vector3(-4, 0, -26)))
+	# the case that stalled: 4.9 m off-centre, just short of the wall, target in the next chamber
+	var stalled := Vector3(4.9, 0, -139.1)
+	var first: Vector3 = Route.step_toward(stalled, Vector3(4.8, 0, -148.2), L, gap, 0.4)
+	_check("off to one side, you go to the front of the gap first, not at the wall", absf(first.x) < gap and first.z > -140.0 and first.z < -138.0, str(first))
+	var lined: Vector3 = Route.step_toward(Vector3(0.6, 0, -138.6), Vector3(4.8, 0, -148.2), L, gap, 0.4)
+	_check("in line with the gap, you go straight through to the far side", absf(lined.x) < gap and lined.z < -140.0, str(lined))
+	var back: Vector3 = Route.step_toward(Vector3(0.3, 0, -141.0), Vector3(3, 0, -133), L, gap, 0.4)
+	_check("and the same coming back the other way", absf(back.x) < gap and back.z > -140.0, str(back))
+	var wide: Vector3 = Route.step_toward(Vector3(1.5, 0, -138.6), Vector3(0, 0, -148), L, gap, 0.9)
+	_check("a wide body keeps clear of the wall's edge", absf(wide.x) <= gap - 0.9)
+	# walk it: a point that only ever steps toward what Route says must get through
+	var walker := stalled
+	var goal := Vector3(4.8, 0, -148.2)
+	var crossed := false
+	var hit_wall := false
+	for i: int in 400:
+		var nxt: Vector3 = Route.step_toward(walker, goal, L, gap, 0.4)
+		var stepv: Vector3 = nxt - walker
+		if stepv.length() < 0.05:
+			break
+		var moved: Vector3 = walker + stepv.normalized() * 0.1
+		if (walker.z > -140.0) != (moved.z > -140.0) and absf(moved.x) > gap - 0.4:
+			hit_wall = true                       # it would have crossed the wall line outside the gap
+		walker = moved
+		if walker.distance_to(goal) < 0.2:
+			crossed = true
+			break
+	_check("following the route from where the bot stalled reaches the target without touching the wall", crossed and not hit_wall, "ended at %s" % str(walker))
+
+	# ---------- what stands at each wall
+	var recipes: Dictionary = GameData.balance["passage"]["wall_recipes"]
+	_check("the first wall is skirmishers only, the second brings an archer", (recipes["1"] as Dictionary).is_empty() and int((recipes["2"] as Dictionary).get("archer", 0)) == 1)
+	var seen: Array = []
+	var ok := true
+	for n: int in range(1, 11):
+		var r: Dictionary = {}
+		for k: int in range(n, 0, -1):
+			if recipes.has(str(k)):
+				r = recipes[str(k)]
+				break
+		var fresh := 0
+		for kind: String in r:
+			if GameData.enemy(kind).is_empty():
+				ok = false
+			if not seen.has(kind):
+				seen.append(kind)
+				fresh += 1
+		if fresh > 1:
+			ok = false
+	_check("no wall introduces more than one new kind, and every kind exists", ok and seen.has("archer") and seen.has("harrier"), str(seen))
+
+	p.queue_free()
+	world.queue_free()
+	await get_tree().process_frame
 
 
 func _test_gear_step_1() -> void:

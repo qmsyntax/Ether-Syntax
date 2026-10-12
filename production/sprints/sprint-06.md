@@ -288,3 +288,42 @@ Verified: self-test 318/318, four runs; three bots; Netherecho death test; both 
 click test; inventory screenshot inspected. Not verified: anything driven by the real mouse and keyboard - the
 Shift stance, aiming at the cursor, holding to keep firing, the range ring. Whether Shift + click feels natural
 beside click-to-attack is the question this step exists to answer, and only Brent can.
+
+## Part Q — skills step 2: the combat rules (design/05 section 6; Brent 2026-10-12: "go with the combat rules next")
+
+Aimed at his complaint that combat was "run around and dodge in and out ... landing aoe blows on them as they
+group".
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-63 | Enemies turn at 240 degrees a second, so they have a back. A hit on the back arc does 30% more | selftest | Done |
+| S06-64 | Poise and stagger: hits remove poise (a bare strike 20, a skill 15); at zero the enemy is Staggered for 1.5 s - it cannot act and takes 30% more. Poise returns after 3 s unhit. A thin gold bar shows it | selftest, `shots/ui-combat.png` | Done |
+| S06-65 | The Opening: a bare strike on a Staggered enemy does double. Working it off: each bare strike that lands sheds 1 reflux from your hottest affinity | selftest | Done |
+| S06-66 | Interrupts: an attack flagged interruptible shows white; an interrupting skill (Thunderclap Palm) or a poise break cancels it and staggers its owner | selftest | Done |
+| S06-67 | The slot ring: at most six melee enemies stand in striking range; the rest wait a few metres out | selftest (ten skirmishers) | Done |
+| S06-68 | Hide-Bound Brute reworked: 30% less damage from the front, and one slow slam - a 3 m circle drawn on the ground for 1.2 s, 45 damage, interruptible. It does not track you once committed; a miss leaves it stuck for 1.5 s | selftest | Done |
+| S06-69 | Rampart Archer (new): holds 9-12 m, aims along a line for 1 s that leads where you are going and locks 0.3 s before release, then looses for 18. Walls and blocks stop the shot. Backs away and cannot attack inside 4 m | selftest | Done |
+| S06-70 | Harrier (new): circles at 7 m and does nothing; when you run from the pack for 1.5 s it crouches and leaps 8 m for 20 and a stagger. Hit it in the crouch or the air and it is knocked down for 2 s; a miss leaves it stuck 1 s. With no pack left it attacks anyway | selftest | Done |
+| S06-71 | You have poise too: a heavy blow staggers you for 0.4 s (no moving, striking or casting). A movement skill commits you for 0.25 s after it ends, and a second one inside 2.5 s costs double essence and reflux | selftest | Done |
+| S06-72 | Passage walls follow recipes: archers from wall 2, a harrier from wall 4; arena waves add them too. Archers start at the back of the chamber | selftest (no wall introduces more than one new kind), bots | Done |
+| S06-73 | Doorway routing (`Route`): enemies and the bot walk to the gap in a dividing wall instead of at the wall | selftest, 12 full-passage bot runs | Done |
+
+Found on the way:
+- THE BIG ONE: the full ten-wall bot run stalled about one time in five. The diagnostics showed the bot standing
+  against a dividing wall, 4.9 m off-centre, pushing straight at two archers in the next chamber. Nothing in this
+  game pathfinds; it never mattered while every enemy charged the player, and it started to matter the moment
+  pouncers circled and archers held range. Enemies had the same blindness. Fixed with doorway routing; twelve
+  clean full runs afterwards (a 7% chance if nothing had changed, so strong evidence, not proof).
+- An enemy with no valid target never recovered poise (the recovery sat after an early return).
+- The brute's new frontal armour broke nine arithmetic tests that used a brute as their dummy target.
+
+Rough edges: the archer and the harrier have no models - they are plain figures. The harrier's pounce rule can
+feel arbitrary until you learn it; there is no on-screen hint. Poise numbers and the six-slot ring are untuned.
+Fire, earth and wind still have no interrupting skill or signature mechanic (step 3). Pavise Bearer, Censer-Bearer,
+War Drummer and the phased Wall Commander are step 4. Enemies can still strike through a dividing wall at very
+close range (hits are distance checks).
+
+Verified: self-test 383/383, four runs; the full-passage bot twelve times; the gate bot in all six biomes; the death
+bot; the Netherecho death test in both modes; inventory and creation click tests; `ui-combat.png` inspected.
+Not verified: any of it by hand. Whether fights now feel less like "kite and area-hit the clump" is the point of the
+step and is Brent's call. Arena waves with the new enemies were not run by a bot.

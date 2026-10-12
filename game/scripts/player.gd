@@ -112,6 +112,12 @@ var _dash_passed: Array = []         # enemies already touched by this dash
 var _dash_from := Vector3.ZERO       # where the dash was at the last check
 var _recover_t := 0.0                # no striking or casting until this runs out
 var _ranged_cd := 0.0                # until the ranged weapon can loose again
+## Enemies holding one of the places in striking range of you (design/05 6.2, the slot ring).
+var _ring: Array = []
+## Your own footing. Only heavy blows touch it; at zero you are staggered for a moment.
+var poise := 100.0
+var _stagger_t := 0.0                # staggered: no moving, striking or casting
+var _winded_t := 0.0                 # a second movement skill inside this costs double
 ## True while the ranged stance is held with a ranged weapon equipped: the strike button shoots.
 var ranged_stance := false
 var _range_ring: MeshInstance3D
@@ -393,6 +399,8 @@ func _physics_process(delta: float) -> void:
 	_melee_cd -= delta
 	_recover_t -= delta
 	_ranged_cd -= delta
+	_winded_t -= delta
+	_stagger_t -= delta
 	_meditate_block -= delta
 	if in_combat:
 		fight_time += delta
@@ -471,8 +479,13 @@ func _physics_process(delta: float) -> void:
 		move_goal = _cursor_ground()          # holding on the ground keeps steering
 
 	var input := Vector2.ZERO
-	if not _sitting:
+	if not _sitting and _stagger_t <= 0.0:
 		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	if _stagger_t > 0.0:
+		# off your feet: nowhere to go and nothing to swing until it passes
+		has_move_goal = false
+		attack_target = null
+		pickup_target = null
 	var dir := Vector3(input.x, 0.0, input.y).normalized().rotated(Vector3.UP, ISO_YAW)
 	if input != Vector2.ZERO:
 		has_move_goal = false                  # WASD takes over from click-to-move
@@ -497,6 +510,14 @@ func _physics_process(delta: float) -> void:
 					attack_target = null
 		elif input == Vector2.ZERO:
 			dir = to.normalized()                  # walk into reach
+			if bot:
+				# a person steers through a doorway by hand; the bot has to be told where it is
+				var router: Node = get_tree().get_first_node_in_group("router")
+				if router != null:
+					var way: Vector3 = (router.call("route", global_position, attack_target.global_position, 0.4) as Vector3) - global_position
+					way.y = 0.0
+					if way.length() > 0.05:
+						dir = way.normalized()
 	elif pickup_target != null and is_instance_valid(pickup_target) and not pickup_target.is_queued_for_deletion():
 		var to_item: Vector3 = pickup_target.global_position - global_position
 		to_item.y = 0.0
@@ -556,12 +577,34 @@ func deal_damage(target: Node, base: float, tags: Array = []) -> HitContext:
 		ctx.mult *= bot_damage_mult
 
 	var pos: Vector3 = (target as Node3D).global_position
+	var combat: Dictionary = GameData.balance["combat"]
+	var bare_strike: bool = ctx.has_tag("melee") and not ctx.has_tag("ability")
+	var from_behind: bool = target.has_method("is_behind") and bool(target.call("is_behind", global_position))
+	var opening: bool = bare_strike and target.has_method("has_status") and bool(target.call("has_status", "staggered"))
+	if from_behind:
+		ctx.mult *= float(combat["rear_mult"])           # where you stand matters, for every affinity
+	if opening:
+		ctx.mult *= float(combat["opening_mult"])        # the reason to click one enemy instead of casting again
 	ctx.applied = target.call("take_hit", ctx.amount(), ctx.heavy, self)
 	if ctx.applied <= 0.0:
 		return ctx
 	if not ctx.is_scenery:
-		FloatText.spawn(get_parent(), pos, "%d" % int(ctx.applied), Color(1, 1, 1))
+		FloatText.spawn(get_parent(), pos, "%d" % int(ctx.applied), Color(1, 0.86, 0.45) if opening else (Color(0.75, 0.95, 1.0) if from_behind else Color(1, 1, 1)))
+		if opening:
+			FloatText.spawn(get_parent(), pos + Vector3.UP * 0.5, "OPENING", Color(1, 0.86, 0.45))
+		elif from_behind:
+			FloatText.spawn(get_parent(), pos + Vector3.UP * 0.5, "back", Color(0.75, 0.95, 1.0))
 	ctx.killed = bool(target.call("is_dead"))
+	if bare_strike and not ctx.is_scenery:
+		# working it off: every strike that lands bleeds a little heat from your hottest affinity
+		var hottest := ""
+		for aff: String in reflux_by:
+			if hottest == "" or float(reflux_by[aff]) > float(reflux_by[hottest]):
+				hottest = aff
+		if hottest != "":
+			reflux_by[hottest] = maxf(0.0, float(reflux_by[hottest]) - float(combat["strike_sheds_reflux"]))
+		if not ctx.killed and target.has_method("take_poise"):
+			target.call("take_poise", float(combat["strike_poise"]) * (2.0 if ctx.has_tag("overcharge") else 1.0))
 
 	for e: TalentEffect in effects:
 		e.on_dealt(ctx)
@@ -589,7 +632,41 @@ func take_hit(amount: float, heavy: bool, source: Node) -> float:
 		e.on_incoming(ctx)
 	if ctx.cancelled:
 		return 0.0
+	if heavy:
+		var combat: Dictionary = GameData.balance["combat"]
+		poise -= float(combat["heavy_poise_damage"])
+		if poise <= 0.0:
+			poise = float(combat["player_poise"])
+			_stagger_t = float(combat["player_stagger_s"])
+			_dash_time = 0.0
+			_float("STAGGERED", Color(1, 0.7, 0.3))
 	return _apply_damage(ctx.amount(), heavy)
+
+
+## True while a heavy blow has you off your feet: you cannot move, strike or cast.
+func is_staggered() -> bool:
+	return _stagger_t > 0.0
+
+
+# --- the slot ring (design/05 6.2) ----------------------------------------------------------
+
+## An enemy asks for one of the places in striking range of you. Granted if it already has one
+## or one is free; the rest must wait their turn a few metres out.
+func claim_slot(enemy: Node) -> bool:
+	for i: int in range(_ring.size() - 1, -1, -1):
+		var held: Variant = _ring[i]
+		if not is_instance_valid(held) or bool((held as Node).call("is_dead")):
+			_ring.remove_at(i)
+	if _ring.has(enemy):
+		return true
+	if _ring.size() >= GameData.inum("combat", "ring_slots"):
+		return false
+	_ring.append(enemy)
+	return true
+
+
+func release_slot(enemy: Node) -> void:
+	_ring.erase(enemy)
 
 
 ## The percent of each hit your worn armour takes off, capped so gear stays below the body.
@@ -955,8 +1032,11 @@ func apply_hit(target: Node, payload: Dictionary, tags: Array = [], stage_mult: 
 		return ctx
 	if payload.has("status"):
 		target.call("add_status", str(payload["status"]), int(payload.get("stacks", 1)))
+	if target.has_method("take_poise") and (payload.has("damage") or payload.has("damage_mult") or payload.has("poise")):
+		target.call("take_poise", float(payload.get("poise", GameData.num("combat", "skill_poise"))))
 	if bool(payload.get("interrupts", false)):
-		target.call("interrupt")
+		if bool(target.call("interrupt_attack")):
+			FloatText.spawn(get_parent(), (target as Node3D).global_position + Vector3.UP * 0.5, "INTERRUPTED", Color(1, 1, 1))
 	if float(payload.get("shove", 0.0)) > 0.0:
 		var away: Vector3 = dir
 		if away.length() < 0.001:
@@ -1230,10 +1310,15 @@ func cast_ability(index: int) -> void:
 	if is_locked(aff):
 		note("%s affinity is locked by reflux. Meditate (hold %s)." % [aff_name, Keybinds.binding_text("meditate")])
 		return
-	if _recover_t > 0.0:
-		return                                   # still finishing the last one
+	if _recover_t > 0.0 or _stagger_t > 0.0:
+		return                                   # still finishing the last one, or off your feet
 	var heat: float = reflux_of(aff)
 	var cost: float = float(ab["cost"]) * (float(_reflux_cfg["pain_cost_mult"]) if heat >= float(_reflux_cfg["pain_at"]) else 1.0)
+	# Winded: the dash is not free. A second movement skill too soon costs double, in essence and heat.
+	var movement: bool = str(ab["kind"]) == "dash" or str(ab["kind"]) == "blink"
+	var winded: bool = movement and _winded_t > 0.0
+	if winded:
+		cost *= GameData.num("combat", "winded_cost_mult")
 	if essence < cost:
 		note("Not enough essence for %s." % str(ab["name"]))
 		return
@@ -1255,6 +1340,10 @@ func cast_ability(index: int) -> void:
 	essence -= cost
 	reflux_by[aff] = heat + cost * float(ab["reflux_per_cost"])
 	_advance(state, cost)
+	if movement:
+		if winded:
+			_float("winded", Color(0.8, 0.8, 0.9))
+		_winded_t = GameData.num("combat", "winded_s")
 
 	var stage_mult: float = ability_damage_mult(int(state["stage"])) * float(ab.get("damage_all", 1.0))
 	var tags: Array = ["ability", aff, str(state["id"])]
@@ -1298,6 +1387,9 @@ func cast_ability(index: int) -> void:
 	if heat >= float(_reflux_cfg["burn_at"]):
 		recovery = recovery * float(_reflux_cfg["burn_recovery_mult"]) + float(_reflux_cfg["burn_recovery_add"])
 		_float("seizing", Color(1, 0.5, 0.2))
+	if movement:
+		# the recovery starts when the movement ends, so the dash itself is not eaten by it
+		recovery = maxf(recovery, float(ab.get("dash_time", 0.0)) + GameData.num("combat", "dash_recovery_s"))
 	_recover_t = recovery
 	_melee_cd = maxf(_melee_cd, recovery)
 

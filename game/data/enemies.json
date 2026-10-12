@@ -1,5 +1,5 @@
 {
-  "_note": "Enemy kinds. hp and damage are multiplied by the spawn's strength factor (walls past the gate use passage.late_strength). aura_value feeds hidden latent aura on kill; bounty is cash. drops: unused since the Netherecho exists - constructs are subdued there, never looted. loot: item drops left on the ground, each rolled independently. shove_resist scales how far a shove moves this enemy: 1.0 light, 0.5 heavy, 0.25 elite - never zero.",
+  "_note": "Enemy kinds. hp and damage are multiplied by the spawn's strength factor (walls past the gate use passage.late_strength). aura_value feeds hidden latent aura on kill; bounty is cash. drops: unused since the Netherecho exists - constructs are subdued there, never looted. loot: item drops left on the ground, each rolled independently. shove_resist scales how far a shove moves this enemy: 1.0 light, 0.5 heavy, 0.25 elite - never zero. design/05 step 2: poise (see balance.combat); behaviour is melee | ranged | pouncer. A melee enemy may set attack_shape 'circle' (hits everything within attack_radius of itself when the wind-up ends), interruptible (a white flash; an interrupting skill or a poise break cancels it), stuck_after_miss (seconds it stands open after hitting nothing) and front_armour (share of damage it ignores from its front arc). ranged: holds between keep_range_min and max, aims for windup seconds along a line that stops following you aim_lock seconds before release, backs off if you come within back_off_within. pouncer: circles at circle_distance; when you have been moving away from the pack for pounce_after_retreat_s it crouches for windup and leaps pounce_range; any hit during the crouch or the leap knocks it down for knockdown_s; a leap that misses leaves it stuck.",
   "enemies": {
     "grunt": {
       "hp": 240.0,
@@ -34,14 +34,16 @@
         }
       ],
       "name": "Masked Skirmisher",
-      "shove_resist": 1.0
+      "shove_resist": 1.0,
+      "poise": 40.0,
+      "behaviour": "melee"
     },
     "brute": {
       "hp": 700.0,
       "radius": 0.8,
       "height": 2.4,
       "speed": 2.3,
-      "damage": 22.0,
+      "damage": 45.0,
       "heavy": true,
       "aura_value": 12.0,
       "bounty": 500,
@@ -50,8 +52,8 @@
         0.1,
         0.3
       ],
-      "attack_cooldown": 1.3,
-      "windup": 0.45,
+      "attack_cooldown": 2.2,
+      "windup": 1.2,
       "reach": 2.3,
       "drops": {},
       "loot": [
@@ -73,7 +75,14 @@
         }
       ],
       "name": "Hide-Bound Brute",
-      "shove_resist": 0.5
+      "shove_resist": 0.5,
+      "poise": 160.0,
+      "behaviour": "melee",
+      "front_armour": 0.3,
+      "attack_shape": "circle",
+      "attack_radius": 3.0,
+      "interruptible": true,
+      "stuck_after_miss": 1.5
     },
     "commander": {
       "hp": 1400.0,
@@ -112,7 +121,80 @@
         }
       ],
       "name": "Wall Commander",
-      "shove_resist": 0.25
+      "shove_resist": 0.25,
+      "poise": 300.0,
+      "behaviour": "melee"
+    },
+    "archer": {
+      "name": "Rampart Archer",
+      "hp": 120.0,
+      "radius": 0.45,
+      "height": 1.6,
+      "speed": 3.2,
+      "damage": 18.0,
+      "heavy": false,
+      "aura_value": 5.0,
+      "bounty": 200,
+      "color": [
+        0.42,
+        0.36,
+        0.2
+      ],
+      "poise": 30.0,
+      "shove_resist": 1.0,
+      "behaviour": "ranged",
+      "keep_range_min": 9.0,
+      "keep_range_max": 12.0,
+      "back_off_within": 4.0,
+      "windup": 1.0,
+      "aim_lock": 0.3,
+      "attack_cooldown": 1.6,
+      "shot_speed": 30.0,
+      "shot_range": 16.0,
+      "shot_radius": 0.7,
+      "drops": {},
+      "loot": [
+        {
+          "item": "sinew_cord",
+          "chance": 0.5
+        }
+      ]
+    },
+    "harrier": {
+      "name": "Harrier",
+      "hp": 140.0,
+      "radius": 0.45,
+      "height": 1.3,
+      "speed": 8.5,
+      "damage": 20.0,
+      "heavy": true,
+      "aura_value": 6.0,
+      "bounty": 250,
+      "color": [
+        0.25,
+        0.3,
+        0.34
+      ],
+      "poise": 30.0,
+      "shove_resist": 1.0,
+      "behaviour": "pouncer",
+      "circle_distance": 7.0,
+      "pounce_after_retreat_s": 1.5,
+      "retreat_speed": 2.0,
+      "windup": 0.5,
+      "pounce_range": 8.0,
+      "pounce_speed": 20.0,
+      "pounce_hit_radius": 1.3,
+      "knockdown_s": 2.0,
+      "stuck_after_miss": 1.0,
+      "attack_cooldown": 3.0,
+      "drops": {},
+      "loot": [
+        {
+          "item": "sinew_cord",
+          "chance": 0.4
+        }
+      ]
     }
   }
 }

@@ -102,6 +102,7 @@ var _test_mode := false
 
 func _ready() -> void:
 	rng.randomize()
+	add_to_group("router")              # enemies and the bot ask the level how to get through a doorway
 	_build_world()
 	_build_player()
 	_build_hud()
@@ -663,6 +664,10 @@ func _start_wave() -> void:
 		_spawn_arena_enemy("grunt")
 	for i: int in wave / GameData.inum("arena", "brute_every_n_waves"):
 		_spawn_arena_enemy("brute")
+	for i: int in wave / GameData.inum("arena", "archer_every_n_waves"):
+		_spawn_arena_enemy("archer")
+	for i: int in wave / GameData.inum("arena", "harrier_every_n_waves"):
+		_spawn_arena_enemy("harrier")
 
 
 func _spawn_arena_enemy(kind: String) -> void:
@@ -783,9 +788,17 @@ func _activate(c: int) -> void:
 		kinds.append("brute")
 	if c == gate_at or c == chambers:
 		kinds.append("commander")
+	# the wall's recipe: what stands behind the front line, and its one problem (design/05 6.2)
+	var recipe: Dictionary = _wall_recipe(c)
+	for kind: String in recipe:
+		for i: int in int(recipe[kind]):
+			kinds.append(kind)
 	for kind: String in kinds:
+		# archers start at the back of the chamber, where a back line belongs
+		var back: bool = str(GameData.enemy(kind).get("behaviour", "melee")) == "ranged"
 		var local := Vector3(rng.randf_range(-ch_half_w + 2.0, ch_half_w - 2.0), 0.0,
-			rng.randf_range(-float(c + 1) * ch_len + 2.0, -float(c) * ch_len - 7.0))
+			rng.randf_range(-float(c + 1) * ch_len + 2.0, -float(c + 1) * ch_len + 4.0) if back
+			else rng.randf_range(-float(c + 1) * ch_len + 2.0, -float(c) * ch_len - 7.0))
 		_spawn_enemy(kind, local, strength)
 	player.call("start_fight")
 	player.call("note", "Wall %d of %d." % [c, chambers])
@@ -794,6 +807,24 @@ func _activate(c: int) -> void:
 		Engine.time_scale = 1.0
 		player.set("bot", false)
 		_shot_countdown = 25
+
+
+## Where something at `from` should walk next to reach `to` (both in world space). In the passage
+## that may be a doorway first; anywhere else it is `to` itself. See Route.
+func route(from: Vector3, to: Vector3, walker_radius: float) -> Vector3:
+	if state != "dungeon" or level == null:
+		return to
+	var step: Vector3 = Route.step_toward(level.to_local(from), level.to_local(to), ch_len, gap_half, walker_radius)
+	return level.to_global(step)
+
+
+## Extra enemies for wall `c`: its own recipe, or the nearest lower one that has one.
+func _wall_recipe(c: int) -> Dictionary:
+	var recipes: Dictionary = GameData.balance["passage"]["wall_recipes"]
+	for n: int in range(c, 0, -1):
+		if recipes.has(str(n)):
+			return recipes[str(n)]
+	return {}
 
 
 func _on_wall_cleared() -> void:
@@ -1186,6 +1217,32 @@ func _setup_ui_shot(which: String) -> void:
 	_shot_countdown = 40
 	if which == "title":
 		return
+	if which == "combat":
+		# the combat rules on one screen: a brute mid-slam, an archer aiming, a staggered grunt,
+		# a crouched harrier, and a second rank waiting for a slot
+		forced_biome = "scrubland"
+		_select_talent(0)
+		player.call("grow_star", 70.0)
+		_show_screen(null, false)
+		enter_arena()
+		rest_timer = 9999.0
+		for spec: Array in [[Vector3(2.6, 0, -1.2), "brute"], [Vector3(-7.0, 0, -8.0), "archer"], [Vector3(-2.2, 0, -1.6), "grunt"],
+				[Vector3(5.0, 0, 4.5), "harrier"], [Vector3(-4.6, 0, 2.6), "grunt"], [Vector3(0.5, 0, -5.0), "grunt"]]:
+			_spawn_enemy(str(spec[1]), spec[0], 1.0)
+		var foes: Array = get_tree().get_nodes_in_group("enemies")
+		foes[0].set("_windup", 0.45)                       # the slam, most of the way through
+		foes[0].call("_update_melee_telegraph")
+		foes[0].call("take_poise", 60.0)
+		foes[1].set("telegraph", {"kind": "line", "to": player.global_position, "locked": true, "frac": 0.8})
+		foes[2].call("stagger", 5.0)
+		(foes[2].get("body") as Body).apply_damage(120.0)
+		foes[3].set("telegraph", {"kind": "swing", "interruptible": true})
+		player.set("hovered", foes[2])
+		for e: Node in foes:
+			e.set_physics_process(false)
+		player.set_physics_process(false)
+		player.call("_refresh_highlights")
+		return
 	if which == "skills":
 		# a water + lightning character in the arena: marks, a Soaked enemy, a stunned one, a block
 		forced_biome = "scrubland"
@@ -1382,6 +1439,17 @@ func _tick_bot_report() -> void:
 		get_tree().quit(0 if ok else 1)
 	elif elapsed > 120000:
 		print("BOT: TIMEOUT state=%s sealed=%s current=%d cleared=%d -> FAIL" % [state, str(sealed), current, cleared])
+		# what was still standing, and what it was doing - a stall is an enemy that could not be killed
+		var here: Vector3 = level.to_local(player.global_position)
+		print("BOT:   bot at local (%.1f, %.1f) chamber %d  vel %s  target %s  melee_cd %.2f recover %.2f stagger %.2f" % [
+			here.x, here.z, int(-here.z / ch_len), str((player as CharacterBody3D).velocity), str(player.get("attack_target")),
+			float(player.get("_melee_cd")), float(player.get("_recover_t")), float(player.get("_stagger_t"))])
+		for n: Node in get_tree().get_nodes_in_group("enemies"):
+			var e := n as Node3D
+			var at: Vector3 = level.to_local(e.global_position)
+			print("BOT:   left: %s at local (%.1f, %.1f) chamber %d  %.1f m away  hp %d  windup %.2f  stuck %.2f  leap %.2f  retreat_t %.2f  statuses %s" % [
+				str(e.get("kind")), at.x, at.z, int(-at.z / ch_len), e.global_position.distance_to(player.global_position), int((e.get("body") as Body).hp),
+				float(e.get("_windup")), float(e.get("_stuck_t")), float(e.get("_leap_left")), float(e.get("_retreat_t")), str((e.get("statuses") as Dictionary).keys())])
 		Engine.time_scale = 1.0
 		get_tree().quit(1)
 

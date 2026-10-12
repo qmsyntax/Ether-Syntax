@@ -402,6 +402,7 @@ func _draw_enemy_bars() -> void:
 		var b: Body = e.get("body")
 		if b == null or b.is_dead():
 			continue
+		_draw_telegraph(e, cam)
 		var lit: bool = int(e.get("highlight")) > 0
 		if not nether.is_empty():
 			# out here you need to know what a thing is before you decide to fight it
@@ -411,9 +412,50 @@ func _draw_enemy_bars() -> void:
 		var top: Vector2 = cam.unproject_position(e.global_position + Vector3.UP * (float(e.get("height")) + 0.35))
 		var w: float = 46.0 + float(e.get("radius")) * 22.0
 		_draw_statuses(e, Vector2(top.x, top.y - 14.0))
+		# poise: a thin second bar, shown once it has been dented
+		var poise_max: Variant = e.get("poise_max")
+		if poise_max != null and float(poise_max) < 10000.0 and float(e.get("poise")) < float(poise_max):
+			UiDraw.bar(self, Rect2(top.x - w * 0.5, top.y + 3.0, w, 3.0), float(e.get("poise")) / float(poise_max), Color("ffd27a"))
 		if b.total() >= b.total_max() and not lit:
 			continue                      # untouched enemies show no bar - less clutter
 		UiDraw.bar(self, Rect2(top.x - w * 0.5, top.y - 4.0, w, 5.0), b.total() / b.total_max(), UiTheme.HEALTH_SUPERFICIAL if not lit else Color("f0563f"))
+
+
+## The attack an enemy is winding up, drawn where it will land: a circle that fills for a slam,
+## a line for a shot (thin while it still follows you, solid once the aim has locked). An attack
+## that an interrupting skill would punish is drawn white.
+func _draw_telegraph(e: Node3D, cam: Camera3D) -> void:
+	var t: Variant = e.get("telegraph")
+	if not (t is Dictionary) or (t as Dictionary).is_empty():
+		return
+	var tele: Dictionary = t
+	var danger := Color(1.0, 0.36, 0.22)
+	var white := Color(1, 1, 1)
+	var col: Color = white if bool(tele.get("interruptible", false)) else danger
+	match str(tele.get("kind", "")):
+		"circle":
+			var r: float = float(tele["radius"])
+			var frac: float = clampf(float(tele.get("frac", 0.0)), 0.0, 1.0)
+			var outer := PackedVector2Array()
+			var inner := PackedVector2Array()
+			for i: int in 49:
+				var a: float = TAU * float(i) / 48.0
+				var off := Vector3(cos(a), 0.0, sin(a))
+				outer.append(cam.unproject_position(e.global_position + off * r + Vector3.UP * 0.05))
+				inner.append(cam.unproject_position(e.global_position + off * r * frac + Vector3.UP * 0.05))
+			draw_polyline(outer, Color(col, 0.9), 2.5, true)
+			if frac > 0.02:
+				draw_colored_polygon(inner, Color(danger, 0.22))
+		"line":
+			var from: Vector2 = cam.unproject_position(e.global_position + Vector3.UP * 1.1)
+			var to: Vector2 = cam.unproject_position((tele["to"] as Vector3) + Vector3.UP * 1.0)
+			var locked: bool = bool(tele.get("locked", false))
+			draw_line(from, to, Color(danger, 0.95 if locked else 0.5), 3.0 if locked else 1.5, true)
+			draw_circle(to, 5.0 if locked else 3.0, Color(danger, 0.9 if locked else 0.5))
+		"swing":
+			if bool(tele.get("interruptible", false)):
+				var head: Vector2 = cam.unproject_position(e.global_position + Vector3.UP * (float(e.get("height")) + 0.2))
+				draw_arc(head, 10.0, 0.0, TAU, 20, Color(white, 0.6 + 0.4 * sin(_time * 18.0)), 2.5, true)
 
 
 ## What a skill has left on an enemy, above its health bar: one pip per Live mark (the third is
@@ -441,6 +483,13 @@ func _draw_statuses(e: Node3D, at: Vector2) -> void:
 	if have.has("soaked"):
 		UiDraw.icon(self, "drop", Vector2(x, at.y - 1.0), 13.0, Color(str(GameData.status("soaked").get("color", "4f9be8"))))
 		x += 15.0
+	if have.has("staggered"):
+		# off its feet: the moment for a bare strike
+		var gold := Color(str(GameData.status("staggered").get("color", "ffd27a")))
+		var c := Vector2(at.x, at.y - 15.0)
+		draw_line(c + Vector2(-9, 0), c + Vector2(9, 0), gold, 2.5, true)
+		draw_line(c + Vector2(-6, -5), c + Vector2(6, 5), gold, 2.0, true)
+		draw_line(c + Vector2(-6, 5), c + Vector2(6, -5), gold, 2.0, true)
 	if have.has("stunned"):
 		var col2 := Color(str(GameData.status("stunned").get("color", "fff2a8")))
 		for k: int in 3:
