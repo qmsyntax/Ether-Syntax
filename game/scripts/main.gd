@@ -78,6 +78,8 @@ var _shot_countdown := 0
 var _last_cleared := 0
 var _last_sealed := false
 var _last_payout := 0
+## Set by headless tests so they never touch the real save file.
+var _test_mode := false
 
 
 func _ready() -> void:
@@ -170,6 +172,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			hardcore = not hardcore
 			_show_select()
 			return
+		if code == KEY_C and SaveGame.exists():
+			continue_game()
+			return
 		var index: int = code - KEY_1
 		if index >= 0 and index < TALENT_CHOICES.size():
 			_select_talent(index)
@@ -191,10 +196,10 @@ func _unhandled_input(event: InputEvent) -> void:
 					player.call("note", "No one will sell you a ticket on that much debt.")
 			elif code == KEY_2:
 				_enter_arena()
+			elif code == KEY_3:
+				town_sell_loot()
 			elif event.is_action_pressed("rest"):
-				player.call("rest_night")
-				player.call("charge", night_rent)
-				day += 1
+				town_rest_night()
 			elif event.is_action_pressed("healer"):
 				player.call("buy_healing")
 		"arena_rest", "arena_fight":
@@ -290,7 +295,11 @@ func _enter_town() -> void:
 	player.set("active", false)
 	player.call("end_fight")
 	player.global_position = Vector3.ZERO
+	player.set("attack_target", null)
+	player.set("pickup_target", null)
+	player.set("has_move_goal", false)
 	state = "town"
+	save_now()
 
 
 func _town_text() -> String:
@@ -309,6 +318,97 @@ func _town_text() -> String:
 	lines.append("%s  Healer - fast, priced by how deep the wound is; the only way to regrow a limb without a talent" % _k("healer"))
 	lines.append("%s  Start over with a new character      %s  Controls" % [_k("restart"), _k("settings")])
 	return "\n".join(lines)
+
+
+# --- town services (logic only; the UI calls these) ------------------------------
+
+## Sell every piece of loot in the bag. Returns what it fetched.
+func town_sell_loot() -> int:
+	var inv: Inventory = player.get("inventory")
+	var got: int = inv.sell_loot()
+	if got > 0:
+		player.set("money", int(player.get("money")) + got)
+		player.call("note", "Sold your loot for $%d." % got)
+	else:
+		player.call("note", "Nothing in your pack that anyone wants.")
+	save_now()
+	return got
+
+
+## Buy a shop item on credit (to the debt limit). Returns "" on success, else why not.
+func town_buy(item_id: String) -> String:
+	var def: Dictionary = GameData.item(item_id)
+	if def.is_empty():
+		return "no such item"
+	var price: int = int(def.get("value", 0))
+	if not bool(player.call("can_afford", price)):
+		return "Nobody will lend you that much."
+	var inv: Inventory = player.get("inventory")
+	if not inv.can_add(item_id):
+		return "You cannot carry it - %d of %d kg." % [int(inv.weight()), int(inv.capacity())]
+	player.call("charge", price)
+	inv.add(item_id)
+	player.call("note", "Bought %s for $%d." % [str(def.get("name", item_id)), price])
+	save_now()
+	return ""
+
+
+func town_rest_night() -> void:
+	player.call("rest_night")
+	player.call("charge", night_rent)
+	day += 1
+	save_now()
+
+
+## Per-person reward at the exit, scaled to how far you got (canon: contribution-scaled loot).
+## Whatever you cannot carry is left behind.
+func grant_exit_rewards(walls_cleared: int, full_clear: bool) -> Array[String]:
+	var cfg: Dictionary = GameData.items_file.get("exit_rewards", {})
+	var rolls: int = int(float(walls_cleared) / float(cfg.get("walls_per_roll", 2.5)))
+	if full_clear:
+		rolls += int(cfg.get("bonus_rolls_full_clear", 0))
+	var table: Array = GameData.items_file.get("exit_reward_table", [])
+	var total := 0.0
+	for entry: Dictionary in table:
+		total += float(entry["weight"])
+	var got: Array[String] = []
+	var inv: Inventory = player.get("inventory")
+	for i: int in rolls:
+		var pick: float = rng.randf() * total
+		for entry: Dictionary in table:
+			pick -= float(entry["weight"])
+			if pick <= 0.0:
+				var id: String = str(entry["item"])
+				if inv.add(id):
+					got.append(str(GameData.item(id).get("name", id)))
+				break
+	player.call("refresh_gear")
+	return got
+
+
+# --- saving ------------------------------------------------------------------------
+
+func save_now() -> void:
+	if _bot_mode or _shot_mode or _test_mode or str(player.get("talent_id")) == "":
+		return
+	var data: Dictionary = player.call("to_save")
+	data["day"] = day
+	data["delves"] = delves
+	data["hardcore"] = hardcore
+	SaveGame.write(data)
+
+
+## Load the saved character into town. Returns false if there is nothing usable to load.
+func continue_game() -> bool:
+	var data: Dictionary = SaveGame.read()
+	if data.is_empty() or str(data.get("talent_id", "")) == "":
+		return false
+	player.call("from_save", data)
+	day = int(data.get("day", 1))
+	delves = int(data.get("delves", 0))
+	hardcore = bool(data.get("hardcore", false))
+	_enter_town()
+	return true
 
 
 func _repeat_mult() -> float:
@@ -515,7 +615,10 @@ func _extract() -> void:
 	_bot_finished = _bot_mode
 	delves += 1
 	player.call("note", "You walk out after %d walls with $%d." % [cleared, payout])
+	var rewards: Array[String] = grant_exit_rewards(cleared, cleared == chambers)
 	_enter_town()
+	if not rewards.is_empty():
+		player.call("note", "At the exit: %s." % ", ".join(rewards))
 
 
 func _set_dungeon_banner() -> void:
@@ -560,6 +663,8 @@ func _spawn_scenery(kind: String, local_pos: Vector3) -> void:
 func _on_player_died() -> void:
 	if hardcore:
 		state = "dead"
+		if not _bot_mode and not _test_mode:
+			SaveGame.delete()
 		banner.text = "You died. Hardcore: that was the only life this character had.\n\n%s to begin again." % _k("restart")
 		return
 	var lost: int = bank if state == "dungeon" else 0

@@ -1,0 +1,36 @@
+{
+  "_note": "Items. All names and numbers are original to this project [MODEL]. Canon facts used: carry capacity is an economic stat; a new archhuman has a backpack, not a storage ring (Brent 2026-09-23); satellites are items you find or buy, and a 1-star can use a 2-star satellite at full rate (Brent 2026-09-23). slot: back | satellite | trinket | '' (not equippable). stats are summed over equipped items: carry_capacity (kg), satellite_rate (essence/s), cost_mult (ability essence cost multiplier), reflux_shed_mult.",
+  "base_carry_capacity": 8.0,
+  "starting_equipped": {"back": "canvas_pack"},
+  "starting_bag": [],
+  "items": {
+    "canvas_pack":     {"name": "Canvas Pack",      "slot": "back",      "weight": 1.5, "value": 60,   "stats": {"carry_capacity": 30.0}, "desc": "A cheap backpack. Everything you own fits, for now."},
+    "delver_frame":    {"name": "Delver's Frame",   "slot": "back",      "weight": 4.0, "value": 1400, "stats": {"carry_capacity": 75.0}, "desc": "A load-bearing frame built for hauling corpses out."},
+    "dim_mote":        {"name": "Dim Mote",         "slot": "satellite", "weight": 0.2, "value": 2400, "rank": 1, "stats": {"satellite_rate": 1.0}, "desc": "A one-star satellite. It trickles essence into you whether you ask or not."},
+    "paired_mote":     {"name": "Paired Mote",      "slot": "satellite", "weight": 0.3, "value": 9500, "rank": 2, "stats": {"satellite_rate": 2.0}, "desc": "A two-star satellite. Rank does not matter to the wearer - only the price does."},
+    "river_stone":     {"name": "River Stone Charm","slot": "trinket",   "weight": 0.3, "value": 700,  "stats": {"cost_mult": 0.9}, "desc": "Water abilities cost a tenth less essence."},
+    "cooling_coil":    {"name": "Cooling Coil",     "slot": "trinket",   "weight": 0.5, "value": 850,  "stats": {"reflux_shed_mult": 1.5}, "desc": "Reflux bleeds off half again as fast."},
+
+    "husk_plate":      {"name": "Husk Plate",       "slot": "", "weight": 3.0, "value": 55,  "desc": "A slab of invader hide. Tanners buy it."},
+    "sinew_cord":      {"name": "Sinew Cord",       "slot": "", "weight": 1.0, "value": 30,  "desc": "Tough, stringy, sells by the length."},
+    "serrated_dagger": {"name": "Serrated Dagger",  "slot": "", "weight": 1.2, "value": 90,  "desc": "An invader's blade. Illegal to keep after a break; fine out of a passage."},
+    "brute_tusk":      {"name": "Brute Tusk",       "slot": "", "weight": 6.0, "value": 280, "desc": "Heavy. Worth it if you can still walk."},
+    "commander_sigil": {"name": "Commander's Sigil","slot": "", "weight": 2.0, "value": 950, "desc": "Proof you put one down. Collectors pay."},
+    "golden_seed":     {"name": "Golden Grass Seed","slot": "", "weight": 0.1, "value": 20,  "desc": "Passage flora. The rich plant it to show off."}
+  },
+  "shop": ["dim_mote", "delver_frame", "river_stone", "cooling_coil", "paired_mote"],
+  "exit_reward_table": [
+    {"item": "golden_seed", "weight": 6},
+    {"item": "sinew_cord", "weight": 5},
+    {"item": "husk_plate", "weight": 4},
+    {"item": "serrated_dagger", "weight": 3},
+    {"item": "river_stone", "weight": 1},
+    {"item": "cooling_coil", "weight": 1},
+    {"item": "dim_mote", "weight": 0.5}
+  ],
+  "exit_rewards": {
+    "_note": "Per-person reward at the exit, scaled to how far you got (canon: contribution-scaled). rolls = walls cleared / walls_per_roll, +bonus_rolls_full_clear on a full clear.",
+    "walls_per_roll": 2.5,
+    "bonus_rolls_full_clear": 2
+  }
+}

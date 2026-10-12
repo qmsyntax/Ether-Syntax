@@ -48,6 +48,10 @@ var _strike_once := false
 ## What is under the cursor right now (highlighted). Picked in screen space, so clicking any
 ## part of a drawn body counts - not just its footprint on the floor (Brent 2026-09-23).
 var hovered: Node3D = null
+## What the character carries and wears (backpack, satellite, trinket, loot).
+var inventory: Inventory
+## An item on the ground you clicked: walk to it and pick it up.
+var pickup_target: Node3D = null
 
 # Headless test driver only (see main.gd --bot-dungeon): steers toward bot_goal, swings at
 # anything in reach, hits absurdly hard and cannot be hurt. Never enabled in normal play.
@@ -91,7 +95,8 @@ func _init() -> void:
 	star_pct = [GameData.num("stars", "first_star_start_pct")]
 	_recompute_essence_max()
 	essence = essence_max
-	satellite_rate = float(_p["starter_satellite_rate"])   # placeholder until satellites are items
+	inventory = Inventory.new()
+	refresh_gear()
 	_aura_threshold = float(_p["aura_threshold"])
 	arm_right = float(_arm["max"])
 	melee_range = float(_p["melee_range"])
@@ -177,7 +182,7 @@ func _physics_process(delta: float) -> void:
 	# The body sheds reflux on its own; meditation purges it much faster.
 	var shed: float = float(_reflux_cfg["shed_meditating"]) if meditating else (
 		float(_reflux_cfg["shed_in_combat"]) if in_combat else float(_reflux_cfg["shed_resting"]))
-	reflux = maxf(0.0, reflux - shed * delta)
+	reflux = maxf(0.0, reflux - shed * inventory.stat("reflux_shed_mult", true) * delta)
 	_meditate_gather(delta)
 	if meditating:
 		grow_star(GameData.num("stars", "growth_pct_per_s_meditating") * delta)
@@ -218,6 +223,7 @@ func _physics_process(delta: float) -> void:
 		has_move_goal = false                  # WASD takes over from click-to-move
 		if not Input.is_action_pressed("strike"):
 			attack_target = null
+			pickup_target = null
 
 	if attack_target != null and (not is_instance_valid(attack_target) or bool(attack_target.call("is_dead"))):
 		attack_target = null
@@ -236,6 +242,15 @@ func _physics_process(delta: float) -> void:
 					attack_target = null
 		elif input == Vector2.ZERO:
 			dir = to.normalized()                  # walk into reach
+	elif pickup_target != null and is_instance_valid(pickup_target) and not pickup_target.is_queued_for_deletion():
+		var to_item: Vector3 = pickup_target.global_position - global_position
+		to_item.y = 0.0
+		if to_item.length() <= GameData.num("player", "pickup_reach"):
+			take_pickup(pickup_target)
+			pickup_target = null
+		elif input == Vector2.ZERO:
+			dir = to_item.normalized()
+			_facing = dir
 	elif has_move_goal and input == Vector2.ZERO:
 		var to_goal: Vector3 = move_goal - global_position
 		to_goal.y = 0.0
@@ -350,6 +365,7 @@ func _on_kill(target: Node) -> void:
 	_latent_aura += float(target.get("aura_value")) * risk
 	grow_star(float(target.get("aura_value")) * GameData.num("stars", "growth_pct_per_aura"))
 	_roll_drops(target)
+	_roll_loot(target)
 
 
 # --- click targeting ------------------------------------------------------------
@@ -357,10 +373,16 @@ func _on_kill(target: Node) -> void:
 ## Click at the cursor: the hovered thing if there is one, otherwise the floor under the cursor.
 func _click_cursor() -> void:
 	if hovered != null and is_instance_valid(hovered) and not bool(hovered.call("is_dead")):
-		attack_target = hovered
 		has_move_goal = false
-		_strike_once = true
+		if hovered.get("is_pickup") != null:
+			pickup_target = hovered
+			attack_target = null
+		else:
+			attack_target = hovered
+			pickup_target = null
+			_strike_once = true
 	else:
+		pickup_target = null
 		_click(_cursor_ground())
 	_refresh_highlights()
 
@@ -387,8 +409,10 @@ func pick_screen(screen_pos: Vector2, cam: Camera3D) -> Node3D:
 	var margin: float = GameData.num("player", "pick_margin_px")
 	var best: Node3D = null
 	var best_d := INF
-	var best_is_enemy := false
-	for node: Node in get_tree().get_nodes_in_group("hittable"):
+	var best_rank := -1
+	var candidates: Array[Node] = get_tree().get_nodes_in_group("hittable")
+	candidates.append_array(get_tree().get_nodes_in_group("pickups"))
+	for node: Node in candidates:
 		var t := node as Node3D
 		if t == null or bool(t.call("is_dead")):
 			continue
@@ -401,13 +425,14 @@ func pick_screen(screen_pos: Vector2, cam: Camera3D) -> Node3D:
 		var side: Vector2 = cam.unproject_position(t.global_position + cam.global_transform.basis.x * r)
 		var r_px: float = base.distance_to(side)
 		var d: float = Geometry2D.get_closest_point_to_segment(screen_pos, base, top).distance_to(screen_pos)
-		var is_enemy: bool = not bool(t.get("is_scenery"))
-		if d > r_px + (margin if is_enemy else margin * 0.4):
+		# enemies beat loot, loot beats scenery
+		var rank: int = 0 if bool(t.get("is_scenery")) else (1 if t.get("is_pickup") != null else 2)
+		if d > r_px + (margin * 0.4 if rank == 0 else margin):
 			continue
-		if (is_enemy and not best_is_enemy) or (is_enemy == best_is_enemy and d < best_d):
+		if rank > best_rank or (rank == best_rank and d < best_d):
 			best = t
 			best_d = d
-			best_is_enemy = is_enemy
+			best_rank = rank
 	return best
 
 
@@ -421,11 +446,13 @@ func _update_hover() -> void:
 
 ## Hovered = bright, locked attack target = dimmer; everything else plain.
 func _refresh_highlights() -> void:
-	for node: Node in get_tree().get_nodes_in_group("hittable"):
+	var nodes: Array[Node] = get_tree().get_nodes_in_group("hittable")
+	nodes.append_array(get_tree().get_nodes_in_group("pickups"))
+	for node: Node in nodes:
 		var level := 0
 		if node == hovered:
 			level = 1
-		elif node == attack_target:
+		elif node == attack_target or node == pickup_target:
 			level = 2
 		if node.has_method("set_highlight"):
 			if int(node.get("highlight")) != level:
@@ -630,6 +657,7 @@ func ability_stats(state: Dictionary) -> Dictionary:
 		if not applied:
 			damage_all *= float((c.get("fallback", {}) as Dictionary).get("damage_all", 1.0))
 	ab["damage_all"] = damage_all
+	ab["cost"] = float(ab["cost"]) * inventory.stat("cost_mult", true)
 	return ab
 
 
@@ -690,6 +718,102 @@ func _roll_drops(target: Node) -> void:
 			var concept_id: String = str(ids[rng.randi() % ids.size()])
 			constructs.append({"tier": tier, "concept": concept_id})
 			note("It leaves a %s of %s behind." % [tier, str(GameData.concept(concept_id).get("label", concept_id))])
+
+
+# --- gear, loot, saving ----------------------------------------------------------
+
+## Re-read what equipment grants. Call after anything is equipped or removed.
+func refresh_gear() -> void:
+	satellite_rate = float(_p["starter_satellite_rate"]) + inventory.stat("satellite_rate")
+
+
+## Kills leave items on the ground where the enemy fell.
+func _roll_loot(target: Node) -> void:
+	var kind_v: Variant = target.get("kind")
+	if kind_v == null or str(kind_v) == "" or not is_inside_tree():
+		return
+	var parent: Node = target.get_parent()
+	if parent == null:
+		return
+	for entry: Dictionary in GameData.enemy(str(kind_v)).get("loot", []):
+		if rng.randf() < float(entry["chance"]):
+			var at: Vector3 = (target as Node3D).global_position + Vector3(rng.randf_range(-0.8, 0.8), 0.0, rng.randf_range(-0.8, 0.8))
+			spawn_pickup(parent, str(entry["item"]), at)
+
+
+static func spawn_pickup(parent: Node, item_id: String, at: Vector3) -> Node3D:
+	var script: GDScript = load("res://scripts/pickup.gd")
+	var drop: Node3D = script.new()
+	drop.call("setup", item_id)
+	parent.add_child(drop)
+	drop.global_position = Vector3(at.x, 0.0, at.z)
+	return drop
+
+
+## Put a ground item in the bag, if there is room to carry it.
+func take_pickup(drop: Node3D) -> bool:
+	var id: String = str(drop.get("item_id"))
+	var item_name: String = str(GameData.item(id).get("name", id))
+	if not inventory.add(id):
+		note("%s is too heavy - you are carrying %d of %d kg." % [item_name, int(inventory.weight()), int(inventory.capacity())])
+		return false
+	drop.call("take")
+	note("Picked up %s." % item_name)
+	return true
+
+
+## Everything that must survive between sessions.
+func to_save() -> Dictionary:
+	return {
+		"talent_id": talent_id, "stars": stars, "star_pct": star_pct.duplicate(), "money": money,
+		"essence": essence, "latent_aura": _latent_aura,
+		"body_hp": body.hp.duplicate(), "body_max": body.max_hp.duplicate(),
+		"arm_right": arm_right, "arm_right_lost": arm_right_lost, "arm_regrow": _arm_regrow,
+		"abilities": abilities.duplicate(true), "hotbar": hotbar.duplicate(),
+		"constructs": constructs.duplicate(true), "discoveries": discoveries.duplicate(),
+		"heal_points_total": heal_points_total, "inventory": inventory.to_dict(),
+	}
+
+
+func from_save(d: Dictionary) -> void:
+	set_talent(str(d.get("talent_id", "")))
+	stars = int(d.get("stars", 1))
+	star_pct.clear()
+	for pct: Variant in d.get("star_pct", [GameData.num("stars", "first_star_start_pct")]):
+		star_pct.append(float(pct))
+	_recompute_essence_max()
+	money = int(d.get("money", 0))
+	essence = minf(essence_max, float(d.get("essence", essence_max)))
+	_latent_aura = float(d.get("latent_aura", 0.0))
+	var hp: Dictionary = d.get("body_hp", {})
+	var mx: Dictionary = d.get("body_max", {})
+	for layer: String in body.hp:
+		if mx.has(layer):
+			body.max_hp[layer] = float(mx[layer])
+		if hp.has(layer):
+			body.hp[layer] = float(hp[layer])
+	arm_right = float(d.get("arm_right", arm_right))
+	arm_right_lost = bool(d.get("arm_right_lost", false))
+	_arm_regrow = float(d.get("arm_regrow", 0.0))
+	var saved_abilities: Array = d.get("abilities", [])
+	if not saved_abilities.is_empty():
+		abilities.clear()
+		for a: Dictionary in saved_abilities:
+			a["stage"] = int(a.get("stage", 0))
+			a["progress"] = float(a.get("progress", 0.0))
+			abilities.append(a)
+	var saved_hotbar: Array = d.get("hotbar", [])
+	for i: int in mini(saved_hotbar.size(), hotbar.size()):
+		hotbar[i] = int(saved_hotbar[i])
+	constructs.clear()
+	for c: Variant in d.get("constructs", []):
+		constructs.append(c)
+	discoveries.clear()
+	for line: Variant in d.get("discoveries", []):
+		discoveries.append(str(line))
+	heal_points_total = float(d.get("heal_points_total", 0.0))
+	inventory.from_dict(d.get("inventory", {}))
+	refresh_gear()
 
 
 # --- stars ----------------------------------------------------------------------

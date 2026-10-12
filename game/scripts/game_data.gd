@@ -8,6 +8,8 @@ var abilities: Dictionary = {}
 var _starting_loadout: Array = []
 var construct_tiers: Array = []
 var concepts: Dictionary = {}
+var items_file: Dictionary = {}
+var items: Dictionary = {}
 
 
 ## Loaded in the constructor: the singleton name resolves before the node enters the tree,
@@ -27,6 +29,14 @@ func _ensure() -> void:
 	var con: Dictionary = _load("res://data/constructs.json")
 	construct_tiers = con.get("tiers", [])
 	concepts = con.get("concepts", {})
+	items_file = _load("res://data/items.json")
+	items = items_file.get("items", {})
+
+
+## An item definition, or {} if the id is unknown.
+func item(id: String) -> Dictionary:
+	_ensure()
+	return items.get(id, {})
 
 
 ## The construct tier an ability at `stage` needs to advance (stage 0 -> "vestige").

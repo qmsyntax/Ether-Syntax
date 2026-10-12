@@ -18,11 +18,12 @@
     "body_superficial": 60.0,
     "body_structural": 30.0,
     "body_catastrophic": 10.0,
-    "starter_satellite_rate": 1.0,
+    "starter_satellite_rate": 0.0,
     "debt_limit": -2000,
     "aura_threshold": 100.0,
     "aura_hurt_risk_bonus": 2.0,
-    "pick_margin_px": 14.0
+    "pick_margin_px": 14.0,
+    "pickup_reach": 1.4
   },
   "natural_healing": {
     "superficial_per_s": 3.0,

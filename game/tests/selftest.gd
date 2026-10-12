@@ -22,6 +22,7 @@ func _ready() -> void:
 	await _test_abilities()
 	_test_stars()
 	await _test_click_melee()
+	await _test_inventory()
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
 
@@ -358,6 +359,87 @@ func _test_click_melee() -> void:
 	b.queue_free()
 	await get_tree().process_frame
 	p.queue_free()
+
+
+func _test_inventory() -> void:
+	await get_tree().process_frame
+	print("inventory / loot / save:")
+	var p := _new_player("tenth_strike")
+	var inv: Inventory = p.get("inventory")
+	_check("you start with a backpack in the back slot and no storage ring", str(inv.equipped.get("back", "")) == "canvas_pack" and inv.bag.is_empty())
+	_check("carry capacity = base 8 + pack 30", _near(inv.capacity(), 38.0), "got %f" % inv.capacity())
+	_check("there is no free satellite", _near(float(p.get("satellite_rate")), 0.0))
+
+	_check("loot goes in the bag", inv.add("brute_tusk") and _near(inv.weight(), 6.0))
+	for i: int in 5:
+		inv.add("brute_tusk")
+	_check("six tusks fit (36 of 38 kg)", inv.bag.size() == 6)
+	_check("a seventh is too heavy", not inv.add("brute_tusk") and inv.bag.size() == 6)
+	_check("loot value adds up", inv.loot_value() == 6 * 280)
+	_check("selling clears the loot and pays", inv.sell_loot() == 1680 and inv.bag.is_empty())
+
+	inv.add("paired_mote")
+	_check("equipping a satellite turns on essence flow - a 1-star can wear a 2-star one", inv.equip("paired_mote") == "equipped" and (func() -> bool:
+		p.call("refresh_gear")
+		return _near(float(p.get("satellite_rate")), 2.0)).call())
+	inv.add("river_stone")
+	inv.equip("river_stone")
+	var bolt_cost: float = float((p.call("ability_stats", (p.get("abilities") as Array)[0]) as Dictionary)["cost"])
+	_check("a trinket changes ability cost (12 x 0.9)", _near(bolt_cost, 10.8), "got %f" % bolt_cost)
+	_check("unequipping returns the item to the bag", inv.unequip("trinket") == "unequipped" and inv.bag.has("river_stone"))
+
+	# swapping packs while loaded: the bigger frame goes on, the canvas pack comes off into the bag
+	inv.add("delver_frame")
+	_check("a bigger backpack raises capacity", inv.equip("delver_frame") == "equipped" and _near(inv.capacity(), 83.0))
+	for i: int in 12:
+		inv.add("brute_tusk")
+	_check("cannot swap back to a small pack while overloaded", inv.equip("canvas_pack") != "equipped" and str(inv.equipped["back"]) == "delver_frame")
+
+	# ground loot
+	var drop: Node3D = PlayerScript.spawn_pickup(self, "sinew_cord", p.global_position + Vector3(1, 0, 0))
+	_check("a dropped item sits in the world", get_tree().get_nodes_in_group("pickups").has(drop))
+	var before: int = inv.bag.size()
+	_check("walking onto it puts it in the bag", bool(p.call("take_pickup", drop)) and inv.bag.size() == before + 1)
+	var heavy: Node3D = PlayerScript.spawn_pickup(self, "brute_tusk", p.global_position)
+	inv.bag.clear()
+	for i: int in 13:
+		inv.add("brute_tusk")     # 78 of 83 kg
+	_check("an item too heavy to carry stays on the ground", not bool(p.call("take_pickup", heavy)) and get_tree().get_nodes_in_group("pickups").has(heavy))
+	heavy.queue_free()
+
+	# kills leave loot where the enemy fell
+	var e := _dummy_enemy(p)
+	e.set("kind", "commander")
+	(e.get("body") as Body).apply_damage(99999.0)
+	p.call("_roll_loot", e)
+	var sigils := 0
+	for n: Node in get_tree().get_nodes_in_group("pickups"):
+		if str(n.get("item_id")) == "commander_sigil":
+			sigils += 1
+	_check("a commander always drops its sigil", sigils == 1)
+	e.queue_free()
+
+	# save round trip
+	p.set("money", -321)
+	p.call("grow_star", 30.0)
+	(p.get("abilities") as Array)[0]["progress"] = 42.0
+	(p.get("constructs") as Array).append({"tier": "vestige", "concept": "tension"})
+	var data: Dictionary = p.call("to_save")
+	var path := "user://selftest_save.json"
+	_check("the save file is written", SaveGame.write(data, path) and SaveGame.exists(path))
+	var q := _new_player()
+	q.call("from_save", SaveGame.read(path))
+	var qinv: Inventory = q.get("inventory")
+	_check("a loaded character has the same talent, money and star", str(q.get("talent_id")) == "tenth_strike" and int(q.get("money")) == -321 and _near(float((q.get("star_pct") as Array)[0]), 35.0))
+	_check("abilities, constructs and gear survive the round trip", _near(float((q.get("abilities") as Array)[0]["progress"]), 42.0)
+		and (q.get("constructs") as Array).size() == 1 and str(qinv.equipped.get("satellite", "")) == "paired_mote"
+		and qinv.bag.size() == inv.bag.size() and _near(float(q.get("satellite_rate")), 2.0))
+	SaveGame.delete(path)
+	_check("deleting the save removes it", not SaveGame.exists(path) and SaveGame.read(path).is_empty())
+	for n: Node in get_tree().get_nodes_in_group("pickups"):
+		n.queue_free()
+	p.queue_free()
+	q.queue_free()
 
 
 func _test_keybinds() -> void:
