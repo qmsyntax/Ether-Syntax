@@ -99,7 +99,10 @@
       2.2
     ],
     "archer_every_n_waves": 2,
-    "harrier_every_n_waves": 3
+    "harrier_every_n_waves": 3,
+    "pavise_every_n_waves": 4,
+    "censer_from_wave": 3,
+    "drummer_from_wave": 5
   },
   "passage": {
     "chamber_length": 14.0,
@@ -121,13 +124,14 @@
     "brute_offset": 1,
     "brute_every": 3,
     "wall_recipes": {
-      "_note": "design/05 6.2: each wall is a small recipe - a front line, a back line and at most one problem - and no wall introduces more than one kind the player has not met. Keyed by wall number; a wall with no entry uses the nearest lower one. Counts are added to the base rule (grunts_base + wall/2 grunts; brutes by brute_offset/brute_every; a commander at the gate and at the last wall).",
+      "_note": "design/05 6.2: each wall is a small recipe - a front line, a back line and at most one problem - and no wall introduces more than one kind the player has not met. Keyed by wall number; a wall with no entry uses the nearest lower one. Counts are added to the base rule (grunts_base + wall/2 grunts; brutes by brute_offset/brute_every; a commander at the gate and at the last wall). A pack has at most one Censer-Bearer and one Drummer.",
       "1": {},
       "2": {
         "archer": 1
       },
       "3": {
-        "archer": 2
+        "pavise": 2,
+        "archer": 1
       },
       "4": {
         "harrier": 1,
@@ -137,11 +141,24 @@
         "archer": 1
       },
       "6": {
-        "harrier": 1,
-        "archer": 2
+        "censer": 1,
+        "archer": 1
+      },
+      "7": {
+        "pavise": 2,
+        "drummer": 1
       },
       "8": {
         "harrier": 2,
+        "archer": 2,
+        "censer": 1
+      },
+      "9": {
+        "pavise": 2,
+        "drummer": 1,
+        "archer": 2
+      },
+      "10": {
         "archer": 2
       }
     }
@@ -342,7 +359,8 @@
     "player_stagger_s": 0.4,
     "dash_recovery_s": 0.25,
     "winded_s": 2.5,
-    "winded_cost_mult": 2.0
+    "winded_cost_mult": 2.0,
+    "player_shove_speed": 12.0
   },
   "slipstream": {
     "_note": "Wind's signature (design/05 2.4), only for a character who holds wind: a row of pips earned by moving and lost by standing. +1 pip for every metres_per_pip travelled (walking or dashing); after still_delay_s standing, -1 every decay_s. Wind skills spend pips for their real effect. At speed_pips or more you move speed_mult faster.",

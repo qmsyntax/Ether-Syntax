@@ -37,6 +37,7 @@ func _ready() -> void:
 	await _test_wind()
 	await _test_earth()
 	await _test_archer_steering()
+	await _test_step4_enemies()
 	await _test_combat_rules()
 	_test_affinities()
 	_test_models()
@@ -1301,6 +1302,273 @@ func _test_combat_rules() -> void:
 	p.queue_free()
 	world.queue_free()
 	await get_tree().process_frame
+
+
+var _calls: Array = []
+
+
+func _on_test_reinforcements(_who: Node, kinds: Array) -> void:
+	_calls.append(kinds)
+
+
+func _test_step4_enemies() -> void:
+	print("the rest of the enemies (design/05 step 4):")
+	await get_tree().process_frame
+	var p := _new_player()
+	p.global_position = Vector3(1700, 0, 0)
+	var here: Vector3 = p.global_position
+	var world := _test_floor(here)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	p.set("effects", [] as Array[TalentEffect])
+	_bare(p)
+	var body: Body = p.get("body")
+	var rear: float = float(GameData.balance["combat"]["rear_mult"])
+	var stag: float = float(GameData.status("staggered")["damage_taken_mult"])
+	var well := func() -> void:
+		body.wounds.clear()
+		body.hp = body.total_max()
+		p.set("_stagger_t", 0.0)
+		p.set("poise", 100.0)
+		p.set("_shoved_left", 0.0)
+		p.set("_wound_cd", 0.0)
+		p.global_position = here
+
+	# ---------- Pavise Bearer
+	var pv := _fighter(p, Vector3(0, 0, -3.0), "pavise")
+	pv.set("facing", Vector3(0, 0, 1))
+	p.call("deal_damage", pv, 100.0, ["test"])
+	_check("a Pavise Bearer's shield takes 80% off anything from the front", _near(_lost(pv), 20.0), "lost %f" % _lost(pv))
+	_check("a shot from the front stops on it", bool(pv.call("blocks_shot", here)))
+	var behind_it := _foe(p, Vector3(0, 0, -6.0))
+	var ProjScript: GDScript = load("res://scripts/projectile.gd")
+	var gust: Node3D = ProjScript.new()
+	gust.set("dir", Vector3(0, 0, -1))
+	gust.set("speed", 30.0)
+	gust.set("life", 0.5)
+	gust.set("damage", 50.0)
+	gust.set("pierce", true)
+	gust.set("shooter", p)
+	add_child(gust)
+	gust.global_position = here + Vector3.UP
+	_fly(gust)
+	_check("even a shot that pierces: whoever stands behind the shield is safe", _near(_lost(behind_it), 0.0))
+	behind_it.free()
+	pv.set("facing", Vector3(0, 0, -1))
+	var before: float = _lost(pv)
+	p.call("deal_damage", pv, 100.0, ["test"])
+	_check("get behind it and the blow lands whole, as a rear hit", _near(_lost(pv) - before, 100.0 * rear) and not bool(pv.call("blocks_shot", here)), "lost %f" % (_lost(pv) - before))
+	pv.set("facing", Vector3(0, 0, 1))
+	pv.call("take_poise", 100.0)
+	_check("break its poise and the shield is down for 3 s", bool(pv.call("has_status", "staggered")) and _near(float((pv.get("statuses") as Dictionary)["staggered"]["t"]), 3.0))
+	before = _lost(pv)
+	p.call("deal_damage", pv, 100.0, ["test"])
+	_check("while it is down the front is open", _near(_lost(pv) - before, 100.0 * stag), "lost %f" % (_lost(pv) - before))
+	pv.call("clear_status", "staggered")
+	well.call()
+	p.global_position = here + Vector3(0, 0, -1.0)
+	pv.call("_land_melee", 2.0)
+	_check("its bash does 14", _near(body.total_max() - body.hp, 14.0), "took %f" % (body.total_max() - body.hp))
+	var from: Vector3 = p.global_position
+	for i: int in 30:
+		p.call("_physics_process", 1.0 / 60.0)
+	_check("and throws you 2 m back", _near(p.global_position.z - from.z, 2.0, 0.05) and absf(p.global_position.x - from.x) < 0.05, "moved %s" % str(p.global_position - from))
+	well.call()
+	p.global_position = here + Vector3(0, 0, -1.0)
+	p.set("_windup", {"braced": true, "release": false, "facing": Vector3(0, 0, -1)})
+	p.set("_windup_t", 0.5)
+	pv.call("_land_melee", 2.0)
+	_check("Braced, you are not moved", _near(float(p.get("_shoved_left")), 0.0))
+	p.set("_windup", {})
+	p.set("_windup_t", 0.0)
+	pv.free()
+
+	# ---------- Censer-Bearer
+	well.call()
+	var cs := _fighter(p, Vector3(0, 0, -3.0), "censer")
+	var hurt := _fighter(p, Vector3(2.0, 0, -4.0))
+	var away := _fighter(p, Vector3(0, 0, -12.0))
+	(hurt.get("body") as Body).hp = 100.0
+	(away.get("body") as Body).hp = 100.0
+	p.call("deal_damage", cs, 99999.0, ["test"])
+	var bursts: Array = get_tree().get_nodes_in_group("censer_bursts")
+	_check("a Censer-Bearer that dies leaves its censer flaring", bursts.size() == 1 and _near((hurt.get("body") as Body).hp, 100.0))
+	var burst: Node = bursts[0]
+	burst.call("tick", 0.5)
+	_check("for 0.8 s nothing has happened yet", _near((hurt.get("body") as Body).hp, 100.0) and not bool(hurt.call("has_status", "frenzied")))
+	burst.call("tick", 0.35)
+	_check("then it bursts: an enemy within 4 m gets back 40% of its health", _near((hurt.get("body") as Body).hp, 100.0 + 0.4 * 240.0), "hp %f" % (hurt.get("body") as Body).hp)
+	_check("and is frenzied", bool(hurt.call("has_status", "frenzied")))
+	_check("one farther off gets nothing", _near((away.get("body") as Body).hp, 100.0) and not bool(away.call("has_status", "frenzied")))
+	hurt.set("_attack_cd", 5.0)
+	hurt.call("_physics_process", 0.1)
+	_check("frenzied: it attacks 30% faster", _near(float(hurt.get("_attack_cd")), 5.0 - 0.13, 0.005), "cd %f" % float(hurt.get("_attack_cd")))
+	_check("and moves 30% faster", _near(hurt.velocity.length(), 3.4 * 1.3, 0.15), "speed %f" % hurt.velocity.length())
+	hurt.free()
+	away.free()
+
+	# ---------- War Drummer
+	well.call()
+	var dr := _fighter(p, Vector3(0, 0, -10.0), "drummer")
+	var line := _fighter(p, Vector3(0, 0, -6.0))
+	line.set("facing", Vector3(0, 0, 1))
+	var lone := _fighter(p, Vector3(0, 0, -30.0))
+	dr.set("_attack_cd", 99.0)
+	_run(dr, 0.1)
+	_check("a War Drummer steadies whoever is within 6 m of it, and nobody else", bool(line.call("has_status", "drummed")) and not bool(lone.call("has_status", "drummed")))
+	line.call("take_poise", 30.0)
+	_check("drummed: poise damage is cut by a third", _near(float(line.get("poise")), 40.0 - 20.0), "poise %f" % float(line.get("poise")))
+	line.set("_attack_cd", 5.0)
+	line.set("target", null)
+	line.call("_physics_process", 0.1)
+	line.set("target", p)
+	_check("and it attacks 25% faster", _near(float(line.get("_attack_cd")), 5.0 - 0.125, 0.005), "cd %f" % float(line.get("_attack_cd")))
+	var hp0: float = body.hp
+	_run(dr, 3.0)
+	_check("it never attacks", _near(body.hp, hp0) and float(dr.get("_windup")) < 0.0)
+	_check("and keeps the line between itself and you", dr.global_position.z < here.z - 10.5, "z %f" % (dr.global_position.z - here.z))
+	dr.set("_attack_cd", 0.0)
+	_run(dr, 0.05)
+	_check("every so often it raises its sticks - a wind-up an interrupt would punish", float(dr.get("_windup")) >= 0.0 and bool(dr.call("is_interruptible")))
+	_run(dr, 1.0)
+	_check("after a second the roll rouses a fighter near it", bool(line.call("has_status", "roused")) and not bool(lone.call("has_status", "roused")))
+	well.call()
+	p.global_position = line.global_position + Vector3(0, 0, 2.0)
+	line.call("_land_melee", 2.0)
+	_check("a roused skirmisher's next blow is heavy: it staggers you", bool(p.call("is_staggered")) and not bool(line.call("has_status", "roused")))
+	well.call()
+	line.call("_land_melee", 99.0)
+	p.global_position = line.global_position + Vector3(0, 0, 2.0)
+	line.call("_land_melee", 2.0)
+	_check("only that one blow", not bool(p.call("is_staggered")))
+	well.call()
+	dr.set("_attack_cd", 0.0)
+	_run(dr, 0.05)
+	_check("interrupt the roll and the drummer is staggered instead", bool(dr.call("interrupt_attack")) and bool(dr.call("has_status", "staggered")) and float(dr.get("_windup")) < 0.0)
+	p.call("deal_damage", dr, 99999.0, ["test"])
+	line.call("_tick_statuses", 1.1)
+	_check("kill it and the steadiness goes within a second", not bool(line.call("has_status", "drummed")))
+	line.free()
+	lone.free()
+
+	# ---------- Wall Commander
+	well.call()
+	var cm := _fighter(p, Vector3(0, 0, -3.0), "commander")
+	cm.set("facing", Vector3(0, 0, 1))
+	cm.connect("reinforcements", _on_test_reinforcements)
+	var cb: Body = cm.get("body")
+	p.call("deal_damage", cm, 100.0, ["test"])
+	_check("phase 1: the Wall Commander blocks from the front", _near(_lost(cm), 40.0), "lost %f" % _lost(cm))
+	_check("and answers a blocked hit with a fast swing", float(cm.get("_windup")) >= 0.0 and float(cm.get("_windup")) <= 0.25)
+	cm.set("_windup", -1.0)
+	cm.set("telegraph", {})
+	p.call("deal_damage", cm, 100.0, ["test"])
+	_check("but not twice in a row", float(cm.get("_windup")) < 0.0)
+	cb.hp = cb.total_max() * 0.59
+	_calls.clear()
+	cm.set("_attack_cd", 99.0)
+	cm.call("_physics_process", 1.0 / 60.0)
+	_check("at 60% it calls three skirmishers and a drummer", int(cm.get("phase")) == 2 and _calls.size() == 1 and (_calls[0] as Array) == ["grunt", "grunt", "grunt", "drummer"], str(_calls))
+	cm.call("_physics_process", 1.0 / 60.0)
+	_check("once", _calls.size() == 1)
+	before = _lost(cm)
+	cm.set("facing", Vector3(0, 0, 1))
+	p.call("deal_damage", cm, 100.0, ["test"])
+	_check("and no longer blocks", _near(_lost(cm) - before, 100.0), "lost %f" % (_lost(cm) - before))
+	_check("phase 2 adds a sweep, marked on the floor as a cone", str(cm.get("_special")) == "sweep" and str((cm.get("telegraph") as Dictionary).get("kind", "")) == "cone")
+	well.call()
+	hp0 = body.hp
+	var swept := false
+	for i: int in 70:
+		cm.call("_physics_process", 1.0 / 60.0)
+		if str(cm.get("_special")) == "" and not swept:
+			swept = true
+			_check("0.8 s later it lands for 35 on whoever is still in it", _near(hp0 - body.hp, 35.0) and i >= 46 and i <= 50, "took %f at frame %d" % [hp0 - body.hp, i])
+			break
+	_check("the sweep came", swept)
+	well.call()
+	(cm.get("_special_cd") as Dictionary)["sweep"] = 0.0
+	cm.set("_windup", -1.0)
+	cm.set("_attack_cd", 99.0)
+	cm.set("facing", Vector3(0, 0, 1))
+	cm.call("_physics_process", 1.0 / 60.0)
+	p.global_position = cm.global_position + Vector3(0, 0, -4.0)          # round behind it
+	hp0 = body.hp
+	for i: int in 60:
+		cm.call("_physics_process", 1.0 / 60.0)
+	_check("step out of the cone and it finds nothing", _near(body.hp, hp0), "took %f" % (hp0 - body.hp))
+
+	# phase 3: the charge
+	well.call()
+	cm.global_position = here + Vector3(0, 0, -10.0)
+	cm.set("facing", Vector3(0, 0, 1))
+	cm.set("_windup", -1.0)
+	cm.set("_special", "")
+	cm.set("_stuck_t", 0.0)
+	cb.hp = cb.total_max() * 0.29
+	await get_tree().physics_frame
+	cm.call("_physics_process", 1.0 / 60.0)
+	_check("under 30% it marks a lane and sets itself to charge", int(cm.get("phase")) == 3 and str(cm.get("_special")) == "charge")
+	cm.call("_physics_process", 1.0 / 60.0)
+	_check("the lane is drawn on the floor", str((cm.get("telegraph") as Dictionary).get("kind", "")) == "lane")
+	_check("an ordinary interrupt does not stop it", not bool(cm.call("interrupt_attack")) and str(cm.get("_special")) == "charge")
+	cm.call("shove", Vector3(1, 0, 0), 5.0)
+	_check("nor does a shove", not bool(cm.call("is_shoved")))
+	_run(cm, 1.0)
+	_check("after a second it goes", float(cm.get("_charge_left")) > 0.0 and str(cm.get("_special")) == "")
+	hp0 = body.hp
+	_run(cm, 2.0)
+	_check("stand in the lane and it hits once, for 60", _near(hp0 - body.hp, 60.0), "took %f" % (hp0 - body.hp))
+	_check("with open floor ahead it simply runs out of room", _near(cm.global_position.z - here.z, 12.0, 0.3) and not bool(cm.call("has_status", "dazed")), "z %f" % (cm.global_position.z - here.z))
+
+	var world2 := _test_floor(here, here.z + 4.0)                        # a wall behind you
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	well.call()
+	cm.global_position = here + Vector3(0, 0, -10.0)
+	cm.set("facing", Vector3(0, 0, 1))
+	cm.set("_stuck_t", 0.0)
+	cm.set("_windup", -1.0)
+	(cm.get("_special_cd") as Dictionary)["charge"] = 0.0
+	await get_tree().physics_frame
+	cm.call("_physics_process", 1.0 / 60.0)
+	p.global_position = here + Vector3(5.0, 0, 0)                        # step aside once it has committed
+	hp0 = body.hp
+	_run(cm, 2.2)
+	_check("put a wall behind you and step aside: it misses", _near(body.hp, hp0))
+	_check("and crashes: stunned for 3 s and dazed", bool(cm.call("has_status", "stunned")) and bool(cm.call("has_status", "dazed"))
+		and float((cm.get("statuses") as Dictionary)["stunned"]["t"]) > 2.0, "at z %f" % (cm.global_position.z - here.z))
+	before = _lost(cm)
+	cm.call("take_hit", 100.0, false, null)
+	_check("dazed, it takes half again as much", _near(_lost(cm) - before, 150.0), "lost %f" % (_lost(cm) - before))
+	cm.call("clear_status", "stunned")
+	cm.call("clear_status", "dazed")
+	cm.global_position = here + Vector3(0, 0, -10.0)
+	(cm.get("_special_cd") as Dictionary)["charge"] = 0.0
+	cm.set("_stuck_t", 0.0)
+	p.global_position = here
+	await get_tree().physics_frame
+	cm.call("_physics_process", 1.0 / 60.0)
+	_run(cm, 1.1)
+	var running: bool = float(cm.get("_charge_left")) > 0.0
+	cm.call("stun", 1.0)
+	_check("a stun stops the charge dead", running and _near(float(cm.get("_charge_left")), 0.0))
+	cm.free()
+	world2.free()
+
+	# the recipes keep to one problem a pack
+	var ok := true
+	var recipes: Dictionary = GameData.balance["passage"]["wall_recipes"]
+	for key: String in recipes:
+		if key != "_note":
+			ok = ok and int((recipes[key] as Dictionary).get("censer", 0)) <= 1 and int((recipes[key] as Dictionary).get("drummer", 0)) <= 1
+	_check("no wall has more than one Censer-Bearer or one Drummer", ok)
+	for kind: String in ["pavise", "censer", "drummer"]:
+		var rig: Node = Models.enemy(kind)
+		_check("the %s has a model of its own" % kind, rig != null and (rig as ModelRig).triangle_count() > 0)
+		rig.free()
+	p.free()
+	world.free()
 
 
 func _test_fire() -> void:

@@ -505,6 +505,35 @@ func _draw_telegraph(e: Node3D, cam: Camera3D) -> void:
 			var locked: bool = bool(tele.get("locked", false))
 			draw_line(from, to, Color(danger, 0.95 if locked else 0.5), 3.0 if locked else 1.5, true)
 			draw_circle(to, 5.0 if locked else 3.0, Color(danger, 0.9 if locked else 0.5))
+		"cone":
+			# a sweep: the wedge it will cover, filling as it comes
+			var aim: Vector3 = tele["dir"]
+			var half: float = deg_to_rad(float(tele["arc_deg"]) * 0.5)
+			var reach: float = float(tele["radius"])
+			var fill: float = clampf(float(tele.get("frac", 0.0)), 0.0, 1.0)
+			var edge := PackedVector2Array([cam.unproject_position(e.global_position + Vector3.UP * 0.05)])
+			var inside := PackedVector2Array([edge[0]])
+			for i: int in 17:
+				var ray: Vector3 = aim.rotated(Vector3.UP, lerpf(-half, half, float(i) / 16.0))
+				edge.append(cam.unproject_position(e.global_position + ray * reach + Vector3.UP * 0.05))
+				inside.append(cam.unproject_position(e.global_position + ray * reach * fill + Vector3.UP * 0.05))
+			edge.append(edge[0])
+			draw_polyline(edge, Color(danger, 0.9), 2.5, true)
+			if fill > 0.05:
+				draw_colored_polygon(inside, Color(danger, 0.22))
+		"lane":
+			# a charge: the strip of floor it will run down
+			var start: Vector3 = e.global_position + Vector3.UP * 0.05
+			var finish: Vector3 = (tele["to"] as Vector3) + Vector3.UP * 0.05
+			var along: Vector3 = finish - start
+			if along.length() > 0.1:
+				var side: Vector3 = Vector3(-along.z, 0.0, along.x).normalized() * float(tele.get("width", 2.0)) * 0.5
+				var done: Vector3 = start + along * clampf(float(tele.get("frac", 0.0)), 0.0, 1.0)
+				var strip := PackedVector2Array([cam.unproject_position(start - side), cam.unproject_position(finish - side),
+					cam.unproject_position(finish + side), cam.unproject_position(start + side)])
+				draw_colored_polygon(PackedVector2Array([strip[0], cam.unproject_position(done - side), cam.unproject_position(done + side), strip[3]]), Color(danger, 0.25))
+				strip.append(strip[0])
+				draw_polyline(strip, Color(white, 0.6 + 0.4 * sin(_time * 18.0)), 2.5, true)
 		"swing":
 			if bool(tele.get("interruptible", false)):
 				var head: Vector2 = cam.unproject_position(e.global_position + Vector3.UP * (float(e.get("height")) + 0.2))
@@ -550,6 +579,16 @@ func _draw_statuses(e: Node3D, at: Vector2) -> void:
 		var ac := Vector2(at.x, at.y - 15.0)
 		draw_polyline(PackedVector2Array([ac + Vector2(-7, 2), ac + Vector2(0, -6), ac + Vector2(7, 2)]), air, 2.5, true)
 		draw_line(ac + Vector2(-5, 6), ac + Vector2(5, 6), Color(air, 0.7), 2.0, true)
+	if have.has("frenzied"):
+		# worked up by the censer: two red chevrons, pointing up
+		var red := Color(str(GameData.status("frenzied").get("color", "ff5a4a")))
+		for k: int in 2:
+			var fc2 := Vector2(x + 4.0, at.y + 3.0 - float(k) * 6.0)
+			draw_polyline(PackedVector2Array([fc2 + Vector2(-5, 3), fc2 + Vector2(0, -3), fc2 + Vector2(5, 3)]), red, 2.5, true)
+		x += 16.0
+	if have.has("roused"):
+		# its next blow is heavy: a white ring that beats
+		draw_arc(Vector2(at.x, at.y - 16.0), 7.0 + 2.0 * sin(_time * 10.0), 0.0, TAU, 18, Color(1, 1, 1, 0.9), 2.5, true)
 	if have.has("staggered"):
 		# off its feet: the moment for a bare strike
 		var gold := Color(str(GameData.status("staggered").get("color", "ffd27a")))

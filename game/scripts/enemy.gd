@@ -4,14 +4,19 @@ extends CharacterBody3D
 ##   melee   - takes one of the slots around the player, winds up, strikes; waits its turn otherwise
 ##   ranged  - holds its distance, aims along a line that locks just before release, backs off
 ##   pouncer - circles and does nothing until the player runs from the pack, then leaps
+##   support - never attacks: stands behind the line, strengthens allies near it, rouses one
+##   commander - melee that answers a blocked hit, and changes with its health (see _think_commander)
 ## All of them turn at a limited rate (so they have a back), have poise (so they can be
 ## staggered), and can be shoved, stunned and interrupted.
 
 signal killed(enemy: Node)
 ## Emitted when a shove ends against something with distance still to go.
 signal crushed(enemy: Node, metres_left: float, hit: Node)
+## It called for help: whoever owns the level should bring these kinds in beside it.
+signal reinforcements(enemy: Node, kinds: Array)
 
 const ShotScript := preload("res://scripts/enemy_shot.gd")
+const FloatText := preload("res://scripts/float_text.gd")
 
 var body: Body
 var kind := "grunt"
@@ -61,6 +66,13 @@ var _aim_locked := false
 var _vantage: Variant = null         # ranged: a spot it is walking to because it can shoot from there
 var _vantage_t := 0.0                # ranged: until it looks for a better one
 var _retreat_side := 1.0             # ranged: which way it turned the last time its back was to a wall
+var phase := 1                       # commander: 1 duel, 2 reinforcements and the sweep, 3 the charge
+var _special := ""                   # commander: "sweep" or "charge" while that is being wound up
+var _special_cd := {"sweep": 0.0, "charge": 0.0, "counter": 0.0}
+var _charge_left := 0.0              # commander: metres of charge still to run
+var _charge_dir := Vector3.ZERO
+var _charge_hit := false
+var _pulse_t := 0.0                  # support: until it strengthens those near it again
 var _leap_left := 0.0                # pouncer: metres of leap still to cover
 var _leap_hit := false
 var _retreat_t := 0.0                # pouncer: how long the player has been running from the pack
@@ -103,6 +115,8 @@ func setup(enemy_kind: String, player: Node3D, strength: float = 1.0) -> void:
 	poise = poise_max
 	_turn_rate = deg_to_rad(float(d.get("turn_rate_deg", _cfg["turn_rate_deg"])))
 	_circle_sign = 1.0 if randf() < 0.5 else -1.0
+	if behaviour == "support":
+		_attack_cd = _cooldown * 0.5           # the first roll comes half way through its count
 	var c: Array = d.get("color", [0.75, 0.2, 0.2])
 	_base_color = Color(float(c[0]), float(c[1]), float(c[2]))
 	body = Body.new(float(d.get("hp", 240.0)) * strength)
@@ -118,6 +132,26 @@ func setup(enemy_kind: String, player: Node3D, strength: float = 1.0) -> void:
 	col.shape = shape
 	col.position.y = height * 0.5
 	add_child(col)
+
+	if d.has("aura_ring"):
+		# a ring on the ground at the distance that matters for this one (design/05 6.1)
+		var ring_def: Dictionary = d["aura_ring"]
+		var rc: Array = ring_def.get("color", [1.0, 1.0, 1.0])
+		var ring := MeshInstance3D.new()
+		var torus := TorusMesh.new()
+		torus.outer_radius = float(ring_def["radius"])
+		torus.inner_radius = float(ring_def["radius"]) - 0.07
+		torus.rings = 48
+		torus.ring_segments = 6
+		ring.mesh = torus
+		var ring_mat := StandardMaterial3D.new()
+		ring_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		ring_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		ring_mat.albedo_color = Color(float(rc[0]), float(rc[1]), float(rc[2]), 0.4)
+		ring.material_override = ring_mat
+		ring.position.y = 0.06
+		ring.scale.y = 0.2
+		add_child(ring)
 
 	_label = Label3D.new()
 	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -175,14 +209,12 @@ func is_in_front(point: Vector3) -> bool:
 
 func take_hit(amount: float, _heavy: bool, source: Node) -> float:
 	var mult := 1.0
-	if has_status("staggered"):
-		mult *= float(GameData.status("staggered").get("damage_taken_mult", 1.0))
-	if has_status("aloft"):
-		mult *= float(GameData.status("aloft").get("damage_taken_mult", 1.0))
-	# hide and plate in front: it shrugs off part of anything that does not come round the side
-	var armour: float = float(_def.get("front_armour", 0.0))
-	if armour > 0.0 and source is Node3D and not has_status("staggered") and is_in_front((source as Node3D).global_position):
-		mult *= 1.0 - armour
+	for id: String in statuses:
+		mult *= float(GameData.status(id).get("damage_taken_mult", 1.0))
+	# hide, plate or a shield in front: it shrugs off part of anything that does not come round the side
+	if source is Node3D and guards_front((source as Node3D).global_position):
+		mult *= 1.0 - float(_def.get("front_armour", 0.0))
+		_answer_block()
 	var applied: float = body.apply_damage(amount * mult)
 	_flash = 0.12
 	if _rig != null:
@@ -191,6 +223,15 @@ func take_hit(amount: float, _heavy: bool, source: Node) -> float:
 	if body.is_dead():
 		_release_slot()
 		telegraph = {}
+		if _def.has("death_burst") and is_inside_tree():
+			var cfg: Dictionary = _def["death_burst"]
+			var burst := CenserBurst.new()
+			burst.radius = float(cfg.get("radius", 4.0))
+			burst.delay = float(cfg.get("delay", 0.8))
+			burst.heal_frac = float(cfg.get("heal_frac", 0.4))
+			burst.status = str(cfg.get("status", "frenzied"))
+			get_parent().add_child(burst)
+			burst.global_position = global_position
 		if statuses.has("alight"):
 			var heir: Node3D = _nearest_enemy_within(float(GameData.status("alight").get("spread_radius", 1.2)))
 			if heir != null:
@@ -213,11 +254,40 @@ func take_poise(amount: float) -> bool:
 	if body.is_dead() or amount <= 0.0 or has_status("staggered"):
 		return false
 	_poise_idle = 0.0
+	for id: String in statuses:
+		amount /= float(GameData.status(id).get("poise_mult", 1.0))      # a drum behind it steadies it
 	poise = maxf(0.0, poise - amount)
 	if poise > 0.0:
 		return false
-	stagger(float(GameData.status("staggered").get("lasts", 1.5)))
+	stagger(float(_def.get("stagger_s", GameData.status("staggered").get("lasts", 1.5))))
 	return true
+
+
+## True if a hit from `point` meets this enemy's guard: it has front armour, the hit comes from
+## its front arc, it is on its feet, and (for a commander) it is still in the phase where it blocks.
+func guards_front(point: Vector3) -> bool:
+	if float(_def.get("front_armour", 0.0)) <= 0.0 or has_status("staggered") or has_status("stunned"):
+		return false
+	if _def.has("front_armour_until_frac") and body.total() / body.total_max() <= float(_def["front_armour_until_frac"]):
+		return false
+	return is_in_front(point)
+
+
+## True if a shot coming from `point` stops on this enemy's shield instead of passing through.
+func blocks_shot(point: Vector3) -> bool:
+	return bool(_def.get("blocks_shots", false)) and guards_front(point)
+
+
+## A blocked hit is answered: a quick swing, if whoever struck is still in reach.
+func _answer_block() -> void:
+	if not _def.has("counter") or _windup >= 0.0 or _special != "" or _charge_left > 0.0 or float(_special_cd["counter"]) > 0.0:
+		return
+	if not is_instance_valid(target) or global_position.distance_to(target.global_position) > _reach + radius + 0.5:
+		return
+	var cfg: Dictionary = _def["counter"]
+	_windup = float(cfg.get("windup", 0.25))
+	_special_cd["counter"] = float(cfg.get("cooldown", 2.5))
+	_update_melee_telegraph()
 
 
 ## Cannot act for `seconds` and takes more damage; a bare strike on it is an Opening.
@@ -278,12 +348,16 @@ func interrupt() -> void:
 	if _windup >= 0.0:
 		_windup = -1.0
 		_attack_cd = _cooldown
+	_special = ""
+	_charge_left = 0.0
 	telegraph = {}
 
 
 ## A skill that interrupts landed. Any wind-up is broken; an attack flagged interruptible (the
 ## one shown with a white flash) also leaves its owner staggered. Returns true if it staggered.
 func interrupt_attack() -> bool:
+	if _special == "charge" or _charge_left > 0.0:
+		return false                            # only a stun or a poise break stops the charge
 	var was_winding: bool = _windup >= 0.0
 	var flagged: bool = bool(_def.get("interruptible", false))
 	interrupt()
@@ -304,6 +378,8 @@ func shove(dir: Vector3, metres: float) -> void:
 	var flat := Vector3(dir.x, 0.0, dir.z)
 	if flat.length() < 0.001 or metres <= 0.0 or body.is_dead():
 		return
+	if _special == "charge" or _charge_left > 0.0:
+		return                                  # nothing moves it once it has set itself to charge
 	var mult: float = shove_resist
 	if has_status("soaked"):
 		mult *= float(GameData.status("soaked").get("shove_mult", 1.0))
@@ -414,8 +490,15 @@ func _physics_process(delta: float) -> void:
 		_tick_shove(delta)
 		return
 	# its own recovery does not depend on having someone to fight
-	_attack_cd -= delta
+	var rate := 1.0
+	var pace := 1.0
+	for id: String in statuses:
+		rate *= float(GameData.status(id).get("attack_rate_mult", 1.0))
+		pace *= float(GameData.status(id).get("speed_mult", 1.0))
+	_attack_cd -= delta * rate
 	_flash -= delta
+	for key: String in _special_cd:
+		_special_cd[key] = float(_special_cd[key]) - delta
 	_poise_idle += delta
 	if poise < poise_max and _poise_idle >= float(_cfg["poise_regen_delay_s"]):
 		poise = minf(poise_max, poise + float(_cfg["poise_regen_per_s"]) * delta)
@@ -442,10 +525,15 @@ func _physics_process(delta: float) -> void:
 				_think_ranged(delta, dir, dist)
 			"pouncer":
 				_think_pouncer(delta, dir, dist)
+			"support":
+				_think_support(delta, dir)
+			"commander":
+				_think_commander(delta, dir, dist)
 			_:
 				_think_melee(delta, dir, dist)
 
-	if _leap_left <= 0.0:
+	velocity *= pace
+	if _leap_left <= 0.0 and _charge_left <= 0.0:
 		move_and_slide()
 	_look(delta)
 
@@ -517,6 +605,178 @@ func _think_melee(delta: float, dir: Vector3, dist: float) -> void:
 		_update_melee_telegraph()
 
 
+# --- support: the War Drummer -------------------------------------------------------------------
+
+## Living allies of this enemy within `reach`, not counting itself.
+func _allies_within(reach: float) -> Array[Node3D]:
+	var out: Array[Node3D] = []
+	if not is_inside_tree():
+		return out
+	for node: Node in get_tree().get_nodes_in_group("enemies"):
+		var e := node as Node3D
+		if e == null or e == self or bool(e.call("is_dead")):
+			continue
+		if e.global_position.distance_to(global_position) <= reach:
+			out.append(e)
+	return out
+
+
+## Never attacks. Everything near it is quicker and steadier while it lives; every so often it
+## raises its sticks (interruptible) and rouses one fighter, whose next blow is heavy. It keeps
+## the line between itself and the player; with no line left it stands where it is.
+func _think_support(delta: float, dir: Vector3) -> void:
+	var reach: float = float(_def.get("aura_radius", 6.0))
+	var near: Array[Node3D] = _allies_within(reach)
+	_pulse_t -= delta
+	if _pulse_t <= 0.0:
+		_pulse_t = 0.4
+		for ally: Node3D in near:
+			ally.call("add_status", str(_def.get("aura_status", "drummed")))
+	_turn_toward(dir, delta)
+	if _windup >= 0.0:
+		_windup -= delta
+		telegraph = {"kind": "swing", "interruptible": true}
+		if _windup < 0.0:
+			_drum_roll(near)
+		return
+	telegraph = {}
+	var fighters: Array[Node3D] = []
+	for ally: Node3D in _allies_within(14.0):
+		if str(ally.get("behaviour")) == "melee" or str(ally.get("behaviour")) == "commander":
+			fighters.append(ally)
+	if _attack_cd <= 0.0 and not fighters.is_empty():
+		_windup = _windup_time
+		return
+	if fighters.is_empty():
+		return
+	var centre := Vector3.ZERO
+	for ally: Node3D in fighters:
+		centre += ally.global_position
+	centre /= float(fighters.size())
+	var back: Vector3 = centre - target.global_position
+	back.y = 0.0
+	var goal: Vector3 = centre + (back.normalized() if back.length() > 0.1 else -dir) * float(_def.get("stand_behind", 6.0))
+	var to: Vector3 = goal - global_position
+	to.y = 0.0
+	if to.length() > 1.0 and _clear(global_position + Vector3.UP, global_position + Vector3.UP + to.normalized() * (radius + 0.8)):
+		velocity = to.normalized() * speed
+
+
+## The roll lands: the fighter nearest the player, of those in the ring, is roused.
+func _drum_roll(near: Array[Node3D]) -> void:
+	telegraph = {}
+	_attack_cd = _cooldown
+	_strike_t = 0.3
+	var pick: Node3D = null
+	for ally: Node3D in near:
+		if str(ally.get("behaviour")) != "melee" or bool(ally.get("heavy")):
+			continue
+		if pick == null or ally.global_position.distance_to(target.global_position) < pick.global_position.distance_to(target.global_position):
+			pick = ally
+	if pick != null:
+		pick.call("add_status", str(_def.get("roll_status", "roused")))
+		if is_inside_tree():
+			FloatText.spawn(get_parent(), pick.global_position + Vector3.UP * 0.6, "ROUSED", Color(1, 1, 1))
+
+
+# --- the Wall Commander ---------------------------------------------------------------------
+
+## Phase 1 (above phase2_at of its health): a duel - it blocks from the front and answers a blocked
+## hit (take_hit). Phase 2: it calls its reinforcements once, and adds a wide sweep. Phase 3 (under
+## phase3_at): it charges along a line it marks first; ending that charge in a wall or in standing
+## stone leaves it dazed.
+func _think_commander(delta: float, dir: Vector3, dist: float) -> void:
+	var frac: float = body.total() / body.total_max()
+	if phase < 2 and frac <= float(_def.get("phase2_at", 0.6)):
+		phase = 2
+		reinforcements.emit(self, _def.get("calls", []))
+		if is_inside_tree():
+			FloatText.spawn(get_parent(), global_position + Vector3.UP * (height + 0.4), "TO ME!", Color(1.0, 0.85, 0.4))
+	if phase < 3 and frac <= float(_def.get("phase3_at", 0.3)):
+		phase = 3
+		_special_cd["charge"] = 0.0
+	if _charge_left > 0.0:
+		_tick_charge(delta)
+		return
+	if _special != "":
+		_windup -= delta
+		var cfg: Dictionary = _def[_special]
+		var filled: float = 1.0 - maxf(0.0, _windup) / maxf(0.001, float(cfg["windup"]))
+		if _special == "sweep":
+			telegraph = {"kind": "cone", "radius": float(cfg["radius"]), "arc_deg": float(cfg["arc_deg"]), "dir": facing, "frac": filled}
+			if _windup < 0.0:
+				_land_sweep(dist)
+		else:
+			telegraph = {"kind": "lane", "to": global_position + _charge_dir * float(cfg["length"]), "width": float(cfg["width"]), "frac": filled}
+			if _windup < 0.0:
+				_special = ""
+				telegraph = {}
+				_charge_left = float(cfg["length"])
+				_charge_hit = false
+		return
+	if _windup < 0.0:
+		var charge: Dictionary = _def.get("charge", {})
+		var sweep: Dictionary = _def.get("sweep", {})
+		if phase >= 3 and not charge.is_empty() and float(_special_cd["charge"]) <= 0.0 and dist >= float(charge["min_dist"]) and _sees_target():
+			_release_slot()
+			_special = "charge"
+			_windup = float(charge["windup"])
+			_special_cd["charge"] = float(charge["cooldown"])
+			_charge_dir = dir
+			facing = dir
+			return
+		if phase >= 2 and not sweep.is_empty() and float(_special_cd["sweep"]) <= 0.0 and dist <= float(sweep["within"]):
+			_special = "sweep"
+			_windup = float(sweep["windup"])
+			_special_cd["sweep"] = float(sweep["cooldown"])
+			facing = dir
+			return
+	_think_melee(delta, dir, dist)
+
+
+func _land_sweep(dist: float) -> void:
+	var cfg: Dictionary = _def["sweep"]
+	_special = ""
+	telegraph = {}
+	_attack_cd = _cooldown
+	_strike_t = 0.3
+	var to: Vector3 = target.global_position - global_position
+	to.y = 0.0
+	if dist <= float(cfg["radius"]) and (dist < 0.3 or facing.angle_to(to.normalized()) <= deg_to_rad(float(cfg["arc_deg"]) * 0.5)):
+		target.take_hit(float(cfg["damage"]), true, self)
+
+
+## The charge itself: an exact distance along the marked line. It hits the player once if the
+## line passes over them. A wall or standing stone ends it badly; running out of room does not.
+func _tick_charge(delta: float) -> void:
+	var cfg: Dictionary = _def["charge"]
+	var step: float = minf(_charge_left, float(cfg["speed"]) * delta)
+	var from: Vector3 = global_position
+	velocity = Vector3.ZERO
+	facing = _charge_dir
+	var col: KinematicCollision3D = move_and_collide(_charge_dir * step)
+	_charge_left -= step
+	if not _charge_hit and is_instance_valid(target) and not bool(target.get("dead")):
+		var a := Vector2(from.x, from.z)
+		var b := Vector2(global_position.x, global_position.z)
+		var p := Vector2(target.global_position.x, target.global_position.z)
+		if Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= float(cfg["width"]) * 0.5 + 0.4:
+			_charge_hit = true
+			target.take_hit(float(cfg["damage"]), true, self)
+	if col != null:
+		_charge_left = 0.0
+		if col.get_collider() is StaticBody3D:
+			# it ran into the wall, or into stone someone put there
+			stun(float(cfg["crash_stun_s"]))
+			add_status(str(cfg.get("crash_status", "dazed")))
+			if is_inside_tree():
+				FloatText.spawn(get_parent(), global_position + Vector3.UP * (height + 0.4), "CRASH", Color(1, 0.95, 0.6))
+			return
+	if _charge_left <= 0.0:
+		_stuck_t = float(cfg.get("stuck_s", 1.0))
+		_attack_cd = _cooldown
+
+
 func _update_melee_telegraph() -> void:
 	if _windup < 0.0:
 		telegraph = {}
@@ -537,7 +797,11 @@ func _land_melee(dist: float) -> void:
 		# a swing only reaches what is in front of it - get behind and it finds nothing
 		hit = dist <= _reach + radius and is_in_front(target.global_position) and _sees_target()      # not through a wall or stone
 	if hit:
-		target.take_hit(damage, heavy, self)
+		# a drum roll made this one count: the blow is heavy, whoever throws it
+		target.take_hit(damage, heavy or has_status("roused"), self)
+		if float(_def.get("attack_shove", 0.0)) > 0.0 and target.has_method("shove"):
+			target.call("shove", facing, float(_def["attack_shove"]))
+		clear_status("roused")
 	elif float(_def.get("stuck_after_miss", 0.0)) > 0.0:
 		_stuck_t = float(_def["stuck_after_miss"])
 	_attack_cd = _cooldown

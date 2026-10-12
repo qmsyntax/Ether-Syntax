@@ -131,6 +131,24 @@ static func _build_enemy(kind: String) -> ModelRig:
 			_brute(r, color)
 		"commander":
 			_commander(r, color)
+		"pavise":
+			# a skirmisher's frame behind a body-length shield
+			_grunt(r, color)
+			r.add_shape("torso", MeshKit.bevel_box(Vector3(0.78, 1.3, 0.07), 0.03, Vector2(0.86, 1.0)), STEEL.darkened(0.25), Vector3(0, -0.2, -0.44), Vector3(8, 0, 0), Vector3.ONE, 0.0, 0.5, false, ModelRig.METAL)
+			r.add_shape("torso", MeshKit.bevel_box(Vector3(0.1, 1.2, 0.05), 0.02), color.lightened(0.15), Vector3(0, -0.2, -0.49), Vector3(8, 0, 0))
+			r.add_shape("torso", ball(0.11), BONE, Vector3(0, -0.05, -0.51))
+		"censer":
+			# a skirmisher carrying a smoking censer on a chain
+			_grunt(r, color)
+			r.add_shape("torso", tube([0.28, 0.1, -0.2, 0.3, -0.25, -0.3], [0.012, 0.012], 5), IRON, Vector3.ZERO)
+			r.add_shape("torso", ball(0.13), Color(0.75, 0.6, 0.32), Vector3(0.3, -0.34, -0.3), Vector3.ZERO, Vector3.ONE, 0.0, 0.6, false, ModelRig.METAL)
+			r.add_shape("torso", ball(0.07), Color(1.0, 0.9, 0.7), Vector3(0.3, -0.24, -0.3), Vector3.ZERO, Vector3.ONE, 2.2)
+		"drummer":
+			# a skirmisher with a war drum slung in front
+			_grunt(r, color)
+			r.add_shape("torso", cyl(0.25, 0.22, 0.3, 14), WOOD, Vector3(0, -0.22, -0.34), Vector3(-70, 0, 0))
+			r.add_shape("torso", cyl(0.24, 0.24, 0.03, 14), BONE, Vector3(0, -0.17, -0.48), Vector3(-70, 0, 0))
+			r.add_shape("torso", cyl(0.26, 0.26, 0.04, 14), color.lightened(0.1), Vector3(0, -0.22, -0.34), Vector3(-70, 0, 0))
 		"archer":
 			_detail = 1.0
 			EnemyModels.archer(r, color)

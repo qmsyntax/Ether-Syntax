@@ -135,6 +135,8 @@ var stones: Array = []
 var _windup: Dictionary = {}
 var _windup_t := 0.0
 var _windup_total := 0.0
+var _shoved_left := 0.0              # metres still to slide from an enemy's shove
+var _shoved_dir := Vector3.ZERO
 ## Where the cursor is taken to be when set: a test or a bot pointing with no mouse.
 var cursor_fixed: Variant = null
 ## True while the ranged stance is held with a ranged weapon equipped: the strike button shoots.
@@ -576,7 +578,14 @@ func _physics_process(delta: float) -> void:
 	if _windup_t > 0.0:
 		dir = Vector3.ZERO                       # set: you do not move until it goes off
 	velocity = dir * speed
-	if _dash_time > 0.0:
+	if _shoved_left > 0.0:
+		# knocked back: an exact distance, and nothing you were doing with your feet survives it
+		var push: float = minf(_shoved_left, GameData.num("combat", "player_shove_speed") * delta)
+		_shoved_left -= push
+		velocity = Vector3.ZERO
+		if move_and_collide(_shoved_dir * push) != null:
+			_shoved_left = 0.0
+	elif _dash_time > 0.0:
 		# A dash covers an exact distance: it is moved by hand, not by velocity, whose time step
 		# the engine chooses (that made a 4.2 m dash travel 23 m in a test, and would on a hitch).
 		var step_t: float = minf(delta, _dash_time)
@@ -704,6 +713,17 @@ func take_hit(amount: float, heavy: bool, source: Node) -> float:
 
 
 ## --- wind-ups, Braced and standing stone (earth, design/05 2.3) ---------------------------------
+
+## An enemy's blow throws you `metres` along `dir`. Not if you are Braced.
+func shove(dir: Vector3, metres: float) -> void:
+	var flat := Vector3(dir.x, 0.0, dir.z)
+	if dead or bot or is_braced() or flat.length() < 0.001 or metres <= 0.0:
+		return
+	_shoved_dir = flat.normalized()
+	_shoved_left = metres
+	_dash_time = 0.0
+	has_move_goal = false
+
 
 ## True while you are set for a braced skill: you take less and cannot be staggered.
 func is_braced() -> bool:

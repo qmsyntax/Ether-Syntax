@@ -451,3 +451,32 @@ draws every skill icon on one sheet.
 
 Verified: self-test 516/516 (three runs), three full-passage bot runs, gate and death bots, click tests, both
 screenshots inspected. Not verified: by hand.
+
+
+## Part W — skills step 4: the rest of the enemies (design/05 6.1; Brent 2026-10-12: "keep going with skills step 4")
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-107 | Pavise Bearer: a shield that takes 80% off anything from the front and stops shots, even piercing ones. Slow to turn. Break its poise and the shield is down for 3 s. Its bash does 14 and throws you 2 m (not if you are Braced) | selftest | Done |
+| S06-108 | Censer-Bearer: a ring on the ground at 4 m. When it dies the censer flares for 0.8 s, then every enemy inside the ring gets 40% of its health back and is frenzied (30% faster on its feet and to attack) for 6 s | selftest | Done |
+| S06-109 | War Drummer: never attacks; stands 6 m behind the line. Enemies within 6 m attack 25% faster and lose a third less poise. Every 10 s it winds up a roll for 1 s (interruptible - an interrupt staggers it) that makes one skirmisher's next blow heavy | selftest | Done |
+| S06-110 | Wall Commander, phase 1 (above 60%): blocks 60% from the front and answers a blocked hit with a quick swing | selftest | Done |
+| S06-111 | Phase 2 (60-30%): calls three skirmishers and a drummer, once; stops blocking; adds a 6 m sweep drawn on the floor as a cone for 0.8 s, 35 damage | selftest | Done |
+| S06-112 | Phase 3 (under 30%): marks a lane for 1 s, then charges 22 m down it for 60. Only a stun or a poise break stops it. If the charge ends in a wall or in standing stone it is stunned 3 s and takes half again as much | selftest | Done |
+| S06-113 | The player can be shoved (an exact distance, like everything else) | selftest | Done |
+| S06-114 | Wall recipes for all ten walls use the new kinds, never more than one censer or one drummer a wall; arena waves bring them in too | selftest, bot runs | Done |
+| S06-115 | HUD: cone and lane telegraphs, marks for frenzied and roused; rings on the ground for the censer and the drum; each new kind has its own look (a skirmisher with a shield, a censer, a drum) | `shots/ui-enemies4.png` | Done |
+
+Not built from step 4: cover inside the passage chambers. The bot walks straight at the nearest enemy and would
+stall on it; that wants real steering first. Two Pavise Bearers "covering each other's flank" is left to chance.
+Nothing turns a Pavise Bearer round except walking round it (the skill that does is in step 5).
+
+Rough edges: the three new models are the skirmisher with one prop added, not their own bodies. A lone drummer
+stands still. The commander's reinforcements appear in a ring round it with no entrance. The commander was a big
+skirmisher before; it is now a much longer fight (it blocks 60% for the first 40% of its health) and nobody has
+played it.
+
+Verified: self-test 572/572 (three runs); six full-passage bot runs, gate and death bots; Netherecho death test;
+inventory and creation click tests; `ui-enemies4.png` inspected. Not verified: by hand. The bot does not cast,
+dodge or get hurt, so it proves these packs can be cleared and do not jam - nothing about whether they are fun
+or fair.

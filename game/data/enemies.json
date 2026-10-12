@@ -1,5 +1,5 @@
 {
-  "_note": "Enemy kinds. hp and damage are multiplied by the spawn's strength factor (walls past the gate use passage.late_strength). aura_value feeds hidden latent aura on kill; bounty is cash. drops: unused since the Netherecho exists - constructs are subdued there, never looted. loot: item drops left on the ground, each rolled independently. shove_resist scales how far a shove moves this enemy: 1.0 light, 0.5 heavy, 0.25 elite - never zero. design/05 step 2: poise (see balance.combat); behaviour is melee | ranged | pouncer. A melee enemy may set attack_shape 'circle' (hits everything within attack_radius of itself when the wind-up ends), interruptible (a white flash; an interrupting skill or a poise break cancels it), stuck_after_miss (seconds it stands open after hitting nothing) and front_armour (share of damage it ignores from its front arc). ranged: holds between keep_range_min and max, aims for windup seconds along a line that stops following you aim_lock seconds before release, backs off if you come within back_off_within. pouncer: circles at circle_distance; when you have been moving away from the pack for pounce_after_retreat_s it crouches for windup and leaps pounce_range; any hit during the crouch or the leap knocks it down for knockdown_s; a leap that misses leaves it stuck.",
+  "_note": "Enemy kinds. hp and damage are multiplied by the spawn's strength factor (walls past the gate use passage.late_strength). aura_value feeds hidden latent aura on kill; bounty is cash. drops: unused since the Netherecho exists - constructs are subdued there, never looted. loot: item drops left on the ground, each rolled independently. shove_resist scales how far a shove moves this enemy: 1.0 light, 0.5 heavy, 0.25 elite - never zero. design/05 step 2: poise (see balance.combat); behaviour is melee | ranged | pouncer. A melee enemy may set attack_shape 'circle' (hits everything within attack_radius of itself when the wind-up ends), interruptible (a white flash; an interrupting skill or a poise break cancels it), stuck_after_miss (seconds it stands open after hitting nothing) and front_armour (share of damage it ignores from its front arc). ranged: holds between keep_range_min and max, aims for windup seconds along a line that stops following you aim_lock seconds before release, backs off if you come within back_off_within. pouncer: circles at circle_distance; when you have been moving away from the pack for pounce_after_retreat_s it crouches for windup and leaps pounce_range; any hit during the crouch or the leap knocks it down for knockdown_s; a leap that misses leaves it stuck. STEP 4 (design/05 6.1): front_armour may be dropped below front_armour_until_frac of health; blocks_shots: a piercing shot from the front stops on it; stagger_s: how long a poise break lasts for this kind; attack_shove: metres its blow pushes the player; death_burst: what it leaves when it dies (scripts/censer_burst.gd); aura_ring: a ring drawn on the ground round it. behaviour support (the Drummer): never attacks, stands stand_behind metres behind the line, gives aura_status to allies within aura_radius, and every attack_cooldown winds up a roll (interruptible) that gives roll_status to one ally. behaviour commander: melee with a counter-swing after a blocked hit, and by health phase2_at: 'calls' reinforcements once and adds the 'sweep'; phase3_at: adds the 'charge', which crashes if it ends on a wall or stone.",
   "enemies": {
     "grunt": {
       "hp": 240.0,
@@ -123,7 +123,41 @@
       "name": "Wall Commander",
       "shove_resist": 0.25,
       "poise": 300.0,
-      "behaviour": "melee"
+      "behaviour": "commander",
+      "front_armour": 0.6,
+      "front_armour_until_frac": 0.6,
+      "counter": {
+        "windup": 0.25,
+        "cooldown": 2.5
+      },
+      "phase2_at": 0.6,
+      "phase3_at": 0.3,
+      "calls": [
+        "grunt",
+        "grunt",
+        "grunt",
+        "drummer"
+      ],
+      "sweep": {
+        "windup": 0.8,
+        "radius": 6.0,
+        "arc_deg": 90.0,
+        "damage": 35.0,
+        "cooldown": 6.0,
+        "within": 5.0
+      },
+      "charge": {
+        "windup": 1.0,
+        "length": 22.0,
+        "speed": 16.0,
+        "damage": 60.0,
+        "width": 2.2,
+        "cooldown": 7.0,
+        "min_dist": 4.0,
+        "crash_stun_s": 3.0,
+        "crash_status": "dazed",
+        "stuck_s": 1.0
+      }
     },
     "archer": {
       "name": "Rampart Archer",
@@ -188,6 +222,124 @@
       "knockdown_s": 2.0,
       "stuck_after_miss": 1.0,
       "attack_cooldown": 3.0,
+      "drops": {},
+      "loot": [
+        {
+          "item": "sinew_cord",
+          "chance": 0.4
+        }
+      ]
+    },
+    "pavise": {
+      "name": "Pavise Bearer",
+      "hp": 320.0,
+      "radius": 0.55,
+      "height": 1.7,
+      "speed": 2.2,
+      "damage": 14.0,
+      "heavy": false,
+      "aura_value": 7.0,
+      "bounty": 300,
+      "color": [
+        0.34,
+        0.36,
+        0.42
+      ],
+      "poise": 100.0,
+      "shove_resist": 0.6,
+      "behaviour": "melee",
+      "attack_cooldown": 2.0,
+      "windup": 0.7,
+      "reach": 2.0,
+      "turn_rate_deg": 140.0,
+      "front_armour": 0.8,
+      "blocks_shots": true,
+      "stagger_s": 3.0,
+      "attack_shove": 2.0,
+      "drops": {},
+      "loot": [
+        {
+          "item": "husk_plate",
+          "chance": 0.5
+        }
+      ]
+    },
+    "censer": {
+      "name": "Censer-Bearer",
+      "hp": 200.0,
+      "radius": 0.5,
+      "height": 1.6,
+      "speed": 3.0,
+      "damage": 8.0,
+      "heavy": false,
+      "aura_value": 6.0,
+      "bounty": 250,
+      "color": [
+        0.5,
+        0.42,
+        0.3
+      ],
+      "poise": 40.0,
+      "shove_resist": 1.0,
+      "behaviour": "melee",
+      "attack_cooldown": 1.6,
+      "windup": 0.5,
+      "reach": 2.3,
+      "death_burst": {
+        "delay": 0.8,
+        "radius": 4.0,
+        "heal_frac": 0.4,
+        "status": "frenzied"
+      },
+      "aura_ring": {
+        "radius": 4.0,
+        "color": [
+          0.8,
+          0.78,
+          0.7
+        ]
+      },
+      "drops": {},
+      "loot": [
+        {
+          "item": "sinew_cord",
+          "chance": 0.4
+        }
+      ]
+    },
+    "drummer": {
+      "name": "War Drummer",
+      "hp": 180.0,
+      "radius": 0.5,
+      "height": 1.6,
+      "speed": 3.0,
+      "damage": 0.0,
+      "heavy": false,
+      "aura_value": 7.0,
+      "bounty": 300,
+      "color": [
+        0.45,
+        0.2,
+        0.16
+      ],
+      "poise": 40.0,
+      "shove_resist": 1.0,
+      "behaviour": "support",
+      "attack_cooldown": 10.0,
+      "windup": 1.0,
+      "interruptible": true,
+      "aura_radius": 6.0,
+      "stand_behind": 6.0,
+      "aura_status": "drummed",
+      "roll_status": "roused",
+      "aura_ring": {
+        "radius": 6.0,
+        "color": [
+          0.85,
+          0.35,
+          0.25
+        ]
+      },
       "drops": {},
       "loot": [
         {

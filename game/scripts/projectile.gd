@@ -70,7 +70,7 @@ func tick(delta: float) -> void:
 				shooter.deal_damage(enemy, damage, tags)
 			else:
 				shooter.apply_hit(enemy, payload, tags, 1.0, dir)      # shoved the way it was flying
-		if not pierce:
+		if not pierce or (enemy.has_method("blocks_shot") and bool(enemy.call("blocks_shot", from))):
 			queue_free()
 			return
 	global_position = to

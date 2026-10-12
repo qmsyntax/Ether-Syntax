@@ -668,6 +668,13 @@ func _start_wave() -> void:
 		_spawn_arena_enemy("archer")
 	for i: int in wave / GameData.inum("arena", "harrier_every_n_waves"):
 		_spawn_arena_enemy("harrier")
+	for i: int in wave / GameData.inum("arena", "pavise_every_n_waves"):
+		_spawn_arena_enemy("pavise")
+	# one problem per pack: never more than one of each
+	if wave >= GameData.inum("arena", "censer_from_wave") and wave % 2 == 1:
+		_spawn_arena_enemy("censer")
+	if wave >= GameData.inum("arena", "drummer_from_wave"):
+		_spawn_arena_enemy("drummer")
 
 
 func _spawn_arena_enemy(kind: String) -> void:
@@ -920,6 +927,26 @@ func _spawn_enemy(kind: String, local_pos: Vector3, strength: float) -> void:
 	e.call("setup", kind, player, strength)
 	e.position = local_pos
 	level.add_child(e)
+	e.connect("reinforcements", _on_reinforcements)
+
+
+## An enemy called for help: the kinds it named arrive in a ring round it, inside the room.
+func _on_reinforcements(who: Node, kinds: Array) -> void:
+	if level == null or not is_instance_valid(who):
+		return
+	var centre: Vector3 = level.to_local((who as Node3D).global_position)
+	var strength: float = late_strength if (state == "dungeon" and current > gate_at) else 1.0
+	for i: int in kinds.size():
+		var angle: float = TAU * float(i) / float(maxi(1, kinds.size())) + 0.6
+		var spot: Vector3 = centre + Vector3(cos(angle), 0.0, sin(angle)) * 3.5
+		if state == "dungeon":
+			spot.x = clampf(spot.x, -ch_half_w + 1.5, ch_half_w - 1.5)
+			spot.z = clampf(spot.z, -float(current + 1) * ch_len + 1.5, -float(current) * ch_len - 1.5)
+		else:
+			spot.x = clampf(spot.x, -arena_half + 2.0, arena_half - 2.0)
+			spot.z = clampf(spot.z, -arena_half + 2.0, arena_half - 2.0)
+		_spawn_enemy(str(kinds[i]), spot, strength)
+	hud.call("announce", "REINFORCEMENTS")
 
 
 func _spawn_scenery(kind: String, local_pos: Vector3) -> void:
@@ -1218,6 +1245,28 @@ func _setup_ui_shot(which: String) -> void:
 	_frames = 1000                      # disable the arena auto-shot; _shot_countdown drives this one
 	_shot_countdown = 40
 	if which == "title":
+		return
+	if which == "enemies4":
+		# the step 4 kinds together: a shield pair, a censer, a drummer behind them, the commander mid-sweep
+		forced_biome = "scrubland"
+		_select_talent(0)
+		_show_screen(null, false)
+		enter_arena()
+		rest_timer = 9999.0
+		for spec: Array in [[Vector3(-1.6, 0, -3.5), "pavise"], [Vector3(-0.2, 0, -3.9), "pavise"], [Vector3(2.4, 0, -5.5), "censer"],
+				[Vector3(-3.0, 0, -8.5), "drummer"], [Vector3(-4.0, 0, -4.5), "grunt"], [Vector3(4.5, 0, -1.5), "commander"]]:
+			_spawn_enemy(str(spec[1]), spec[0], 1.0)
+		for e: Node in get_tree().get_nodes_in_group("enemies"):
+			if str(e.get("kind")) == "grunt":
+				e.call("add_status", "roused")
+				e.call("add_status", "frenzied")
+			if str(e.get("kind")) == "commander":
+				var aim: Vector3 = ((player.global_position - (e as Node3D).global_position) * Vector3(1, 0, 1)).normalized()
+				e.set("facing", aim)
+				e.set("telegraph", {"kind": "cone", "radius": 6.0, "arc_deg": 90.0, "dir": aim, "frac": 0.6})
+				e.call("_apply_facing")
+			e.set_physics_process(false)
+		player.set_physics_process(false)
 		return
 	if which == "icons":
 		# every skill's glyph in a slot, by affinity, with its name
