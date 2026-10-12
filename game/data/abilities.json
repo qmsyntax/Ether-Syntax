@@ -1,5 +1,5 @@
 {
-  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind, on that ability's affinity. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities); a full stage waits for a bound construct of the matching tier (design/01 LAW 4). Which abilities a character starts with comes from the kits in affinities.json. kinds: projectile | melee_burst | dash | beam | targeted_strike | blink (design/05 Appendix A). A skill touches an enemy through a hit payload - on_hit / on_pass / on_arrive - with any of: damage or damage_mult (taken from the skill when absent), status, shove (metres), marks (Live), interrupts. 'summary' is the one-line rule shown to the player. Water and lightning are built to design/05 step 1; fire, earth and wind still use the plain three behaviours until step 3. Abilities do NOT hurt their caster (Brent 2026-10-11). Every name and verse is original to this project - the two water skills that carried the books' own names were renamed on 2026-10-12 (ids kept for saves). Numbers are first guesses [MODEL].",
+  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind, on that ability's affinity. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities); a full stage waits for a bound construct of the matching tier (design/01 LAW 4). Which abilities a character starts with comes from the kits in affinities.json. kinds: projectile | melee_burst | dash | beam | targeted_strike | blink (design/05 Appendix A). A skill touches an enemy through a hit payload - on_hit / on_pass / on_arrive - with any of: damage or damage_mult (taken from the skill when absent), status, shove (metres), marks (Live), interrupts. 'summary' is the one-line rule shown to the player. Water and lightning are built to design/05 step 1 and fire to step 3 (a dash may carry 'trail', a strip of ground that applies a payload every tick_s, and 'stops_at_bodies'; a targeted_strike may 'consume_status' for per_stack_damage and a 'burst'); earth and wind still use the plain three behaviours. Abilities do NOT hurt their caster (Brent 2026-10-11). Every name and verse is original to this project - the two water skills that carried the books' own names were renamed on 2026-10-12 (ids kept for saves). Numbers are first guesses [MODEL].",
   "abilities": {
     "water_bolt": {
       "name": "Water Bolt",
@@ -54,34 +54,61 @@
       "name": "Cinder Spit",
       "affinity": "fire",
       "kind": "projectile",
-      "cost": 10.0,
-      "reflux_per_cost": 1.3,
-      "damage": 72.0,
+      "cost": 7.0,
+      "reflux_per_cost": 1.4,
+      "damage": 55.0,
       "speed": 24.0,
-      "life": 1.3,
+      "life": 1.25,
       "verse": "A coal from the mouth. It was never going to stay in.",
-      "icon": "drop"
+      "icon": "drop",
+      "recovery": 0.06,
+      "on_hit": {
+        "status": "alight"
+      },
+      "summary": "A quick, cheap bolt that sets its target Alight. Weak cold; it is how you get hot."
     },
     "kiln_fist": {
       "name": "Kiln Fist",
       "affinity": "fire",
-      "kind": "melee_burst",
-      "cost": 20.0,
+      "kind": "targeted_strike",
+      "cost": 12.0,
       "reflux_per_cost": 1.4,
-      "damage_mult": 3.4,
-      "reach_bonus": 0.4,
+      "damage_mult": 3.0,
+      "range_bonus": 1.0,
+      "on_hit": {
+        "status": "alight",
+        "stacks": 2,
+        "interrupts": true
+      },
+      "consume_status": "alight",
+      "per_stack_damage": 40.0,
+      "burst_radius": 2.0,
+      "burst": {
+        "status": "alight"
+      },
       "verse": "Fire the hand like clay. Then find out what it breaks.",
+      "summary": "One enemy in reach: a heavy blow, 2 Alight, interrupts. If it was already burning, every stack is spent for +40 and the blow bursts, lighting those beside it.",
       "icon": "wave"
     },
     "flashover": {
       "name": "Flashover",
       "affinity": "fire",
       "kind": "dash",
-      "cost": 9.0,
-      "reflux_per_cost": 1.0,
+      "cost": 7.0,
+      "reflux_per_cost": 1.4,
       "dash_speed": 30.0,
       "dash_time": 0.14,
+      "stops_at_bodies": true,
+      "trail": {
+        "life": 3.0,
+        "width": 1.0,
+        "tick_s": 1.0,
+        "payload": {
+          "status": "alight"
+        }
+      },
       "verse": "The room does not burn slowly. Neither do you.",
+      "summary": "A short dash that leaves a line of flame for 3 s: anything standing in it catches. It does not carry you through enemies.",
       "icon": "dash"
     },
     "slingstone": {

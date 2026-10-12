@@ -1217,6 +1217,37 @@ func _setup_ui_shot(which: String) -> void:
 	_shot_countdown = 40
 	if which == "title":
 		return
+	if which == "fire":
+		# a fire character running hot: burning enemies, a flame trail, the heat readout
+		forced_biome = "scrubland"
+		_select_talent(0)
+		player.call("set_affinities", ["fire"])
+		player.call("grow_star", 70.0)
+		player.set("essence", 50.0)
+		_show_screen(null, false)
+		enter_arena()
+		rest_timer = 9999.0
+		(player.get("reflux_by") as Dictionary)["fire"] = 72.0
+		for spec: Array in [[Vector3(-2.0, 0, -3.0), "grunt"], [Vector3(-0.6, 0, -3.4), "grunt"], [Vector3(3.0, 0, -2.0), "brute"]]:
+			_spawn_enemy(str(spec[1]), spec[0], 1.0)
+		var foes: Array = get_tree().get_nodes_in_group("enemies")
+		foes[0].call("add_status", "alight", 4, player)
+		foes[1].call("add_status", "alight", 1, player)
+		foes[2].call("add_status", "alight", 2, player)
+		var trail := GroundZone.new()
+		trail.from = player.global_position + Vector3(0, 0, 4.2)
+		trail.to = player.global_position
+		trail.life = 99.0
+		trail.color = GameData.affinity_color("fire")
+		level.add_child(trail)
+		trail.set_physics_process(false)
+		player.set("hovered", foes[0])
+		# no tooltip here: it would sit on top of the heat readout this picture exists to show
+		for e: Node in foes:
+			e.set_physics_process(false)
+		player.set_physics_process(false)
+		player.call("_refresh_highlights")
+		return
 	if which == "combat":
 		# the combat rules on one screen: a brute mid-slam, an archer aiming, a staggered grunt,
 		# a crouched harrier, and a second rank waiting for a slot

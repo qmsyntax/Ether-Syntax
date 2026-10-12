@@ -110,6 +110,10 @@ var _dash_pass_radius := 1.0
 var _dash_tags: Array = []
 var _dash_passed: Array = []         # enemies already touched by this dash
 var _dash_from := Vector3.ZERO       # where the dash was at the last check
+var _dash_start := Vector3.ZERO      # where the dash began (a trail runs from here)
+var _dash_trail: Dictionary = {}     # the strip of ground this dash leaves behind, if any
+var _dash_stops := false             # this dash does not carry you through a body
+var _dash_color := Color(1, 1, 1)
 var _recover_t := 0.0                # no striking or casting until this runs out
 var _ranged_cd := 0.0                # until the ranged weapon can loose again
 ## Enemies holding one of the places in striking range of you (design/05 6.2, the slot ring).
@@ -543,13 +547,22 @@ func _physics_process(delta: float) -> void:
 		speed *= GameData.num("ranged", "stance_move_factor")
 	velocity = dir * speed
 	if _dash_time > 0.0:
-		_dash_time -= delta
-		velocity = _dash_vel
+		# A dash covers an exact distance: it is moved by hand, not by velocity, whose time step
+		# the engine chooses (that made a 4.2 m dash travel 23 m in a test, and would on a hitch).
+		var step_t: float = minf(delta, _dash_time)
+		var step: Vector3 = _dash_vel * step_t
+		_dash_time -= step_t
+		velocity = Vector3.ZERO
+		if _dash_stops and _body_ahead(_dash_vel.normalized(), step.length()):
+			_dash_time = 0.0                     # this one does not go through people
+		elif move_and_collide(step) != null:
+			_dash_time = 0.0                     # a wall
 		_dash_touch()
-	elif not _dash_pass.is_empty():
-		_dash_touch()                            # the stretch covered by the dash's last step
-		_dash_pass = {}
-	move_and_slide()
+		if _dash_time <= 0.0:
+			_end_dash()
+			_dash_pass = {}
+	else:
+		move_and_slide()
 
 	rotation.y = atan2(-_facing.x, -_facing.z)
 	_update_model(delta)
@@ -576,6 +589,12 @@ func deal_damage(target: Node, base: float, tags: Array = []) -> HitContext:
 	if bot:
 		ctx.mult *= bot_damage_mult
 
+	# Heat (design/05 2.2): for an affinity with damage_per_reflux, its own reflux multiplies its damage
+	for aff: String in affinities:
+		if ctx.has_tag(aff):
+			var per: float = float(GameData.affinity(aff).get("damage_per_reflux", 0.0))
+			if per > 0.0:
+				ctx.mult *= heat_mult(aff)
 	var pos: Vector3 = (target as Node3D).global_position
 	var combat: Dictionary = GameData.balance["combat"]
 	var bare_strike: bool = ctx.has_tag("melee") and not ctx.has_tag("ability")
@@ -641,6 +660,11 @@ func take_hit(amount: float, heavy: bool, source: Node) -> float:
 			_dash_time = 0.0
 			_float("STAGGERED", Color(1, 0.7, 0.3))
 	return _apply_damage(ctx.amount(), heavy)
+
+
+## How much an affinity's own reflux multiplies its damage right now (1.0 for most affinities).
+func heat_mult(aff: String) -> float:
+	return 1.0 + float(GameData.affinity(aff).get("damage_per_reflux", 0.0)) * reflux_of(aff) / 100.0
 
 
 ## True while a heavy blow has you off your feet: you cannot move, strike or cast.
@@ -1031,7 +1055,7 @@ func apply_hit(target: Node, payload: Dictionary, tags: Array = [], stage_mult: 
 	if not is_instance_valid(target) or bool(target.call("is_dead")) or not target.has_method("add_status"):
 		return ctx
 	if payload.has("status"):
-		target.call("add_status", str(payload["status"]), int(payload.get("stacks", 1)))
+		target.call("add_status", str(payload["status"]), int(payload.get("stacks", 1)), self)
 	if target.has_method("take_poise") and (payload.has("damage") or payload.has("damage_mult") or payload.has("poise")):
 		target.call("take_poise", float(payload.get("poise", GameData.num("combat", "skill_poise"))))
 	if bool(payload.get("interrupts", false)):
@@ -1119,6 +1143,41 @@ func _burst(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	var payload: Dictionary = _payload(ab, "on_hit")
 	for t: Node3D in _in_arc(reach, half):
 		apply_hit(t, payload, tags, stage_mult)
+
+
+## True if the next `step` metres along `dir` would run into an enemy.
+func _body_ahead(dir: Vector3, step: float) -> bool:
+	if not is_inside_tree():
+		return false
+	var a := Vector2(global_position.x, global_position.z)
+	var b: Vector2 = a + Vector2(dir.x, dir.z) * step
+	for node: Node in get_tree().get_nodes_in_group("enemies"):
+		var e := node as Node3D
+		if e == null or bool(e.call("is_dead")):
+			continue
+		var p := Vector2(e.global_position.x, e.global_position.z)
+		# only bodies in front count - one you are already past or beside does not stop you
+		if (p - a).dot(Vector2(dir.x, dir.z)) > 0.0 and Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= 0.4 + float(e.get("radius")):
+			return true
+	return false
+
+
+## A dash is over: leave its trail on the ground, if it has one.
+func _end_dash() -> void:
+	if _dash_trail.is_empty() or not is_inside_tree():
+		return
+	var zone := GroundZone.new()
+	zone.from = _dash_start
+	zone.to = global_position
+	zone.width = float(_dash_trail.get("width", 1.0))
+	zone.life = float(_dash_trail.get("life", 3.0))
+	zone.tick_s = float(_dash_trail.get("tick_s", 1.0))
+	zone.payload = _dash_trail.get("payload", {})
+	zone.tags = _dash_tags + ["zone"]
+	zone.caster = self
+	zone.color = _dash_color
+	get_parent().add_child(zone)
+	_dash_trail = {}
 
 
 ## dash: touch each enemy the dash passes, once. The whole stretch covered since the last check
@@ -1368,6 +1427,10 @@ func cast_ability(index: int) -> void:
 			_dash_tags = tags
 			_dash_passed.clear()
 			_dash_from = global_position
+			_dash_start = global_position
+			_dash_trail = ab.get("trail", {})
+			_dash_stops = bool(ab.get("stops_at_bodies", false))
+			_dash_color = GameData.affinity_color(aff)
 		"beam":
 			_fire_beam(ab, stage_mult, GameData.affinity_color(aff), tags)
 		"targeted_strike":
@@ -1377,7 +1440,22 @@ func cast_ability(index: int) -> void:
 				_facing = to_t.normalized()
 			_strike_t = 0.25
 			_swing_visual(to_t.length() + 0.4, true, true)
-			apply_hit(strike_target, _payload(ab, "on_hit"), tags + ["melee"], stage_mult)
+			var strike_payload: Dictionary = _payload(ab, "on_hit")
+			var spent: int = 0
+			if ab.has("consume_status") and strike_target.has_method("status_stacks"):
+				# cash in what is already on the target: each stack spent adds to the blow, and it bursts
+				spent = int(strike_target.call("status_stacks", str(ab["consume_status"])))
+				if spent > 0:
+					strike_target.call("clear_status", str(ab["consume_status"]))
+					deal_damage(strike_target, float(ab.get("per_stack_damage", 0.0)) * float(spent) * stage_mult, tags + ["melee", "burst"])
+			if is_instance_valid(strike_target) and not bool(strike_target.call("is_dead")):
+				apply_hit(strike_target, strike_payload, tags + ["melee"], stage_mult)
+			if spent > 0 and ab.has("burst"):
+				var centre: Vector3 = strike_target.global_position if is_instance_valid(strike_target) else global_position + _facing * 1.5
+				for node: Node in get_tree().get_nodes_in_group("enemies"):
+					var near := node as Node3D
+					if near != null and near != strike_target and near.global_position.distance_to(centre) <= float(ab.get("burst_radius", 2.0)) + float(near.get("radius")):
+						apply_hit(near, ab["burst"], tags + ["burst"], stage_mult)
 			_melee_cd = float(_p["melee_cooldown"])
 		"blink":
 			_blink(blink_to, ab, stage_mult, GameData.affinity_color(aff), tags)
