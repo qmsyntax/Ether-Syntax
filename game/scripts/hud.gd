@@ -258,12 +258,15 @@ func _draw_health_orb(c: Vector2) -> void:
 		draw_circle(c, ORB_R, Color(1, 0.2, 0.15, 0.35 * _hurt_flash))
 	_centre_text(c + Vector2(0, 6.0), "%d" % int(ceil(b.total())), 24, UiTheme.TEXT)
 	_centre_text(c + Vector2(0, 22.0), "of %d" % int(total_max), 12, UiTheme.TEXT_DIM if b.wounds.is_empty() else UiTheme.BAD)
-	# one mark per wound along the top of the orb; how deep each one is, is not shown
+	# one mark per wound along the top of the orb. How deep each one is, is not shown as a number,
+	# but the mark pales as it mends, so healing that goes into a wound can be seen to land.
 	for i: int in b.wounds.size():
 		var a: float = -PI * 0.5 + (float(i) - float(b.wounds.size() - 1) * 0.5) * 0.24
 		var at: Vector2 = c + Vector2(cos(a), sin(a)) * (ORB_R - 13.0)
-		draw_line(at + Vector2(-4, -4), at + Vector2(4, 4), Color("ff8a5c"), 2.5, true)
-		draw_line(at + Vector2(-4, 4), at + Vector2(4, -4), Color("ff8a5c"), 2.5, true)
+		var state: String = Body.wound_state(b.wounds[i])
+		var mark: Color = Color("ff5a3c") if state == "fresh" else (Color("ffb070") if state == "mending" else Color("f3e3c0"))
+		draw_line(at + Vector2(-4, -4), at + Vector2(4, 4), mark, 2.5, true)
+		draw_line(at + Vector2(-4, 4), at + Vector2(4, -4), mark, 2.5, true)
 	var extra: Array[String] = player.call("status_lines")
 	if not extra.is_empty():
 		_centre_text(c + Vector2(0, -ORB_R - 34.0), extra[0], 13, Color(0.75, 0.75, 1.0))

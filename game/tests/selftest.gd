@@ -21,6 +21,7 @@ func _ready() -> void:
 	_test_death_and_rest()
 	_test_keybinds()
 	_test_pipeline()
+	_test_lifesteal_feedback()
 	await _test_abilities()
 	_test_stars()
 	await _test_click_melee()
@@ -328,6 +329,26 @@ func _test_pipeline() -> void:
 	p.call("cast_slot", 0)
 	_check("without furnace gut the cap locks the affinity", bool(p.get("reflux_locked")))
 	p.queue_free()
+
+
+func _test_lifesteal_feedback() -> void:
+	print("lifesteal feedback (Brent 2026-10-12):")
+	var p := _new_player("one_percent_lifesteal")
+	var e := _dummy_enemy(p)
+	var b: Body = p.get("body")
+	var fx: TalentEffect = (p.get("effects") as Array)[0]
+	p.call("deal_damage", e, 200.0, ["melee"])
+	_check("at full health with no wound there is nothing to heal and nothing to show", _near(float(fx.get("_shown_pending")), 0.0) and _near(float(fx.get("_mend_pending")), 0.0))
+	p.call("take_wound", "test_cut", "Deep gash", 10.0, 8.0)
+	var sink0: float = float(b.wounds[0]["sink"])
+	var hp0: float = b.hp
+	p.call("deal_damage", e, 200.0, ["melee"])
+	_check("with a wound, one-star lifesteal goes into the wound and the bar does not move", _near(sink0 - float(b.wounds[0]["sink"]), 2.0) and _near(b.hp, hp0))
+	_check("and that healing has a number of its own to show", _near(float(fx.get("_mend_pending")), 2.0) and _near(float(fx.get("_shown_pending")), 0.0))
+	fx.call("on_tick", 0.016)
+	_check("which is shown and cleared on the next tick", _near(float(fx.get("_mend_pending")), 0.0))
+	e.free()
+	p.free()
 
 
 func _test_abilities() -> void:
