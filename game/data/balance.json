@@ -211,5 +211,46 @@
   "talent_healing": {
     "_note": "Brent 2026-10-11: healing from a talent (lifesteal). Supreme quality (one star): wound sinks first, then the bar. Dynamic quality (two stars and up): the bar up to dynamic_health_first_frac of its ceiling, then the sinks, then the rest of the bar. One heal point is one point of either.",
     "dynamic_health_first_frac": 0.5
+  },
+  "biomes": {
+    "_note": "Where a level is set (Brent 2026-10-11: snow levels, dungeons, mountains, cities, swamps...). The kits themselves - floor, walls, gate, props, light - are in scripts/art/biomes.gd. passage and arena are the biomes a delve or an arena visit may roll; town is fixed. props_per_chamber / arena_props are how many decorative props are scattered. Props that block movement are set hard against a side wall and kept blocker_gap metres clear of each other on the same side, because nothing here can path around an obstacle: a pocket between two of them traps a fighter (it stalled the mountain bot run). blocker_collider_max is how much of a big prop is solid. living_prop_kinds are the cuttable props that count as living things (talents that care about harming the living). wall heights are kept low on the camera's side so they do not hide the floor.",
+    "passage": [
+      "scrubland",
+      "dungeon",
+      "snow",
+      "swamp",
+      "mountain",
+      "city"
+    ],
+    "arena": [
+      "scrubland",
+      "snow",
+      "swamp",
+      "mountain"
+    ],
+    "town": "city",
+    "props_per_chamber": 9,
+    "arena_props": 46,
+    "town_props": 14,
+    "lights_per_chamber": 2,
+    "living_prop_kinds": [
+      "scrub",
+      "thorn",
+      "reeds",
+      "fungus"
+    ],
+    "cuttable_hp": 60.0,
+    "wall_height_far": 3.2,
+    "wall_height_side": 2.4,
+    "wall_height_near": 1.1,
+    "wall_height_divider": 2.2,
+    "blocker_collider_max": 1.2,
+    "blocker_gap": 2.6,
+    "ambient_boost": {
+      "_note": "Multiplies a biome's ambient light in play. The kits were lit for a staged sample scene; from the game camera the dungeon and the city at night swallowed the player.",
+      "dungeon": 2.8,
+      "city": 1.5,
+      "swamp": 1.25
+    }
   }
 }

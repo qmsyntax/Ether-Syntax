@@ -194,3 +194,26 @@ body after ascension.
 Not verified: any of it by hand. The two-hour target is arithmetic from one data point (ten minutes), not a
 measurement - it needs a real play session. Whether a fifth of your health is the right size for a wounding blow
 is a guess. Enemies still only walk up and swing, so wounds will mostly come from brutes and commanders.
+
+## Part M — biomes (Brent 2026-10-11: "snow levels, dungeons, mountain levels, cities ... swamps ... a lot of assets")
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-45 | Six biome kits - scrubland, dungeon, snow, swamp, mountain, city - each with a patterned floor, walls, a gate in its own language, 10-13 props in three variants, and its own light and fog. One draw call per prop | `shots/biome-*.png`, `props-*.png` | Done (sub-agent) |
+| S06-46 | Levels are built from a biome: the passage rolls one of six per delve, the arena one of four, the town is the city. Floors, walls and gates come from the kit; colliders are separate | six `shots/game-*.png`, bots | Done |
+| S06-47 | Chamber gates open and shut in place of the red box; decorative props scattered per chamber; cuttable props (crates, barrels, reeds, scrub) stand in for grass and bushes outside scrubland, and only plant-like ones count as living | bots, screenshots | Done |
+| S06-48 | `--biome=<id>` forces a biome for tests; `--shot-ui=biome-<id>` screenshots the passage in it | used below | Done |
+
+Found on the way: the first mountain bot run stalled at wall 1. Mountain has the largest blocking props, and two of
+them could form a pocket that trapped a fighter (nothing in this game can path around an obstacle). Blocking props
+are now set against a side wall and kept apart; mountain then passed three runs in a row. The dungeon was so dark
+from the game camera that the player disappeared; its ambient light is raised in data.
+
+Rough edges: the dungeon is still moody rather than clear; gate lintels hide a little floor behind them; the city
+facade has no building depth; scatter is random, not composed; snow has nothing to cut down. Enemies still walk
+in straight lines, so props are scenery, not cover.
+
+Verified: self-test 250/250; `--bot-dungeon` in all six biomes; `--bot-full` in dungeon, city and snow; `--bot-die`;
+smoke; inventory and creation click tests; dungeon, snow and mountain screenshots inspected from the game camera.
+Not verified: any of it by hand; frame rate in play; the arena and town in their new look beyond one screenshot;
+gate animation in motion; swamp, city and scrubland were not inspected after integration.

@@ -74,6 +74,12 @@ var current := 0                    # wall being fought (0 = none yet)
 var cleared := 0
 var bank := 0
 var barriers: Dictionary = {}
+var gates: Dictionary = {}            # chamber -> the gate model standing in that gap
+## Where the current level is set (a Biomes id) and that biome's look.
+var biome := "scrubland"
+var _biome: Dictionary = {}
+## Set by --biome=<id>: every level uses this one (tests, screenshots).
+var forced_biome := ""
 var pads: Array[Node3D] = []
 
 var _rent_accum := 0.0
@@ -107,6 +113,8 @@ func _ready() -> void:
 	for a: String in args:
 		if a.begins_with("--shot-ui="):
 			ui_shot = a.trim_prefix("--shot-ui=")
+		elif a.begins_with("--biome="):
+			forced_biome = a.trim_prefix("--biome=")
 	if ui_shot != "":
 		_setup_ui_shot(ui_shot)
 	elif args.has("--shot"):
@@ -354,12 +362,16 @@ func _on_projection_destroyed() -> void:
 
 ## The echo of a place: dark, violet, lit from nowhere. Living enemies and loose loot do not show.
 func _set_nether_look(on: bool) -> void:
-	_env.background_color = Color(0.03, 0.015, 0.07) if on else Color(0.045, 0.05, 0.065)
-	_env.ambient_light_color = Color(0.5, 0.42, 0.95) if on else Color(0.5, 0.56, 0.7)
-	_env.ambient_light_energy = 0.75 if on else 0.6
-	_env.fog_light_color = Color(0.1, 0.05, 0.2) if on else Color(0.1, 0.11, 0.14)
-	_sun.light_energy = 0.18 if on else 1.35
-	_sun.light_color = Color(0.7, 0.6, 1.0) if on else Color(1.0, 0.87, 0.72)
+	# the waking world looks like its biome; the echo of any place is the same dark violet
+	_env.background_color = Color(0.03, 0.015, 0.07) if on else _biome.get("sky", Color(0.045, 0.05, 0.065))
+	_env.ambient_light_color = Color(0.5, 0.42, 0.95) if on else _biome.get("ambient", Color(0.5, 0.56, 0.7))
+	var boost: float = float((GameData.balance["biomes"]["ambient_boost"] as Dictionary).get(biome, 1.0))
+	_env.ambient_light_energy = 0.75 if on else float(_biome.get("ambient_energy", 0.6)) * boost
+	_env.fog_light_color = Color(0.1, 0.05, 0.2) if on else _biome.get("fog_color", Color(0.1, 0.11, 0.14))
+	_env.fog_density = 0.006 if on else float(_biome.get("fog_density", 0.006))
+	_sun.light_energy = 0.18 if on else float(_biome.get("sun_energy", 1.35))
+	_sun.light_color = Color(0.7, 0.6, 1.0) if on else _biome.get("sun_color", Color(1.0, 0.87, 0.72))
+	_sun.rotation_degrees = _biome.get("sun_rotation", Vector3(-44.0, 38.0, 0.0))
 	for group: String in ["enemies", "pickups"]:
 		for n: Node in get_tree().get_nodes_in_group(group):
 			if n is Node3D:
@@ -611,20 +623,23 @@ func _repeat_mult() -> float:
 
 func _enter_arena() -> void:
 	_new_level(0.0)
-	_static_box(Vector3(0, -0.5, 0), Vector3(arena_half * 2.0, 1.0, arena_half * 2.0), Color(0.29, 0.26, 0.2))
-	var wall_color := Color(0.17, 0.17, 0.19)
+	var bcfg: Dictionary = GameData.balance["biomes"]
+	_use_biome(bcfg["arena"])
 	var span: float = arena_half * 2.0 + 2.0
-	_static_box(Vector3(0, 1.0, -arena_half - 0.5), Vector3(span, 2.0, 1.0), wall_color)
-	_static_box(Vector3(0, 1.0, arena_half + 0.5), Vector3(span, 2.0, 1.0), wall_color)
-	_static_box(Vector3(-arena_half - 0.5, 1.0, 0), Vector3(1.0, 2.0, span), wall_color)
-	_static_box(Vector3(arena_half + 0.5, 1.0, 0), Vector3(1.0, 2.0, span), wall_color)
+	_biome_floor(Vector3.ZERO, Vector2(span, span))
+	# tall on the far sides, low on the camera's side so the floor is not hidden
+	_biome_wall(Vector3(0, 0, -arena_half - 0.5), span, 0.0, float(bcfg["wall_height_far"]))
+	_biome_wall(Vector3(-arena_half - 0.5, 0, 0), span, 90.0, float(bcfg["wall_height_far"]))
+	_biome_wall(Vector3(0, 0, arena_half + 0.5), span, 180.0, float(bcfg["wall_height_near"]))
+	_biome_wall(Vector3(arena_half + 0.5, 0, 0), span, -90.0, float(bcfg["wall_height_near"]))
+	_scatter_props(Vector3.ZERO, Vector2(arena_half - 0.5, arena_half - 1.5), int(bcfg["arena_props"]))
 	for i: int in GameData.inum("arena", "scenery_count"):
 		var pos := Vector3.ZERO
 		for attempt: int in 8:
 			pos = Vector3(rng.randf_range(-arena_half + 1.5, arena_half - 1.5), 0.0, rng.randf_range(-arena_half + 1.5, arena_half - 1.5))
 			if pos.length() > 3.0:
 				break
-		_spawn_scenery("bush" if i % GameData.inum("arena", "bush_every_n") == 0 else "grass", pos)
+		_spawn_cuttable(0 if i % GameData.inum("arena", "bush_every_n") == 0 else i * 2 + 2, pos)
 	for q: Vector3 in [Vector3(-8, 0, -8), Vector3(8, 0, -8), Vector3(-8, 0, 8), Vector3(8, 0, 8)]:
 		nether.populate_site(q, Vector2(6.0, 6.0))
 	player.global_position = Vector3.ZERO
@@ -657,28 +672,40 @@ func _enter_dungeon() -> void:
 	_new_level(45.0)
 	var total: float = float(chambers + 1) * ch_len
 	var mid_z: float = -total * 0.5
-	var wall_color := Color(0.16, 0.16, 0.18)
-	_static_box(Vector3(0, -0.5, mid_z), Vector3(ch_half_w * 2.0, 1.0, total), Color(0.27, 0.245, 0.2))
-	_static_box(Vector3(-ch_half_w - 0.5, 1.0, mid_z), Vector3(1.0, 2.0, total + 2.0), wall_color)
-	_static_box(Vector3(ch_half_w + 0.5, 1.0, mid_z), Vector3(1.0, 2.0, total + 2.0), wall_color)
-	_static_box(Vector3(0, 1.0, 0.5), Vector3(ch_half_w * 2.0, 2.0, 1.0), wall_color)
-	_static_box(Vector3(0, 1.0, -total - 0.5), Vector3(ch_half_w * 2.0, 2.0, 1.0), wall_color)
+	var bcfg: Dictionary = GameData.balance["biomes"]
+	_use_biome(bcfg["passage"])
+	_biome_floor(Vector3(0, 0, mid_z), Vector2(ch_half_w * 2.0 + 2.0, total + 2.0))
+	# side walls in chamber-length runs (the kit reuses a run of the same length)
+	for c: int in range(0, chambers + 1):
+		var cz: float = -(float(c) + 0.5) * ch_len
+		_biome_wall(Vector3(-ch_half_w - 0.5, 0, cz), ch_len, 90.0, float(bcfg["wall_height_side"]))
+		_biome_wall(Vector3(ch_half_w + 0.5, 0, cz), ch_len, -90.0, float(bcfg["wall_height_side"]))
+	_biome_wall(Vector3(0, 0, 0.5), ch_half_w * 2.0, 180.0, float(bcfg["wall_height_near"]))
+	_biome_wall(Vector3(0, 0, -total - 0.5), ch_half_w * 2.0, 0.0, float(bcfg["wall_height_far"]))
 
 	var side_w: float = ch_half_w - gap_half
 	var side_x: float = gap_half + side_w * 0.5
 	for c: int in range(1, chambers + 1):
 		var z: float = -float(c) * ch_len
-		_static_box(Vector3(-side_x, 1.0, z), Vector3(side_w, 2.0, 1.0), wall_color)
-		_static_box(Vector3(side_x, 1.0, z), Vector3(side_w, 2.0, 1.0), wall_color)
+		_biome_wall(Vector3(-side_x, 0, z), side_w, 0.0, float(bcfg["wall_height_divider"]))
+		_biome_wall(Vector3(side_x, 0, z), side_w, 0.0, float(bcfg["wall_height_divider"]))
+		# every doorway has its gate; only the sealed ones are shut
+		var gate: Node3D = Biomes.gate(biome, gap_half * 2.0)
+		gate.position = Vector3(0, 0, z)
+		level.add_child(gate)
+		gate.call("set_open", true, true)
+		gates[c] = gate
 		if c >= 2:
 			_add_barrier(c)
 
 	for c: int in range(0, chambers + 1):
+		var near_z: float = -float(c) * ch_len
+		_scatter_props(Vector3(0, 0, near_z - ch_len * 0.5), Vector2(ch_half_w - 0.3, ch_len * 0.5 - 1.2), int(bcfg["props_per_chamber"]), [near_z, near_z - ch_len])
 		var tufts: int = GameData.inum("passage", "antechamber_tufts") if c == 0 else GameData.inum("passage", "chamber_tufts")
 		for i: int in tufts:
 			var pos := Vector3(rng.randf_range(-ch_half_w + 1.0, ch_half_w - 1.0), 0.0,
 				-float(c) * ch_len - rng.randf_range(1.5, ch_len - 1.5))
-			_spawn_scenery("bush" if i == 0 else "grass", pos)
+			_spawn_cuttable(i, pos)
 
 	# the spirit layer: one site per chamber, antechamber included
 	for c: int in range(0, chambers + 1):
@@ -686,12 +713,15 @@ func _enter_dungeon() -> void:
 	player.global_position = level.to_global(Vector3(0.0, 0.0, -4.0))
 	player.set("active", true)
 	state = "dungeon"
-	player.call("note", "You step through. Walk up the corridor (%s)." % Keybinds.binding_text("move_up"))
+	player.call("note", "You step through into %s. Walk up the corridor (%s)." % [str(_biome.get("label", biome)).to_lower(), Keybinds.binding_text("move_up")])
 
 
+## Seal the doorway into chamber `c`: an unseen collider, and its gate shut.
 func _add_barrier(c: int) -> void:
-	var b: StaticBody3D = _static_box(Vector3(0, 1.0, -float(c) * ch_len), Vector3(gap_half * 2.0, 2.0, 0.6), Color(0.5, 0.09, 0.08))
+	var b: StaticBody3D = _static_box(Vector3(0, 1.0, -float(c) * ch_len), Vector3(gap_half * 2.0, 2.0, 0.6), Color.BLACK, false)
 	barriers[c] = b
+	if gates.has(c):
+		(gates[c] as Node).call("set_open", false, c >= 2 and not sealed)
 
 
 func _tick_dungeon(delta: float) -> void:
@@ -769,6 +799,8 @@ func _on_wall_cleared() -> void:
 	if barriers.has(next_c):
 		(barriers[next_c] as Node).queue_free()
 		barriers.erase(next_c)
+		if gates.has(next_c):
+			(gates[next_c] as Node).call("set_open", true)
 	if cleared >= gate_at:
 		_spawn_pad(cleared)
 	player.call("note", "Wall %d cleared. $%d banked - yours only if you walk out." % [cleared, bank])
@@ -897,25 +929,157 @@ func _new_level(yaw_degrees: float) -> void:
 	cleared = 0
 	bank = 0
 	barriers.clear()
+	gates.clear()
 	pads.clear()
 	_rent_accum = 0.0
 
 
 func _build_town() -> void:
 	_new_level(0.0)
-	_static_box(Vector3(0, -0.5, 0), Vector3(24.0, 1.0, 24.0), Color(0.2, 0.19, 0.18))
+	var cfg: Dictionary = GameData.balance["biomes"]
+	_use_biome(cfg["town"], false)            # the town is always the town
+	_biome_floor(Vector3.ZERO, Vector2(28.0, 28.0))
+	# the two sides away from the camera
+	_biome_wall(Vector3(0, 0, -14.5), 28.0, 0.0, float(cfg["wall_height_far"]))
+	_biome_wall(Vector3(-14.5, 0, 0), 28.0, 90.0, float(cfg["wall_height_far"]))
+	_scatter_props(Vector3(0, 0, 0), Vector2(12.5, 12.5), int(cfg["town_props"]))
 
 
-func _static_box(pos: Vector3, size: Vector3, color: Color) -> StaticBody3D:
+# --- biomes -------------------------------------------------------------------------------
+
+## Set the level's biome: one of `choices` at random, unless one is forced.
+func _use_biome(choices: Variant, allow_force: bool = true) -> void:
+	var pool: Array = choices if choices is Array else [choices]
+	biome = str(pool[rng.randi() % pool.size()])
+	if allow_force and forced_biome != "" and Biomes.ids().has(forced_biome):
+		biome = forced_biome
+	if not Biomes.ids().has(biome):
+		biome = "scrubland"
+	_biome = Biomes.info(biome)
+	_set_nether_look(nether.active)
+
+
+## Ground: something to stand on, and the biome's floor drawn over it.
+func _biome_floor(centre: Vector3, size: Vector2) -> void:
+	_static_box(Vector3(centre.x, -0.5, centre.z), Vector3(size.x, 1.0, size.y), Color.BLACK, false)
+	var ground: Node3D = Biomes.floor(biome, size)
+	ground.position = Vector3(centre.x, 0.0, centre.z)
+	level.add_child(ground)
+
+
+## A wall run `length` long centred on `centre`, facing into the level along +Z turned by `yaw`
+## degrees. Returns its collider.
+func _biome_wall(centre: Vector3, length: float, yaw: float, height: float) -> StaticBody3D:
+	var sb: StaticBody3D = _static_box(Vector3(centre.x, 1.0, centre.z), Vector3(length, 2.0, 1.0), Color.BLACK, false)
+	sb.rotation_degrees.y = yaw
+	var wall: Node3D = Biomes.wall(biome, length, height)
+	wall.position = Vector3(centre.x, 0.0, centre.z)
+	wall.rotation_degrees.y = yaw
+	level.add_child(wall)
+	return sb
+
+
+## Scatter `count` decorative props over a patch `half` metres each way from `centre`. Props
+## that block are kept to the strips along x = +-half.x; `keep_clear` (local z values) are lines
+## nothing may stand near, such as a doorway.
+func _scatter_props(centre: Vector3, half: Vector2, count: int, keep_clear: Array = []) -> void:
+	var cfg: Dictionary = GameData.balance["biomes"]
+	var table: Array = _biome.get("scatter", [])
+	if table.is_empty():
+		return
+	var total := 0.0
+	for e: Dictionary in table:
+		total += float(e["weight"])
+	var lights_left: int = int(cfg["lights_per_chamber"])
+	var placed_blockers: Array = []        # [side, z, radius] - kept apart so they never form a pocket
+	for i: int in count:
+		var roll: float = rng.randf() * total
+		var kind: String = str((table[0] as Dictionary)["kind"])
+		for e: Dictionary in table:
+			roll -= float(e["weight"])
+			if roll < 0.0:
+				kind = str(e["kind"])
+				break
+		var meta: Dictionary = Biomes.prop_meta(biome, kind)
+		if bool(meta.get("cuttable", false)):
+			continue                                # those are placed as hittable scenery instead
+		if bool(meta.get("light", false)):
+			if lights_left <= 0:
+				continue
+			lights_left -= 1
+		var r: float = float(meta.get("radius", 0.5))
+		var blocks: bool = bool(meta.get("blocks", false))
+		var pos := Vector3.ZERO
+		var ok := false
+		var solid: float = minf(r, float(cfg["blocker_collider_max"]))    # how much of it actually stops you
+		var side := 1.0
+		for attempt: int in 6:
+			var x: float
+			if blocks:
+				# hard against a side wall, like a feature of the wall: nothing can get behind it
+				side = 1.0 if rng.randf() < 0.5 else -1.0
+				x = side * (half.x - solid * 0.5)
+			else:
+				x = rng.randf_range(-half.x + r, half.x - r)
+			pos = centre + Vector3(x, 0.0, rng.randf_range(-half.y + r, half.y - r))
+			ok = true
+			for line: Variant in keep_clear:
+				if absf(pos.z - float(line)) < r + 1.6:
+					ok = false
+			if blocks:
+				for other: Array in placed_blockers:
+					if float(other[0]) == side and absf(pos.z - float(other[1])) < solid + float(other[2]) + float(cfg["blocker_gap"]):
+						ok = false
+			if ok:
+				break
+		if not ok:
+			continue
+		if blocks:
+			placed_blockers.append([side, pos.z, solid])
+		var prop: Node3D = Biomes.prop(biome, kind)
+		prop.position = pos
+		prop.rotation.y = rng.randf() * TAU
+		level.add_child(prop)
+		if blocks:
+			var sb := StaticBody3D.new()
+			var col := CollisionShape3D.new()
+			var shape := CylinderShape3D.new()
+			shape.radius = solid
+			shape.height = 2.0
+			col.shape = shape
+			sb.add_child(col)
+			sb.position = pos + Vector3.UP
+			level.add_child(sb)
+
+
+## Things you can cut down: the old grass and bushes in scrubland, the kit's own cuttables elsewhere.
+func _spawn_cuttable(index: int, local_pos: Vector3) -> void:
+	if biome == "scrubland":
+		_spawn_scenery("bush" if index == 0 else "grass", local_pos)
+		return
+	var kinds: Array = []
+	for kind: Variant in _biome.get("props", []):
+		if bool(Biomes.prop_meta(biome, str(kind)).get("cuttable", false)):
+			kinds.append(str(kind))
+	if kinds.is_empty() or index % 2 == 1:           # fewer than grass: these are bigger things
+		return
+	var s: Node3D = SceneryScript.new()
+	s.call("setup_prop", biome, str(kinds[rng.randi() % kinds.size()]))
+	s.position = local_pos
+	level.add_child(s)
+
+
+func _static_box(pos: Vector3, size: Vector3, color: Color, show: bool = true) -> StaticBody3D:
 	var sb := StaticBody3D.new()
-	var mesh := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = size
-	mesh.mesh = box
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mesh.material_override = mat
-	sb.add_child(mesh)
+	if show:
+		var mesh := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = size
+		mesh.mesh = box
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = color
+		mesh.material_override = mat
+		sb.add_child(mesh)
 	var col := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
 	shape.size = size
@@ -1016,6 +1180,24 @@ func _setup_ui_shot(which: String) -> void:
 	_frames = 1000                      # disable the arena auto-shot; _shot_countdown drives this one
 	_shot_countdown = 40
 	if which == "title":
+		return
+	if which.begins_with("biome-"):
+		# the passage in a given biome, two walls in: --shot-ui=biome-snow
+		forced_biome = which.trim_prefix("biome-")
+		_select_talent(0)
+		_show_screen(null, false)
+		_enter_dungeon()
+		sealed = true
+		cleared = 1
+		# as it would be after wall 1: the doorway behind you has opened, the one ahead is shut
+		(barriers[2] as Node).queue_free()
+		barriers.erase(2)
+		(gates[2] as Node).call("set_open", true, true)
+		player.global_position = level.to_global(Vector3(1.0, 0.0, -2.35 * ch_len))
+		_activate(2)
+		for e: Node in get_tree().get_nodes_in_group("enemies"):
+			e.set_physics_process(false)
+		player.set_physics_process(false)
 		return
 	if which.begins_with("create"):
 		# the creation screen at a given step: create-1 .. create-4
