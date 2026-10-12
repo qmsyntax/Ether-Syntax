@@ -5,6 +5,8 @@ extends CharacterBody3D
 ## Tuning numbers come from GameData (game/data/balance.json).
 
 signal died
+## The body was hurt while the soul was out of it.
+signal disturbed
 
 const FloatText := preload("res://scripts/float_text.gd")
 const Projectile := preload("res://scripts/projectile.gd")
@@ -36,6 +38,8 @@ var log_lines: Array[String] = []
 var log_serial := 0
 ## Set by the game while the cursor is over a HUD panel: a click there is not an attack order.
 var ui_blocked := false
+## True while the soul is out in the Netherecho: the body sits and meditates and takes no orders.
+var projecting := false
 ## Learned abilities: [{id, stage, progress}]. Hotbar slot i casts abilities[hotbar[i]].
 var abilities: Array = []
 var hotbar: Array[int] = []
@@ -74,6 +78,8 @@ var _melee_cd := 0.0
 var _charge := 0.0
 var _charging := false
 var _meditate_block := 0.0
+var _sitting := false                # holding meditate: rooted, but not yet settled
+var _sit_t := 0.0
 var _dash_time := 0.0
 var _dash_vel := Vector3.ZERO
 var _rig: ModelRig
@@ -194,13 +200,33 @@ func _physics_process(delta: float) -> void:
 	essence = minf(essence_max, essence + satellite_rate * delta)
 	for e: TalentEffect in effects:
 		e.on_tick(delta)
+	if projecting:
+		# The body is an empty, meditating shell: it sheds reflux and gathers, and nothing else.
+		meditating = true
+		attack_target = null
+		pickup_target = null
+		has_move_goal = false
+		reflux = maxf(0.0, reflux - float(_reflux_cfg["shed_meditating"]) * inventory.stat("reflux_shed_mult", true) * delta)
+		_meditate_gather(delta)
+		grow_star(GameData.num("stars", "growth_pct_per_s_meditating") * delta)
+		if reflux_locked and reflux < float(_reflux_cfg["unlock_below"]):
+			reflux_locked = false
+		velocity = Vector3.ZERO
+		_update_model(delta)
+		return
 	if bot:
 		_bot_think()
 	else:
 		_update_aim()
 
-	var want_meditate: bool = Input.is_action_pressed("meditate") and _meditate_block <= 0.0
-	meditating = want_meditate and not _charging
+	# Meditation is sitting still: it roots you at once, and only counts once you have settled.
+	_sitting = Input.is_action_pressed("meditate") and _meditate_block <= 0.0 and not _charging
+	_sit_t = _sit_t + delta if _sitting else 0.0
+	meditating = _sitting and _sit_t >= GameData.num("meditation", "settle_s")
+	if _sitting:
+		has_move_goal = false
+		attack_target = null
+		pickup_target = null
 
 	# The body sheds reflux on its own; meditation purges it much faster.
 	var shed: float = float(_reflux_cfg["shed_meditating"]) if meditating else (
@@ -221,7 +247,7 @@ func _physics_process(delta: float) -> void:
 			arm_right = minf(float(_arm["max"]), arm_right + float(_natural["arm_per_s"]) * delta)
 
 	var charging_input: bool = Input.is_action_pressed("overcharge") and not arm_right_lost
-	if charging_input and not meditating:
+	if charging_input and not _sitting:
 		_charging = true
 		_charge = minf(float(_p["charge_max"]), _charge + delta)
 	elif _charging:
@@ -233,13 +259,13 @@ func _physics_process(delta: float) -> void:
 		_strike_once = false
 	else:
 		_update_hover()
-	if not bot and Input.is_action_just_pressed("strike") and not meditating and not ui_blocked:
+	if not bot and Input.is_action_just_pressed("strike") and not _sitting and not ui_blocked:
 		_click_cursor()
 	if not bot and Input.is_action_pressed("strike") and attack_target == null and has_move_goal:
 		move_goal = _cursor_ground()          # holding on the ground keeps steering
 
 	var input := Vector2.ZERO
-	if not meditating:
+	if not _sitting:
 		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var dir := Vector3(input.x, 0.0, input.y).normalized().rotated(Vector3.UP, ISO_YAW)
 	if input != Vector2.ZERO:
@@ -341,6 +367,8 @@ func take_hit(amount: float, heavy: bool, source: Node) -> float:
 	ctx.target = self
 	ctx.base = amount
 	ctx.heavy = heavy
+	if projecting:
+		disturbed.emit()             # pain drags the soul back before the blow is even counted
 	_meditate_block = 1.0
 	meditating = false
 	for e: TalentEffect in effects:
@@ -378,6 +406,11 @@ func _spend_heal_points(points: float) -> float:
 	if left > 0.0:
 		left -= body.heal(left, stars >= 2)
 	return points - left
+
+
+## Latent aura from a deed that was not a kill (subduing a construct, for one).
+func add_aura(amount: float) -> void:
+	_latent_aura += amount
 
 
 func _on_kill(target: Node) -> void:

@@ -8,6 +8,7 @@ var abilities: Dictionary = {}
 var _starting_loadout: Array = []
 var construct_tiers: Array = []
 var concepts: Dictionary = {}
+var _wild: Dictionary = {}
 var items_file: Dictionary = {}
 var items: Dictionary = {}
 
@@ -29,6 +30,7 @@ func _ensure() -> void:
 	var con: Dictionary = _load("res://data/constructs.json")
 	construct_tiers = con.get("tiers", [])
 	concepts = con.get("concepts", {})
+	_wild = con.get("wild", {})
 	items_file = _load("res://data/items.json")
 	items = items_file.get("items", {})
 
@@ -43,6 +45,12 @@ func item(id: String) -> Dictionary:
 func tier_for_stage(stage: int) -> String:
 	_ensure()
 	return str(construct_tiers[stage]) if stage >= 0 and stage < construct_tiers.size() else ""
+
+
+## How a construct of `tier` behaves when met wild in the Netherecho.
+func wild_construct(tier: String) -> Dictionary:
+	_ensure()
+	return _wild.get(tier, _wild.get("vestige", {}))
 
 
 func concept(id: String) -> Dictionary:

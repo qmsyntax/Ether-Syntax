@@ -25,6 +25,7 @@ func _ready() -> void:
 	await _test_inventory()
 	_test_slot_assignment()
 	await _test_weapons()
+	await _test_netherecho()
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
 
@@ -285,25 +286,46 @@ func _test_abilities() -> void:
 	p.set("meditating", true)
 	p.call("_meditate_gather", 1.0)
 	_check("meditation refills essence", _near(float(p.get("essence")), 24.0), "got %f" % float(p.get("essence")))
+
+	# Meditating on the move was an exploit (Brent 2026-10-11): sitting roots you, and only settled sitting counts.
+	p.set("meditating", false)
+	p.set("active", true)
+	p.set("_meditate_block", 0.0)
+	p.set("move_goal", (p as Node3D).global_position + Vector3(8, 0, 0))
+	p.set("has_move_goal", true)
+	var before: Vector3 = (p as Node3D).global_position
+	Input.action_press("meditate")
+	p.call("_physics_process", 0.1)
+	_check("sitting down cancels walking", not bool(p.get("has_move_goal")) and (p as CharacterBody3D).velocity.length() < 0.01,
+		"goal %s vel %s" % [str(p.get("has_move_goal")), str((p as CharacterBody3D).velocity)])
+	_check("nothing is gathered until you have settled", not bool(p.get("meditating")))
+	for i: int in 12:
+		p.call("_physics_process", 0.1)
+	_check("settled sitting is meditation", bool(p.get("meditating")))
+	_check("meditating does not move you", (p as Node3D).global_position.distance_to(before) < 0.05)
+	Input.action_release("meditate")
+	p.call("_physics_process", 0.1)
+	_check("standing up ends it", not bool(p.get("meditating")))
 	p.queue_free()
 
 
 func _test_stars() -> void:
 	print("stars:")
 	var p := _new_player("tenth_strike")
-	_check("you start with a baby star", _near(float((p.get("star_pct") as Array)[0]), 5.0) and _near(float(p.get("essence_max")), 20.0),
+	_check("you start with a baby star", _near(float((p.get("star_pct") as Array)[0]), 20.0) and _near(float(p.get("essence_max")), 20.0),
 		"pct %f max %f" % [float((p.get("star_pct") as Array)[0]), float(p.get("essence_max"))])
 	p.call("grow_star", 10.0)
-	_check("growing the star grows the tank", _near(float(p.get("essence_max")), 60.0))
+	_check("growing the star grows the tank", _near(float(p.get("essence_max")), 30.0))
 	p.call("grow_star", 500.0)
 	_check("a star stops at 99%", _near(float((p.get("star_pct") as Array)[0]), 99.0))
+	_check("one star never holds more than 100 essence", float(p.get("essence_max")) <= 100.0, "got %f" % float(p.get("essence_max")))
 	p.call("try_ascend")
 	_check("a full star alone does not ascend without latent aura", int(p.get("stars")) == 1)
 	p.set("_latent_aura", 1000.0)
 	p.call("try_ascend")
 	var pcts: Array = p.get("star_pct")
 	_check("ascension adds a second star at 1%", int(p.get("stars")) == 2 and pcts.size() == 2 and _near(float(pcts[1]), 1.0))
-	_check("the tank is 99% of one star plus 1% of another", _near(float(p.get("essence_max")), 400.0), "got %f" % float(p.get("essence_max")))
+	_check("the tank is 99% of one star plus 1% of another", _near(float(p.get("essence_max")), 100.0), "got %f" % float(p.get("essence_max")))
 	p.call("grow_star", 20.0)
 	_check("only the newest star grows after ascension", _near(float(pcts[0]), 99.0) and _near(float(pcts[1]), 21.0))
 	p.queue_free()
@@ -432,7 +454,7 @@ func _test_inventory() -> void:
 	var q := _new_player()
 	q.call("from_save", SaveGame.read(path))
 	var qinv: Inventory = q.get("inventory")
-	_check("a loaded character has the same talent, money and star", str(q.get("talent_id")) == "tenth_strike" and int(q.get("money")) == -321 and _near(float((q.get("star_pct") as Array)[0]), 35.0))
+	_check("a loaded character has the same talent, money and star", str(q.get("talent_id")) == "tenth_strike" and int(q.get("money")) == -321 and _near(float((q.get("star_pct") as Array)[0]), float((p.get("star_pct") as Array)[0])))
 	_check("abilities, constructs and gear survive the round trip", _near(float((q.get("abilities") as Array)[0]["progress"]), 42.0)
 		and (q.get("constructs") as Array).size() == 1 and str(qinv.equipped.get("satellite", "")) == "paired_mote"
 		and qinv.bag.size() == inv.bag.size() and _near(float(q.get("satellite_rate")), 2.0))
@@ -504,6 +526,116 @@ func _test_weapons() -> void:
 	e.queue_free()
 	p.queue_free()
 	q.queue_free()
+
+
+func _test_netherecho() -> void:
+	print("netherecho:")
+	await get_tree().process_frame
+	var p := _new_player()
+	var n := Netherecho.new()
+	add_child(n)
+	n.player = p
+	var cfg: Dictionary = GameData.balance["nether"]
+
+	p.set("in_combat", true)
+	_check("no projecting in the middle of a fight", not n.enter() and n.cannot_enter_reason() != "")
+	p.set("in_combat", false)
+	_check("out of combat the soul can leave", n.enter() and n.active and bool(p.get("projecting")) and n.projection != null)
+	var proj: Node3D = n.projection
+	proj.set("input_blocked", true)
+	_check("the projection is fragile", _near(float(proj.get("hp")), float(cfg["projection_hp"])))
+
+	# the body left behind meditates and takes no orders
+	p.set("move_goal", p.global_position + Vector3(6, 0, 0))
+	p.set("has_move_goal", true)
+	var body_at: Vector3 = p.global_position
+	p.call("_physics_process", 0.1)
+	_check("the empty body sits and meditates", bool(p.get("meditating")) and p.global_position.distance_to(body_at) < 0.01)
+
+	# the leash
+	proj.call("click", p.global_position + Vector3(200, 0, 0))
+	for i: int in 200:
+		n.tick(0.1, null)
+	var leash: float = float(cfg["leash_base"]) + float(cfg["leash_per_star"])
+	var strayed: float = (proj.global_position - p.global_position).length()
+	_check("the soul cannot stray past its tether", _near(strayed, leash, 0.05) and bool(proj.get("at_leash")), "strayed %f leash %f" % [strayed, leash])
+	_check("straying does not end the trip", n.active)
+
+	# wisps
+	var pct0: float = float((p.get("star_pct") as Array)[0])
+	p.set("essence", 0.0)
+	var w: Node3D = n.spawn_wisp(n.to_local(proj.global_position), "water")
+	n.tick(0.01, null)
+	_check("touching a water wisp grows the star and refills essence",
+		_near(float((p.get("star_pct") as Array)[0]), pct0 + float(cfg["wisp_water_star_pct"])) and _near(float(p.get("essence")), float(cfg["wisp_water_essence"])) and n.gathered_this_trip == 1,
+		"pct %f essence %f" % [float((p.get("star_pct") as Array)[0]), float(p.get("essence"))])
+	n.tick(0.01, null)
+	_check("a wisp is gathered once", n.gathered_this_trip == 1 and w.is_queued_for_deletion())
+
+	# subduing a construct
+	var had: int = (p.get("constructs") as Array).size()
+	var c: Node3D = n.spawn_construct(n.to_local(proj.global_position + Vector3(1.2, 0, 0)), "vestige", "tension", true)
+	c.set("target", proj)
+	_check("a docile construct leaves you alone at first", not bool(c.get("hostile")))
+	proj.set("hovered", c)
+	proj.call("click", c.global_position)
+	n.tick(0.05, null)
+	_check("striking one makes it hostile", bool(c.get("hostile")) and (c.get("body") as Body).missing("superficial") + (c.get("body") as Body).missing("structural") > 0.0)
+	proj.set("hp", 9999.0)                # keep the test about the construct, not the soul's hp
+	for i: int in 200:
+		if not is_instance_valid(c) or c.is_queued_for_deletion():
+			break
+		proj.set("hovered", c)
+		proj.call("click", c.global_position)
+		n.tick(0.1, null)
+	var got: Array = p.get("constructs")
+	_check("a beaten construct is subdued and yours to bind", got.size() == had + 1 and str((got[got.size() - 1] as Dictionary)["concept"]) == "tension" and n.subdued_this_trip == 1,
+		"constructs %d" % got.size())
+	await get_tree().process_frame
+
+	# a hostile one hurts the projection
+	proj.set("hp", float(proj.get("hp_max")))
+	var c2: Node3D = n.spawn_construct(n.to_local(proj.global_position + Vector3(1.0, 0, 0)), "vestige", "reach", false)
+	c2.set("target", proj)
+	for i: int in 40:
+		n.tick(0.1, null)
+		if float(proj.get("hp")) < float(proj.get("hp_max")):
+			break
+	_check("a wild construct attacks the projection", n.active and float(proj.get("hp")) < float(proj.get("hp_max")))
+
+	# its destruction
+	var torn := [false]
+	n.projection_destroyed.connect(func() -> void: torn[0] = true)
+	proj.call("take_hit", 99999.0, false, c2)
+	_check("a destroyed projection ends the trip and is reported as death", torn[0] and not n.active and not bool(p.get("projecting")))
+	_check("constructs calm down once you are gone", not bool(c2.get("hostile")))
+	c2.call("take_hit", 99999.0, false, null)
+	await get_tree().process_frame
+
+	# pain in the body
+	p.connect("disturbed", func() -> void: n.exit("pain"))
+	_check("the soul can go out again", n.enter())
+	p.call("take_hit", 1.0, false, null)
+	_check("hurting the body drags the soul back", not n.active and not bool(p.get("projecting")))
+
+	# walking back onto the body
+	n.enter()
+	proj = n.projection
+	proj.set("input_blocked", true)
+	n.tick(0.01, null)
+	_check("stepping out does not instantly step back in", n.active)
+	proj.global_position = p.global_position + Vector3(float(cfg["return_arm_distance"]) + 1.0, 0, 0)
+	n.tick(0.01, null)
+	proj.global_position = p.global_position + Vector3(0.2, 0, 0)
+	n.tick(0.01, null)
+	_check("walking back onto the body returns you", not n.active)
+
+	n.spawn_wisp(Vector3(3, 0, 3), "plain")
+	n.clear()
+	await get_tree().process_frame
+	_check("clearing the level empties its echo", n.get_child_count() == 0 and get_tree().get_nodes_in_group("nether_enemies").is_empty())
+	n.queue_free()
+	p.queue_free()
 
 
 func _test_keybinds() -> void:

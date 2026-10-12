@@ -1,5 +1,5 @@
 {
-  "_note": "Enemy kinds. hp and damage are multiplied by the spawn's strength factor (walls past the gate use passage.late_strength). aura_value feeds hidden latent aura on kill; bounty is cash. drops: chance to leave a construct - PLACEHOLDER until the Netherecho exists (constructs should be subdued there, not looted). loot: item drops left on the ground, each rolled independently.",
+  "_note": "Enemy kinds. hp and damage are multiplied by the spawn's strength factor (walls past the gate use passage.late_strength). aura_value feeds hidden latent aura on kill; bounty is cash. drops: unused since the Netherecho exists - constructs are subdued there, never looted. loot: item drops left on the ground, each rolled independently.",
   "enemies": {
     "grunt": {
       "hp": 240.0,
@@ -52,9 +52,7 @@
       "attack_cooldown": 1.3,
       "windup": 0.45,
       "reach": 2.3,
-      "drops": {
-        "vestige": 0.15
-      },
+      "drops": {},
       "loot": [
         {
           "item": "brute_tusk",
@@ -88,10 +86,7 @@
       "attack_cooldown": 1.3,
       "windup": 0.45,
       "reach": 2.3,
-      "drops": {
-        "vestige": 1.0,
-        "remnant": 0.35
-      },
+      "drops": {},
       "loot": [
         {
           "item": "commander_sigil",

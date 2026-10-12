@@ -33,6 +33,8 @@ var _health_c := Vector2.ZERO
 var _essence_c := Vector2.ZERO
 ## Passage progress for the tracker: {walls, cleared, current, gate, bank} or {} when not in one.
 var passage: Dictionary = {}
+## While the soul is out in the Netherecho: {hp, hp_max, leash, at_leash, gathered, subdued, hovered, target}.
+var nether: Dictionary = {}
 ## Screenshot aid: force a tooltip ("slot:0", "health", "essence") without a real cursor.
 var debug_tip := ""
 
@@ -49,6 +51,10 @@ func refresh(p: Node, where_text: String) -> void:
 
 func set_prompt(text: String) -> void:
 	prompt = text
+
+
+func set_nether(info: Dictionary) -> void:
+	nether = info
 
 
 func set_passage(info: Dictionary) -> void:
@@ -92,6 +98,8 @@ func _draw() -> void:
 	if player == null or str(player.get("talent_id")) == "":
 		return
 	var vs: Vector2 = size
+	if not nether.is_empty():
+		_draw_nether_veil(vs)
 	if show_world:
 		_draw_enemy_bars()
 		_draw_vignette(vs)
@@ -100,6 +108,8 @@ func _draw() -> void:
 		_draw_title(vs)
 		_draw_log(vs)
 		_draw_tracker(vs)
+		if not nether.is_empty():
+			_draw_nether_status(vs)
 	_draw_plate()
 	_draw_action_bar(vs)
 	_draw_tooltip(vs)
@@ -153,7 +163,7 @@ func _draw_action_bar(vs: Vector2) -> void:
 	var inv: Inventory = player.get("inventory")
 	_right_text(Vector2(vs.x - 16.0, vs.y - 30.0), "Pack  %d / %d kg" % [int(inv.weight()), int(inv.capacity())],
 		13, UiTheme.BAD if inv.weight() > inv.capacity() * 0.9 else UiTheme.TEXT_DIM)
-	_right_text(Vector2(vs.x - 16.0, vs.y - 12.0), "%s  soul      %s  inventory      %s  controls" % [Keybinds.binding_text("ethercosm"), Keybinds.binding_text("inventory"), Keybinds.binding_text("settings")], 13, UiTheme.TEXT_FAINT)
+	_right_text(Vector2(vs.x - 16.0, vs.y - 12.0), "%s  project      %s  soul      %s  inventory      %s  controls" % [Keybinds.binding_text("project"), Keybinds.binding_text("ethercosm"), Keybinds.binding_text("inventory"), Keybinds.binding_text("settings")], 13, UiTheme.TEXT_FAINT)
 
 
 func _draw_slot(r: Rect2, i: int, idx: int, abilities: Array, essence: float, locked: bool) -> void:
@@ -286,6 +296,13 @@ func _draw_plate() -> void:
 
 func _draw_target_frame(vs: Vector2) -> void:
 	var target: Variant = player.get("hovered")
+	if not nether.is_empty():
+		# out of the body, the projection's target is what matters
+		target = nether.get("hovered")
+		if target == null or not is_instance_valid(target):
+			target = nether.get("target")
+		if target == null or not is_instance_valid(target) or (target as Node).get("body") == null:
+			return
 	if target == null or not is_instance_valid(target) or (target as Node).get("is_scenery") == true or (target as Node).get("is_pickup") != null:
 		target = player.get("attack_target")
 	if target == null or not is_instance_valid(target) or (target as Node).get("is_scenery") == true or (target as Node).get("body") == null:
@@ -348,7 +365,7 @@ func _draw_enemy_bars() -> void:
 	var cam: Camera3D = get_viewport().get_camera_3d()
 	if cam == null:
 		return
-	for node: Node in get_tree().get_nodes_in_group("enemies"):
+	for node: Node in get_tree().get_nodes_in_group("nether_enemies" if not nether.is_empty() else "enemies"):
 		var e := node as Node3D
 		if e == null or cam.is_position_behind(e.global_position):
 			continue
@@ -378,6 +395,40 @@ func _draw_vignette(vs: Vector2) -> void:
 	draw_polygon(PackedVector2Array([Vector2(0, vs.y - e), Vector2(vs.x, vs.y - e), Vector2(vs.x, vs.y), Vector2(0, vs.y)]), PackedColorArray([c1, c1, c0, c0]))
 	draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(e, 0), Vector2(e, vs.y), Vector2(0, vs.y)]), PackedColorArray([c0, c1, c1, c0]))
 	draw_polygon(PackedVector2Array([Vector2(vs.x - e, 0), Vector2(vs.x, 0), Vector2(vs.x, vs.y), Vector2(vs.x - e, vs.y)]), PackedColorArray([c1, c0, c0, c1]))
+
+
+# --- the Netherecho ---------------------------------------------------------------------------
+
+## A cold violet wash over the world, darker at the edges: you are looking at the echo, not the place.
+func _draw_nether_veil(vs: Vector2) -> void:
+	draw_rect(Rect2(Vector2.ZERO, vs), Color(0.16, 0.08, 0.34, 0.26))
+	var c0 := Color(0.05, 0.0, 0.16, 0.7)
+	var c1 := Color(0.05, 0.0, 0.16, 0.0)
+	var e: float = minf(vs.x, vs.y) * 0.3
+	draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(vs.x, 0), Vector2(vs.x, e), Vector2(0, e)]), PackedColorArray([c0, c0, c1, c1]))
+	draw_polygon(PackedVector2Array([Vector2(0, vs.y - e), Vector2(vs.x, vs.y - e), Vector2(vs.x, vs.y), Vector2(0, vs.y)]), PackedColorArray([c1, c1, c0, c0]))
+	draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(e, 0), Vector2(e, vs.y), Vector2(0, vs.y)]), PackedColorArray([c0, c1, c1, c0]))
+	draw_polygon(PackedVector2Array([Vector2(vs.x - e, 0), Vector2(vs.x, 0), Vector2(vs.x, vs.y), Vector2(vs.x - e, vs.y)]), PackedColorArray([c1, c0, c0, c1]))
+
+
+## The projection's own small panel: how much of it is left, and how far it has strayed.
+func _draw_nether_status(vs: Vector2) -> void:
+	var r := Rect2(vs.x * 0.5 - 190.0, vs.y - 282.0, 380.0, 92.0)
+	draw_rect(r.grow(3.0), Color(0, 0, 0, 0.55))
+	draw_rect(r, Color(0.09, 0.06, 0.16, 0.93))
+	draw_rect(r, Color("7b5fc9"), false, 2.0)
+	UiDraw.text(self, Vector2(r.position.x, r.position.y + 19.0), "THE NETHERECHO", 14, Color("cdbcf2"), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	var hp: float = float(nether.get("hp", 0.0))
+	var hp_max: float = maxf(1.0, float(nether.get("hp_max", 1.0)))
+	var danger: bool = hp / hp_max <= 0.5
+	var hp_col: Color = Color("7fe6ff") if not danger else Color("ff7a6b").lerp(Color(1, 1, 1), 0.3 + 0.3 * sin(_time * 9.0))
+	UiDraw.bar(self, Rect2(r.position.x + 14.0, r.position.y + 28.0, r.size.x - 28.0, 12.0), hp / hp_max, hp_col)
+	UiDraw.text(self, Vector2(r.position.x, r.position.y + 55.0), "projection  %d / %d   -   if it dies, you die" % [int(ceil(hp)), int(hp_max)], 12, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	var leash: float = clampf(float(nether.get("leash", 0.0)), 0.0, 1.0)
+	UiDraw.bar(self, Rect2(r.position.x + 14.0, r.position.y + 64.0, r.size.x - 28.0, 6.0), leash, Color("b08cff") if leash < 0.92 else UiTheme.BAD)
+	UiDraw.text(self, Vector2(r.position.x + 14.0, r.position.y + 84.0),
+		"tether to your body" + ("  -  at its limit" if bool(nether.get("at_leash", false)) else ""), 11, UiTheme.TEXT_DIM)
+	_right_text(Vector2(r.end.x - 14.0, r.position.y + 84.0), "gathered %d    subdued %d" % [int(nether.get("gathered", 0)), int(nether.get("subdued", 0))], 11, Color("cdbcf2"))
 
 
 # --- top right: passage tracker -------------------------------------------------------------------

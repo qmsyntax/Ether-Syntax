@@ -114,13 +114,14 @@
     "hotbar_slots": 6
   },
   "meditation": {
-    "_note": "Meditation gathers wisps (Brent 2026-09-23): refills essence while you sit still.",
-    "gather_per_s": 4.0
+    "_note": "Meditation gathers wisps (Brent 2026-09-23): refills essence while you sit still. Brent 2026-10-11: it must not work on the move - sitting roots you, and nothing is gathered until you have been still for settle_s.",
+    "gather_per_s": 4.0,
+    "settle_s": 0.8
   },
   "stars": {
-    "_note": "Brent 2026-09-23: you start with a baby star. Each star's capacity grows from a low % to 99%; the essence tank is full_tank x capacity. A new star after ascension starts at 1%. Growth sources are [MODEL]: essence gathered from kills and from meditation. Ascension needs the newest star at max_pct AND the hidden latent aura threshold.",
-    "full_tank": 400.0,
-    "first_star_start_pct": 5.0,
+    "_note": "Brent 2026-09-23: you start with a baby star. Each star's capacity grows from a low % to 99%; the essence tank is full_tank x capacity. A new star after ascension starts at 1%. Growth sources are [MODEL]: essence gathered from kills and from meditation. Ascension needs the newest star at max_pct AND the hidden latent aura threshold. Brent 2026-10-11: one star must not hold more than 100 essence, so full_tank is 100 (a full first star is 99); the baby star starts at 20% so it can still pay for one ability.",
+    "full_tank": 100.0,
+    "first_star_start_pct": 20.0,
     "new_star_start_pct": 1.0,
     "max_pct": 99.0,
     "growth_pct_per_aura": 0.5,
@@ -134,5 +135,30 @@
   "camera": {
     "_note": "Orthographic size = metres of world shown top to bottom. 24 was the capsule-era value; 19 shows the models' detail.",
     "ortho_size": 19.0
+  },
+  "nether": {
+    "_note": "The Netherecho [canon concept; every number is MODEL]. The projection is leashed to the body, has very little life, and its death is the character's death. Wisps are gathered by touch; constructs are subdued by beating them down. Sites are the spawn areas a level hands over (one per passage chamber).",
+    "leash_base": 10.0,
+    "leash_per_star": 3.0,
+    "projection_hp": 12.0,
+    "projection_speed": 8.5,
+    "strike_damage": 22.0,
+    "strike_damage_per_star": 8.0,
+    "strike_cooldown": 0.4,
+    "strike_reach": 1.9,
+    "return_distance": 1.3,
+    "return_arm_distance": 3.0,
+    "wisp_reach": 1.1,
+    "wisp_water_star_pct": 1.5,
+    "wisp_water_essence": 12.0,
+    "wisp_plain_essence": 5.0,
+    "wisps_per_site": 3,
+    "water_wisp_chance": 0.5,
+    "construct_chance_per_site": 0.5,
+    "remnant_chance": 0.18,
+    "aggro_radius": 4.5,
+    "docile_chance": 0.4,
+    "docile_snap_chance_per_s": 0.06,
+    "wander_radius": 3.0
   }
 }

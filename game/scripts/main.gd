@@ -54,6 +54,9 @@ var _prompt := ""                   # contextual hint shown in the HUD's prompt 
 var _screen_paused := false
 var level: Node3D
 var settings_menu: Control
+var nether: Netherecho               # the spirit layer of the current level
+var _env: Environment
+var _sun: DirectionalLight3D
 
 var state := "select"
 var hardcore := false
@@ -134,8 +137,11 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	camera.global_position = player.global_position + CAMERA_OFFSET
-	camera.look_at(player.global_position + Vector3.UP, Vector3.UP)
+	var focus: Vector3 = nether.projection.global_position if (nether.active and nether.projection != null) else player.global_position
+	camera.global_position = focus + CAMERA_OFFSET
+	camera.look_at(focus + Vector3.UP, Vector3.UP)
+	if nether.active:
+		nether.tick(delta, camera)
 
 	match state:
 		"town":
@@ -161,8 +167,11 @@ func _process(delta: float) -> void:
 			_tick_dungeon(delta)
 
 	hud.call("refresh", player, _where())
-	hud.call("set_prompt", _prompt if screen == null else "")
 	hud.set("show_world", state == "dungeon" or state == "arena_rest" or state == "arena_fight")
+	hud.call("set_nether", nether.hud_info())
+	if nether.active and screen == null:
+		_prompt = "Your body sits behind you, defenceless.   %s or walk back onto it to return.\nTouch wisps to gather them. Beat a construct down to subdue it." % _k("project")
+	hud.call("set_prompt", _prompt if screen == null else "")
 	hud.call("set_passage", {"walls": chambers, "cleared": cleared, "current": current, "gate": gate_at, "bank": bank} if state == "dungeon" else {})
 	player.set("ui_blocked", screen != null or settings_menu != null or bool(hud.call("mouse_over_ui")))
 
@@ -196,6 +205,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ethercosm"):
 		open_ethercosm()
 		return
+	if event.is_action_pressed("project"):
+		toggle_projection()
+		return
+	if nether.active:
+		return                          # a soul has no hands for anything else
 
 	match state:
 		"arena_rest", "arena_fight":
@@ -280,6 +294,8 @@ func _select_talent(index: int) -> void:
 
 
 func _enter_town() -> void:
+	if nether.active:
+		nether.exit("")
 	_build_town()
 	player.set("active", false)
 	player.call("end_fight")
@@ -291,6 +307,62 @@ func _enter_town() -> void:
 	_prompt = ""
 	save_now()
 	_show_screen(TownScreen.new(self), false)
+
+
+# --- the Netherecho ------------------------------------------------------------------------
+
+## Leave the body, or return to it. Only possible out of combat, in the field.
+func toggle_projection() -> void:
+	if nether.active:
+		nether.exit("You return to your body.")
+		return
+	if state != "dungeon" and state != "arena_rest":
+		player.call("note", "There is nothing to find in the echo of this place." if state == "town" else "Not now.")
+		return
+	var why: String = nether.cannot_enter_reason()
+	if why != "":
+		player.call("note", why)
+		return
+	nether.enter()
+
+
+func _on_nether_entered() -> void:
+	_set_nether_look(true)
+	hud.call("announce", "THE NETHERECHO")
+	player.call("note", "You step out of yourself.")
+
+
+func _on_nether_exited(reason: String) -> void:
+	_set_nether_look(false)
+	_prompt = ""
+	if reason != "":
+		player.call("note", reason)
+
+
+## Something hit the body while the soul was away.
+func _on_body_disturbed() -> void:
+	if nether.active:
+		nether.exit("Pain drags you back into your body.")
+
+
+## Canon: a destroyed projection is death. Standard mode turns that into debt like any other death.
+func _on_projection_destroyed() -> void:
+	player.call("note", "Your soul is torn apart in the echo.")
+	(player.get("body") as Body).apply_damage(99999.0)
+	player.call("_check_death")
+
+
+## The echo of a place: dark, violet, lit from nowhere. Living enemies and loose loot do not show.
+func _set_nether_look(on: bool) -> void:
+	_env.background_color = Color(0.03, 0.015, 0.07) if on else Color(0.07, 0.08, 0.1)
+	_env.ambient_light_color = Color(0.5, 0.42, 0.95) if on else Color(0.75, 0.75, 0.85)
+	_env.ambient_light_energy = 0.75 if on else 0.55
+	_sun.light_energy = 0.18 if on else 1.0
+	_sun.light_color = Color(0.7, 0.6, 1.0) if on else Color(1, 1, 1)
+	for group: String in ["enemies", "pickups"]:
+		for n: Node in get_tree().get_nodes_in_group(group):
+			if n is Node3D:
+				(n as Node3D).visible = not on
 
 
 # --- screens ---------------------------------------------------------------------------
@@ -511,6 +583,8 @@ func _enter_arena() -> void:
 			if pos.length() > 3.0:
 				break
 		_spawn_scenery("bush" if i % GameData.inum("arena", "bush_every_n") == 0 else "grass", pos)
+	for q: Vector3 in [Vector3(-8, 0, -8), Vector3(8, 0, -8), Vector3(-8, 0, 8), Vector3(8, 0, 8)]:
+		nether.populate_site(q, Vector2(6.0, 6.0))
 	player.global_position = Vector3.ZERO
 	player.set("active", true)
 	wave = 0
@@ -564,6 +638,9 @@ func _enter_dungeon() -> void:
 				-float(c) * ch_len - rng.randf_range(1.5, ch_len - 1.5))
 			_spawn_scenery("bush" if i == 0 else "grass", pos)
 
+	# the spirit layer: one site per chamber, antechamber included
+	for c: int in range(0, chambers + 1):
+		nether.populate_site(Vector3(0.0, 0.0, -(float(c) + 0.5) * ch_len), Vector2(ch_half_w - 1.5, ch_len * 0.5 - 1.5))
 	player.global_position = level.to_global(Vector3(0.0, 0.0, -4.0))
 	player.set("active", true)
 	state = "dungeon"
@@ -770,6 +847,9 @@ func _new_level(yaw_degrees: float) -> void:
 	level = Node3D.new()
 	level.rotation_degrees = Vector3(0.0, yaw_degrees, 0.0)
 	add_child(level)
+	# the spirit layer shares the level's frame, so its sites line up with the chambers
+	nether.clear()
+	nether.rotation_degrees = Vector3(0.0, yaw_degrees, 0.0)
 	sealed = false
 	current = 0
 	cleared = 0
@@ -807,20 +887,24 @@ func _static_box(pos: Vector3, size: Vector3, color: Color) -> StaticBody3D:
 # --- construction ---------------------------------------------------------------
 
 func _build_world() -> void:
-	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.07, 0.08, 0.1)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.75, 0.75, 0.85)
-	env.ambient_light_energy = 0.55
+	_env = Environment.new()
+	_env.background_mode = Environment.BG_COLOR
+	_env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	var world_env := WorldEnvironment.new()
-	world_env.environment = env
+	world_env.environment = _env
 	add_child(world_env)
 
-	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-52.0, 30.0, 0.0)
-	sun.shadow_enabled = true
-	add_child(sun)
+	_sun = DirectionalLight3D.new()
+	_sun.rotation_degrees = Vector3(-52.0, 30.0, 0.0)
+	_sun.shadow_enabled = true
+	add_child(_sun)
+	_set_nether_look(false)
+
+	nether = Netherecho.new()
+	add_child(nether)
+	nether.connect("entered", _on_nether_entered)
+	nether.connect("exited", _on_nether_exited)
+	nether.connect("projection_destroyed", _on_projection_destroyed)
 
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -835,6 +919,8 @@ func _build_player() -> void:
 	add_child(player)
 	player.global_position = Vector3.ZERO
 	player.connect("died", _on_player_died)
+	player.connect("disturbed", _on_body_disturbed)
+	nether.player = player
 
 
 func _build_hud() -> void:
@@ -919,6 +1005,25 @@ func _setup_ui_shot(which: String) -> void:
 				player.call("assign_slot", 3, 2)
 			_enter_town()
 			open_ethercosm()
+		"nether":
+			_show_screen(null, false)
+			_enter_dungeon()
+			nether.clear()
+			var base: Vector3 = Vector3(0.0, 0.0, -4.0)
+			var first_c: Node = null
+			for spec: Array in [[Vector3(3.5, 0, -4.5), "vestige", "tension"], [Vector3(-4.0, 0, -6.0), "vestige", "acceleration"], [Vector3(1.0, 0, -9.5), "remnant", "piercing"]]:
+				var made: Node = nether.spawn_construct(base + (spec[0] as Vector3), str(spec[1]), str(spec[2]), false)
+				if first_c == null:
+					first_c = made
+			for wpos: Vector3 in [Vector3(2, 0, 1), Vector3(-2.5, 0, -2), Vector3(5, 0, -2), Vector3(-5, 0, -8), Vector3(0.5, 0, -5)]:
+				nether.spawn_wisp(base + wpos, "water" if int(wpos.x * 10.0) % 2 == 0 else "plain")
+			toggle_projection()
+			nether.projection.global_position = player.global_position + level.to_global(Vector3(1.5, 0, -3.5)) - level.global_position
+			nether.projection.set("input_blocked", true)
+			nether.projection.call("take_hit", 5.0, false, null)
+			(first_c.get("body") as Body).apply_damage(35.0)
+			nether.projection.set("hovered", first_c)
+			first_c.call("set_highlight", 1)
 		"hud", "hud-low":
 			_show_screen(null, false)
 			_enter_dungeon()

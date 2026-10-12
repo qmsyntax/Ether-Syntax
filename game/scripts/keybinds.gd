@@ -24,6 +24,7 @@ const ACTIONS: Array = [
 	["bind", "Bind a construct", "key", KEY_B],
 	["inventory", "Inventory", "key", KEY_I],
 	["ethercosm", "Ethercosm (soul)", "key", KEY_K],
+	["project", "Project into the Netherecho", "key", KEY_N],
 	["interact", "Use exit / leave", "key", KEY_F],
 	["healer", "Healer", "key", KEY_H],
 	["rest", "Rest", "key", KEY_E],
