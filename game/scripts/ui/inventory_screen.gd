@@ -3,7 +3,7 @@ extends UiScreen
 ## constructs waiting to be bound into them. This is also where you choose WHICH ability a
 ## construct goes into (the Bind key only takes the first match).
 
-const SLOT_LABELS := {"weapon": "Weapon", "back": "Back", "satellite": "Satellite", "trinket": "Trinket"}
+const SLOT_LABELS := {"weapon": "Weapon", "ranged": "Ranged", "body": "Body", "back": "Back", "satellite": "Satellite", "trinket": "Trinket"}
 
 
 func backdrop() -> float:
@@ -81,7 +81,7 @@ class SlotPanel extends PanelContainer:
 		row.add_theme_constant_override("separation", 10)
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(row)
-		var empty_icon: String = {"weapon": "blade", "back": "pack", "satellite": "mote", "trinket": "charm"}[slot]
+		var empty_icon: String = {"weapon": "blade", "ranged": "sling", "body": "coat", "back": "pack", "satellite": "mote", "trinket": "charm"}[slot]
 		row.add_child(UiWidgets.Icon.new(UiDraw.item_icon(def) if id != "" else empty_icon, UiTheme.GOLD if id != "" else Color(0.3, 0.28, 0.25), 48.0))
 		var col := VBoxContainer.new()
 		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -96,7 +96,7 @@ class SlotPanel extends PanelContainer:
 			row.add_child(UiWidgets.small_button("Take off", func() -> void: screen.call("unequip_slot", slot)))
 		else:
 			col.add_child(UiTheme.body("Empty", 17, UiTheme.TEXT_FAINT))
-			var hint: String = {"weapon": "bare fists - a weapon goes here", "back": "a backpack goes here", "satellite": "a satellite goes here - buy one from the merchant", "trinket": "a charm or coil goes here"}[slot]
+			var hint: String = {"weapon": "bare fists - a weapon goes here", "ranged": "nothing to shoot with - a sling or bow goes here", "body": "nothing between you and a blade - armour goes here", "back": "a backpack goes here", "satellite": "a satellite goes here - buy one from the merchant", "trinket": "a charm or coil goes here"}[slot]
 			col.add_child(UiTheme.body(hint, 12, UiTheme.TEXT_FAINT))
 
 	func _style(lit: bool) -> void:

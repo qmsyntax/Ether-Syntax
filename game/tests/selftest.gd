@@ -31,6 +31,7 @@ func _ready() -> void:
 	await _test_playtest_1011()
 	_test_tempering()
 	await _test_water_and_lightning()
+	await _test_gear_step_1()
 	_test_affinities()
 	_test_models()
 	await _test_netherecho()
@@ -51,6 +52,12 @@ func _check(label: String, ok: bool, detail: String = "") -> void:
 
 func _near(a: float, b: float, eps: float = 0.01) -> bool:
 	return absf(a - b) <= eps
+
+
+## Take off whatever the character wears on the body. Checks that assert an exact amount of
+## damage taken are about wounds, talents or tempering - not about the starting coat.
+func _bare(p: Node) -> void:
+	(p.get("inventory") as Inventory).equipped.erase("body")
 
 
 ## As if a moment had passed: the last skill's recovery is over. Tests cast back to back with no
@@ -132,6 +139,7 @@ func _test_natural_healing() -> void:
 
 	# what wounds you
 	var q := _new_player()
+	_bare(q)
 	var qb: Body = q.get("body")
 	q.call("take_hit", 15.0, false, null)
 	_check("an ordinary blow leaves no wound", qb.wounds.is_empty() and _near(qb.total(), 85.0))
@@ -261,6 +269,7 @@ func _test_pipeline() -> void:
 	p.queue_free()
 
 	p = _new_player("glass_hour")
+	_bare(p)
 	e = _dummy_enemy(p)
 	eb = e.get("body")
 	p.call("start_fight")
@@ -285,6 +294,7 @@ func _test_pipeline() -> void:
 	p.queue_free()
 
 	p = _new_player("debt_of_pain")
+	_bare(p)
 	pb = p.get("body")
 	p.call("start_fight")      # no natural healing while the debt is outstanding
 	var returned: float = p.call("take_hit", 10.0, false, null)
@@ -775,6 +785,7 @@ func _test_tempering() -> void:
 	known["kiln_cured"]["stage"] = 2
 	known["thin_air_lungs"]["stage"] = 1
 	_check("kiln-cured hide turns blows", _near(float(p.call("temper_stat", "incoming_mult")), 0.9025))
+	_bare(p)
 	var before: float = b.total()
 	p.call("take_hit", 20.0, false, null)
 	_check("and the body takes less", _near(before - b.total(), 18.05), "took %f" % (before - b.total()))
@@ -856,6 +867,112 @@ func _settle(e: Node, steps: int = 80) -> void:
 
 func _lost(e: Node) -> float:
 	return (e.get("body") as Body).max_hp - (e.get("body") as Body).hp
+
+
+func _test_gear_step_1() -> void:
+	print("a coat and a sling (design/06 step 1):")
+	await get_tree().process_frame
+	var cfg: Dictionary = GameData.balance["ranged"]
+	var p := _new_player()
+	var inv: Inventory = p.get("inventory")
+	var b: Body = p.get("body")
+	_check("there are slots for a ranged weapon and for the body", Inventory.SLOTS.has("ranged") and Inventory.SLOTS.has("body"))
+	_check("a new character wears a coat and carries a sling", str(inv.equipped.get("body", "")) == "patched_coat" and str(inv.equipped.get("ranged", "")) == "cord_sling")
+	for id: String in ["patched_coat", "cord_sling", "padded_jack", "husk_hide_jack"]:
+		if GameData.item(id).is_empty():
+			_check("the four items of this step exist", false, id)
+	_check("the merchant sells the padded jack and brutes can drop the hide jack", (GameData.items_file["shop"] as Array).has("padded_jack")
+		and (GameData.enemy("brute")["loot"] as Array).any(func(e: Dictionary) -> bool: return str(e["item"]) == "husk_hide_jack"))
+
+	# armour: a percentage off each hit
+	inv.add("husk_hide_jack")
+	inv.equip("husk_hide_jack")
+	_check("the hide jack is 5 armour", _near(float(p.call("armour")), 5.0))
+	var hp0: float = b.hp
+	p.call("take_hit", 20.0, false, null)
+	_check("a 20-damage hit through 5 armour lands as 19", _near(hp0 - b.hp, 19.0), "took %f" % (hp0 - b.hp))
+	_check("which is just under what it takes to wound you", b.wounds.is_empty())
+	b.hp = b.total_max()
+	inv.equipped.erase("body")
+	hp0 = b.hp
+	p.call("take_hit", 20.0, false, null)                   # health lost, not distance from a ceiling a wound may lower
+	_check("and as 20 with nothing on", _near(hp0 - b.hp, 20.0), "took %f" % (hp0 - b.hp))
+	_check("which does wound you: armour is the difference", b.wounds.size() == 1)
+	b.wounds.clear()
+	b.hp = b.total_max()
+	var cap: float = GameData.num("gear", "armour_cap")
+	GameData.items["test_plate"] = {"name": "Test plate", "slot": "body", "weight": 1.0, "value": 0, "stats": {"armour": 95}}
+	inv.equipped["body"] = "test_plate"
+	_check("armour is capped so gear stays below the body", _near(float(p.call("armour")), cap))
+	GameData.items.erase("test_plate")
+	inv.equipped["body"] = "patched_coat"
+
+	# armour reaches a talent that swallows a hit and delivers it later
+	var d := _new_player("debt_of_pain")
+	(d.get("inventory") as Inventory).add("husk_hide_jack")
+	(d.get("inventory") as Inventory).equip("husk_hide_jack")
+	var db: Body = d.get("body")
+	d.call("start_fight")
+	d.call("take_hit", 20.0, false, null)
+	for i: int in 6:
+		d.call("_physics_process", 1.0)
+	_check("armour also takes its share of a hit a talent delays", _near(db.missing(), 19.0 * 0.8), "took %f" % db.missing())
+	d.queue_free()
+
+	# the sling
+	var e := _foe(p, Vector3(0, 0, -6.0))
+	var far := _foe(p, Vector3(9.0, 0, -13.5))               # 16 m off: past the sling's 12
+	_check("a sling shot is 45", _near(float(p.call("ranged_damage")), float(cfg["ranged_damage"]) * 0.9) and _near(float(p.call("ranged_damage")), 45.0))
+	var essence: float = float(p.get("essence"))
+	var shots: int = get_tree().get_nodes_in_group("hittable").size()
+	_check("it looses toward where you point", bool(p.call("fire_ranged", e.global_position)))
+	_check("for no essence and no reflux", _near(float(p.get("essence")), essence) and _near(float(p.call("reflux_of", "water")), 0.0))
+	_check("and not again until the interval is up", not bool(p.call("fire_ranged", e.global_position)) and _near(float(p.get("_ranged_cd")), 0.8))
+	var shot: Node3D = null
+	for n: Node in p.get_parent().get_children():
+		if n.get("shooter") == p:
+			shot = n
+	_check("the shot is in the air", shot != null and _near(float(shot.get("damage")), 45.0) and _near(float(shot.get("life")), 12.0 / float(cfg["projectile_speed"])))
+	for i: int in 60:
+		if shot == null or not is_instance_valid(shot) or shot.is_queued_for_deletion():
+			break
+		shot.call("_process", 1.0 / 60.0)
+	_check("it lands on the first enemy in its path for 45", _near(_lost(e), 45.0), "lost %f" % _lost(e))
+	await get_tree().process_frame
+	p.set("_ranged_cd", 0.0)
+	p.call("fire_ranged", far.global_position)
+	for n: Node in p.get_parent().get_children():
+		if n.get("shooter") == p and not n.is_queued_for_deletion():
+			for i: int in 90:
+				if not is_instance_valid(n) or n.is_queued_for_deletion():
+					break
+				n.call("_process", 1.0 / 60.0)
+	_check("and dies at its range: nothing at 16 m is hit", _near(_lost(far), 0.0))
+	await get_tree().process_frame
+	p.set("_ranged_cd", 0.0)
+	p.set("arm_right_lost", true)
+	_check("with the striking arm gone a shot is weaker, not impossible", _near(float(p.call("ranged_damage")), 45.0 * float(cfg["off_arm_damage_factor"])))
+	p.set("arm_right_lost", false)
+	inv.unequip("ranged")
+	_check("with no ranged weapon there is nothing to loose", not bool(p.call("fire_ranged", e.global_position)) and (p.call("ranged_weapon") as Dictionary).is_empty())
+	inv.equip("cord_sling")
+	p.set("_recover_t", 0.4)
+	p.set("_ranged_cd", 0.0)
+	_check("nor in the middle of a skill", not bool(p.call("fire_ranged", e.global_position)))
+
+	# saves
+	var old: Dictionary = p.call("to_save")
+	(old["inventory"] as Dictionary)["equipped"] = {"back": "canvas_pack"}
+	var q := _new_player()
+	q.call("from_save", JSON.parse_string(JSON.stringify(old)))
+	var qinv: Inventory = q.get("inventory")
+	_check("a save from before these slots loads with them empty", not qinv.equipped.has("body") and not qinv.equipped.has("ranged")
+		and _near(float(q.call("armour")), 0.0) and not bool(q.call("fire_ranged", Vector3.ZERO)))
+	_check("the tooltip says what armour and a sling do", UiWidgets.item_stats_text(GameData.item("husk_hide_jack")) == "takes 5% off every hit"
+		and UiWidgets.item_stats_text(GameData.item("cord_sling")) == "shoots for 45 every 0.8 s, out to 12 m", UiWidgets.item_stats_text(GameData.item("cord_sling")))
+	for n: Node in [e, far, p, q]:
+		n.queue_free()
+	await get_tree().process_frame
 
 
 func _test_water_and_lightning() -> void:

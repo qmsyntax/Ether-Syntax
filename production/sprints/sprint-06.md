@@ -262,3 +262,29 @@ wind-up (step 2). Skill costs dropped (Water Bolt 12 -> 8) to fit a 20-essence s
 Verified: self-test 296/296, eight runs in a row; three bots; Netherecho death test; inventory and creation click
 tests; `ui-skills.png` inspected. Not verified: any of it by hand - whether water and lightning now FEEL different
 is the whole point of this step and only Brent can say. Blink and beam aim with the mouse, which no test exercises.
+
+## Part P — equipment step 1: a coat and a sling (design/06, approved by Brent 2026-10-12)
+
+Step 1 of design/06's build order: put armour and a no-essence ranged attack in the player's hands before anything
+is built on them.
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-58 | Two new slots, ranged and body; a new character starts wearing a Patched Coat and carrying a Cord Sling; saves from before load with the slots empty | selftest | Done |
+| S06-59 | Armour: the percent a worn piece takes off each hit, capped at 30. Applied to the blow before talents see it | selftest ("20 through 5 armour lands as 19"; cap; a delayed hit) | Done |
+| S06-60 | Shooting: hold Shift and the strike button fires the sling at the cursor (at the enemy under it, if any) - 45 damage every 0.8 s out to 12 m, for no essence or reflux. In the stance you do not walk to clicks or close to strike, you move at 70% speed, and a ring shows the range | selftest (damage, interval, range, first enemy in path, no ranged weapon, mid-skill, arm lost) | Done |
+| S06-61 | Four items: Patched Coat and Cord Sling (starting), Padded Jack (merchant, 3 armour and faster reflux shedding), Husk-Hide Jack (brute drop, 5 armour) | selftest | Done |
+| S06-62 | Inventory shows the two new slots with their own icons and hints; item text says what armour and a sling do; Shift is in the controls menu and the hint line | `shots/ui-inventory.png` | Done |
+
+Found on the way: a talent that swallows a hit and delivers it later (Debt of Pain) skipped armour entirely, and
+skipped the fire tempering technique's damage reduction the same way - a gap that already existed. Armour and
+tempering now come off the blow before any talent sees it.
+
+Left out on purpose: the draft gives the Husk-Hide Jack 4 wound resistance; the game does not read that stat until
+step 2, so it is not on the live item. No ammunition, draw time or hand-change delay yet (step 4). The six-panel
+slot list is full - twelve slots need the paper doll (step 2).
+
+Verified: self-test 318/318, four runs; three bots; Netherecho death test; both inventory click tests; creation
+click test; inventory screenshot inspected. Not verified: anything driven by the real mouse and keyboard - the
+Shift stance, aiming at the cursor, holding to keep firing, the range ring. Whether Shift + click feels natural
+beside click-to-attack is the question this step exists to answer, and only Brent can.

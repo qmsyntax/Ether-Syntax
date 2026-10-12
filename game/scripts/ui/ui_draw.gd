@@ -115,6 +115,15 @@ static func icon(ci: CanvasItem, kind: String, c: Vector2, s: float, color: Colo
 			for k: int in 3:
 				var x: float = c.x - s * 0.45 + k * s * 0.36
 				ci.draw_polyline(PackedVector2Array([Vector2(x, c.y - s * 0.42), Vector2(x + s * 0.3, c.y), Vector2(x, c.y + s * 0.42)]), color.darkened(0.25 * (2 - k)), 4.0, true)
+		"coat":      # body armour: shoulders, two sleeves, an open front
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.2, -s * 0.46), c + Vector2(s * 0.2, -s * 0.46), c + Vector2(s * 0.5, -s * 0.22),
+				c + Vector2(s * 0.36, s * 0.02), c + Vector2(s * 0.26, -s * 0.08), c + Vector2(s * 0.3, s * 0.48), c + Vector2(-s * 0.3, s * 0.48),
+				c + Vector2(-s * 0.26, -s * 0.08), c + Vector2(-s * 0.36, s * 0.02), c + Vector2(-s * 0.5, -s * 0.22)]), color)
+			ci.draw_line(c + Vector2(0, -s * 0.44), c + Vector2(0, s * 0.46), color.darkened(0.45), 2.0, true)
+		"sling":     # a ranged weapon: two cords, a pouch, a stone
+			ci.draw_polyline(PackedVector2Array([c + Vector2(-s * 0.42, -s * 0.44), c + Vector2(-s * 0.14, s * 0.18), c + Vector2(s * 0.14, s * 0.18), c + Vector2(s * 0.42, -s * 0.44)]), color, 2.5, true)
+			ci.draw_arc(c + Vector2(0, s * 0.16), s * 0.2, 0.0, PI, 12, color, 4.0, true)
+			ci.draw_circle(c + Vector2(0, s * 0.14), s * 0.1, color.lightened(0.35))
 		"pack":
 			ci.draw_rect(Rect2(c + Vector2(-s * 0.38, -s * 0.3), Vector2(s * 0.76, s * 0.78)), color)
 			ci.draw_arc(c + Vector2(0, -s * 0.3), s * 0.24, PI, TAU, 12, color, 3.0, true)
@@ -149,6 +158,8 @@ static func icon(ci: CanvasItem, kind: String, c: Vector2, s: float, color: Colo
 static func item_icon(def: Dictionary) -> String:
 	match str(def.get("slot", "")):
 		"weapon": return "blade"
+		"ranged": return "sling"
+		"body": return "coat"
 		"back": return "pack"
 		"satellite": return "mote"
 		"trinket": return "charm"

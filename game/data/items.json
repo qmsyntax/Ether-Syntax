@@ -1,8 +1,10 @@
 {
-  "_note": "Items. All names and numbers are original to this project [MODEL]. Canon facts used: carry capacity is an economic stat; a new archhuman has a backpack, not a storage ring (Brent 2026-09-23); satellites are items you find or buy, and a 1-star can use a 2-star satellite at full rate (Brent 2026-09-23). slot: back | satellite | trinket | '' (not equippable). stats are summed over equipped items: carry_capacity (kg), satellite_rate (essence/s), cost_mult (ability essence cost multiplier), reflux_shed_mult. Weapons (slot 'weapon') are held in the striking arm: melee_damage_mult, melee_cooldown_mult (below 1 = faster), melee_range_bonus (metres). They do nothing while that arm is lost. gear_sell_factor is what the merchant pays for gear; loot sells at full value.",
+  "_note": "Items. All names and numbers are original to this project [MODEL]. Canon facts used: carry capacity is an economic stat; a new archhuman has a backpack, not a storage ring (Brent 2026-09-23); satellites are items you find or buy, and a 1-star can use a 2-star satellite at full rate (Brent 2026-09-23). slot: back | satellite | trinket | '' (not equippable). stats are summed over equipped items: carry_capacity (kg), satellite_rate (essence/s), cost_mult (ability essence cost multiplier), reflux_shed_mult. Weapons (slot 'weapon') are held in the striking arm: melee_damage_mult, melee_cooldown_mult (below 1 = faster), melee_range_bonus (metres). They do nothing while that arm is lost. gear_sell_factor is what the merchant pays for gear; loot sells at full value. design/06 step 1 (approved by Brent 2026-10-12): slots 'body' and 'ranged'. armour is the percent of each hit a piece takes off (capped by balance.gear.armour_cap). A ranged weapon's shot does balance.ranged.ranged_damage x ranged_damage_mult every ranged_interval seconds out to ranged_range metres, for no essence. The draft catalogue in design/data-drafts/items-v2.json gives the Husk-Hide Jack 4 wound resistance as well; that stat is not read by the game until step 2, so it is left off the live item rather than listed and ignored.",
   "base_carry_capacity": 8.0,
   "starting_equipped": {
-    "back": "canvas_pack"
+    "back": "canvas_pack",
+    "body": "patched_coat",
+    "ranged": "cord_sling"
   },
   "starting_bag": [],
   "items": {
@@ -145,6 +147,49 @@
         "melee_range_bonus": 0.5
       },
       "desc": "Long, balanced, and made for someone taller than you."
+    },
+    "patched_coat": {
+      "name": "Patched Coat",
+      "slot": "body",
+      "weight": 1.8,
+      "value": 20,
+      "stats": {
+        "armour": 2
+      },
+      "desc": "More patch than coat. It is yours."
+    },
+    "cord_sling": {
+      "name": "Cord Sling",
+      "slot": "ranged",
+      "weight": 0.1,
+      "value": 40,
+      "stats": {
+        "ranged_damage_mult": 0.9,
+        "ranged_interval": 0.8,
+        "ranged_range": 12.0
+      },
+      "desc": "A cord, a pouch, and whatever is on the ground."
+    },
+    "padded_jack": {
+      "name": "Padded Jack",
+      "slot": "body",
+      "weight": 2.0,
+      "value": 240,
+      "stats": {
+        "armour": 3,
+        "reflux_shed_mult": 1.06
+      },
+      "desc": "Quilted linen. Breathes, which matters more than you would think."
+    },
+    "husk_hide_jack": {
+      "name": "Husk-Hide Jack",
+      "slot": "body",
+      "weight": 7.5,
+      "value": 90,
+      "stats": {
+        "armour": 5
+      },
+      "desc": "Invader hide, badly cured. It kept one of them alive for a while."
     }
   },
   "shop": [
@@ -153,7 +198,8 @@
     "delver_frame",
     "river_stone",
     "cooling_coil",
-    "paired_mote"
+    "paired_mote",
+    "padded_jack"
   ],
   "exit_reward_table": [
     {

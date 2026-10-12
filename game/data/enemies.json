@@ -66,6 +66,10 @@
         {
           "item": "invader_cleaver",
           "chance": 0.12
+        },
+        {
+          "item": "husk_hide_jack",
+          "chance": 0.15
         }
       ],
       "name": "Hide-Bound Brute",

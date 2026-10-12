@@ -111,6 +111,10 @@ var _dash_tags: Array = []
 var _dash_passed: Array = []         # enemies already touched by this dash
 var _dash_from := Vector3.ZERO       # where the dash was at the last check
 var _recover_t := 0.0                # no striking or casting until this runs out
+var _ranged_cd := 0.0                # until the ranged weapon can loose again
+## True while the ranged stance is held with a ranged weapon equipped: the strike button shoots.
+var ranged_stance := false
+var _range_ring: MeshInstance3D
 var _rig: ModelRig
 var _strike_t := 0.0
 var _shown_arm_lost := false
@@ -388,6 +392,7 @@ func _physics_process(delta: float) -> void:
 
 	_melee_cd -= delta
 	_recover_t -= delta
+	_ranged_cd -= delta
 	_meditate_block -= delta
 	if in_combat:
 		fight_time += delta
@@ -449,9 +454,20 @@ func _physics_process(delta: float) -> void:
 		_strike_once = false
 	else:
 		_update_hover()
-	if not bot and Input.is_action_just_pressed("strike") and not _sitting and not ui_blocked:
+	var was_stance: bool = ranged_stance
+	ranged_stance = not bot and not _sitting and not ui_blocked and Input.is_action_pressed("ranged_stance") and not ranged_weapon().is_empty()
+	if ranged_stance != was_stance:
+		_show_range_ring(ranged_stance)
+	if ranged_stance:
+		# feet stay where they are: no walking to a click, no closing to strike
+		attack_target = null
+		pickup_target = null
+		has_move_goal = false
+		if Input.is_action_pressed("strike"):
+			fire_ranged(_ranged_aim())
+	if not bot and not ranged_stance and Input.is_action_just_pressed("strike") and not _sitting and not ui_blocked:
 		_click_cursor()
-	if not bot and Input.is_action_pressed("strike") and attack_target == null and has_move_goal:
+	if not bot and not ranged_stance and Input.is_action_pressed("strike") and attack_target == null and has_move_goal:
 		move_goal = _cursor_ground()          # holding on the ground keeps steering
 
 	var input := Vector2.ZERO
@@ -502,6 +518,8 @@ func _physics_process(delta: float) -> void:
 	if bot:
 		dir = _bot_dir if attack_target == null else dir
 	var speed: float = float(_p["move_speed"]) * temper_stat("move_speed_mult") * (float(_p["charge_move_factor"]) if _charging else 1.0)
+	if ranged_stance:
+		speed *= GameData.num("ranged", "stance_move_factor")
 	velocity = dir * speed
 	if _dash_time > 0.0:
 		_dash_time -= delta
@@ -559,7 +577,9 @@ func take_hit(amount: float, heavy: bool, source: Node) -> float:
 	var ctx := HitContext.new()
 	ctx.source = source
 	ctx.target = self
-	ctx.base = amount
+	# What the body and what it wears take off the blow comes first, so every talent works on
+	# the same reduced number - including one that swallows the hit and delivers it later.
+	ctx.base = amount * temper_stat("incoming_mult") * (1.0 - armour() / 100.0)
 	ctx.heavy = heavy
 	if projecting:
 		disturbed.emit()             # pain drags the soul back before the blow is even counted
@@ -569,7 +589,87 @@ func take_hit(amount: float, heavy: bool, source: Node) -> float:
 		e.on_incoming(ctx)
 	if ctx.cancelled:
 		return 0.0
-	return _apply_damage(ctx.amount() * temper_stat("incoming_mult"), heavy)
+	return _apply_damage(ctx.amount(), heavy)
+
+
+## The percent of each hit your worn armour takes off, capped so gear stays below the body.
+func armour() -> float:
+	return clampf(inventory.stat("armour"), 0.0, GameData.num("gear", "armour_cap"))
+
+
+# --- the ranged weapon (design/06 3.2) -------------------------------------------------------
+
+## The equipped ranged weapon's definition, or {} with none.
+func ranged_weapon() -> Dictionary:
+	var id: String = str(inventory.equipped.get("ranged", ""))
+	return GameData.item(id) if id != "" else {}
+
+
+func ranged_stat(key: String, fallback: float) -> float:
+	return float((ranged_weapon().get("stats", {}) as Dictionary).get(key, fallback))
+
+
+## What one shot does.
+func ranged_damage() -> float:
+	var cfg: Dictionary = GameData.balance["ranged"]
+	return float(cfg["ranged_damage"]) * ranged_stat("ranged_damage_mult", 1.0) * (float(cfg["off_arm_damage_factor"]) if arm_right_lost else 1.0)
+
+
+## Loose the ranged weapon toward a point on the ground. Costs nothing but the time between
+## shots. Returns false if there is no weapon, it is not ready, or you are mid-skill.
+func fire_ranged(toward: Vector3) -> bool:
+	if ranged_weapon().is_empty() or _ranged_cd > 0.0 or _recover_t > 0.0 or not active or dead or meditating:
+		return false
+	var cfg: Dictionary = GameData.balance["ranged"]
+	var aim: Vector3 = toward - global_position
+	aim.y = 0.0
+	if aim.length() > 0.2:
+		_facing = aim.normalized()
+	var speed: float = float(cfg["projectile_speed"])
+	var shot: Node3D = Projectile.new()
+	shot.set("color", Color(0.74, 0.72, 0.68))
+	shot.set("tags", ["ranged"])
+	shot.set("dir", _facing)
+	shot.set("damage", ranged_damage())
+	shot.set("speed", speed)
+	shot.set("life", ranged_stat("ranged_range", float(cfg["default_range"])) / speed)
+	shot.set("shooter", self)
+	get_parent().add_child(shot)
+	shot.global_position = global_position + Vector3.UP * 1.0 + _facing * 0.8
+	_ranged_cd = ranged_stat("ranged_interval", float(cfg["default_interval"]))
+	_strike_t = 0.18
+	return true
+
+
+## Where a shot is aimed: at the enemy under the cursor if there is one, else the ground there.
+func _ranged_aim() -> Vector3:
+	if hovered != null and is_instance_valid(hovered) and hovered.is_in_group("enemies"):
+		return hovered.global_position
+	return _cursor_ground()
+
+
+## A thin ring on the ground showing how far a shot carries, while the stance is held.
+func _show_range_ring(on: bool) -> void:
+	if on and _range_ring == null and is_inside_tree():
+		_range_ring = MeshInstance3D.new()
+		var ring := TorusMesh.new()
+		ring.inner_radius = 0.985
+		ring.outer_radius = 1.0
+		ring.rings = 96
+		ring.ring_segments = 4
+		_range_ring.mesh = ring
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(0.9, 0.86, 0.7, 0.5)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_range_ring.material_override = mat
+		_range_ring.position.y = 0.06
+		add_child(_range_ring)
+	if _range_ring != null:
+		_range_ring.visible = on
+		if on:
+			var r: float = ranged_stat("ranged_range", GameData.num("ranged", "default_range"))
+			_range_ring.scale = Vector3(r, 1.0, r)
 
 
 ## Damage that has passed the pipeline (or comes from an effect's own timer).

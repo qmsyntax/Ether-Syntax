@@ -282,5 +282,18 @@
     "crush_per_m": 10.0,
     "crush_other_frac": 0.5,
     "min_left": 0.25
+  },
+  "ranged": {
+    "_note": "The basic ranged attack (design/06 3.2, smallest version): hold the ranged stance and the strike button fires the equipped ranged weapon toward the cursor. No essence, no reflux, no ammunition yet. A shot does ranged_damage x the weapon's ranged_damage_mult; projectile_speed is how fast it flies; stance_move_factor slows you while you hold the stance; off_arm_damage_factor applies with the striking arm gone. default_* are used when a weapon does not say.",
+    "ranged_damage": 50.0,
+    "projectile_speed": 26.0,
+    "stance_move_factor": 0.7,
+    "off_arm_damage_factor": 0.6,
+    "default_interval": 0.8,
+    "default_range": 12.0
+  },
+  "gear": {
+    "_note": "Caps that keep gear below the body (design/06 2). armour_cap is the most damage, in percent, that worn armour can take off a hit.",
+    "armour_cap": 30.0
   }
 }

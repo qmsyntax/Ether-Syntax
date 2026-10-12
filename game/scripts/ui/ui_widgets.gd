@@ -111,6 +111,13 @@ static func item_stats_text(def: Dictionary) -> String:
 		parts.append(("strikes %d%% faster" % int(round((1.0 / cd - 1.0) * 100.0))) if cd < 1.0 else ("strikes %d%% slower" % int(round((1.0 - 1.0 / cd) * 100.0))))
 	if stats.has("melee_range_bonus"):
 		parts.append("+%.1f m reach" % float(stats["melee_range_bonus"]))
+	if stats.has("armour"):
+		parts.append("takes %d%% off every hit" % int(float(stats["armour"])))
+	if stats.has("ranged_damage_mult") or stats.has("ranged_interval") or stats.has("ranged_range"):
+		parts.append("shoots for %d every %.1f s, out to %d m" % [
+			int(round(GameData.num("ranged", "ranged_damage") * float(stats.get("ranged_damage_mult", 1.0)))),
+			float(stats.get("ranged_interval", GameData.num("ranged", "default_interval"))),
+			int(float(stats.get("ranged_range", GameData.num("ranged", "default_range"))))])
 	if stats.has("carry_capacity"):
 		parts.append("carry +%d kg" % int(float(stats["carry_capacity"])))
 	if stats.has("satellite_rate"):

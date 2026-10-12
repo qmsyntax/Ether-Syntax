@@ -4,7 +4,7 @@ extends RefCounted
 ## economic stat). Equipment slots: weapon (held in the striking arm), back (a backpack - no
 ## storage ring at the start), satellite, trinket. Equipped items do not count against the bag's capacity; they are worn.
 
-const SLOTS: Array[String] = ["weapon", "back", "satellite", "trinket"]
+const SLOTS: Array[String] = ["weapon", "ranged", "body", "back", "satellite", "trinket"]
 
 var bag: Array[String] = []             # item ids, one entry per item
 var equipped: Dictionary = {}           # slot -> item id

@@ -13,6 +13,7 @@ const ACTIONS: Array = [
 	["move_right", "Move right", "key", KEY_D],
 	["strike", "Strike", "mouse", MOUSE_BUTTON_LEFT],
 	["overcharge", "Overcharge (hold)", "mouse", MOUSE_BUTTON_RIGHT],
+	["ranged_stance", "Shoot (hold, then strike)", "key", KEY_SHIFT],
 	["ability_1", "Ability slot 1", "key", KEY_1],
 	["ability_2", "Ability slot 2", "key", KEY_2],
 	["ability_3", "Ability slot 3", "key", KEY_3],
