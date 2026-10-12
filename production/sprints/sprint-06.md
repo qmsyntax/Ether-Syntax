@@ -116,3 +116,15 @@ model change and goes with art pass 4. Starter kits per affinity are still our s
 there is no way to learn a further skill yet.
 
 Verified: self-test 191/191, smoke, three bots, both inventory click tests, creation click test, `ui-create-3.png`.
+
+## Part I — playtest fixes (Brent 2026-10-11, second round)
+
+| # | Report | Finding / change | Evidence |
+|---|--------|------------------|----------|
+| S06-28 | "Ability 2 on 1% lifesteal on multiple enemies is not granting me the lifesteal it should" | Not a code fault: measured 1.8 health back per target from a 180-damage Tsunami Strike (1%), on every target. The strike's own 6 self-harm outweighs it until four targets are hit, and nothing on screen showed the heal. Added a green "+N" number for health returned, summed per swing. No balance number changed | selftest: 1 target and 3 targets pay exactly 1% each |
+| S06-29 | "Vestiges should be labeled as to what they are in the netherecho" | Every construct shows its name above it ("Vestige of Tension"); remnants in gold | `shots/ui-nether.png` |
+| S06-30 | "Cant pick up this one... looks like a bug" (a pale wisp beside the projection) | Most likely a wisp of an affinity the character does not hold - by rule those cannot be gathered, but nothing said so after the first touch. Wisps near the projection are now labelled ("water wisp", "lightning wisp - not yours", "ether") and the refusal message repeats while you keep trying. Not reproduced as an actual pickup fault | `shots/ui-nether.png` |
+| S06-31 | "We should be given a preview of what will happen to a skill if I bind the vestige" | The ethercosm lists, under each bind button, every number that would move (stage, damage, bolt speed, range, reach, dash, self-harm, cost, reflux), before -> after, green or red, plus the success chance | selftest (7 checks, incl. the bind then matching the preview), `shots/ui-ethercosm.png` |
+
+Verified: self-test 200/200, smoke, three bots, inventory and creation click tests; both screenshots inspected.
+Not verified: the green heal number in live play; whether the wisp in Brent's screenshot really was a foreign one.

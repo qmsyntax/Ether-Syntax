@@ -828,6 +828,51 @@ func ability_stats(state: Dictionary) -> Dictionary:
 	return ab
 
 
+## What binding a construct of `concept` into this ability would change, for showing before the
+## (irreversible) bind: [{"label", "before", "after", "better"}], numbers already formatted.
+func preview_bind(state: Dictionary, concept: String) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var now: Dictionary = ability_stats(state)
+	var trial: Dictionary = state.duplicate(true)
+	if not trial.has("bound"):
+		trial["bound"] = []
+	(trial["bound"] as Array).append({"concept": concept, "tier": "", "stage": int(state["stage"])})
+	var then: Dictionary = ability_stats(trial)
+	if now.is_empty():
+		return out
+	var strike: float = float(_p["melee_damage"]) * weapon_stat("melee_damage_mult", true)
+	var stage: int = int(state["stage"])
+	var mult_now: float = ability_damage_mult(stage) * float(now.get("damage_all", 1.0))
+	var mult_then: float = ability_damage_mult(stage + 1) * float(then.get("damage_all", 1.0))
+	out.append({"label": "Stage", "before": str(stage), "after": str(stage + 1), "better": true})
+	if now.has("damage"):
+		_preview_row(out, "Damage", float(now["damage"]) * mult_now, float(then["damage"]) * mult_then, "%d", true)
+	if now.has("damage_mult"):
+		_preview_row(out, "Damage per target", strike * float(now["damage_mult"]) * mult_now, strike * float(then["damage_mult"]) * mult_then, "%d", true)
+	if now.has("speed"):
+		_preview_row(out, "Bolt speed", float(now["speed"]), float(then["speed"]), "%d", true)
+		_preview_row(out, "Range", float(now["speed"]) * float(now["life"]), float(then["speed"]) * float(then["life"]), "%d m", true)
+	if now.has("reach_bonus"):
+		_preview_row(out, "Reach", melee_range + float(now["reach_bonus"]), melee_range + float(then["reach_bonus"]), "%.1f m", true)
+	if now.has("dash_speed"):
+		_preview_row(out, "Dash distance", float(now["dash_speed"]) * float(now["dash_time"]), float(then["dash_speed"]) * float(then["dash_time"]), "%.1f m", true)
+		_preview_row(out, "Dash speed", float(now["dash_speed"]), float(then["dash_speed"]), "%d", true)
+	if now.has("self_harm"):
+		_preview_row(out, "Harm to yourself", float(now["self_harm"]), float(then["self_harm"]), "%.1f", false)
+	_preview_row(out, "Essence cost", float(now["cost"]), float(then["cost"]), "%d", false)
+	_preview_row(out, "Reflux left behind", float(now["cost"]) * float(now["reflux_per_cost"]), float(then["cost"]) * float(then["reflux_per_cost"]), "%d", false)
+	return out
+
+
+## Add a row only when the number actually moves. `more_is_better` decides its colour.
+func _preview_row(out: Array[Dictionary], label: String, before: float, after: float, fmt: String, more_is_better: bool) -> void:
+	var a: String = fmt % ([int(round(before))] if fmt.begins_with("%d") else [before])
+	var b: String = fmt % ([int(round(after))] if fmt.begins_with("%d") else [after])
+	if a == b:
+		return
+	out.append({"label": label, "before": a, "after": b, "better": (after > before) == more_is_better})
+
+
 ## Bind a carried construct into an ability. Irreversible; can fail, and failure hurts
 ## (Brent 2026-09-23). `roll` < 0 means roll randomly (tests pass a fixed roll).
 func bind_construct(ability_index: int, construct_index: int, roll: float = -1.0) -> String:

@@ -26,6 +26,7 @@ func _ready() -> void:
 	_test_slot_assignment()
 	await _test_weapons()
 	_test_character()
+	await _test_playtest_1011()
 	_test_affinities()
 	_test_models()
 	await _test_netherecho()
@@ -566,6 +567,64 @@ func _test_character() -> void:
 		and (r.get("affinities") as Array) == ["water"] and str(((r.get("abilities") as Array)[0] as Dictionary)["id"]) == "water_bolt")
 	for n: Node in [p, q, r]:
 		n.queue_free()
+
+
+func _test_playtest_1011() -> void:
+	print("playtest 2026-10-11:")
+	await get_tree().process_frame
+	# Report: "ability 2 on multiple enemies is not granting the lifesteal it should".
+	# It pays 1% of the damage done to EACH target; the strike's own self-harm is what hides it.
+	var gains: Array[float] = []
+	for n: int in [1, 3]:
+		var p := _new_player("one_percent_lifesteal")
+		p.set("star_pct", [99.0] as Array[float])
+		p.call("_recompute_essence_max")
+		p.set("essence", 99.0)
+		var foes: Array = []
+		for i: int in n:
+			var e := _dummy_enemy(p)
+			e.global_position = p.global_position + Vector3(float(i) - float(n - 1) * 0.5, 0, -1.6)
+			foes.append(e)
+		var pts: float = float(p.get("heal_points_total"))
+		p.call("cast_slot", 1)
+		gains.append(float(p.get("heal_points_total")) - pts)
+		for e: Node in foes:
+			if is_instance_valid(e):
+				e.queue_free()
+		p.queue_free()
+		await get_tree().process_frame
+	var per_target: float = float(GameData.balance["player"]["melee_damage"]) * float(GameData.ability("tsunami_strike")["damage_mult"]) * 0.01
+	_check("lifesteal pays 1% of the strike on one target", _near(gains[0], per_target), "got %f want %f" % [gains[0], per_target])
+	_check("and on every target the strike hits", _near(gains[1], per_target * 3.0), "got %f want %f" % [gains[1], per_target * 3.0])
+
+	# bind preview
+	var q := _new_player("one_percent_lifesteal")
+	var bolt: Dictionary = (q.get("abilities") as Array)[0]
+	var rows: Array[Dictionary] = q.call("preview_bind", bolt, "acceleration")
+	var by := {}
+	for r: Dictionary in rows:
+		by[str(r["label"])] = r
+	_check("preview: acceleration makes the bolt faster and reach further", by.has("Bolt speed") and str(by["Bolt speed"]["before"]) == "20" and str(by["Bolt speed"]["after"]) == "30"
+		and by.has("Range") and bool(by["Range"]["better"]), str(rows))
+	_check("preview: the stage and its damage step are shown", by.has("Stage") and str(by["Stage"]["after"]) == "1" and by.has("Damage") and bool(by["Damage"]["better"]))
+	_check("preview: numbers that do not move are left out", not by.has("Essence cost"))
+	rows = q.call("preview_bind", bolt, "compression")
+	by.clear()
+	for r: Dictionary in rows:
+		by[str(r["label"])] = r
+	_check("preview: compression lowers the cost, shown as an improvement", by.has("Essence cost") and str(by["Essence cost"]["before"]) == "12" and str(by["Essence cost"]["after"]) == "9" and bool(by["Essence cost"]["better"]))
+	rows = q.call("preview_bind", (q.get("abilities") as Array)[1], "tension")
+	by.clear()
+	for r: Dictionary in rows:
+		by[str(r["label"])] = r
+	_check("preview: a downside is shown as one", by.has("Harm to yourself") and not bool(by["Harm to yourself"]["better"]))
+	_check("previewing changes nothing", not bolt.has("bound") and int(bolt["stage"]) == 0)
+	# the preview must agree with what binding then does
+	bolt["progress"] = 100.0
+	(q.get("constructs") as Array).append({"tier": "vestige", "concept": "acceleration"})
+	q.call("bind_construct", 0, 0, 0.0)
+	_check("the bind does what the preview said", _near(float((q.call("ability_stats", bolt) as Dictionary)["speed"]), 30.0) and int(bolt["stage"]) == 1)
+	q.queue_free()
 
 
 func _test_affinities() -> void:
