@@ -1,0 +1,1108 @@
+{
+ "_note": "DRAFT. Not loaded by the game. The zone graph of design/07-open-world-v0.md as data. Every name is original to this project; every number is a first guess [MODEL]. band is a recommended rank in the setting's own terms (low / mid / high / peak within a star; 1* means one star) [C: that grading; B: difficulty is a recommendation, not a level]. zones_out = zone lines crossed from the home district by the shortest way. connects is symmetric. dungeon_of names the zone that holds the entrance (also used for raid-like areas).",
+ "version": "0.1-draft",
+ "world": {
+  "name": "The Tithe Country",
+  "home_zone": "tithebarrow_ninth",
+  "day_length_real_minutes": 24,
+  "zone_types": [
+   "city",
+   "outpost",
+   "yard",
+   "overland",
+   "dungeon",
+   "raid-like",
+   "arena"
+  ]
+ },
+ "regions": [
+  {
+   "id": "barrow_marches",
+   "name": "The Barrow Marches",
+   "order": 1,
+   "band": "baby 1* - peak 1*",
+   "biome": "scrubland",
+   "ether_density": "desert",
+   "status": "detailed in design/07 section 5",
+   "notes": "Starting region. Tithebarrow and the dry country round it. Thin ether, so it is tame and poor [C: ether deserts are tame; MODEL: this place]."
+  },
+  {
+   "id": "sallow_fen",
+   "name": "The Sallow Fen",
+   "order": 2,
+   "band": "peak 1* - mid 2*",
+   "biome": "swamp",
+   "ether_density": "fair",
+   "status": "map scale only",
+   "notes": "Wet lowland south-east of the Marches. Water-rich: where a water character grows [F: local ether mirrors the place]."
+  },
+  {
+   "id": "the_hackle",
+   "name": "The Hackle",
+   "order": 3,
+   "band": "low 2* - peak 2*",
+   "biome": "mountain",
+   "ether_density": "fair",
+   "status": "map scale only",
+   "notes": "The range north of the Marches, and the second city, a hub town built on a portal hub [C: useful chains become fee-charging hubs]."
+  },
+  {
+   "id": "rimeward",
+   "name": "The Rimeward",
+   "order": 4,
+   "band": "peak 2* - mid 3*",
+   "biome": "snow",
+   "ether_density": "rich",
+   "status": "map scale only",
+   "notes": "The cold side of the range. Rich ether: deadlier and better paid [C]."
+  },
+  {
+   "id": "understeps",
+   "name": "The Understeps",
+   "order": 5,
+   "band": "mid 3* and up",
+   "biome": "dungeon",
+   "ether_density": "rich",
+   "status": "map scale only",
+   "notes": "Interspace proper: realms reached by steps from the Winchgate hub [C: interspace, steps]. Mixed kits, wrong skies."
+  }
+ ],
+ "zones": [
+  {
+   "id": "tithebarrow_ninth",
+   "name": "Tithebarrow: the Ninth",
+   "type": "city",
+   "region": "barrow_marches",
+   "band": "safe",
+   "biome": "city",
+   "size_m": [
+    90,
+    60
+   ],
+   "connects": [
+    "tithebarrow_passage_row",
+    "chalk_ring",
+    "the_stubble"
+   ],
+   "dungeon_of": null,
+   "notes": "Home district. Lodging and rent, healer, tempering yard, merchant. Replaces the town menu.",
+   "services": [
+    "lodging",
+    "healer",
+    "tempering_yard",
+    "merchant",
+    "landlord"
+   ],
+   "safe": true,
+   "zones_out": 0
+  },
+  {
+   "id": "tithebarrow_passage_row",
+   "name": "Tithebarrow: Passage Row",
+   "type": "city",
+   "region": "barrow_marches",
+   "band": "safe",
+   "biome": "city",
+   "size_m": [
+    80,
+    50
+   ],
+   "connects": [
+    "tithebarrow_ninth",
+    "longacre_drove"
+   ],
+   "dungeon_of": null,
+   "notes": "Hub quarter. Ticket hall, collection office, carriage post, bank, runesetter (stub).",
+   "services": [
+    "ticket_hall",
+    "collection_office",
+    "carriage_post",
+    "bank",
+    "runesetter"
+   ],
+   "safe": true,
+   "carriage_post": true,
+   "zones_out": 1
+  },
+  {
+   "id": "chalk_ring",
+   "name": "The Chalk Ring",
+   "type": "arena",
+   "region": "barrow_marches",
+   "band": "any",
+   "biome": "scrubland",
+   "size_m": [
+    36,
+    36
+   ],
+   "connects": [
+    "tithebarrow_ninth"
+   ],
+   "dungeon_of": null,
+   "notes": "The existing practice arena, as a place. Teaches; gives no growth [C: arena grants no latent aura].",
+   "exists_today": true,
+   "safe": false,
+   "zones_out": 1
+  },
+  {
+   "id": "the_stubble",
+   "name": "The Stubble",
+   "type": "yard",
+   "region": "barrow_marches",
+   "band": "baby 1* - low 1*",
+   "biome": "scrubland",
+   "size_m": [
+    240,
+    160
+   ],
+   "connects": [
+    "tithebarrow_ninth",
+    "longacre_drove",
+    "sumpside",
+    "tenwall_cut"
+   ],
+   "dungeon_of": null,
+   "notes": "Newbie yard outside the Dross Gate. FIRST ZONE TO BUILD. Holds the mouth of Tenwall Cut.",
+   "ether_mix": [
+    "earth",
+    "wind"
+   ],
+   "build_first": true,
+   "zones_out": 1
+  },
+  {
+   "id": "longacre_drove",
+   "name": "Longacre Drove",
+   "type": "overland",
+   "region": "barrow_marches",
+   "band": "low 1* - mid 1*",
+   "biome": "scrubland",
+   "size_m": [
+    400,
+    220
+   ],
+   "connects": [
+    "tithebarrow_passage_row",
+    "the_stubble",
+    "old_counting_house",
+    "carrion_flats",
+    "hackle_foot"
+   ],
+   "dungeon_of": null,
+   "notes": "The drove road east. First real camps, first runner, first side dungeon.",
+   "ether_mix": [
+    "earth",
+    "wind"
+   ],
+   "carriage_post": true,
+   "zones_out": 2
+  },
+  {
+   "id": "carrion_flats",
+   "name": "Carrion Flats",
+   "type": "overland",
+   "region": "barrow_marches",
+   "band": "mid 1* - high 1*",
+   "biome": "scrubland",
+   "size_m": [
+    440,
+    320
+   ],
+   "connects": [
+    "longacre_drove",
+    "sumpside",
+    "the_muster"
+   ],
+   "dungeon_of": null,
+   "notes": "Open herd country. The hauling zone: big carcasses, long walk. Holds the Scorch (fire wisps).",
+   "ether_mix": [
+    "wind",
+    "fire"
+   ],
+   "zones_out": 3
+  },
+  {
+   "id": "sumpside",
+   "name": "Sumpside",
+   "type": "overland",
+   "region": "barrow_marches",
+   "band": "mid 1* - high 1*",
+   "biome": "swamp",
+   "size_m": [
+    360,
+    260
+   ],
+   "connects": [
+    "the_stubble",
+    "carrion_flats",
+    "drowned_lock",
+    "reedwake"
+   ],
+   "dungeon_of": null,
+   "notes": "Wet edge of the Marches. Water wisps; boardwalk lanes; the way to the Fen.",
+   "ether_mix": [
+    "water"
+   ],
+   "carriage_post": true,
+   "zones_out": 2
+  },
+  {
+   "id": "hackle_foot",
+   "name": "Hackle Foot",
+   "type": "overland",
+   "region": "barrow_marches",
+   "band": "high 1* - peak 1*",
+   "biome": "mountain",
+   "size_m": [
+    300,
+    340
+   ],
+   "connects": [
+    "longacre_drove",
+    "crowstep_pass"
+   ],
+   "dungeon_of": null,
+   "notes": "The climb north. Archers on ledges, lightning on the ridge; the way to the Hackle.",
+   "ether_mix": [
+    "earth",
+    "lightning"
+   ],
+   "carriage_post": true,
+   "zones_out": 3
+  },
+  {
+   "id": "tenwall_cut",
+   "name": "Tenwall Cut",
+   "type": "dungeon",
+   "region": "barrow_marches",
+   "band": "mid 1* to the gate; high 1* full clear",
+   "biome": "any (rolled)",
+   "size_m": [
+    16,
+    154
+   ],
+   "connects": [
+    "the_stubble"
+   ],
+   "dungeon_of": "the_stubble",
+   "notes": "The existing ten-wall assault passage [C: scenario dungeon, seal, 5-of-10 exit rule]. Ticketed.",
+   "exists_today": true,
+   "dungeon_kind": "scenario_assault",
+   "ticket": 300,
+   "zones_out": 2
+  },
+  {
+   "id": "old_counting_house",
+   "name": "The Old Counting-House",
+   "type": "dungeon",
+   "region": "barrow_marches",
+   "band": "low 1* - mid 1*",
+   "biome": "dungeon",
+   "size_m": [
+    60,
+    70
+   ],
+   "connects": [
+    "longacre_drove"
+   ],
+   "dungeon_of": "longacre_drove",
+   "notes": "Five rooms and a vault. The D2 side dungeon: a boss and a chest at the bottom.",
+   "dungeon_kind": "chambers_then_boss",
+   "zones_out": 3
+  },
+  {
+   "id": "drowned_lock",
+   "name": "Drowned Lock",
+   "type": "dungeon",
+   "region": "barrow_marches",
+   "band": "high 1*",
+   "biome": "swamp",
+   "size_m": [
+    80,
+    90
+   ],
+   "connects": [
+    "sumpside"
+   ],
+   "dungeon_of": "sumpside",
+   "notes": "Resetting resource cache [C]: what you can carry out is the reward. The hauling dungeon.",
+   "dungeon_kind": "resource_cache",
+   "zones_out": 3
+  },
+  {
+   "id": "the_muster",
+   "name": "The Muster",
+   "type": "raid-like",
+   "region": "barrow_marches",
+   "band": "peak 1*, rated for a party of 1*s",
+   "biome": "scrubland",
+   "size_m": [
+    140,
+    120
+   ],
+   "connects": [
+    "carrion_flats"
+   ],
+   "dungeon_of": "carrion_flats",
+   "notes": "An invader war-camp in the open. Rated for a party; doing it alone is the feat.",
+   "zones_out": 4
+  },
+  {
+   "id": "reedwake",
+   "name": "Reedwake",
+   "type": "overland",
+   "region": "sallow_fen",
+   "band": "peak 1* - low 2*",
+   "biome": "swamp",
+   "size_m": [
+    420,
+    300
+   ],
+   "connects": [
+    "sumpside",
+    "slow_mile",
+    "sunk_chapel"
+   ],
+   "dungeon_of": null,
+   "notes": "First fen zone. Teaches standing water and fog banks.",
+   "ether_mix": [
+    "water"
+   ],
+   "zones_out": 3
+  },
+  {
+   "id": "slow_mile",
+   "name": "The Slow Mile",
+   "type": "overland",
+   "region": "sallow_fen",
+   "band": "low 2*",
+   "biome": "swamp",
+   "size_m": [
+    520,
+    160
+   ],
+   "connects": [
+    "reedwake",
+    "pilings"
+   ],
+   "dungeon_of": null,
+   "notes": "A long causeway. Travel is the fight: narrow planks, nowhere to back up.",
+   "ether_mix": [
+    "water"
+   ],
+   "zones_out": 4
+  },
+  {
+   "id": "pilings",
+   "name": "Pilings",
+   "type": "outpost",
+   "region": "sallow_fen",
+   "band": "safe",
+   "biome": "swamp",
+   "size_m": [
+    60,
+    50
+   ],
+   "connects": [
+    "slow_mile",
+    "gallmire"
+   ],
+   "dungeon_of": null,
+   "notes": "Stilt village. Ferry post, a field bonesetter at double price, a buyer for fen goods.",
+   "services": [
+    "ferry_post",
+    "field_healer",
+    "buyer"
+   ],
+   "safe": true,
+   "carriage_post": true,
+   "zones_out": 5
+  },
+  {
+   "id": "gallmire",
+   "name": "Gallmire",
+   "type": "overland",
+   "region": "sallow_fen",
+   "band": "mid 2*",
+   "biome": "swamp",
+   "size_m": [
+    460,
+    360
+   ],
+   "connects": [
+    "pilings",
+    "eelers_deep",
+    "scree_shelves"
+   ],
+   "dungeon_of": null,
+   "notes": "Deep fen. Richest water wisps in the first half of the world; back way up to the Hackle.",
+   "ether_mix": [
+    "water"
+   ],
+   "zones_out": 6
+  },
+  {
+   "id": "sunk_chapel",
+   "name": "The Sunk Chapel",
+   "type": "dungeon",
+   "region": "sallow_fen",
+   "band": "low 2* - mid 2*",
+   "biome": "dungeon",
+   "size_m": [
+    90,
+    90
+   ],
+   "connects": [
+    "reedwake"
+   ],
+   "dungeon_of": "reedwake",
+   "notes": "Trap maze [C: trap mazes that want a scout]. Reading the floor, not fighting.",
+   "dungeon_kind": "trap_maze",
+   "zones_out": 4
+  },
+  {
+   "id": "eelers_deep",
+   "name": "Eeler's Deep",
+   "type": "dungeon",
+   "region": "sallow_fen",
+   "band": "mid 2*",
+   "biome": "swamp",
+   "size_m": [
+    100,
+    120
+   ],
+   "connects": [
+    "gallmire"
+   ],
+   "dungeon_of": "gallmire",
+   "notes": "Mystery instance [C]: layout and rule card rolled fresh every entry.",
+   "dungeon_kind": "mystery_instance",
+   "zones_out": 7
+  },
+  {
+   "id": "crowstep_pass",
+   "name": "Crowstep Pass",
+   "type": "overland",
+   "region": "the_hackle",
+   "band": "low 2* - mid 2*",
+   "biome": "mountain",
+   "size_m": [
+    240,
+    520
+   ],
+   "connects": [
+    "hackle_foot",
+    "paydown_deep",
+    "scree_shelves"
+   ],
+   "dungeon_of": null,
+   "notes": "The long climb. Height matters: ledges, rope bridges, shots from above.",
+   "ether_mix": [
+    "earth",
+    "wind"
+   ],
+   "zones_out": 4
+  },
+  {
+   "id": "scree_shelves",
+   "name": "The Scree Shelves",
+   "type": "overland",
+   "region": "the_hackle",
+   "band": "mid 2*",
+   "biome": "mountain",
+   "size_m": [
+    400,
+    320
+   ],
+   "connects": [
+    "gallmire",
+    "crowstep_pass",
+    "lastwatch_redoubt",
+    "winchgate"
+   ],
+   "dungeon_of": null,
+   "notes": "Terraced slopes between the pass and the hub town; the fen back way arrives here.",
+   "ether_mix": [
+    "earth"
+   ],
+   "zones_out": 5
+  },
+  {
+   "id": "winchgate",
+   "name": "Winchgate",
+   "type": "city",
+   "region": "the_hackle",
+   "band": "safe",
+   "biome": "city",
+   "size_m": [
+    110,
+    70
+   ],
+   "connects": [
+    "scree_shelves",
+    "windscour_saddle",
+    "first_landing"
+   ],
+   "dungeon_of": null,
+   "notes": "Second city: a hub town on a portal hub. Ticket auctions, standing, the gate to the Understeps.",
+   "services": [
+    "lodging",
+    "healer",
+    "merchant",
+    "auction_house",
+    "hub_gate",
+    "carriage_post"
+   ],
+   "safe": true,
+   "carriage_post": true,
+   "zones_out": 6
+  },
+  {
+   "id": "windscour_saddle",
+   "name": "Windscour Saddle",
+   "type": "overland",
+   "region": "the_hackle",
+   "band": "high 2*",
+   "biome": "mountain",
+   "size_m": [
+    460,
+    300
+   ],
+   "connects": [
+    "winchgate",
+    "the_cornice",
+    "whitefold"
+   ],
+   "dungeon_of": null,
+   "notes": "Bare high ground. Lightning and wind wisps; the way over to the snow.",
+   "ether_mix": [
+    "lightning",
+    "wind"
+   ],
+   "zones_out": 7
+  },
+  {
+   "id": "paydown_deep",
+   "name": "Paydown Deep",
+   "type": "dungeon",
+   "region": "the_hackle",
+   "band": "mid 2*",
+   "biome": "dungeon",
+   "size_m": [
+    70,
+    160
+   ],
+   "connects": [
+    "crowstep_pass"
+   ],
+   "dungeon_of": "crowstep_pass",
+   "notes": "A debt mine [F: debtors indentured to mine]. Where a character deep in debt can be sent to work it off.",
+   "dungeon_kind": "resource_cache",
+   "zones_out": 5
+  },
+  {
+   "id": "lastwatch_redoubt",
+   "name": "Lastwatch Redoubt",
+   "type": "dungeon",
+   "region": "the_hackle",
+   "band": "high 2*",
+   "biome": "mountain",
+   "size_m": [
+    120,
+    100
+   ],
+   "connects": [
+    "scree_shelves"
+   ],
+   "dungeon_of": "scree_shelves",
+   "notes": "Fortress defence [C: scenario type]. You hold the wall this time.",
+   "dungeon_kind": "scenario_defence",
+   "zones_out": 6
+  },
+  {
+   "id": "the_cornice",
+   "name": "The Cornice",
+   "type": "raid-like",
+   "region": "the_hackle",
+   "band": "peak 2*, rated for a party",
+   "biome": "mountain",
+   "size_m": [
+    180,
+    140
+   ],
+   "connects": [
+    "windscour_saddle"
+   ],
+   "dungeon_of": "windscour_saddle",
+   "notes": "One giant-class thing on a ridge [C: giant-class exists; this one is ours].",
+   "zones_out": 8
+  },
+  {
+   "id": "whitefold",
+   "name": "Whitefold",
+   "type": "overland",
+   "region": "rimeward",
+   "band": "peak 2* - low 3*",
+   "biome": "snow",
+   "size_m": [
+    480,
+    360
+   ],
+   "connects": [
+    "windscour_saddle",
+    "buried_nave",
+    "glass_flats"
+   ],
+   "dungeon_of": null,
+   "notes": "First snow zone. Tracks tell you what is ahead; drifts slow you.",
+   "ether_mix": [
+    "water",
+    "wind"
+   ],
+   "zones_out": 8
+  },
+  {
+   "id": "glass_flats",
+   "name": "The Glass Flats",
+   "type": "overland",
+   "region": "rimeward",
+   "band": "low 3*",
+   "biome": "snow",
+   "size_m": [
+    520,
+    420
+   ],
+   "connects": [
+    "whitefold",
+    "cairnfast",
+    "thawless_gate"
+   ],
+   "dungeon_of": null,
+   "notes": "A frozen lake. Ice changes how shoves and dashes behave.",
+   "ether_mix": [
+    "water",
+    "lightning"
+   ],
+   "zones_out": 9
+  },
+  {
+   "id": "cairnfast",
+   "name": "Cairnfast",
+   "type": "outpost",
+   "region": "rimeward",
+   "band": "safe",
+   "biome": "snow",
+   "size_m": [
+    60,
+    50
+   ],
+   "connects": [
+    "glass_flats"
+   ],
+   "dungeon_of": null,
+   "notes": "Last shelter. Carriage post, a fire, a buyer; no healer.",
+   "services": [
+    "carriage_post",
+    "lodging",
+    "buyer"
+   ],
+   "safe": true,
+   "carriage_post": true,
+   "zones_out": 10
+  },
+  {
+   "id": "buried_nave",
+   "name": "The Buried Nave",
+   "type": "dungeon",
+   "region": "rimeward",
+   "band": "low 3* - mid 3*",
+   "biome": "dungeon",
+   "size_m": [
+    110,
+    110
+   ],
+   "connects": [
+    "whitefold"
+   ],
+   "dungeon_of": "whitefold",
+   "notes": "Chambers then boss under the snow; the ruin walls above hint at the plan below.",
+   "dungeon_kind": "chambers_then_boss",
+   "zones_out": 9
+  },
+  {
+   "id": "thawless_gate",
+   "name": "Thawless Gate",
+   "type": "raid-like",
+   "region": "rimeward",
+   "band": "mid 3*, rated for a party",
+   "biome": "snow",
+   "size_m": [
+    160,
+    200
+   ],
+   "connects": [
+    "glass_flats",
+    "tawny_reach"
+   ],
+   "dungeon_of": "glass_flats",
+   "notes": "A held gate. Beyond it the land stops being New Earth.",
+   "zones_out": 9
+  },
+  {
+   "id": "first_landing",
+   "name": "First Landing",
+   "type": "overland",
+   "region": "understeps",
+   "band": "mid 3*",
+   "biome": "dungeon",
+   "size_m": [
+    380,
+    300
+   ],
+   "connects": [
+    "winchgate",
+    "the_spindle",
+    "tawny_reach"
+   ],
+   "dungeon_of": null,
+   "notes": "Where the Winchgate hub lets out. Worked stone under an open, wrong sky.",
+   "ether_mix": [
+    "any"
+   ],
+   "zones_out": 7
+  },
+  {
+   "id": "tawny_reach",
+   "name": "Tawny Reach",
+   "type": "overland",
+   "region": "understeps",
+   "band": "mid 3* - high 3*",
+   "biome": "scrubland",
+   "size_m": [
+    560,
+    420
+   ],
+   "connects": [
+    "thawless_gate",
+    "first_landing",
+    "vault_of_the_unpaid"
+   ],
+   "dungeon_of": null,
+   "notes": "Grass to every horizon; things in the air and under the ground [C: such a realm is shown; this one is ours].",
+   "ether_mix": [
+    "wind",
+    "earth"
+   ],
+   "zones_out": 8
+  },
+  {
+   "id": "the_spindle",
+   "name": "The Spindle",
+   "type": "dungeon",
+   "region": "understeps",
+   "band": "mid 3*",
+   "biome": "dungeon",
+   "size_m": [
+    40,
+    40
+   ],
+   "connects": [
+    "first_landing"
+   ],
+   "dungeon_of": "first_landing",
+   "notes": "A tower whose entry slots are auctioned; earlier entrants do better [C: such a tower exists; this one is ours].",
+   "dungeon_kind": "auctioned_tower",
+   "zones_out": 8
+  },
+  {
+   "id": "vault_of_the_unpaid",
+   "name": "Vault of the Unpaid",
+   "type": "raid-like",
+   "region": "understeps",
+   "band": "high 3*, rated for twenty",
+   "biome": "dungeon",
+   "size_m": [
+    80,
+    260
+   ],
+   "connects": [
+    "tawny_reach"
+   ],
+   "dungeon_of": "tawny_reach",
+   "notes": "Chambers-then-boss rated for twenty [C: that rating exists]. The far end of the world, for now.",
+   "zones_out": 9
+  }
+ ],
+ "first_build": {
+  "_note": "Section 6 of design/07 as data. Origin is the north-west corner of the zone; x runs east, y runs south, metres. All numbers [MODEL].",
+  "zone": "the_stubble",
+  "size_m": [
+   240,
+   160
+  ],
+  "level_yaw_deg": 45,
+  "zone_lines": [
+   {
+    "id": "dross_gate",
+    "to": "tithebarrow_ninth",
+    "at": [
+     40,
+     0
+    ],
+    "width": 6,
+    "kind": "city gate"
+   },
+   {
+    "id": "drove_stile",
+    "to": "longacre_drove",
+    "at": [
+     240,
+     36
+    ],
+    "width": 8,
+    "kind": "gap in the east bank"
+   },
+   {
+    "id": "wet_gap",
+    "to": "sumpside",
+    "at": [
+     150,
+     160
+    ],
+    "width": 8,
+    "kind": "gap in the south fence"
+   },
+   {
+    "id": "cut_house_door",
+    "to": "tenwall_cut",
+    "at": [
+     222,
+     112
+    ],
+    "width": 4,
+    "kind": "dungeon mouth (ticketed)"
+   }
+  ],
+  "landmarks": [
+   {
+    "id": "dross_heap",
+    "at": [
+     62,
+     22
+    ],
+    "prop": "stones + skull",
+    "note": "the tip outside the wall; first thing past the gate"
+   },
+   {
+    "id": "the_road",
+    "from": [
+     40,
+     0
+    ],
+    "to": [
+     240,
+     36
+    ],
+    "note": "a cleared lane 8 m wide, no props, no lurkers"
+   },
+   {
+    "id": "dry_well",
+    "at": [
+     98,
+     70
+    ],
+    "prop": "city:well",
+    "note": "Netherecho site; a place to sit"
+   },
+   {
+    "id": "hanging_tree",
+    "at": [
+     150,
+     96
+    ],
+    "prop": "scrubland:dead_tree",
+    "note": "where the named spawns"
+   },
+   {
+    "id": "waystone",
+    "at": [
+     188,
+     44
+    ],
+    "prop": "scrubland:waystone",
+    "note": "Netherecho site; map marker"
+   },
+   {
+    "id": "cut_house",
+    "at": [
+     222,
+     112
+    ],
+    "prop": "city wall bays + dungeon gate",
+    "note": "walled yard 20 x 16 m round the mouth of Tenwall Cut"
+   }
+  ],
+  "camps": [
+   {
+    "id": "c1_tip_pickers",
+    "at": [
+     78,
+     40
+    ],
+    "strength": 0.6,
+    "mix": {
+     "grunt": 2
+    },
+    "leash_m": 22
+   },
+   {
+    "id": "c2_ditch",
+    "at": [
+     52,
+     96
+    ],
+    "strength": 0.6,
+    "mix": {
+     "grunt": 3
+    },
+    "leash_m": 22
+   },
+   {
+    "id": "c3_well_watch",
+    "at": [
+     112,
+     58
+    ],
+    "strength": 0.7,
+    "mix": {
+     "grunt": 2,
+     "archer": 1
+    },
+    "leash_m": 24
+   },
+   {
+    "id": "c4_herd",
+    "at": [
+     120,
+     122
+    ],
+    "strength": 0.8,
+    "mix": {
+     "thornback": 4
+    },
+    "leash_m": 40,
+    "neutral": true,
+    "needs": "new kind"
+   },
+   {
+    "id": "c5_shield_pair",
+    "at": [
+     166,
+     60
+    ],
+    "strength": 0.7,
+    "mix": {
+     "grunt": 2,
+     "pavise": 1
+    },
+    "leash_m": 24
+   },
+   {
+    "id": "c6_tree_camp",
+    "at": [
+     154,
+     104
+    ],
+    "strength": 0.8,
+    "mix": {
+     "grunt": 3,
+     "archer": 1
+    },
+    "leash_m": 26,
+    "named": "old_hapenny"
+   },
+   {
+    "id": "c7_cut_pickets",
+    "at": [
+     204,
+     92
+    ],
+    "strength": 0.9,
+    "mix": {
+     "brute": 1,
+     "grunt": 2
+    },
+    "leash_m": 26
+   }
+  ],
+  "roamers": [
+   {
+    "id": "r1",
+    "kind": "gleaner",
+    "count": 2,
+    "home": "c3_well_watch",
+    "needs": "new kind"
+   },
+   {
+    "id": "r2",
+    "kind": "harrier",
+    "count": 1,
+    "when": "night",
+    "between": [
+     "c5_shield_pair",
+     "c7_cut_pickets"
+    ]
+   }
+  ],
+  "lurker_patches": {
+   "kind": "sod_lurker",
+   "count": 6,
+   "rule": "never within 6 m of the road or 20 m of a zone line",
+   "needs": "new kind"
+  },
+  "named": [
+   {
+    "id": "old_hapenny",
+    "name": "Old Ha'penny",
+    "base": "grunt",
+    "deviant": true,
+    "spawn_chance_per_refill": 0.12,
+    "replaces_one_of": "c6_tree_camp"
+   },
+   {
+    "id": "the_widow_mask",
+    "name": "The Widow-Mask",
+    "base": "harrier",
+    "deviant": true,
+    "trigger": "25 invaders killed in this zone in one day"
+   }
+  ],
+  "respawn": {
+   "camp_refill_world_hours": 8,
+   "not_while_player_within_m": 60
+  },
+  "nether_sites": [
+   "dry_well",
+   "waystone",
+   "hanging_tree",
+   "dross_heap"
+  ],
+  "prop_density_per_100m2": 2.5,
+  "blocking_props": "only along the outer edge and round the Cut House",
+  "camp_sites_spare": [
+   {
+    "at": [
+     96,
+     132
+    ]
+   },
+   {
+    "at": [
+     196,
+     140
+    ]
+   }
+  ],
+  "camps_live_per_day": "7 of 9 sites; c7_cut_pickets is always live"
+ }
+}
