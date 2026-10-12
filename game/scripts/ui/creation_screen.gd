@@ -63,6 +63,22 @@ func _process(delta: float) -> void:
 		_pivot.rotation.y = _spin
 	if _rig != null:
 		_rig.animate(delta, 0.0, false)
+	# Ease the turntable camera between the full-figure and head-and-shoulders framings.
+	if _viewport != null and _viewport.get_camera_3d() != null:
+		var cam: Camera3D = _viewport.get_camera_3d()
+		var want: float = 1.0 if bool(get_meta("zoom_close", false)) else 0.0
+		var now: float = move_toward(float(get_meta("zoom_now", 0.0)), want, delta * 3.0)
+		set_meta("zoom_now", now)
+		var t: float = smoothstep(0.0, 1.0, now)
+		var top: float = _rig.height if _rig != null else 1.85
+		var look_at: Vector3 = Vector3(0.0, 0.98, 0.0).lerp(Vector3(0.0, top - 0.2, 0.0), t)
+		cam.position = Vector3(0.0, 1.1, 6.1).lerp(Vector3(0.0, top - 0.12, 2.25), t)
+		cam.look_at(look_at, Vector3.UP)
+
+
+## Frame the whole figure (false) or head and shoulders (true) on the turntable.
+func set_zoom(close: bool) -> void:
+	set_meta("zoom_close", close)
 
 
 # --- the turntable ------------------------------------------------------------------------
@@ -86,42 +102,75 @@ func _build_preview(root: Control) -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_CLEAR_COLOR
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.5, 0.56, 0.7)
-	env.ambient_light_energy = 0.7
+	env.ambient_light_color = Color(0.46, 0.52, 0.66)
+	env.ambient_light_energy = 0.42
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.15
+	env.tonemap_exposure = 1.1
+	env.ssao_enabled = true
+	env.ssao_radius = 0.35
+	env.ssao_intensity = 2.2
+	env.ssao_power = 1.6
 	var we := WorldEnvironment.new()
 	we.environment = env
 	_viewport.add_child(we)
+	# Three-point light: a warm shadowed key from the upper left, a dim cool fill from the
+	# right, and a cold rim from behind to lift the silhouette off the dark backdrop.
 	var key := DirectionalLight3D.new()
-	key.rotation_degrees = Vector3(-38.0, 35.0, 0.0)
-	key.light_color = Color(1.0, 0.87, 0.72)
-	key.light_energy = 1.4
+	key.rotation_degrees = Vector3(-34.0, 38.0, 0.0)
+	key.light_color = Color(1.0, 0.88, 0.74)
+	key.light_energy = 1.55
+	key.shadow_enabled = true
+	key.shadow_blur = 1.6
+	key.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+	key.directional_shadow_max_distance = 14.0
+	key.shadow_normal_bias = 0.6
+	key.shadow_bias = 0.02
 	_viewport.add_child(key)
+	var fill := DirectionalLight3D.new()
+	fill.rotation_degrees = Vector3(-12.0, -48.0, 0.0)
+	fill.light_color = Color(0.6, 0.7, 0.9)
+	fill.light_energy = 0.38
+	_viewport.add_child(fill)
 	var rim := DirectionalLight3D.new()
-	rim.rotation_degrees = Vector3(-20.0, -150.0, 0.0)
-	rim.light_color = Color(0.55, 0.7, 1.0)
-	rim.light_energy = 0.7
+	rim.rotation_degrees = Vector3(-24.0, -158.0, 0.0)
+	rim.light_color = Color(0.6, 0.76, 1.0)
+	rim.light_energy = 1.1
 	_viewport.add_child(rim)
 
+	# A longer lens from further back: less distortion on the face.
 	var cam := Camera3D.new()
-	cam.fov = 30.0
-	cam.position = Vector3(0.0, 1.15, 4.6)
+	cam.fov = 20.0
+	cam.near = 0.2
+	cam.position = Vector3(0.0, 1.1, 6.1)
 	_viewport.add_child(cam)
 	cam.look_at(Vector3(0.0, 0.98, 0.0), Vector3.UP)
 
 	var plinth := MeshInstance3D.new()
 	var disc := CylinderMesh.new()
-	disc.top_radius = 0.6
-	disc.bottom_radius = 0.66
-	disc.height = 0.08
+	disc.top_radius = 0.44
+	disc.bottom_radius = 0.48
+	disc.height = 0.06
+	disc.radial_segments = 48
 	plinth.mesh = disc
-	plinth.position.y = -0.04
+	plinth.position.y = -0.03
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.07, 0.065, 0.06)
-	mat.roughness = 0.9
+	mat.albedo_color = Color(0.035, 0.033, 0.032)
+	mat.roughness = 0.85
 	plinth.material_override = mat
 	_viewport.add_child(plinth)
+	# A soft contact shadow under the feet, on top of the cast shadow.
+	var contact := MeshInstance3D.new()
+	var blob := QuadMesh.new()
+	blob.size = Vector2(0.86, 0.86)
+	contact.mesh = blob
+	contact.rotation_degrees.x = -90.0
+	contact.position.y = 0.004
+	var blob_mat := ShaderMaterial.new()
+	var blob_shader := Shader.new()
+	blob_shader.code = "shader_type spatial;\nrender_mode unshaded, blend_mix, depth_draw_never, shadows_disabled;\nvoid fragment() {\n\tfloat d = length(UV - vec2(0.5)) * 2.0;\n\tALBEDO = vec3(0.0);\n\tALPHA = 0.6 * pow(clamp(1.0 - d, 0.0, 1.0), 1.6);\n}\n"
+	blob_mat.shader = blob_shader
+	contact.material_override = blob_mat
+	_viewport.add_child(contact)
 
 	_pivot = Node3D.new()
 	_viewport.add_child(_pivot)
@@ -289,10 +338,7 @@ func _build_origin() -> void:
 	var ids := HBoxContainer.new()
 	_right.add_child(ids)
 	for idn: Dictionary in GameData.creation["identities"]:
-		ids.add_child(_choice(str(idn["label"]), str(spec["identity"]) == str(idn["id"]), func() -> void:
-			spec["identity"] = str(idn["id"])
-			_refresh()))
-	_right.add_child(UiTheme.body("How others speak of you. It changes nothing else.", 13, UiTheme.TEXT_FAINT))
+		ids.add_child(_choice(str(idn["label"]), str(spec["identity"]) == str(idn["id"]), _set_identity.bind(str(idn["id"]))))
 
 	var bodies: Array = CharacterLook.options().get("body", [])
 	if not bodies.is_empty():
@@ -305,6 +351,16 @@ func _build_origin() -> void:
 			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			grid.add_child(b)
 		_right.add_child(UiTheme.body("Build only. A body is tempered by what it survives, not by how it starts.", 13, UiTheme.TEXT_FAINT))
+
+
+## Who the character is also decides the body's shape (the look's "sex"), when the model offers it.
+func _set_identity(id: String) -> void:
+	spec["identity"] = id
+	for idn: Dictionary in GameData.creation["identities"]:
+		if str(idn["id"]) == id and CharacterLook.options().has("sex"):
+			(spec["look"] as Dictionary)["sex"] = str(idn.get("sex", "male"))
+			_refresh_model()
+	_refresh()
 
 
 func random_name() -> String:
@@ -377,10 +433,11 @@ func _build_appearance() -> void:
 		list.add_child(UiTheme.body("No appearance options are available in this build.", 15, UiTheme.TEXT_DIM))
 	else:
 		_right.add_child(UiWidgets.small_button("Randomise", func() -> void:
-			var body_now: String = str((spec["look"] as Dictionary).get("body", ""))
+			var keep: Dictionary = spec["look"]
 			spec["look"] = CharacterLook.random_look(_rng)
-			if body_now != "":
-				(spec["look"] as Dictionary)["body"] = body_now
+			for key: String in ["body", "sex"]:              # chosen on the Origin step, not here
+				if keep.has(key):
+					(spec["look"] as Dictionary)[key] = keep[key]
 			_refresh_model()
 			_refresh()))
 

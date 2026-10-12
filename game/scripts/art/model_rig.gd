@@ -18,6 +18,13 @@ const HIGHLIGHT_GLOW := Color(1.0, 0.8, 0.42)
 ## Colour the model is pulled toward while an attack is being telegraphed.
 const WINDUP_GLOW := Color(1.0, 0.5, 0.08)
 
+## Surface kinds for add_shape(): they pick the procedural micro-detail and light response.
+const CLOTH := 0
+const SKIN := 1
+const LEATHER_KIND := 2
+const METAL := 3
+const HAIR := 4
+
 const SOLID_SHADER := "
 shader_type spatial;
 render_mode blend_mix, cull_back, diffuse_burley, specular_schlick_ggx;
@@ -27,6 +34,7 @@ uniform float dead = 0.0;
 uniform float rim = 0.1;
 uniform float wear = 1.0;
 varying vec2 v_mat;
+varying float v_kind;
 varying vec3 v_pos;
 vec3 to_linear(vec3 c) {
 	return mix(pow((c + 0.055) / 1.055, vec3(2.4)), c / 12.92, lessThan(c, vec3(0.04045)));
@@ -45,6 +53,7 @@ float noise(vec3 x) {
 }
 void vertex() {
 	v_mat = UV;
+	v_kind = UV2.x;
 	v_pos = VERTEX;
 }
 void fragment() {
@@ -54,17 +63,47 @@ void fragment() {
 	float live = 1.0 - dead;
 	float gloss = v_mat.x * live;
 	float lit = step(0.01, v_mat.y);
-	// Grime and wear: blotchy value variation plus fine grain, strongest on matte cloth.
+	float is_skin = step(0.5, v_kind) * step(v_kind, 1.5);
+	float is_leather = step(1.5, v_kind) * step(v_kind, 2.5);
+	float is_metal = max(step(2.5, v_kind) * step(v_kind, 3.5), step(v_kind, 0.5) * step(0.6, v_mat.x));
+	float is_hair = step(3.5, v_kind);
+	float is_cloth = clamp(1.0 - is_skin - is_leather - is_metal - is_hair, 0.0, 1.0);
+	// Grime and wear: blotchy value variation plus fine grain.
 	float grime = noise(v_pos * 7.0) * 0.55 + noise(v_pos * 23.0) * 0.3 + noise(v_pos * 71.0) * 0.15;
-	float dirt = mix(1.0, mix(0.62, 1.12, grime), wear * (1.0 - lit));
-	ALBEDO = base * tint * dirt;
-	ROUGHNESS = clamp(mix(0.95, 0.42, gloss) + (0.5 - grime) * 0.3 * gloss, 0.05, 1.0);
-	METALLIC = gloss * 0.55;
-	SPECULAR = mix(0.2, 0.6, gloss);
-	float facing = clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0);
+	float dirt_amount = wear * (1.0 - lit) * (1.0 - 0.75 * is_skin - 0.4 * is_hair);
+	float dirt = mix(1.0, mix(0.62, 1.12, grime), dirt_amount);
+	// Micro-relief per material: woven threads, leather grain, brushed metal, hair strands.
+	float weave = (sin(v_pos.x * 900.0) * sin(v_pos.y * 900.0) * 0.5 + sin((v_pos.y + v_pos.z) * 640.0) * 0.5) * 0.5 + 0.5;
+	float grain = noise(v_pos * 190.0) * 0.6 + noise(v_pos * 420.0) * 0.4;
+	float brushed = noise(vec3(v_pos.x * 40.0, v_pos.y * 500.0, v_pos.z * 40.0));
+	float strands = noise(vec3(v_pos.x * 420.0, v_pos.y * 22.0, v_pos.z * 420.0)) * 0.7 + noise(vec3(v_pos.x * 900.0, v_pos.y * 40.0, v_pos.z * 900.0)) * 0.3;
+	float pores = noise(v_pos * 600.0);
+	float relief = is_cloth * weave * 0.00025 + is_leather * grain * 0.0007 + is_metal * brushed * 0.0003 + is_hair * strands * 0.0016 + is_skin * pores * 0.00012;
+	vec3 n = normalize(NORMAL);
+	vec3 dpx = dFdx(VERTEX);
+	vec3 dpy = dFdy(VERTEX);
+	vec3 r1 = cross(dpy, n);
+	vec3 r2 = cross(n, dpx);
+	float det = dot(dpx, r1);
+	vec3 grad = sign(det) * (dFdx(relief) * r1 + dFdy(relief) * r2);
+	n = normalize(abs(det) * n - grad * (1.0 - lit));
+	NORMAL = n;
+	float shade = 1.0 + is_cloth * (weave - 0.5) * 0.045 + is_leather * (grain - 0.5) * 0.14 + is_hair * (strands - 0.5) * 0.4 + is_metal * (brushed - 0.5) * 0.1;
+	ALBEDO = base * tint * dirt * mix(1.0, shade, 1.0 - lit);
+	float rough = mix(0.95, 0.42, gloss);
+	rough = mix(rough, 0.55 + grain * 0.2, is_leather);
+	rough = mix(rough, 0.58 + pores * 0.1, is_skin);
+	rough = mix(rough, 0.5 + strands * 0.2, is_hair);
+	rough = mix(rough, 0.34 + brushed * 0.25 + (0.5 - grime) * 0.15, is_metal);
+	ROUGHNESS = clamp(rough, 0.05, 1.0);
+	METALLIC = max(gloss * 0.55, is_metal * 0.75) * live;
+	SPECULAR = mix(mix(0.2, 0.6, gloss), 0.45, max(is_skin, is_leather));
+	float facing = clamp(dot(n, normalize(VIEW)), 0.0, 1.0);
 	float edge = pow(1.0 - facing, 3.0);
-	ALBEDO *= 1.0 - 0.45 * edge;
-	EMISSION = base * v_mat.y * live + add_glow + mix(base, vec3(0.75, 0.82, 0.9), 0.5) * edge * rim * live;
+	ALBEDO *= 1.0 - 0.45 * edge * (1.0 - 0.6 * is_skin);
+	// Skin lets a little warm light through and keeps a soft sheen at grazing angles.
+	BACKLIGHT = is_skin * live * vec3(0.32, 0.1, 0.07);
+	EMISSION = base * v_mat.y * live + add_glow + mix(base, vec3(0.75, 0.82, 0.9), 0.5) * edge * (rim + 0.12 * is_skin + 0.1 * is_hair) * live;
 }
 "
 
@@ -204,13 +243,15 @@ func add_part(part: String, parent: String = "", pos: Vector3 = Vector3.ZERO, ro
 
 ## Adds a mesh to a part, in the part's local space. `glow` > 0 makes it an emissive accent
 ## of that energy; `gloss` 0..1 goes from matte cloth to polished metal; `flat` gives it
-## faceted normals instead of the mesh's own. Nothing is visible until finish() is called.
-func add_shape(part: String, mesh: Mesh, color: Color, pos: Vector3 = Vector3.ZERO, rot_deg: Vector3 = Vector3.ZERO, scale_by: Vector3 = Vector3.ONE, glow: float = 0.0, gloss: float = 0.0, flat: bool = false) -> void:
+## faceted normals instead of the mesh's own; `kind` is one of CLOTH / SKIN / LEATHER_KIND /
+## METAL / HAIR. A mesh that carries vertex colours has them multiplied into `color`.
+## Nothing is visible until finish() is called.
+func add_shape(part: String, mesh: Mesh, color: Color, pos: Vector3 = Vector3.ZERO, rot_deg: Vector3 = Vector3.ZERO, scale_by: Vector3 = Vector3.ONE, glow: float = 0.0, gloss: float = 0.0, flat: bool = false, kind: int = 0) -> void:
 	if not _parts.has(part):
 		add_part(part)
 	var r := Vector3(deg_to_rad(rot_deg.x), deg_to_rad(rot_deg.y), deg_to_rad(rot_deg.z))
 	var xform := Transform3D(Basis.from_euler(r) * Basis.from_scale(scale_by), pos)
-	_shapes[part].append({"mesh": mesh, "xform": xform, "color": color, "glow": glow, "gloss": gloss, "flat": flat})
+	_shapes[part].append({"mesh": mesh, "xform": xform, "color": color, "glow": glow, "gloss": gloss, "flat": flat, "kind": kind})
 
 
 ## Bakes every part's shapes into meshes and records the rest pose. Call once after building.
@@ -510,15 +551,19 @@ func _bake(part: String) -> ArrayMesh:
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
 	var uvs := PackedVector2Array()
+	var uv2s := PackedVector2Array()
 	for shape: Dictionary in _shapes[part]:
 		var color: Color = shape["color"]
 		var glow: float = shape["glow"]
 		var flat: bool = shape["flat"]
 		var uv := Vector2(float(shape["gloss"]), glow)
+		var uv2 := Vector2(float(int(shape.get("kind", 0))), 0.0)
 		var shade: float = 0.0 if glow > 0.0 else ao_strength
 		var arrays: Array = (shape["mesh"] as Mesh).surface_get_arrays(0)
 		var src_v: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 		var src_n: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL] if arrays[Mesh.ARRAY_NORMAL] != null else PackedVector3Array()
+		var src_c: PackedColorArray = arrays[Mesh.ARRAY_COLOR] if arrays[Mesh.ARRAY_COLOR] != null else PackedColorArray()
+		var painted: bool = src_c.size() == src_v.size()
 		if src_n.size() != src_v.size():
 			flat = true
 		var xform: Transform3D = shape["xform"]
@@ -551,12 +596,15 @@ func _bake(part: String) -> ArrayMesh:
 			normals.append(n0)
 			normals.append(n1)
 			normals.append(n2)
-			colors.append(_shaded(color, shade, (to_model * p0).y, (model_basis * n0).normalized().y, ao_span))
-			colors.append(_shaded(color, shade, (to_model * p1).y, (model_basis * n1).normalized().y, ao_span))
-			colors.append(_shaded(color, shade, (to_model * p2).y, (model_basis * n2).normalized().y, ao_span))
+			colors.append(_shaded(color * src_c[i0] if painted else color, shade, (to_model * p0).y, (model_basis * n0).normalized().y, ao_span))
+			colors.append(_shaded(color * src_c[i1] if painted else color, shade, (to_model * p1).y, (model_basis * n1).normalized().y, ao_span))
+			colors.append(_shaded(color * src_c[i2] if painted else color, shade, (to_model * p2).y, (model_basis * n2).normalized().y, ao_span))
 			uvs.append(uv)
 			uvs.append(uv)
 			uvs.append(uv)
+			uv2s.append(uv2)
+			uv2s.append(uv2)
+			uv2s.append(uv2)
 			k += 3
 	var arrays_out: Array = []
 	arrays_out.resize(Mesh.ARRAY_MAX)
@@ -564,6 +612,7 @@ func _bake(part: String) -> ArrayMesh:
 	arrays_out[Mesh.ARRAY_NORMAL] = normals
 	arrays_out[Mesh.ARRAY_COLOR] = colors
 	arrays_out[Mesh.ARRAY_TEX_UV] = uvs
+	arrays_out[Mesh.ARRAY_TEX_UV2] = uv2s
 	var baked := ArrayMesh.new()
 	baked.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays_out)
 	return baked

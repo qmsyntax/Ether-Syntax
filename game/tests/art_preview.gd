@@ -89,6 +89,12 @@ func _ready() -> void:
 			_layout_heads(true)
 		"looks-face":
 			_layout_heads(false)
+		"looks-face-f":
+			_layout_heads(false, true)
+		"looks-hair-f":
+			_layout_heads(true, true)
+		"looks-body":
+			_layout_bodies()
 		_:
 			_layout_all()
 
@@ -443,7 +449,7 @@ func _layout_looks() -> void:
 
 ## Head close-ups, the distance the creator's turntable works at: all hair styles, or all
 ## faces with a spread of skin tones and hair colours.
-func _layout_heads(hair_row: bool) -> void:
+func _layout_heads(hair_row: bool, female: bool = false) -> void:
 	_camera.size = 1.75
 	_facing = Vector3(1.0, 0.0, 0.55)
 	_camera.position = Vector3(10, 3.2, 10)
@@ -463,9 +469,26 @@ func _layout_heads(hair_row: bool) -> void:
 		else:
 			look["skin"] = str((skins[(i * 5 + 1) % skins.size()] as Dictionary)["id"]) if i > 0 else "weathered"
 			look["hair"] = ["messy", "cropped", "shaved", "swept", "undercut", "topknot"][i % 6]
+		look["sex"] = "female" if female else "male"
 		var rig: ModelRig = Models.player(look)
-		rig.position.y = 0.0
+		rig.position.y = -(rig.height - 1.85)
 		_place(rig, _spot(i, count, 0.4, 0.0), id, 0.0, false)
+
+
+## Male and female for each of the four body types, front and back.
+func _layout_bodies() -> void:
+	_camera.size = 3.3
+	_facing = Vector3(1.0, 0.0, 0.85)
+	_camera.position = Vector3(14, 4.5, 14)
+	_camera.look_at(Vector3(0, 1.0, 0), Vector3.UP)
+	var bodies: Array = Models.look_options()["body"]
+	var i: int = 0
+	for sex: String in ["male", "female"]:
+		for b: Dictionary in bodies:
+			var look: Dictionary = {"sex": sex, "body": str(b["id"]), "band": "off", "hair": "cropped" if sex == "male" else "long"}
+			var rig: ModelRig = Models.player(look)
+			_place(rig, _spot(i, 8, 0.7, 0.0), "%s %s" % [sex, str(b["id"])], 0.0, false)
+			i += 1
 
 
 # ---------------------------------------------------------------- helpers

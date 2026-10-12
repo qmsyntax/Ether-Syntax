@@ -87,6 +87,8 @@ func _process(_delta: float) -> void:
 			_expect("typing in the name box does not leave the screen", main.get("screen") is CreationScreen)
 			_expect("the typed name is kept", str((screen.get("spec") as Dictionary)["name"]) == "Kin", str((screen.get("spec") as Dictionary)["name"]))
 			_expect("clicking an identity selects it", str((screen.get("spec") as Dictionary)["identity"]) == "woman")
+			if CharacterLook.options().has("sex"):
+				_expect("choosing Woman gives the character a female body", str(((screen.get("spec") as Dictionary)["look"] as Dictionary).get("sex", "")) == "female")
 			_click(_button("Next"))
 		30:
 			_expect("Next moves to appearance", int(screen.get("step")) == 1)
@@ -124,6 +126,8 @@ func _process(_delta: float) -> void:
 			_expect("the prime's affinities came with it", (player.get("affinities") as Array) == (picked["affinities"] as Array), str(player.get("affinities")))
 			var kit: Array = GameData.ability_loadout(picked["affinities"])
 			_expect("and their starter skills", (player.get("abilities") as Array).size() == kit.size() and str(((player.get("abilities") as Array)[0] as Dictionary)["id"]) == str(kit[0]))
+			if CharacterLook.options().has("sex"):
+				_expect("the female body carries into the game", str((player.get("look") as Dictionary).get("sex", "")) == "female")
 			_expect("a new character starts with the purse", int(player.get("money")) == GameData.inum("town", "starting_money"))
 			for line: String in results:
 				print("CREATE: " + line)

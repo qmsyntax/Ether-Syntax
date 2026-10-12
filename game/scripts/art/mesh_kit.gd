@@ -162,6 +162,86 @@ static func sheet(width_top: float, width_bottom: float, length: float, folds: f
 	return _commit(verts, _smooth_normals(verts, indices), indices)
 
 
+## Pads loft rows to all eight values and inserts `detail` - 1 smoothly interpolated rows
+## between each pair (Catmull-Rom on every value), so a few hand-written sections give a
+## rounded form.
+static func refine(rows: Array, detail: int = 3) -> Array:
+	var full: Array = []
+	for row: Array in rows:
+		var r: Array = [float(row[0]), float(row[1]), float(row[2]), float(row[3]) if row.size() > 3 else float(row[2])]
+		for k: int in range(4, 8):
+			r.append(float(row[k]) if row.size() > k else 0.0)
+		full.append(r)
+	if detail <= 1 or full.size() < 2:
+		return full
+	var out: Array = []
+	var last: int = full.size() - 1
+	for i: int in last:
+		var p0: Array = full[maxi(i - 1, 0)]
+		var p1: Array = full[i]
+		var p2: Array = full[i + 1]
+		var p3: Array = full[mini(i + 2, last)]
+		for step: int in detail:
+			var t: float = float(step) / float(detail)
+			var r: Array = []
+			for k: int in 8:
+				var a: float = p1[k]
+				var b: float = p2[k]
+				var m1: float = (b - float(p0[k])) * 0.5
+				var m2: float = (float(p3[k]) - a) * 0.5
+				var t2: float = t * t
+				var t3: float = t2 * t
+				r.append((2.0 * t3 - 3.0 * t2 + 1.0) * a + (t3 - 2.0 * t2 + t) * m1 + (-2.0 * t3 + 3.0 * t2) * b + (t3 - t2) * m2)
+			out.append(r)
+	out.append(full[last])
+	return out
+
+
+## A skin over stacked cross-sections, for anatomy and tailored cloth. Each row is
+## [y, rx, rz_front, rz_back, cx, cz, square, ripple] (trailing values optional): half-width,
+## depth toward -Z and +Z, centre offset, corner squareness 0..1, and fold depth as a
+## fraction of the radius (`ripple_n` folds round the ring). `from_deg`..`to_deg` (measured
+## from +X toward +Z; -90 is the front) makes an open panel instead of a closed tube.
+static func loft(rows: Array, sides: int = 20, ripple_n: int = 0, from_deg: float = 0.0, to_deg: float = 360.0, cap_first: bool = true, cap_last: bool = true) -> ArrayMesh:
+	var closed: bool = to_deg - from_deg >= 359.9
+	var rings: Array[PackedVector3Array] = []
+	var count: int = sides if closed else sides + 1
+	for row: Array in rows:
+		var n: int = row.size()
+		var y: float = row[0]
+		var rx: float = row[1]
+		var rzf: float = row[2]
+		var rzb: float = row[3] if n > 3 else rzf
+		var cx: float = row[4] if n > 4 else 0.0
+		var cz: float = row[5] if n > 5 else 0.0
+		var power: float = 1.0 - 0.5 * (float(row[6]) if n > 6 else 0.0)
+		var fold: float = row[7] if n > 7 else 0.0
+		var ring := PackedVector3Array()
+		for j: int in count:
+			var a: float = deg_to_rad(lerpf(from_deg, to_deg, float(j) / float(sides)))
+			var c: float = cos(a)
+			var s: float = sin(a)
+			var k: float = 1.0 + (fold * cos(a * float(ripple_n)) if ripple_n > 0 else 0.0)
+			var ex: float = signf(c) * pow(absf(c), power)
+			var ez: float = signf(s) * pow(absf(s), power)
+			ring.append(Vector3(cx + rx * ex * k, y, cz + (rzb if s > 0.0 else rzf) * ez * k))
+		rings.append(ring)
+	if closed:
+		return stitch(rings, cap_first, cap_last)
+	var verts := PackedVector3Array()
+	var indices := PackedInt32Array()
+	for ring: PackedVector3Array in rings:
+		verts.append_array(ring)
+	for i: int in rings.size() - 1:
+		for j: int in sides:
+			var a0: int = i * count + j
+			var b0: int = a0 + 1
+			var c0: int = a0 + count
+			var d0: int = b0 + count
+			indices.append_array([a0, b0, c0, b0, d0, c0])
+	return _commit(verts, _smooth_normals(verts, indices), indices)
+
+
 ## Joins consecutive rings (each the same vertex count, wound from +X toward +Z) into a
 ## closed skin with smooth normals, optionally capping the first and last ring.
 static func stitch(rings: Array[PackedVector3Array], cap_first: bool = true, cap_last: bool = true) -> ArrayMesh:
