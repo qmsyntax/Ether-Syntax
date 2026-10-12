@@ -1,0 +1,49 @@
+{
+  "_note": "Tempering techniques: passive cultivation of the body. [C] they work by harming the body so it adapts; each has a stage and a 0-100% progress bar; they are grouped by affinity. [B] all of them run at once and simply make the body tougher. [I] the stage cap is star count + 1, as for abilities. Everything else here is ours [MODEL]: the techniques themselves (names, effects, numbers - none is taken from the books), training by sessions that deal structural damage, and a character starting with the plain one plus one per affinity it holds. affinity '' means anyone can train it. effect.stat is one of: max_superficial, max_structural (hit points added per stage), reflux_shed_mult, incoming_mult, move_speed_mult, melee_cooldown_mult (multiplied in once per stage).",
+  "session": {
+    "_note": "One training session. damage is dealt to the structural layer and must leave at least min_structural_left; progress is percent of the current stage.",
+    "damage_base": 8.0,
+    "damage_per_stage": 4.0,
+    "progress_base": 25.0,
+    "progress_falloff_per_stage": 0.7,
+    "min_structural_left": 1.0
+  },
+  "techniques": {
+    "callus": {
+      "name": "Callus", "affinity": "",
+      "verse": "Be struck until the striking is no longer news.",
+      "desc": "The plain way: take the beating, and keep a little of it.",
+      "effect": {"stat": "max_superficial", "per_stage": 8.0, "text": "+%d superficial health"}
+    },
+    "slow_tide": {
+      "name": "Slow Tide", "affinity": "water",
+      "verse": "What the body cannot hold, teach it to pour out.",
+      "desc": "Drown the channels in your own essence until they learn to drain.",
+      "effect": {"stat": "reflux_shed_mult", "per_stage": 1.15, "text": "reflux sheds %d%% faster"}
+    },
+    "kiln_cured": {
+      "name": "Kiln-Cured Hide", "affinity": "fire",
+      "verse": "Fire the clay and it stops being clay.",
+      "desc": "Scald the skin from the inside, a little past what it can bear, and let it set.",
+      "effect": {"stat": "incoming_mult", "per_stage": 0.95, "text": "%d%% less damage taken"}
+    },
+    "bedrock_bones": {
+      "name": "Bedrock Bones", "affinity": "earth",
+      "verse": "Break along the grain. Heal across it.",
+      "desc": "Load the frame until it cracks, and mend it denser each time.",
+      "effect": {"stat": "max_structural", "per_stage": 6.0, "text": "+%d structural health"}
+    },
+    "thin_air_lungs": {
+      "name": "Thin Air Lungs", "affinity": "wind",
+      "verse": "Run where there is nothing to breathe. Come back needing less.",
+      "desc": "Starve the lungs until the legs stop asking them for permission.",
+      "effect": {"stat": "move_speed_mult", "per_stage": 1.04, "text": "%d%% faster on your feet"}
+    },
+    "live_wire": {
+      "name": "Live Wire Nerves", "affinity": "lightning",
+      "verse": "Let it through you until you stop flinching. Then let more through.",
+      "desc": "Burn the hesitation out of the nerves, one jolt at a time.",
+      "effect": {"stat": "melee_cooldown_mult", "per_stage": 0.95, "text": "strikes recover %d%% sooner"}
+    }
+  }
+}

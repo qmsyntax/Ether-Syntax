@@ -399,6 +399,11 @@ func open_shop() -> void:
 		_show_screen(ShopScreen.new(self), false)
 
 
+func open_tempering() -> void:
+	if state == "town":
+		_show_screen(TemperingScreen.new(self), false)
+
+
 ## Toggle the inventory. Out in the field it pauses the game.
 func open_inventory() -> void:
 	if screen is InventoryScreen:
@@ -1087,6 +1092,16 @@ func _setup_ui_shot(which: String) -> void:
 			(first_c.get("body") as Body).apply_damage(35.0)
 			nether.projection.set("hovered", first_c)
 			first_c.call("set_highlight", 1)
+		"temper":
+			# a two-affinity character part-way through its tempering, a little the worse for it
+			player.call("set_affinities", ["water", "earth"])
+			_enter_town()
+			var known: Dictionary = player.get("tempering")
+			known["callus"] = {"stage": 1, "progress": 43.75}
+			known["slow_tide"] = {"stage": 0, "progress": 50.0}
+			known["bedrock_bones"] = {"stage": 2, "progress": 0.0}
+			(player.get("body") as Body).hp["structural"] = 11.0
+			open_tempering()
 		"hud-dual":
 			# a two-affinity character mid-fight: both kits on the bar, one affinity running hot
 			player.call("set_talent", "furnace_gut")

@@ -11,6 +11,7 @@ var _wild: Dictionary = {}
 var items_file: Dictionary = {}
 var items: Dictionary = {}
 var creation: Dictionary = {}
+var _tempering: Dictionary = {}
 var _affinities: Dictionary = {}
 var _prime_default: Array = []
 
@@ -35,9 +36,27 @@ func _ensure() -> void:
 	items_file = _load("res://data/items.json")
 	items = items_file.get("items", {})
 	creation = _load("res://data/creation.json")
+	_tempering = _load("res://data/tempering.json")
 	var aff: Dictionary = _load("res://data/affinities.json")
 	_affinities = aff.get("affinities", {})
 	_prime_default = aff.get("prime_default", [])
+
+
+## A tempering technique definition, or {} if the id is unknown.
+func technique(id: String) -> Dictionary:
+	_ensure()
+	return (_tempering.get("techniques", {}) as Dictionary).get(id, {})
+
+
+func technique_ids() -> Array:
+	_ensure()
+	return (_tempering.get("techniques", {}) as Dictionary).keys()
+
+
+## The numbers for one training session.
+func tempering_session() -> Dictionary:
+	_ensure()
+	return _tempering.get("session", {})
 
 
 ## An affinity definition (label, color, desc), or {} if the id is unknown.

@@ -128,3 +128,26 @@ Verified: self-test 191/191, smoke, three bots, both inventory click tests, crea
 
 Verified: self-test 200/200, smoke, three bots, inventory and creation click tests; both screenshots inspected.
 Not verified: the green heal number in live play; whether the wisp in Brent's screenshot really was a foreign one.
+
+## Part J — no default self-harm; tempering techniques (Brent 2026-10-11)
+
+Brent: "why is tsunami strike doing self harm? Thats a book artifact from a very specific combination of concepts
+and skills the MC put together. It should not by default do self harm. We also need tempering techniques."
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-32 | Self-harm removed from all five strike abilities and from the tension concept; `self_harm` stays as an optional key nothing uses. Verses and the fire description reworded to match | selftest | Done |
+| S06-33 | Tempering techniques: six of our own (one plain, one per affinity), each with a stage, a progress bar and one effect - more superficial or structural health, faster reflux shedding, less damage taken, faster movement, faster strikes. All active at once | selftest (tempering: 19 checks) | Done |
+| S06-34 | Training: a session in the town's tempering yard costs structural health (8, +4 per stage) and adds progress (25%, x0.7 per stage); refused if it would leave less than 1 structural; stage cap stars + 1 | selftest, `shots/ui-temper.png` | Done |
+| S06-35 | A character starts knowing the plain technique and one per affinity held; tempering is saved; older saves start at stage 0 | selftest | Done |
+
+Canon vs ours: [C] techniques are passive, grouped by affinity, have a stage and a progress bar, and work by
+harming the body so it adapts; one speeds reflux shedding. [B] all run at once and simply make the body tougher.
+[I] cap of stars + 1. [MODEL] every technique, name, effect and number here; sessions; the yard; the starting set.
+None of the books' named techniques is used.
+
+Not done: learning further techniques (scrolls), training anywhere but town, "using a technique your body is not
+tempered for injures you" [C], and the clinic's tempering aid.
+
+Verified: self-test 220/220, smoke, three bots, inventory and creation click tests; `ui-temper.png` inspected.
+Not verified: the Train button by hand, or whether the costs feel right.

@@ -45,6 +45,8 @@ func build(root: Control) -> void:
 			player.call("buy_healing")
 			game.call("save_now")
 			rebuild(), int(heal["cost"]) > 0 and bool(player.call("can_afford", int(heal["cost"])))))
+	left.add_child(UiWidgets.service_button("Tempering yard", "Break the body a little, on purpose. It comes back harder.", "",
+		func() -> void: game.call("open_tempering")))
 	left.add_child(UiWidgets.service_button("Merchant", "Satellites, packs and trinkets. Credit extended, to a point.", "",
 		func() -> void: game.call("open_shop")))
 	var loot: int = inv.loot_value()

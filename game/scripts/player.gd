@@ -19,6 +19,8 @@ var talent_id := ""
 var char_name := ""
 var identity := ""
 var look: Dictionary = {}
+## Tempering techniques known: id -> {"stage": int, "progress": 0..100}. All of them work at once.
+var tempering: Dictionary = {}
 ## Affinities the prime vestige came with; abilities outside them cannot be learned.
 var affinities: Array[String] = []
 var talent: Dictionary = {}
@@ -140,6 +142,7 @@ func _init() -> void:
 		hotbar.append(-1)
 	affinities = GameData.default_affinities()
 	_reset_loadout()
+	_reset_tempering()
 
 
 func _ready() -> void:
@@ -204,6 +207,98 @@ func set_affinities(list: Array) -> void:
 	affinities = next
 	_reset_loadout()
 	clear_reflux()
+	_reset_tempering()
+
+
+# --- tempering ------------------------------------------------------------------------
+
+## The techniques a new character knows: the plain one, and one for each affinity it holds.
+## Any health they had added is taken back out first.
+func _reset_tempering() -> void:
+	for id: String in tempering:
+		_apply_temper_health(id, -int((tempering[id] as Dictionary)["stage"]))
+	tempering.clear()
+	for id: String in GameData.technique_ids():
+		var aff: String = str(GameData.technique(id).get("affinity", ""))
+		if aff == "" or affinities.has(aff):
+			tempering[id] = {"stage": 0, "progress": 0.0}
+
+
+## Stages may not outrun the soul: star count + 1, as for abilities.
+func temper_stage_cap() -> int:
+	return stars + 1
+
+
+## A multiplier from everything tempered so far ("reflux_shed_mult", "incoming_mult",
+## "move_speed_mult", "melee_cooldown_mult"): each stage multiplies it in once more.
+func temper_stat(stat: String) -> float:
+	var v := 1.0
+	for id: String in tempering:
+		var eff: Dictionary = GameData.technique(id).get("effect", {})
+		if str(eff.get("stat", "")) == stat:
+			v *= pow(float(eff["per_stage"]), float(int((tempering[id] as Dictionary)["stage"])))
+	return v
+
+
+## "+16 superficial health", "reflux sheds 32% faster" ... what a technique gives at `stage`.
+func temper_effect_text(id: String, stage: int) -> String:
+	var eff: Dictionary = GameData.technique(id).get("effect", {})
+	var per: float = float(eff.get("per_stage", 0.0))
+	var amount: float
+	if str(eff.get("stat", "")).begins_with("max_"):
+		amount = per * float(stage)
+	else:
+		amount = absf(pow(per, float(stage)) - 1.0) * 100.0
+	return str(eff.get("text", "%d")) % int(round(amount))
+
+
+func temper_session_damage(id: String) -> float:
+	var s: Dictionary = GameData.tempering_session()
+	return float(s["damage_base"]) + float(s["damage_per_stage"]) * float(int((tempering[id] as Dictionary)["stage"]))
+
+
+func temper_session_progress(id: String) -> float:
+	var s: Dictionary = GameData.tempering_session()
+	return float(s["progress_base"]) * pow(float(s["progress_falloff_per_stage"]), float(int((tempering[id] as Dictionary)["stage"])))
+
+
+## Why a session cannot be trained right now, or "" if it can.
+func cannot_temper_reason(id: String) -> String:
+	if not tempering.has(id):
+		return "You do not know it."
+	if int((tempering[id] as Dictionary)["stage"]) >= temper_stage_cap():
+		return "Needs another star."
+	if float(body.hp["structural"]) - temper_session_damage(id) < float(GameData.tempering_session()["min_structural_left"]):
+		return "Your body cannot take it. Mend first."
+	return ""
+
+
+## One training session: it costs bone and moves the technique along; a full bar is a new stage.
+## Returns false if the session could not be trained.
+func temper_session(id: String) -> bool:
+	if cannot_temper_reason(id) != "":
+		return false
+	var st: Dictionary = tempering[id]
+	body.damage_layer("structural", temper_session_damage(id))
+	st["progress"] = float(st["progress"]) + temper_session_progress(id)
+	if float(st["progress"]) >= 99.999:
+		st["progress"] = 0.0
+		st["stage"] = int(st["stage"]) + 1
+		_apply_temper_health(id, 1)
+		note("%s reaches stage %d: %s." % [str(GameData.technique(id).get("name", id)), int(st["stage"]), temper_effect_text(id, int(st["stage"]))])
+	return true
+
+
+## Techniques that add health change the body itself, `stages` stages' worth (negative to undo).
+func _apply_temper_health(id: String, stages: int) -> void:
+	var eff: Dictionary = GameData.technique(id).get("effect", {})
+	var stat: String = str(eff.get("stat", ""))
+	if not stat.begins_with("max_") or stages == 0:
+		return
+	var layer: String = stat.trim_prefix("max_")
+	var add: float = float(eff["per_stage"]) * float(stages)
+	body.max_hp[layer] = maxf(1.0, float(body.max_hp[layer]) + add)
+	body.hp[layer] = clampf(float(body.hp[layer]) + add, 0.0, float(body.max_hp[layer]))
 
 
 ## Start over with the kits of the current affinities, on the bar in order.
@@ -246,7 +341,7 @@ func clear_reflux() -> void:
 
 ## Every affinity cools at once; one that drops far enough unlocks.
 func _shed_reflux(amount: float) -> void:
-	var shed: float = amount * inventory.stat("reflux_shed_mult", true)
+	var shed: float = amount * inventory.stat("reflux_shed_mult", true) * temper_stat("reflux_shed_mult")
 	for aff: String in reflux_by:
 		reflux_by[aff] = maxf(0.0, float(reflux_by[aff]) - shed)
 		if is_locked(aff) and float(reflux_by[aff]) < float(_reflux_cfg["unlock_below"]):
@@ -370,7 +465,7 @@ func _physics_process(delta: float) -> void:
 			dir = Vector3.ZERO if input == Vector2.ZERO else dir
 			if _melee_cd <= 0.0:
 				_strike_target(attack_target, float(_p["off_hand_factor"]) if arm_right_lost else 1.0, ["melee"])
-				_melee_cd = float(_p["melee_cooldown"]) * weapon_stat("melee_cooldown_mult", true)
+				_melee_cd = float(_p["melee_cooldown"]) * weapon_stat("melee_cooldown_mult", true) * temper_stat("melee_cooldown_mult")
 				if _strike_once and not Input.is_action_pressed("strike"):
 					attack_target = null
 		elif input == Vector2.ZERO:
@@ -395,7 +490,7 @@ func _physics_process(delta: float) -> void:
 
 	if bot:
 		dir = _bot_dir if attack_target == null else dir
-	var speed: float = float(_p["move_speed"]) * (float(_p["charge_move_factor"]) if _charging else 1.0)
+	var speed: float = float(_p["move_speed"]) * temper_stat("move_speed_mult") * (float(_p["charge_move_factor"]) if _charging else 1.0)
 	velocity = dir * speed
 	if _dash_time > 0.0:
 		_dash_time -= delta
@@ -459,7 +554,7 @@ func take_hit(amount: float, heavy: bool, source: Node) -> float:
 		e.on_incoming(ctx)
 	if ctx.cancelled:
 		return 0.0
-	return _apply_damage(ctx.amount(), heavy)
+	return _apply_damage(ctx.amount() * temper_stat("incoming_mult"), heavy)
 
 
 ## Damage that has passed the pipeline (or comes from an effect's own timer).
@@ -737,8 +832,9 @@ func cast_ability(index: int) -> void:
 		"projectile":
 			_fire_projectile(ab, stage_mult, GameData.affinity_color(aff))
 		"melee_burst":
-			var hurt: float = body.apply_self_harm(float(ab["self_harm"]))
-			_float("-%d" % int(hurt), Color(1, 0.4, 0.3))
+			if float(ab.get("self_harm", 0.0)) > 0.0:     # only a build that earns it; no ability has it by default
+				var hurt: float = body.apply_self_harm(float(ab["self_harm"]))
+				_float("-%d" % int(hurt), Color(1, 0.4, 0.3))
 			_swing(float(ab["damage_mult"]) * stage_mult, melee_range + float(ab["reach_bonus"]), ["melee", "ability", str(state["id"])])
 			_melee_cd = float(_p["melee_cooldown"]) * float(_p["overcharge_cooldown_factor"])
 		"dash":
@@ -1005,6 +1101,7 @@ func take_pickup(drop: Node3D) -> bool:
 func to_save() -> Dictionary:
 	return {
 		"name": char_name, "identity": identity, "look": look.duplicate(), "affinities": affinities.duplicate(),
+		"tempering": tempering.duplicate(true),
 		"talent_id": talent_id, "stars": stars, "star_pct": star_pct.duplicate(), "money": money,
 		"essence": essence, "latent_aura": _latent_aura,
 		"body_hp": body.hp.duplicate(), "body_max": body.max_hp.duplicate(),
@@ -1025,6 +1122,17 @@ func from_save(d: Dictionary) -> void:
 		affinities.append(str(a))
 	clear_reflux()
 	_reset_loadout()                  # the kit for those affinities, unless the save lists abilities below
+	# tempering: what the save has, on top of what such a character starts knowing. The health it
+	# added is already in the saved body_max, so stages are set here without applying it again.
+	tempering.clear()
+	for id: String in GameData.technique_ids():
+		var t_aff: String = str(GameData.technique(id).get("affinity", ""))
+		if t_aff == "" or affinities.has(t_aff):
+			tempering[id] = {"stage": 0, "progress": 0.0}
+	var saved_temper: Dictionary = d.get("tempering", {})
+	for id: String in saved_temper:
+		if not GameData.technique(id).is_empty():
+			tempering[id] = {"stage": int((saved_temper[id] as Dictionary).get("stage", 0)), "progress": float((saved_temper[id] as Dictionary).get("progress", 0.0))}
 	set_look(d.get("look", {}))
 	stars = int(d.get("stars", 1))
 	star_pct.clear()

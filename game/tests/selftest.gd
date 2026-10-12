@@ -27,6 +27,7 @@ func _ready() -> void:
 	await _test_weapons()
 	_test_character()
 	await _test_playtest_1011()
+	_test_tempering()
 	_test_affinities()
 	_test_models()
 	await _test_netherecho()
@@ -270,7 +271,7 @@ func _test_abilities() -> void:
 	ab[0]["stage"] = 1
 	ab[0]["progress"] = 0.0
 
-	# Tsunami strike: a big blow that costs the body.
+	# Tsunami strike: a big blow.
 	var e2 := _dummy_enemy(p)
 	var eb: Body = e2.get("body")
 	var pb: Body = p.get("body")
@@ -278,9 +279,13 @@ func _test_abilities() -> void:
 	p.set("reflux", 0.0)
 	ab[0]["stage"] = 0
 	p.set("_facing", Vector3(0, 0, -1))
+	var body_before: float = pb.total()
 	p.call("cast_slot", 1)
 	_check("tsunami strike lands x3 melee damage", eb.missing("superficial") >= 179.0, "got %f" % eb.missing("superficial"))
-	_check("tsunami strike wounds the caster", pb.missing("structural") > 0.0)
+	_check("tsunami strike does not hurt its caster (Brent 2026-10-11)", pb.total() >= body_before, "%f -> %f" % [body_before, pb.total()])      # lifesteal may even raise it
+	for ab_id: String in GameData.abilities:
+		if float(GameData.ability(ab_id).get("self_harm", 0.0)) > 0.0:
+			_check("no ability hurts its caster by default", false, ab_id)
 	e2.queue_free()
 
 	# Meditation gathers wisps.
@@ -617,7 +622,10 @@ func _test_playtest_1011() -> void:
 	by.clear()
 	for r: Dictionary in rows:
 		by[str(r["label"])] = r
-	_check("preview: a downside is shown as one", by.has("Harm to yourself") and not bool(by["Harm to yourself"]["better"]))
+	_check("preview: tension hits harder and no longer costs you anything", by.has("Damage per target") and bool(by["Damage per target"]["better"]) and not by.has("Harm to yourself"))
+	var costly: Array[Dictionary] = []
+	q.call("_preview_row", costly, "Harm to yourself", 2.0, 3.0, "%.1f", false)
+	_check("preview: a number that gets worse is marked as worse", costly.size() == 1 and not bool(costly[0]["better"]))
 	_check("previewing changes nothing", not bolt.has("bound") and int(bolt["stage"]) == 0)
 	# the preview must agree with what binding then does
 	bolt["progress"] = 100.0
@@ -625,6 +633,80 @@ func _test_playtest_1011() -> void:
 	q.call("bind_construct", 0, 0, 0.0)
 	_check("the bind does what the preview said", _near(float((q.call("ability_stats", bolt) as Dictionary)["speed"]), 30.0) and int(bolt["stage"]) == 1)
 	q.queue_free()
+
+
+func _test_tempering() -> void:
+	print("tempering:")
+	var p := _new_player()
+	var known: Dictionary = p.get("tempering")
+	_check("a water character knows the plain technique and the water one", known.has("callus") and known.has("slow_tide") and known.size() == 2, str(known.keys()))
+	p.call("set_affinities", ["fire", "earth", "wind"])
+	known = p.get("tempering")
+	_check("techniques follow the affinities held", known.has("callus") and known.has("kiln_cured") and known.has("bedrock_bones") and known.has("thin_air_lungs")
+		and not known.has("slow_tide") and not known.has("live_wire"), str(known.keys()))
+	for id: String in GameData.technique_ids():
+		var def: Dictionary = GameData.technique(id)
+		var aff: String = str(def.get("affinity", ""))
+		if not (aff == "" or not GameData.affinity(aff).is_empty()) or not (def.get("effect", {}) as Dictionary).has("stat"):
+			_check("every technique names a known affinity and an effect", false, id)
+	var b: Body = p.get("body")
+	var sup_max: float = float(b.max_hp["superficial"])
+	var struct0: float = float(b.hp["structural"])
+	_check("a session costs structural health and moves the bar", bool(p.call("temper_session", "callus")) and _near(float(b.hp["structural"]), struct0 - 8.0)
+		and _near(float(known["callus"]["progress"]), 25.0))
+	for i: int in 3:
+		b.hp["structural"] = b.max_hp["structural"]
+		p.call("temper_session", "callus")
+	_check("four sessions make stage 1", int(known["callus"]["stage"]) == 1 and _near(float(known["callus"]["progress"]), 0.0))
+	_check("callus stage 1 thickens the skin", _near(float(b.max_hp["superficial"]), sup_max + 8.0))
+	_check("the next stage is slower and hurts more", _near(float(p.call("temper_session_progress", "callus")), 17.5) and _near(float(p.call("temper_session_damage", "callus")), 12.0))
+	b.hp["structural"] = 5.0
+	_check("a body too broken cannot train", not bool(p.call("temper_session", "callus")) and str(p.call("cannot_temper_reason", "callus")) != "" and _near(float(b.hp["structural"]), 5.0))
+	b.hp["structural"] = b.max_hp["structural"]
+	known["callus"]["stage"] = 2
+	_check("a one-star body stops at stage 2", not bool(p.call("temper_session", "callus")) and int(p.call("temper_stage_cap")) == 2)
+	known["callus"]["stage"] = 1
+
+	# every technique's effect, all at once
+	known["kiln_cured"]["stage"] = 2
+	known["thin_air_lungs"]["stage"] = 1
+	_check("kiln-cured hide turns blows", _near(float(p.call("temper_stat", "incoming_mult")), 0.9025))
+	var before: float = b.total()
+	p.call("take_hit", 20.0, false, null)
+	_check("and the body takes less", _near(before - b.total(), 18.05), "took %f" % (before - b.total()))
+	_check("thin air lungs quicken the feet", _near(float(p.call("temper_stat", "move_speed_mult")), 1.04))
+	_check("an untrained stat is untouched", _near(float(p.call("temper_stat", "melee_cooldown_mult")), 1.0))
+	var struct_max: float = float(b.max_hp["structural"])
+	b.hp["structural"] = b.max_hp["structural"]
+	for i: int in 4:
+		b.hp["structural"] = b.max_hp["structural"]
+		p.call("temper_session", "bedrock_bones")
+	_check("bedrock bones thicken the frame", int(known["bedrock_bones"]["stage"]) == 1 and _near(float(b.max_hp["structural"]), struct_max + 6.0))
+
+	var w := _new_player()
+	(w.get("tempering") as Dictionary)["slow_tide"]["stage"] = 2
+	(w.get("reflux_by") as Dictionary)["water"] = 50.0
+	w.call("_shed_reflux", 10.0)
+	_check("slow tide sheds reflux faster", _near(float(w.call("reflux_of", "water")), 50.0 - 10.0 * 1.15 * 1.15), "left %f" % float(w.call("reflux_of", "water")))
+	_check("the screen can say what a stage gives", str(w.call("temper_effect_text", "slow_tide", 2)) == "reflux sheds 32% faster" and str(w.call("temper_effect_text", "callus", 3)) == "+24 superficial health")
+	w.queue_free()
+
+	# save round trip; the health a technique added must not be added twice
+	var q := _new_player()
+	q.call("from_save", JSON.parse_string(JSON.stringify(p.call("to_save"))))
+	var qk: Dictionary = q.get("tempering")
+	_check("tempering survives a save", int(qk["callus"]["stage"]) == 1 and int(qk["kiln_cured"]["stage"]) == 2 and int(qk["bedrock_bones"]["stage"]) == 1 and qk.size() == known.size())
+	_check("and its health is not counted twice", _near(float((q.get("body") as Body).max_hp["superficial"]), sup_max + 8.0) and _near(float((q.get("body") as Body).max_hp["structural"]), struct_max + 6.0))
+	var old: Dictionary = p.call("to_save")
+	old.erase("tempering")
+	var r := _new_player()
+	r.call("from_save", old)
+	_check("a save from before tempering starts its techniques at stage 0", int((r.get("tempering") as Dictionary)["callus"]["stage"]) == 0 and (r.get("tempering") as Dictionary).has("kiln_cured"))
+	# changing affinities (a new character) gives the health back
+	p.call("set_affinities", ["water"])
+	_check("starting over undoes tempered health", _near(float(b.max_hp["superficial"]), sup_max) and _near(float(b.max_hp["structural"]), struct_max) and int((p.get("tempering") as Dictionary)["callus"]["stage"]) == 0)
+	for n: Node in [p, q, r]:
+		n.queue_free()
 
 
 func _test_affinities() -> void:
