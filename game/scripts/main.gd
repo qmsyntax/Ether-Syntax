@@ -813,7 +813,7 @@ func _build_world() -> void:
 
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 24.0
+	camera.size = GameData.num("camera", "ortho_size")
 	camera.far = 200.0
 	add_child(camera)
 	camera.current = true

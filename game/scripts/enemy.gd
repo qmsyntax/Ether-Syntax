@@ -26,8 +26,11 @@ var _reach := 2.3
 var _windup := -1.0
 var _flash := 0.0
 var _base_color := Color(0.75, 0.2, 0.2)
-var _mat: StandardMaterial3D
 var _label: Label3D
+var _rig: ModelRig
+var _strike_t := 0.0
+var _shown_highlight := 0
+var _shown_windup := false
 
 
 ## `strength` scales health and damage - dungeon stages past the midpoint hit harder.
@@ -50,18 +53,9 @@ func setup(enemy_kind: String, player: Node3D, strength: float = 1.0) -> void:
 	_base_color = Color(float(c[0]), float(c[1]), float(c[2]))
 	body = Body.new(float(d.get("hp", 240.0)) * strength)
 
-	var mesh := MeshInstance3D.new()
-	var capsule := CapsuleMesh.new()
-	capsule.radius = radius
-	capsule.height = height
-	mesh.mesh = capsule
-	mesh.position.y = height * 0.5
-	_mat = StandardMaterial3D.new()
-	_mat.albedo_color = _base_color
-	_mat.emission_enabled = true
-	_mat.emission = Color(0, 0, 0)
-	mesh.material_override = _mat
-	add_child(mesh)
+	# The look is a procedural low-poly model (scripts/art). Gameplay size still comes from data.
+	_rig = Models.enemy(enemy_kind)
+	add_child(_rig)
 
 	var col := CollisionShape3D.new()
 	var shape := CapsuleShape3D.new()
@@ -98,6 +92,8 @@ func is_dead() -> bool:
 func take_hit(amount: float, _heavy: bool, _source: Node) -> float:
 	var applied: float = body.apply_damage(amount)
 	_flash = 0.12
+	if _rig != null:
+		_rig.flash(0.12)
 	_refresh_label()
 	if body.is_dead():
 		remove_from_group("hittable")
@@ -125,6 +121,7 @@ func _physics_process(delta: float) -> void:
 			if dist <= _reach + radius and not target_dead:
 				target.take_hit(damage, heavy, self)
 			_attack_cd = _cooldown
+			_strike_t = 0.22
 	elif target_dead:
 		velocity = Vector3.ZERO
 	elif dist > 1.5 + radius:
@@ -137,19 +134,18 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
-	if _flash > 0.0:
-		_mat.albedo_color = Color(1, 1, 1)
-	elif _windup >= 0.0:
-		_mat.albedo_color = Color(1.0, 0.75, 0.2)
-	elif highlight > 0:
-		_mat.albedo_color = _base_color.lightened(0.45 if highlight == 1 else 0.3)
-	else:
-		_mat.albedo_color = _base_color
-	# A warm glow marks what the cursor is on (bright) and what you are attacking (dimmer).
-	if highlight > 0 and _flash <= 0.0:
-		_mat.emission = Color(0.9, 0.8, 0.3) * (0.55 if highlight == 1 else 0.35)
-	else:
-		_mat.emission = Color(0, 0, 0)
+	# Look: face the target, telegraph the wind-up, glow when hovered or targeted, and animate.
+	_strike_t -= delta
+	if dist > 0.1:
+		_rig.rotation.y = lerp_angle(_rig.rotation.y, atan2(-to.x, -to.z), minf(1.0, delta * 12.0))
+	var winding: bool = _windup >= 0.0
+	if winding != _shown_windup:
+		_shown_windup = winding
+		_rig.set_windup(winding)
+	if highlight != _shown_highlight:
+		_shown_highlight = highlight
+		_rig.set_highlight(highlight)
+	_rig.animate(delta, velocity.length(), _strike_t > 0.0)
 
 
 func _refresh_label() -> void:

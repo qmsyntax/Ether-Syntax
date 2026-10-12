@@ -9,7 +9,7 @@ var highlight := 0
 var is_scenery := false
 var is_pickup := true
 
-var _mat: StandardMaterial3D
+var _rig: ModelRig
 var _label: Label3D
 var _equippable := false
 
@@ -17,20 +17,10 @@ var _equippable := false
 func setup(id: String) -> void:
 	item_id = id
 	var def: Dictionary = GameData.item(id)
-	var mesh := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(0.4, 0.4, 0.4)
-	mesh.mesh = box
-	mesh.position.y = 0.25
-	mesh.rotation_degrees = Vector3(0, 35, 0)
-	_mat = StandardMaterial3D.new()
 	var equippable: bool = str(def.get("slot", "")) != ""
 	_equippable = equippable
-	_mat.albedo_color = Color(0.95, 0.8, 0.25) if equippable else Color(0.8, 0.8, 0.85)
-	_mat.emission_enabled = true
-	_mat.emission = _mat.albedo_color * 0.25
-	mesh.material_override = _mat
-	add_child(mesh)
+	_rig = Models.pickup(equippable) as ModelRig
+	add_child(_rig)
 
 	_label = Label3D.new()
 	_label.text = str(def.get("name", id))
@@ -53,7 +43,8 @@ func set_highlight(level: int) -> void:
 	highlight = level
 	_label.modulate.a = 1.0 if level > 0 else (0.75 if _equippable else 0.6)
 	_label.font_size = 36 if level > 0 else 30
-	_mat.emission = _mat.albedo_color * (0.9 if level > 0 else 0.25)
+	if _rig != null:
+		_rig.set_highlight(level)
 
 
 func take() -> void:

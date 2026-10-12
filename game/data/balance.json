@@ -130,5 +130,9 @@
     "_note": "Binding a construct into a full ability (Brent: irreversible, can fail, the construct can kill you). Failure loses the construct and wounds you.",
     "success_chance": 0.8,
     "fail_self_harm": 10.0
+  },
+  "camera": {
+    "_note": "Orthographic size = metres of world shown top to bottom. 24 was the capsule-era value; 19 shows the models' detail.",
+    "ortho_size": 19.0
   }
 }

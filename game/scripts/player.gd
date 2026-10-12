@@ -76,7 +76,11 @@ var _charging := false
 var _meditate_block := 0.0
 var _dash_time := 0.0
 var _dash_vel := Vector3.ZERO
-var _mat: StandardMaterial3D
+var _rig: ModelRig
+var _strike_t := 0.0
+var _shown_arm_lost := false
+var _shown_glow := 0
+var _shown_windup := false
 
 # Tuning (GameData).
 var _p: Dictionary
@@ -116,23 +120,7 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	var mesh := MeshInstance3D.new()
-	var capsule := CapsuleMesh.new()
-	capsule.radius = 0.4
-	capsule.height = 1.8
-	mesh.mesh = capsule
-	mesh.position.y = 0.9
-	_mat = StandardMaterial3D.new()
-	_mat.albedo_color = Color(0.15, 0.45, 0.75)
-	mesh.material_override = _mat
-	add_child(mesh)
-
-	var nose := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(0.18, 0.18, 0.7)
-	nose.mesh = box
-	nose.position = Vector3(0, 1.2, -0.55)
-	add_child(nose)
+	_build_model()
 
 	var col := CollisionShape3D.new()
 	var shape := CapsuleShape3D.new()
@@ -145,6 +133,37 @@ func _ready() -> void:
 	# Layer 2 = player; collide with the world only (see enemy.gd).
 	collision_layer = 2
 	collision_mask = 1
+
+
+## (Re)build the visible body. Called at start and after a revive, because the dead look is permanent.
+func _build_model() -> void:
+	if _rig != null:
+		_rig.queue_free()
+	_rig = Models.player()
+	add_child(_rig)
+	_shown_arm_lost = false
+	_shown_glow = 0
+	_shown_windup = false
+	_rig.set_part_visible("arm_right", not arm_right_lost)
+	_shown_arm_lost = arm_right_lost
+
+
+## Keep the model in step with the character: lost arm, overcharge wind-up, meditation glow, walk.
+func _update_model(delta: float) -> void:
+	if _rig == null:
+		return
+	_strike_t -= delta
+	if arm_right_lost != _shown_arm_lost:
+		_shown_arm_lost = arm_right_lost
+		_rig.set_part_visible("arm_right", not arm_right_lost)
+	if _charging != _shown_windup:
+		_shown_windup = _charging
+		_rig.set_windup(_charging)
+	var glow: int = 2 if meditating else 0
+	if glow != _shown_glow:
+		_shown_glow = glow
+		_rig.set_highlight(glow)
+	_rig.animate(delta, velocity.length(), _strike_t > 0.0)
 
 
 ## Embrace a talent: its rules live in res://scripts/talents/<id>.gd, if that file exists.
@@ -274,10 +293,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	rotation.y = atan2(-_facing.x, -_facing.z)
-	var glow: float = _charge / float(_p["charge_max"])
-	_mat.albedo_color = Color(0.15 + glow * 0.8, 0.45, 0.75 - glow * 0.5)
-	if meditating:
-		_mat.albedo_color = Color(0.55, 0.85, 0.95)
+	_update_model(delta)
 
 
 # --- the damage pipeline --------------------------------------------------------
@@ -337,6 +353,8 @@ func take_hit(amount: float, heavy: bool, source: Node) -> float:
 ## Damage that has passed the pipeline (or comes from an effect's own timer).
 func _apply_damage(amount: float, heavy: bool) -> float:
 	var applied: float = body.apply_damage(amount, heavy)
+	if _rig != null and applied > 0.0:
+		_rig.flash(0.1)
 	_float("-%d" % int(applied), Color(1, 0.25, 0.25))
 	_check_death()
 	return applied
@@ -489,6 +507,7 @@ func pick_at(point: Vector3) -> Node3D:
 
 ## One blow on one target (Brent 2026-09-23: base attacks are single target).
 func _strike_target(target: Node3D, multiplier: float, tags: Array) -> void:
+	_strike_t = 0.2
 	_swing_visual(melee_range, multiplier > 1.0, true)
 	deal_damage(target, float(_p["melee_damage"]) * multiplier, tags)
 
@@ -516,6 +535,7 @@ func _overcharge_target(reach: float) -> Node3D:
 
 ## Area melee - used by skills such as Tsunami Strike, never by the base attack.
 func _swing(multiplier: float, reach: float, tags: Array) -> void:
+	_strike_t = 0.25
 	_swing_visual(reach, multiplier > 1.0, false)
 	for node: Node in get_tree().get_nodes_in_group("hittable"):
 		var t := node as Node3D
@@ -889,7 +909,8 @@ func _meditate_gather(delta: float) -> void:
 func _check_death() -> void:
 	if not dead and body.is_dead():
 		dead = true
-		_mat.albedo_color = Color(0.2, 0.2, 0.2)
+		if _rig != null:
+			_rig.set_dead_look()
 		died.emit()
 
 
@@ -969,6 +990,7 @@ func revive_in_debt(fee: int) -> void:
 	body.hp["superficial"] = maxf(float(body.hp["superficial"]), float(body.max_hp["superficial"]) * float(town["revive_superficial_frac"]))
 	body.hp["structural"] = maxf(float(body.hp["structural"]), float(body.max_hp["structural"]) * float(town["revive_structural_frac"]))
 	body.hp["catastrophic"] = maxf(float(body.hp["catastrophic"]), float(town["revive_catastrophic_min"]))
+	_build_model()
 	note("You wake on a cot. Someone dragged you out. The bill is $%d." % fee)
 
 

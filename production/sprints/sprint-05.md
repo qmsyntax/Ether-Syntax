@@ -18,4 +18,16 @@ Verified: self-test 109/109, smoke, three bots, screenshots inspected. Not verif
 with a real mouse.
 
 ## Part B — procedural character models
-A sub-agent is building `game/scripts/art/` (ModelRig, Models) as new files only; integration follows its report.
+There is no image generator in this toolchain, so the art is built in code. A sub-agent wrote the library as new
+files only; the integration into gameplay scripts was done afterwards in the main session.
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S05-5 | `ModelRig` (named parts baked to ~a dozen draw calls per character; highlight, hit flash, wind-up tint, hide a part, dead look, procedural walk / strike animation) and `Models` (player, three enemies, grass, bush, two loot objects) - all original designs | `shots/art-close.png`, `art-preview.png` | Done (sub-agent) |
+| S05-6 | Player, enemy, scenery and pickup scripts own a rig instead of a capsule; enemies turn to face you and telegraph with the rig; the player's lost arm is hidden on the model; a revive rebuilds the body | selftest, bots, click test, `ui-hud.png` | Done |
+| S05-7 | Camera zoom moved to data and brought in from 24 to 19 so the models read | screenshots | Done |
+
+Known rough edges (from the sub-agent's own report): grass is low-contrast on the golden floor; the lost arm reads
+mainly through the missing gauntlet; the commander's banner overlaps its crest; the brute's fists poke slightly past its
+gameplay radius. Animation has only been seen as still frames - the walk cycle, cloth sway and strike blend are untested
+in motion.
