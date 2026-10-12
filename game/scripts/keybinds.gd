@@ -22,6 +22,7 @@ const ACTIONS: Array = [
 	["meditate", "Meditate (hold)", "key", KEY_M],
 	["ascend", "Ascend", "key", KEY_T],
 	["bind", "Bind a construct", "key", KEY_B],
+	["inventory", "Inventory", "key", KEY_I],
 	["interact", "Use exit / leave", "key", KEY_F],
 	["healer", "Healer", "key", KEY_H],
 	["rest", "Rest", "key", KEY_E],

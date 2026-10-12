@@ -32,7 +32,8 @@
           "item": "serrated_dagger",
           "chance": 0.12
         }
-      ]
+      ],
+      "name": "Masked Skirmisher"
     },
     "brute": {
       "hp": 700.0,
@@ -63,7 +64,8 @@
           "item": "husk_plate",
           "chance": 0.45
         }
-      ]
+      ],
+      "name": "Hide-Bound Brute"
     },
     "commander": {
       "hp": 1400.0,
@@ -99,7 +101,8 @@
           "item": "river_stone",
           "chance": 0.12
         }
-      ]
+      ],
+      "name": "Wall Commander"
     }
   }
 }

@@ -15,6 +15,7 @@ var aura_value := 4.0
 var bounty := 150
 var target: Node3D
 var height := 1.6
+var display_name := "Enemy"
 ## 0 = none, 1 = hovered by the cursor, 2 = the player's locked attack target.
 var highlight := 0
 
@@ -35,6 +36,7 @@ func setup(enemy_kind: String, player: Node3D, strength: float = 1.0) -> void:
 	target = player
 	var d: Dictionary = GameData.enemy(enemy_kind)
 	height = float(d.get("height", 1.6))
+	display_name = str(d.get("name", enemy_kind.capitalize()))
 	radius = float(d.get("radius", 0.5))
 	speed = float(d.get("speed", 3.4))
 	damage = float(d.get("damage", 10.0)) * strength
@@ -76,6 +78,7 @@ func setup(enemy_kind: String, player: Node3D, strength: float = 1.0) -> void:
 	_label.outline_size = 10
 	_label.pixel_size = 0.01
 	_label.position.y = height + 0.5
+	_label.visible = false          # health is shown by the HUD's floating bars and target frame
 	add_child(_label)
 	_refresh_label()
 

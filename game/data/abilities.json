@@ -2,20 +2,44 @@
   "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities). Stage-ups are STUBBED: in canon a stage needs a bound construct (design/01 LAW 4); until binding exists a full bar advances the stage on its own. kinds: projectile | melee_burst | dash.",
   "abilities": {
     "water_bolt": {
-      "name": "Water Bolt", "affinity": "water", "kind": "projectile",
-      "cost": 12.0, "reflux_per_cost": 1.0, "damage": 90.0, "speed": 20.0, "life": 1.5,
-      "verse": "Essence to water, water to a thrown stone."
+      "name": "Water Bolt",
+      "affinity": "water",
+      "kind": "projectile",
+      "cost": 12.0,
+      "reflux_per_cost": 1.0,
+      "damage": 90.0,
+      "speed": 20.0,
+      "life": 1.5,
+      "verse": "Essence to water, water to a thrown stone.",
+      "icon": "drop"
     },
     "tsunami_strike": {
-      "name": "Tsunami Strike", "affinity": "water", "kind": "melee_burst",
-      "cost": 20.0, "reflux_per_cost": 1.2, "damage_mult": 3.0, "reach_bonus": 0.8, "self_harm": 6.0,
-      "verse": "The whole sea in one blow. Your bones are the shore."
+      "name": "Tsunami Strike",
+      "affinity": "water",
+      "kind": "melee_burst",
+      "cost": 20.0,
+      "reflux_per_cost": 1.2,
+      "damage_mult": 3.0,
+      "reach_bonus": 0.8,
+      "self_harm": 6.0,
+      "verse": "The whole sea in one blow. Your bones are the shore.",
+      "icon": "wave"
     },
     "hydraulic_flex": {
-      "name": "Hydraulic Flex", "affinity": "water", "kind": "dash",
-      "cost": 8.0, "reflux_per_cost": 0.8, "dash_speed": 26.0, "dash_time": 0.18,
-      "verse": "Pressure in the legs, released all at once."
+      "name": "Hydraulic Flex",
+      "affinity": "water",
+      "kind": "dash",
+      "cost": 8.0,
+      "reflux_per_cost": 0.8,
+      "dash_speed": 26.0,
+      "dash_time": 0.18,
+      "verse": "Pressure in the legs, released all at once.",
+      "icon": "dash"
     }
   },
-  "starting_loadout": ["water_bolt", "tsunami_strike", "hydraulic_flex"]
+  "starting_loadout": [
+    "water_bolt",
+    "tsunami_strike",
+    "hydraulic_flex"
+  ]
 }

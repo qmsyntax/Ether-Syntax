@@ -11,6 +11,7 @@ var is_pickup := true
 
 var _mat: StandardMaterial3D
 var _label: Label3D
+var _equippable := false
 
 
 func setup(id: String) -> void:
@@ -24,6 +25,7 @@ func setup(id: String) -> void:
 	mesh.rotation_degrees = Vector3(0, 35, 0)
 	_mat = StandardMaterial3D.new()
 	var equippable: bool = str(def.get("slot", "")) != ""
+	_equippable = equippable
 	_mat.albedo_color = Color(0.95, 0.8, 0.25) if equippable else Color(0.8, 0.8, 0.85)
 	_mat.emission_enabled = true
 	_mat.emission = _mat.albedo_color * 0.25
@@ -38,7 +40,7 @@ func setup(id: String) -> void:
 	_label.outline_size = 8
 	_label.pixel_size = 0.01
 	_label.position.y = 0.9
-	_label.visible = false
+	_label.modulate = Color(1.0, 0.92, 0.6, 0.75) if equippable else Color(0.85, 0.85, 0.9, 0.6)
 	add_child(_label)
 	add_to_group("pickups")
 
@@ -49,7 +51,8 @@ func is_dead() -> bool:
 
 func set_highlight(level: int) -> void:
 	highlight = level
-	_label.visible = level > 0
+	_label.modulate.a = 1.0 if level > 0 else (0.75 if _equippable else 0.6)
+	_label.font_size = 36 if level > 0 else 30
 	_mat.emission = _mat.albedo_color * (0.9 if level > 0 else 0.25)
 
 

@@ -12,51 +12,54 @@ var _status: Label
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.75)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
 
 	var panel := PanelContainer.new()
-	panel.position = Vector2(480, 80)
-	panel.custom_minimum_size = Vector2(620, 0)
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.09, 0.09, 0.11, 1.0)
-	style.border_color = Color(0.35, 0.35, 0.4)
-	style.set_border_width_all(1)
-	style.set_content_margin_all(16)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.anchor_left = 0.3
+	panel.anchor_right = 0.7
+	panel.anchor_top = 0.04
+	panel.anchor_bottom = 0.96
+	panel.offset_left = 0
+	panel.offset_right = 0
+	panel.offset_top = 0
+	panel.offset_bottom = 0
 	add_child(panel)
+	var outer := VBoxContainer.new()
+	panel.add_child(outer)
+	outer.add_child(UiTheme.heading("Controls", 30))
+	outer.add_child(UiTheme.body("Click an action, then press the key or mouse button you want. Esc closes.", 14, UiTheme.TEXT_DIM))
+	outer.add_child(UiTheme.rule())
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	outer.add_child(scroll)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
-	panel.add_child(box)
-
-	var title := Label.new()
-	title.text = "CONTROLS"
-	title.add_theme_font_size_override("font_size", 24)
-	box.add_child(title)
-	var sub := Label.new()
-	sub.text = "Click an action, then press the key or mouse button you want. Esc closes."
-	sub.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	box.add_child(sub)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 4)
+	scroll.add_child(box)
 
 	for action: String in Keybinds.action_names():
 		var row := HBoxContainer.new()
 		var name := Label.new()
 		name.text = Keybinds.label_for(action)
-		name.custom_minimum_size = Vector2(300, 0)
+		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(name)
 		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(200, 30)
+		btn.custom_minimum_size = Vector2(190, 30)
+		btn.focus_mode = Control.FOCUS_NONE
 		btn.pressed.connect(_begin_capture.bind(action))
 		row.add_child(btn)
 		box.add_child(row)
 		_rows[action] = btn
 
+	outer.add_child(UiTheme.rule())
 	_status = Label.new()
-	_status.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
-	box.add_child(_status)
+	_status.add_theme_color_override("font_color", UiTheme.GOLD)
+	outer.add_child(_status)
 
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 12)
@@ -68,7 +71,7 @@ func _ready() -> void:
 	close.text = "Close"
 	close.pressed.connect(_close)
 	buttons.add_child(close)
-	box.add_child(buttons)
+	outer.add_child(buttons)
 
 	_refresh()
 

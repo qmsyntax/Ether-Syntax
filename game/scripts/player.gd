@@ -32,6 +32,10 @@ var arm_right := 100.0            # striking arm integrity; overcharging spends 
 var arm_right_lost := false
 var discoveries: Array[String] = []
 var log_lines: Array[String] = []
+## Counts every note() ever written, so the HUD can tell which lines are new.
+var log_serial := 0
+## Set by the game while the cursor is over a HUD panel: a click there is not an attack order.
+var ui_blocked := false
 ## Learned abilities: [{id, stage, progress}]. Hotbar slot i casts abilities[hotbar[i]].
 var abilities: Array = []
 var hotbar: Array[int] = []
@@ -210,7 +214,7 @@ func _physics_process(delta: float) -> void:
 		_strike_once = false
 	else:
 		_update_hover()
-	if not bot and Input.is_action_just_pressed("strike") and not meditating:
+	if not bot and Input.is_action_just_pressed("strike") and not meditating and not ui_blocked:
 		_click_cursor()
 	if not bot and Input.is_action_pressed("strike") and attack_target == null and has_move_goal:
 		move_goal = _cursor_ground()          # holding on the ground keeps steering
@@ -886,6 +890,19 @@ func can_afford(cost: int) -> bool:
 	return _can_afford(cost)
 
 
+## What the healer would do next and what it would cost - for the town screen.
+func next_healing() -> Dictionary:
+	if arm_right_lost:
+		return {"desc": "Regrow your striking arm. The only way without a talent.", "cost": int(_arm["regrow_price"])}
+	for layer: String in Body.ORDER_HEAL:
+		var gap: float = body.missing(layer)
+		if gap > 0.0:
+			var amount: float = minf(float(_heal_cfg["hp_per_visit"]), gap)
+			return {"desc": "Mend %d points of %s damage. Fast, and priced by how deep the wound is." % [int(ceil(amount)), layer],
+				"cost": int(ceil(amount * float(_heal_cfg["price_" + layer])))}
+	return {"desc": "Nothing to mend. You are whole.", "cost": 0}
+
+
 ## The healer sells speed, and the one thing rest cannot do: regrowth. Credit is extended to a limit.
 func buy_healing() -> void:
 	if arm_right_lost:
@@ -1040,6 +1057,7 @@ func discover(line: String) -> void:
 
 
 func note(line: String) -> void:
+	log_serial += 1
 	log_lines.append(line)
 	while log_lines.size() > 5:
 		log_lines.remove_at(0)

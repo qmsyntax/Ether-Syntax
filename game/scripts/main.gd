@@ -7,6 +7,11 @@ const EnemyScript := preload("res://scripts/enemy.gd")
 const SceneryScript := preload("res://scripts/scenery.gd")
 const HudScript := preload("res://scripts/hud.gd")
 const SettingsMenuScript := preload("res://scripts/settings_menu.gd")
+const TitleScreen := preload("res://scripts/ui/title_screen.gd")
+const TownScreen := preload("res://scripts/ui/town_screen.gd")
+const ShopScreen := preload("res://scripts/ui/shop_screen.gd")
+const InventoryScreen := preload("res://scripts/ui/inventory_screen.gd")
+const MessageScreen := preload("res://scripts/ui/message_screen.gd")
 
 const CAMERA_OFFSET := Vector3(12.0, 12.0, 12.0)
 const TALENT_CHOICES: Array[String] = [
@@ -42,7 +47,10 @@ var player: CharacterBody3D
 var camera: Camera3D
 var hud: Control
 var hud_layer: CanvasLayer
-var banner: Label
+var ui_root: Control                # themed parent of the HUD and every screen
+var screen: Control                 # the menu screen currently shown, if any
+var _prompt := ""                   # contextual hint shown in the HUD's prompt strip
+var _screen_paused := false
 var level: Node3D
 var settings_menu: Control
 
@@ -91,13 +99,21 @@ func _ready() -> void:
 	_show_select()
 
 	var args: PackedStringArray = OS.get_cmdline_user_args()
-	if args.has("--shot"):
+	var ui_shot := ""
+	for a: String in args:
+		if a.begins_with("--shot-ui="):
+			ui_shot = a.trim_prefix("--shot-ui=")
+	if ui_shot != "":
+		_setup_ui_shot(ui_shot)
+	elif args.has("--shot"):
 		_shot_mode = true
 		_select_talent(0)
-		_enter_arena()
+		enter_arena()
 		rest_timer = 0.5
 	elif args.has("--shot-settings"):
 		# Screenshot the controls menu over the town. Not paused, so the countdown can tick.
+		_shot_mode = true
+		_frames = 1000
 		_select_talent(0)
 		_enter_town()
 		_open_settings()
@@ -111,6 +127,7 @@ func _ready() -> void:
 		Engine.time_scale = 5.0
 		_select_talent(0)
 		player.set("money", ticket_price)
+		_show_screen(null, false)
 		_enter_dungeon()
 		player.set("bot", true)
 
@@ -121,19 +138,19 @@ func _process(delta: float) -> void:
 
 	match state:
 		"town":
-			banner.text = _town_text()
+			_prompt = ""
 		"arena_rest":
 			rest_timer -= delta
 			# Rest is free for the body and costly for the wallet: rent ticks while you recover.
 			if wave >= 1:
 				_charge_rent(arena_rent_per_second, delta)
-			banner.text = "PRACTICE ARENA - wave %d in %d...   resting heals you for free, but rent is $%d/s\n%s go now   %s rest 10s longer   %s healer   hold %s meditate   %s back to town" % [
+			_prompt = "Wave %d in %d   -   resting heals you for free, but rent is $%d a second\n%s go now     %s rest longer     %s healer     hold %s to meditate     %s back to town" % [
 				wave + 1, int(ceil(rest_timer)), int(arena_rent_per_second),
 				_k("go_now"), _k("rest"), _k("healer"), _k("meditate"), _k("interact")]
 			if rest_timer <= 0.0:
 				_start_wave()
 		"arena_fight":
-			banner.text = ""
+			_prompt = ""
 			if get_tree().get_nodes_in_group("enemies").is_empty():
 				player.call("end_fight")
 				state = "arena_rest"
@@ -143,6 +160,10 @@ func _process(delta: float) -> void:
 			_tick_dungeon(delta)
 
 	hud.call("refresh", player, _where())
+	hud.call("set_prompt", _prompt if screen == null else "")
+	hud.set("show_world", state == "dungeon" or state == "arena_rest" or state == "arena_fight")
+	hud.call("set_passage", {"walls": chambers, "cleared": cleared, "current": current, "gate": gate_at, "bank": bank} if state == "dungeon" else {})
+	player.set("ui_blocked", screen != null or settings_menu != null or bool(hud.call("mouse_over_ui")))
 
 	if _shot_mode:
 		_frames += 1
@@ -160,48 +181,19 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_echo():
 		return
 	if event.is_action_pressed("settings"):
-		_open_settings()
+		if screen is ShopScreen or screen is InventoryScreen:
+			close_screen()
+		else:
+			_open_settings()
 		return
 
-	var key := event as InputEventKey
-	var code: Key = key.physical_keycode if (key != null and key.pressed) else KEY_NONE
-
-	# Menu choices are number keys and are not rebindable.
-	if state == "select":
-		if code == KEY_X:
-			hardcore = not hardcore
-			_show_select()
-			return
-		if code == KEY_C and SaveGame.exists():
-			continue_game()
-			return
-		var index: int = code - KEY_1
-		if index >= 0 and index < TALENT_CHOICES.size():
-			_select_talent(index)
-			_enter_town()
+	if state == "select" or state == "dead":
 		return
-
-	if event.is_action_pressed("restart"):
-		Engine.time_scale = 1.0
-		get_tree().reload_current_scene()
+	if event.is_action_pressed("inventory"):
+		open_inventory()
 		return
 
 	match state:
-		"town":
-			if code == KEY_1:
-				if bool(player.call("can_afford", ticket_price)):
-					player.call("charge", ticket_price)
-					_enter_dungeon()
-				else:
-					player.call("note", "No one will sell you a ticket on that much debt.")
-			elif code == KEY_2:
-				_enter_arena()
-			elif code == KEY_3:
-				town_sell_loot()
-			elif event.is_action_pressed("rest"):
-				town_rest_night()
-			elif event.is_action_pressed("healer"):
-				player.call("buy_healing")
 		"arena_rest", "arena_fight":
 			if _cast_from_hotbar(event):
 				pass
@@ -256,17 +248,15 @@ func _open_settings() -> void:
 		return
 	settings_menu = SettingsMenuScript.new()
 	settings_menu.connect("closed", _on_settings_closed)
-	hud_layer.add_child(settings_menu)
-	banner.visible = false
+	ui_root.add_child(settings_menu)
 	get_tree().paused = true
 
 
 func _on_settings_closed() -> void:
 	settings_menu = null
-	banner.visible = true
-	get_tree().paused = false
-	if state == "select":
-		_show_select()
+	get_tree().paused = _screen_paused
+	if screen != null and screen.has_method("rebuild"):
+		screen.call("rebuild")          # key names on screen may have changed
 
 
 ## "[W]"-style tag for the current binding of an action, for on-screen prompts.
@@ -277,13 +267,8 @@ func _k(action: String) -> String:
 # --- select / town --------------------------------------------------------------
 
 func _show_select() -> void:
-	var lines: Array[String] = ["A prime vestige waits. Ask it what power it holds.\n"]
-	for i: int in TALENT_CHOICES.size():
-		var t: Dictionary = TalentDB.get_talent(TALENT_CHOICES[i])
-		lines.append("[%d]  %s\n      \"%s\"\n" % [i + 1, str(t.get("name", "?")), str(t.get("verse", ""))])
-	lines.append("[X]  Hardcore (death is permanent): %s" % ("ON" if hardcore else "off - dying leaves you in debt instead"))
-	lines.append("%s  Controls" % _k("settings"))
-	banner.text = "\n".join(lines)
+	state = "select"
+	_show_screen(TitleScreen.new(self), false)
 
 
 func _select_talent(index: int) -> void:
@@ -299,25 +284,95 @@ func _enter_town() -> void:
 	player.set("pickup_target", null)
 	player.set("has_move_goal", false)
 	state = "town"
+	_prompt = ""
 	save_now()
+	_show_screen(TownScreen.new(self), false)
 
 
-func _town_text() -> String:
-	var mult: float = _repeat_mult()
-	var lines: Array[String] = []
-	lines.append("TOWN - day %d%s" % [day, "   (HARDCORE)" if hardcore else ""])
-	if _last_payout > 0:
-		lines.append("Last delve paid $%d." % _last_payout)
-	lines.append("")
-	lines.append("[1]  Buy an assault-passage ticket ($%d) and go in" % ticket_price)
-	lines.append("       Rule card: solo. The entrance seals behind you. Clear %d of %d walls to unlock" % [gate_at, chambers])
-	lines.append("       an exit. Pay is handed over only at the exit and grows with every wall.")
-	lines.append("       Rent runs while you are inside. This passage now pays x%.2f (repeats pay less)." % mult)
-	lines.append("[2]  Practice arena (free, kill bounties only)")
-	lines.append("%s  Rest the night - heals what a body can heal. Rent $%d." % [_k("rest"), night_rent])
-	lines.append("%s  Healer - fast, priced by how deep the wound is; the only way to regrow a limb without a talent" % _k("healer"))
-	lines.append("%s  Start over with a new character      %s  Controls" % [_k("restart"), _k("settings")])
-	return "\n".join(lines)
+# --- screens ---------------------------------------------------------------------------
+
+func _show_screen(new_screen: Control, pause: bool) -> void:
+	if screen != null:
+		screen.queue_free()
+	screen = new_screen
+	_screen_paused = pause and new_screen != null
+	if new_screen != null:
+		ui_root.add_child(new_screen)
+		if settings_menu != null:
+			ui_root.move_child(settings_menu, -1)
+	get_tree().paused = _screen_paused or settings_menu != null
+
+
+## Close the open screen. In town that means back to the town screen.
+func close_screen() -> void:
+	if state == "town":
+		_show_screen(TownScreen.new(self), false)
+	else:
+		_show_screen(null, false)
+
+
+func open_settings() -> void:
+	_open_settings()
+
+
+func open_shop() -> void:
+	if state == "town":
+		_show_screen(ShopScreen.new(self), false)
+
+
+## Toggle the inventory. Out in the field it pauses the game.
+func open_inventory() -> void:
+	if screen is InventoryScreen:
+		close_screen()
+	elif state != "select" and state != "dead":
+		_show_screen(InventoryScreen.new(self), state != "town")
+
+
+func start_new_character(index: int) -> void:
+	_select_talent(index)
+	_enter_town()
+
+
+func toggle_hardcore() -> void:
+	hardcore = not hardcore
+
+
+func new_character() -> void:
+	Engine.time_scale = 1.0
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+
+func enter_passage() -> void:
+	if not bool(player.call("can_afford", ticket_price)):
+		player.call("note", "No one will sell you a ticket on that much debt.")
+		return
+	player.call("charge", ticket_price)
+	_show_screen(null, false)
+	_enter_dungeon()
+
+
+func enter_arena() -> void:
+	_show_screen(null, false)
+	_enter_arena()
+
+
+func repeat_mult() -> float:
+	return _repeat_mult()
+
+
+## Drop one item from the bag. In the field it lands at your feet; in town it is simply gone.
+func drop_item(item_id: String) -> void:
+	var inv: Inventory = player.get("inventory")
+	if not inv.remove(item_id):
+		return
+	var item_name: String = str(GameData.item(item_id).get("name", item_id))
+	if state == "town":
+		player.call("note", "You leave the %s behind." % item_name)
+		save_now()
+	else:
+		PlayerScript.spawn_pickup(level, item_id, player.global_position + Vector3(0.9, 0.0, 0.4))
+		player.call("note", "Dropped %s." % item_name)
 
 
 # --- town services (logic only; the UI calls these) ------------------------------
@@ -443,6 +498,7 @@ func _enter_arena() -> void:
 func _start_wave() -> void:
 	wave += 1
 	state = "arena_fight"
+	hud.call("announce", "WAVE %d" % wave)
 	player.call("start_fight")
 	for i: int in GameData.inum("arena", "grunts_base") + wave:
 		_spawn_arena_enemy("grunt")
@@ -556,6 +612,7 @@ func _activate(c: int) -> void:
 		_spawn_enemy(kind, local, strength)
 	player.call("start_fight")
 	player.call("note", "Wall %d of %d." % [c, chambers])
+	hud.call("announce", "WALL %d" % c if c != chambers else "THE LAST WALL")
 	if _shot_dungeon and c == 2:
 		Engine.time_scale = 1.0
 		player.set("bot", false)
@@ -573,6 +630,8 @@ func _on_wall_cleared() -> void:
 	if cleared >= gate_at:
 		_spawn_pad(cleared)
 	player.call("note", "Wall %d cleared. $%d banked - yours only if you walk out." % [cleared, bank])
+	if cleared == gate_at:
+		hud.call("announce", "AN EXIT OPENS")
 
 
 func _spawn_pad(c: int) -> void:
@@ -623,15 +682,15 @@ func _extract() -> void:
 
 func _set_dungeon_banner() -> void:
 	if not sealed:
-		banner.text = "ASSAULT PASSAGE - the antechamber.\nWalk up the corridor (%s) to begin; the entrance seals behind you. Last chance to cut grass in peace." % Keybinds.binding_text("move_up")
+		_prompt = "The antechamber. Walk up the corridor (%s) to begin - the entrance seals behind you.\nLast chance to cut grass in peace." % Keybinds.binding_text("move_up")
 	elif current > cleared:
-		banner.text = "Wall %d of %d" % [current, chambers]
+		_prompt = ""
 	elif cleared >= chambers:
-		banner.text = "All %d walls down. %s on a glowing exit to leave with $%d (full-clear bonus included)." % [chambers, _k("interact"), _payout_now()]
+		_prompt = "All %d walls down.   %s on a glowing exit to leave with $%d, full-clear bonus included." % [chambers, _k("interact"), _payout_now()]
 	elif cleared >= gate_at:
-		banner.text = "Wall %d cleared. %s on a glowing exit to leave with $%d - or push on: wall %d banks $%d more.\nRent is $%d/s while you stand here." % [cleared, _k("interact"), _payout_now(), cleared + 1, stage_value * (cleared + 1), int(dungeon_rent_per_second)]
+		_prompt = "%s on a glowing exit to leave with $%d   -   or push on: wall %d banks $%d more.\nRent is $%d a second while you stand here." % [_k("interact"), _payout_now(), cleared + 1, stage_value * (cleared + 1), int(dungeon_rent_per_second)]
 	else:
-		banner.text = "Wall %d cleared. $%d banked, but no exit until wall %d.\nRest if you need it - rent is $%d/s." % [cleared, bank, gate_at, int(dungeon_rent_per_second)]
+		_prompt = "$%d banked, but no exit until wall %d.   Rest if you need it - rent is $%d a second." % [bank, gate_at, int(dungeon_rent_per_second)]
 
 
 # --- shared ---------------------------------------------------------------------
@@ -665,7 +724,8 @@ func _on_player_died() -> void:
 		state = "dead"
 		if not _bot_mode and not _test_mode:
 			SaveGame.delete()
-		banner.text = "You died. Hardcore: that was the only life this character had.\n\n%s to begin again." % _k("restart")
+		_prompt = ""
+		_show_screen(MessageScreen.new(self, "YOU DIED", "Hardcore: that was the only life this character had.", "Begin again", new_character), false)
 		return
 	var lost: int = bank if state == "dungeon" else 0
 	_bot_died = true
@@ -758,32 +818,95 @@ func _build_hud() -> void:
 	hud_layer = CanvasLayer.new()
 	add_child(hud_layer)
 
-	hud = HudScript.new()
-	hud.set_anchors_preset(Control.PRESET_FULL_RECT)
-	hud_layer.add_child(hud)
+	# One themed root so every Button, Label and Panel below shares the same look.
+	ui_root = Control.new()
+	ui_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ui_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui_root.process_mode = Node.PROCESS_MODE_ALWAYS
+	ui_root.theme = UiTheme.theme()
+	hud_layer.add_child(ui_root)
 
-	banner = Label.new()
-	banner.position = Vector2(460, 40)
-	banner.size = Vector2(1100, 600)
-	banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	banner.add_theme_font_size_override("font_size", 20)
-	banner.add_theme_color_override("font_outline_color", Color(0, 0, 0))
-	banner.add_theme_constant_override("outline_size", 8)
-	hud_layer.add_child(banner)
+	hud = HudScript.new()
+	ui_root.add_child(hud)
 
 
 func _where() -> String:
 	match state:
 		"town":
-			return "Town, day %d" % day
+			return "Town  -  day %d" % day
 		"arena_rest", "arena_fight":
-			return "Arena, wave %d" % wave
+			return "Practice arena  -  wave %d" % wave
 		"dungeon":
-			return "Passage: %d/%d walls, $%d banked" % [cleared, chambers, bank]
+			return "The passage  -  wall %d of %d  -  $%d banked" % [cleared, chambers, bank]
 	return ""
 
 
 # --- test harness ---------------------------------------------------------------
+
+## Put the game into a named UI state with representative data, then screenshot it.
+## States: title, town, shop, inventory, hud (mid-fight, hurt), hud-low (near death, reflux locked).
+func _setup_ui_shot(which: String) -> void:
+	_shot_mode = true
+	_frames = 1000                      # disable the arena auto-shot; _shot_countdown drives this one
+	_shot_countdown = 40
+	if which == "title":
+		return
+	_select_talent(0)
+	var inv: Inventory = player.get("inventory")
+	player.set("money", 1840)
+	for id: String in ["dim_mote", "river_stone", "brute_tusk", "brute_tusk", "husk_plate", "sinew_cord", "sinew_cord", "sinew_cord", "commander_sigil", "delver_frame"]:
+		inv.add(id)
+	inv.equip("dim_mote")
+	player.call("refresh_gear")
+	player.call("grow_star", 38.0)
+	(player.get("constructs") as Array).append({"tier": "vestige", "concept": "acceleration"})
+	(player.get("constructs") as Array).append({"tier": "vestige", "concept": "tension"})
+	var abilities: Array = player.get("abilities")
+	abilities[0]["progress"] = 100.0
+	abilities[1]["progress"] = 64.0
+	abilities[2]["progress"] = 23.0
+	(player.get("body") as Body).apply_damage(31.0)
+	player.set("arm_right", 62.0)
+	_last_payout = 3000
+	delves = 2
+	day = 4
+	match which:
+		"town":
+			_enter_town()
+		"shop":
+			_enter_town()
+			open_shop()
+		"inventory":
+			_enter_town()
+			open_inventory()
+		"hud", "hud-low":
+			_show_screen(null, false)
+			_enter_dungeon()
+			sealed = true
+			cleared = 2
+			bank = 600
+			player.global_position = level.to_global(Vector3(0.0, 0.0, -3.2 * ch_len))
+			_activate(3)
+			player.set("essence", float(player.get("essence_max")) * 0.55)
+			player.set("reflux", 63.0)
+			for id: String in ["brute_tusk", "serrated_dagger"]:
+				PlayerScript.spawn_pickup(level, id, player.global_position + Vector3(rng.randf_range(-3, 3), 0, rng.randf_range(1.5, 3.5)))
+			var first: Node = get_tree().get_nodes_in_group("enemies")[0]
+			(first.get("body") as Body).apply_damage(95.0)
+			player.set("attack_target", first)
+			if which == "hud-low":
+				(player.get("body") as Body).apply_damage(52.0)
+				player.set("reflux", 100.0)
+				player.set("reflux_locked", true)
+				player.set("arm_right_lost", true)
+				player.set("essence", 6.0)
+			hud.set("debug_tip", "slot:0" if which == "hud" else "health")
+			# freeze the fight so the picture is stable
+			for e: Node in get_tree().get_nodes_in_group("enemies"):
+				e.set_physics_process(false)
+			player.set_physics_process(false)
+			player.call("_refresh_highlights")
+
 
 func _tick_bot_report() -> void:
 	var elapsed: int = Time.get_ticks_msec() - _bot_started_ms

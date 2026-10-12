@@ -1,215 +1,521 @@
 extends Control
-## In-game HUD: bars for the body, arm, essence and reflux; a short notebook underneath.
-## Built in code so the project stays plain text.
+## In-game HUD, drawn procedurally (no image assets):
+##   bottom centre  - health orb | action bar | essence orb, star-growth bar above the slots
+##                    ring round the health orb = striking arm; ring round the essence orb = reflux
+##   top left       - character plate (talent, stars, money, where you are, carried constructs)
+##   top centre     - target frame for the enemy under the cursor, and the prompt strip
+##   bottom left    - message log that fades
+##   over the world - enemy health bars
+## The HUD only reads the player; it never changes game state.
 
-const PANEL_W := 400.0
-const BAR_H := 18.0
+const ORB_R := 58.0
+const SLOT := 58.0
+const SLOT_GAP := 6.0
+const LOG_SECONDS := 9.0
+const LOG_MAX := 6
 
-var _title: Label
-var _bars: Dictionary = {}          # name -> Dictionary(fill, text, back)
-var _money: Label
-var _aura: Label
-var _notebook: Label
-var _hint: Label
-var _slots: Array = []              # per hotbar slot: {panel, key, name, fill, back, info}
+var player: Node
+var where := ""
+var prompt := ""
+var title := ""                    # big, brief announcement ("WALL 3")
+var show_world := true             # false on menu screens: hide bars, orbs stay
 
-const SLOT_W := 150.0
-const SLOT_H := 64.0
+var _time := 0.0
+var _title_age := 99.0
+var _log: Array = []               # [{text, age}]
+var _log_seen := 0
+var _hurt_flash := 0.0
+var _last_hp := -1.0
+var _bar_rect := Rect2()
+var _plate_rect := Rect2()
+var _slot_rects: Array[Rect2] = []
+var _health_c := Vector2.ZERO
+var _essence_c := Vector2.ZERO
+## Passage progress for the tracker: {walls, cleared, current, gate, bank} or {} when not in one.
+var passage: Dictionary = {}
+## Screenshot aid: force a tooltip ("slot:0", "health", "essence") without a real cursor.
+var debug_tip := ""
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var panel := ColorRect.new()
-	panel.color = Color(0.05, 0.05, 0.07, 0.72)
-	panel.position = Vector2(12, 12)
-	panel.size = Vector2(PANEL_W, 470)
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(panel)
-
-	var y := 20.0
-	_title = _label(Vector2(24, y), 17)
-	y += 34
-	y = _add_bar("superficial", "Superficial", Color(0.35, 0.75, 0.35), y)
-	y = _add_bar("structural", "Structural", Color(0.85, 0.6, 0.2), y)
-	y = _add_bar("catastrophic", "Catastrophic", Color(0.7, 0.15, 0.15), y)
-	y += 6
-	y = _add_bar("arm", "Striking arm", Color(0.6, 0.6, 0.7), y)
-	y += 6
-	y = _add_bar("essence", "Essence", Color(0.25, 0.55, 0.95), y)
-	y = _add_bar("reflux", "Reflux [water]", Color(0.95, 0.5, 0.15), y)
-	y += 6
-	_money = _label(Vector2(24, y), 15)
-	y += 24
-	_aura = _label(Vector2(24, y), 15)
-	_aura.add_theme_color_override("font_color", Color(0.85, 0.8, 1.0))
-	y += 30
-	_notebook = _label(Vector2(24, y), 14)
-	_notebook.size = Vector2(PANEL_W - 24, 150)
-	_notebook.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_hint = _label(Vector2(24, panel.size.y - 14), 13)
-	_hint.add_theme_color_override("font_color", Color(0.65, 0.65, 0.7))
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
-## The hotbar is built on first refresh, once the player's slot count is known.
-func _build_hotbar(count: int) -> void:
-	var total_w: float = count * SLOT_W + (count - 1) * 8.0
-	var x0: float = (get_viewport_rect().size.x - total_w) * 0.5
-	var y: float = get_viewport_rect().size.y - SLOT_H - 16.0
-	for i: int in count:
-		var x: float = x0 + i * (SLOT_W + 8.0)
-		var bg := ColorRect.new()
-		bg.color = Color(0.05, 0.05, 0.07, 0.8)
-		bg.position = Vector2(x, y)
-		bg.size = Vector2(SLOT_W, SLOT_H)
-		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(bg)
-		var key := _label(Vector2(x + 6, y + 3), 13)
-		key.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
-		var nm := _label(Vector2(x + 6, y + 20), 14)
-		var back := ColorRect.new()
-		back.color = Color(0.15, 0.15, 0.18)
-		back.position = Vector2(x + 6, y + SLOT_H - 12)
-		back.size = Vector2(SLOT_W - 12, 6)
-		back.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(back)
-		var fill := ColorRect.new()
-		fill.color = Color(0.55, 0.8, 1.0)
-		fill.position = back.position
-		fill.size = Vector2(0, 6)
-		fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(fill)
-		var info := _label(Vector2(x + 6, y + 38), 11)
-		info.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
-		_slots.append({"bg": bg, "key": key, "name": nm, "fill": fill, "back": back, "info": info})
+func refresh(p: Node, where_text: String) -> void:
+	player = p
+	where = where_text
 
 
-func _refresh_hotbar(player: Node) -> void:
+func set_prompt(text: String) -> void:
+	prompt = text
+
+
+func set_passage(info: Dictionary) -> void:
+	passage = info
+
+
+func announce(text: String) -> void:
+	title = text
+	_title_age = 0.0
+
+
+## True when the cursor is over a HUD panel, so a click there is not also an attack order.
+func mouse_over_ui() -> bool:
+	var m: Vector2 = get_local_mouse_position()
+	return _bar_rect.has_point(m) or _plate_rect.has_point(m)
+
+
+func _process(delta: float) -> void:
+	_time += delta
+	_title_age += delta
+	_hurt_flash = maxf(0.0, _hurt_flash - delta * 2.5)
+	for entry: Dictionary in _log:
+		entry["age"] = float(entry["age"]) + delta
+	if player != null and str(player.get("talent_id")) != "":
+		var serial: int = int(player.get("log_serial"))
+		var lines: Array = player.get("log_lines")
+		var fresh: int = mini(serial - _log_seen, lines.size())
+		for i: int in range(lines.size() - fresh, lines.size()):
+			_log.append({"text": str(lines[i]), "age": 0.0})
+		_log_seen = serial
+		while _log.size() > LOG_MAX:
+			_log.remove_at(0)
+		var hp: float = (player.get("body") as Body).total()
+		if _last_hp >= 0.0 and hp < _last_hp - 0.5:
+			_hurt_flash = 1.0
+		_last_hp = hp
+	queue_redraw()
+
+
+func _draw() -> void:
+	if player == null or str(player.get("talent_id")) == "":
+		return
+	var vs: Vector2 = size
+	if show_world:
+		_draw_enemy_bars()
+		_draw_vignette(vs)
+		_draw_target_frame(vs)
+		_draw_prompt(vs)
+		_draw_title(vs)
+		_draw_log(vs)
+		_draw_tracker(vs)
+	_draw_plate()
+	_draw_action_bar(vs)
+	_draw_tooltip(vs)
+
+
+# --- bottom: orbs and action bar ------------------------------------------------------
+
+func _draw_action_bar(vs: Vector2) -> void:
 	var hotbar: Array = player.get("hotbar")
-	if _slots.is_empty():
-		_build_hotbar(hotbar.size())
+	var n: int = hotbar.size()
+	var slots_w: float = n * SLOT + (n - 1) * SLOT_GAP
+	var cx: float = vs.x * 0.5
+	var base_y: float = vs.y - 30.0
+	var slab := Rect2(cx - slots_w * 0.5 - 22.0, base_y - SLOT - 30.0, slots_w + 44.0, SLOT + 44.0)
+	var left_c := Vector2(slab.position.x - ORB_R + 6.0, base_y - ORB_R + 2.0)
+	var right_c := Vector2(slab.end.x + ORB_R - 6.0, base_y - ORB_R + 2.0)
+	_bar_rect = Rect2(left_c.x - ORB_R - 16.0, slab.position.y - 24.0, (right_c.x - left_c.x) + 2.0 * ORB_R + 32.0, vs.y - slab.position.y + 24.0)
+
+	# stone slab
+	draw_rect(slab.grow(3.0), Color(0, 0, 0, 0.6))
+	draw_rect(slab, UiTheme.PANEL)
+	draw_rect(Rect2(slab.position, Vector2(slab.size.x, 3.0)), UiTheme.PANEL_HI)
+	draw_rect(slab, UiTheme.BRONZE, false, 2.0)
+
+	# star growth bar across the top of the slab
+	var pcts: Array = player.get("star_pct")
+	var newest: float = float(pcts.back()) if not pcts.is_empty() else 0.0
+	var star_rect := Rect2(slab.position.x + 22.0, slab.position.y + 9.0, slots_w, 7.0)
+	UiDraw.bar(self, star_rect, newest / 99.0, UiTheme.STAR)
+	UiDraw.text(self, Vector2(star_rect.position.x, star_rect.position.y - 5.0),
+		"Star %d   %d%%" % [pcts.size(), int(newest)], 12, UiTheme.STAR)
+	UiDraw.text(self, Vector2(star_rect.position.x, star_rect.position.y - 5.0),
+		str(player.call("aura_read")), 12, UiTheme.TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT, slots_w)
+
+	# ability slots
 	var abilities: Array = player.get("abilities")
 	var essence: float = float(player.get("essence"))
 	var locked: bool = bool(player.get("reflux_locked"))
-	for i: int in _slots.size():
-		var s: Dictionary = _slots[i]
-		(s["key"] as Label).text = Keybinds.binding_text("ability_%d" % (i + 1))
-		var idx: int = int(hotbar[i])
-		if idx < 0 or idx >= abilities.size():
-			(s["name"] as Label).text = "(empty)"
-			(s["info"] as Label).text = ""
-			(s["fill"] as ColorRect).size.x = 0.0
-			continue
+	_slot_rects.clear()
+	for i: int in n:
+		var r := Rect2(slab.position.x + 22.0 + i * (SLOT + SLOT_GAP), slab.position.y + 26.0, SLOT, SLOT)
+		_slot_rects.append(r)
+		_draw_slot(r, i, int(hotbar[i]), abilities, essence, locked)
+
+	_health_c = left_c
+	_essence_c = right_c
+	_draw_health_orb(left_c)
+	_draw_essence_orb(right_c)
+
+	# small print: pack weight and the two keys worth remembering
+	var inv: Inventory = player.get("inventory")
+	_right_text(Vector2(vs.x - 16.0, vs.y - 30.0), "Pack  %d / %d kg" % [int(inv.weight()), int(inv.capacity())],
+		13, UiTheme.BAD if inv.weight() > inv.capacity() * 0.9 else UiTheme.TEXT_DIM)
+	_right_text(Vector2(vs.x - 16.0, vs.y - 12.0), "%s  inventory      %s  controls" % [Keybinds.binding_text("inventory"), Keybinds.binding_text("settings")], 13, UiTheme.TEXT_FAINT)
+
+
+func _draw_slot(r: Rect2, i: int, idx: int, abilities: Array, essence: float, locked: bool) -> void:
+	draw_rect(r, UiTheme.INSET)
+	draw_rect(Rect2(r.position, Vector2(r.size.x, 2.0)), Color(0, 0, 0, 0.6))
+	var border: Color = UiTheme.BRONZE_DIM
+	if idx >= 0 and idx < abilities.size():
 		var st: Dictionary = abilities[idx]
-		var ab: Dictionary = GameData.ability(str(st["id"]))
-		(s["name"] as Label).text = str(ab.get("name", "?"))
-		var need: String = player.call("pending_tier", st)
+		var ab: Dictionary = player.call("ability_stats", st)
+		var cost: float = float(ab.get("cost", 0.0))
+		var usable: bool = not locked and essence >= cost
+		var tint: Color = UiTheme.ESSENCE.lightened(0.35) if usable else Color(0.35, 0.36, 0.4)
+		UiDraw.icon(self, str(ab.get("icon", "drop")), r.get_center() + Vector2(0, -2), SLOT * 0.5, tint)
+		# stage pips, top right
+		for s: int in int(st["stage"]):
+			draw_circle(Vector2(r.end.x - 7.0 - s * 7.0, r.position.y + 8.0), 2.6, UiTheme.GOLD)
+		# cost, bottom right
+		_right_text(Vector2(r.end.x - 4.0, r.end.y - 9.0), str(int(round(cost))), 12, UiTheme.ESSENCE.lightened(0.4) if usable else UiTheme.BAD)
+		# progress along the bottom
+		var prog: float = clampf(float(st["progress"]) / 100.0, 0.0, 1.0)
+		draw_rect(Rect2(r.position.x + 2.0, r.end.y - 5.0, r.size.x - 4.0, 3.0), Color(0, 0, 0, 0.8))
+		draw_rect(Rect2(r.position.x + 2.0, r.end.y - 5.0, (r.size.x - 4.0) * prog, 3.0), UiTheme.GOLD if prog >= 1.0 else UiTheme.ESSENCE)
+		var need: String = str(player.call("pending_tier", st))
 		if need != "":
-			(s["info"] as Label).text = "stage %d FULL - needs a %s" % [int(st["stage"]), need]
-		else:
-			(s["info"] as Label).text = "stage %d   %d essence" % [int(st["stage"]), int(float(player.call("ability_stats", st).get("cost", 0)))]
-		(s["fill"] as ColorRect).size.x = (s["back"] as ColorRect).size.x * clampf(float(st["progress"]) / 100.0, 0.0, 1.0)
-		var usable: bool = not locked and essence >= float(player.call("ability_stats", st).get("cost", 0.0))
-		(s["bg"] as ColorRect).color = Color(0.05, 0.05, 0.07, 0.8) if usable else Color(0.25, 0.05, 0.05, 0.8)
+			# full and waiting for a construct: pulsing gold frame and a gem
+			var pulse: float = 0.55 + 0.45 * sin(_time * 4.0)
+			border = UiTheme.GOLD.lerp(Color(1, 1, 1), pulse * 0.4)
+			UiDraw.icon(self, "gem", Vector2(r.position.x + 11.0, r.end.y - 16.0), 13.0, UiTheme.GOLD)
+		if not usable:
+			draw_rect(r, Color(0, 0, 0, 0.45))
+		if locked:
+			draw_line(r.position + Vector2(8, 8), r.end - Vector2(8, 8), UiTheme.REFLUX_HOT, 3.0, true)
+	draw_rect(r, border, false, 2.0 if border != UiTheme.BRONZE_DIM else 1.0)
+	UiDraw.text(self, r.position + Vector2(4.0, 14.0), Keybinds.binding_text("ability_%d" % (i + 1)), 12, UiTheme.GOLD)
 
 
-func refresh(player: Node, where: String) -> void:
-	if str(player.get("talent_id")) == "":
-		_title.text = "(no talent yet)"
-		return
+func _draw_health_orb(c: Vector2) -> void:
 	var b: Body = player.get("body")
-	var t: Dictionary = player.get("talent")
-	_title.text = "%s   %d-star" % [str(t.get("name", "?")), int(player.get("stars"))]
-
-	for layer: String in ["superficial", "structural", "catastrophic"]:
-		_set_bar(layer, float(b.hp[layer]), float(b.max_hp[layer]), "%d / %d" % [int(ceil(float(b.hp[layer]))), int(float(b.max_hp[layer]))])
+	var total_max: float = b.total_max()
+	var bands: Array = [
+		[float(b.hp["catastrophic"]) / total_max, UiTheme.HEALTH_CATASTROPHIC],
+		[float(b.hp["structural"]) / total_max, UiTheme.HEALTH_STRUCTURAL],
+		[float(b.hp["superficial"]) / total_max, UiTheme.HEALTH_SUPERFICIAL],
+	]
+	# ring = striking arm
+	var arm_lost: bool = bool(player.get("arm_right_lost"))
+	var arm: float = 0.0 if arm_lost else float(player.get("arm_right")) / 100.0
+	UiDraw.ring(self, c, ORB_R + 12.0, arm, Color(0.72, 0.74, 0.82) if arm > 0.3 else UiTheme.BAD)
+	UiDraw.orb(self, c, ORB_R, bands, _time, UiTheme.BRONZE)
+	if _hurt_flash > 0.0:
+		draw_circle(c, ORB_R, Color(1, 0.2, 0.15, 0.35 * _hurt_flash))
+	_centre_text(c + Vector2(0, 6.0), "%d" % int(ceil(b.total())), 24, UiTheme.TEXT)
+	_centre_text(c + Vector2(0, 22.0), "of %d" % int(total_max), 12, UiTheme.TEXT_DIM)
 	var extra: Array[String] = player.call("status_lines")
 	if not extra.is_empty():
-		_bars["superficial"]["text"].text += "   (" + ", ".join(extra) + ")"
-
-	if bool(player.get("arm_right_lost")):
-		_set_bar("arm", 0.0, 1.0, "LOST - off-hand only")
-		_bars["arm"]["fill"].color = Color(0.7, 0.15, 0.15)
+		_centre_text(c + Vector2(0, -ORB_R - 34.0), extra[0], 13, Color(0.75, 0.75, 1.0))
+	if arm_lost:
+		_centre_text(c + Vector2(0, -ORB_R - 20.0), "ARM LOST", 14, UiTheme.BAD)
 	else:
-		var arm: float = float(player.get("arm_right"))
-		_set_bar("arm", arm, 100.0, "%d%%" % int(arm))
-		_bars["arm"]["fill"].color = Color(0.6, 0.6, 0.7)
+		_centre_text(c + Vector2(0, -ORB_R - 20.0), "arm %d%%" % int(arm * 100.0), 12, UiTheme.TEXT_DIM)
 
+
+func _draw_essence_orb(c: Vector2) -> void:
 	var ess: float = float(player.get("essence"))
-	var ess_max: float = float(player.get("essence_max"))
-	_set_bar("essence", ess, ess_max, "%d / %d   +%d/s" % [int(ess), int(ess_max), int(float(player.get("satellite_rate")))])
-
+	var ess_max: float = maxf(1.0, float(player.get("essence_max")))
+	var frac: float = clampf(ess / ess_max, 0.0, 1.0)
+	var bands: Array = [[frac * 0.45, UiTheme.ESSENCE_DEEP], [frac * 0.55, UiTheme.ESSENCE]]
 	var reflux: float = float(player.get("reflux"))
 	var locked: bool = bool(player.get("reflux_locked"))
-	var rtext: String = "%d" % int(reflux)
+	var hot: bool = locked or reflux >= 80.0
+	var ring_col: Color = UiTheme.REFLUX_HOT if hot else (UiTheme.REFLUX if reflux >= 50.0 else UiTheme.REFLUX.darkened(0.25))
 	if locked:
-		rtext += "   LOCKED - meditate"
+		ring_col = ring_col.lerp(Color(1, 1, 1), 0.3 + 0.3 * sin(_time * 8.0))
+	UiDraw.ring(self, c, ORB_R + 12.0, reflux / 100.0, ring_col, [0.5, 0.8])
+	UiDraw.orb(self, c, ORB_R, bands, _time + 1.7, UiTheme.BRONZE)
+	_centre_text(c + Vector2(0, 6.0), "%d" % int(ess), 24, UiTheme.TEXT)
+	_centre_text(c + Vector2(0, 22.0), "of %d" % int(ess_max), 12, UiTheme.TEXT_DIM)
+	var rate: float = float(player.get("satellite_rate"))
+	var note_text: String = "reflux %d" % int(reflux)
+	var note_col: Color = UiTheme.TEXT_DIM
+	if locked:
+		note_text = "LOCKED - meditate (%s)" % Keybinds.binding_text("meditate")
+		note_col = UiTheme.REFLUX_HOT
 	elif reflux >= 80.0:
-		rtext += "   burning"
+		note_text = "reflux %d - burning" % int(reflux)
+		note_col = UiTheme.REFLUX_HOT
 	elif reflux >= 50.0:
-		rtext += "   costs +25%"
-	_set_bar("reflux", reflux, 100.0, rtext)
-	_bars["reflux"]["fill"].color = Color(0.85, 0.15, 0.1) if (locked or reflux >= 80.0) else (Color(0.95, 0.65, 0.15) if reflux >= 50.0 else Color(0.95, 0.5, 0.15))
+		note_text = "reflux %d - costs more" % int(reflux)
+		note_col = UiTheme.REFLUX
+	_centre_text(c + Vector2(0, -ORB_R - 20.0), note_text, 12 if not locked else 14, note_col)
+	if bool(player.get("meditating")):
+		_centre_text(c + Vector2(0, -ORB_R - 36.0), "gathering", 13, UiTheme.ESSENCE.lightened(0.4))
+	elif rate > 0.0:
+		_centre_text(c + Vector2(0, -ORB_R - 36.0), "satellite +%d/s" % int(rate), 12, UiTheme.TEXT_FAINT)
+	else:
+		_centre_text(c + Vector2(0, -ORB_R - 36.0), "no satellite", 12, UiTheme.TEXT_FAINT)
 
-	var cash: int = int(player.get("money"))
-	_money.text = ("DEBT  $%d" % -cash if cash < 0 else "Money  $%d" % cash) + "      " + where
-	var pcts: Array = player.get("star_pct")
-	var star_txt: Array[String] = []
-	for i: int in pcts.size():
-		star_txt.append("star %d  %d%%" % [i + 1, int(float(pcts[i]))])
-	_aura.text = "%s      %s" % ["   ".join(star_txt), str(player.call("aura_read"))]
 
-	var lines: Array[String] = []
+# --- top left: character plate ----------------------------------------------------------
+
+func _draw_plate() -> void:
+	var t: Dictionary = player.get("talent")
 	var held: Array = player.get("constructs")
+	var h: float = 78.0 + (26.0 if not held.is_empty() else 0.0)
+	var r := Rect2(14.0, 14.0, 330.0, h)
+	_plate_rect = r
+	draw_rect(r.grow(3.0), Color(0, 0, 0, 0.55))
+	draw_rect(r, Color(UiTheme.PANEL, 0.92))
+	draw_rect(r, UiTheme.BRONZE, false, 2.0)
+	UiDraw.text(self, r.position + Vector2(14.0, 27.0), str(t.get("name", "?")), 21, UiTheme.GOLD)
+	# star pips, right-aligned on the title line
+	var stars: int = int(player.get("stars"))
+	for i: int in stars:
+		var c := Vector2(r.end.x - 18.0 - i * 20.0, r.position.y + 20.0)
+		draw_circle(c, 7.0, UiTheme.STAR.darkened(0.5))
+		draw_circle(c, 5.0, UiTheme.STAR)
+	var cash: int = int(player.get("money"))
+	UiDraw.icon(self, "coin", r.position + Vector2(22.0, 46.0), 16.0, UiTheme.BAD if cash < 0 else UiTheme.GOLD)
+	UiDraw.text(self, r.position + Vector2(36.0, 52.0), UiTheme.money_text(cash), 16, UiTheme.BAD if cash < 0 else UiTheme.TEXT)
+	UiDraw.text(self, r.position + Vector2(14.0, 70.0), where, 13, UiTheme.TEXT_DIM)
 	if not held.is_empty():
-		var names: Array[String] = []
+		var x: float = r.position.x + 22.0
 		for c: Dictionary in held:
-			names.append("%s of %s" % [str(c["tier"]), str(GameData.concept(str(c["concept"])).get("label", c["concept"]))])
-		lines.append("Carrying: %s   (%s to bind)" % [", ".join(names), Keybinds.binding_text("bind")])
-	for p: String in player.get("discoveries"):
-		lines.append("Proven: %s" % p)
-	var log: Array = player.get("log_lines")
-	for i: int in range(maxi(0, log.size() - 4), log.size()):
-		lines.append("> %s" % str(log[i]))
-	_notebook.text = "\n".join(lines)
-
-	_hint.text = "%s controls   %s start over" % [Keybinds.binding_text("settings"), Keybinds.binding_text("restart")]
-	_refresh_hotbar(player)
+			UiDraw.icon(self, "gem", Vector2(x, r.position.y + 90.0), 14.0, UiTheme.GOLD if str(c["tier"]) == "vestige" else UiTheme.STAR)
+			x += 18.0
+		UiDraw.text(self, Vector2(x + 4.0, r.position.y + 95.0), "%d to bind  (%s)" % [held.size(), Keybinds.binding_text("bind")], 13, UiTheme.TEXT_DIM)
 
 
-func _add_bar(name: String, title: String, color: Color, y: float) -> float:
-	var lbl := _label(Vector2(24, y), 13)
-	lbl.text = title
-	lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
-	var back := ColorRect.new()
-	back.color = Color(0.12, 0.12, 0.15, 0.9)
-	back.position = Vector2(140, y + 2)
-	back.size = Vector2(PANEL_W - 152, BAR_H)
-	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(back)
-	var fill := ColorRect.new()
-	fill.color = color
-	fill.position = back.position
-	fill.size = Vector2(0, BAR_H)
-	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(fill)
-	var text := _label(Vector2(146, y + 1), 12)
-	text.add_theme_color_override("font_outline_color", Color(0, 0, 0))
-	text.add_theme_constant_override("outline_size", 4)
-	_bars[name] = {"fill": fill, "text": text, "back": back}
-	return y + BAR_H + 8
+# --- top centre: target frame, prompt, title ---------------------------------------------
+
+func _draw_target_frame(vs: Vector2) -> void:
+	var target: Variant = player.get("hovered")
+	if target == null or not is_instance_valid(target) or (target as Node).get("is_scenery") == true or (target as Node).get("is_pickup") != null:
+		target = player.get("attack_target")
+	if target == null or not is_instance_valid(target) or (target as Node).get("is_scenery") == true or (target as Node).get("body") == null:
+		return
+	var node := target as Node
+	var b: Body = node.get("body")
+	var r := Rect2(vs.x * 0.5 - 170.0, 14.0, 340.0, 46.0)
+	draw_rect(r.grow(3.0), Color(0, 0, 0, 0.55))
+	draw_rect(r, Color(UiTheme.PANEL, 0.92))
+	draw_rect(r, UiTheme.BRONZE, false, 2.0)
+	var name_text: String = str(node.get("display_name")) if node.get("display_name") != null else "Enemy"
+	UiDraw.text(self, r.position + Vector2(0.0, 19.0), name_text, 16, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+	UiDraw.bar(self, Rect2(r.position.x + 12.0, r.position.y + 27.0, r.size.x - 24.0, 10.0), b.total() / b.total_max(), UiTheme.HEALTH_SUPERFICIAL)
+	UiDraw.text(self, Vector2(r.position.x, r.position.y + 37.0), "%d / %d" % [int(ceil(b.total())), int(b.total_max())], 11, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 
 
-func _set_bar(name: String, value: float, max_value: float, text: String) -> void:
-	var bar: Dictionary = _bars[name]
-	var frac: float = clampf(value / max_value, 0.0, 1.0) if max_value > 0.0 else 0.0
-	(bar["fill"] as ColorRect).size.x = (bar["back"] as ColorRect).size.x * frac
-	(bar["text"] as Label).text = text
+func _draw_prompt(vs: Vector2) -> void:
+	if prompt == "":
+		return
+	var f: Font = UiTheme.font()
+	var lines: PackedStringArray = prompt.split("\n")
+	var w := 0.0
+	for line: String in lines:
+		w = maxf(w, f.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x)
+	var r := Rect2(vs.x * 0.5 - w * 0.5 - 18.0, 72.0, w + 36.0, lines.size() * 22.0 + 14.0)
+	draw_rect(r, Color(0.04, 0.035, 0.03, 0.72))
+	draw_rect(Rect2(r.position, Vector2(r.size.x, 1.0)), UiTheme.BRONZE_DIM)
+	draw_rect(Rect2(r.position.x, r.end.y - 1.0, r.size.x, 1.0), UiTheme.BRONZE_DIM)
+	for i: int in lines.size():
+		UiDraw.text(self, Vector2(r.position.x, r.position.y + 23.0 + i * 22.0), lines[i], 16, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
 
 
-func _label(pos: Vector2, font_size: int) -> Label:
-	var l := Label.new()
-	l.position = pos
-	l.add_theme_font_size_override("font_size", font_size)
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(l)
-	return l
+func _draw_title(vs: Vector2) -> void:
+	if title == "" or _title_age > 2.6:
+		return
+	var a: float = clampf(1.0 - maxf(0.0, _title_age - 1.6), 0.0, 1.0) * clampf(_title_age * 4.0, 0.0, 1.0)
+	var col := Color(UiTheme.GOLD, a)
+	var f: Font = UiTheme.font()
+	draw_string(f, Vector2(2.0, vs.y * 0.3 + 2.0), title, HORIZONTAL_ALIGNMENT_CENTER, vs.x, 46, Color(0, 0, 0, a * 0.8))
+	draw_string(f, Vector2(0.0, vs.y * 0.3), title, HORIZONTAL_ALIGNMENT_CENTER, vs.x, 46, col)
+
+
+# --- bottom left: message log ---------------------------------------------------------------
+
+func _draw_log(vs: Vector2) -> void:
+	var y: float = vs.y - 170.0
+	for i: int in range(_log.size() - 1, -1, -1):
+		var entry: Dictionary = _log[i]
+		var age: float = float(entry["age"])
+		if age > LOG_SECONDS:
+			continue
+		var a: float = clampf((LOG_SECONDS - age) / 2.0, 0.0, 1.0)
+		UiDraw.text(self, Vector2(18.0, y), str(entry["text"]), 14, Color(UiTheme.TEXT, a * (1.0 if i == _log.size() - 1 else 0.8)), HORIZONTAL_ALIGNMENT_LEFT, 420.0)
+		y -= 20.0
+
+
+# --- over the world ---------------------------------------------------------------------------
+
+func _draw_enemy_bars() -> void:
+	var cam: Camera3D = get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	for node: Node in get_tree().get_nodes_in_group("enemies"):
+		var e := node as Node3D
+		if e == null or cam.is_position_behind(e.global_position):
+			continue
+		var b: Body = e.get("body")
+		if b == null or b.is_dead():
+			continue
+		var lit: bool = int(e.get("highlight")) > 0
+		if b.total() >= b.total_max() and not lit:
+			continue                      # untouched enemies show no bar - less clutter
+		var top: Vector2 = cam.unproject_position(e.global_position + Vector3.UP * (float(e.get("height")) + 0.35))
+		var w: float = 46.0 + float(e.get("radius")) * 22.0
+		UiDraw.bar(self, Rect2(top.x - w * 0.5, top.y - 4.0, w, 5.0), b.total() / b.total_max(), UiTheme.HEALTH_SUPERFICIAL if not lit else Color("f0563f"))
+
+
+func _draw_vignette(vs: Vector2) -> void:
+	var b: Body = player.get("body")
+	var frac: float = b.total() / b.total_max()
+	var danger: float = clampf((0.4 - frac) / 0.4, 0.0, 1.0)
+	var a: float = danger * (0.22 + 0.1 * sin(_time * 4.5)) + _hurt_flash * 0.12
+	if a <= 0.01:
+		return
+	# four gradient bands, opaque at the screen edge and clear toward the middle
+	var c0 := Color(0.62, 0.04, 0.03, a)
+	var c1 := Color(0.62, 0.04, 0.03, 0.0)
+	var e: float = minf(vs.x, vs.y) * 0.22
+	draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(vs.x, 0), Vector2(vs.x, e), Vector2(0, e)]), PackedColorArray([c0, c0, c1, c1]))
+	draw_polygon(PackedVector2Array([Vector2(0, vs.y - e), Vector2(vs.x, vs.y - e), Vector2(vs.x, vs.y), Vector2(0, vs.y)]), PackedColorArray([c1, c1, c0, c0]))
+	draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(e, 0), Vector2(e, vs.y), Vector2(0, vs.y)]), PackedColorArray([c0, c1, c1, c0]))
+	draw_polygon(PackedVector2Array([Vector2(vs.x - e, 0), Vector2(vs.x, 0), Vector2(vs.x, vs.y), Vector2(vs.x - e, vs.y)]), PackedColorArray([c1, c0, c0, c1]))
+
+
+# --- top right: passage tracker -------------------------------------------------------------------
+
+func _draw_tracker(vs: Vector2) -> void:
+	if passage.is_empty():
+		return
+	var walls: int = int(passage.get("walls", 0))
+	var cleared: int = int(passage.get("cleared", 0))
+	var current: int = int(passage.get("current", 0))
+	var gate: int = int(passage.get("gate", 0))
+	var step := 26.0
+	var w: float = walls * step + 28.0
+	var r := Rect2(vs.x - w - 14.0, 14.0, w, 80.0)
+	draw_rect(r.grow(3.0), Color(0, 0, 0, 0.55))
+	draw_rect(r, Color(UiTheme.PANEL, 0.92))
+	draw_rect(r, UiTheme.BRONZE, false, 2.0)
+	UiDraw.text(self, r.position + Vector2(14.0, 20.0), "THE PASSAGE", 13, UiTheme.TEXT_DIM)
+	_right_text(Vector2(r.end.x - 14.0, r.position.y + 20.0), "$%d banked" % int(passage.get("bank", 0)), 14, UiTheme.GOLD)
+	for i: int in walls:
+		var c := Vector2(r.position.x + 27.0 + i * step, r.position.y + 42.0)
+		var n: int = i + 1
+		var fill: Color = UiTheme.INSET
+		var edge: Color = UiTheme.BRONZE_DIM
+		if n <= cleared:
+			fill = UiTheme.GOLD
+			edge = UiTheme.GOLD.lightened(0.3)
+		elif n == current:
+			fill = UiTheme.BAD.lerp(Color(1, 0.8, 0.6), 0.5 + 0.5 * sin(_time * 5.0))
+			edge = UiTheme.BAD
+		var d := 8.0
+		var pts := PackedVector2Array([c + Vector2(0, -d), c + Vector2(d, 0), c + Vector2(0, d), c + Vector2(-d, 0)])
+		draw_colored_polygon(pts, fill)
+		pts.append(pts[0])
+		draw_polyline(pts, edge, 1.5, true)
+		if n == gate:
+			# the wall that opens the first exit
+			draw_line(c + Vector2(0, 11.0), c + Vector2(0, 17.0), UiTheme.GOOD, 2.0)
+			UiDraw.text(self, c + Vector2(-9.0, 28.0), "exit", 10, UiTheme.GOOD if cleared >= gate else UiTheme.TEXT_FAINT)
+
+
+# --- tooltips ---------------------------------------------------------------------------------------
+
+func _draw_tooltip(vs: Vector2) -> void:
+	var m: Vector2 = get_local_mouse_position()
+	var what: String = debug_tip
+	var anchor: Vector2 = m
+	if what == "":
+		for i: int in _slot_rects.size():
+			if _slot_rects[i].has_point(m):
+				what = "slot:%d" % i
+		if m.distance_to(_health_c) <= ORB_R + 14.0:
+			what = "health"
+		elif m.distance_to(_essence_c) <= ORB_R + 14.0:
+			what = "essence"
+	elif what.begins_with("slot:"):
+		anchor = _slot_rects[int(what.get_slice(":", 1))].get_center() if _slot_rects.size() > int(what.get_slice(":", 1)) else m
+	elif what == "health":
+		anchor = _health_c
+	elif what == "essence":
+		anchor = _essence_c
+	if what == "":
+		return
+
+	var lines: Array = []           # [[text, size, color]]
+	if what.begins_with("slot:"):
+		var i: int = int(what.get_slice(":", 1))
+		var hotbar: Array = player.get("hotbar")
+		var abilities: Array = player.get("abilities")
+		var idx: int = int(hotbar[i]) if i < hotbar.size() else -1
+		if idx < 0 or idx >= abilities.size():
+			lines.append(["Empty slot", 16, UiTheme.TEXT_DIM])
+			lines.append(["Learn an ability to fill it.", 13, UiTheme.TEXT_FAINT])
+		else:
+			var st: Dictionary = abilities[idx]
+			var ab: Dictionary = player.call("ability_stats", st)
+			lines.append([str(ab.get("name", "?")), 18, UiTheme.GOLD])
+			lines.append(["\"%s\"" % str(ab.get("verse", "")), 13, UiTheme.STAR])
+			lines.append(["Costs %d essence and leaves %d reflux" % [int(round(float(ab.get("cost", 0.0)))), int(round(float(ab.get("cost", 0.0)) * float(ab.get("reflux_per_cost", 1.0))))], 13, UiTheme.TEXT])
+			match str(ab.get("kind", "")):
+				"projectile":
+					lines.append(["%d damage at range" % int(float(ab.get("damage", 0.0)) * float(player.call("ability_damage_mult", int(st["stage"]))) * float(ab.get("damage_all", 1.0))), 13, UiTheme.TEXT])
+				"melee_burst":
+					lines.append(["Hits everything in front of you for x%.1f a normal blow, and wounds you" % float(ab.get("damage_mult", 1.0)), 13, UiTheme.TEXT])
+				"dash":
+					lines.append(["A burst of movement in the direction you are heading", 13, UiTheme.TEXT])
+			lines.append(["Stage %d   -   %d%% toward the next" % [int(st["stage"]), int(float(st["progress"]))], 13, UiTheme.TEXT_DIM])
+			var need: String = str(player.call("pending_tier", st))
+			if need != "":
+				lines.append(["Full. Bind a %s to advance (%s, or the inventory to choose)." % [need, Keybinds.binding_text("bind")], 13, UiTheme.GOLD])
+			for up: Dictionary in st.get("bound", []):
+				lines.append(["Bound: %s of %s" % [str(up["tier"]), str(GameData.concept(str(up["concept"])).get("label", up["concept"]))], 13, UiTheme.STAR])
+	elif what == "health":
+		var b: Body = player.get("body")
+		lines.append(["Your body", 18, UiTheme.GOLD])
+		lines.append(["Superficial   %d / %d     heals fast when you rest" % [int(ceil(float(b.hp["superficial"]))), int(float(b.max_hp["superficial"]))], 13, UiTheme.HEALTH_SUPERFICIAL.lightened(0.3)])
+		lines.append(["Structural   %d / %d     heals slowly" % [int(ceil(float(b.hp["structural"]))), int(float(b.max_hp["structural"]))], 13, UiTheme.HEALTH_STRUCTURAL.lightened(0.45)])
+		lines.append(["Catastrophic   %d / %d     never heals on its own" % [int(ceil(float(b.hp["catastrophic"]))), int(float(b.max_hp["catastrophic"]))], 13, UiTheme.HEALTH_CATASTROPHIC.lightened(0.6)])
+		lines.append(["The ring is your striking arm. Overcharging wears it out;" , 13, UiTheme.TEXT_DIM])
+		lines.append(["lose it and only a healer or a talent brings it back.", 13, UiTheme.TEXT_DIM])
+	elif what == "essence":
+		var pcts: Array = player.get("star_pct")
+		lines.append(["Essence", 18, UiTheme.GOLD])
+		lines.append(["%d of %d   -   your star holds %d%% of what it could" % [int(float(player.get("essence"))), int(float(player.get("essence_max"))), int(float(pcts.back()))], 13, UiTheme.ESSENCE.lightened(0.4)])
+		var rate: float = float(player.get("satellite_rate"))
+		lines.append([("A satellite feeds you +%d a second." % int(rate)) if rate > 0.0 else "No satellite: essence returns only when you meditate (%s)." % Keybinds.binding_text("meditate"), 13, UiTheme.TEXT])
+		lines.append(["The ring is reflux - heat left by every cast.", 13, UiTheme.TEXT_DIM])
+		lines.append(["Past 50 casts cost more, past 80 they burn you, at 100 you are locked out.", 13, UiTheme.TEXT_DIM])
+		lines.append(["Meditating sheds it fastest.", 13, UiTheme.TEXT_DIM])
+
+	var f: Font = UiTheme.font()
+	var w := 0.0
+	var h := 14.0
+	for l: Array in lines:
+		w = maxf(w, f.get_string_size(str(l[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, int(l[1])).x)
+		h += float(int(l[1])) + 7.0
+	var r := Rect2(anchor.x - w * 0.5 - 14.0, anchor.y - h - 96.0, w + 28.0, h)
+	if what == "health" or what == "essence":
+		r.position.y = anchor.y - ORB_R - 64.0 - h
+	r.position.x = clampf(r.position.x, 8.0, vs.x - r.size.x - 8.0)
+	r.position.y = maxf(8.0, r.position.y)
+	draw_rect(r.grow(3.0), Color(0, 0, 0, 0.6))
+	draw_rect(r, Color(UiTheme.PANEL, 0.97))
+	draw_rect(r, UiTheme.GOLD.darkened(0.2), false, 1.5)
+	var y: float = r.position.y + 8.0
+	for l: Array in lines:
+		y += float(int(l[1])) + 2.0
+		UiDraw.text(self, Vector2(r.position.x + 14.0, y), str(l[0]), int(l[1]), l[2])
+		y += 5.0
+
+
+# --- text helpers -------------------------------------------------------------------------------
+
+func _centre_text(at: Vector2, s: String, font_size: int, color: Color) -> void:
+	var w: float = UiTheme.font().get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	UiDraw.text(self, Vector2(at.x - w * 0.5, at.y), s, font_size, color)
+
+
+func _right_text(at: Vector2, s: String, font_size: int, color: Color) -> void:
+	var w: float = UiTheme.font().get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	UiDraw.text(self, Vector2(at.x - w, at.y), s, font_size, color)
