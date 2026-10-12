@@ -95,6 +95,8 @@ func _build_detail() -> void:
 	name_row.add_child(name_col)
 	name_col.add_child(UiTheme.heading(str(ab.get("name", "?")), 22))
 	name_col.add_child(UiTheme.body("\"%s\"" % str(ab.get("verse", "")), 14, UiTheme.STAR))
+	if str(ab.get("summary", "")) != "":
+		box.add_child(UiTheme.body(str(ab["summary"]), 14, UiTheme.TEXT))
 
 	var need: String = str(player.call("pending_tier", st))
 	box.add_child(UiWidgets.Bar.new(float(st["progress"]) / 100.0, UiTheme.GOLD if need != "" else UiTheme.ESSENCE,

@@ -43,8 +43,10 @@
     "pain_at": 50.0,
     "pain_cost_mult": 1.25,
     "burn_at": 80.0,
-    "burn_self_damage": 4.0,
-    "lock_at": 100.0
+    "lock_at": 100.0,
+    "burn_recovery_mult": 1.5,
+    "burn_recovery_add": 0.2,
+    "_note": "Brent 2026-10-12 (design/05 question 2): running hot no longer damages you - skills do not hurt their caster. Above burn_at an affinity's skills take longer to recover from instead: recovery x burn_recovery_mult + burn_recovery_add seconds."
   },
   "healer": {
     "_note": "The healer sells speed. Wounds first: sink_per_visit points of the oldest wound at price_per_sink_point. With no wounds, health_per_visit points of the bar at price_per_health_point (rest does that for free).",
@@ -76,7 +78,26 @@
     "grunts_base": 2,
     "brute_every_n_waves": 3,
     "scenery_count": 90,
-    "bush_every_n": 9
+    "bush_every_n": 9,
+    "blocks": [
+      [
+        6.5,
+        -3.5
+      ],
+      [
+        -5.5,
+        4.5
+      ],
+      [
+        0.5,
+        9.0
+      ]
+    ],
+    "block_size": [
+      2.2,
+      2.6,
+      2.2
+    ]
   },
   "passage": {
     "chamber_length": 14.0,
@@ -103,13 +124,14 @@
     "bush_hp": 80.0
   },
   "abilities": {
-    "_note": "Stage progress = essence spent x use multiplier, capped at 100. A full bar does NOT advance the stage: it waits for a construct of the matching tier (stage 0 needs a vestige, 1 a remnant, ...). Stage cap = stars + 1. Brent 2026-10-11: skill progress should slow down too, but is left fast for now because it is useful for testing - progress_per_essence is the knob.",
+    "_note": "Stage progress = essence spent x use multiplier, capped at 100. A full bar does NOT advance the stage: it waits for a construct of the matching tier (stage 0 needs a vestige, 1 a remnant, ...). Stage cap = stars + 1. Brent 2026-10-11: skill progress should slow down too, but is left fast for now because it is useful for testing - progress_per_essence is the knob. cast_recovery is the moment after any skill in which you cannot strike or cast again; a skill may set its own 'recovery'.",
     "progress_per_essence": 1.0,
     "use_mult_monster": 1.0,
     "use_mult_scenery": 0.1,
     "use_mult_nothing": 0.25,
     "stage_damage_bonus": 0.1,
-    "hotbar_slots": 6
+    "hotbar_slots": 6,
+    "cast_recovery": 0.12
   },
   "meditation": {
     "_note": "Meditation gathers wisps (Brent 2026-09-23): refills essence while you sit still. Brent 2026-10-11: it must not work on the move - sitting roots you, and nothing is gathered until you have been still for settle_s.",
@@ -252,5 +274,13 @@
       "city": 1.5,
       "swamp": 1.25
     }
+  },
+  "shove": {
+    "_note": "Water's signature (design/05 2.1): a shoved enemy slides at speed for its distance; if it meets a wall, a block or another enemy with distance still to go it is Crushed - crush_base + crush_per_m for every metre it had left - and interrupted; a body it hit takes crush_other_frac of that. min_left is how much distance must remain for a collision to count. Heavier enemies are shoved less far (enemies.json shove_resist), never zero.",
+    "speed": 14.0,
+    "crush_base": 15.0,
+    "crush_per_m": 10.0,
+    "crush_other_frac": 0.5,
+    "min_left": 0.25
   }
 }

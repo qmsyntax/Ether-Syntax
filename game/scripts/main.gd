@@ -633,6 +633,11 @@ func _enter_arena() -> void:
 	_biome_wall(Vector3(0, 0, arena_half + 0.5), span, 180.0, float(bcfg["wall_height_near"]))
 	_biome_wall(Vector3(arena_half + 0.5, 0, 0), span, -90.0, float(bcfg["wall_height_near"]))
 	_scatter_props(Vector3.ZERO, Vector2(arena_half - 0.5, arena_half - 1.5), int(bcfg["arena_props"]))
+	# standing blocks: something for a shove to end against, and for a beam to stop on (design/05 6.2)
+	var block: Array = GameData.balance["arena"]["block_size"]
+	for at: Array in GameData.balance["arena"]["blocks"]:
+		_static_box(Vector3(float(at[0]), float(block[1]) * 0.5, float(at[1])), Vector3(float(block[0]), float(block[1]), float(block[2])),
+			(_biome.get("wall_color", Color(0.3, 0.3, 0.33)) as Color).lightened(0.12))
 	for i: int in GameData.inum("arena", "scenery_count"):
 		var pos := Vector3.ZERO
 		for attempt: int in 8:
@@ -1180,6 +1185,32 @@ func _setup_ui_shot(which: String) -> void:
 	_frames = 1000                      # disable the arena auto-shot; _shot_countdown drives this one
 	_shot_countdown = 40
 	if which == "title":
+		return
+	if which == "skills":
+		# a water + lightning character in the arena: marks, a Soaked enemy, a stunned one, a block
+		forced_biome = "scrubland"
+		_select_talent(0)
+		player.call("set_affinities", ["water", "lightning"])
+		player.call("grow_star", 70.0)
+		player.set("essence", 60.0)
+		_show_screen(null, false)
+		enter_arena()
+		rest_timer = 9999.0
+		for spec: Array in [[Vector3(-3.0, 0, -3.5), "grunt"], [Vector3(0.5, 0, -4.5), "grunt"], [Vector3(3.5, 0, -2.5), "brute"], [Vector3(-1.0, 0, -7.0), "grunt"]]:
+			_spawn_enemy(str(spec[1]), spec[0], 1.0)
+		var foes: Array = get_tree().get_nodes_in_group("enemies")
+		foes[0].call("add_status", "live", 2)
+		foes[0].call("add_status", "soaked")
+		foes[1].call("add_status", "live", 1)
+		foes[2].call("stun", 5.0)
+		foes[2].call("add_status", "soaked")
+		(foes[1].get("body") as Body).apply_damage(90.0)
+		player.set("hovered", foes[0])
+		hud.set("debug_tip", "slot:3")
+		for e: Node in foes:
+			e.set_physics_process(false)
+		player.set_physics_process(false)
+		player.call("_refresh_highlights")
 		return
 	if which.begins_with("biome-"):
 		# the passage in a given biome, two walls in: --shot-ui=biome-snow

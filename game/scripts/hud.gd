@@ -408,11 +408,44 @@ func _draw_enemy_bars() -> void:
 			var tag: Vector2 = cam.unproject_position(e.global_position + Vector3.UP * (float(e.get("height")) + 0.75))
 			UiDraw.text(self, Vector2(tag.x - 120.0, tag.y), str(e.get("display_name")), 13,
 				Color("fff3d0") if lit else (UiTheme.GOLD if str(e.get("tier")) != "vestige" else Color("cdbcf2")), HORIZONTAL_ALIGNMENT_CENTER, 240.0)
-		if b.total() >= b.total_max() and not lit:
-			continue                      # untouched enemies show no bar - less clutter
 		var top: Vector2 = cam.unproject_position(e.global_position + Vector3.UP * (float(e.get("height")) + 0.35))
 		var w: float = 46.0 + float(e.get("radius")) * 22.0
+		_draw_statuses(e, Vector2(top.x, top.y - 14.0))
+		if b.total() >= b.total_max() and not lit:
+			continue                      # untouched enemies show no bar - less clutter
 		UiDraw.bar(self, Rect2(top.x - w * 0.5, top.y - 4.0, w, 5.0), b.total() / b.total_max(), UiTheme.HEALTH_SUPERFICIAL if not lit else Color("f0563f"))
+
+
+## What a skill has left on an enemy, above its health bar: one pip per Live mark (the third is
+## an Overload, so the count matters), a drop while Soaked, a flash of bars while stunned.
+func _draw_statuses(e: Node3D, at: Vector2) -> void:
+	var st: Variant = e.get("statuses")
+	if not (st is Dictionary) or (st as Dictionary).is_empty():
+		return
+	var have: Dictionary = st
+	var x: float = at.x
+	if have.has("live"):
+		var live: Dictionary = GameData.status("live")
+		var n: int = int((have["live"] as Dictionary)["stacks"])
+		var total: int = int(live.get("stacks", 3))
+		var col := Color(str(live.get("color", "d9c8ff")))
+		x = at.x - float(total - 1) * 6.0
+		for i: int in total:
+			var c := Vector2(x + float(i) * 12.0, at.y)
+			var pip := PackedVector2Array([c + Vector2(0, -5), c + Vector2(4.5, 0), c + Vector2(0, 5), c + Vector2(-4.5, 0)])
+			if i < n:
+				draw_colored_polygon(pip, col)
+			pip.append(pip[0])
+			draw_polyline(pip, Color(col, 0.9) if i < n else Color(col, 0.35), 1.5, true)
+		x = at.x + float(total - 1) * 6.0 + 16.0
+	if have.has("soaked"):
+		UiDraw.icon(self, "drop", Vector2(x, at.y - 1.0), 13.0, Color(str(GameData.status("soaked").get("color", "4f9be8"))))
+		x += 15.0
+	if have.has("stunned"):
+		var col2 := Color(str(GameData.status("stunned").get("color", "fff2a8")))
+		for k: int in 3:
+			var a: float = _time * 6.0 + float(k) * TAU / 3.0
+			draw_circle(Vector2(at.x, at.y - 16.0) + Vector2(cos(a) * 9.0, sin(a) * 3.5), 2.4, col2)
 
 
 ## Wisps close to the projection say what they are, and whether they will come to you.
@@ -564,6 +597,8 @@ func _draw_tooltip(vs: Vector2) -> void:
 			var ab: Dictionary = player.call("ability_stats", st)
 			lines.append([str(ab.get("name", "?")), 18, UiTheme.GOLD])
 			lines.append(["\"%s\"" % str(ab.get("verse", "")), 13, UiTheme.STAR])
+			if str(ab.get("summary", "")) != "":
+				lines.append([str(ab["summary"]), 13, UiTheme.TEXT])
 			lines.append(["%s affinity" % str(GameData.affinity(str(ab.get("affinity", ""))).get("label", "?")), 13, GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3)])
 			lines.append(["Costs %d essence and leaves %d reflux" % [int(round(float(ab.get("cost", 0.0)))), int(round(float(ab.get("cost", 0.0)) * float(ab.get("reflux_per_cost", 1.0))))], 13, UiTheme.TEXT])
 			match str(ab.get("kind", "")):

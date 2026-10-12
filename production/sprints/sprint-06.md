@@ -230,3 +230,35 @@ construct's attack during the update - the one path that matters in play.
 
 Not verified: by hand. The death probe covers the passage; dying in the arena's echo goes through the same code
 but was not run separately.
+
+## Part O — skills step 1: water versus lightning (design/05, approved by Brent 2026-10-12)
+
+Brent: "go with your recommendations on both docs, start building". This is step 1 of design/05's build order:
+make two affinities play differently in the same fight. His complaint was that lightning "was basically the same
+as water".
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-51 | One hit payload for every skill (`apply_hit`): damage, status, shove, Live marks, interrupt - defined in data per skill | selftest | Done |
+| S06-52 | Statuses on enemies (Soaked, Live, stunned), interrupts, and how far each enemy kind can be shoved | selftest | Done |
+| S06-53 | Water - shove and Crush. Water Bolt soaks and knocks back; Breaker (was Tsunami Strike) throws a 120-degree arc of enemies 4 m; Sluice Step (was Hydraulic Flex) dashes through enemies and soaks them. A shove that ends against a wall, a block or another body crushes: 15 + 10 per metre it had left, half to a body it hit | selftest (shove distance by weight and Soaked, crush on wall and on body, each skill) | Done |
+| S06-54 | Lightning - marks and Overload. Arc Lash is an instant 9 m line (1 mark); Thunderclap Palm hits one enemy in reach (2 marks, interrupts); Stepped Leader puts you 6 m away at once and marks what you land beside. The third mark: 150 damage, 1 s stun, a 60-damage arc to every other marked enemy within 12 m, and 12 reflux grounded. Lightning reflux does not shed in a fight | selftest | Done |
+| S06-55 | Cross rule 1: a lightning hit on a Soaked enemy marks the other Soaked enemies within 4 m | selftest | Done |
+| S06-56 | Approved rulings applied: the two water skills renamed (they carried the books' names; ids kept so saves load); running above 80 reflux no longer damages you - skills take longer to recover from instead | selftest | Done |
+| S06-57 | Marks, Soaked and stun drawn over enemies; each skill's one-line rule in its tooltip and in the ethercosm; three blocks in the arena to crush against | `shots/ui-skills.png` | Done |
+
+Found on the way, all by the new tests:
+- Thunderclap Palm, pointed at an enemy out of reach, hit a different, nearer enemy instead of refusing. If you
+  point at someone, the skill now goes for them or does not fire (and costs nothing).
+- A shoved enemy travelled about 4 m on a 2.25 m budget: the engine function used to move it chooses its own time
+  step outside a physics frame. Shoves now move an exact distance.
+- Sluice Step could jump clean over an enemy on a long step and fail to soak it (one run in three). The dash now
+  checks the whole stretch it covered. Eight clean runs afterwards.
+
+Rough edges: the arena blocks are plain cubes. Fire, earth and wind are unchanged - still the three plain
+behaviours with different numbers - until step 3. Enemies do not yet have poise, so "interrupt" only breaks a
+wind-up (step 2). Skill costs dropped (Water Bolt 12 -> 8) to fit a 20-essence start; untested for feel.
+
+Verified: self-test 296/296, eight runs in a row; three bots; Netherecho death test; inventory and creation click
+tests; `ui-skills.png` inspected. Not verified: any of it by hand - whether water and lightning now FEEL different
+is the whole point of this step and only Brent can say. Blink and beam aim with the mouse, which no test exercises.

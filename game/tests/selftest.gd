@@ -30,6 +30,7 @@ func _ready() -> void:
 	_test_character()
 	await _test_playtest_1011()
 	_test_tempering()
+	await _test_water_and_lightning()
 	_test_affinities()
 	_test_models()
 	await _test_netherecho()
@@ -50,6 +51,13 @@ func _check(label: String, ok: bool, detail: String = "") -> void:
 
 func _near(a: float, b: float, eps: float = 0.01) -> bool:
 	return absf(a - b) <= eps
+
+
+## As if a moment had passed: the last skill's recovery is over. Tests cast back to back with no
+## game time in between, and a skill is refused while the previous one is still finishing.
+func _rested(p: Node) -> void:
+	p.set("_recover_t", 0.0)
+	p.set("_melee_cd", 0.0)
 
 
 func _new_player(talent: String = "") -> CharacterBody3D:
@@ -310,21 +318,28 @@ func _test_abilities() -> void:
 	p.set("essence", 100.0)
 	var ab: Array = p.get("abilities")
 	_check("starting loadout has three abilities", ab.size() == 3 and str(ab[0]["id"]) == "water_bolt")
-	# Progress: essence spent through the ability x use multiplier. Bolt costs 12; vs a monster x1.0.
+	# Progress: essence spent through the ability x use multiplier; vs a monster x1.0.
+	var bolt_cost: float = float(GameData.ability("water_bolt")["cost"])
 	var e := _dummy_enemy(p)
 	p.call("start_fight")
 	p.call("cast_slot", 0)
-	_check("bolt spends its cost and leaves reflux", _near(float(p.get("essence")), 88.0) and _near(float(p.get("reflux")), 12.0))
-	_check("progress = essence spent x1 with a monster present", _near(float(ab[0]["progress"]), 12.0), "got %f" % float(ab[0]["progress"]))
+	_check("bolt spends its cost and leaves reflux", _near(float(p.get("essence")), 100.0 - bolt_cost) and _near(float(p.get("reflux")), bolt_cost),
+		"essence %f reflux %f" % [float(p.get("essence")), float(p.get("reflux"))])
+	_check("progress = essence spent x1 with a monster present", _near(float(ab[0]["progress"]), bolt_cost), "got %f" % float(ab[0]["progress"]))
+	var spent: float = float(p.get("essence"))
+	p.call("cast_slot", 0)
+	_check("a skill cannot be cast again while the last one is finishing", _near(float(p.get("essence")), spent))
 	p.call("end_fight")
 	e.queue_free()
 	await get_tree().process_frame
 	p.set("essence", 100.0)
+	_rested(p)
 	p.call("cast_slot", 0)
-	_check("progress x0.25 with nothing to fight", _near(float(ab[0]["progress"]), 15.0), "got %f" % float(ab[0]["progress"]))
+	_check("progress x0.25 with nothing to fight", _near(float(ab[0]["progress"]), bolt_cost * 1.25), "got %f" % float(ab[0]["progress"]))
 	ab[0]["progress"] = 99.0
 	p.set("essence", 100.0)
 	p.set("reflux", 0.0)
+	_rested(p)
 	p.call("cast_slot", 0)
 	_check("a full bar waits at 100 - the stage does not advance by itself", int(ab[0]["stage"]) == 0 and _near(float(ab[0]["progress"]), 100.0))
 	_check("stage 0 full needs a vestige", str(p.call("pending_tier", ab[0])) == "vestige")
@@ -342,6 +357,8 @@ func _test_abilities() -> void:
 	_check("a vestige binds into stage 0 and advances it", str(p.call("bind_construct", 0, 0, 0.0)) == "bound" and int(ab[0]["stage"]) == 1 and _near(float(ab[0]["progress"]), 0.0))
 	var stats: Dictionary = p.call("ability_stats", ab[0])
 	_check("the concept shapes the skill (acceleration: bolt speed x1.5)", _near(float(stats["speed"]), 30.0), "speed %f" % float(stats["speed"]))
+	_check("and reaches into what the skill does on a hit (acceleration doubles the shove)", _near(float((stats["on_hit"] as Dictionary)["shove"]), 3.0)
+		and _near(float((GameData.ability("water_bolt")["on_hit"] as Dictionary)["shove"]), 1.5))
 	_check("stage 1 full now needs a remnant", (func() -> bool:
 		ab[0]["progress"] = 100.0
 		return str(p.call("pending_tier", ab[0])) == "remnant").call())
@@ -351,7 +368,7 @@ func _test_abilities() -> void:
 	ab[0]["stage"] = 1
 	ab[0]["progress"] = 0.0
 
-	# Tsunami strike: a big blow.
+	# Breaker (id tsunami_strike): a wide blow.
 	var e2 := _dummy_enemy(p)
 	var eb: Body = e2.get("body")
 	var pb: Body = p.get("body")
@@ -360,9 +377,11 @@ func _test_abilities() -> void:
 	ab[0]["stage"] = 0
 	p.set("_facing", Vector3(0, 0, -1))
 	var body_before: float = pb.total()
+	_rested(p)
 	p.call("cast_slot", 1)
-	_check("tsunami strike lands x3 melee damage", eb.missing("superficial") >= 179.0, "got %f" % eb.missing("superficial"))
-	_check("tsunami strike does not hurt its caster (Brent 2026-10-11)", pb.total() >= body_before, "%f -> %f" % [body_before, pb.total()])      # lifesteal may even raise it
+	var breaker_hit: float = float(GameData.balance["player"]["melee_damage"]) * float(GameData.ability("tsunami_strike")["damage_mult"])
+	_check("breaker lands its multiple of a strike", _near(eb.missing(), breaker_hit), "got %f want %f" % [eb.missing(), breaker_hit])
+	_check("breaker does not hurt its caster (Brent 2026-10-11)", pb.total() >= body_before, "%f -> %f" % [body_before, pb.total()])      # lifesteal may even raise it
 	for ab_id: String in GameData.abilities:
 		if float(GameData.ability(ab_id).get("self_harm", 0.0)) > 0.0:
 			_check("no ability hurts its caster by default", false, ab_id)
@@ -500,7 +519,7 @@ func _test_inventory() -> void:
 	inv.add("river_stone")
 	inv.equip("river_stone")
 	var bolt_cost: float = float((p.call("ability_stats", (p.get("abilities") as Array)[0]) as Dictionary)["cost"])
-	_check("a trinket changes ability cost (12 x 0.9)", _near(bolt_cost, 10.8), "got %f" % bolt_cost)
+	_check("a trinket changes ability cost (x 0.9)", _near(bolt_cost, float(GameData.ability("water_bolt")["cost"]) * 0.9), "got %f" % bolt_cost)
 	_check("unequipping returns the item to the bag", inv.unequip("trinket") == "unequipped" and inv.bag.has("river_stone"))
 
 	# swapping packs while loaded: the bigger frame goes on, the canvas pack comes off into the bag
@@ -699,7 +718,7 @@ func _test_playtest_1011() -> void:
 	by.clear()
 	for r: Dictionary in rows:
 		by[str(r["label"])] = r
-	_check("preview: compression lowers the cost, shown as an improvement", by.has("Essence cost") and str(by["Essence cost"]["before"]) == "12" and str(by["Essence cost"]["after"]) == "9" and bool(by["Essence cost"]["better"]))
+	_check("preview: compression lowers the cost, shown as an improvement", by.has("Essence cost") and str(by["Essence cost"]["before"]) == "8" and str(by["Essence cost"]["after"]) == "6" and bool(by["Essence cost"]["better"]))
 	rows = q.call("preview_bind", (q.get("abilities") as Array)[1], "tension")
 	by.clear()
 	for r: Dictionary in rows:
@@ -796,6 +815,285 @@ func _test_tempering() -> void:
 		n.queue_free()
 
 
+## A slab to stand on and, optionally, a wall across the way: shoves and blinks need a world.
+func _test_floor(at: Vector3, wall_z: float = INF) -> Node3D:
+	var root := Node3D.new()
+	add_child(root)
+	var parts: Array = [[Vector3(at.x, at.y - 0.5, at.z), Vector3(60, 1, 60)]]
+	if wall_z != INF:
+		parts.append([Vector3(at.x, at.y + 1.0, wall_z), Vector3(60, 2, 1)])
+	for part: Array in parts:
+		var sb := StaticBody3D.new()
+		var col := CollisionShape3D.new()
+		var shape := BoxShape3D.new()
+		shape.size = part[1]
+		col.shape = shape
+		sb.add_child(col)
+		sb.position = part[0]
+		root.add_child(sb)
+	return root
+
+
+## An enemy that does not fight back, `at` metres from the player in the player's frame.
+func _foe(p: Node3D, offset: Vector3, kind: String = "grunt") -> CharacterBody3D:
+	var e: CharacterBody3D = EnemyScript.new()
+	e.call("setup", kind, p, 1.0)
+	e.position = p.global_position + offset
+	add_child(e)
+	e.set("target", null)
+	(e.get("body") as Body).max_hp = 5000.0
+	(e.get("body") as Body).hp = 5000.0
+	return e
+
+
+## Run an enemy's physics by hand until its shove is over.
+func _settle(e: Node, steps: int = 80) -> void:
+	for i: int in steps:
+		if not is_instance_valid(e) or not bool(e.call("is_shoved")):
+			return
+		e.call("_physics_process", 1.0 / 60.0)
+
+
+func _lost(e: Node) -> float:
+	return (e.get("body") as Body).max_hp - (e.get("body") as Body).hp
+
+
+func _test_water_and_lightning() -> void:
+	print("water and lightning (design/05 step 1):")
+	var shove_cfg: Dictionary = GameData.balance["shove"]
+	var live: Dictionary = GameData.status("live")
+	var strike: float = float(GameData.balance["player"]["melee_damage"])
+
+	# ---------- statuses
+	var w := _new_player("one_percent_lifesteal")
+	w.global_position = Vector3(300, 0, 0)
+	var world := _test_floor(w.global_position, w.global_position.z - 7.0)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var a := _foe(w, Vector3(0, 0, -2.0))
+	_check("a status is added, capped and counted", int(a.call("add_status", "live", 2)) == 2 and int(a.call("add_status", "live", 5)) == 3 and int(a.call("status_stacks", "live")) == 3)
+	a.call("clear_status", "live")
+	a.call("add_status", "soaked")
+	for i: int in 70:
+		a.call("_tick_statuses", 0.1)
+	_check("a status wears off", not bool(a.call("has_status", "soaked")))
+	_check("an unknown status is ignored", int(a.call("add_status", "no_such_status")) == 0)
+
+	# ---------- shove: distance, weight, soaked
+	var z0: float = a.global_position.z
+	a.call("shove", Vector3(0, 0, -1), 2.0)
+	_settle(a)
+	_check("a shove moves a light enemy its full distance", _near(z0 - a.global_position.z, 2.0, 0.01), "moved %f" % (z0 - a.global_position.z))
+	_check("with room to spare there is no crush", _near(_lost(a), 0.0))
+	var heavy := _foe(w, Vector3(3.0, 0, -2.0), "brute")
+	var hz: float = heavy.global_position.z
+	heavy.call("shove", Vector3(0, 0, -1), 2.0)
+	_settle(heavy)
+	_check("a heavy enemy is shoved half as far, never zero", _near(hz - heavy.global_position.z, 1.0, 0.01), "moved %f" % (hz - heavy.global_position.z))
+	heavy.queue_free()
+	a.global_position = w.global_position + Vector3(0, 0, -2.0)
+	a.call("add_status", "soaked")
+	a.call("shove", Vector3(0, 0, -1), 2.0)
+	_settle(a)
+	_check("a soaked enemy is shoved half as far again", _near(w.global_position.z - 2.0 - a.global_position.z, 3.0, 0.01), "moved %f" % (w.global_position.z - 2.0 - a.global_position.z))
+	a.call("clear_status", "soaked")
+
+	# ---------- crush: against a wall
+	a.global_position = w.global_position + Vector3(0, 0, -5.0)       # wall face at -6.5; radius 0.5 -> 1.0 m of room
+	(a.get("body") as Body).hp = 5000.0
+	a.set("shover", w)
+	a.call("shove", Vector3(0, 0, -1), 4.0)
+	_settle(a)
+	var room: float = 1.0
+	var want: float = float(shove_cfg["crush_base"]) + float(shove_cfg["crush_per_m"]) * (4.0 - room)
+	_check("shoved into a wall: crush is base + per metre it had left", _near(_lost(a), want, 0.6), "lost %f want about %f" % [_lost(a), want])
+	_check("and it stops at the wall", not bool(a.call("is_shoved")) and a.global_position.z > w.global_position.z - 6.6)
+
+	# ---------- crush: against another body
+	(a.get("body") as Body).hp = 5000.0
+	a.global_position = w.global_position + Vector3(0, 0, -2.0)
+	var b := _foe(w, Vector3(0, 0, -3.6))
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	a.set("shover", w)
+	a.call("shove", Vector3(0, 0, -1), 4.0)
+	_settle(a)
+	_check("shoved into another enemy: both are hurt, the one it hit by a share", _lost(a) > float(shove_cfg["crush_base"]) and _near(_lost(b), _lost(a) * float(shove_cfg["crush_other_frac"]), 0.5),
+		"a %f b %f" % [_lost(a), _lost(b)])
+	b.queue_free()
+	await get_tree().process_frame
+
+	# ---------- the water skills
+	(a.get("body") as Body).hp = 5000.0
+	a.global_position = w.global_position + Vector3(0, 0, -2.0)
+	w.set("_facing", Vector3(0, 0, -1))
+	w.set("star_pct", [99.0] as Array[float])
+	w.call("_recompute_essence_max")
+	w.set("essence", 99.0)
+	var ctx: HitContext = w.call("apply_hit", a, (w.call("_payload", GameData.ability("water_bolt"), "on_hit") as Dictionary), ["test"], 1.0, Vector3(0, 0, -1))
+	_check("water bolt: damage, Soaked, and a step back", _near(ctx.applied, 70.0) and bool(a.call("has_status", "soaked")) and bool(a.call("is_shoved")))
+	_settle(a)
+	_check("the bolt's shove is 1.5 m, and soaking came first so it goes farther", _near(w.global_position.z - 2.0 - a.global_position.z, 2.25, 0.01), "moved %f" % (w.global_position.z - 2.0 - a.global_position.z))
+	# Breaker: a wide arc, everyone thrown straight away
+	(a.get("body") as Body).hp = 5000.0
+	a.call("clear_status", "soaked")
+	a.global_position = w.global_position + Vector3(0, 0, -2.0)
+	var side := _foe(w, Vector3(1.9, 0, -1.3))                    # about 56 degrees off the facing: inside 120, outside the old 90
+	var behind := _foe(w, Vector3(0, 0, 2.0))
+	_rested(w)
+	w.call("cast_slot", 1)
+	_check("breaker hits a 120 degree arc for twice a strike", _near(_lost(a), strike * 2.0) and _near(_lost(side), strike * 2.0) and _near(_lost(behind), 0.0),
+		"front %f side %f behind %f" % [_lost(a), _lost(side), _lost(behind)])
+	var side_from: Vector3 = side.global_position
+	_settle(a)
+	_settle(side)
+	var thrown: Vector3 = side.global_position - side_from
+	_check("and throws each one straight away from you", bool(thrown.length() > 3.5) and thrown.normalized().dot((side_from - w.global_position).normalized()) > 0.98, "moved %s" % str(thrown))
+	side.queue_free()
+	behind.queue_free()
+	# Sluice Step: through the enemy, soaking it
+	(a.get("body") as Body).hp = 5000.0
+	a.call("clear_status", "soaked")
+	a.global_position = w.global_position + Vector3(0, 0, -2.2)
+	w.set("_facing", Vector3(0, 0, -1))
+	var start: Vector3 = w.global_position
+	_rested(w)
+	w.call("cast_slot", 2)
+	for i: int in 30:
+		w.call("_physics_process", 1.0 / 60.0)
+	_check("sluice step carries you through an enemy", start.z - w.global_position.z > 4.0, "moved %f" % (start.z - w.global_position.z))
+	_check("and soaks it on the way, without hurting it", bool(a.call("has_status", "soaked")) and _near(_lost(a), 0.0))
+	_check("no skill of the new kits hurts its caster", (w.get("body") as Body).wounds.is_empty() and _near((w.get("body") as Body).missing(), 0.0))
+	a.queue_free()
+	w.queue_free()
+	world.queue_free()
+	await get_tree().process_frame
+
+	# ---------- lightning
+	var l := _new_player("tenth_strike")
+	l.call("set_affinities", ["lightning"])
+	l.global_position = Vector3(400, 0, 0)
+	var lworld := _test_floor(l.global_position, l.global_position.z - 12.0)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	l.set("star_pct", [99.0] as Array[float])
+	l.call("_recompute_essence_max")
+	l.set("essence", 99.0)
+	l.set("_facing", Vector3(0, 0, -1))
+	l.set("effects", [] as Array[TalentEffect])               # plain numbers: no tenth-strike multiplier in these sums
+	var t1 := _foe(l, Vector3(0, 0, -3.0))
+	var t2 := _foe(l, Vector3(4.0, 0, -3.0))
+	var far := _foe(l, Vector3(0, 0, -5.0))
+	# Arc Lash: instant, first enemy on the line, one mark
+	l.call("cast_slot", 0)
+	_check("arc lash lands at once on the first enemy in line", _near(_lost(t1), 85.0) and _near(_lost(far), 0.0) and _near(_lost(t2), 0.0),
+		"t1 %f far %f t2 %f" % [_lost(t1), _lost(far), _lost(t2)])
+	_check("and leaves one Live mark", int(t1.call("status_stacks", "live")) == 1)
+	var out_of_range := _foe(l, Vector3(-6.0, 0, -9.6))
+	l.set("_facing", (out_of_range.global_position - l.global_position).normalized())
+	_rested(l)
+	l.call("cast_slot", 0)
+	_check("it is short: nothing past 9 m", _near(_lost(out_of_range), 0.0))
+	out_of_range.queue_free()
+	var shielded := _foe(l, Vector3(0, 0, -13.5))                 # beyond the wall at -12
+	l.set("_facing", Vector3(0, 0, -1))
+	shielded.queue_free()
+	# Thunderclap Palm: needs a target in reach; two marks; with the lash's one that is an Overload
+	l.set("hovered", t2)
+	var ess: float = float(l.get("essence"))
+	_rested(l)
+	l.call("cast_slot", 1)
+	_check("thunderclap palm is refused, unspent, with no one in reach", _near(float(l.get("essence")), ess) and _near(_lost(t2), 0.0))
+	t2.call("add_status", "live", 1)                               # a second marked enemy, 4 m away
+	far.call("add_status", "live", 1)
+	(l.get("reflux_by") as Dictionary)["lightning"] = 40.0
+	l.set("hovered", t1)
+	var t1_before: float = _lost(t1)
+	_rested(l)
+	l.call("cast_slot", 1)
+	var palm: float = strike * 2.2
+	_check("the third mark is an Overload: the palm, then the big hit", _near(_lost(t1) - t1_before, palm + float(live["overload_damage"])), "lost %f want %f" % [_lost(t1) - t1_before, palm + float(live["overload_damage"])])
+	_check("the overloaded target is stunned and its marks are gone", bool(t1.call("has_status", "stunned")) and int(t1.call("status_stacks", "live")) == 0)
+	_check("the arc reaches every other marked enemy", _near(_lost(t2), float(live["arc_damage"])) and _near(_lost(far), float(live["arc_damage"])), "t2 %f far %f" % [_lost(t2), _lost(far)])
+	_check("and they keep their marks", int(t2.call("status_stacks", "live")) == 1 and int(far.call("status_stacks", "live")) == 1)
+	var unmarked := _foe(l, Vector3(-2.0, 0, -3.0))
+	t1.call("add_status", "live", 2)
+	l.call("_add_marks", t1, 1, true)
+	_check("an unmarked enemy beside it takes nothing", _near(_lost(unmarked), 0.0))
+	unmarked.queue_free()
+	var palm_reflux: float = float(GameData.ability("thunderclap_palm")["cost"]) * float(GameData.ability("thunderclap_palm")["reflux_per_cost"])
+	_check("each Overload grounds 12 lightning reflux", _near(float(l.call("reflux_of", "lightning")), 40.0 + palm_reflux - float(live["grounds"]) * 2.0),
+		"reflux %f" % float(l.call("reflux_of", "lightning")))
+	# a stunned enemy does nothing; an interrupt spends its attack
+	t1.set("target", l)
+	t1.set("_windup", 0.3)
+	t1.call("interrupt")
+	_check("an interrupt breaks a wind-up", float(t1.get("_windup")) < 0.0)
+	# lightning reflux does not shed in a fight
+	(l.get("reflux_by") as Dictionary)["lightning"] = 50.0
+	l.set("in_combat", true)
+	l.call("_shed_reflux", 10.0)
+	_check("lightning reflux does not shed in a fight", _near(float(l.call("reflux_of", "lightning")), 50.0))
+	l.set("in_combat", false)
+	l.call("_shed_reflux", 10.0)
+	_check("but does once the fight is over", _near(float(l.call("reflux_of", "lightning")), 40.0))
+	# Stepped Leader: you are simply there; marks what you land beside; cannot cross a wall
+	t1.queue_free()
+	t2.queue_free()
+	far.queue_free()
+	await get_tree().process_frame
+	var near_landing := _foe(l, Vector3(0.8, 0, -6.0))
+	l.set("_facing", Vector3(0, 0, -1))
+	var from: Vector3 = l.global_position
+	_rested(l)
+	l.call("cast_slot", 2)
+	_check("stepped leader puts you 6 m away at once", _near(from.z - l.global_position.z, 6.0, 0.05), "moved %f" % (from.z - l.global_position.z))
+	_check("and marks what you land beside", int(near_landing.call("status_stacks", "live")) == 1)
+	ess = float(l.get("essence"))
+	_rested(l)
+	l.call("cast_slot", 2)                                          # the wall is 6 m further on
+	_check("it will not take you through a wall, and costs nothing when refused", _near(from.z - l.global_position.z, 6.0, 0.05) and _near(float(l.get("essence")), ess))
+	_check("a blink has a recovery of its own", _near(float(GameData.ability("stepped_leader")["recovery"]), 0.3))
+	near_landing.queue_free()
+
+	# ---------- running hot no longer hurts; it slows you
+	(l.get("reflux_by") as Dictionary)["lightning"] = 85.0
+	var hurt_before: float = (l.get("body") as Body).missing()
+	l.set("_facing", Vector3(1, 0, 0))
+	_rested(l)
+	l.call("cast_slot", 0)
+	var base_rec: float = GameData.num("abilities", "cast_recovery")
+	_check("casting above 80 reflux does not hurt you", _near((l.get("body") as Body).missing(), hurt_before) and (l.get("body") as Body).wounds.is_empty())
+	_check("it makes the skill slower to finish", _near(float(l.get("_recover_t")), base_rec * float(GameData.balance["reflux"]["burn_recovery_mult"]) + float(GameData.balance["reflux"]["burn_recovery_add"])),
+		"recover %f" % float(l.get("_recover_t")))
+	l.queue_free()
+	lworld.queue_free()
+	await get_tree().process_frame
+
+	# ---------- cross rule 1: wet things conduct
+	var c := _new_player()
+	c.call("set_affinities", ["water", "lightning"])
+	c.global_position = Vector3(500, 0, 0)
+	c.set("effects", [] as Array[TalentEffect])
+	var wet1 := _foe(c, Vector3(0, 0, -2.0))
+	var wet2 := _foe(c, Vector3(2.5, 0, -2.0))
+	var dry := _foe(c, Vector3(-2.5, 0, -2.0))
+	var wet_far := _foe(c, Vector3(9.0, 0, -2.0))
+	for n: Node in [wet1, wet2, wet_far]:
+		n.call("add_status", "soaked")
+	c.call("_add_marks", wet1, 1, true)
+	_check("a lightning hit on a soaked enemy marks the other soaked ones nearby", int(wet1.call("status_stacks", "live")) == 1 and int(wet2.call("status_stacks", "live")) == 1)
+	_check("but not a dry one, nor a soaked one out of reach", int(dry.call("status_stacks", "live")) == 0 and int(wet_far.call("status_stacks", "live")) == 0)
+	c.call("_add_marks", wet2, 1, false)
+	_check("conducted marks do not conduct again", int(wet1.call("status_stacks", "live")) == 1)
+	for n: Node in [wet1, wet2, dry, wet_far, c]:
+		n.queue_free()
+	await get_tree().process_frame
+
+	# ---------- the two renamed skills
+	_check("the water skills carry our own names now, ids unchanged", str(GameData.ability("tsunami_strike")["name"]) == "Breaker" and str(GameData.ability("hydraulic_flex")["name"]) == "Sluice Step")
+
+
 func _test_affinities() -> void:
 	print("affinities:")
 	var ids: Array = GameData.affinity_ids()
@@ -809,7 +1107,7 @@ func _test_affinities() -> void:
 			kinds.append(str(ab.get("kind", "")))
 			own = own and str(ab.get("affinity", "")) == a
 		_check("%s has a ranged attack, a strike and a movement skill of its own" % a,
-			kit.size() == 3 and own and kinds == ["projectile", "melee_burst", "dash"], str(kinds))
+			kit.size() == 3 and own and ["projectile", "beam"].has(kinds[0]) and ["melee_burst", "targeted_strike"].has(kinds[1]) and ["dash", "blink"].has(kinds[2]), str(kinds))
 
 	# the roll at character creation: talent and affinities are unrelated, slots are 1 / 2 / 3
 	var rng := RandomNumberGenerator.new()
@@ -865,6 +1163,7 @@ func _test_affinities() -> void:
 	ess = float(p.get("essence"))
 	p.call("cast_slot", 0)
 	_check("a locked affinity cannot cast", _near(float(p.get("essence")), ess))
+	_rested(p)
 	p.call("cast_slot", 3)
 	_check("the other affinity still can", float(p.get("essence")) < ess and float(p.call("reflux_of", "lightning")) > 0.0)
 	for i: int in 30:

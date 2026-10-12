@@ -7,6 +7,9 @@ var damage := 90.0
 var shooter: Node
 var life := 1.5
 var color := Color(0.3, 0.7, 1.0)
+## What it does to the first enemy it meets (see Player.apply_hit). Empty = plain damage.
+var payload: Dictionary = {}
+var tags: Array = ["projectile"]
 
 
 func _ready() -> void:
@@ -36,6 +39,9 @@ func _process(delta: float) -> void:
 		var reach: float = 0.6 + float(enemy.get("radius"))
 		if global_position.distance_to(enemy.global_position + Vector3.UP * 0.9) <= reach + 0.6:
 			if is_instance_valid(shooter):
-				shooter.deal_damage(enemy, damage, ["projectile"])
+				if payload.is_empty():
+					shooter.deal_damage(enemy, damage, tags)
+				else:
+					shooter.apply_hit(enemy, payload, tags, 1.0, dir)      # shoved the way it was flying
 			queue_free()
 			return

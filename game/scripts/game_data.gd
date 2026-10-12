@@ -11,6 +11,7 @@ var _wild: Dictionary = {}
 var items_file: Dictionary = {}
 var items: Dictionary = {}
 var creation: Dictionary = {}
+var _statuses: Dictionary = {}
 var _tempering: Dictionary = {}
 var _affinities: Dictionary = {}
 var _prime_default: Array = []
@@ -36,6 +37,7 @@ func _ensure() -> void:
 	items_file = _load("res://data/items.json")
 	items = items_file.get("items", {})
 	creation = _load("res://data/creation.json")
+	_statuses = _load("res://data/statuses.json").get("statuses", {})
 	_tempering = _load("res://data/tempering.json")
 	var aff: Dictionary = _load("res://data/affinities.json")
 	_affinities = aff.get("affinities", {})
@@ -142,6 +144,12 @@ func enemy(kind: String) -> Dictionary:
 		push_error("GameData: unknown enemy kind '%s'" % kind)
 		return {}
 	return enemies[kind]
+
+
+## A status definition (stacks, lasts and the numbers its rule reads), or {} if unknown.
+func status(id: String) -> Dictionary:
+	_ensure()
+	return _statuses.get(id, {})
 
 
 func ability(id: String) -> Dictionary:

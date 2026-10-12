@@ -12,7 +12,8 @@
       "label": "Acceleration",
       "mods": {
         "speed": 1.5,
-        "dash_speed": 1.35
+        "dash_speed": 1.35,
+        "shove": 2.0
       },
       "fallback": {
         "damage_all": 1.1
@@ -52,7 +53,8 @@
       "mods": {
         "reach_bonus": 2.0,
         "life": 1.5,
-        "dash_time": 1.4
+        "dash_time": 1.4,
+        "range": 1.5
       },
       "fallback": {
         "damage_all": 1.1

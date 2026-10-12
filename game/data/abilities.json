@@ -1,38 +1,53 @@
 {
-  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind, on that ability's affinity. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities); a full stage waits for a bound construct of the matching tier (design/01 LAW 4). kinds: projectile | melee_burst | dash. Which abilities a character starts with comes from the kits in affinities.json. Every name and verse here is original to this project; numbers are first guesses [MODEL]. Brent 2026-10-11: abilities do NOT hurt their caster by default - in the books that was the product of one specific combination of concepts and skills, not a property of the strike. 'self_harm' remains an optional key for an ability or build that earns it; none has it now.",
+  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind, on that ability's affinity. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities); a full stage waits for a bound construct of the matching tier (design/01 LAW 4). Which abilities a character starts with comes from the kits in affinities.json. kinds: projectile | melee_burst | dash | beam | targeted_strike | blink (design/05 Appendix A). A skill touches an enemy through a hit payload - on_hit / on_pass / on_arrive - with any of: damage or damage_mult (taken from the skill when absent), status, shove (metres), marks (Live), interrupts. 'summary' is the one-line rule shown to the player. Water and lightning are built to design/05 step 1; fire, earth and wind still use the plain three behaviours until step 3. Abilities do NOT hurt their caster (Brent 2026-10-11). Every name and verse is original to this project - the two water skills that carried the books' own names were renamed on 2026-10-12 (ids kept for saves). Numbers are first guesses [MODEL].",
   "abilities": {
     "water_bolt": {
       "name": "Water Bolt",
       "affinity": "water",
       "kind": "projectile",
-      "cost": 12.0,
+      "cost": 8.0,
       "reflux_per_cost": 1.0,
-      "damage": 90.0,
+      "damage": 70.0,
       "speed": 20.0,
       "life": 1.5,
-      "verse": "Essence to water, water to a thrown stone.",
-      "icon": "drop"
+      "verse": "A fist of water, thrown.",
+      "icon": "drop",
+      "on_hit": {
+        "status": "soaked",
+        "shove": 1.5
+      },
+      "summary": "First enemy hit is Soaked and knocked back a step."
     },
     "tsunami_strike": {
-      "name": "Tsunami Strike",
+      "name": "Breaker",
       "affinity": "water",
       "kind": "melee_burst",
-      "cost": 20.0,
-      "reflux_per_cost": 1.2,
-      "damage_mult": 3.0,
+      "cost": 12.0,
+      "reflux_per_cost": 1.0,
+      "damage_mult": 2.0,
       "reach_bonus": 0.8,
-      "verse": "The whole sea, in one blow.",
+      "arc_deg": 120.0,
+      "on_hit": {
+        "shove": 4.0
+      },
+      "verse": "The wave arrives.",
+      "summary": "A wide blow that throws everyone it hits 4 m away from you. Stand so the wall is behind them.",
       "icon": "wave"
     },
     "hydraulic_flex": {
-      "name": "Hydraulic Flex",
+      "name": "Sluice Step",
       "affinity": "water",
       "kind": "dash",
-      "cost": 8.0,
-      "reflux_per_cost": 0.8,
+      "cost": 7.0,
+      "reflux_per_cost": 0.7,
       "dash_speed": 26.0,
       "dash_time": 0.18,
-      "verse": "Pressure in the legs, released all at once.",
+      "on_pass": {
+        "status": "soaked"
+      },
+      "pass_radius": 1.1,
+      "verse": "Pour yourself through the gap.",
+      "summary": "A short dash straight through enemies, Soaking each one you pass.",
       "icon": "dash"
     },
     "cinder_spit": {
@@ -140,35 +155,49 @@
     "arc_lash": {
       "name": "Arc Lash",
       "affinity": "lightning",
-      "kind": "projectile",
-      "cost": 15.0,
-      "reflux_per_cost": 1.2,
-      "damage": 115.0,
-      "speed": 42.0,
-      "life": 0.45,
-      "verse": "It does not travel. It was there and now it is here.",
+      "kind": "beam",
+      "cost": 8.0,
+      "reflux_per_cost": 1.0,
+      "damage": 85.0,
+      "range": 9.0,
+      "width": 0.7,
+      "on_hit": {
+        "marks": 1
+      },
+      "verse": "It was there and now it is here.",
+      "summary": "Instant, short, cannot miss what it points at. Leaves 1 Live mark. Walls stop it.",
       "icon": "drop"
     },
     "thunderclap_palm": {
       "name": "Thunderclap Palm",
       "affinity": "lightning",
-      "kind": "melee_burst",
-      "cost": 20.0,
-      "reflux_per_cost": 1.3,
-      "damage_mult": 3.2,
-      "reach_bonus": 0.6,
+      "kind": "targeted_strike",
+      "cost": 12.0,
+      "reflux_per_cost": 1.0,
+      "damage_mult": 2.2,
+      "range_bonus": 1.0,
+      "on_hit": {
+        "marks": 2,
+        "interrupts": true
+      },
       "verse": "The sound arrives after the damage, to apologise.",
+      "summary": "One enemy, in reach: a heavy blow, 2 Live marks, and it stops whatever they were doing.",
       "icon": "wave"
     },
     "stepped_leader": {
       "name": "Stepped Leader",
       "affinity": "lightning",
-      "kind": "dash",
-      "cost": 11.0,
-      "reflux_per_cost": 1.1,
-      "dash_speed": 44.0,
-      "dash_time": 0.1,
+      "kind": "blink",
+      "cost": 12.0,
+      "reflux_per_cost": 1.0,
+      "range": 6.0,
+      "arrive_radius": 1.5,
+      "recovery": 0.3,
+      "on_arrive": {
+        "marks": 1
+      },
       "verse": "Find the path first. Then take all of it at once.",
+      "summary": "You are simply there, up to 6 m away. 1 Live mark on everything beside where you land.",
       "icon": "dash"
     }
   }

@@ -18,6 +18,18 @@ var height := 1.6
 var display_name := "Enemy"
 ## 0 = none, 1 = hovered by the cursor, 2 = the player's locked attack target.
 var highlight := 0
+## Statuses on this enemy: id -> {"stacks": int, "t": seconds left}. Rules are in statuses.json.
+var statuses: Dictionary = {}
+## How far a shove moves this enemy, as a share of the stated distance (1 light .. 0.25 elite).
+var shove_resist := 1.0
+## Emitted when a shove ends against something with distance still to go.
+signal crushed(enemy: Node, metres_left: float, hit: Node)
+
+## Whoever shoved it last; told when the shove ends in a crush (on_crush).
+var shover: Node
+
+var _shove_dir := Vector3.ZERO
+var _shove_left := 0.0
 
 var _attack_cd := 0.6
 var _cooldown := 1.3
@@ -49,6 +61,7 @@ func setup(enemy_kind: String, player: Node3D, strength: float = 1.0) -> void:
 	_cooldown = float(d.get("attack_cooldown", 1.3))
 	_windup_time = float(d.get("windup", 0.45))
 	_reach = float(d.get("reach", 2.3))
+	shove_resist = float(d.get("shove_resist", 1.0))
 	var c: Array = d.get("color", [0.75, 0.2, 0.2])
 	_base_color = Color(float(c[0]), float(c[1]), float(c[2]))
 	body = Body.new(float(d.get("hp", 240.0)) * strength)
@@ -103,11 +116,105 @@ func take_hit(amount: float, _heavy: bool, _source: Node) -> float:
 	return applied
 
 
+# --- statuses, stun, shove ----------------------------------------------------------------
+
+## Add `stacks` of a status (capped at its maximum) and refresh how long it lasts.
+## Returns the stacks it now has.
+func add_status(id: String, stacks: int = 1) -> int:
+	var def: Dictionary = GameData.status(id)
+	if def.is_empty() or body.is_dead():
+		return 0
+	var now: int = mini(int(def.get("stacks", 1)), status_stacks(id) + stacks)
+	statuses[id] = {"stacks": now, "t": float(def.get("lasts", 1.0))}
+	return now
+
+
+func status_stacks(id: String) -> int:
+	return int((statuses.get(id, {}) as Dictionary).get("stacks", 0))
+
+
+func has_status(id: String) -> bool:
+	return statuses.has(id)
+
+
+func clear_status(id: String) -> void:
+	statuses.erase(id)
+
+
+## Cannot move or act for `seconds`; whatever it was doing is lost.
+func stun(seconds: float) -> void:
+	interrupt()
+	statuses["stunned"] = {"stacks": 1, "t": maxf(seconds, float((statuses.get("stunned", {}) as Dictionary).get("t", 0.0)))}
+
+
+## Break off a wind-up. The attack is spent, not postponed.
+func interrupt() -> void:
+	if _windup >= 0.0:
+		_windup = -1.0
+		_attack_cd = _cooldown
+
+
+## Throw this enemy `metres` along `dir`. Heavier enemies go less far; Soaked ones go farther.
+## It slides at the shove speed until the distance is spent or it meets something (see crushed).
+func shove(dir: Vector3, metres: float) -> void:
+	var flat := Vector3(dir.x, 0.0, dir.z)
+	if flat.length() < 0.001 or metres <= 0.0 or body.is_dead():
+		return
+	var mult: float = shove_resist
+	if has_status("soaked"):
+		mult *= float(GameData.status("soaked").get("shove_mult", 1.0))
+	_shove_dir = flat.normalized()
+	_shove_left = metres * mult
+	interrupt()
+
+
+func is_shoved() -> bool:
+	return _shove_left > 0.0
+
+
+func _tick_statuses(delta: float) -> void:
+	for id: String in statuses.keys():
+		var s: Dictionary = statuses[id]
+		s["t"] = float(s["t"]) - delta
+		if float(s["t"]) <= 0.0:
+			statuses.erase(id)
+
+
+## One physics step of a shove. The body is moved an exact distance (not by velocity, whose time
+## step the engine chooses), so the budget and the ground covered always agree. Meeting anything
+## solid ends the shove; if distance was still owed, that is a crush.
+func _tick_shove(delta: float) -> void:
+	var cfg: Dictionary = GameData.balance["shove"]
+	var step: float = minf(_shove_left, float(cfg["speed"]) * delta)
+	velocity = Vector3.ZERO
+	var col: KinematicCollision3D = move_and_collide(_shove_dir * step)
+	if col == null:
+		_shove_left -= step
+		return
+	var left: float = _shove_left - col.get_travel().length()
+	_shove_left = 0.0
+	if left >= float(cfg["min_left"]):
+		var hit: Node = col.get_collider() as Node
+		crushed.emit(self, left, hit)
+		if is_instance_valid(shover) and shover.has_method("on_crush"):
+			shover.call("on_crush", self, left, hit)
+
+
 func _physics_process(delta: float) -> void:
-	if body.is_dead() or not is_instance_valid(target):
+	if body.is_dead():
+		return
+	_tick_statuses(delta)
+	if _shove_left > 0.0:
+		_tick_shove(delta)
+		return
+	if not is_instance_valid(target):
 		return
 	_attack_cd -= delta
 	_flash -= delta
+	if has_status("stunned"):
+		velocity = Vector3.ZERO
+		_rig.animate(delta, 0.0, false)
+		return
 
 	var to: Vector3 = target.global_position - global_position
 	to.y = 0.0

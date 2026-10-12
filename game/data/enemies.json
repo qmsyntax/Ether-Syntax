@@ -1,5 +1,5 @@
 {
-  "_note": "Enemy kinds. hp and damage are multiplied by the spawn's strength factor (walls past the gate use passage.late_strength). aura_value feeds hidden latent aura on kill; bounty is cash. drops: unused since the Netherecho exists - constructs are subdued there, never looted. loot: item drops left on the ground, each rolled independently.",
+  "_note": "Enemy kinds. hp and damage are multiplied by the spawn's strength factor (walls past the gate use passage.late_strength). aura_value feeds hidden latent aura on kill; bounty is cash. drops: unused since the Netherecho exists - constructs are subdued there, never looted. loot: item drops left on the ground, each rolled independently. shove_resist scales how far a shove moves this enemy: 1.0 light, 0.5 heavy, 0.25 elite - never zero.",
   "enemies": {
     "grunt": {
       "hp": 240.0,
@@ -33,7 +33,8 @@
           "chance": 0.12
         }
       ],
-      "name": "Masked Skirmisher"
+      "name": "Masked Skirmisher",
+      "shove_resist": 1.0
     },
     "brute": {
       "hp": 700.0,
@@ -67,7 +68,8 @@
           "chance": 0.12
         }
       ],
-      "name": "Hide-Bound Brute"
+      "name": "Hide-Bound Brute",
+      "shove_resist": 0.5
     },
     "commander": {
       "hp": 1400.0,
@@ -105,7 +107,8 @@
           "chance": 0.2
         }
       ],
-      "name": "Wall Commander"
+      "name": "Wall Commander",
+      "shove_resist": 0.25
     }
   }
 }
