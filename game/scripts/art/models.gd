@@ -21,6 +21,8 @@ const WOOD := Color(0.28, 0.19, 0.12)
 const SCENERY_VARIANTS := 6
 
 static var _enemy_data: Dictionary = {}
+## Multiplier on the segment counts of lathe() / ball() / cyl() while a model is being built.
+static var _detail: float = 1.0
 static var _snaps: Dictionary[String, Dictionary] = {}
 
 
@@ -119,6 +121,9 @@ static func _build_enemy(kind: String) -> ModelRig:
 	r.radius = radius
 	r.height = height
 	r.stride_speed = float(def.get("speed", 3.0))
+	# The three original kinds were authored with coarse primitives: build them with every
+	# round form subdivided further so they hold up next to the hero.
+	_detail = 1.75
 	match kind:
 		"grunt":
 			_grunt(r, color)
@@ -126,8 +131,15 @@ static func _build_enemy(kind: String) -> ModelRig:
 			_brute(r, color)
 		"commander":
 			_commander(r, color)
+		"archer":
+			_detail = 1.0
+			EnemyModels.archer(r, color)
+		"harrier":
+			_detail = 1.0
+			EnemyModels.harrier(r, color)
 		_:
 			_plain(r, color, radius, height)
+	_detail = 1.0
 	r.finish()
 	return r
 
@@ -186,6 +198,11 @@ static func _grunt(r: ModelRig, color: Color) -> void:
 		r.add_shape("head", bbox(0.014, 0.055, 0.02, 0.004), dark, Vector3(0.028 * side, -0.03, -0.228))
 		r.add_shape("head", bbox(0.05, 0.02, 0.02, 0.005), cloak, Vector3(0.085 * side, 0.02, -0.215), Vector3(0, 0, -25 * side))
 	r.add_shape("head", bbox(0.014, 0.055, 0.02, 0.004), dark, Vector3(0, -0.035, -0.23))
+	# The mask's ties knotted behind the hood: the pale mark to know it by from the rear.
+	r.add_shape("head", ball(0.045, 8, 4), BONE, Vector3(0, 0.08, 0.235))
+	r.add_shape("head", torus(0.2, 0.232, 16, 4), BONE.darkened(0.3), Vector3(0, 0.08, 0.02), Vector3(8, 0, 0))
+	for side: int in [-1, 1]:
+		r.add_shape("head", tube([0.0, 0.08, 0.24, 0.05 * side, -0.02, 0.3, 0.07 * side, -0.16, 0.3], [0.02, 0.024, 0.0], 4, 0.4, Vector3.RIGHT), BONE.darkened(0.12))
 
 	for side: int in [-1, 1]:
 		var n: String = "left" if side < 0 else "right"
@@ -253,6 +270,21 @@ static func _brute(r: ModelRig, color: Color) -> void:
 	for side: int in [-1, 1]:
 		r.add_shape("torso", ball(0.2, 12, 6), hide_l, Vector3(0.2 * side, 0.54, -0.37), Vector3.ZERO, Vector3(1.2, 0.9, 0.7))
 	r.add_shape("torso", ball(0.44, 14, 7), hide_d, Vector3(0, 0.66, 0.2), Vector3.ZERO, Vector3(1.2, 0.75, 0.95))
+	# Armoured in front only: overlapping iron lames over chest and gut, riveted with bone.
+	# The back is bare hide, old scars across the hump - that is where to hit it.
+	var plate: Color = IRON.lightened(0.1)
+	for k: int in 4:
+		var py: float = 0.62 - 0.17 * float(k)
+		var pw: float = [0.78, 0.86, 0.8, 0.62][k]
+		var pz: float = [-0.5, -0.57, -0.6, -0.56][k]
+		r.add_shape("torso", bbox(pw, 0.22, 0.1, 0.035, 0.92, 1.0), plate if k % 2 == 0 else plate.lightened(0.08), Vector3(0, py, pz), Vector3(-10 + 7 * k, 0, 0), Vector3.ONE, 0.0, 0.8, true, ModelRig.METAL)
+		for side: int in [-1, 1]:
+			r.add_shape("torso", ball(0.03, 6, 3), BONE, Vector3(pw * 0.42 * side, py, pz - 0.055), Vector3.ZERO, Vector3.ONE, 0.0, 0.3)
+			r.add_shape("torso", bbox(0.2, 0.2, 0.09, 0.03), plate.darkened(0.15), Vector3((pw * 0.5 + 0.04) * side, py, pz + 0.12), Vector3(0, -48 * side, 0), Vector3.ONE, 0.0, 0.8, true, ModelRig.METAL)
+	r.add_shape("torso", bbox(0.16, 0.7, 0.06, 0.02), BONE.darkened(0.2), Vector3(0, 0.36, -0.645), Vector3(-2, 0, 0), Vector3.ONE, 0.0, 0.3, true)
+	for k: int in 3:
+		var sx: float = [-0.3, 0.1, 0.34][k]
+		r.add_shape("torso", tube([sx, 0.95, 0.3, sx + 0.08, 0.8, 0.52, sx + 0.02, 0.56, 0.6], [0.0, 0.022, 0.0], 4, 0.4), hide_l.lerp(Color(0.6, 0.45, 0.45), 0.5))
 	var back: Array = [[0.93, 0.18, 12.0, 0.26], [0.86, 0.42, 42.0, 0.3], [0.62, 0.58, 72.0, 0.28], [0.36, 0.56, 92.0, 0.22]]
 	for spine: Array in back:
 		r.add_shape("torso", cyl(0.0, 0.075, float(spine[3]), 6), BONE, Vector3(0, float(spine[0]), float(spine[1])), Vector3(float(spine[2]), 0, 0), Vector3.ONE, 0.0, 0.3)
@@ -659,7 +691,8 @@ static func grim(color: Color, keep: float = 0.45, value: float = 0.7) -> Color:
 
 ## MeshKit.lathe from a flat [radius, y, radius, y, ...] list.
 static func lathe(profile: Array, sides: int = 12, ripple_n: int = 0, ripple_bottom: float = 0.0, ripple_top: float = 0.0, hem: float = 0.0) -> ArrayMesh:
-	return MeshKit.lathe(poly(profile), sides, ripple_n, ripple_bottom, ripple_top, hem)
+	var around: int = sides if ripple_n > 0 or sides <= 5 else int(round(float(sides) * _detail))
+	return MeshKit.lathe(poly(profile), around, ripple_n, ripple_bottom, ripple_top, hem)
 
 
 ## MeshKit.tube from a flat [x, y, z, ...] path and a list of radii.
@@ -688,7 +721,7 @@ static func cyl(top: float, bottom: float, h: float, sides: int = 12) -> Cylinde
 	m.top_radius = top
 	m.bottom_radius = bottom
 	m.height = h
-	m.radial_segments = sides
+	m.radial_segments = sides if sides <= 5 else int(round(float(sides) * _detail))
 	m.rings = 0
 	return m
 
@@ -697,8 +730,8 @@ static func ball(radius: float, sides: int = 12, rings: int = 6) -> SphereMesh:
 	var m := SphereMesh.new()
 	m.radius = radius
 	m.height = radius * 2.0
-	m.radial_segments = sides
-	m.rings = rings
+	m.radial_segments = int(round(float(sides) * _detail))
+	m.rings = int(round(float(rings) * _detail))
 	return m
 
 

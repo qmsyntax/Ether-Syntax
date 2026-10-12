@@ -147,6 +147,7 @@ const SNAPSHOT_PROPS: Array[String] = [
 	"height", "radius", "stride_speed", "stride_rate", "swing", "bob", "step_bob", "lean",
 	"strike_both_arms", "raise_arm", "raise_forearm", "strike_arm", "strike_forearm",
 	"strike_lunge", "sway_parts", "spin_parts", "ao_strength",
+	"windup_pose", "strike_pose", "windup_drop", "windup_show", "windup_hide", "stagger_tilt", "stagger_drop",
 ]
 
 ## Top of the model above its origin, in metres (health-bar placement, picking).
@@ -179,6 +180,19 @@ var strike_lunge: float = 0.0
 var sway_parts: Dictionary[String, float] = {}
 ## Parts that turn continuously: part name -> radians per second around each local axis.
 var spin_parts: Dictionary[String, Vector3] = {}
+## Extra rotation (radians) added to parts at the height of a wind-up: part name -> offset.
+## This is how a kind gets its own telegraph pose (the archer's draw, the harrier's crouch).
+var windup_pose: Dictionary[String, Vector3] = {}
+## The same for the strike itself (the archer keeps its bow arm out through the release).
+var strike_pose: Dictionary[String, Vector3] = {}
+## Metres the "body" part sinks at the height of a wind-up.
+var windup_drop: float = 0.0
+## Parts shown only during a wind-up, and parts hidden during one (a drawn / slack bowstring).
+var windup_show: Array[String] = []
+var windup_hide: Array[String] = []
+## Rotation (radians) the "body" part takes while staggered, and how far it sinks.
+var stagger_tilt := Vector3(0.32, 0.0, 0.16)
+var stagger_drop: float = 0.08
 ## Strength (0..1) of the baked darkening toward the ground and on downward-facing surfaces.
 var ao_strength: float = 1.0
 
@@ -202,6 +216,9 @@ var _phase: float = 0.0
 var _move: float = 0.0
 var _raise: float = 0.0
 var _strike: float = 0.0
+var _staggered: bool = false
+var _stag: float = 0.0
+var _swapped: bool = false
 
 
 func _init() -> void:
@@ -452,6 +469,12 @@ func get_weapon() -> Node3D:
 	return _weapon if _weapon != null and is_instance_valid(_weapon) else null
 
 
+## Reeling / knocked-down pose while on: the body slumps by stagger_tilt and stagger_drop,
+## the head hangs and the figure sways. animate() eases in and out of it.
+func set_staggered(on: bool) -> void:
+	_staggered = on
+
+
 ## Greys the model out permanently (corpse look) and switches its glow accents off.
 func set_dead_look() -> void:
 	if _dead:
@@ -516,6 +539,35 @@ func animate(delta: float, speed: float, attacking: bool) -> void:
 		var amount: float = sway_parts[part]
 		_pose(part, Vector3(amount * (_move + 0.12 * sin(_time * 2.6 + float(i) * 1.7) + 0.1 * _move * sin(_phase * 2.0)), 0.0, 0.03 * sin(_time * 1.9 + float(i))))
 		i += 1
+
+	# Kind-specific wind-up pose, then the stagger slump, layered over everything above.
+	_stag = move_toward(_stag, 1.0 if _staggered else 0.0, delta * 7.0)
+	if _raise > 0.0:
+		for part: String in windup_pose:
+			var posed: Node3D = _parts.get(part, null) as Node3D
+			if posed != null:
+				posed.rotation += windup_pose[part] * _raise
+	if _strike > 0.0:
+		for part: String in strike_pose:
+			var struck: Node3D = _parts.get(part, null) as Node3D
+			if struck != null:
+				struck.rotation += strike_pose[part] * _strike
+	var swap: bool = _raise > 0.45
+	if swap != _swapped:
+		_swapped = swap
+		for part: String in windup_show:
+			if _parts.has(part):
+				(_parts[part] as Node3D).visible = swap
+		for part: String in windup_hide:
+			if _parts.has(part):
+				(_parts[part] as Node3D).visible = not swap
+	if _parts.has("body") and (_raise > 0.0 or _stag > 0.0):
+		var trunk: Node3D = _parts["body"]
+		trunk.position.y -= windup_drop * _raise + stagger_drop * _stag
+		trunk.rotation += (stagger_tilt + Vector3(0.0, 0.0, 0.07 * sin(_time * 6.0))) * _stag
+		var skull: Node3D = _parts.get("head", null) as Node3D
+		if skull != null:
+			skull.rotation.x -= 0.45 * _stag
 
 	# Orbiting pieces turn steadily, faster while telegraphing or striking.
 	var hurry: float = 1.0 + 2.0 * act

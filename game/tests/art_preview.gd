@@ -82,6 +82,20 @@ func _ready() -> void:
 			_layout_close()
 		"motion":
 			_layout_motion()
+		"enemies":
+			_layout_enemies(false)
+		"enemies-back":
+			_facing = Vector3(-1.0, 0.0, -0.6)
+			_layout_enemies(false)
+		"enemies-side":
+			_facing = Vector3(1.0, 0.0, -1.0)
+			_layout_enemies(false)
+		"enemies-motion":
+			_layout_enemies(true)
+		"enemies-new":
+			_layout_new_enemies()
+		"enemies-game":
+			_layout_enemy_wall()
 		"weapons":
 			_layout_weapons()
 		"props":
@@ -294,6 +308,89 @@ func _layout_close() -> void:
 	_place(Models.enemy("grunt"), _spot(1, 4, step, 0.0), "grunt", 0.0, false)
 	_place(Models.enemy("brute"), _spot(2, 4, step, 0.0), "brute", 0.0, false)
 	_place(Models.enemy("commander"), _spot(3, 4, step, 0.0) + SCREEN_RIGHT * 0.4, "commander", 0.0, false)
+
+
+## The five enemy kinds up close (front, or from behind / side-on with the -back / -side
+## modes), or each one idle, mid-run, winding up, striking and staggered.
+func _layout_enemies(poses: bool) -> void:
+	var kinds: Array[String] = ["archer", "harrier", "grunt", "brute", "commander"]
+	if not poses:
+		_camera.size = 7.4
+		_aim_camera(Vector3(0, 0.6, 0))
+		var xs: Array[float] = [-5.4, -3.0, -0.6, 2.1, 5.2]
+		for i: int in kinds.size():
+			_place(Models.enemy(kinds[i]), SCREEN_RIGHT * xs[i], kinds[i], 0.0, false)
+		return
+	_camera.size = 15.0
+	_aim_camera(Vector3(0, 0.3, 0))
+	var depths: Array[float] = [9.5, 5.4, 1.4, -3.4, -9.0]
+	for row: int in kinds.size():
+		for pose: int in 6:
+			var rig: ModelRig = Models.enemy(kinds[row])
+			var at: Vector3 = _spot(pose, 6, 4.3, depths[row])
+			match pose:
+				0:
+					_place(rig, at, kinds[row] + " idle", 0.0, false)
+				1:
+					_place(rig, at, "mid-run A", rig.stride_speed, false, _walk_frames(rig, 0))
+				2:
+					_place(rig, at, "mid-run B", rig.stride_speed, false, _walk_frames(rig, 1))
+				3:
+					rig.set_windup(true)
+					_place(rig, at, "wind-up", 0.0, false, 40)
+				4:
+					_place(rig, at, "strike", 0.0, true, 14)
+				5:
+					rig.set_staggered(true)
+					_place(rig, at, "staggered", 0.0, false, 40)
+
+
+## The archer and the harrier close up in their key poses, front and back.
+func _layout_new_enemies() -> void:
+	_camera.size = 6.2
+	_aim_camera(Vector3(0, 0.45, 0))
+	var row: int = 0
+	for kind: String in ["archer", "harrier"]:
+		for pose: int in 6:
+			var rig: ModelRig = Models.enemy(kind)
+			var at: Vector3 = _spot(pose, 6, 1.7, 2.6 - 5.0 * float(row))
+			var tag: String = kind
+			var frames: int = -1
+			var attacking: bool = false
+			match pose:
+				1:
+					tag = "from behind"
+				2:
+					rig.set_windup(true)
+					tag = "wind-up"
+					frames = 40
+				3:
+					rig.set_windup(true)
+					tag = "wind-up, behind"
+					frames = 40
+				4:
+					tag = "strike"
+					attacking = true
+					frames = 14
+				5:
+					rig.set_staggered(true)
+					tag = "staggered"
+					frames = 40
+			_facing = Vector3(-1.0, 0.0, -0.6) if pose == 1 or pose == 3 else FACING
+			_place(rig, at, tag, 0.0, attacking, frames)
+		row += 1
+
+
+## Twelve enemies at the game camera's scale, all animating: the frame-time check.
+func _layout_enemy_wall() -> void:
+	var kinds: Array[String] = ["grunt", "grunt", "grunt", "archer", "archer", "harrier", "harrier", "brute", "brute", "grunt", "archer", "commander"]
+	for i: int in kinds.size():
+		var rig: ModelRig = Models.enemy(kinds[i])
+		if i % 4 == 1:
+			rig.set_windup(true)
+		_place(rig, _spot(i % 6, 6, 4.4, 3.5 - 7.0 * float(i / 6)), kinds[i], rig.stride_speed if i % 3 == 0 else 0.0, false)
+	_place(Models.player(), SCREEN_UP * -8.0, "player", 0.0, false)
+	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 
 
 func _layout_motion() -> void:
@@ -550,6 +647,8 @@ func _print_stats() -> void:
 		"grunt": Models.enemy("grunt"),
 		"brute": Models.enemy("brute"),
 		"commander": Models.enemy("commander"),
+		"archer": Models.enemy("archer"),
+		"harrier": Models.enemy("harrier"),
 		"grass": Models.scenery("grass") as ModelRig,
 		"bush": Models.scenery("bush") as ModelRig,
 		"pickup": Models.pickup(false) as ModelRig,
@@ -630,6 +729,9 @@ func _save_shot() -> void:
 	var dir: String = ProjectSettings.globalize_path("res://").path_join("../shots").simplify_path()
 	DirAccess.make_dir_recursive_absolute(dir)
 	var file: String = "art-%s%s.png" % [_shot_mode, "-gameenv" if _game_env else ""]
+	if _shot_mode == "enemies-game":
+		var rid: RID = get_viewport().get_viewport_rid()
+		print("art_preview: 12 enemies + player: render %.2f ms cpu + %.2f ms gpu, script+idle %.2f ms" % [RenderingServer.viewport_get_measured_render_time_cpu(rid) + RenderingServer.get_frame_setup_time_cpu(), RenderingServer.viewport_get_measured_render_time_gpu(rid), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0])
 	var image: Image = get_viewport().get_texture().get_image()
 	var err: Error = image.save_png(dir.path_join(file))
 	print("art_preview: saved %s (%s)" % [dir.path_join(file), error_string(err)])
