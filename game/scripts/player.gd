@@ -618,6 +618,25 @@ func cast_ability(index: int) -> void:
 	_check_death()
 
 
+## Put an ability on a skill slot. An ability lives on one slot at a time; whatever was in the
+## target slot swaps to the slot the ability came from (or leaves the bar if it had none).
+func assign_slot(slot: int, ability_index: int) -> void:
+	if slot < 0 or slot >= hotbar.size() or ability_index < 0 or ability_index >= abilities.size():
+		return
+	var from: int = hotbar.find(ability_index)
+	var displaced: int = hotbar[slot]
+	hotbar[slot] = ability_index
+	if from >= 0 and from != slot:
+		hotbar[from] = displaced
+
+
+## Take an ability off the skill bar.
+func unassign_ability(ability_index: int) -> void:
+	var at: int = hotbar.find(ability_index)
+	if at >= 0:
+		hotbar[at] = -1
+
+
 ## Damage multiplier an ability gets from its stage.
 func ability_damage_mult(stage: int) -> float:
 	return 1.0 + GameData.num("abilities", "stage_damage_bonus") * float(stage)

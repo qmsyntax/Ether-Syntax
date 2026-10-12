@@ -153,7 +153,7 @@ func _draw_action_bar(vs: Vector2) -> void:
 	var inv: Inventory = player.get("inventory")
 	_right_text(Vector2(vs.x - 16.0, vs.y - 30.0), "Pack  %d / %d kg" % [int(inv.weight()), int(inv.capacity())],
 		13, UiTheme.BAD if inv.weight() > inv.capacity() * 0.9 else UiTheme.TEXT_DIM)
-	_right_text(Vector2(vs.x - 16.0, vs.y - 12.0), "%s  inventory      %s  controls" % [Keybinds.binding_text("inventory"), Keybinds.binding_text("settings")], 13, UiTheme.TEXT_FAINT)
+	_right_text(Vector2(vs.x - 16.0, vs.y - 12.0), "%s  soul      %s  inventory      %s  controls" % [Keybinds.binding_text("ethercosm"), Keybinds.binding_text("inventory"), Keybinds.binding_text("settings")], 13, UiTheme.TEXT_FAINT)
 
 
 func _draw_slot(r: Rect2, i: int, idx: int, abilities: Array, essence: float, locked: bool) -> void:

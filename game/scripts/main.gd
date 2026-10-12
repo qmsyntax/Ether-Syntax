@@ -12,6 +12,7 @@ const TownScreen := preload("res://scripts/ui/town_screen.gd")
 const ShopScreen := preload("res://scripts/ui/shop_screen.gd")
 const InventoryScreen := preload("res://scripts/ui/inventory_screen.gd")
 const MessageScreen := preload("res://scripts/ui/message_screen.gd")
+const EthercosmScreen := preload("res://scripts/ui/ethercosm_screen.gd")
 
 const CAMERA_OFFSET := Vector3(12.0, 12.0, 12.0)
 const TALENT_CHOICES: Array[String] = [
@@ -181,7 +182,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_echo():
 		return
 	if event.is_action_pressed("settings"):
-		if screen is ShopScreen or screen is InventoryScreen:
+		if screen is ShopScreen or screen is InventoryScreen or screen is EthercosmScreen:
 			close_screen()
 		else:
 			_open_settings()
@@ -191,6 +192,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("inventory"):
 		open_inventory()
+		return
+	if event.is_action_pressed("ethercosm"):
+		open_ethercosm()
 		return
 
 	match state:
@@ -326,6 +330,14 @@ func open_inventory() -> void:
 		close_screen()
 	elif state != "select" and state != "dead":
 		_show_screen(InventoryScreen.new(self), state != "town")
+
+
+## Toggle the ethercosm - the view of your soul. Out in the field it pauses the game.
+func open_ethercosm() -> void:
+	if screen is EthercosmScreen:
+		close_screen()
+	elif state != "select" and state != "dead":
+		_show_screen(EthercosmScreen.new(self), state != "town")
 
 
 func start_new_character(index: int) -> void:
@@ -879,6 +891,22 @@ func _setup_ui_shot(which: String) -> void:
 		"inventory":
 			_enter_town()
 			open_inventory()
+		"ethercosm", "ethercosm-2":
+			if which == "ethercosm-2":
+				# a later character: two stars, a bound vestige, a rearranged bar
+				player.call("grow_star", 99.0)
+				player.set("_latent_aura", 1000.0)
+				player.call("try_ascend")
+				player.call("grow_star", 33.0)
+				player.call("bind_construct", 0, 0, 0.0)
+				abilities[0]["progress"] = 45.0
+				abilities[1]["progress"] = 100.0
+				inv.add("paired_mote")
+				inv.equip("paired_mote")
+				player.call("refresh_gear")
+				player.call("assign_slot", 3, 2)
+			_enter_town()
+			open_ethercosm()
 		"hud", "hud-low":
 			_show_screen(null, false)
 			_enter_dungeon()

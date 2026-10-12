@@ -23,6 +23,7 @@ func _ready() -> void:
 	_test_stars()
 	await _test_click_melee()
 	await _test_inventory()
+	_test_slot_assignment()
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
 
@@ -442,22 +443,45 @@ func _test_inventory() -> void:
 	q.queue_free()
 
 
+func _test_slot_assignment() -> void:
+	print("skill slots:")
+	var p := _new_player("tenth_strike")
+	var hb: Array = p.get("hotbar")
+	_check("the starting loadout fills slots 1-3", int(hb[0]) == 0 and int(hb[1]) == 1 and int(hb[2]) == 2 and int(hb[3]) == -1)
+	p.call("assign_slot", 4, 2)
+	_check("moving an ability to an empty slot leaves its old slot empty", int(hb[4]) == 2 and int(hb[2]) == -1)
+	p.call("assign_slot", 0, 2)
+	_check("moving onto an occupied slot swaps the two", int(hb[0]) == 2 and int(hb[4]) == 0)
+	_check("an ability never sits on two slots", hb.count(0) == 1 and hb.count(1) == 1 and hb.count(2) == 1)
+	p.call("unassign_ability", 1)
+	_check("an ability can be taken off the bar", hb.find(1) == -1)
+	p.call("assign_slot", 99, 0)
+	p.call("assign_slot", 0, 99)
+	_check("nonsense slot or ability numbers are ignored", int(hb[0]) == 2)
+	var q := _new_player()
+	q.call("from_save", p.call("to_save"))
+	var qhb: Array = q.get("hotbar")
+	_check("the arrangement survives saving", int(qhb[0]) == 2 and int(qhb[4]) == 0 and qhb.find(1) == -1)
+	p.queue_free()
+	q.queue_free()
+
+
 func _test_keybinds() -> void:
 	print("keybinds:")
 	Keybinds.reset_defaults()
 	_check("defaults registered", Keybinds.binding_text("ability_1") == "1" and Keybinds.binding_text("ability_6") == "6" and Keybinds.binding_text("strike") == "LMB")
 	var g := InputEventKey.new()
-	g.physical_keycode = KEY_K
+	g.physical_keycode = KEY_J
 	var displaced: String = Keybinds.rebind("ability_1", g)
-	_check("rebind changes the binding", Keybinds.binding_text("ability_1") == "K" and displaced == "")
+	_check("rebind changes the binding", Keybinds.binding_text("ability_1") == "J" and displaced == "")
 	var displaced2: String = Keybinds.rebind("ascend", g)
-	_check("a key held by another action is taken from it", displaced2 == "ability_1" and Keybinds.binding_text("ability_1") == "(none)" and Keybinds.binding_text("ascend") == "K")
+	_check("a key held by another action is taken from it", displaced2 == "ability_1" and Keybinds.binding_text("ability_1") == "(none)" and Keybinds.binding_text("ascend") == "J")
 	var mmb := InputEventMouseButton.new()
 	mmb.button_index = MOUSE_BUTTON_MIDDLE
 	Keybinds.rebind("meditate", mmb)
 	_check("mouse buttons bind too", Keybinds.binding_text("meditate") == "MMB")
 	Keybinds.call("_load")
-	_check("bindings survive a save/load round trip", Keybinds.binding_text("ascend") == "K" and Keybinds.binding_text("meditate") == "MMB")
+	_check("bindings survive a save/load round trip", Keybinds.binding_text("ascend") == "J" and Keybinds.binding_text("meditate") == "MMB")
 	Keybinds.reset_defaults()
 	_check("reset restores defaults", Keybinds.binding_text("ability_1") == "1" and Keybinds.binding_text("ascend") == "T" and Keybinds.binding_text("meditate") == "M")
 
