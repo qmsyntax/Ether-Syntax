@@ -104,13 +104,84 @@ static func icon(ci: CanvasItem, kind: String, c: Vector2, s: float, color: Colo
 			ci.draw_circle(c + Vector2(-s * 0.14, s * 0.22), s * 0.1, Color(1, 1, 1, 0.35))
 		"wave":      # tsunami strike: stacked crests
 			for k: int in 3:
-				var y: float = c.y - s * 0.3 + k * s * 0.3
+				var y: float = c.y - s * 0.13 + k * s * 0.3
 				var prev := Vector2(c.x - s * 0.6, y)
 				for i: int in range(1, 17):
 					var u: float = float(i) / 16.0
 					var p := Vector2(c.x - s * 0.6 + u * s * 1.2, y - sin(u * PI) * s * (0.34 - k * 0.07) * (1.0 if i < 11 else 0.5))
 					ci.draw_line(prev, p, color.lightened(0.15 * (2 - k)), 3.0, true)
 					prev = p
+		"ember":     # cinder spit: a flame
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.04, -s * 0.58), c + Vector2(s * 0.28, -s * 0.12), c + Vector2(s * 0.38, s * 0.2), c + Vector2(s * 0.24, s * 0.46),
+				c + Vector2(0, s * 0.54), c + Vector2(-s * 0.24, s * 0.46), c + Vector2(-s * 0.38, s * 0.2), c + Vector2(-s * 0.24, -s * 0.1)]), color)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.02, -s * 0.08), c + Vector2(s * 0.16, s * 0.22), c + Vector2(0, s * 0.44), c + Vector2(-s * 0.16, s * 0.22)]), color.lightened(0.5))
+		"fist":      # kiln fist: knuckles, with heat coming off them
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.36, -s * 0.14), Vector2(s * 0.72, s * 0.56)), color)
+			for k: int in 4:
+				ci.draw_circle(c + Vector2(-s * 0.27 + k * s * 0.18, -s * 0.16), s * 0.1, color)
+			for k: int in 3:
+				ci.draw_line(c + Vector2(-s * 0.18 + k * s * 0.18, -s * 0.12), c + Vector2(-s * 0.18 + k * s * 0.18, s * 0.14), color.darkened(0.45), 1.5, true)
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.46, s * 0.08), Vector2(s * 0.22, s * 0.3)), color.darkened(0.25))
+			for k: int in 3:
+				ci.draw_line(c + Vector2(-s * 0.24 + k * s * 0.24, -s * 0.38), c + Vector2(-s * 0.18 + k * s * 0.24, -s * 0.58), color.lightened(0.45), 2.0, true)
+		"flame_trail":   # flashover: a line of fire along the ground
+			ci.draw_line(c + Vector2(-s * 0.6, s * 0.42), c + Vector2(s * 0.6, s * 0.42), color.darkened(0.35), 3.0, true)
+			for k: int in 3:
+				var fx: float = -s * 0.4 + k * s * 0.4
+				var fh: float = s * (0.42 + 0.2 * k)
+				ci.draw_colored_polygon(PackedVector2Array([c + Vector2(fx - s * 0.16, s * 0.4), c + Vector2(fx + s * 0.16, s * 0.4), c + Vector2(fx + s * 0.06, s * 0.4 - fh)]), color.lightened(0.12 * k))
+		"stone":     # slingstone: a rock in flight
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.5, -s * 0.04), c + Vector2(s * 0.38, s * 0.28), c + Vector2(s * 0.06, s * 0.38), c + Vector2(-s * 0.18, s * 0.2),
+				c + Vector2(-s * 0.2, -s * 0.16), c + Vector2(s * 0.04, -s * 0.36), c + Vector2(s * 0.34, -s * 0.3)]), color)
+			ci.draw_polyline(PackedVector2Array([c + Vector2(s * 0.04, -s * 0.36), c + Vector2(s * 0.14, -s * 0.04), c + Vector2(s * 0.5, -s * 0.04)]), color.darkened(0.4), 1.5, true)
+			for k: int in 3:
+				ci.draw_line(c + Vector2(-s * 0.62 + k * s * 0.06, -s * 0.2 + k * s * 0.2), c + Vector2(-s * 0.32, -s * 0.2 + k * s * 0.2), color.darkened(0.2), 2.5, true)
+		"landslide": # landslide blow: a great weight coming down on the ground
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.34, -s * 0.52), c + Vector2(s * 0.34, -s * 0.52), c + Vector2(s * 0.34, -s * 0.06), c + Vector2(0, s * 0.32), c + Vector2(-s * 0.34, -s * 0.06)]), color)
+			ci.draw_line(c + Vector2(-s * 0.6, s * 0.42), c + Vector2(s * 0.6, s * 0.42), color.darkened(0.3), 4.0, true)
+			ci.draw_line(c + Vector2(0, s * 0.32), c + Vector2(-s * 0.2, s * 0.56), color.darkened(0.5), 2.0, true)
+			ci.draw_line(c + Vector2(0, s * 0.32), c + Vector2(s * 0.24, s * 0.54), color.darkened(0.5), 2.0, true)
+			ci.draw_circle(c + Vector2(-s * 0.5, s * 0.2), s * 0.07, color.lightened(0.2))
+			ci.draw_circle(c + Vector2(s * 0.52, s * 0.14), s * 0.06, color.lightened(0.2))
+		"shoulder":  # bedrock shove: driving into something solid
+			ci.draw_rect(Rect2(c + Vector2(s * 0.14, -s * 0.44), Vector2(s * 0.36, s * 0.88)), color.darkened(0.2))
+			for k: int in 2:
+				var sx: float = c.x - s * 0.5 + k * s * 0.28
+				ci.draw_polyline(PackedVector2Array([Vector2(sx, c.y - s * 0.38), Vector2(sx + s * 0.28, c.y), Vector2(sx, c.y + s * 0.38)]), color.lightened(0.15 * k), 4.0, true)
+		"gust":      # cutting gust: a crescent of air with an edge
+			ci.draw_arc(c + Vector2(-s * 0.26, 0), s * 0.62, -1.0, 1.0, 20, color, 5.0, true)
+			ci.draw_arc(c + Vector2(-s * 0.34, 0), s * 0.4, -0.85, 0.85, 16, color.darkened(0.2), 3.0, true)
+			ci.draw_arc(c + Vector2(-s * 0.42, 0), s * 0.2, -0.7, 0.7, 12, color.darkened(0.35), 2.5, true)
+		"crosscut":  # crosscut: two cuts crossing
+			ci.draw_line(c + Vector2(-s * 0.46, -s * 0.42), c + Vector2(s * 0.46, s * 0.42), color.darkened(0.15), 5.0, true)
+			ci.draw_line(c + Vector2(s * 0.46, -s * 0.42), c + Vector2(-s * 0.46, s * 0.42), color.lightened(0.15), 5.0, true)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -s * 0.14), c + Vector2(s * 0.14, 0), c + Vector2(0, s * 0.14), c + Vector2(-s * 0.14, 0)]), color.lightened(0.6))
+		"tailwind":  # tailwind: carried forward on the wind
+			for k: int in 3:
+				ci.draw_line(c + Vector2(-s * 0.6 + absf(float(k) - 1.0) * s * 0.16, -s * 0.3 + k * s * 0.3), c + Vector2(-s * 0.06, -s * 0.3 + k * s * 0.3), color.darkened(0.25), 2.5, true)
+			for k: int in 2:
+				var tx: float = c.x + s * 0.02 + k * s * 0.3
+				ci.draw_polyline(PackedVector2Array([Vector2(tx, c.y - s * 0.42), Vector2(tx + s * 0.28, c.y), Vector2(tx, c.y + s * 0.42)]), color.lightened(0.15 * k), 4.0, true)
+		"downdraft": # downdraft: air driven into the ground
+			for k: int in 3:
+				var dx: float = c.x - s * 0.36 + k * s * 0.36
+				var dy: float = c.y + (s * 0.3 if k == 1 else s * 0.18)
+				ci.draw_line(Vector2(dx, c.y - s * 0.52), Vector2(dx, dy), color, 3.0, true)
+				ci.draw_polyline(PackedVector2Array([Vector2(dx - s * 0.12, dy - s * 0.14), Vector2(dx, dy), Vector2(dx + s * 0.12, dy - s * 0.14)]), color, 3.0, true)
+			ci.draw_line(c + Vector2(-s * 0.6, s * 0.46), c + Vector2(s * 0.6, s * 0.46), color.darkened(0.3), 3.0, true)
+		"bolt":      # arc lash: a stroke of lightning
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.14, -s * 0.58), c + Vector2(-s * 0.3, s * 0.08), c + Vector2(-s * 0.02, s * 0.08), c + Vector2(-s * 0.16, s * 0.58),
+				c + Vector2(s * 0.32, -s * 0.12), c + Vector2(s * 0.04, -s * 0.12), c + Vector2(s * 0.3, -s * 0.58)]), color)
+		"palm":      # thunderclap palm: a strike that rings
+			ci.draw_circle(c, s * 0.2, color)
+			ci.draw_arc(c, s * 0.36, 0.0, TAU, 28, color.darkened(0.15), 2.5, true)
+			for k: int in 8:
+				var pa: float = TAU * float(k) / 8.0 + 0.39
+				ci.draw_line(c + Vector2(cos(pa), sin(pa)) * s * 0.46, c + Vector2(cos(pa), sin(pa)) * s * 0.62, color.lightened(0.35), 2.5, true)
+		"blink":     # stepped leader: gone from here, there at once
+			ci.draw_arc(c + Vector2(-s * 0.4, s * 0.34), s * 0.15, 0.0, TAU, 14, color.darkened(0.3), 2.0, true)
+			ci.draw_polyline(PackedVector2Array([c + Vector2(-s * 0.3, s * 0.24), c + Vector2(-s * 0.02, s * 0.14), c + Vector2(-s * 0.12, -s * 0.06), c + Vector2(s * 0.24, -s * 0.22)]), color.darkened(0.1), 2.5, true)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.38, -s * 0.56), c + Vector2(s * 0.6, -s * 0.32), c + Vector2(s * 0.38, -s * 0.08), c + Vector2(s * 0.16, -s * 0.32)]), color.lightened(0.3))
 		"wall":      # raise slab: a block standing on broken ground
 			ci.draw_rect(Rect2(c + Vector2(-s * 0.4, -s * 0.44), Vector2(s * 0.8, s * 0.74)), color)
 			ci.draw_line(c + Vector2(-s * 0.4, -s * 0.12), c + Vector2(s * 0.4, -s * 0.18), color.darkened(0.4), 2.0, true)

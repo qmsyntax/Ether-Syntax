@@ -1219,6 +1219,35 @@ func _setup_ui_shot(which: String) -> void:
 	_shot_countdown = 40
 	if which == "title":
 		return
+	if which == "icons":
+		# every skill's glyph in a slot, by affinity, with its name
+		var sheet := Control.new()
+		sheet.set_anchors_preset(Control.PRESET_FULL_RECT)
+		sheet.draw.connect(func() -> void:
+			sheet.draw_rect(Rect2(Vector2.ZERO, sheet.size), Color(0.08, 0.08, 0.1))
+			var row := 0
+			for aff: Variant in GameData.affinity_ids():
+				var col := 0
+				UiDraw.text(sheet, Vector2(40.0, 96.0 + row * 150.0), str(GameData.affinity(str(aff)).get("label", aff)), 22, GameData.affinity_color(str(aff)).lightened(0.3))
+				for id: Variant in GameData.abilities.keys():
+					var ab: Dictionary = GameData.ability(str(id))
+					if str(ab.get("affinity", "")) != str(aff):
+						continue
+					var slot := Rect2(200.0 + col * 300.0, 50.0 + row * 150.0, 116.0, 116.0)
+					sheet.draw_rect(slot, UiTheme.INSET)
+					sheet.draw_rect(slot, UiTheme.BRONZE_DIM, false, 2.0)
+					sheet.draw_line(Vector2(slot.get_center().x, slot.position.y), Vector2(slot.get_center().x, slot.end.y), Color(1, 1, 1, 0.08), 1.0)
+					sheet.draw_line(Vector2(slot.position.x, slot.get_center().y), Vector2(slot.end.x, slot.get_center().y), Color(1, 1, 1, 0.08), 1.0)
+					UiDraw.icon(sheet, str(ab.get("icon", "drop")), slot.get_center(), 58.0, GameData.affinity_color(str(aff)).lightened(0.3))
+					UiDraw.text(sheet, Vector2(slot.end.x + 10.0, slot.get_center().y), str(ab.get("name", id)), 15, UiTheme.TEXT)
+					UiDraw.text(sheet, Vector2(slot.end.x + 10.0, slot.get_center().y + 20.0), str(ab.get("kind", "")), 12, UiTheme.TEXT_DIM)
+					col += 1
+				row += 1)
+		var layer := CanvasLayer.new()
+		layer.layer = 100
+		add_child(layer)
+		layer.add_child(sheet)
+		return
 	if which == "earth":
 		# an earth character set for a blow, two of their stones standing
 		forced_biome = "scrubland"

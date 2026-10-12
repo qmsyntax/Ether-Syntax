@@ -434,3 +434,20 @@ Verified: self-test 509/509 (two runs; 507 three times before the last two check
 full-passage bot runs; Netherecho death test both ways; inventory and creation click tests; `ui-earth.png`
 inspected. Not verified: by hand. In particular whether 0.3 to 0.6 s of standing still feels like commitment or
 like lag, and whether a wall that takes 0.45 s to become solid comes up fast enough to matter.
+
+
+## Part V — archer steering and skill icons (Brent 2026-10-12: "work on the archer pathing... the icons for the skills are not right")
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-104 | An archer that cannot see you looks for the nearest spot it can walk straight to and shoot from, and goes there, instead of walking into the cover | selftest (fails on the old code) | Done |
+| S06-105 | An archer backing off with a wall behind it slips along the wall; boxed in on every side it stands and shoots | selftest (fails on the old code) | Done |
+| S06-106 | Every skill has its own icon (17; they had shared three), centred in the slot and clear of the key and the cost | `shots/ui-icons.png`, `shots/ui-skills.png` | Done |
+
+This is still not pathfinding: the archer only considers spots within 8 m that it can reach in one straight line.
+In a maze of cover it will fall back to walking at you, as before. Brent did not say what he saw the archers do;
+this fixes the two failures visible in the code (stuck against cover, pinned against a wall). `--shot-ui=icons`
+draws every skill icon on one sheet.
+
+Verified: self-test 516/516 (three runs), three full-passage bot runs, gate and death bots, click tests, both
+screenshots inspected. Not verified: by hand.

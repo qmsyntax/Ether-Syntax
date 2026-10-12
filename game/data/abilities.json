@@ -60,7 +60,7 @@
       "speed": 24.0,
       "life": 1.25,
       "verse": "A coal from the mouth. It was never going to stay in.",
-      "icon": "drop",
+      "icon": "ember",
       "recovery": 0.06,
       "on_hit": {
         "status": "alight"
@@ -88,7 +88,7 @@
       },
       "verse": "Fire the hand like clay. Then find out what it breaks.",
       "summary": "One enemy in reach: a heavy blow, 2 Alight, interrupts. If it was already burning, every stack is spent for +40 and the blow bursts, lighting those beside it.",
-      "icon": "wave"
+      "icon": "fist"
     },
     "flashover": {
       "name": "Flashover",
@@ -109,7 +109,7 @@
       },
       "verse": "The room does not burn slowly. Neither do you.",
       "summary": "A short dash that leaves a line of flame for 3 s: anything standing in it catches. It does not carry you through enemies.",
-      "icon": "dash"
+      "icon": "flame_trail"
     },
     "slingstone": {
       "name": "Slingstone",
@@ -129,7 +129,7 @@
       },
       "verse": "A stone has all the time there is. Lend it yours.",
       "summary": "The slowest bolt and the heaviest. It stops what it hits mid-swing and all but staggers it. Thrown into your own stone, it shatters it.",
-      "icon": "drop"
+      "icon": "stone"
     },
     "landslide_blow": {
       "name": "Landslide Blow",
@@ -148,7 +148,7 @@
       },
       "verse": "The hill does not swing. It simply stops holding on.",
       "summary": "A narrow, slow, crushing blow: it staggers anything short of an elite, moves nobody, and shatters every stone of yours in its arc.",
-      "icon": "wave"
+      "icon": "landslide"
     },
     "bedrock_shove": {
       "name": "Bedrock Shove",
@@ -159,7 +159,7 @@
       "dash_speed": 18.0,
       "dash_time": 0.3,
       "verse": "Put your shoulder where the mountain keeps its own.",
-      "icon": "dash",
+      "icon": "shoulder",
       "summary": "Not in the starter kit: earth starts with no movement skill. It returns as a scroll with the later skills."
     },
     "cutting_gust": {
@@ -177,7 +177,7 @@
       "on_hit": {},
       "verse": "Air has an edge. Most people never find it.",
       "summary": "A short gust that passes through everything in its line. Spends up to 3 pips for +15 each - weak from a standstill.",
-      "icon": "drop"
+      "icon": "gust"
     },
     "downdraft": {
       "name": "Downdraft",
@@ -188,7 +188,7 @@
       "damage_mult": 2.4,
       "reach_bonus": 1.6,
       "verse": "Bring the sky down the length of your arm.",
-      "icon": "wave",
+      "icon": "downdraft",
       "summary": "Not in the starter kit since Crosscut took its place; it returns with the later skills."
     },
     "tailwind": {
@@ -204,7 +204,7 @@
       "no_recovery": true,
       "verse": "Something behind you agrees you should leave.",
       "summary": "The longest dash, +3 pips, and the only one with no recovery: you can strike or cast the instant it ends.",
-      "icon": "dash"
+      "icon": "tailwind"
     },
     "arc_lash": {
       "name": "Arc Lash",
@@ -220,7 +220,7 @@
       },
       "verse": "It was there and now it is here.",
       "summary": "Instant, short, cannot miss what it points at. Leaves 1 Live mark. Walls stop it.",
-      "icon": "drop"
+      "icon": "bolt"
     },
     "thunderclap_palm": {
       "name": "Thunderclap Palm",
@@ -236,7 +236,7 @@
       },
       "verse": "The sound arrives after the damage, to apologise.",
       "summary": "One enemy, in reach: a heavy blow, 2 Live marks, and it stops whatever they were doing.",
-      "icon": "wave"
+      "icon": "palm"
     },
     "stepped_leader": {
       "name": "Stepped Leader",
@@ -252,7 +252,7 @@
       },
       "verse": "Find the path first. Then take all of it at once.",
       "summary": "You are simply there, up to 6 m away. 1 Live mark on everything beside where you land.",
-      "icon": "dash"
+      "icon": "blink"
     },
     "crosscut": {
       "name": "Crosscut",
@@ -271,7 +271,7 @@
       "on_hit": {},
       "verse": "Do not meet them. Pass through where they were looking.",
       "summary": "One enemy within 7 m: you cut through and stop behind it. Always a hit from behind. Spends every pip for +10% each.",
-      "icon": "wave"
+      "icon": "crosscut"
     },
     "raise_slab": {
       "name": "Raise Slab",

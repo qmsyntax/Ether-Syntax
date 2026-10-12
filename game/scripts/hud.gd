@@ -219,7 +219,7 @@ func _draw_slot(r: Rect2, i: int, idx: int, abilities: Array, essence: float, lo
 		locked = bool(player.call("is_locked", aff))
 		var usable: bool = not locked and essence >= cost
 		var tint: Color = GameData.affinity_color(aff).lightened(0.3) if usable else Color(0.35, 0.36, 0.4)
-		UiDraw.icon(self, str(ab.get("icon", "drop")), r.get_center() + Vector2(0, -2), SLOT * 0.5, tint)
+		UiDraw.icon(self, str(ab.get("icon", "drop")), r.get_center() + Vector2(0, -3), SLOT * 0.42, tint)      # clear of the key (top left) and the cost (bottom right)
 		# stage pips, top right
 		for s: int in int(st["stage"]):
 			draw_circle(Vector2(r.end.x - 7.0 - s * 7.0, r.position.y + 8.0), 2.6, UiTheme.GOLD)

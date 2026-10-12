@@ -35,6 +35,7 @@ func _ready() -> void:
 	await _test_fire()
 	await _test_wind()
 	await _test_earth()
+	await _test_archer_steering()
 	await _test_combat_rules()
 	_test_affinities()
 	_test_models()
@@ -1998,6 +1999,78 @@ func _test_earth() -> void:
 	_check("and makes little: under half an essence's worth each", float(GameData.ability("slingstone")["reflux_per_cost"]) <= 0.4 and float(GameData.ability("landslide_blow")["reflux_per_cost"]) <= 0.4)
 	e.free()
 	world.free()
+
+
+## A solid block for a test world.
+func _block(parent: Node, at: Vector3, size: Vector3) -> void:
+	var sb := StaticBody3D.new()
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	col.shape = shape
+	sb.add_child(col)
+	sb.position = at
+	parent.add_child(sb)
+
+
+func _test_archer_steering() -> void:
+	print("archer steering (Brent 2026-10-12):")
+	await get_tree().process_frame
+	var p := _new_player()
+	p.global_position = Vector3(1500, 0, 0)
+	var here: Vector3 = p.global_position
+	var world := _test_floor(here)
+	_block(world, here + Vector3(0, 1, -5.0), Vector3(4, 2, 1))          # cover between the two of them
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var ar := _fighter(p, Vector3(0, 0, -10.0), "archer")
+	ar.set("facing", Vector3(0, 0, 1))
+	_check("with cover in the way the archer cannot see you", not bool(ar.call("_sees_target")))
+	var spot: Variant = ar.call("_find_vantage")
+	_check("it picks somewhere it can walk to and shoot from", spot != null and absf((spot as Vector3).x - here.x) > 1.5, str(spot))
+	var start: Vector3 = ar.global_position
+	var aimed := false
+	var t := 0.0
+	while t < 5.0 and not aimed:
+		ar.call("_physics_process", 1.0 / 60.0)
+		t += 1.0 / 60.0
+		aimed = float(ar.get("_windup")) >= 0.0
+	_check("and goes round the cover instead of walking into it", aimed and bool(ar.call("_sees_target")) and ar.global_position.distance_to(start) > 1.0,
+		"after %.1f s at %s" % [t, str(ar.global_position - here)])
+	_check("without coming in close to do it", ar.global_position.distance_to(here) > 6.0)
+	ar.free()
+	world.free()
+
+	# its back to a wall
+	p.global_position = Vector3(1500, 0, 100)
+	here = p.global_position
+	world = _test_floor(here, here.z - 6.0)                              # wall face 5.5 m off
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	p.global_position = here + Vector3(0, 0, -2.0)
+	ar = _fighter(p, Vector3(0, 0, -2.6), "archer")                      # 0.9 m of room behind it
+	ar.set("facing", Vector3(0, 0, 1))
+	_run(ar, 2.5)
+	var gap: float = ar.global_position.distance_to(p.global_position)
+	_check("backed against a wall it slips along it instead of pressing into it", gap >= 4.0 or absf(ar.global_position.x - here.x) > 2.0,
+		"%.1f m from you, %.1f m along the wall" % [gap, absf(ar.global_position.x - here.x)])
+	ar.free()
+	# boxed in on every side
+	ar = _fighter(p, Vector3(0, 0, -2.6), "archer")
+	ar.set("facing", Vector3(0, 0, 1))
+	_block(world, ar.global_position + Vector3(-1.8, 1, 0), Vector3(1, 2, 4))
+	_block(world, ar.global_position + Vector3(1.8, 1, 0), Vector3(1, 2, 4))
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_check("boxed in, there is no way to back off", (ar.call("_retreat_dir", Vector3(0, 0, 1)) as Vector3) == Vector3.ZERO)
+	ar.set("_attack_cd", 0.0)
+	ar.set("_windup", -1.0)
+	var held: Vector3 = ar.global_position
+	_run(ar, 0.2)
+	_check("so it stands and shoots rather than walk into the wall", float(ar.get("_windup")) >= 0.0 and ar.global_position.distance_to(held) < 0.1)
+	ar.free()
+	world.free()
+	p.free()
 
 
 func _test_gear_step_1() -> void:
