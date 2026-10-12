@@ -120,6 +120,7 @@ func _build_detail() -> void:
 				box.add_child(UiWidgets.small_button("Bind the %s of %s   (irreversible, may fail)" % [need, label], func() -> void:
 					player.call("bind_construct", selected, ci)
 					rebuild()))
+				box.add_child(_bind_preview(st, str(held[ci]["concept"])))
 		if not any:
 			box.add_child(UiTheme.body("You carry no %s to bind." % need, 13, UiTheme.BAD))
 
@@ -157,6 +158,26 @@ func _build_detail() -> void:
 
 
 # --- the drawn soul --------------------------------------------------------------------------
+
+## What that bind would do to the ability: one "label  before -> after" line per number that moves.
+func _bind_preview(st: Dictionary, concept: String) -> Control:
+	var col := VBoxContainer.new()
+	col.name = "BindPreview"
+	col.add_theme_constant_override("separation", 4)
+	var rows: Array[Dictionary] = player.call("preview_bind", st, concept)
+	for r: Dictionary in rows:
+		var line := HBoxContainer.new()
+		col.add_child(line)
+		var name_label := UiTheme.body("      %s" % str(r["label"]), 13, UiTheme.TEXT_DIM)
+		name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(name_label)
+		var change := UiTheme.body("%s  ->  %s" % [str(r["before"]), str(r["after"])], 13, UiTheme.GOOD if bool(r["better"]) else UiTheme.BAD)
+		change.autowrap_mode = TextServer.AUTOWRAP_OFF
+		line.add_child(change)
+	col.add_child(UiTheme.body("      %d%% chance it takes. A failed bind destroys the construct and wounds you." % int(round(GameData.num("binding", "success_chance") * 100.0)), 12, UiTheme.TEXT_FAINT))
+	return col
+
 
 class Cosmos extends Control:
 	var screen: Control

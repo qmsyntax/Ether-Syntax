@@ -116,3 +116,38 @@ model change and goes with art pass 4. Starter kits per affinity are still our s
 there is no way to learn a further skill yet.
 
 Verified: self-test 191/191, smoke, three bots, both inventory click tests, creation click test, `ui-create-3.png`.
+
+## Part I — playtest fixes (Brent 2026-10-11, second round)
+
+| # | Report | Finding / change | Evidence |
+|---|--------|------------------|----------|
+| S06-28 | "Ability 2 on 1% lifesteal on multiple enemies is not granting me the lifesteal it should" | Not a code fault: measured 1.8 health back per target from a 180-damage Tsunami Strike (1%), on every target. The strike's own 6 self-harm outweighs it until four targets are hit, and nothing on screen showed the heal. Added a green "+N" number for health returned, summed per swing. No balance number changed | selftest: 1 target and 3 targets pay exactly 1% each |
+| S06-29 | "Vestiges should be labeled as to what they are in the netherecho" | Every construct shows its name above it ("Vestige of Tension"); remnants in gold | `shots/ui-nether.png` |
+| S06-30 | "Cant pick up this one... looks like a bug" (a pale wisp beside the projection) | Most likely a wisp of an affinity the character does not hold - by rule those cannot be gathered, but nothing said so after the first touch. Wisps near the projection are now labelled ("water wisp", "lightning wisp - not yours", "ether") and the refusal message repeats while you keep trying. Not reproduced as an actual pickup fault | `shots/ui-nether.png` |
+| S06-31 | "We should be given a preview of what will happen to a skill if I bind the vestige" | The ethercosm lists, under each bind button, every number that would move (stage, damage, bolt speed, range, reach, dash, self-harm, cost, reflux), before -> after, green or red, plus the success chance | selftest (7 checks, incl. the bind then matching the preview), `shots/ui-ethercosm.png` |
+
+Verified: self-test 200/200, smoke, three bots, inventory and creation click tests; both screenshots inspected.
+Not verified: the green heal number in live play; whether the wisp in Brent's screenshot really was a foreign one.
+
+## Part J — no default self-harm; tempering techniques (Brent 2026-10-11)
+
+Brent: "why is tsunami strike doing self harm? Thats a book artifact from a very specific combination of concepts
+and skills the MC put together. It should not by default do self harm. We also need tempering techniques."
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-32 | Self-harm removed from all five strike abilities and from the tension concept; `self_harm` stays as an optional key nothing uses. Verses and the fire description reworded to match | selftest | Done |
+| S06-33 | Tempering techniques: six of our own (one plain, one per affinity), each with a stage, a progress bar and one effect - more superficial or structural health, faster reflux shedding, less damage taken, faster movement, faster strikes. All active at once | selftest (tempering: 19 checks) | Done |
+| S06-34 | Training: a session in the town's tempering yard costs structural health (8, +4 per stage) and adds progress (25%, x0.7 per stage); refused if it would leave less than 1 structural; stage cap stars + 1 | selftest, `shots/ui-temper.png` | Done |
+| S06-35 | A character starts knowing the plain technique and one per affinity held; tempering is saved; older saves start at stage 0 | selftest | Done |
+
+Canon vs ours: [C] techniques are passive, grouped by affinity, have a stage and a progress bar, and work by
+harming the body so it adapts; one speeds reflux shedding. [B] all run at once and simply make the body tougher.
+[I] cap of stars + 1. [MODEL] every technique, name, effect and number here; sessions; the yard; the starting set.
+None of the books' named techniques is used.
+
+Not done: learning further techniques (scrolls), training anywhere but town, "using a technique your body is not
+tempered for injures you" [C], and the clinic's tempering aid.
+
+Verified: self-test 220/220, smoke, three bots, inventory and creation click tests; `ui-temper.png` inspected.
+Not verified: the Train button by hand, or whether the costs feel right.

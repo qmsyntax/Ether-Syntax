@@ -35,6 +35,7 @@ var _essence_c := Vector2.ZERO
 var passage: Dictionary = {}
 ## While the soul is out in the Netherecho: {hp, hp_max, leash, at_leash, gathered, subdued, hovered, target}.
 var nether: Dictionary = {}
+const WISP_LABEL_RANGE := 6.0        # metres from the projection
 ## Screenshot aid: force a tooltip ("slot:0", "health", "essence") without a real cursor.
 var debug_tip := ""
 
@@ -102,6 +103,8 @@ func _draw() -> void:
 		_draw_nether_veil(vs)
 	if show_world:
 		_draw_enemy_bars()
+		if not nether.is_empty():
+			_draw_wisp_labels()
 		_draw_vignette(vs)
 		_draw_target_frame(vs)
 		_draw_prompt(vs)
@@ -396,11 +399,38 @@ func _draw_enemy_bars() -> void:
 		if b == null or b.is_dead():
 			continue
 		var lit: bool = int(e.get("highlight")) > 0
+		if not nether.is_empty():
+			# out here you need to know what a thing is before you decide to fight it
+			var tag: Vector2 = cam.unproject_position(e.global_position + Vector3.UP * (float(e.get("height")) + 0.75))
+			UiDraw.text(self, Vector2(tag.x - 120.0, tag.y), str(e.get("display_name")), 13,
+				Color("fff3d0") if lit else (UiTheme.GOLD if str(e.get("tier")) != "vestige" else Color("cdbcf2")), HORIZONTAL_ALIGNMENT_CENTER, 240.0)
 		if b.total() >= b.total_max() and not lit:
 			continue                      # untouched enemies show no bar - less clutter
 		var top: Vector2 = cam.unproject_position(e.global_position + Vector3.UP * (float(e.get("height")) + 0.35))
 		var w: float = 46.0 + float(e.get("radius")) * 22.0
 		UiDraw.bar(self, Rect2(top.x - w * 0.5, top.y - 4.0, w, 5.0), b.total() / b.total_max(), UiTheme.HEALTH_SUPERFICIAL if not lit else Color("f0563f"))
+
+
+## Wisps close to the projection say what they are, and whether they will come to you.
+func _draw_wisp_labels() -> void:
+	var cam: Camera3D = get_viewport().get_camera_3d()
+	var at: Variant = nether.get("position")
+	if cam == null or at == null:
+		return
+	var mine: Array = player.get("affinities")
+	for node: Node in get_tree().get_nodes_in_group("nether_wisps"):
+		var w := node as Node3D
+		if w == null or cam.is_position_behind(w.global_position) or w.global_position.distance_to(at) > WISP_LABEL_RANGE:
+			continue
+		var kind: String = str(w.get("affinity"))
+		var p: Vector2 = cam.unproject_position(w.global_position + Vector3.UP * 1.05)
+		var text: String = "ether"
+		var col: Color = Color(0.8, 0.82, 0.9, 0.8)
+		if kind != "plain":
+			var yours: bool = mine.has(kind)
+			text = "%s wisp" % str(GameData.affinity(kind).get("label", kind)).to_lower() + ("" if yours else "  -  not yours")
+			col = GameData.affinity_color(kind).lightened(0.35) if yours else Color(0.6, 0.58, 0.66, 0.85)
+		UiDraw.text(self, Vector2(p.x - 100.0, p.y), text, 11, col, HORIZONTAL_ALIGNMENT_CENTER, 200.0)
 
 
 func _draw_vignette(vs: Vector2) -> void:

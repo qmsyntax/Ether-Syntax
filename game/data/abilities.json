@@ -1,5 +1,5 @@
 {
-  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind, on that ability's affinity. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities); a full stage waits for a bound construct of the matching tier (design/01 LAW 4). kinds: projectile | melee_burst | dash. Which abilities a character starts with comes from the kits in affinities.json. Every name and verse here is original to this project; numbers are first guesses [MODEL].",
+  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind, on that ability's affinity. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities); a full stage waits for a bound construct of the matching tier (design/01 LAW 4). kinds: projectile | melee_burst | dash. Which abilities a character starts with comes from the kits in affinities.json. Every name and verse here is original to this project; numbers are first guesses [MODEL]. Brent 2026-10-11: abilities do NOT hurt their caster by default - in the books that was the product of one specific combination of concepts and skills, not a property of the strike. 'self_harm' remains an optional key for an ability or build that earns it; none has it now.",
   "abilities": {
     "water_bolt": {
       "name": "Water Bolt",
@@ -21,8 +21,7 @@
       "reflux_per_cost": 1.2,
       "damage_mult": 3.0,
       "reach_bonus": 0.8,
-      "self_harm": 6.0,
-      "verse": "The whole sea in one blow. Your bones are the shore.",
+      "verse": "The whole sea, in one blow.",
       "icon": "wave"
     },
     "hydraulic_flex": {
@@ -56,8 +55,7 @@
       "reflux_per_cost": 1.4,
       "damage_mult": 3.4,
       "reach_bonus": 0.4,
-      "self_harm": 8.0,
-      "verse": "Fire the hand like clay. Break it on someone.",
+      "verse": "Fire the hand like clay. Then find out what it breaks.",
       "icon": "wave"
     },
     "flashover": {
@@ -91,7 +89,6 @@
       "reflux_per_cost": 1.0,
       "damage_mult": 3.6,
       "reach_bonus": 1.2,
-      "self_harm": 4.0,
       "verse": "The hill does not swing. It simply stops holding on.",
       "icon": "wave"
     },
@@ -126,7 +123,6 @@
       "reflux_per_cost": 1.0,
       "damage_mult": 2.4,
       "reach_bonus": 1.6,
-      "self_harm": 3.0,
       "verse": "Bring the sky down the length of your arm.",
       "icon": "wave"
     },
@@ -161,7 +157,6 @@
       "reflux_per_cost": 1.3,
       "damage_mult": 3.2,
       "reach_bonus": 0.6,
-      "self_harm": 7.0,
       "verse": "The sound arrives after the damage, to apologise.",
       "icon": "wave"
     },

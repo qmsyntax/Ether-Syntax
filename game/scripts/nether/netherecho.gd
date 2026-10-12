@@ -28,7 +28,7 @@ var subdued_this_trip := 0
 
 var _cfg: Dictionary
 var _armed_return := false
-var _warned_foreign := false
+var _foreign_note_cd := 0.0
 
 
 func _init() -> void:
@@ -106,7 +106,7 @@ func enter() -> bool:
 	gathered_this_trip = 0
 	subdued_this_trip = 0
 	_armed_return = false
-	_warned_foreign = false
+	_foreign_note_cd = 0.0
 	player.set("projecting", true)
 	projection = ProjectionScript.new()
 	add_child(projection)
@@ -138,6 +138,7 @@ func exit(reason: String = "") -> void:
 func tick(delta: float, cam: Camera3D) -> void:
 	if not active or projection == null:
 		return
+	_foreign_note_cd -= delta
 	projection.call("tick", delta, cam)
 	for c: Node in get_tree().get_nodes_in_group("nether_enemies"):
 		c.call("tick", delta)
@@ -162,8 +163,8 @@ func _gather_wisps() -> void:
 		var attuned: bool = (player.get("affinities") as Array).has(kind)
 		if kind != "plain" and not attuned:
 			# a wisp of an affinity you do not hold slides away from the touch
-			if not _warned_foreign:
-				_warned_foreign = true
+			if _foreign_note_cd <= 0.0:
+				_foreign_note_cd = 4.0          # say it again if they keep trying, but not every frame
 				player.call("note", "A %s wisp. It will not come to you - you have no such affinity." % str(GameData.affinity(kind).get("label", kind)).to_lower())
 			continue
 		var essence: float = float(_cfg["wisp_attuned_essence"]) if attuned else float(_cfg["wisp_plain_essence"])
@@ -197,4 +198,5 @@ func hud_info() -> Dictionary:
 		"leash": off.length() / float(projection.get("leash")), "at_leash": bool(projection.get("at_leash")),
 		"gathered": gathered_this_trip, "subdued": subdued_this_trip,
 		"hovered": projection.get("hovered"), "target": projection.get("attack_target"),
+		"position": projection.global_position,
 	}
