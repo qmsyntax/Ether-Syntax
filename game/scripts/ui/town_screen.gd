@@ -62,6 +62,7 @@ func build(root: Control) -> void:
 	left.add_child(foot)
 	foot.add_child(UiWidgets.small_button("Ethercosm  (%s)" % Keybinds.binding_text("ethercosm"), func() -> void: game.call("open_ethercosm")))
 	foot.add_child(UiWidgets.small_button("Inventory  (%s)" % Keybinds.binding_text("inventory"), func() -> void: game.call("open_inventory")))
+	foot.add_child(UiWidgets.small_button("Save / load", func() -> void: game.call("open_saves")))
 	foot.add_child(UiWidgets.small_button("Controls", func() -> void: game.call("open_settings")))
 	foot.add_child(UiWidgets.small_button("New character", func() -> void: game.call("new_character")))
 

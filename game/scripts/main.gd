@@ -383,6 +383,8 @@ func _show_screen(new_screen: Control, pause: bool) -> void:
 func close_screen() -> void:
 	if state == "town":
 		_show_screen(TownScreen.new(self), false)
+	elif state == "select":
+		_show_screen(TitleScreen.new(self), false)
 	else:
 		_show_screen(null, false)
 
@@ -414,6 +416,7 @@ func open_ethercosm() -> void:
 
 func start_new_character(index: int) -> void:
 	_select_talent(index)
+	player.set("money", GameData.inum("town", "starting_money"))
 	_enter_town()
 
 
@@ -538,19 +541,35 @@ func grant_exit_rewards(walls_cleared: int, full_clear: bool) -> Array[String]:
 
 # --- saving ------------------------------------------------------------------------
 
+## The autosave.
 func save_now() -> void:
-	if _bot_mode or _shot_mode or _test_mode or str(player.get("talent_id")) == "":
+	if _bot_mode or _shot_mode or _test_mode:
 		return
+	save_to_slot(0)
+
+
+## Write the character as it stands to a slot (0 = autosave). Only meaningful in town.
+func save_to_slot(slot: int) -> bool:
+	if str(player.get("talent_id")) == "":
+		return false
 	var data: Dictionary = player.call("to_save")
 	data["day"] = day
 	data["delves"] = delves
 	data["hardcore"] = hardcore
-	SaveGame.write(data)
+	var ok: bool = SaveGame.write(data, SaveGame.slot_path(slot))
+	if slot > 0:
+		player.call("note", "Saved to slot %d." % slot if ok else "Could not write slot %d." % slot)
+	return ok
 
 
-## Load the saved character into town. Returns false if there is nothing usable to load.
+## Load the autosave into town. Returns false if there is nothing usable to load.
 func continue_game() -> bool:
-	var data: Dictionary = SaveGame.read()
+	return load_slot(0)
+
+
+## Load a slot into town; the loaded character becomes the autosave too.
+func load_slot(slot: int) -> bool:
+	var data: Dictionary = SaveGame.read(SaveGame.slot_path(slot))
 	if data.is_empty() or str(data.get("talent_id", "")) == "":
 		return false
 	player.call("from_save", data)
@@ -559,6 +578,11 @@ func continue_game() -> bool:
 	hardcore = bool(data.get("hardcore", false))
 	_enter_town()
 	return true
+
+
+func open_saves() -> void:
+	if state == "town" or state == "select":
+		_show_screen(SavesScreen.new(self), false)
 
 
 func _repeat_mult() -> float:
@@ -986,6 +1010,9 @@ func _setup_ui_shot(which: String) -> void:
 		"shop":
 			_enter_town()
 			open_shop()
+		"saves":
+			_enter_town()
+			open_saves()
 		"inventory":
 			_enter_town()
 			open_inventory()

@@ -64,6 +64,7 @@
     "arm_restored": 40.0
   },
   "town": {
+    "starting_money": 10000,
     "rescue_fee": 600,
     "revive_superficial_frac": 0.5,
     "revive_structural_frac": 0.4,

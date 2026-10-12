@@ -41,3 +41,14 @@ models) follows in its own commit.
 Verified: self-test 146/146, smoke run, three bots, both UI click tests, `ui-nether.png` and `ui-hud.png` looked at.
 Not verified: anything by hand - how the Netherecho plays, whether 12 hp is too fragile, whether the settle time
 feels right, and the ability costs against a 99-essence star (costs were tuned against a 400 tank).
+
+## Part E — save slots and a starting purse (Brent 2026-10-11)
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-10 | Five manual save slots beside the autosave. Town: "Save / load" (save here / overwrite / load). Title: "Load a saved character" when any slot is filled. Loading a slot puts that character in town | selftest (paths, description), `shots/ui-saves.png`, `ui-town.png` | Done |
+| S06-11 | A new character starts with $10,000 (`town.starting_money`) so later content can be reached quickly. A testing convenience, not a balance decision | selftest | Done |
+
+Verified in a clean copy of the last commit plus these files (the art agent had the working tree mid-edit):
+self-test 149/149, smoke, three bots, UI click test. Not verified: pressing Save here / Overwrite / Load with a mouse.
+Saving is town-only - there is no mid-passage save.

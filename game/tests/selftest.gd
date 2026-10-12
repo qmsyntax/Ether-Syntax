@@ -451,6 +451,11 @@ func _test_inventory() -> void:
 	var data: Dictionary = p.call("to_save")
 	var path := "user://selftest_save.json"
 	_check("the save file is written", SaveGame.write(data, path) and SaveGame.exists(path))
+	_check("slot 0 is the autosave and numbered slots are separate files",
+		SaveGame.slot_path(0) == SaveGame.PATH and SaveGame.slot_path(2) != SaveGame.slot_path(3) and SaveGame.slot_path(2) != SaveGame.PATH)
+	_check("a save describes itself, an empty slot says so", SaveGame.describe(SaveGame.read(path)).contains("day") and SaveGame.describe({}) == "empty",
+		SaveGame.describe(SaveGame.read(path)))
+	_check("a new character starts with money", GameData.inum("town", "starting_money") == 10000)
 	var q := _new_player()
 	q.call("from_save", SaveGame.read(path))
 	var qinv: Inventory = q.get("inventory")

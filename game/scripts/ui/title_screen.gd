@@ -39,6 +39,10 @@ func build(root: Control) -> void:
 	if not save.is_empty() and str(save.get("talent_id", "")) != "":
 		var who: String = str(TalentDB.get_talent(str(save["talent_id"])).get("name", "?"))
 		foot.add_child(UiWidgets.small_button("Continue  -  %s, day %d" % [who, int(save.get("day", 1))], func() -> void: game.call("continue_game")))
+	for slot: int in range(1, SaveGame.SLOTS + 1):
+		if SaveGame.exists(SaveGame.slot_path(slot)):
+			foot.add_child(UiWidgets.small_button("Load a saved character", func() -> void: game.call("open_saves")))
+			break
 	var hardcore: bool = bool(game.get("hardcore"))
 	foot.add_child(UiWidgets.small_button("Hardcore: %s" % ("ON - death is permanent" if hardcore else "off - death leaves you in debt"),
 		func() -> void:
