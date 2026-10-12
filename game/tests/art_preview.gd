@@ -13,6 +13,8 @@ extends Node3D
 ##   ... -- --shot=looks       -> shots/art-looks.png       character-creator looks: varied combos, hair row, body row
 ##   ... -- --shot=looks-hair  -> shots/art-looks-hair.png  every hair style, head close-up
 ##   ... -- --shot=looks-face  -> shots/art-looks-face.png  every face (and some skins / hair colours), head close-up
+##   ... -- --shot=biome:<id>  -> shots/biome-<id>.png + biome-<id>-close.png  a dressed 30 m sample room (see Biomes.ids())
+##   ... -- --shot=props:<id>  -> shots/props-<id>.png        every prop of that biome, labelled
 ##   godot --headless --path game res://tests/art_preview.tscn -- --stats   prints triangles / draw calls
 ##
 ## By default the stage uses the RECOMMENDED environment (dark earth floor, cool dim ambient,
@@ -49,6 +51,8 @@ var _shot_mode: String = ""
 var _frames: int = 0
 var _facing: Vector3 = FACING
 var _game_env: bool = false
+var _biome_id: String = ""
+var _biome_sheet: bool = false
 
 
 func _ready() -> void:
@@ -65,6 +69,9 @@ func _ready() -> void:
 	if stats:
 		_print_stats()
 		get_tree().quit()
+		return
+	if _shot_mode.begins_with("biome:") or _shot_mode.begins_with("props:"):
+		_build_biome_shot()
 		return
 	_build_world()
 	match _shot_mode:
@@ -108,6 +115,13 @@ func _process(delta: float) -> void:
 		if left > 0:
 			entry["frames"] = left - 1
 		(entry["rig"] as ModelRig).animate(step, float(entry["speed"]), bool(entry["attacking"]))
+	if _biome_id != "":
+		_frames += 1
+		if _frames == 50:
+			_save_biome_shot(false)
+		elif _frames == 80:
+			_save_biome_shot(true)
+		return
 	if _shot_mode != "":
 		_frames += 1
 		if _frames == SHOT_FRAMES:
@@ -555,10 +569,61 @@ func _print_stats() -> void:
 		var rig: ModelRig = rigs[key]
 		print("ART STATS %-28s tris %5d  draws %2d  height %.2f  radius %.2f" % [key, rig.triangle_count(), rig.draw_call_count(), rig.height, rig.radius])
 		rig.free()
+	for id: String in Biomes.ids():
+		var line: String = "ART BIOME %s:" % id
+		for kind: String in Biomes.info(id)["props"]:
+			var most: int = 0
+			for v: int in Biomes.VARIANTS:
+				most = maxi(most, Biomes.prop_mesh(id, kind, v).surface_get_array_len(0) / 3)
+			var meta: Dictionary = Biomes.prop_meta(id, kind, 0)
+			line += " %s(r%.1f h%.1f%s%s%s %dt)" % [kind, float(meta["radius"]), float(meta["height"]), " B" if bool(meta["blocks"]) else "", " C" if bool(meta["cuttable"]) else "", " L" if bool(meta["light"]) else "", most]
+		print(line)
 	var start: int = Time.get_ticks_usec()
 	for i: int in 50:
 		Models.enemy("commander").free()
 	print("ART STATS stamping a cached commander: %.2f ms each" % (float(Time.get_ticks_usec() - start) / 50000.0))
+
+
+## Environment kits: a dressed sample room (game camera, then a closer three-quarter view)
+## or the prop contact sheet, under the biome's own lighting.
+func _build_biome_shot() -> void:
+	_biome_id = _shot_mode.get_slice(":", 1)
+	_biome_sheet = _shot_mode.begins_with("props:")
+	_env = Environment.new()
+	var world_env := WorldEnvironment.new()
+	world_env.environment = _env
+	add_child(world_env)
+	var sun := DirectionalLight3D.new()
+	add_child(sun)
+	BiomeStage.light(_biome_id, _env, sun)
+	var start: int = Time.get_ticks_msec()
+	var stage: Node3D = BiomeStage.sheet(_biome_id) if _biome_sheet else BiomeStage.room(_biome_id)
+	add_child(stage)
+	print("art_preview: %s %s built in %d ms - %d triangles, %d draw calls, %d lights" % [_biome_id, "sheet" if _biome_sheet else "room", Time.get_ticks_msec() - start, int(stage.get_meta("triangles")), int(stage.get_meta("draws")), int(stage.get_meta("lights"))])
+	_camera = Camera3D.new()
+	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	_camera.size = GAME_CAMERA_SIZE if not _biome_sheet else 21.0
+	_camera.far = 300.0
+	add_child(_camera)
+	_aim_camera(Vector3(0, 0, 0) if not _biome_sheet else Vector3(0, 0, 0))
+	_camera.current = true
+	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
+
+
+func _save_biome_shot(second: bool) -> void:
+	var dir: String = ProjectSettings.globalize_path("res://").path_join("../shots").simplify_path()
+	DirAccess.make_dir_recursive_absolute(dir)
+	var file: String = ("props-%s.png" if _biome_sheet else ("biome-%s-close.png" if second else "biome-%s.png")) % _biome_id
+	var rid: RID = get_viewport().get_viewport_rid()
+	var image: Image = get_viewport().get_texture().get_image()
+	var err: Error = image.save_png(dir.path_join(file))
+	print("art_preview: saved %s (%s) - render %.2f ms cpu + %.2f ms gpu" % [dir.path_join(file), error_string(err), RenderingServer.viewport_get_measured_render_time_cpu(rid) + RenderingServer.get_frame_setup_time_cpu(), RenderingServer.viewport_get_measured_render_time_gpu(rid)])
+	if second or _biome_sheet:
+		get_tree().quit()
+		return
+	_camera.size = 9.5
+	_camera.position = Vector3(-1.0, 0.0, 1.0) + Vector3(13, 7.5, 9)
+	_camera.look_at(Vector3(-1.0, 1.2, 1.0), Vector3.UP)
 
 
 func _save_shot() -> void:

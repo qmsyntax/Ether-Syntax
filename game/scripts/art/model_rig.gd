@@ -326,6 +326,17 @@ func _attach_mesh(part: String, mesh: ArrayMesh) -> void:
 	_meshes[part] = inst
 
 
+## The baked mesh of a part (null if it has none). Environment props are built as a rig and
+## then reduced to this one mesh.
+func part_mesh(part: String) -> ArrayMesh:
+	return _meshes[part].mesh as ArrayMesh if _meshes.has(part) else null
+
+
+## The opaque shader every rig (and every environment prop) is drawn with.
+func shared_shader() -> Shader:
+	return _solid_shader
+
+
 ## Returns the pivot node of a part, or null. Useful for attaching effects to a hand or head.
 func get_part(part: String) -> Node3D:
 	return _parts.get(part, null) as Node3D
