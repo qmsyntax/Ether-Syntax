@@ -1,5 +1,5 @@
 {
-  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind, on that ability's affinity. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities); a full stage waits for a bound construct of the matching tier (design/01 LAW 4). Which abilities a character starts with comes from the kits in affinities.json. kinds: projectile | melee_burst | dash | beam | targeted_strike | blink (design/05 Appendix A). A skill touches an enemy through a hit payload - on_hit / on_pass / on_arrive - with any of: damage or damage_mult (taken from the skill when absent), status, shove (metres), marks (Live), interrupts. 'summary' is the one-line rule shown to the player. Water and lightning are built to design/05 step 1 and fire to step 3 (a dash may carry 'trail', a strip of ground that applies a payload every tick_s, and 'stops_at_bodies'; a targeted_strike may 'consume_status' for per_stack_damage and a 'burst'); wind to step 3 too (a projectile may 'pierce' and 'spend_pips' for 'pip_damage' each; a dash may 'gain_pips' and have 'no_recovery'; a targeted_strike may have its own 'range', go 'through' to 'through_dist' behind the target, 'force_rear', and take 'pip_mult' per pip with 'spend_all_pips'); earth still uses the plain three behaviours. Abilities do NOT hurt their caster (Brent 2026-10-11). Every name and verse is original to this project - the two water skills that carried the books' own names were renamed on 2026-10-12 (ids kept for saves). Numbers are first guesses [MODEL].",
+  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind, on that ability's affinity. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities); a full stage waits for a bound construct of the matching tier (design/01 LAW 4). Which abilities a character starts with comes from the kits in affinities.json. kinds: projectile | melee_burst | dash | beam | targeted_strike | blink (design/05 Appendix A). A skill touches an enemy through a hit payload - on_hit / on_pass / on_arrive - with any of: damage or damage_mult (taken from the skill when absent), status, shove (metres), marks (Live), interrupts. 'summary' is the one-line rule shown to the player. Water and lightning are built to design/05 step 1 and fire to step 3 (a dash may carry 'trail', a strip of ground that applies a payload every tick_s, and 'stops_at_bodies'; a targeted_strike may 'consume_status' for per_stack_damage and a 'burst'); wind to step 3 too (a projectile may 'pierce' and 'spend_pips' for 'pip_damage' each; a dash may 'gain_pips' and have 'no_recovery'; a targeted_strike may have its own 'range', go 'through' to 'through_dist' behind the target, 'force_rear', and take 'pip_mult' per pip with 'spend_all_pips'); earth to step 3 too: any skill may have a 'windup' (it is paid for at once and goes off that many seconds later; you are rooted and aimed until then) and be 'braced' through it (balance.braced); 'shatters_stone' breaks the caster's own stone (balance.stone); kind 'prop' raises a slab 'width' x 'thickness' x 'height' across your aim at the cursor, between 'min_range' and 'range' away, up in 'rise_time', standing 'life' seconds, and applies 'on_rise' to whoever is standing there. Abilities do NOT hurt their caster (Brent 2026-10-11). Every name and verse is original to this project - the two water skills that carried the books' own names were renamed on 2026-10-12 (ids kept for saves). Numbers are first guesses [MODEL].",
   "abilities": {
     "water_bolt": {
       "name": "Water Bolt",
@@ -115,23 +115,39 @@
       "name": "Slingstone",
       "affinity": "earth",
       "kind": "projectile",
-      "cost": 14.0,
-      "reflux_per_cost": 0.9,
-      "damage": 125.0,
+      "cost": 12.0,
+      "reflux_per_cost": 0.4,
+      "windup": 0.3,
+      "braced": true,
+      "damage": 120.0,
       "speed": 14.0,
-      "life": 1.7,
+      "life": 1.7143,
+      "shatters_stone": true,
+      "on_hit": {
+        "poise": 45.0,
+        "interrupts": true
+      },
       "verse": "A stone has all the time there is. Lend it yours.",
+      "summary": "The slowest bolt and the heaviest. It stops what it hits mid-swing and all but staggers it. Thrown into your own stone, it shatters it.",
       "icon": "drop"
     },
     "landslide_blow": {
       "name": "Landslide Blow",
       "affinity": "earth",
       "kind": "melee_burst",
-      "cost": 24.0,
-      "reflux_per_cost": 1.0,
-      "damage_mult": 3.6,
+      "cost": 16.0,
+      "reflux_per_cost": 0.4,
+      "windup": 0.6,
+      "braced": true,
+      "damage_mult": 3.2,
       "reach_bonus": 1.2,
+      "arc_deg": 60.0,
+      "shatters_stone": true,
+      "on_hit": {
+        "poise": 80.0
+      },
       "verse": "The hill does not swing. It simply stops holding on.",
+      "summary": "A narrow, slow, crushing blow: it staggers anything short of an elite, moves nobody, and shatters every stone of yours in its arc.",
       "icon": "wave"
     },
     "bedrock_shove": {
@@ -143,7 +159,8 @@
       "dash_speed": 18.0,
       "dash_time": 0.3,
       "verse": "Put your shoulder where the mountain keeps its own.",
-      "icon": "dash"
+      "icon": "dash",
+      "summary": "Not in the starter kit: earth starts with no movement skill. It returns as a scroll with the later skills."
     },
     "cutting_gust": {
       "name": "Cutting Gust",
@@ -255,6 +272,29 @@
       "verse": "Do not meet them. Pass through where they were looking.",
       "summary": "One enemy within 7 m: you cut through and stop behind it. Always a hit from behind. Spends every pip for +10% each.",
       "icon": "wave"
+    },
+    "raise_slab": {
+      "name": "Raise Slab",
+      "affinity": "earth",
+      "kind": "prop",
+      "cost": 6.0,
+      "reflux_per_cost": 0.4,
+      "windup": 0.35,
+      "braced": true,
+      "range": 8.0,
+      "min_range": 1.5,
+      "width": 3.0,
+      "thickness": 0.6,
+      "height": 1.8,
+      "rise_time": 0.35,
+      "life": 12.0,
+      "on_rise": {
+        "damage": 20.0,
+        "shove": 1.0
+      },
+      "verse": "Ask the floor to stand up. It remembers how.",
+      "summary": "A wall of stone across your aim, up to 8 m away. It blocks movement and shots - theirs and yours - for 12 s. Three at a time.",
+      "icon": "wall"
     }
   }
 }

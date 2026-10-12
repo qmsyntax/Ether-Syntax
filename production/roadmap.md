@@ -65,9 +65,12 @@ gear sets and uniques, soul damage, badges, break events, hired party, audio, on
 Standing instruction from Brent: add these to the build target. Design docs first, then build in the staged order
 each doc proposes; nothing here is started in code unless marked.
 
-1. **Affinity skills, combat depth, tempering rethought** - `design/05-affinity-skills-and-combat-v0.md` (written
-   by a design agent; awaiting Brent's read). One signature mechanic per affinity, 40 skills, cross-affinity rules,
-   seven enemy archetypes, poise / stagger / interrupts. Proposed first step: water versus lightning in the arena.
+1. **Affinity skills, combat depth, tempering rethought** - `design/05-affinity-skills-and-combat-v0.md` (approved
+   by Brent 2026-10-12 as recommended). One signature mechanic per affinity, 40 skills, cross-affinity rules,
+   seven enemy archetypes, poise / stagger / interrupts. **Built (2026-10-12):** step 1 water and lightning, step 2
+   the combat rules, step 3 fire, wind and earth - all five starter kits now play by their own rule (sprint-06
+   Parts O-U). **Not built:** step 4 (Pavise Bearer, Censer-Bearer, War Drummer, the phased Wall Commander), step 5
+   (the other 25 skills, learned from scrolls), step 6 (tempering rethought, the cross-affinity rules).
 2. **Loot, equipment slots, armour, ranged weapons** - `design/06-loot-and-equipment-v0.md` and
    `design/data-drafts/items-v2.json` (design agent, in progress). More slots, armour, ranged weapon families that
    change the basic attack, a full loot list.

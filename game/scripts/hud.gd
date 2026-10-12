@@ -164,6 +164,27 @@ func _draw_action_bar(vs: Vector2) -> void:
 				draw_arc(c, 4.0, 0.0, TAU, 14, Color(wind_col, 0.35), 1.5, true)
 		UiDraw.text(self, Vector2(px + float(total) * 14.0 + 2.0, py + 4.0), "slipstream" + ("  - swift" if fast else ""), 11, Color(wind_col, 0.85 if fast else 0.55))
 
+	# Standing stone (earth): how many of your three are up, and whether you are set
+	if bool(player.call("has_stone")):
+		var s_total: int = GameData.inum("stone", "max_count")
+		var s_have: int = int(player.call("stone_count"))
+		var earth_col: Color = GameData.affinity_color("earth").lightened(0.2)
+		var set_now: bool = bool(player.call("is_braced"))
+		var sx: float = cx - float(s_total - 1) * 9.0
+		var sy: float = slab.position.y - (48.0 if bool(player.call("has_slipstream")) else 30.0)
+		for i: int in s_total:
+			var block := Rect2(sx + float(i) * 18.0 - 6.0, sy - 5.0, 12.0, 10.0)
+			if i < s_have:
+				draw_rect(block, earth_col)
+			else:
+				draw_rect(block, Color(earth_col, 0.4), false, 1.5)
+		UiDraw.text(self, Vector2(sx + float(s_total) * 18.0, sy + 4.0), "stone" + ("  - braced" if set_now else ""), 11, Color(earth_col, 0.95 if set_now else 0.55))
+	# a wind-up: a thin bar filling over the skills until it goes off
+	var wind_up: float = float(player.call("windup_frac"))
+	if wind_up >= 0.0:
+		draw_rect(Rect2(cx - 70.0, slab.position.y - 14.0, 140.0, 5.0), Color(0, 0, 0, 0.6))
+		draw_rect(Rect2(cx - 70.0, slab.position.y - 14.0, 140.0 * wind_up, 5.0), Color(0.95, 0.9, 0.75))
+
 	# ability slots
 	var abilities: Array = player.get("abilities")
 	var essence: float = float(player.get("essence"))
@@ -697,9 +718,16 @@ func _draw_tooltip(vs: Vector2) -> void:
 				"projectile":
 					lines.append(["%d damage at range" % int(float(ab.get("damage", 0.0)) * float(player.call("ability_damage_mult", int(st["stage"]))) * float(ab.get("damage_all", 1.0))), 13, UiTheme.TEXT])
 				"melee_burst":
-					lines.append(["Hits everything in front of you for x%.1f a normal blow, and wounds you" % float(ab.get("damage_mult", 1.0)), 13, UiTheme.TEXT])
+					lines.append(["Hits everything in front of you for x%.1f a normal blow" % float(ab.get("damage_mult", 1.0)), 13, UiTheme.TEXT])
 				"dash":
 					lines.append(["A burst of movement in the direction you are heading", 13, UiTheme.TEXT])
+				"prop":
+					lines.append(["A wall %d m across that stands for %d s" % [int(round(float(ab.get("width", 3.0)))), int(round(float(ab.get("life", 12.0))))], 13, UiTheme.TEXT])
+			if float(ab.get("windup", 0.0)) > 0.0:
+				var set_text: String = ""
+				if bool(ab.get("braced", false)):
+					set_text = "   -   Braced: %d%% less damage, and nothing staggers you" % int(round((1.0 - GameData.num("braced", "damage_taken_mult")) * 100.0))
+				lines.append(["%.2f s wind-up, rooted%s" % [float(ab["windup"]), set_text], 13, UiTheme.TEXT_DIM])
 			lines.append(["Stage %d   -   %d%% toward the next" % [int(st["stage"]), int(float(st["progress"]))], 13, UiTheme.TEXT_DIM])
 			var need: String = str(player.call("pending_tier", st))
 			if need != "":

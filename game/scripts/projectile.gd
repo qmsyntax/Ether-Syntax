@@ -12,6 +12,8 @@ var payload: Dictionary = {}
 var tags: Array = ["projectile"]
 ## Passes through every enemy in its line instead of stopping at the first.
 var pierce := false
+## An earth bolt: if what stops it is the shooter's own stone, the stone shatters along its flight.
+var shatters_stone := false
 var _struck: Array = []
 
 
@@ -41,12 +43,14 @@ func tick(delta: float) -> void:
 	var from: Vector3 = global_position
 	var to: Vector3 = from + dir * step
 	var stopped := false
+	var hit_wall: Object = null
 	if is_inside_tree():
 		var q := PhysicsRayQueryParameters3D.create(from, to, 1)
 		var wall: Dictionary = get_world_3d().direct_space_state.intersect_ray(q)
 		if not wall.is_empty():
 			to = wall["position"]
 			stopped = true
+			hit_wall = wall["collider"]
 	var a := Vector2(from.x, from.z)
 	var b := Vector2(to.x, to.z)
 	# nearest first, so a shot that stops at the first body stops at the right one
@@ -70,5 +74,7 @@ func tick(delta: float) -> void:
 			queue_free()
 			return
 	global_position = to
+	if stopped and shatters_stone and hit_wall is Stone:
+		(hit_wall as Stone).shatter(dir, shooter if is_instance_valid(shooter) else null)
 	if stopped or life <= 0.0:
 		queue_free()

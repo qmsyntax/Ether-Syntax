@@ -129,6 +129,14 @@ var _still_t := 0.0                  # how long you have been standing
 var _pip_decay_t := 0.0
 var _last_pos := Vector3.ZERO
 var _moving := false                 # moved this step (for wind's reflux rule)
+## Standing stone this character has raised (earth), oldest first.
+var stones: Array = []
+## A skill that has been paid for and is waiting on its wind-up (see cast_ability).
+var _windup: Dictionary = {}
+var _windup_t := 0.0
+var _windup_total := 0.0
+## Where the cursor is taken to be when set: a test or a bot pointing with no mouse.
+var cursor_fixed: Variant = null
 ## True while the ranged stance is held with a ranged weapon equipped: the strike button shoots.
 var ranged_stance := false
 var _range_ring: MeshInstance3D
@@ -214,9 +222,10 @@ func _update_model(delta: float) -> void:
 	if arm_right_lost != _shown_arm_lost:
 		_shown_arm_lost = arm_right_lost
 		_rig.set_part_visible("arm_right", not arm_right_lost)
-	if _charging != _shown_windup:
-		_shown_windup = _charging
-		_rig.set_windup(_charging)
+	var wound_up: bool = _charging or _windup_t > 0.0
+	if wound_up != _shown_windup:
+		_shown_windup = wound_up
+		_rig.set_windup(wound_up)
 	var glow: int = 2 if meditating else 0
 	if glow != _shown_glow:
 		_shown_glow = glow
@@ -333,6 +342,9 @@ func _apply_temper_health(id: String, stages: int) -> void:
 
 ## Start over with the kits of the current affinities, on the bar in order.
 func _reset_loadout() -> void:
+	drop_stones()
+	_windup = {}
+	_windup_t = 0.0
 	abilities.clear()
 	for i: int in hotbar.size():
 		hotbar[i] = -1
@@ -378,6 +390,7 @@ func _shed_reflux(amount: float) -> void:
 		if in_combat and a_def.has("reflux_shed_mult_moving"):
 			# wind: its heat blows off while you run and sits while you stand
 			rate = float(a_def["reflux_shed_mult_moving"]) if _moving else float(a_def.get("reflux_shed_mult_standing", 1.0))
+		rate *= float(a_def.get("reflux_shed_mult", 1.0))       # earth keeps what little it makes
 		reflux_by[aff] = maxf(0.0, float(reflux_by[aff]) - shed * rate)
 		if is_locked(aff) and float(reflux_by[aff]) < float(_reflux_cfg["unlock_below"]):
 			locked_by[aff] = false
@@ -440,9 +453,11 @@ func _physics_process(delta: float) -> void:
 		_bot_think()
 	else:
 		_update_aim()
+	if _windup_t > 0.0:
+		_tick_windup(delta)
 
 	# Meditation is sitting still: it roots you at once, and only counts once you have settled.
-	_sitting = Input.is_action_pressed("meditate") and _meditate_block <= 0.0 and not _charging
+	_sitting = Input.is_action_pressed("meditate") and _meditate_block <= 0.0 and not _charging and _windup_t <= 0.0
 	_sit_t = _sit_t + delta if _sitting else 0.0
 	meditating = _sitting and _sit_t >= GameData.num("meditation", "settle_s")
 	if _sitting:
@@ -465,7 +480,7 @@ func _physics_process(delta: float) -> void:
 			arm_right = minf(float(_arm["max"]), arm_right + float(_natural["arm_per_s"]) * delta)
 
 	var charging_input: bool = Input.is_action_pressed("overcharge") and not arm_right_lost
-	if charging_input and not _sitting:
+	if charging_input and not _sitting and _windup_t <= 0.0:
 		_charging = true
 		_charge = minf(float(_p["charge_max"]), _charge + delta)
 	elif _charging:
@@ -494,7 +509,7 @@ func _physics_process(delta: float) -> void:
 		move_goal = _cursor_ground()          # holding on the ground keeps steering
 
 	var input := Vector2.ZERO
-	if not _sitting and _stagger_t <= 0.0:
+	if not _sitting and _stagger_t <= 0.0 and _windup_t <= 0.0:
 		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if _stagger_t > 0.0:
 		# off your feet: nowhere to go and nothing to swing until it passes
@@ -558,6 +573,8 @@ func _physics_process(delta: float) -> void:
 		speed *= GameData.num("ranged", "stance_move_factor")
 	if pips >= GameData.inum("slipstream", "speed_pips"):
 		speed *= GameData.num("slipstream", "speed_mult")
+	if _windup_t > 0.0:
+		dir = Vector3.ZERO                       # set: you do not move until it goes off
 	velocity = dir * speed
 	if _dash_time > 0.0:
 		# A dash covers an exact distance: it is moved by hand, not by velocity, whose time step
@@ -661,6 +678,9 @@ func take_hit(amount: float, heavy: bool, source: Node) -> float:
 	# What the body and what it wears take off the blow comes first, so every talent works on
 	# the same reduced number - including one that swallows the hit and delivers it later.
 	ctx.base = amount * temper_stat("incoming_mult") * (1.0 - armour() / 100.0)
+	var braced: bool = is_braced()
+	if braced:
+		ctx.base *= GameData.num("braced", "damage_taken_mult")
 	ctx.heavy = heavy
 	if projecting:
 		disturbed.emit()             # pain drags the soul back before the blow is even counted
@@ -670,15 +690,145 @@ func take_hit(amount: float, heavy: bool, source: Node) -> float:
 		e.on_incoming(ctx)
 	if ctx.cancelled:
 		return 0.0
-	if heavy:
+	if heavy and not braced:                 # set for an earth skill: nothing knocks you off it
 		var combat: Dictionary = GameData.balance["combat"]
 		poise -= float(combat["heavy_poise_damage"])
 		if poise <= 0.0:
 			poise = float(combat["player_poise"])
 			_stagger_t = float(combat["player_stagger_s"])
 			_dash_time = 0.0
+			_windup = {}                          # whatever you were winding up is lost
+			_windup_t = 0.0
 			_float("STAGGERED", Color(1, 0.7, 0.3))
 	return _apply_damage(ctx.amount(), heavy)
+
+
+## --- wind-ups, Braced and standing stone (earth, design/05 2.3) ---------------------------------
+
+## True while you are set for a braced skill: you take less and cannot be staggered.
+func is_braced() -> bool:
+	return _windup_t > 0.0 and bool(_windup.get("braced", false))
+
+
+## How far through a wind-up you are, 0 to 1; -1 when you are not winding anything up.
+func windup_frac() -> float:
+	if _windup_t <= 0.0 or _windup_total <= 0.0:
+		return -1.0
+	return clampf(1.0 - _windup_t / _windup_total, 0.0, 1.0)
+
+
+## A wind-up holds you where you stood and where you aimed; when it ends, the skill goes off.
+func _tick_windup(delta: float) -> void:
+	_facing = _windup.get("facing", _facing)
+	has_move_goal = false
+	attack_target = null
+	pickup_target = null
+	_windup_t -= delta
+	if _windup_t > 0.0:
+		return
+	var w: Dictionary = _windup
+	_windup = {}
+	_windup_t = 0.0
+	if not bool(w.get("release", false)):
+		return
+	var target: Node3D = w["target"] if is_instance_valid(w["target"]) else null
+	_perform_cast(w["ab"], str(w["kind"]), str(w["aff"]), float(w["stage_mult"]), w["tags"], target, w["point"])
+
+
+## True if the character holds an affinity that raises standing stone.
+func has_stone() -> bool:
+	for aff: String in affinities:
+		if bool(GameData.affinity(aff).get("stone", false)):
+			return true
+	return false
+
+
+## How many of your stones are standing (or rising).
+func stone_count() -> int:
+	for s: Variant in stones.duplicate():
+		if not is_instance_valid(s) or (s as Node).is_queued_for_deletion():
+			stones.erase(s)
+	return stones.size()
+
+
+## A stone of yours fell (called by the stone).
+func stone_gone(s: Node) -> void:
+	stones.erase(s)
+
+
+## Every stone of yours crumbles: a new character, or a new place.
+func drop_stones() -> void:
+	for s: Variant in stones.duplicate():
+		if is_instance_valid(s):
+			(s as Stone).crumble()
+	stones.clear()
+
+
+## Raise a slab at `at`, lying across `away` (the way you are looking at it). You keep only so
+## many: one more crumbles the oldest.
+func raise_stone(at: Vector3, away: Vector3, ab: Dictionary, stage_mult: float = 1.0, tags: Array = []) -> Node3D:
+	var cfg: Dictionary = GameData.balance["stone"]
+	stone_count()
+	while stones.size() >= int(cfg["max_count"]):
+		var old: Variant = stones.pop_front()
+		if is_instance_valid(old):
+			(old as Stone).crumble()
+	var s := Stone.new()
+	s.caster = self
+	s.size = Vector3(float(ab.get("width", 3.0)), float(ab.get("height", 1.8)), float(ab.get("thickness", 0.6)))
+	s.hp = float(ab.get("hp", cfg["hp"]))
+	s.life = float(ab.get("life", cfg["life_s"]))
+	s.rise_s = float(ab.get("rise_time", 0.35))
+	s.on_rise = ab.get("on_rise", {})
+	s.tags = tags
+	s.stage_mult = stage_mult
+	get_parent().add_child(s)
+	s.global_position = Vector3(at.x, global_position.y, at.z)
+	var flat := Vector3(away.x, 0.0, away.z)
+	if flat.length() > 0.01:
+		s.rotation.y = atan2(-flat.x, -flat.z)
+	stones.append(s)
+	return s
+
+
+## Where a slab would stand: toward the cursor, no nearer than the skill's `min_range` (so it does
+## not come up under you) and no farther than its `range`; short of a wall if one is in the way.
+## Null if there is no room at all.
+func _prop_point(ab: Dictionary) -> Variant:
+	var reach: float = float(ab.get("range", 8.0))
+	var near: float = float(ab.get("min_range", 1.5))
+	var want: Vector3 = _cursor_ground() - global_position
+	want.y = 0.0
+	if want.length() < 0.5:
+		want = _facing * reach                    # no cursor to speak of (bot, headless): straight ahead
+	var dist: float = clampf(want.length(), near, reach)
+	var dir: Vector3 = want.normalized()
+	var chest: Vector3 = global_position + Vector3.UP
+	var wall: Dictionary = _ray(chest, chest + dir * (dist + 0.6))
+	if not wall.is_empty():
+		dist = chest.distance_to(wall["position"]) - 0.6
+		if dist < near:
+			return null
+	return global_position + dir * dist
+
+
+## True if any part of the slab lies inside a swing of `reach` and `half_angle` from where you face.
+func _stone_in_arc(s: Stone, reach: float, half_angle: float) -> bool:
+	var across: Vector3 = s.global_transform.basis.x * (s.size.x * 0.5)
+	for i: int in 5:
+		var to: Vector3 = s.global_position + across * ((float(i) - 2.0) / 2.0) - global_position
+		to.y = 0.0
+		var dist: float = to.length()
+		if dist <= reach + s.size.z * 0.5 and (dist < 0.3 or _facing.angle_to(to / dist) <= half_angle):
+			return true
+	return false
+
+
+## Where a shot leaves you: a little ahead, unless something solid is closer than that.
+func _muzzle() -> Vector3:
+	var chest: Vector3 = global_position + Vector3.UP * 1.0
+	var out: Vector3 = chest + _facing * 0.8
+	return chest if not _ray(chest, out).is_empty() else out
 
 
 ## True if the character holds an affinity that runs on Slipstream.
@@ -800,7 +950,7 @@ func fire_ranged(toward: Vector3) -> bool:
 	shot.set("life", ranged_stat("ranged_range", float(cfg["default_range"])) / speed)
 	shot.set("shooter", self)
 	get_parent().add_child(shot)
-	shot.global_position = global_position + Vector3.UP * 1.0 + _facing * 0.8
+	shot.global_position = _muzzle()
 	_ranged_cd = ranged_stat("ranged_interval", float(cfg["default_interval"]))
 	_strike_t = 0.18
 	return true
@@ -1207,6 +1357,10 @@ func _burst(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	var payload: Dictionary = _payload(ab, "on_hit")
 	for t: Node3D in _in_arc(reach, half):
 		apply_hit(t, payload, tags, stage_mult)
+	if bool(ab.get("shatters_stone", false)):
+		for s: Variant in stones.duplicate():
+			if is_instance_valid(s) and _stone_in_arc(s as Stone, reach, half):
+				(s as Stone).shatter(_facing, self)
 
 
 ## True if the next `step` metres along `dir` would run into an enemy.
@@ -1460,6 +1614,12 @@ func cast_ability(index: int) -> void:
 			note("There is no way through to there.")
 			return
 		blink_to = spot
+	elif kind == "prop":
+		var where: Variant = _prop_point(ab)
+		if where == null:
+			note("There is no room to raise stone there.")
+			return
+		blink_to = where
 	essence -= cost
 	reflux_by[aff] = heat + cost * float(ab["reflux_per_cost"])
 	_advance(state, cost)
@@ -1470,6 +1630,55 @@ func cast_ability(index: int) -> void:
 
 	var stage_mult: float = ability_damage_mult(int(state["stage"])) * float(ab.get("damage_all", 1.0))
 	var tags: Array = ["ability", aff, str(state["id"])]
+	var windup: float = float(ab.get("windup", 0.0))
+	if kind == "prop":
+		var to_spot: Vector3 = blink_to - global_position
+		to_spot.y = 0.0
+		if to_spot.length() > 0.2:
+			_facing = to_spot.normalized()
+	# Stone starts rising at once; everything else with a wind-up goes off when it ends.
+	if windup <= 0.0 or kind == "prop":
+		_perform_cast(ab, kind, aff, stage_mult, tags, strike_target, blink_to)
+	if windup > 0.0:
+		_windup_t = windup
+		_windup_total = windup
+		_windup = {"ab": ab, "kind": kind, "aff": aff, "stage_mult": stage_mult, "tags": tags, "target": strike_target, "point": blink_to,
+			"facing": _facing, "braced": bool(ab.get("braced", false)), "release": kind != "prop"}
+		has_move_goal = false
+		attack_target = null
+		pickup_target = null
+		if bool(ab.get("braced", false)):
+			_float("braced", GameData.affinity_color(aff).lightened(0.3))
+
+	# A skill takes a moment to finish; running hot makes that moment longer (it no longer hurts).
+	var recovery: float = float(ab.get("recovery", GameData.num("abilities", "cast_recovery")))
+	if heat >= float(_reflux_cfg["burn_at"]):
+		recovery = recovery * float(_reflux_cfg["burn_recovery_mult"]) + float(_reflux_cfg["burn_recovery_add"])
+		_float("seizing", Color(1, 0.5, 0.2))
+	if movement:
+		# the recovery starts when the movement ends, so the dash itself is not eaten by it
+		recovery = maxf(recovery, float(ab.get("dash_time", 0.0)) + (0.0 if bool(ab.get("no_recovery", false)) else GameData.num("combat", "dash_recovery_s")))
+	_recover_t = windup + recovery
+	_melee_cd = maxf(_melee_cd, windup + recovery)
+
+	if reflux_of(aff) >= float(_reflux_cfg["lock_at"]):
+		capping_affinity = aff
+		var handled := false
+		for e: TalentEffect in effects:
+			if e.on_reflux_cap():
+				handled = true
+				break
+		if not handled:
+			locked_by[aff] = true
+			note("Reflux at %d - %s affinity LOCKED." % [int(_reflux_cfg["lock_at"]), aff_name.to_lower()])
+	_check_death()
+
+
+## What a skill does when it goes off: at once, or when its wind-up ends (see _tick_windup).
+## `blink_to` is the point the skill was aimed at, for the kinds that have one.
+func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float, tags: Array, strike_target: Node3D, blink_to: Vector3) -> void:
+	if kind == "targeted_strike" and strike_target == null:
+		return                                   # whoever it was meant for is gone
 	match kind:
 		"projectile":
 			_fire_projectile(ab, stage_mult, GameData.affinity_color(aff), tags + ["projectile"])
@@ -1541,29 +1750,8 @@ func cast_ability(index: int) -> void:
 			_melee_cd = float(_p["melee_cooldown"])
 		"blink":
 			_blink(blink_to, ab, stage_mult, GameData.affinity_color(aff), tags)
-
-	# A skill takes a moment to finish; running hot makes that moment longer (it no longer hurts).
-	var recovery: float = float(ab.get("recovery", GameData.num("abilities", "cast_recovery")))
-	if heat >= float(_reflux_cfg["burn_at"]):
-		recovery = recovery * float(_reflux_cfg["burn_recovery_mult"]) + float(_reflux_cfg["burn_recovery_add"])
-		_float("seizing", Color(1, 0.5, 0.2))
-	if movement:
-		# the recovery starts when the movement ends, so the dash itself is not eaten by it
-		recovery = maxf(recovery, float(ab.get("dash_time", 0.0)) + (0.0 if bool(ab.get("no_recovery", false)) else GameData.num("combat", "dash_recovery_s")))
-	_recover_t = recovery
-	_melee_cd = maxf(_melee_cd, recovery)
-
-	if reflux_of(aff) >= float(_reflux_cfg["lock_at"]):
-		capping_affinity = aff
-		var handled := false
-		for e: TalentEffect in effects:
-			if e.on_reflux_cap():
-				handled = true
-				break
-		if not handled:
-			locked_by[aff] = true
-			note("Reflux at %d - %s affinity LOCKED." % [int(_reflux_cfg["lock_at"]), aff_name.to_lower()])
-	_check_death()
+		"prop":
+			raise_stone(blink_to, _facing, ab, stage_mult, tags)
 
 
 ## Put an ability on a skill slot. An ability lives on one slot at a time; whatever was in the
@@ -1625,7 +1813,7 @@ func ability_stats(state: Dictionary) -> Dictionary:
 			if ab.has(key):
 				ab[key] = float(ab[key]) * float(mods[key])
 				applied = true
-			for part: String in ["on_hit", "on_pass", "on_arrive"]:
+			for part: String in ["on_hit", "on_pass", "on_arrive", "on_rise"]:
 				if ab.has(part) and (ab[part] as Dictionary).has(key):
 					(ab[part] as Dictionary)[key] = float((ab[part] as Dictionary)[key]) * float(mods[key])
 					applied = true
@@ -1664,9 +1852,11 @@ func preview_bind(state: Dictionary, concept: String) -> Array[Dictionary]:
 		_preview_row(out, "Reach", melee_range + float(now["reach_bonus"]), melee_range + float(then["reach_bonus"]), "%.1f m", true)
 	if now.has("range"):
 		_preview_row(out, "Range", float(now["range"]), float(then["range"]), "%.1f m", true)
-	for part: String in ["on_hit", "on_pass", "on_arrive"]:
+	for part: String in ["on_hit", "on_pass", "on_arrive", "on_rise"]:
 		if now.has(part) and (now[part] as Dictionary).has("shove"):
 			_preview_row(out, "Shove", float((now[part] as Dictionary)["shove"]), float((then[part] as Dictionary)["shove"]), "%.1f m", true)
+	if str(now.get("kind", "")) == "prop":
+		_preview_row(out, "Stone stands for", float(now["life"]), float(then["life"]), "%d s", true)
 	if now.has("dash_speed"):
 		_preview_row(out, "Dash distance", float(now["dash_speed"]) * float(now["dash_time"]), float(then["dash_speed"]) * float(then["dash_time"]), "%.1f m", true)
 		_preview_row(out, "Dash speed", float(now["dash_speed"]), float(then["dash_speed"]), "%d", true)
@@ -1931,13 +2121,14 @@ func _fire_projectile(ab: Dictionary, stage_mult: float, color: Color, tags: Arr
 	if ab.has("on_hit"):
 		bolt.set("payload", payload)
 	bolt.set("pierce", bool(ab.get("pierce", false)))
+	bolt.set("shatters_stone", bool(ab.get("shatters_stone", false)))
 	bolt.set("dir", _facing)
 	bolt.set("damage", float(ab["damage"]) * stage_mult)
 	bolt.set("speed", float(ab["speed"]))
 	bolt.set("life", float(ab["life"]))
 	bolt.set("shooter", self)
 	get_parent().add_child(bolt)
-	bolt.global_position = global_position + Vector3.UP * 1.0 + _facing * 0.8
+	bolt.global_position = _muzzle()
 
 
 ## Meditation gathers wisps and refills essence (Brent 2026-09-23).
@@ -2172,6 +2363,8 @@ func _text(target: Node, txt: String, color: Color) -> void:
 
 ## Where the mouse cursor meets the floor the player stands on.
 func _cursor_ground() -> Vector3:
+	if cursor_fixed != null:
+		return cursor_fixed
 	var cam: Camera3D = get_viewport().get_camera_3d() if is_inside_tree() else null
 	if cam == null:
 		return global_position

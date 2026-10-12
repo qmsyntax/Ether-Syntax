@@ -111,6 +111,11 @@ static func icon(ci: CanvasItem, kind: String, c: Vector2, s: float, color: Colo
 					var p := Vector2(c.x - s * 0.6 + u * s * 1.2, y - sin(u * PI) * s * (0.34 - k * 0.07) * (1.0 if i < 11 else 0.5))
 					ci.draw_line(prev, p, color.lightened(0.15 * (2 - k)), 3.0, true)
 					prev = p
+		"wall":      # raise slab: a block standing on broken ground
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.4, -s * 0.44), Vector2(s * 0.8, s * 0.74)), color)
+			ci.draw_line(c + Vector2(-s * 0.4, -s * 0.12), c + Vector2(s * 0.4, -s * 0.18), color.darkened(0.4), 2.0, true)
+			ci.draw_line(c + Vector2(-s * 0.08, -s * 0.15), c + Vector2(s * 0.04, s * 0.3), color.darkened(0.4), 2.0, true)
+			ci.draw_line(c + Vector2(-s * 0.6, s * 0.36), c + Vector2(s * 0.6, s * 0.36), color.darkened(0.25), 4.0, true)
 		"dash":      # hydraulic flex: chevrons
 			for k: int in 3:
 				var x: float = c.x - s * 0.45 + k * s * 0.36

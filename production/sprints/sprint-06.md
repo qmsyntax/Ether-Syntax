@@ -404,3 +404,33 @@ Downdraft sits in the data unused.
 Verified: self-test 452/452, three runs (five before the HUD work); gate, death and four full-passage bot runs;
 Netherecho death test; inventory and creation click tests; `ui-wind.png` inspected. Not verified: by hand - and wind
 is the affinity that most depends on feel: whether keeping the pips up while fighting is fun or a chore.
+
+## Part U — skills step 3c: earth (design/05 2.3 and 3.3; Brent 2026-10-12: "keep going with wind then earth")
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-93 | Wind-ups: a skill can take time to go off. It is paid for at once; you stand where you were and stay aimed where you aimed until it does. A stagger loses it | selftest | Done |
+| S06-94 | Braced: through an earth wind-up you take 40% less and heavy blows do not stagger you | selftest | Done |
+| S06-95 | Standing stone: a slab 3 m across, up in 0.35 s. It blocks walking and every shot - theirs and yours - for 12 s. 150 health, worn down by enemy shots. Three at a time; a fourth crumbles the oldest | selftest | Done |
+| S06-96 | Whoever stands where a slab rises takes 20 and is pushed a metre off it | selftest | Done |
+| S06-97 | Shatter: an earth skill that hits your stone breaks it - 80 damage and 40 poise to everything within 4 m on the far side | selftest | Done |
+| S06-98 | Slingstone: 0.3 s wind-up, the slowest bolt (14 m/s, 24 m) and the heaviest (120); takes 45 poise and interrupts. Into your own stone, it shatters it | selftest | Done |
+| S06-99 | Raise Slab (new, third key): a wall across your aim, 1.5 to 8 m away, short of any wall in the way. Cheapest skill in the game | selftest | Done |
+| S06-100 | Landslide Blow: 0.6 s wind-up, a narrow arc (60 degrees, 3.5 m), 3.2x a strike, 80 poise - staggers a skirmisher outright, moves nobody, shatters your stone in the arc | selftest | Done |
+| S06-101 | Earth's starter kit has no movement skill (Bedrock Shove waits for scrolls). Its reflux is small (0.4 per essence) and sheds at half the rate | selftest | Done |
+| S06-102 | Enemies walk round the end of a slab, and a swing no longer lands through a wall or stone | selftest | Done |
+| S06-103 | HUD: stone count and "braced" over the skill bar, a wind-up bar, a wall icon; the tooltip names the wind-up. (The melee-skill tooltip still said "and wounds you" - removed.) | `shots/ui-earth.png` | Done |
+
+Changes that reach past earth: enemy swings now need a clear line to you (they used to land through thin walls);
+your shots leave from your chest when something solid is right in front of you (they could start beyond a thin wall).
+
+Rough edges: the slab is a plain grey block with rubble at its foot. Enemies get round stone by heading for its
+nearer end - with two slabs side by side or a slab against a wall they can stall behind it for its 12 s, which is
+arguably the point but will look dim. A brute's ground slam still reaches through stone. Nothing breaks stone on
+purpose (the Sapper is a later enemy). Your own melee still reaches enemies through your own slab. The bot never
+casts, so the passage runs do not exercise any of this.
+
+Verified: self-test 509/509 (two runs; 507 three times before the last two checks were added); gate, death and four
+full-passage bot runs; Netherecho death test both ways; inventory and creation click tests; `ui-earth.png`
+inspected. Not verified: by hand. In particular whether 0.3 to 0.6 s of standing still feels like commitment or
+like lag, and whether a wall that takes 0.45 s to become solid comes up fast enough to matter.

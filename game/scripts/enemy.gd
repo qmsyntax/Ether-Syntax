@@ -450,6 +450,20 @@ func _physics_process(delta: float) -> void:
 ## The direction to walk in order to reach the player. Usually straight at them; in the passage,
 ## with a dividing wall in the way, toward the doorway first (see Route).
 func _route_dir(straight: Vector3) -> Vector3:
+	# standing stone in the way: head for the end of it (nothing pathfinds; this is one corner)
+	if is_inside_tree():
+		for s: Node in get_tree().get_nodes_in_group("stones"):
+			var detour: Variant = s.call("way_round", global_position, target.global_position, radius)
+			if detour != null:
+				var side: Vector3 = (detour as Vector3) - global_position
+				side.y = 0.0
+				if side.length() > 0.05:
+					return side.normalized()
+	return _door_dir(straight)
+
+
+## The way through the passage's dividing walls (see Route), or `straight` where there are none.
+func _door_dir(straight: Vector3) -> Vector3:
 	if not is_inside_tree():
 		return straight
 	if _router == null or not is_instance_valid(_router):
@@ -518,7 +532,7 @@ func _land_melee(dist: float) -> void:
 		hit = dist <= float(_def.get("attack_radius", 3.0))
 	else:
 		# a swing only reaches what is in front of it - get behind and it finds nothing
-		hit = dist <= _reach + radius and is_in_front(target.global_position)
+		hit = dist <= _reach + radius and is_in_front(target.global_position) and _sees_target()      # not through a wall or stone
 	if hit:
 		target.take_hit(damage, heavy, self)
 	elif float(_def.get("stuck_after_miss", 0.0)) > 0.0:

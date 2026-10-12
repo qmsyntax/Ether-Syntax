@@ -948,6 +948,8 @@ func _on_player_died() -> void:
 
 
 func _new_level(yaw_degrees: float) -> void:
+	if player != null:
+		player.call("drop_stones")           # stone does not follow you to a new place
 	if level != null:
 		for group: String in ["enemies", "hittable"]:
 			for n: Node in get_tree().get_nodes_in_group(group):
@@ -1216,6 +1218,33 @@ func _setup_ui_shot(which: String) -> void:
 	_frames = 1000                      # disable the arena auto-shot; _shot_countdown drives this one
 	_shot_countdown = 40
 	if which == "title":
+		return
+	if which == "earth":
+		# an earth character set for a blow, two of their stones standing
+		forced_biome = "scrubland"
+		_select_talent(0)
+		player.call("set_affinities", ["earth"])
+		player.call("grow_star", 70.0)
+		player.set("essence", 50.0)
+		_show_screen(null, false)
+		enter_arena()
+		rest_timer = 9999.0
+		for spec: Array in [[Vector3(-1.5, 0, -5.5), "grunt"], [Vector3(1.2, 0, -6.0), "grunt"], [Vector3(5.5, 0, -3.5), "archer"]]:
+			_spawn_enemy(str(spec[1]), spec[0], 1.0)
+		var slab_def: Dictionary = GameData.ability("raise_slab")
+		for spot: Array in [[Vector3(0, 0, -3.0), Vector3(0, 0, -1)], [Vector3(3.4, 0, -1.6), Vector3(1, 0, -0.5)]]:
+			var stone: Node = player.call("raise_stone", player.global_position + (spot[0] as Vector3), spot[1], slab_def)
+			stone.call("tick", 0.6)
+			stone.set_physics_process(false)
+		player.set("_facing", Vector3(0, 0, -1))
+		player.set("_windup", {"braced": true, "release": false, "facing": Vector3(0, 0, -1)})
+		player.set("_windup_t", 0.25)
+		player.set("_windup_total", 0.6)
+		for e: Node in get_tree().get_nodes_in_group("enemies"):
+			e.set_physics_process(false)
+		player.rotation.y = 0.0
+		player.set_physics_process(false)
+		player.call("_refresh_highlights")
 		return
 	if which == "wind":
 		# a wind character on the move: pips over the bar, an enemy thrown aloft

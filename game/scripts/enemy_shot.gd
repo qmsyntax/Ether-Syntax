@@ -44,6 +44,8 @@ func tick(delta: float) -> void:
 		if not wall.is_empty():
 			to = wall["position"]
 			left = 0.0
+			if wall["collider"] is Stone:
+				(wall["collider"] as Stone).take_damage(damage)      # standing stone wears down
 	if is_instance_valid(target) and not bool(target.get("dead")):
 		var a := Vector2(from.x, from.z)
 		var b := Vector2(to.x, to.z)

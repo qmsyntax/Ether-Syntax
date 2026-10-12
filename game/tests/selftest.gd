@@ -34,6 +34,7 @@ func _ready() -> void:
 	await _test_gear_step_1()
 	await _test_fire()
 	await _test_wind()
+	await _test_earth()
 	await _test_combat_rules()
 	_test_affinities()
 	_test_models()
@@ -1671,6 +1672,334 @@ func _test_wind() -> void:
 	await get_tree().process_frame
 
 
+func _facing_foe(p: Node3D, offset: Vector3, kind: String = "grunt") -> CharacterBody3D:
+	var e := _foe(p, offset, kind)
+	var to: Vector3 = p.global_position - e.global_position
+	to.y = 0.0
+	e.set("facing", to.normalized())
+	return e
+
+
+## The newest shot `p` has in the air, or null.
+func _bolt_of(p: Node) -> Node3D:
+	var found: Node3D = null
+	for n: Node in p.get_parent().get_children():
+		if n.get("shooter") == p and n.has_method("tick") and not n.is_queued_for_deletion():
+			found = n
+	return found
+
+
+## Fly a shot by hand until it is spent.
+func _fly(shot: Node, seconds: float = 3.0) -> void:
+	var t := 0.0
+	while t < seconds and is_instance_valid(shot) and not shot.is_queued_for_deletion():
+		shot.call("tick", 1.0 / 60.0)
+		t += 1.0 / 60.0
+
+
+func _test_earth() -> void:
+	print("earth (design/05 step 3):")
+	await get_tree().process_frame
+	var cfg: Dictionary = GameData.balance["stone"]
+	var shr: Dictionary = cfg["shrapnel"]
+	var e := _new_player()
+	e.call("set_affinities", ["earth"])
+	e.global_position = Vector3(1300, 0, 0)
+	var world := _test_floor(e.global_position)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	e.set("effects", [] as Array[TalentEffect])
+	_bare(e)
+	e.set("star_pct", [99.0] as Array[float])
+	e.call("_recompute_essence_max")
+	e.set("_facing", Vector3(0, 0, -1))
+	var here: Vector3 = e.global_position
+	var body: Body = e.get("body")
+	var strike: float = float(e.call("strike_damage"))
+	var fresh := func() -> void:
+		_rested(e)
+		e.set("essence", 99.0)
+		e.call("clear_reflux")
+		e.set("_windup", {})
+		e.set("_windup_t", 0.0)
+		e.set("_stagger_t", 0.0)
+		e.set("poise", 100.0)
+		e.set("_facing", Vector3(0, 0, -1))
+	fresh.call()
+	var kit: Array = e.get("abilities")
+	_check("an earth character starts with Slingstone, Landslide Blow and Raise Slab", kit.size() == 3 and str(kit[0]["id"]) == "slingstone" and str(kit[1]["id"]) == "landslide_blow" and str(kit[2]["id"]) == "raise_slab")
+	var other := _new_player()
+	_check("earth raises stone; a water character does not", bool(e.call("has_stone")) and not bool(other.call("has_stone")))
+	other.free()
+
+	# ---------- wind-up and Braced
+	var far := _facing_foe(e, Vector3(0, 0, -6.0))
+	e.call("cast_ability", 0)
+	_check("Slingstone is paid for at once", _near(99.0 - float(e.get("essence")), 12.0), "spent %f" % (99.0 - float(e.get("essence"))))
+	_check("but nothing leaves your hand yet: a 0.3 s wind-up", _near(float(e.get("_windup_t")), 0.3) and _bolt_of(e) == null and _near(_lost(far), 0.0))
+	_check("you are Braced through it", bool(e.call("is_braced")) and _near(float(e.call("windup_frac")), 0.0))
+	var hp0: float = body.hp
+	for i: int in 3:
+		e.call("take_hit", 10.0, true, null)
+	_check("Braced: every blow does 40% less", _near(hp0 - body.hp, 18.0), "lost %f" % (hp0 - body.hp))
+	_check("and heavy blows do not stagger you", not bool(e.call("is_staggered")) and _near(float(e.get("poise")), 100.0))
+	var ess: float = float(e.get("essence"))
+	e.call("cast_ability", 2)
+	_check("you cannot start anything else while you are set", _near(float(e.get("essence")), ess) and (e.get("stones") as Array).is_empty())
+	e.call("_tick_windup", 0.2)
+	_check("two thirds through, still holding", bool(e.call("is_braced")) and _bolt_of(e) == null and _near(float(e.call("windup_frac")), 0.667, 0.01))
+	e.call("_tick_windup", 0.11)
+	var bolt: Node3D = _bolt_of(e)
+	_check("when the wind-up ends the stone flies, and you are no longer Braced", bolt != null and not bool(e.call("is_braced")) and float(e.call("windup_frac")) < 0.0)
+	_check("it is the slowest bolt there is: 14 m/s, 24 m", bolt != null and _near(float(bolt.get("speed")), 14.0) and _near(float(bolt.get("speed")) * float(bolt.get("life")), 24.0, 0.05))
+	_fly(bolt)
+	_check("and the heaviest: 120", _near(_lost(far), 120.0), "lost %f" % _lost(far))
+	hp0 = body.hp
+	e.call("take_hit", 10.0, false, null)
+	_check("out of the wind-up a blow lands in full", _near(hp0 - body.hp, 10.0))
+	far.free()
+
+	fresh.call()
+	e.set("_windup", {"braced": false, "release": false, "facing": Vector3(0, 0, -1)})
+	e.set("_windup_t", 0.5)
+	e.call("take_hit", 1.0, true, null)
+	_check("a wind-up that is not Braced is lost to a stagger", bool(e.call("is_staggered")) and _near(float(e.get("_windup_t")), 0.0))
+
+	# Slingstone: poise and the interrupt
+	fresh.call()
+	var br := _fighter(e, Vector3(0, 0, -5.0), "brute")
+	br.set("facing", Vector3(0, 0, 1))
+	e.call("cast_ability", 0)
+	e.call("_tick_windup", 0.31)
+	_fly(_bolt_of(e))
+	_check("Slingstone takes 45 poise", _near(float(br.get("poise_max")) - float(br.get("poise")), 45.0), "poise %f" % float(br.get("poise")))
+	br.free()
+	fresh.call()
+	var slam := _fighter(e, Vector3(0, 0, -5.0), "brute")
+	slam.set("facing", Vector3(0, 0, 1))
+	slam.set("_windup", 0.5)
+	e.call("cast_ability", 0)
+	e.call("_tick_windup", 0.31)
+	_fly(_bolt_of(e))
+	_check("and is the only starter bolt that interrupts", float(slam.get("_windup")) < 0.0)
+	slam.free()
+
+	# ---------- standing stone
+	fresh.call()
+	var slab_ab: Dictionary = e.call("ability_stats", kit[2])
+	var stood := _facing_foe(e, Vector3(0.4, 0, -4.1))
+	var apart := _facing_foe(e, Vector3(2.6, 0, -4.0))
+	var s: Node3D = e.call("raise_stone", here + Vector3(0, 0, -4.0), Vector3(0, 0, -1), slab_ab)
+	_check("a slab is 3 m across and 0.6 m thick", (s.get("size") as Vector3).is_equal_approx(Vector3(3.0, 1.8, 0.6)))
+	s.call("tick", 0.2)
+	await get_tree().physics_frame
+	_check("while it rises it is not yet in the way", not bool(s.call("is_up")) and (e.call("_ray", here + Vector3.UP, here + Vector3(0, 1, -8)) as Dictionary).is_empty() and _near(_lost(stood), 0.0))
+	s.call("tick", 0.16)
+	_check("up in 0.35 s: whoever stood there takes 20", _near(_lost(stood), 20.0), "lost %f" % _lost(stood))
+	_settle(stood)
+	_check("and is pushed a metre off it, away from you", _near(stood.global_position.z, here.z - 5.1, 0.05), "z %f" % (stood.global_position.z - here.z))
+	_check("someone standing past its end is left alone", _near(_lost(apart), 0.0))
+	s.call("tick", 0.1)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var hit: Dictionary = e.call("_ray", here + Vector3.UP, here + Vector3(0, 1, -8))
+	_check("then it is solid", bool(s.call("is_up")) and not hit.is_empty() and hit.get("collider") == s)
+	_check("and counts as one of your stones", int(e.call("stone_count")) == 1)
+
+	# it blocks shots: yours ...
+	var ProjScript: GDScript = load("res://scripts/projectile.gd")
+	var plain: Node3D = ProjScript.new()
+	plain.set("dir", Vector3(0, 0, -1))
+	plain.set("speed", 20.0)
+	plain.set("life", 1.0)
+	plain.set("damage", 50.0)
+	plain.set("shooter", e)
+	add_child(plain)
+	plain.global_position = here + Vector3.UP
+	var before: float = _lost(stood)
+	_fly(plain)
+	_check("your own shots stop on it", _near(_lost(stood), before) and _near(float(s.get("hp")), 150.0))
+	# ... and theirs, which wear it down
+	var ShotScript: GDScript = load("res://scripts/enemy_shot.gd")
+	var arrow: Node3D = ShotScript.new()
+	arrow.set("dir", Vector3(0, 0, 1))
+	arrow.set("damage", 18.0)
+	arrow.set("target", e)
+	add_child(arrow)
+	arrow.global_position = here + Vector3(0, 1, -9)
+	hp0 = body.hp
+	_fly(arrow)
+	_check("an enemy's shot stops on it too, and wears it down", _near(body.hp, hp0) and _near(float(s.get("hp")), 150.0 - 18.0), "stone %f" % float(s.get("hp")))
+
+	# enemies go round it, and cannot swing through it
+	var walker := _fighter(e, Vector3(0.4, 0, -7.0))
+	var way: Vector3 = walker.call("_route_dir", Vector3(0, 0, 1))
+	_check("an enemy with the slab between you heads for the end of it", absf(way.x) > 0.5, str(way))
+	_check("the nearer end", way.x > 0.0)
+	walker.global_position = here + Vector3(3.5, 0, -7.0)
+	way = walker.call("_route_dir", Vector3(0, 0, 1))
+	_check("one already past the end just comes", way.is_equal_approx(Vector3(0, 0, 1)), str(way))
+	walker.free()
+	stood.free()
+	apart.free()
+
+	s.call("tick", 11.5)
+	_check("it has not gone before its 12 s are up", not s.is_queued_for_deletion())
+	s.call("tick", 0.5)                                          # the 12 s run from when it finished rising
+	_check("and then it crumbles", s.is_queued_for_deletion() and int(e.call("stone_count")) == 0)
+
+	# three at a time
+	var made: Array = []
+	for i: int in 4:
+		made.append(e.call("raise_stone", here + Vector3(20.0 + 4.0 * float(i), 0, 0), Vector3(0, 0, -1), slab_ab))
+	_check("three at a time: a fourth crumbles the oldest", int(e.call("stone_count")) == int(cfg["max_count"]) and int(cfg["max_count"]) == 3
+		and (made[0] as Node).is_queued_for_deletion() and not (made[1] as Node).is_queued_for_deletion())
+	e.call("drop_stones")
+	_check("none of it follows you to a new place", int(e.call("stone_count")) == 0 and (made[3] as Node).is_queued_for_deletion())
+
+	# a swing does not reach through stone
+	var close: Node3D = e.call("raise_stone", here + Vector3(0, 0, -1.5), Vector3(0, 0, -1), slab_ab)
+	close.call("tick", 0.5)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var swinger := _fighter(e, Vector3(0, 0, -2.4))
+	swinger.set("facing", Vector3(0, 0, 1))
+	hp0 = body.hp
+	swinger.call("_land_melee", 2.4)
+	_check("an enemy's swing does not land through your stone", _near(body.hp, hp0))
+	close.call("crumble")
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	swinger.call("_land_melee", 2.4)
+	_check("with the stone gone the same swing lands", body.hp < hp0)
+	swinger.free()
+
+	# ---------- shatter
+	fresh.call()
+	var s2: Node3D = e.call("raise_stone", here + Vector3(0, 0, -3.0), Vector3(0, 0, -1), slab_ab)
+	s2.call("tick", 0.5)
+	var inside := _facing_foe(e, Vector3(0.8, 0, -5.0))          # 2 m beyond, in front of the slab
+	var edge := _facing_foe(e, Vector3(2.2, 0, -5.0))            # just past its end, inside the fan
+	var wide := _facing_foe(e, Vector3(4.5, 0, -4.0))            # well off to the side
+	var beyond := _facing_foe(e, Vector3(0, 0, -8.2))            # more than 4 m past it
+	var mine := _facing_foe(e, Vector3(-1.0, 0, -1.8))           # on your side of it
+	var heavy := _fighter(e, Vector3(-0.8, 0, -5.0), "brute")
+	heavy.set("facing", Vector3(0, 0, 1))
+	var n: int = s2.call("shatter", Vector3(0, 0, -1))
+	_check("shatter: shrapnel hits what is beyond the slab, within 4 m", n == 3 and _near(_lost(inside), float(shr["damage"])) and _near(float(shr["damage"]), 80.0), "hit %d, lost %f" % [n, _lost(inside)])
+	_check("it fans out a little past the ends", _near(_lost(edge), 80.0))
+	_check("but not sideways, not past its range, and never back at you", _near(_lost(wide), 0.0) and _near(_lost(beyond), 0.0) and _near(_lost(mine), 0.0))
+	_check("shrapnel takes 40 poise", _near(float(heavy.get("poise_max")) - float(heavy.get("poise")), 40.0))
+	_check("and the stone is spent", s2.is_queued_for_deletion() and int(e.call("stone_count")) == 0)
+	for node: Node in [inside, edge, wide, beyond, mine, heavy]:
+		node.free()
+
+	# Slingstone into your own stone
+	fresh.call()
+	var s3: Node3D = e.call("raise_stone", here + Vector3(0, 0, -4.0), Vector3(0, 0, -1), slab_ab)
+	s3.call("tick", 0.5)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var behind := _facing_foe(e, Vector3(0, 0, -6.0))
+	e.call("cast_ability", 0)
+	e.call("_tick_windup", 0.31)
+	_fly(_bolt_of(e))
+	_check("Slingstone thrown into your own stone shatters it over whoever is behind", s3.is_queued_for_deletion() and _near(_lost(behind), 80.0), "lost %f" % _lost(behind))
+	behind.free()
+
+	# ---------- Landslide Blow
+	fresh.call()
+	var front := _facing_foe(e, Vector3(0, 0, -3.6))
+	var off := _facing_foe(e, Vector3(3.0, 0, -2.0))             # 56 degrees off: outside a 60-degree arc
+	var gr := _fighter(e, Vector3(-0.6, 0, -3.0))
+	gr.set("facing", Vector3(0, 0, 1))
+	var big := _fighter(e, Vector3(0.9, 0, -3.2), "brute")
+	big.set("facing", Vector3(0, 0, 1))
+	var big_hp: float = (big.get("body") as Body).hp
+	e.call("cast_ability", 1)
+	_check("Landslide Blow winds up for 0.6 s, Braced", _near(float(e.get("_windup_t")), 0.6) and bool(e.call("is_braced")) and _near(_lost(front), 0.0))
+	e.set("cursor_fixed", here + Vector3(5, 0, 0))               # looking away does not move it: you committed
+	e.call("_tick_windup", 0.61)
+	e.set("cursor_fixed", null)
+	_check("then 3.2x a strike on what is in front, out to 3.5 m", _near(_lost(front), strike * 3.2, 0.05), "lost %f want %f" % [_lost(front), strike * 3.2])
+	_check("a narrow blow: 30 degrees either side", _near(_lost(off), 0.0))
+	_check("it staggers a skirmisher outright", bool(gr.call("has_status", "staggered")))
+	_check("and takes 80 poise from a brute without moving it", _near(float(big.get("poise")), float(big.get("poise_max")) - 80.0) and not bool(big.call("is_shoved"))
+		and (big.get("body") as Body).hp < big_hp)
+	for node: Node in [front, off, gr, big]:
+		node.free()
+
+	fresh.call()
+	var s5: Node3D = e.call("raise_stone", here + Vector3(0, 0, -2.5), Vector3(0, 0, -1), slab_ab)
+	s5.call("tick", 0.5)
+	var past := _facing_foe(e, Vector3(0, 0, -5.0))              # out of the blow's reach, inside the shrapnel's
+	e.call("cast_ability", 1)
+	e.call("_tick_windup", 0.61)
+	_check("Landslide Blow shatters your stone in its arc: the wall becomes the weapon", s5.is_queued_for_deletion() and _near(_lost(past), 80.0), "lost %f" % _lost(past))
+	past.free()
+
+	# ---------- Raise Slab from the key
+	fresh.call()
+	e.set("cursor_fixed", here + Vector3(0, 0, -5.0))
+	e.call("cast_ability", 2)
+	var up: Node3D = (e.get("stones") as Array).back() if not (e.get("stones") as Array).is_empty() else null
+	_check("Raise Slab comes up where you point", up != null and _near(up.global_position.z, here.z - 5.0, 0.05) and _near(up.global_position.x, here.x, 0.05))
+	_check("it is cheap, and you are Braced while it rises", _near(99.0 - float(e.get("essence")), 6.0) and bool(e.call("is_braced")) and _near(float(e.get("_windup_t")), 0.35))
+	e.call("_tick_windup", 0.36)
+	_check("nothing more happens when that wind-up ends", int(e.call("stone_count")) == 1 and _bolt_of(e) == null)
+	fresh.call()
+	e.set("cursor_fixed", here + Vector3(0, 0, -0.7))
+	e.call("cast_ability", 2)
+	up = (e.get("stones") as Array).back()
+	_check("point at your feet and it still rises a step away", _near(up.global_position.z, here.z - 1.5, 0.05))
+	fresh.call()
+	e.set("cursor_fixed", here + Vector3(-30.0, 0, 0))
+	e.call("cast_ability", 2)
+	up = (e.get("stones") as Array).back()
+	_check("and never more than 8 m off", _near(up.global_position.x, here.x - 8.0, 0.05))
+	_check("it lies across the way you aimed", absf((up.global_transform.basis.x).z) > 0.99)
+	e.call("drop_stones")
+	var world2 := _test_floor(here, here.z - 3.0)                # a wall: its face is 2.5 m off
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	fresh.call()
+	e.set("cursor_fixed", here + Vector3(0, 0, -6.0))
+	e.call("cast_ability", 2)
+	up = (e.get("stones") as Array).back() if not (e.get("stones") as Array).is_empty() else null
+	_check("with a wall in the way it rises short of the wall", up != null and _near(up.global_position.z, here.z - 1.9, 0.05))
+	e.call("drop_stones")
+	e.set("cursor_fixed", null)
+	world2.free()
+
+	# the same thing through the game's own frame loop, not by hand
+	fresh.call()
+	var stood_at: Vector3 = e.global_position
+	e.call("cast_ability", 0)
+	for i: int in 12:
+		e.call("_physics_process", 1.0 / 60.0)
+	var early: bool = _bolt_of(e) != null
+	for i: int in 12:
+		e.call("_physics_process", 1.0 / 60.0)
+	var loosed: Node3D = _bolt_of(e)
+	_check("in the running game the wind-up counts itself down: nothing at 0.2 s, loosed by 0.4 s", not early and loosed != null and float(e.get("_windup_t")) <= 0.0)
+	_check("and you did not move a step while it did", e.global_position.distance_to(stood_at) < 0.01)
+	if loosed != null:
+		loosed.free()
+
+	# ---------- reflux
+	fresh.call()
+	(e.get("reflux_by") as Dictionary)["earth"] = 40.0
+	(e.get("reflux_by") as Dictionary)["water"] = 40.0
+	e.set("in_combat", false)
+	e.call("_shed_reflux", 10.0)
+	var lost_earth: float = 40.0 - float(e.call("reflux_of", "earth"))
+	var lost_water: float = 40.0 - float(e.call("reflux_of", "water"))
+	_check("earth keeps its reflux: it sheds at half the rate", lost_earth > 0.0 and _near(lost_water, lost_earth * 2.0), "%f against %f" % [lost_earth, lost_water])
+	_check("and makes little: under half an essence's worth each", float(GameData.ability("slingstone")["reflux_per_cost"]) <= 0.4 and float(GameData.ability("landslide_blow")["reflux_per_cost"]) <= 0.4)
+	e.free()
+	world.free()
+
+
 func _test_gear_step_1() -> void:
 	print("a coat and a sling (design/06 step 1):")
 	await get_tree().process_frame
@@ -2025,8 +2354,9 @@ func _test_affinities() -> void:
 			var ab: Dictionary = GameData.ability(id)
 			kinds.append(str(ab.get("kind", "")))
 			own = own and str(ab.get("affinity", "")) == a
-		_check("%s has a ranged attack, a strike and a movement skill of its own" % a,
-			kit.size() == 3 and own and ["projectile", "beam"].has(kinds[0]) and ["melee_burst", "targeted_strike"].has(kinds[1]) and ["dash", "blink"].has(kinds[2]), str(kinds))
+		# earth is the exception, on purpose: its third skill raises a wall and it has no way to move fast
+		_check("%s has a ranged attack, a strike and a movement skill of its own (earth: a wall instead)" % a,
+			kit.size() == 3 and own and ["projectile", "beam"].has(kinds[0]) and ["melee_burst", "targeted_strike"].has(kinds[1]) and (["dash", "blink"].has(kinds[2]) or (a == "earth" and kinds[2] == "prop")), str(kinds))
 
 	# the roll at character creation: talent and affinities are unrelated, slots are 1 / 2 / 3
 	var rng := RandomNumberGenerator.new()

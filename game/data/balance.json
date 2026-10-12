@@ -352,5 +352,22 @@
     "decay_s": 0.5,
     "speed_pips": 5,
     "speed_mult": 1.1
+  },
+  "stone": {
+    "_note": "Earth's signature (design/05 2.3): standing stone. A character keeps at most max_count; raising another crumbles the oldest. Each has hp (worn down by enemy shots) and stands life_s unless the skill says otherwise. It is solid solid_delay_s after it finishes rising, so what it pushed aside has left. An earth skill marked shatters_stone breaks it: every enemy within shrapnel.range of the slab on the far side, inside a cone_deg fan, takes shrapnel.damage and loses shrapnel.poise. All [MODEL].",
+    "max_count": 3,
+    "hp": 150.0,
+    "life_s": 12.0,
+    "solid_delay_s": 0.1,
+    "shrapnel": {
+      "range": 4.0,
+      "cone_deg": 60.0,
+      "damage": 80.0,
+      "poise": 40.0
+    }
+  },
+  "braced": {
+    "_note": "Braced (design/05 2.3): during the wind-up of a skill marked braced you take damage_taken_mult of every blow and cannot be staggered. You are also rooted and committed to where you aimed. [MODEL]",
+    "damage_taken_mult": 0.6
   }
 }

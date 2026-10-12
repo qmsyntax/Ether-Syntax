@@ -1,5 +1,5 @@
 {
-  "_note": "Affinities a prime vestige can carry (design/01: a prime delivers a talent and 1+ affinities; more affinities is rarer and worth more). Brent 2026-10-11: fire, earth, wind and lightning beside water. Affinities are NOT tied to the talent - they decide which skills you can learn and are rolled separately when a prime is offered (see balance.json 'primes' and PrimeRoll). prime_default is only what a character gets when nothing was rolled (tests, bots, old saves). 'kit' is the three abilities a character with that affinity starts with: a ranged attack, a melee strike, a movement skill. Labels, descriptions and kits are ours [MODEL]. reflux_shed_mult_combat scales how fast that affinity's reflux sheds while something is trying to kill you (lightning: 0 - only an Overload grounds it). damage_per_reflux (fire's Heat, design/05 2.2): every hit tagged with that affinity is multiplied by 1 + damage_per_reflux x its reflux / 100, so the reflux ring is a second damage bar. slipstream: this affinity earns pips by moving (balance.slipstream). reflux_shed_mult_moving / _standing: in a fight its reflux sheds that much faster while you move and that much while you stand (wind: 3x and not at all). rear_bonus (wind's Lee): a hit tagged with this affinity that lands on an enemy's back does that much more again, on top of the ordinary rear bonus.",
+  "_note": "Affinities a prime vestige can carry (design/01: a prime delivers a talent and 1+ affinities; more affinities is rarer and worth more). Brent 2026-10-11: fire, earth, wind and lightning beside water. Affinities are NOT tied to the talent - they decide which skills you can learn and are rolled separately when a prime is offered (see balance.json 'primes' and PrimeRoll). prime_default is only what a character gets when nothing was rolled (tests, bots, old saves). 'kit' is the three abilities a character with that affinity starts with: a ranged attack, a melee strike, a movement skill. Labels, descriptions and kits are ours [MODEL]. reflux_shed_mult_combat scales how fast that affinity's reflux sheds while something is trying to kill you (lightning: 0 - only an Overload grounds it). damage_per_reflux (fire's Heat, design/05 2.2): every hit tagged with that affinity is multiplied by 1 + damage_per_reflux x its reflux / 100, so the reflux ring is a second damage bar. slipstream: this affinity earns pips by moving (balance.slipstream). reflux_shed_mult_moving / _standing: in a fight its reflux sheds that much faster while you move and that much while you stand (wind: 3x and not at all). rear_bonus (wind's Lee): a hit tagged with this affinity that lands on an enemy's back does that much more again, on top of the ordinary rear bonus. stone: this affinity raises standing stone (balance.stone). reflux_shed_mult: its reflux sheds that much as fast, always (earth: half - it makes little and keeps it).",
   "prime_default": [
     "water"
   ],
@@ -32,9 +32,11 @@
       "kit": [
         "slingstone",
         "landslide_blow",
-        "bedrock_shove"
+        "raise_slab"
       ],
-      "desc": "Slow, heavy and sure. Nothing arrives fast, and nothing it hits stays standing."
+      "desc": "Slow, heavy and sure. You raise stone, stand behind it, and break it over whoever is on the other side.",
+      "stone": true,
+      "reflux_shed_mult": 0.5
     },
     "wind": {
       "label": "Wind",
