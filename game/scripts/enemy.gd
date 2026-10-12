@@ -73,6 +73,7 @@ var _rig: ModelRig
 var _strike_t := 0.0
 var _shown_highlight := 0
 var _shown_windup := false
+var _shown_down := false
 
 
 ## `strength` scales health and damage - dungeon stages past the midpoint hit harder.
@@ -673,6 +674,11 @@ func _look(delta: float) -> void:
 	if winding != _shown_windup:
 		_shown_windup = winding
 		_rig.set_windup(winding)
+	var down: bool = has_status("staggered") or has_status("stunned")
+	if down != _shown_down:
+		_shown_down = down
+		if _rig.has_method("set_staggered"):
+			_rig.set_staggered(down)                # slumped, head down: the moment for a bare strike
 	if highlight != _shown_highlight:
 		_shown_highlight = highlight
 		_rig.set_highlight(highlight)

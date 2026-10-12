@@ -353,3 +353,29 @@ Kiln Fist's 0.2 s wind-up is not built - it lands at once.
 Verified: self-test 416/416, three runs; gate, death and four full-passage bot runs; Netherecho death test; inventory
 and creation click tests; `ui-fire.png` inspected. Not verified: by hand - whether riding heat near the lock
 actually feels like a gamble.
+
+## Part S — enemy art: archer and harrier (Brent 2026-10-12: "go with that order, start the art agent")
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-80 | Rampart Archer model: hooded and veiled, a bow as tall as itself, a quiver high on the back (the tell from behind). Its wind-up is the draw: side-on, bow arm out, string back | `shots/art-enemies-new.png` | Done (sub-agent) |
+| S06-81 | Harrier model: a long grey body carried level on bent legs, clawed arms, a bone beak-mask and a red crest. Its wind-up is a crouch that drops it 0.3 m; staggered, it rolls onto its side | `shots/art-enemies-new.png` | Done (sub-agent) |
+| S06-82 | Backs: the brute's iron is on its chest and gut only - the back is bare scarred hide, where the opening is; the grunt has a mask-tie on the back of its hood | `shots/art-enemies-back.png` | Done (sub-agent) |
+| S06-83 | A staggered or stunned enemy slumps (`ModelRig.set_staggered`), driven from `enemy.gd` | wired; not seen in a still | Done - unseen |
+
+Not done: the fidelity rebuild of grunt, brute and commander. They were only smoothed (about 1.75x the triangles
+on round forms) and are still the pass-3 builds, not lofted anatomy like the player.
+
+The sub-agent also found why it kept reporting the creation click test as failing: it ran it headless, where
+synthetic clicks do not land. Run in a window it passes. Recorded in CLAUDE.md.
+
+Rough edges (agent's report, and mine): the archer is small and dark at game zoom - the aim line picks it out more
+than its shape does; its release flings the drawing arm out sideways; the harrier runs with a generic biped swing,
+not a bounding gait; the staggered pose is subtle on the big enemies. The staggered pose only eases in while an
+enemy is animating, so no screenshot of mine shows it.
+
+Triangles / draw calls: grunt 5,661 / 11, brute 14,364 / 11, commander 8,747 / 14, archer 8,672 / 15, harrier
+5,396 / 12. Twelve enemies plus the player measured 0.46 ms CPU + 0.38 ms GPU of render time at 1600x900.
+
+Verified: self-test 416/416; gate, death and three full-passage bot runs; Netherecho death test; inventory and
+creation click tests; `art-enemies-new.png` and the combat screen inspected. Not verified: any of it in motion.
