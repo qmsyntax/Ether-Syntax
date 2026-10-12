@@ -138,7 +138,7 @@ func _init() -> void:
 	var slots: int = GameData.inum("abilities", "hotbar_slots")
 	for i: int in slots:
 		hotbar.append(-1)
-	affinities = GameData.prime_affinities("")
+	affinities = GameData.default_affinities()
 	_reset_loadout()
 
 
@@ -190,6 +190,20 @@ func _update_model(delta: float) -> void:
 		_shown_glow = glow
 		_rig.set_highlight(glow)
 	_rig.animate(delta, velocity.length(), _strike_t > 0.0)
+
+
+## The affinities the character's prime came with. They decide which skills can be learned; a
+## new set starts the character over with those affinities' starter kits.
+func set_affinities(list: Array) -> void:
+	var next: Array[String] = []
+	for a: Variant in list:
+		if not GameData.affinity(str(a)).is_empty() and not next.has(str(a)):
+			next.append(str(a))
+	if next.is_empty():
+		next = GameData.default_affinities()
+	affinities = next
+	_reset_loadout()
+	clear_reflux()
 
 
 ## Start over with the kits of the current affinities, on the bar in order.
@@ -247,14 +261,9 @@ func set_look(new_look: Dictionary) -> void:
 
 
 ## Embrace a talent: its rules live in res://scripts/talents/<id>.gd, if that file exists.
-## The prime that carries it also carries the character's affinities.
+## A talent says nothing about affinities - those come with the prime separately (set_affinities).
 func set_talent(id: String) -> void:
 	talent_id = id
-	var carried: Array[String] = GameData.prime_affinities(id)
-	if carried != affinities:
-		affinities = carried
-		_reset_loadout()
-		clear_reflux()
 	talent = TalentDB.get_talent(id)
 	effects.clear()
 	var path: String = TALENT_SCRIPT_DIR + id + ".gd"

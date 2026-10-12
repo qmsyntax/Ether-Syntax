@@ -97,3 +97,22 @@ roster have no affinity list and would default to water. Characters saved before
 
 Verified: self-test 186/186, smoke, three bots, both inventory click tests, creation click test; `ui-hud-dual.png`
 and `ui-create-3.png` inspected. Not verified: any new ability by hand.
+
+## Part H — rolled primes (Brent 2026-10-11, correcting Part G)
+
+Brent: affinities lead to which skills you can learn and are often unrelated to the prime; creation should roll
+three primes, then a number of affinity slots each (max 3; 1 common, 2 rare, 3 "VERY VERY rare"), then fill them at
+random. This replaces S06-20's fixed affinity per prime.
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-24 | `PrimeRoll`: three different talents off a weighted table; slots rolled 87.5 / 12 / 0.5 %; each slot a random, non-repeating affinity | selftest (20,000 rolls: distribution, no repeats, every talent seen with every affinity) | Done |
+| S06-25 | Creator prime step shows the three offers with their affinities and a rarity line; "Ask for three others" rerolls (3 allowed, a testing knob in `balance.json`) | `shots/ui-create-3.png`, `creation_probe` (16 checks) | Done |
+| S06-26 | Affinities live on the character, not the talent (`set_affinities`); three affinities give nine skills, six on the bar | selftest | Done |
+| S06-27 | Non-binary identity removed for now | - | Done |
+
+Not done: the female body - "the female setting does nothing" is true, identity is still cosmetic text. It needs a
+model change and goes with art pass 4. Starter kits per affinity are still our stand-in for "skills you can learn";
+there is no way to learn a further skill yet.
+
+Verified: self-test 191/191, smoke, three bots, both inventory click tests, creation click test, `ui-create-3.png`.

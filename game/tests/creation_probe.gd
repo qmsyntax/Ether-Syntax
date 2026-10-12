@@ -10,6 +10,8 @@ var frames := 0
 var results: Array[String] = []
 var failed := false
 var look_before := {}
+var first_offers: Array = []
+var picked: Dictionary = {}
 
 
 func _ready() -> void:
@@ -97,9 +99,19 @@ func _process(_delta: float) -> void:
 			_click(_button("Next"))
 		42:
 			_expect("Next moves to the prime", int(screen.get("step")) == 2)
-			_click(_find(main, func(n: Node) -> bool: return n is Button and n.has_meta("talent_id") and str(n.get_meta("talent_id")) == "grudge"))
+			var table: Array = screen.get("offers")
+			_expect("three different primes are on the table", table.size() == 3
+				and str(table[0]["talent_id"]) != str(table[1]["talent_id"]) and str(table[1]["talent_id"]) != str(table[2]["talent_id"]) and str(table[0]["talent_id"]) != str(table[2]["talent_id"]))
+			first_offers = table.duplicate(true)
+			_click(_find(main, func(n: Node) -> bool: return n is Button and n.name == "RerollButton"))
+		45:
+			_expect("asking for three others rolls again and uses up a reroll",
+				int(screen.get("rerolls_left")) == GameData.inum("primes", "rerolls") - 1 and (screen.get("offers") as Array).size() == 3)
+			picked = ((screen.get("offers") as Array)[1] as Dictionary).duplicate(true)
+			_click(_find(main, func(n: Node) -> bool: return n is Button and n.has_meta("offer") and int(n.get_meta("offer")) == 1))
 		48:
-			_expect("clicking a prime selects it", str((screen.get("spec") as Dictionary)["talent_id"]) == "grudge")
+			_expect("clicking a prime takes its talent and its affinities", str((screen.get("spec") as Dictionary)["talent_id"]) == str(picked["talent_id"])
+				and ((screen.get("spec") as Dictionary)["affinities"] as Array) == (picked["affinities"] as Array))
 			_click(_button("Next"))
 		54:
 			_expect("Next moves to embark", int(screen.get("step")) == 3)
@@ -107,9 +119,11 @@ func _process(_delta: float) -> void:
 		62:
 			_expect("Begin starts the game in town", str(main.get("state")) == "town")
 			_expect("the character has the name, identity and prime chosen",
-				str(player.get("char_name")) == "Kin" and str(player.get("identity")) == "woman" and str(player.get("talent_id")) == "grudge",
+				str(player.get("char_name")) == "Kin" and str(player.get("identity")) == "woman" and str(player.get("talent_id")) == str(picked["talent_id"]),
 				"%s / %s / %s" % [str(player.get("char_name")), str(player.get("identity")), str(player.get("talent_id"))])
-			_expect("the prime's affinities came with it", (player.get("affinities") as Array) == GameData.prime_affinities("grudge"))
+			_expect("the prime's affinities came with it", (player.get("affinities") as Array) == (picked["affinities"] as Array), str(player.get("affinities")))
+			var kit: Array = GameData.ability_loadout(picked["affinities"])
+			_expect("and their starter skills", (player.get("abilities") as Array).size() == kit.size() and str(((player.get("abilities") as Array)[0] as Dictionary)["id"]) == str(kit[0]))
 			_expect("a new character starts with the purse", int(player.get("money")) == GameData.inum("town", "starting_money"))
 			for line: String in results:
 				print("CREATE: " + line)

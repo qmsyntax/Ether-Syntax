@@ -539,8 +539,8 @@ func _test_weapons() -> void:
 func _test_character() -> void:
 	print("character:")
 	var p := _new_player("grudge")
-	_check("a prime brings its affinities", (p.get("affinities") as Array) == GameData.prime_affinities("grudge") and not (p.get("affinities") as Array).is_empty())
-	_check("every affinity a prime carries is defined", GameData.prime_affinities("grudge").all(func(a: String) -> bool: return not GameData.affinity(a).is_empty()))
+	_check("a talent alone says nothing about affinities", (p.get("affinities") as Array) == GameData.default_affinities())
+	p.call("set_affinities", ["fire", "wind"])
 	var opts: Dictionary = CharacterLook.options()
 	var norm: Dictionary = CharacterLook.normalize({"hair": "no_such_style", "nonsense": "x"})
 	_check("an unknown look falls back to the defaults", norm == CharacterLook.default_look())
@@ -582,13 +582,35 @@ func _test_affinities() -> void:
 			own = own and str(ab.get("affinity", "")) == a
 		_check("%s has a ranged attack, a strike and a movement skill of its own" % a,
 			kit.size() == 3 and own and kinds == ["projectile", "melee_burst", "dash"], str(kinds))
-	for id: String in ["one_percent_lifesteal", "tenth_strike", "grudge", "glass_hour", "debt_of_pain", "furnace_gut"]:
-		var carried: Array[String] = GameData.prime_affinities(id)
-		if carried.is_empty() or not carried.all(func(a: String) -> bool: return ids.has(a)):
-			_check("every playable prime carries known affinities", false, id)
+
+	# the roll at character creation: talent and affinities are unrelated, slots are 1 / 2 / 3
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261011
+	var pool: Array = ["one_percent_lifesteal", "tenth_strike", "grudge", "glass_hour", "debt_of_pain", "furnace_gut"]
+	var offers: Array[Dictionary] = PrimeRoll.roll_offers(rng, pool)
+	_check("three primes are offered, all different", offers.size() == 3 and str(offers[0]["talent_id"]) != str(offers[1]["talent_id"])
+		and str(offers[1]["talent_id"]) != str(offers[2]["talent_id"]) and str(offers[0]["talent_id"]) != str(offers[2]["talent_id"]))
+	var slot_counts := {1: 0, 2: 0, 3: 0}
+	var by_talent := {}
+	var clean := true
+	for i: int in 20000:
+		var o: Dictionary = PrimeRoll.roll_offer(rng, str(pool[i % pool.size()]))
+		var affs: Array = o["affinities"]
+		slot_counts[affs.size()] = int(slot_counts.get(affs.size(), 0)) + 1
+		for a: String in affs:
+			clean = clean and ids.has(a) and affs.count(a) == 1
+		if not by_talent.has(o["talent_id"]):
+			by_talent[o["talent_id"]] = {}
+		(by_talent[o["talent_id"]] as Dictionary)[affs[0]] = true
+	_check("a prime never repeats an affinity or holds an unknown one", clean)
+	_check("one affinity is common, two rare, three very very rare", slot_counts[1] > 16500 and slot_counts[2] > 1800 and slot_counts[2] < 3000
+		and slot_counts[3] > 20 and slot_counts[3] < 250 and slot_counts.size() == 3, str(slot_counts))
+	_check("any talent can come with any affinity", by_talent.values().all(func(seen: Dictionary) -> bool: return seen.size() == ids.size()))
+	_check("rarity is named by slot count", PrimeRoll.rarity(1) == "common" and PrimeRoll.rarity(2) == "rare" and PrimeRoll.rarity(3) == "legendary")
 
 	# a single-affinity character starts with that affinity's kit
 	var p := _new_player("grudge")
+	p.call("set_affinities", ["fire"])
 	var ab0: Array = p.get("abilities")
 	_check("a fire prime starts with the fire kit on the bar", (p.get("affinities") as Array) == ["fire"] and ab0.size() == 3
 		and str(ab0[0]["id"]) == "cinder_spit" and (p.get("hotbar") as Array).slice(0, 3) == [0, 1, 2])
@@ -603,6 +625,7 @@ func _test_affinities() -> void:
 
 	# two affinities: six abilities, and one overheating leaves the other usable
 	p = _new_player("glass_hour")
+	p.call("set_affinities", ["wind", "lightning"])
 	p.set("star_pct", [99.0] as Array[float])
 	p.call("_recompute_essence_max")
 	_check("a dual prime fills the bar with both kits", (p.get("affinities") as Array) == ["wind", "lightning"] and (p.get("abilities") as Array).size() == 6
@@ -624,6 +647,7 @@ func _test_affinities() -> void:
 
 	# furnace gut vents the affinity that overheated, not the other one
 	p = _new_player("furnace_gut")
+	p.call("set_affinities", ["fire", "earth"])
 	p.set("star_pct", [99.0] as Array[float])
 	p.call("_recompute_essence_max")
 	p.set("essence", 99.0)
@@ -634,8 +658,16 @@ func _test_affinities() -> void:
 		and not bool(p.call("is_locked", "earth")), "earth %f fire %f" % [float(p.call("reflux_of", "earth")), float(p.call("reflux_of", "fire"))])
 	p.queue_free()
 
+	# three affinities: nine skills, six on the bar, the rest known but unslotted
+	p = _new_player("tenth_strike")
+	p.call("set_affinities", ["water", "earth", "wind", "earth", "no_such_affinity"])
+	_check("a three-affinity prime knows nine skills and slots the first six", (p.get("affinities") as Array) == ["water", "earth", "wind"]
+		and (p.get("abilities") as Array).size() == 9 and (p.get("hotbar") as Array) == [0, 1, 2, 3, 4, 5])
+	p.queue_free()
+
 	# wisps
 	p = _new_player("grudge")
+	p.call("set_affinities", ["fire"])
 	var n := Netherecho.new()
 	add_child(n)
 	n.player = p

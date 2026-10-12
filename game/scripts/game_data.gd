@@ -46,11 +46,11 @@ func affinity(id: String) -> Dictionary:
 	return _affinities.get(id, {})
 
 
-## The affinities the prime vestige carrying `talent_id` comes with.
-func prime_affinities(talent_id: String) -> Array[String]:
+## The affinities a character has when none were rolled for it (tests, bots, old saves).
+func default_affinities() -> Array[String]:
 	_ensure()
 	var out: Array[String] = []
-	for a: Variant in TalentDB.get_talent(talent_id).get("affinities", _prime_default):
+	for a: Variant in _prime_default:
 		out.append(str(a))
 	return out
 

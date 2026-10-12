@@ -9,6 +9,9 @@ const STEPS: Array[String] = ["Origin", "Appearance", "Prime", "Embark"]
 
 var spec: Dictionary = {}
 var step := 0
+## The primes on the table: [{talent_id, affinities}], rolled when the screen opens.
+var offers: Array[Dictionary] = []
+var rerolls_left := 0
 
 var _rng := RandomNumberGenerator.new()
 var _left: VBoxContainer
@@ -29,11 +32,21 @@ func _init(game_node: Node) -> void:
 	super(game_node)
 	_rng.randomize()
 	var cfg: Dictionary = GameData.creation
-	var choices: Array = game.get("TALENT_CHOICES")
-	spec = {
-		"name": "", "identity": str((cfg["identities"][0] as Dictionary)["id"]),
-		"look": CharacterLook.default_look(), "talent_id": str(choices[0]),
-	}
+	rerolls_left = GameData.inum("primes", "rerolls")
+	spec = {"name": "", "identity": str((cfg["identities"][0] as Dictionary)["id"]), "look": CharacterLook.default_look()}
+	roll_offers()
+
+
+## Put three new primes on the table and take the first.
+func roll_offers() -> void:
+	offers = PrimeRoll.roll_offers(_rng, game.get("TALENT_CHOICES"))
+	_take(0)
+
+
+func _take(index: int) -> void:
+	var o: Dictionary = offers[clampi(index, 0, offers.size() - 1)]
+	spec["talent_id"] = str(o["talent_id"])
+	spec["affinities"] = (o["affinities"] as Array).duplicate()
 
 
 func build(root: Control) -> void:
@@ -210,7 +223,7 @@ func _build_left() -> void:
 	_left.add_child(UiTheme.body("%s   -   %s" % [_identity_label(), CharacterLook.label("body", str((spec["look"] as Dictionary).get("body", "")))], 14, UiTheme.TEXT_DIM))
 	var t: Dictionary = TalentDB.get_talent(str(spec["talent_id"]))
 	_left.add_child(UiTheme.body("Prime:  %s" % str(t.get("name", "?")), 15, UiTheme.STAR))
-	_left.add_child(UiTheme.body("Affinity:  %s" % _affinity_text(str(spec["talent_id"])), 14, UiTheme.TEXT_DIM))
+	_left.add_child(UiTheme.body("%s:  %s" % [_affinity_word(spec["affinities"]), _affinity_text(spec["affinities"])], 14, UiTheme.TEXT_DIM))
 
 	var gap := Control.new()
 	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -388,20 +401,31 @@ func _swatch(key: String, option: Dictionary, chosen: bool) -> Button:
 
 func _build_prime() -> void:
 	_right.add_child(UiTheme.heading("Prime vestige", 28))
-	_right.add_child(UiTheme.body("Ask it what power it holds. You may only ever hold one.", 14, UiTheme.TEXT_DIM))
+	_right.add_child(UiTheme.body("Three lie on the table. Each holds one power and one, two or - almost never - three affinities, and the two have nothing to do with each other. You may only ever take one.", 14, UiTheme.TEXT_DIM))
 	_right.add_child(UiTheme.rule())
 	var list: VBoxContainer = scroller(_right)
 	list.add_theme_constant_override("separation", 6)
-	for id: String in game.get("TALENT_CHOICES"):
-		var t: Dictionary = TalentDB.get_talent(id)
-		var chosen: bool = str(spec["talent_id"]) == id
-		var b := UiWidgets.service_button(str(t.get("name", "?")), "\"%s\"" % str(t.get("verse", "")), _affinity_text(id), func() -> void:
-			spec["talent_id"] = id
+	for i: int in offers.size():
+		var o: Dictionary = offers[i]
+		var t: Dictionary = TalentDB.get_talent(str(o["talent_id"]))
+		var affs: Array = o["affinities"]
+		var chosen: bool = str(spec["talent_id"]) == str(o["talent_id"])
+		var b := UiWidgets.service_button(str(t.get("name", "?")), "\"%s\"" % str(t.get("verse", "")), _affinity_text(affs), func() -> void:
+			_take(i)
 			_refresh())
-		b.set_meta("talent_id", id)
+		b.set_meta("offer", i)
 		if chosen:
 			b.add_theme_stylebox_override("normal", UiTheme.box(Color("3a3024"), UiTheme.GOLD, 2, 4, 10))
 		list.add_child(b)
+		var tag := UiTheme.body(_rarity_text(affs.size()), 12, _rarity_color(affs.size()))
+		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		list.add_child(tag)
+	var again := UiWidgets.small_button("Ask for three others   (%d left)" % rerolls_left, func() -> void:
+		rerolls_left -= 1
+		roll_offers()
+		_refresh(), rerolls_left > 0)
+	again.name = "RerollButton"
+	list.add_child(again)
 
 	# what the chosen prime says about itself
 	var t2: Dictionary = TalentDB.get_talent(str(spec["talent_id"]))
@@ -412,16 +436,38 @@ func _build_prime() -> void:
 	var unknowns: Array = t2.get("hidden", [])
 	if not unknowns.is_empty():
 		_right.add_child(UiTheme.body("Still to be proven:  %s" % str(unknowns[0]), 13, UiTheme.TEXT_FAINT))
-	for aff: String in GameData.prime_affinities(str(spec["talent_id"])):
+	for aff: String in spec["affinities"]:
 		var a: Dictionary = GameData.affinity(aff)
-		_right.add_child(UiTheme.body("%s affinity:  %s" % [str(a.get("label", aff)), str(a.get("desc", ""))], 13, Color(str(a.get("color", "9c917b")))))
+		_right.add_child(UiTheme.body("%s affinity:  %s" % [str(a.get("label", aff)), str(a.get("desc", ""))], 13, GameData.affinity_color(aff).lightened(0.25)))
 
 
-func _affinity_text(talent_id: String) -> String:
+func _affinity_text(affs: Array) -> String:
 	var parts: Array[String] = []
-	for aff: String in GameData.prime_affinities(talent_id):
-		parts.append(str(GameData.affinity(aff).get("label", aff)))
+	for aff: Variant in affs:
+		parts.append(str(GameData.affinity(str(aff)).get("label", aff)))
 	return ", ".join(parts)
+
+
+func _affinity_word(affs: Array) -> String:
+	return "Affinity" if affs.size() <= 1 else "Affinities"
+
+
+func _rarity_text(slots: int) -> String:
+	match PrimeRoll.rarity(slots):
+		"rare":
+			return "two affinities  -  rare"
+		"legendary":
+			return "three affinities  -  almost unheard of"
+	return "one affinity"
+
+
+func _rarity_color(slots: int) -> Color:
+	match PrimeRoll.rarity(slots):
+		"rare":
+			return UiTheme.STAR
+		"legendary":
+			return UiTheme.GOLD
+	return UiTheme.TEXT_FAINT
 
 
 # --- step 4: embark -------------------------------------------------------------------------
@@ -433,7 +479,7 @@ func _build_embark() -> void:
 	_right.add_child(UiWidgets.stat_row("Name", str(spec["name"]) if str(spec["name"]) != "" else "(unnamed - one will be given)"))
 	_right.add_child(UiWidgets.stat_row("Identity", _identity_label()))
 	_right.add_child(UiWidgets.stat_row("Prime", str(t.get("name", "?")), UiTheme.STAR))
-	_right.add_child(UiWidgets.stat_row("Affinity", _affinity_text(str(spec["talent_id"]))))
+	_right.add_child(UiWidgets.stat_row(_affinity_word(spec["affinities"]), _affinity_text(spec["affinities"]), _rarity_color((spec["affinities"] as Array).size()).lightened(0.3)))
 	_right.add_child(UiWidgets.stat_row("Purse", UiTheme.money_text(GameData.inum("town", "starting_money")), UiTheme.GOLD))
 	_right.add_child(UiWidgets.stat_row("Soul", "one star, barely lit"))
 	_right.add_child(UiTheme.rule())

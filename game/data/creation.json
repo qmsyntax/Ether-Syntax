@@ -1,19 +1,79 @@
 {
-  "_note": "Character creation (Brent 2026-10-11: 'feel a lot like BG3 - naming, character design (look), gender... then the prime selection'). Identity only sets how the character is referred to; body type is chosen separately and neither affects stats. Names are original to this project. Look options themselves come from the model library (Models.look_options).",
+  "_note": "Character creation (Brent 2026-10-11: 'feel a lot like BG3 - naming, character design (look), gender... then the prime selection'). Identity only sets how the character is referred to; body type is chosen separately and neither affects stats. Names are original to this project. Look options themselves come from the model library (Models.look_options). Brent 2026-10-11: non-binary removed for now; identity is to drive the body's shape (male / female) once the model supports it.",
   "name_max_length": 20,
   "identities": [
-    {"id": "man", "label": "Man", "they": "he", "them": "him", "their": "his"},
-    {"id": "woman", "label": "Woman", "they": "she", "them": "her", "their": "her"},
-    {"id": "nonbinary", "label": "Non-binary", "they": "they", "them": "them", "their": "their"}
+    {
+      "id": "man",
+      "label": "Man",
+      "they": "he",
+      "them": "him",
+      "their": "his"
+    },
+    {
+      "id": "woman",
+      "label": "Woman",
+      "they": "she",
+      "them": "her",
+      "their": "her"
+    }
   ],
   "look_labels": {
-    "body": "Body type", "skin": "Skin", "face": "Face", "beard": "Beard", "hair": "Hair", "hair_color": "Hair colour",
-    "band": "Headband", "coat": "Coat", "accent": "Accent"
+    "body": "Body type",
+    "skin": "Skin",
+    "face": "Face",
+    "beard": "Beard",
+    "hair": "Hair",
+    "hair_color": "Hair colour",
+    "band": "Headband",
+    "coat": "Coat",
+    "accent": "Accent"
   },
-  "look_order": ["skin", "face", "beard", "hair", "hair_color", "band", "coat", "accent"],
+  "look_order": [
+    "skin",
+    "face",
+    "beard",
+    "hair",
+    "hair_color",
+    "band",
+    "coat",
+    "accent"
+  ],
   "names": [
-    "Aldren", "Bryn", "Cassel", "Dara", "Edrik", "Fenna", "Garrow", "Hale", "Isolde", "Joss", "Kestrel", "Lorn",
-    "Maren", "Nevin", "Odile", "Perrin", "Quill", "Rhosyn", "Sable", "Tovin", "Una", "Varek", "Wren", "Yarrow",
-    "Ashby", "Corbin", "Delph", "Emmet", "Ione", "Marek", "Orla", "Renn", "Sorrel", "Thane", "Vesper", "Zell"
+    "Aldren",
+    "Bryn",
+    "Cassel",
+    "Dara",
+    "Edrik",
+    "Fenna",
+    "Garrow",
+    "Hale",
+    "Isolde",
+    "Joss",
+    "Kestrel",
+    "Lorn",
+    "Maren",
+    "Nevin",
+    "Odile",
+    "Perrin",
+    "Quill",
+    "Rhosyn",
+    "Sable",
+    "Tovin",
+    "Una",
+    "Varek",
+    "Wren",
+    "Yarrow",
+    "Ashby",
+    "Corbin",
+    "Delph",
+    "Emmet",
+    "Ione",
+    "Marek",
+    "Orla",
+    "Renn",
+    "Sorrel",
+    "Thane",
+    "Vesper",
+    "Zell"
   ]
 }

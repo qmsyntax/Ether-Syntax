@@ -214,6 +214,7 @@ These override fan sources where they conflict.
 - [B] The Century of Solitude has **no rules — just time.**
 
 **Gear, drugs**
+- [B] (2026-10-11) **Affinities decide which skills you can learn and are often unrelated to the prime's talent.** At character creation **three primes are rolled** from the table of prime abilities; each rolls a number of **affinity slots - 1 common, 2 rare, 3 very very rare (max 3)** - and each slot is filled at random. [MODEL] the exact odds (87.5 / 12 / 0.5 %), equal chance per affinity, and a limited reroll for testing.
 - [B] Gear matters but **less than the body**. It is crafted, quested for, awarded, and dropped by monsters.
 - [B] Drugs have ordinary downsides; archhumans are so healthy they can abuse far more than mortals.
 

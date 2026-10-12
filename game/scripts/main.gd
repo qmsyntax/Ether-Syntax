@@ -420,10 +420,12 @@ func start_new_character(index: int) -> void:
 	begin_character({"talent_id": TALENT_CHOICES[index]})
 
 
-## Start the character described by the creation screen: {name, identity, look, talent_id}.
+## Start the character described by the creation screen: {name, identity, look, talent_id,
+## affinities}. The talent and the affinities are the prime that was picked from the rolled offers.
 func begin_character(spec: Dictionary) -> void:
 	var talent: String = str(spec.get("talent_id", TALENT_CHOICES[0]))
 	player.call("set_talent", talent if TALENT_CHOICES.has(talent) else TALENT_CHOICES[0])
+	player.call("set_affinities", spec.get("affinities", []))
 	player.set("char_name", str(spec.get("name", "")).strip_edges().left(int(GameData.creation["name_max_length"])))
 	player.set("identity", str(spec.get("identity", "")))
 	player.call("set_look", spec.get("look", {}))
@@ -1012,7 +1014,10 @@ func _setup_ui_shot(which: String) -> void:
 		return
 	if which.begins_with("create"):
 		# the creation screen at a given step: create-1 .. create-4
-		screen.call("set_spec", {"name": "Maren", "identity": "woman", "look": CharacterLook.default_look(), "talent_id": "tenth_strike"})
+		# fixed offers so the picture does not depend on the dice: a common, a rare and a three-slot prime
+		screen.set("offers", [{"talent_id": "grudge", "affinities": ["earth"]}, {"talent_id": "tenth_strike", "affinities": ["wind", "fire"]},
+			{"talent_id": "one_percent_lifesteal", "affinities": ["water", "lightning", "earth"]}] as Array[Dictionary])
+		screen.call("set_spec", {"name": "Maren", "identity": "woman", "look": CharacterLook.default_look(), "talent_id": "tenth_strike", "affinities": ["wind", "fire"]})
 		screen.call("_go", int(which.get_slice("-", 1)) - 1)
 		return
 	_select_talent(0)
@@ -1085,6 +1090,7 @@ func _setup_ui_shot(which: String) -> void:
 		"hud-dual":
 			# a two-affinity character mid-fight: both kits on the bar, one affinity running hot
 			player.call("set_talent", "furnace_gut")
+			player.call("set_affinities", ["fire", "earth"])
 			player.call("grow_star", 60.0)
 			player.set("essence", 55.0)
 			_show_screen(null, false)

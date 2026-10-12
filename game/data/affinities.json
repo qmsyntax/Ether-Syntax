@@ -1,5 +1,5 @@
 {
-  "_note": "Affinities a prime vestige can carry (design/01: a prime delivers a talent and 1+ affinities; more affinities is rarer and worth more). Brent 2026-10-11 approved: fire, earth, wind and lightning beside water; affinities are fixed per prime (a talent's 'affinities' list in talents.json, else prime_default); most primes carry one, a couple carry two. 'kit' is the three abilities a character with that affinity starts with: a ranged attack, a melee strike, a movement skill. Labels, descriptions and kits are ours [MODEL].",
+  "_note": "Affinities a prime vestige can carry (design/01: a prime delivers a talent and 1+ affinities; more affinities is rarer and worth more). Brent 2026-10-11: fire, earth, wind and lightning beside water. Affinities are NOT tied to the talent - they decide which skills you can learn and are rolled separately when a prime is offered (see balance.json 'primes' and PrimeRoll). prime_default is only what a character gets when nothing was rolled (tests, bots, old saves). 'kit' is the three abilities a character with that affinity starts with: a ranged attack, a melee strike, a movement skill. Labels, descriptions and kits are ours [MODEL].",
   "prime_default": [
     "water"
   ],
