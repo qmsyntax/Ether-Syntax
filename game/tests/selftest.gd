@@ -24,6 +24,7 @@ func _ready() -> void:
 	await _test_click_melee()
 	await _test_inventory()
 	_test_slot_assignment()
+	await _test_weapons()
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
 
@@ -462,6 +463,45 @@ func _test_slot_assignment() -> void:
 	q.call("from_save", p.call("to_save"))
 	var qhb: Array = q.get("hotbar")
 	_check("the arrangement survives saving", int(qhb[0]) == 2 and int(qhb[4]) == 0 and qhb.find(1) == -1)
+	p.queue_free()
+	q.queue_free()
+
+
+func _test_weapons() -> void:
+	await get_tree().process_frame
+	print("weapons:")
+	var p := _new_player("tenth_strike")
+	var inv: Inventory = p.get("inventory")
+	var e := _dummy_enemy(p)
+	var eb: Body = e.get("body")
+	p.call("_strike_target", e, 1.0, ["melee"])
+	_check("a bare-handed strike does base damage (60)", _near(eb.missing("superficial"), 60.0), "got %f" % eb.missing("superficial"))
+	_check("bare hands reach 2.3 m", _near(float(p.call("reach_now")), 2.3))
+
+	inv.add("commander_blade")
+	_check("a weapon equips into the weapon slot", inv.equip("commander_blade") == "equipped" and str(inv.equipped.get("weapon", "")) == "commander_blade")
+	var before: float = eb.missing("superficial")
+	p.call("_strike_target", e, 1.0, ["melee"])
+	_check("the blade hits 60% harder (96)", _near(eb.missing("superficial") - before, 96.0), "got %f" % (eb.missing("superficial") - before))
+	_check("the blade adds half a metre of reach", _near(float(p.call("reach_now")), 2.8))
+
+	inv.add("serrated_dagger")
+	inv.equip("serrated_dagger")
+	_check("swapping weapons puts the old one back in the pack", str(inv.equipped["weapon"]) == "serrated_dagger" and inv.bag.has("commander_blade"))
+	_check("the dagger strikes faster (cooldown x0.8)", _near(float(p.call("weapon_stat", "melee_cooldown_mult", true)), 0.8))
+
+	p.set("arm_right_lost", true)
+	_check("with the striking arm lost the weapon does nothing", _near(float(p.call("weapon_stat", "melee_damage_mult", true)), 1.0) and _near(float(p.call("weapon_stat", "melee_cooldown_mult", true)), 1.0))
+	p.set("arm_right_lost", false)
+
+	_check("gear sells for half, loot for full", inv.sale_price("commander_blade") == 900 and inv.sale_price("brute_tusk") == 280)
+	_check("selling one item removes just that one", inv.sell_item("commander_blade") == 900 and not inv.bag.has("commander_blade"))
+	inv.add("brute_tusk")
+	_check("'sell all loot' leaves weapons alone", inv.sell_loot() == 280 and str(inv.equipped["weapon"]) == "serrated_dagger")
+	var q := _new_player()
+	q.call("from_save", p.call("to_save"))
+	_check("the equipped weapon survives saving", str((q.get("inventory") as Inventory).equipped.get("weapon", "")) == "serrated_dagger")
+	e.queue_free()
 	p.queue_free()
 	q.queue_free()
 

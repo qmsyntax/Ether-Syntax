@@ -402,6 +402,17 @@ func town_sell_loot() -> int:
 	return got
 
 
+## Sell one item from the bag (loot at full value, gear at a fraction).
+func town_sell_item(item_id: String) -> int:
+	var inv: Inventory = player.get("inventory")
+	var got: int = inv.sell_item(item_id)
+	if got > 0:
+		player.set("money", int(player.get("money")) + got)
+		player.call("note", "Sold %s for $%d." % [str(GameData.item(item_id).get("name", item_id)), got])
+		save_now()
+	return got
+
+
 ## Buy a shop item on credit (to the debt limit). Returns "" on success, else why not.
 func town_buy(item_id: String) -> String:
 	var def: Dictionary = GameData.item(item_id)
@@ -866,9 +877,10 @@ func _setup_ui_shot(which: String) -> void:
 	_select_talent(0)
 	var inv: Inventory = player.get("inventory")
 	player.set("money", 1840)
-	for id: String in ["dim_mote", "river_stone", "brute_tusk", "brute_tusk", "husk_plate", "sinew_cord", "sinew_cord", "sinew_cord", "commander_sigil", "delver_frame"]:
+	for id: String in ["dim_mote", "river_stone", "serrated_dagger", "invader_cleaver", "brute_tusk", "brute_tusk", "husk_plate", "sinew_cord", "sinew_cord", "commander_sigil", "delver_frame"]:
 		inv.add(id)
 	inv.equip("dim_mote")
+	inv.equip("serrated_dagger")
 	player.call("refresh_gear")
 	player.call("grow_star", 38.0)
 	(player.get("constructs") as Array).append({"tier": "vestige", "concept": "acceleration"})

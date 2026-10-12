@@ -253,14 +253,14 @@ func _physics_process(delta: float) -> void:
 	if attack_target != null and not meditating and not _charging:
 		var to: Vector3 = attack_target.global_position - global_position
 		to.y = 0.0
-		var reach: float = melee_range + float(attack_target.get("radius"))
+		var reach: float = reach_now() + float(attack_target.get("radius"))
 		if to.length() > 0.2:
 			_facing = to.normalized()
 		if to.length() <= reach:
 			dir = Vector3.ZERO if input == Vector2.ZERO else dir
 			if _melee_cd <= 0.0:
 				_strike_target(attack_target, float(_p["off_hand_factor"]) if arm_right_lost else 1.0, ["melee"])
-				_melee_cd = float(_p["melee_cooldown"])
+				_melee_cd = float(_p["melee_cooldown"]) * weapon_stat("melee_cooldown_mult", true)
 				if _strike_once and not Input.is_action_pressed("strike"):
 					attack_target = null
 		elif input == Vector2.ZERO:
@@ -508,8 +508,8 @@ func pick_at(point: Vector3) -> Node3D:
 ## One blow on one target (Brent 2026-09-23: base attacks are single target).
 func _strike_target(target: Node3D, multiplier: float, tags: Array) -> void:
 	_strike_t = 0.2
-	_swing_visual(melee_range, multiplier > 1.0, true)
-	deal_damage(target, float(_p["melee_damage"]) * multiplier, tags)
+	_swing_visual(reach_now(), multiplier > 1.0, true)
+	deal_damage(target, float(_p["melee_damage"]) * weapon_stat("melee_damage_mult", true) * multiplier, tags)
 
 
 ## The overcharged blow lands on the clicked target, else whatever is under the cursor, else the
@@ -548,7 +548,7 @@ func _swing(multiplier: float, reach: float, tags: Array) -> void:
 			continue
 		if dist > 0.3 and _facing.angle_to(to / dist) > melee_arc:
 			continue
-		deal_damage(t, float(_p["melee_damage"]) * multiplier, tags)
+		deal_damage(t, float(_p["melee_damage"]) * weapon_stat("melee_damage_mult", true) * multiplier, tags)
 
 
 func _release_overcharge() -> void:
@@ -561,7 +561,7 @@ func _release_overcharge() -> void:
 	var self_cost: float = float(_p["overcharge_self_cost_base"]) + c * float(_p["overcharge_self_cost_per_charge"])
 	var applied: float = body.apply_self_harm(self_cost)
 	_float("arm -%d" % int(applied), Color(1, 0.4, 0.3))
-	var heavy_target: Node3D = _overcharge_target(melee_range + float(_p["overcharge_reach_bonus"]))
+	var heavy_target: Node3D = _overcharge_target(reach_now() + float(_p["overcharge_reach_bonus"]))
 	if heavy_target != null:
 		_strike_target(heavy_target, 1.0 + c * float(_p["overcharge_damage_per_charge"]), ["melee", "overcharge"])
 	else:
@@ -764,6 +764,21 @@ func _roll_drops(target: Node) -> void:
 
 
 # --- gear, loot, saving ----------------------------------------------------------
+
+## A stat of the weapon in hand. A weapon is held in the striking arm, so with that arm lost it
+## counts for nothing (neutral value) until the arm is regrown.
+func weapon_stat(stat_name: String, multiplicative: bool = false) -> float:
+	var neutral: float = 1.0 if multiplicative else 0.0
+	if arm_right_lost:
+		return neutral
+	var stats: Dictionary = GameData.item(str(inventory.equipped.get("weapon", ""))).get("stats", {})
+	return float(stats.get(stat_name, neutral))
+
+
+## How far a base strike reaches right now.
+func reach_now() -> float:
+	return melee_range + weapon_stat("melee_range_bonus")
+
 
 ## Re-read what equipment grants. Call after anything is equipped or removed.
 func refresh_gear() -> void:
@@ -1033,7 +1048,7 @@ func _bot_think() -> bool:
 		_facing = to / dist
 	if near == null:
 		return false
-	return dist <= melee_range + float(near.get("radius"))
+	return dist <= reach_now() + float(near.get("radius"))
 
 
 func start_fight() -> void:

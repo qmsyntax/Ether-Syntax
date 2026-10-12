@@ -1,10 +1,10 @@
 class_name Inventory
 extends RefCounted
 ## What a character carries and wears. Carry weight is a hard limit (canon: carry capacity is an
-## economic stat). Equipment slots: back (a backpack - no storage ring at the start), satellite,
-## trinket. Equipped items do not count against the bag's capacity; they are worn.
+## economic stat). Equipment slots: weapon (held in the striking arm), back (a backpack - no
+## storage ring at the start), satellite, trinket. Equipped items do not count against the bag's capacity; they are worn.
 
-const SLOTS: Array[String] = ["back", "satellite", "trinket"]
+const SLOTS: Array[String] = ["weapon", "back", "satellite", "trinket"]
 
 var bag: Array[String] = []             # item ids, one entry per item
 var equipped: Dictionary = {}           # slot -> item id
@@ -107,6 +107,24 @@ func loot_value() -> int:
 		if str(GameData.item(id).get("slot", "")) == "":
 			v += int(GameData.item(id).get("value", 0))
 	return v
+
+
+## What the merchant pays for one of these: loot at full value, gear at a fraction.
+func sale_price(id: String) -> int:
+	var def: Dictionary = GameData.item(id)
+	var value: float = float(def.get("value", 0))
+	if str(def.get("slot", "")) != "":
+		value *= float(GameData.items_file.get("gear_sell_factor", 0.5))
+	return int(value)
+
+
+## Sell one item out of the bag. Returns what it fetched (0 if it was not there).
+func sell_item(id: String) -> int:
+	if not bag.has(id):
+		return 0
+	var price: int = sale_price(id)
+	bag.remove_at(bag.find(id))
+	return price
 
 
 ## Remove all loot from the bag and return what it sold for.

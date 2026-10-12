@@ -63,6 +63,10 @@
         {
           "item": "husk_plate",
           "chance": 0.45
+        },
+        {
+          "item": "invader_cleaver",
+          "chance": 0.12
         }
       ],
       "name": "Hide-Bound Brute"
@@ -100,6 +104,10 @@
         {
           "item": "river_stone",
           "chance": 0.12
+        },
+        {
+          "item": "commander_blade",
+          "chance": 0.2
         }
       ],
       "name": "Wall Commander"

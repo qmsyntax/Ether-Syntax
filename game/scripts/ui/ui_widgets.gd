@@ -104,6 +104,13 @@ static func stat_row(label: String, value: String, value_color: Color = UiTheme.
 static func item_stats_text(def: Dictionary) -> String:
 	var parts: Array[String] = []
 	var stats: Dictionary = def.get("stats", {})
+	if stats.has("melee_damage_mult"):
+		parts.append("strikes hit %d%% harder" % int(round((float(stats["melee_damage_mult"]) - 1.0) * 100.0)))
+	if stats.has("melee_cooldown_mult"):
+		var cd: float = float(stats["melee_cooldown_mult"])
+		parts.append(("strikes %d%% faster" % int(round((1.0 / cd - 1.0) * 100.0))) if cd < 1.0 else ("strikes %d%% slower" % int(round((1.0 - 1.0 / cd) * 100.0))))
+	if stats.has("melee_range_bonus"):
+		parts.append("+%.1f m reach" % float(stats["melee_range_bonus"]))
 	if stats.has("carry_capacity"):
 		parts.append("carry +%d kg" % int(float(stats["carry_capacity"])))
 	if stats.has("satellite_rate"):

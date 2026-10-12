@@ -129,6 +129,10 @@ static func icon(ci: CanvasItem, kind: String, c: Vector2, s: float, color: Colo
 		"gem":       # a construct waiting to be bound
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -s * 0.5), c + Vector2(s * 0.42, -s * 0.1), c + Vector2(s * 0.24, s * 0.5), c + Vector2(-s * 0.24, s * 0.5), c + Vector2(-s * 0.42, -s * 0.1)]), color)
 			ci.draw_polyline(PackedVector2Array([c + Vector2(-s * 0.42, -s * 0.1), c + Vector2(0, s * 0.08), c + Vector2(s * 0.42, -s * 0.1)]), color.lightened(0.5), 1.5, true)
+		"blade":
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.42, -s * 0.5), c + Vector2(s * 0.5, -s * 0.42), c + Vector2(-s * 0.12, s * 0.2), c + Vector2(-s * 0.2, s * 0.12)]), color)
+			ci.draw_line(c + Vector2(-s * 0.32, 0.0), c + Vector2(0.0, s * 0.32), color.darkened(0.3), 4.0, true)
+			ci.draw_line(c + Vector2(-s * 0.2, s * 0.2), c + Vector2(-s * 0.44, s * 0.44), color.darkened(0.15), 5.0, true)
 		"arm":
 			ci.draw_polyline(PackedVector2Array([c + Vector2(-s * 0.4, s * 0.4), c + Vector2(-s * 0.1, -s * 0.05), c + Vector2(s * 0.25, -s * 0.3)]), color, 5.0, true)
 			ci.draw_circle(c + Vector2(s * 0.34, -s * 0.38), s * 0.17, color)
@@ -144,6 +148,7 @@ static func icon(ci: CanvasItem, kind: String, c: Vector2, s: float, color: Colo
 ## Which glyph an item uses.
 static func item_icon(def: Dictionary) -> String:
 	match str(def.get("slot", "")):
+		"weapon": return "blade"
 		"back": return "pack"
 		"satellite": return "mote"
 		"trinket": return "charm"

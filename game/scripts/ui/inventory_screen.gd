@@ -3,7 +3,7 @@ extends UiScreen
 ## constructs waiting to be bound into them. This is also where you choose WHICH ability a
 ## construct goes into (the Bind key only takes the first match).
 
-const SLOT_LABELS := {"back": "Back", "satellite": "Satellite", "trinket": "Trinket"}
+const SLOT_LABELS := {"weapon": "Weapon", "back": "Back", "satellite": "Satellite", "trinket": "Trinket"}
 
 
 func backdrop() -> float:
@@ -73,7 +73,7 @@ class SlotPanel extends PanelContainer:
 	func _init(owner_screen: Control, slot_name: String, inv: Inventory) -> void:
 		screen = owner_screen
 		slot = slot_name
-		custom_minimum_size = Vector2(0, 74)
+		custom_minimum_size = Vector2(0, 68)
 		_style(false)
 		var id: String = str(inv.equipped.get(slot, ""))
 		var def: Dictionary = GameData.item(id)
@@ -81,7 +81,7 @@ class SlotPanel extends PanelContainer:
 		row.add_theme_constant_override("separation", 10)
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(row)
-		var empty_icon: String = {"back": "pack", "satellite": "mote", "trinket": "charm"}[slot]
+		var empty_icon: String = {"weapon": "blade", "back": "pack", "satellite": "mote", "trinket": "charm"}[slot]
 		row.add_child(UiWidgets.Icon.new(UiDraw.item_icon(def) if id != "" else empty_icon, UiTheme.GOLD if id != "" else Color(0.3, 0.28, 0.25), 48.0))
 		var col := VBoxContainer.new()
 		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -91,11 +91,12 @@ class SlotPanel extends PanelContainer:
 		col.add_child(UiTheme.body(str(SLOT_LABELS[slot]).to_upper(), 12, UiTheme.TEXT_FAINT))
 		if id != "":
 			col.add_child(UiTheme.body(str(def.get("name", id)), 17, UiTheme.TEXT))
-			col.add_child(UiTheme.body(UiWidgets.item_stats_text(def), 13, UiTheme.GOOD))
+			var useless: bool = slot == "weapon" and bool((screen.get("player") as Node).get("arm_right_lost"))
+			col.add_child(UiTheme.body("no arm to hold it - does nothing" if useless else UiWidgets.item_stats_text(def), 13, UiTheme.BAD if useless else UiTheme.GOOD))
 			row.add_child(UiWidgets.small_button("Take off", func() -> void: screen.call("unequip_slot", slot)))
 		else:
 			col.add_child(UiTheme.body("Empty", 17, UiTheme.TEXT_FAINT))
-			var hint: String = {"back": "a backpack goes here", "satellite": "a satellite goes here - buy one from the merchant", "trinket": "a charm or coil goes here"}[slot]
+			var hint: String = {"weapon": "bare fists - a weapon goes here", "back": "a backpack goes here", "satellite": "a satellite goes here - buy one from the merchant", "trinket": "a charm or coil goes here"}[slot]
 			col.add_child(UiTheme.body(hint, 12, UiTheme.TEXT_FAINT))
 
 	func _style(lit: bool) -> void:
@@ -149,7 +150,7 @@ func _build_bag(box: VBoxContainer, inv: Inventory) -> void:
 	if not loot.is_empty():
 		if not gear.is_empty():
 			list.add_child(Control.new())
-		list.add_child(UiTheme.body("LOOT  -  sell it in town", 13, UiTheme.TEXT_DIM))
+		list.add_child(UiTheme.body("LOOT  -  only good for selling", 13, UiTheme.TEXT_DIM))
 		for id: String in loot:
 			list.add_child(_bag_row(id, int(counts[id]), false))
 
@@ -192,9 +193,15 @@ func _bag_row(id: String, count: int, equippable: bool) -> Control:
 		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		inner.add_child(tag)
 
-	row.add_child(UiWidgets.small_button("Drop", func() -> void:
-		game.call("drop_item", id)
-		rebuild()))
+	if str(game.get("state")) == "town":
+		var inv: Inventory = player.get("inventory")
+		row.add_child(UiWidgets.small_button("Sell $%d" % inv.sale_price(id), func() -> void:
+			game.call("town_sell_item", id)
+			rebuild()))
+	else:
+		row.add_child(UiWidgets.small_button("Drop", func() -> void:
+			game.call("drop_item", id)
+			rebuild()))
 	return row
 
 
