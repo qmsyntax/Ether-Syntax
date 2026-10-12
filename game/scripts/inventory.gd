@@ -1,10 +1,14 @@
 class_name Inventory
 extends RefCounted
 ## What a character carries and wears. Carry weight is a hard limit (canon: carry capacity is an
-## economic stat). Equipment slots: weapon (held in the striking arm), back (a backpack - no
-## storage ring at the start), satellite, trinket. Equipped items do not count against the bag's capacity; they are worn.
+## economic stat). The twelve equipment slots are design/06 section 2: weapon (the main hand - the
+## id is kept so old saves load), offhand, ranged, head, body, hands, feet, back (a backpack - no
+## storage ring at the start), belt, satellite and two trinkets. Equipped items do not count
+## against the bag's capacity; they are worn.
 
-const SLOTS: Array[String] = ["weapon", "ranged", "body", "back", "satellite", "trinket"]
+const SLOTS: Array[String] = ["weapon", "offhand", "ranged", "head", "body", "hands", "feet", "back", "belt", "satellite", "trinket", "trinket2"]
+## Slots that take another slot's items: the second trinket holds anything whose slot is "trinket".
+const SLOT_ACCEPTS := {"trinket2": "trinket"}
 
 var bag: Array[String] = []             # item ids, one entry per item
 var equipped: Dictionary = {}           # slot -> item id
@@ -62,13 +66,42 @@ func remove(id: String) -> bool:
 	return true
 
 
-## Equip an item from the bag. Whatever was in the slot goes back into the bag. Refused if that
-## would leave the bag over capacity (e.g. swapping to a smaller backpack while loaded).
-func equip(id: String) -> String:
-	var def: Dictionary = GameData.item(id)
-	var slot: String = str(def.get("slot", ""))
-	if slot == "" or not bag.has(id):
+## The kind of item a slot holds (its own id, except for the second trinket).
+static func slot_kind(slot: String) -> String:
+	return str(SLOT_ACCEPTS.get(slot, slot))
+
+
+## Every slot an item with this `slot` value may go into, in the order they are tried.
+static func slots_for(item_slot: String) -> Array[String]:
+	var out: Array[String] = []
+	if item_slot == "":
+		return out
+	for slot: String in SLOTS:
+		if slot_kind(slot) == item_slot:
+			out.append(slot)
+	return out
+
+
+## Where `id` would go if it were equipped with no slot named: the first empty slot that takes
+## it, else the first such slot (whose item is swapped out). "" if it fits nowhere.
+func slot_for(id: String) -> String:
+	var fits: Array[String] = slots_for(str(GameData.item(id).get("slot", "")))
+	for slot: String in fits:
+		if not equipped.has(slot):
+			return slot
+	return fits[0] if not fits.is_empty() else ""
+
+
+## Equip an item from the bag, into `into` or (by default) wherever slot_for() puts it. Whatever
+## was in the slot goes back into the bag. Refused if that would leave the bag over capacity
+## (e.g. swapping to a smaller backpack while loaded), and the same item is never worn twice.
+func equip(id: String, into: String = "") -> String:
+	var slot: String = into if into != "" else slot_for(id)
+	if slot == "" or not bag.has(id) or not slots_for(str(GameData.item(id).get("slot", ""))).has(slot):
 		return "cannot equip that"
+	for other: String in equipped:
+		if str(equipped[other]) == id:
+			return "you already wear one"
 	var old: String = str(equipped.get(slot, ""))
 	bag.remove_at(bag.find(id))
 	equipped[slot] = id
@@ -150,5 +183,7 @@ func from_dict(d: Dictionary) -> void:
 	equipped.clear()
 	var eq: Dictionary = d.get("equipped", {})
 	for slot: String in eq:
-		if not GameData.item(str(eq[slot])).is_empty():
+		# a save may name a slot or an item this build no longer has; drop it rather than wear it
+		var def: Dictionary = GameData.item(str(eq[slot]))
+		if not def.is_empty() and slots_for(str(def.get("slot", ""))).has(slot):
 			equipped[slot] = str(eq[slot])

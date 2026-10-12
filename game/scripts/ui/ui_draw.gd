@@ -211,6 +211,30 @@ static func icon(ci: CanvasItem, kind: String, c: Vector2, s: float, color: Colo
 		"charm":
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -s * 0.5), c + Vector2(s * 0.36, 0), c + Vector2(0, s * 0.5), c + Vector2(-s * 0.36, 0)]), color)
 			ci.draw_line(c + Vector2(0, -s * 0.5), c + Vector2(0, s * 0.5), color.lightened(0.4), 1.5, true)
+		"hood":      # head: a domed cap over an open face
+			ci.draw_arc(c + Vector2(0, s * 0.02), s * 0.36, PI, TAU, 20, color, s * 0.16, true)
+			ci.draw_line(c + Vector2(-s * 0.36, 0), c + Vector2(-s * 0.36, s * 0.4), color, s * 0.16, true)
+			ci.draw_line(c + Vector2(s * 0.36, 0), c + Vector2(s * 0.36, s * 0.4), color, s * 0.16, true)
+			ci.draw_line(c + Vector2(0, -s * 0.34), c + Vector2(0, s * 0.02), color.darkened(0.35), 2.0, true)
+		"glove":     # hands: a mitt, a thumb and a cuff
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.26, -s * 0.46), Vector2(s * 0.46, s * 0.6)), color)
+			ci.draw_line(c + Vector2(s * 0.2, -s * 0.02), c + Vector2(s * 0.42, -s * 0.26), color, s * 0.16, true)
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.3, s * 0.2), Vector2(s * 0.54, s * 0.26)), color.darkened(0.3))
+			for k: int in 3:
+				ci.draw_line(c + Vector2(-s * 0.14 + k * s * 0.115, -s * 0.44), c + Vector2(-s * 0.14 + k * s * 0.115, -s * 0.14), color.darkened(0.45), 1.5, true)
+		"boot":      # feet: a shaft, a foot and a sole
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.3, -s * 0.48), c + Vector2(s * 0.04, -s * 0.48), c + Vector2(s * 0.04, s * 0.08),
+				c + Vector2(s * 0.44, s * 0.2), c + Vector2(s * 0.44, s * 0.36), c + Vector2(-s * 0.3, s * 0.36)]), color)
+			ci.draw_line(c + Vector2(-s * 0.34, s * 0.44), c + Vector2(s * 0.46, s * 0.44), color.darkened(0.35), 4.0, true)
+		"slate":     # off hand: a framed slate with working written on it
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.34, -s * 0.44), Vector2(s * 0.68, s * 0.88)), color.darkened(0.45))
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.34, -s * 0.44), Vector2(s * 0.68, s * 0.88)), color, false, 3.0)
+			for k: int in 3:
+				ci.draw_line(c + Vector2(-s * 0.2, -s * 0.2 + k * s * 0.2), c + Vector2(s * (0.2 - 0.12 * k), -s * 0.2 + k * s * 0.2), color, 2.0, true)
+		"belt":      # a strap and a buckle
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.5, -s * 0.1), Vector2(s, s * 0.2)), color.darkened(0.25))
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.16, -s * 0.2), Vector2(s * 0.32, s * 0.4)), color, false, 3.0)
+			ci.draw_line(c + Vector2(-s * 0.02, 0), c + Vector2(s * 0.16, 0), color, 2.5, true)
 		"gem":       # a construct waiting to be bound
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -s * 0.5), c + Vector2(s * 0.42, -s * 0.1), c + Vector2(s * 0.24, s * 0.5), c + Vector2(-s * 0.24, s * 0.5), c + Vector2(-s * 0.42, -s * 0.1)]), color)
 			ci.draw_polyline(PackedVector2Array([c + Vector2(-s * 0.42, -s * 0.1), c + Vector2(0, s * 0.08), c + Vector2(s * 0.42, -s * 0.1)]), color.lightened(0.5), 1.5, true)
@@ -239,4 +263,9 @@ static func item_icon(def: Dictionary) -> String:
 		"back": return "pack"
 		"satellite": return "mote"
 		"trinket": return "charm"
+		"head": return "hood"
+		"hands": return "glove"
+		"feet": return "boot"
+		"offhand": return "slate"
+		"belt": return "belt"
 	return "crate"

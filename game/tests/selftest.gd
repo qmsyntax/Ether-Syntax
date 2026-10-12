@@ -33,6 +33,7 @@ func _ready() -> void:
 	_test_tempering()
 	await _test_water_and_lightning()
 	await _test_gear_step_1()
+	await _test_inventory_doll()
 	await _test_fire()
 	await _test_wind()
 	await _test_earth()
@@ -61,10 +62,13 @@ func _near(a: float, b: float, eps: float = 0.01) -> bool:
 	return absf(a - b) <= eps
 
 
-## Take off whatever the character wears on the body. Checks that assert an exact amount of
-## damage taken are about wounds, talents or tempering - not about the starting coat.
+## Take off every piece of armour the character wears. Checks that assert an exact amount of
+## damage taken are about wounds, talents or tempering - not about the starting coat and boots.
 func _bare(p: Node) -> void:
-	(p.get("inventory") as Inventory).equipped.erase("body")
+	var inv: Inventory = p.get("inventory")
+	for slot: String in inv.equipped.keys():
+		if (GameData.item(str(inv.equipped[slot])).get("stats", {}) as Dictionary).has("armour"):
+			inv.equipped.erase(slot)
 
 
 ## As if a moment had passed: the last skill's recovery is over. Tests cast back to back with no
@@ -2378,6 +2382,7 @@ func _test_gear_step_1() -> void:
 		and (GameData.enemy("brute")["loot"] as Array).any(func(e: Dictionary) -> bool: return str(e["item"]) == "husk_hide_jack"))
 
 	# armour: a percentage off each hit
+	inv.equipped.erase("feet")                              # this step is about the coat: the starting boots come off
 	inv.add("husk_hide_jack")
 	inv.equip("husk_hide_jack")
 	_check("the hide jack is 5 armour", _near(float(p.call("armour")), 5.0))
@@ -2402,6 +2407,7 @@ func _test_gear_step_1() -> void:
 
 	# armour reaches a talent that swallows a hit and delivers it later
 	var d := _new_player("debt_of_pain")
+	(d.get("inventory") as Inventory).equipped.erase("feet")
 	(d.get("inventory") as Inventory).add("husk_hide_jack")
 	(d.get("inventory") as Inventory).equip("husk_hide_jack")
 	var db: Body = d.get("body")
@@ -3051,3 +3057,124 @@ func _test_death_and_rest() -> void:
 
 	# ascension pace (Brent 2026-10-11: ten minutes was far too quick, about two hours is right)
 	_check("the second star is a long road", GameData.num("player", "aura_threshold") >= 1000.0 and GameData.num("stars", "growth_pct_per_aura") <= 0.05)
+
+
+func _test_inventory_doll() -> void:
+	print("the paper doll: twelve slots (design/06 section 2):")
+	await get_tree().process_frame
+	var wanted: Array[String] = ["weapon", "offhand", "ranged", "head", "body", "hands", "feet", "back", "belt", "satellite", "trinket", "trinket2"]
+	_check("there are twelve slots and the main hand is still called weapon", Inventory.SLOTS.size() == 12
+		and wanted.all(func(s: String) -> bool: return Inventory.SLOTS.has(s)), str(Inventory.SLOTS))
+	var p := _new_player()
+	var inv: Inventory = p.get("inventory")
+	_check("a new character also wears street boots and a rope belt", str(inv.equipped.get("feet", "")) == "street_boots" and str(inv.equipped.get("belt", "")) == "rope_belt")
+
+	# the data: every item fits a slot, and no item lists a stat nothing reads
+	var read_anywhere: Array[String] = ["armour", "carry_capacity", "satellite_rate", "cost_mult", "reflux_shed_mult", "ranged_interval_mult"]
+	var read_in_hand: Dictionary = {"weapon": ["melee_damage_mult", "melee_cooldown_mult", "melee_range_bonus"], "ranged": ["ranged_damage_mult", "ranged_interval", "ranged_range"]}
+	var misfit := ""
+	var unread := ""
+	var filled: Dictionary = {}
+	for id: String in GameData.items:
+		var def: Dictionary = GameData.items[id]
+		var item_slot: String = str(def.get("slot", ""))
+		if item_slot == "":
+			continue
+		if Inventory.slots_for(item_slot).is_empty():
+			misfit = id
+		filled[item_slot] = int(filled.get(item_slot, 0)) + 1
+		for key: String in def.get("stats", {}):
+			if not read_anywhere.has(key) and not (read_in_hand.get(item_slot, []) as Array).has(key):
+				unread = "%s.%s" % [id, key]
+	_check("every piece of gear has a slot to go in", misfit == "", misfit)
+	_check("no live item carries a stat the game does not read", unread == "", unread)
+	var thin := ""
+	for kind: String in ["head", "hands", "feet", "offhand", "belt"]:
+		if int(filled.get(kind, 0)) < 2:
+			thin = kind
+	_check("each of the five new slots has at least two pieces to hold", thin == "", thin)
+	var absent := ""
+	for id: Variant in GameData.items_file["shop"]:
+		if GameData.item(str(id)).is_empty():
+			absent = str(id)
+	_check("everything the merchant stocks exists", absent == "", absent)
+	_check("and the merchant stocks something for the head, hands, feet, off hand and belt", ["head", "hands", "feet", "offhand", "belt"].all(func(kind: String) -> bool:
+		return (GameData.items_file["shop"] as Array).any(func(id: Variant) -> bool: return str(GameData.item(str(id)).get("slot", "")) == kind)))
+
+	# two trinkets
+	for id: String in ["river_stone", "cooling_coil", "river_stone", "oilcloth_hood", "hide_bracers", "hobnailed_boots", "chalk_slate", "quiver_belt"]:
+		inv.add(id)
+	_check("the first trinket goes into the first trinket slot", inv.equip("river_stone") == "equipped" and str(inv.equipped.get("trinket", "")) == "river_stone")
+	_check("the second into the second", inv.equip("cooling_coil") == "equipped" and str(inv.equipped.get("trinket2", "")) == "cooling_coil" and str(inv.equipped.get("trinket", "")) == "river_stone")
+	_check("and both count", _near(inv.stat("cost_mult", true), 0.9) and _near(inv.stat("reflux_shed_mult", true), 1.5))
+	_check("the same item cannot be worn twice", inv.equip("river_stone") != "equipped" and inv.equip("river_stone", "trinket2") != "equipped"
+		and inv.bag.has("river_stone") and str(inv.equipped.get("trinket2", "")) == "cooling_coil")
+	_check("a piece cannot be forced into a slot it does not fit", inv.equip("oilcloth_hood", "feet") == "cannot equip that" and str(inv.equipped.get("feet", "")) == "street_boots"
+		and inv.equip("oilcloth_hood", "trinket2") == "cannot equip that")
+	inv.unequip("trinket")
+	_check("with the first slot empty a trinket named for the second still goes to the second", inv.equip("river_stone", "trinket2") == "equipped"
+		and str(inv.equipped.get("trinket2", "")) == "river_stone" and not inv.equipped.has("trinket") and inv.bag.has("cooling_coil"))
+	inv.remove("river_stone")
+
+	# armour adds up over every slot and still goes through the one cap
+	_bare(p)
+	var b: Body = p.get("body")
+	for id: String in ["oilcloth_hood", "hide_bracers", "hobnailed_boots"]:
+		inv.equip(id)
+	_check("a hood, bracers and boots are 1 + 2 + 2 armour", _near(float(p.call("armour")), 5.0) and str(inv.equipped.get("head", "")) == "oilcloth_hood"
+		and str(inv.equipped.get("hands", "")) == "hide_bracers" and str(inv.equipped.get("feet", "")) == "hobnailed_boots", str(p.call("armour")))
+	var hp0: float = b.hp
+	p.call("take_hit", 20.0, false, null)
+	_check("so a 20-damage hit lands as 19", _near(hp0 - b.hp, 19.0), "took %f" % (hp0 - b.hp))
+	b.hp = b.total_max()
+	b.wounds.clear()
+	_check("the hood sheds a little reflux as well", _near(inv.stat("reflux_shed_mult", true), 1.03))
+
+	# the off hand and the belt do what their text says
+	var cost0: float = float((p.call("ability_stats", (p.get("abilities") as Array)[0]) as Dictionary)["cost"])
+	inv.equip("chalk_slate")
+	var cost1: float = float((p.call("ability_stats", (p.get("abilities") as Array)[0]) as Dictionary)["cost"])
+	_check("a slate in the off hand takes 4% off what an ability costs", str(inv.equipped.get("offhand", "")) == "chalk_slate" and _near(cost1, cost0 * 0.96), "%f -> %f" % [cost0, cost1])
+	_check("the sling looses every 0.8 s", _near(float(p.call("ranged_interval")), 0.8))
+	inv.equip("quiver_belt")
+	_check("and 4% sooner with a quiver belt on", str(inv.equipped.get("belt", "")) == "quiver_belt" and _near(float(p.call("ranged_interval")), 0.768, 0.0005))
+	p.set("_ranged_cd", 0.0)
+	p.set("_recover_t", 0.0)
+	_check("which is what a shot actually waits", bool(p.call("fire_ranged", p.global_position + Vector3(0.0, 0.0, -6.0))) and _near(float(p.get("_ranged_cd")), 0.768, 0.0005), str(p.get("_ranged_cd")))
+	for n: Node in p.get_parent().get_children():
+		if n.get("shooter") == p:
+			n.queue_free()
+	_check("the rope belt lists no effect because it has none", UiWidgets.item_stats_text(GameData.item("rope_belt")) == ""
+		and UiWidgets.item_stats_text(GameData.item("quiver_belt")) == "shoots 4% sooner", UiWidgets.item_stats_text(GameData.item("quiver_belt")))
+
+	# saves: all twelve slots round-trip, an old save loads, a bad one is not worn
+	var q := _new_player()
+	q.call("from_save", JSON.parse_string(JSON.stringify(p.call("to_save"))))
+	var qinv: Inventory = q.get("inventory")
+	_check("what is worn in the new slots survives a save and a load", str(qinv.equipped.get("head", "")) == "oilcloth_hood" and str(qinv.equipped.get("offhand", "")) == "chalk_slate"
+		and str(qinv.equipped.get("belt", "")) == "quiver_belt" and str(qinv.equipped.get("hands", "")) == "hide_bracers" and _near(float(q.call("armour")), 5.0), str(qinv.equipped))
+	var old: Dictionary = p.call("to_save")
+	(old["inventory"] as Dictionary)["equipped"] = {"weapon": "serrated_dagger", "back": "canvas_pack", "trinket": "river_stone"}
+	q.call("from_save", JSON.parse_string(JSON.stringify(old)))
+	_check("a save from before the doll loads: the weapon is in the main hand, the new slots are empty", str(qinv.equipped.get("weapon", "")) == "serrated_dagger"
+		and str(qinv.equipped.get("trinket", "")) == "river_stone" and qinv.equipped.size() == 3 and _near(float(q.call("weapon_stat", "melee_damage_mult", true)), 1.1), str(qinv.equipped))
+	(old["inventory"] as Dictionary)["equipped"] = {"head": "canvas_pack", "pocket": "river_stone", "back": "canvas_pack"}
+	q.call("from_save", JSON.parse_string(JSON.stringify(old)))
+	_check("a save that names a slot that is not there, or a piece that does not fit, is not worn", qinv.equipped.size() == 1 and str(qinv.equipped.get("back", "")) == "canvas_pack", str(qinv.equipped))
+
+	# the comparison the screen prints against what is worn
+	var screen_script: GDScript = load("res://scripts/ui/inventory_screen.gd")
+	var boots: Array = screen_script.call("compare_lines", GameData.item("hobnailed_boots"), GameData.item("street_boots"))
+	_check("better boots compare as one line, better", boots.size() == 1 and bool((boots[0] as Array)[1]) and str((boots[0] as Array)[0]).begins_with("Armour  2%"), str(boots))
+	var blades: Array = screen_script.call("compare_lines", GameData.item("invader_cleaver"), GameData.item("serrated_dagger"))
+	_check("a cleaver against a dagger hits harder and strikes slower", blades.size() == 2 and bool((blades[0] as Array)[1]) and not bool((blades[1] as Array)[1]), str(blades))
+	_check("a piece compared with itself shows nothing", (screen_script.call("compare_lines", GameData.item("padded_jack"), GameData.item("padded_jack")) as Array).is_empty())
+	for key: String in ["weapon", "offhand", "ranged", "head", "body", "hands", "feet", "back", "belt", "satellite", "trinket", "trinket2"]:
+		for table: String in ["SLOT_LABELS", "SLOT_GHOSTS", "SLOT_HINTS"]:
+			if not (screen_script.get_script_constant_map()[table] as Dictionary).has(key):
+				_check("the screen has a label, a ghost and a hint for every slot", false, "%s.%s" % [table, key])
+	var columns: Array = (screen_script.get_script_constant_map()["LEFT_SLOTS"] as Array) + (screen_script.get_script_constant_map()["RIGHT_SLOTS"] as Array)
+	_check("the two columns either side of the figure hold each slot once", columns.size() == 12 and wanted.all(func(s: String) -> bool: return columns.count(s) == 1), str(columns))
+	for n: Node in [p, q]:
+		n.queue_free()
+	await get_tree().process_frame

@@ -1,10 +1,12 @@
 {
-  "_note": "Items. All names and numbers are original to this project [MODEL]. Canon facts used: carry capacity is an economic stat; a new archhuman has a backpack, not a storage ring (Brent 2026-09-23); satellites are items you find or buy, and a 1-star can use a 2-star satellite at full rate (Brent 2026-09-23). slot: back | satellite | trinket | '' (not equippable). stats are summed over equipped items: carry_capacity (kg), satellite_rate (essence/s), cost_mult (ability essence cost multiplier), reflux_shed_mult. Weapons (slot 'weapon') are held in the striking arm: melee_damage_mult, melee_cooldown_mult (below 1 = faster), melee_range_bonus (metres). They do nothing while that arm is lost. gear_sell_factor is what the merchant pays for gear; loot sells at full value. design/06 step 1 (approved by Brent 2026-10-12): slots 'body' and 'ranged'. armour is the percent of each hit a piece takes off (capped by balance.gear.armour_cap). A ranged weapon's shot does balance.ranged.ranged_damage x ranged_damage_mult every ranged_interval seconds out to ranged_range metres, for no essence. The draft catalogue in design/data-drafts/items-v2.json gives the Husk-Hide Jack 4 wound resistance as well; that stat is not read by the game until step 2, so it is left off the live item rather than listed and ignored.",
+  "_note": "Items. All names and numbers are original to this project [MODEL]. Canon facts used: carry capacity is an economic stat; a new archhuman has a backpack, not a storage ring (Brent 2026-09-23); satellites are items you find or buy, and a 1-star can use a 2-star satellite at full rate (Brent 2026-09-23). slot: back | satellite | trinket | '' (not equippable). stats are summed over equipped items: carry_capacity (kg), satellite_rate (essence/s), cost_mult (ability essence cost multiplier), reflux_shed_mult. Weapons (slot 'weapon') are held in the striking arm: melee_damage_mult, melee_cooldown_mult (below 1 = faster), melee_range_bonus (metres). They do nothing while that arm is lost. gear_sell_factor is what the merchant pays for gear; loot sells at full value. design/06 step 1 (approved by Brent 2026-10-12): slots 'body' and 'ranged'. armour is the percent of each hit a piece takes off (capped by balance.gear.armour_cap). A ranged weapon's shot does balance.ranged.ranged_damage x ranged_damage_mult every ranged_interval seconds out to ranged_range metres, for no essence. The draft catalogue in design/data-drafts/items-v2.json gives the Husk-Hide Jack 4 wound resistance as well; that stat is not read by the game until step 2, so it is left off the live item rather than listed and ignored. design/06 section 2, the paper doll (2026-10-12): the twelve slots are weapon (main hand), offhand, ranged, head, body, hands, feet, back, belt, satellite, trinket, trinket2 (trinket2 takes any 'trinket' item; the same item is never worn twice). The head, hands, feet, off-hand and belt pieces come from the draft catalogue with ONLY the stats the game reads: armour, cost_mult, reflux_shed_mult, and ranged_interval_mult (multiplies the time between shots; read in Player.ranged_interval). Left off because nothing reads them yet: wound_resist, poise, move_speed_mult, quick_slots, ammo_recover_add, and a glove's melee_cooldown_mult (weapon_stat only reads the main hand). Shields are not here at all - their whole effect is 'block', which is not built. The Rope Belt therefore does nothing yet and says so.",
   "base_carry_capacity": 8.0,
   "starting_equipped": {
     "back": "canvas_pack",
     "body": "patched_coat",
-    "ranged": "cord_sling"
+    "ranged": "cord_sling",
+    "feet": "street_boots",
+    "belt": "rope_belt"
   },
   "starting_bag": [],
   "items": {
@@ -190,6 +192,104 @@
         "armour": 5
       },
       "desc": "Invader hide, badly cured. It kept one of them alive for a while."
+    },
+    "oilcloth_hood": {
+      "name": "Oilcloth Hood",
+      "slot": "head",
+      "weight": 0.3,
+      "value": 90,
+      "stats": {
+        "armour": 1,
+        "reflux_shed_mult": 1.03
+      },
+      "desc": "Sheds rain and, for reasons nobody has written down, a little heat."
+    },
+    "boiled_cap": {
+      "name": "Boiled Cap",
+      "slot": "head",
+      "weight": 1.2,
+      "value": 300,
+      "stats": {
+        "armour": 2
+      },
+      "desc": "Leather cooked until it gave up being skin."
+    },
+    "work_gloves": {
+      "name": "Work Gloves",
+      "slot": "hands",
+      "weight": 0.3,
+      "value": 15,
+      "stats": {
+        "armour": 1
+      },
+      "desc": "Split palm, one finger missing. The glove's, so far."
+    },
+    "hide_bracers": {
+      "name": "Hide Bracers",
+      "slot": "hands",
+      "weight": 0.9,
+      "value": 280,
+      "stats": {
+        "armour": 2
+      },
+      "desc": "Something to put between an edge and the arm you need."
+    },
+    "street_boots": {
+      "name": "Street Boots",
+      "slot": "feet",
+      "weight": 0.9,
+      "value": 20,
+      "stats": {
+        "armour": 1
+      },
+      "desc": "Resoled twice. The uppers are original."
+    },
+    "hobnailed_boots": {
+      "name": "Hobnailed Boots",
+      "slot": "feet",
+      "weight": 1.8,
+      "value": 300,
+      "stats": {
+        "armour": 2
+      },
+      "desc": "They grip. You stay where you stood."
+    },
+    "chalk_slate": {
+      "name": "Chalk Slate",
+      "slot": "offhand",
+      "weight": 0.8,
+      "value": 500,
+      "stats": {
+        "cost_mult": 0.96
+      },
+      "desc": "Your working, written out where you can see it. Fewer mistakes, less waste."
+    },
+    "runesetters_slate": {
+      "name": "Runesetter's Slate",
+      "slot": "offhand",
+      "weight": 0.9,
+      "value": 1900,
+      "stats": {
+        "cost_mult": 0.93
+      },
+      "desc": "Someone else's working. Theirs was better."
+    },
+    "rope_belt": {
+      "name": "Rope Belt",
+      "slot": "belt",
+      "weight": 0.2,
+      "value": 5,
+      "desc": "Holds your trousers up. One day it will hold one thing besides."
+    },
+    "quiver_belt": {
+      "name": "Quiver Belt",
+      "slot": "belt",
+      "weight": 0.7,
+      "value": 350,
+      "stats": {
+        "ranged_interval_mult": 0.96
+      },
+      "desc": "The next one is always where your hand already is."
     }
   },
   "shop": [
@@ -199,7 +299,12 @@
     "river_stone",
     "cooling_coil",
     "paired_mote",
-    "padded_jack"
+    "padded_jack",
+    "oilcloth_hood",
+    "work_gloves",
+    "hobnailed_boots",
+    "chalk_slate",
+    "quiver_belt"
   ],
   "exit_reward_table": [
     {

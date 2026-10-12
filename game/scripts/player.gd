@@ -950,6 +950,11 @@ func ranged_damage() -> float:
 	return float(cfg["ranged_damage"]) * ranged_stat("ranged_damage_mult", 1.0) * (float(cfg["off_arm_damage_factor"]) if arm_right_lost else 1.0)
 
 
+## Seconds between shots: the weapon's own interval, shortened by worn gear (a quiver belt).
+func ranged_interval() -> float:
+	return ranged_stat("ranged_interval", GameData.num("ranged", "default_interval")) * inventory.stat("ranged_interval_mult", true)
+
+
 ## Loose the ranged weapon toward a point on the ground. Costs nothing but the time between
 ## shots. Returns false if there is no weapon, it is not ready, or you are mid-skill.
 func fire_ranged(toward: Vector3) -> bool:
@@ -971,7 +976,7 @@ func fire_ranged(toward: Vector3) -> bool:
 	shot.set("shooter", self)
 	get_parent().add_child(shot)
 	shot.global_position = _muzzle()
-	_ranged_cd = ranged_stat("ranged_interval", float(cfg["default_interval"]))
+	_ranged_cd = ranged_interval()
 	_strike_t = 0.18
 	return true
 

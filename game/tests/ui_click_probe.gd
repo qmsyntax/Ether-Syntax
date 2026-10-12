@@ -2,7 +2,9 @@ extends Node
 ## UI click test (windowed run only - needs real GUI hit-testing):
 ##   godot --path game res://tests/ui_click_probe.tscn [-- --field]
 ## Opens the inventory and equips gear three ways with synthetic mouse events: left-click the item,
-## right-click the item, and drag the item onto its slot. Prints PASS/FAIL and exits 0/1.
+## right-click the item, and drag the item onto its slot; then the paper doll's own interactions:
+## a head piece into the head slot, a second trinket, a drag onto the second trinket slot, and a
+## click on a worn piece to take it off. Prints PASS/FAIL and exits 0/1.
 ## `--field` does it in the arena, where the inventory pauses the game.
 
 var main: Node
@@ -76,7 +78,7 @@ func _process(_delta: float) -> void:
 		5:
 			main.call("start_new_character", 0)
 			inv = player.get("inventory")
-			for id: String in ["river_stone", "dim_mote", "delver_frame", "brute_tusk"]:
+			for id: String in ["river_stone", "dim_mote", "delver_frame", "brute_tusk", "oilcloth_hood", "cooling_coil"]:
 				inv.add(id)
 			if OS.get_cmdline_user_args().has("--field"):
 				main.call("enter_arena")
@@ -126,6 +128,60 @@ func _process(_delta: float) -> void:
 				_mouse(_centre(loot), MOUSE_BUTTON_LEFT, false)
 		60:
 			_expect("clicking loot does nothing", inv.bag.has("brute_tusk"))
+			_expect("every one of the twelve slots is on the screen", Inventory.SLOTS.all(func(s: String) -> bool: return _find_slot(main, s) != null))
+			var hood: Control = _find_item(main, "oilcloth_hood")
+			_expect("the hood is in the pack", hood != null)
+			if hood != null:
+				_move(_centre(hood), false)
+				_mouse(_centre(hood), MOUSE_BUTTON_LEFT, true)
+				_mouse(_centre(hood), MOUSE_BUTTON_LEFT, false)
+		70:
+			_expect("clicking a head piece fills the head slot", str(inv.equipped.get("head", "")) == "oilcloth_hood")
+			_expect("and it counts: the hood's armour is on top of the coat's and the boots'", float(player.call("armour")) > 3.5)
+			var coil: Control = _find_item(main, "cooling_coil")
+			if coil != null:
+				_move(_centre(coil), false)
+				_mouse(_centre(coil), MOUSE_BUTTON_LEFT, true)
+				_mouse(_centre(coil), MOUSE_BUTTON_LEFT, false)
+		80:
+			_expect("a second trinket goes into the second trinket slot", str(inv.equipped.get("trinket2", "")) == "cooling_coil" and str(inv.equipped.get("trinket", "")) == "river_stone")
+			var worn: Control = _find_slot(main, "trinket2")
+			if worn != null:
+				_move(_centre(worn), false)
+				_mouse(_centre(worn), MOUSE_BUTTON_LEFT, true)
+				_mouse(_centre(worn), MOUSE_BUTTON_LEFT, false)
+		90:
+			_expect("clicking a worn piece takes it off", not inv.equipped.has("trinket2") and inv.bag.has("cooling_coil"))
+			var worn: Control = _find_slot(main, "trinket")
+			if worn != null:
+				_move(_centre(worn), false)
+				_mouse(_centre(worn), MOUSE_BUTTON_LEFT, true)
+				_mouse(_centre(worn), MOUSE_BUTTON_LEFT, false)
+		100:
+			_expect("both trinket slots are empty and both trinkets are back in the pack", not inv.equipped.has("trinket") and inv.bag.has("river_stone"))
+			var coil: Control = _find_item(main, "cooling_coil")
+			if coil != null:
+				_move(_centre(coil), false)
+				_mouse(_centre(coil), MOUSE_BUTTON_LEFT, true)
+		102:
+			var coil: Control = _find_item(main, "cooling_coil")
+			if coil != null:
+				_move(_centre(coil) + Vector2(20, 20), true)
+		104:
+			var slot: Control = _find_slot(main, "trinket2")
+			if slot != null:
+				_move(_centre(slot) - Vector2(10, 0), true)
+		106:
+			var slot: Control = _find_slot(main, "trinket2")
+			if slot != null:
+				_move(_centre(slot), true)
+				_mouse(_centre(slot), MOUSE_BUTTON_LEFT, false)
+		115:
+			_expect("dragging a trinket onto the second slot puts it there, not in the first", str(inv.equipped.get("trinket2", "")) == "cooling_coil" and not inv.equipped.has("trinket"))
+			var boots: Control = _find_slot(main, "feet")
+			_expect("the starting boots are worn", boots != null and str(inv.equipped.get("feet", "")) == "street_boots")
+			var hood: Control = _find_item(main, "cooling_coil")
+			_expect("nothing worn is still listed in the pack", hood == null)
 			for line: String in results:
 				print("UICLICK: " + line)
 			print("UICLICK: %s" % ("FAIL" if failed else "PASS"))

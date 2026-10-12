@@ -118,6 +118,8 @@ static func item_stats_text(def: Dictionary) -> String:
 			int(round(GameData.num("ranged", "ranged_damage") * float(stats.get("ranged_damage_mult", 1.0)))),
 			float(stats.get("ranged_interval", GameData.num("ranged", "default_interval"))),
 			int(float(stats.get("ranged_range", GameData.num("ranged", "default_range"))))])
+	if stats.has("ranged_interval_mult"):
+		parts.append("shoots %d%% sooner" % int(round((1.0 - float(stats["ranged_interval_mult"])) * 100.0)))
 	if stats.has("carry_capacity"):
 		parts.append("carry +%d kg" % int(float(stats["carry_capacity"])))
 	if stats.has("satellite_rate"):

@@ -1239,7 +1239,7 @@ func _where() -> String:
 # --- test harness ---------------------------------------------------------------
 
 ## Put the game into a named UI state with representative data, then screenshot it.
-## States: title, town, shop, inventory, hud (mid-fight, hurt), hud-low (near death, reflux locked).
+## States: title, town, shop, inventory, inventory-abilities, hud (mid-fight, hurt), hud-low (near death, reflux locked).
 func _setup_ui_shot(which: String) -> void:
 	_shot_mode = true
 	_frames = 1000                      # disable the arena auto-shot; _shot_countdown drives this one
@@ -1486,9 +1486,19 @@ func _setup_ui_shot(which: String) -> void:
 		"saves":
 			_enter_town()
 			open_saves()
-		"inventory":
+		"inventory", "inventory-abilities":
+			# some of the new slots filled and some left empty, and a piece in the pack to compare
+			for id: String in ["oilcloth_hood", "work_gloves", "chalk_slate", "hobnailed_boots", "cooling_coil"]:
+				inv.add(id)
+			for id: String in ["oilcloth_hood", "work_gloves", "river_stone", "cooling_coil"]:
+				inv.equip(id)
+			player.call("refresh_gear")
 			_enter_town()
 			open_inventory()
+			screen.call("show_item", "hobnailed_boots", "")     # the description has its own panel; it covers nothing
+			if which == "inventory-abilities":
+				screen.set("_tab", "soul")
+				screen.call("rebuild")
 		"ethercosm", "ethercosm-2":
 			if which == "ethercosm-2":
 				# a later character: two stars, a bound vestige, a rearranged bar
