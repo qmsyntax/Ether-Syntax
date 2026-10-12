@@ -51,7 +51,7 @@ func tick(delta: float) -> void:
 		var a := Vector2(from.x, from.z)
 		var b := Vector2(to.x, to.z)
 		var p := Vector2(target.global_position.x, target.global_position.z)
-		if Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= hit_radius:
+		if Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= hit_radius and not (target.has_method("deflects_shots") and bool(target.call("deflects_shots"))):
 			target.call("take_hit", damage, heavy, shooter if is_instance_valid(shooter) else null)
 			queue_free()
 			return

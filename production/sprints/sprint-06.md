@@ -508,3 +508,29 @@ scroll price is a guess. With 4 or 5 skills an affinity, a dual-affinity charact
 Verified: self-test 646/646 (three runs); three full-passage bot runs, gate and death bots; Netherecho death test;
 inventory and creation click tests; icon sheet and shop inspected. Not verified: by hand - none of the ten has been
 cast by a person. The inventory click that reads a scroll is covered only through `read_scroll`, not by a mouse click.
+
+
+## Part Y — skills step 5b: pools, buffs, the rod and the shoulder (design/05 3.1-3.5)
+
+Ten more skills; each affinity now has seven of its eight. What is left of step 5 is the five held skills (5c):
+Pressure Jet, Bellows Breath, Quarry Throw, Spindrift, Stored Bolt. (Part X said six were left for 5c; it is five.)
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-124 | Ground zones can be circles, slow and Soak, make shoves go farther, push enemies along a lane, and speed their caster | selftest | Done |
+| S06-125 | Water: Standing Pool (3.5 m pool, 8 s: Soaked, 30% slower, shoves from inside go twice as far) and Backwash (6 s or three blows: melee hits on you halved, the attacker shoved 3 m and Soaked) | selftest | Done |
+| S06-126 | Fire: Slag Pool (3 m, 6 s: 25 and an Alight every second) and Stoke (+25 heat at once; for 6 s bare strikes set things Alight) | selftest | Done |
+| S06-127 | Earth: Stonehide (8 s Braced, 25% slower) and Bedrock Shove (3.5 m, Braced; the first enemy met is thrown 3 m and loses 50 poise, a heavy one stops you and loses 60) | selftest | Done |
+| S06-128 | Wind: Crosswind Veil (5 s: enemy shots miss, pips do not drain) and Gale Lane (10 m lane, 6 s: you are 40% faster and gain pips twice as fast, enemies are pushed down it) | selftest | Done |
+| S06-129 | Lightning: Static Coat (6 s: melee attackers take 25 and a mark; every second bare strike adds a mark) and Ground Rod (10 s; lightning cast within 8 m also arcs from the rod: 40 and a mark; one at a time) | selftest | Done |
+| S06-130 | Scrolls for all ten; buffs on you are listed over the skill bar with seconds left; an icon each | `shots/ui-icons.png` | Done |
+
+Left out against the design: Slag Pool does not make enemies walk round it (nothing pathfinds); Gale Lane does not
+slow enemy shots; Bedrock Shove throws the enemy at once instead of carrying it with you; Standing Pool doubles a
+shove that starts in it, not one that only passes through.
+
+Rough edges: pools and lanes are flat coloured shapes. "Melee hit" for Backwash and Static Coat means a blow from
+an enemy within 4.5 m, so a point-blank arrow counts. Nothing but the timer shows that Stoke or Static Coat is on.
+
+Verified: self-test 697/697 (three runs); three full-passage bot runs, gate and death bots; Netherecho death test;
+inventory and creation click tests; icon sheet inspected. Not verified: by hand.

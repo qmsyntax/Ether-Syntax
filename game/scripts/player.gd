@@ -137,6 +137,13 @@ var _windup_t := 0.0
 var _windup_total := 0.0
 var _shoved_left := 0.0              # metres still to slide from an enemy's shove
 var _shoved_dir := Vector3.ZERO
+## Skills that sit on you for a while: buff id -> {"t": seconds left, ...its own numbers}.
+var buffs: Dictionary = {}
+var rod: Node3D                      # the one Ground Rod standing, if any
+var _bare_strikes := 0               # counted for skills that pay on every other strike
+var _dash_braced := false
+var _dash_on_stop: Dictionary = {}
+var _dash_heavy_poise := 0.0
 ## Where the cursor is taken to be when set: a test or a bot pointing with no mouse.
 var cursor_fixed: Variant = null
 ## True while the ranged stance is held with a ranged weapon equipped: the strike button shoots.
@@ -345,6 +352,7 @@ func _apply_temper_health(id: String, stages: int) -> void:
 ## Start over with the kits of the current affinities, on the bar in order.
 func _reset_loadout() -> void:
 	drop_stones()
+	buffs.clear()
 	_windup = {}
 	_windup_t = 0.0
 	abilities.clear()
@@ -430,6 +438,7 @@ func _physics_process(delta: float) -> void:
 	_recover_t -= delta
 	_ranged_cd -= delta
 	_winded_t -= delta
+	_tick_buffs(delta)
 	_stagger_t -= delta
 	_meditate_block -= delta
 	if in_combat:
@@ -570,7 +579,7 @@ func _physics_process(delta: float) -> void:
 
 	if bot:
 		dir = _bot_dir if attack_target == null else dir
-	var speed: float = float(_p["move_speed"]) * temper_stat("move_speed_mult") * (float(_p["charge_move_factor"]) if _charging else 1.0)
+	var speed: float = float(_p["move_speed"]) * temper_stat("move_speed_mult") * (float(_p["charge_move_factor"]) if _charging else 1.0) * buff_num("move_speed_mult") * _zone_num("caster_speed_mult")
 	if ranged_stance:
 		speed *= GameData.num("ranged", "stance_move_factor")
 	if pips >= GameData.inum("slipstream", "speed_pips"):
@@ -592,8 +601,10 @@ func _physics_process(delta: float) -> void:
 		var step: Vector3 = _dash_vel * step_t
 		_dash_time -= step_t
 		velocity = Vector3.ZERO
-		if _dash_stops and _body_ahead(_dash_vel.normalized(), step.length()):
+		var met: Node3D = _body_ahead(_dash_vel.normalized(), step.length()) if _dash_stops else null
+		if met != null:
 			_dash_time = 0.0                     # this one does not go through people
+			_dash_met(met)
 		elif move_and_collide(step) != null:
 			_dash_time = 0.0                     # a wall
 		_dash_touch()
@@ -669,6 +680,13 @@ func deal_damage(target: Node, base: float, tags: Array = []) -> HitContext:
 			reflux_by[hottest] = maxf(0.0, float(reflux_by[hottest]) - float(combat["strike_sheds_reflux"]))
 		if not ctx.killed and target.has_method("take_poise"):
 			target.call("take_poise", float(combat["strike_poise"]) * (2.0 if ctx.has_tag("overcharge") else 1.0))
+		if not ctx.killed and target.has_method("add_status"):
+			if buffs.has("stoke"):
+				target.call("add_status", "alight", 1, self)           # your hands are lit
+			if buffs.has("static_coat"):
+				_bare_strikes += 1
+				if _bare_strikes % int((buffs["static_coat"] as Dictionary).get("strikes_per_mark", 2)) == 0:
+					_add_marks(target, 1, true)
 
 	for e: TalentEffect in effects:
 		e.on_dealt(ctx)
@@ -690,6 +708,21 @@ func take_hit(amount: float, heavy: bool, source: Node) -> float:
 	var braced: bool = is_braced()
 	if braced:
 		ctx.base *= GameData.num("braced", "damage_taken_mult")
+	# a blow thrown from arm's length, as against a shot that left its owner far behind
+	var melee_from: Node3D = source as Node3D if (source is Node3D and (source as Node).is_in_group("enemies") and (source as Node3D).global_position.distance_to(global_position) <= 4.5) else null
+	if melee_from != null and buffs.has("backwash"):
+		var wash: Dictionary = buffs["backwash"]
+		ctx.base *= float(wash.get("melee_taken_mult", 0.5))
+		melee_from.set("shover", self)
+		melee_from.call("shove", melee_from.global_position - global_position, float(wash.get("shove", 3.0)))
+		melee_from.call("add_status", "soaked", 1, self)
+		wash["hits"] = int(wash.get("hits", 1)) - 1
+		if int(wash["hits"]) <= 0:
+			buffs.erase("backwash")
+	if melee_from != null and buffs.has("static_coat"):
+		deal_damage(melee_from, float((buffs["static_coat"] as Dictionary).get("retaliate", 25.0)), ["ability", "lightning", "static_coat"])
+		if is_instance_valid(melee_from) and not bool(melee_from.call("is_dead")):
+			_add_marks(melee_from, 1, true)
 	ctx.heavy = heavy
 	if projecting:
 		disturbed.emit()             # pain drags the soul back before the blow is even counted
@@ -710,6 +743,126 @@ func take_hit(amount: float, heavy: bool, source: Node) -> float:
 			_windup_t = 0.0
 			_float("STAGGERED", Color(1, 0.7, 0.3))
 	return _apply_damage(ctx.amount(), heavy)
+
+
+# --- zones, buffs, the rod (design/05 step 5b) -------------------------------------------------
+
+## A number from whichever buffs are on you, multiplied together (1 if none carries it).
+func buff_num(key: String) -> float:
+	var out := 1.0
+	for id: String in buffs:
+		out *= float((buffs[id] as Dictionary).get(key, 1.0))
+	return out
+
+
+func _tick_buffs(delta: float) -> void:
+	for id: String in buffs.keys():
+		var b: Dictionary = buffs[id]
+		b["t"] = float(b["t"]) - delta
+		if float(b["t"]) <= 0.0:
+			buffs.erase(id)
+
+
+## self_buff: the skill's own numbers ride on you for its duration.
+func _take_buff(ab: Dictionary) -> void:
+	var b: Dictionary = ab.duplicate(true)
+	b["t"] = float(ab.get("duration", 5.0))
+	buffs[str(ab.get("buff", ab.get("name", "buff")))] = b
+	if float(ab.get("add_reflux", 0.0)) > 0.0:
+		var aff: String = str(ab.get("affinity", ""))
+		reflux_by[aff] = reflux_of(aff) + float(ab["add_reflux"])
+	_bare_strikes = 0
+	_float(str(ab.get("name", "")).to_lower(), GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3))
+
+
+## True while enemy shots turn aside from you.
+func deflects_shots() -> bool:
+	return buffs.has("veil")
+
+
+## A number from the zones of your own you are standing in (1 if none).
+func _zone_num(key: String) -> float:
+	var out := 1.0
+	if not is_inside_tree():
+		return out
+	for zone: Node in get_tree().get_nodes_in_group("ground_zones"):
+		if zone.get("caster") == self and float(zone.get(key)) != 1.0 and bool(zone.call("has_point", global_position)):
+			out *= float(zone.get(key))
+	return out
+
+
+## ground_zone: a pool at the aimed point, or a lane from your feet along your aim.
+func _lay_zone(point: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -> Node3D:
+	var cfg: Dictionary = ab.get("zone", {})
+	var zone := GroundZone.new()
+	zone.shape = str(cfg.get("shape", "circle"))
+	zone.radius = float(cfg.get("radius", 3.0))
+	zone.width = float(cfg.get("width", 2.0))
+	zone.life = float(cfg.get("life", 6.0))
+	zone.tick_s = float(cfg.get("tick_s", 1.0))
+	var payload: Dictionary = (cfg.get("payload", {}) as Dictionary).duplicate()
+	if payload.has("damage"):
+		payload["damage"] = float(payload["damage"]) * stage_mult
+	zone.payload = payload
+	zone.extra_status = str(cfg.get("extra_status", ""))
+	zone.shove_mult = float(cfg.get("shove_mult", 1.0))
+	zone.push_per_s = float(cfg.get("push_per_s", 0.0))
+	zone.caster_speed_mult = float(cfg.get("caster_speed_mult", 1.0))
+	zone.pip_gain_mult = float(cfg.get("pip_gain_mult", 1.0))
+	zone.bright = bool(cfg.get("bright", false))
+	zone.tags = tags + ["zone"]
+	zone.caster = self
+	zone.color = GameData.affinity_color(str(ab.get("affinity", "")))
+	if str(ab.get("at", "point")) == "feet":
+		zone.from = global_position
+		zone.to = global_position + _facing * float(cfg.get("length", 10.0))
+	else:
+		zone.from = Vector3(point.x, global_position.y, point.z)
+		zone.to = zone.from
+	get_parent().add_child(zone)
+	_strike_t = 0.2
+	return zone
+
+
+## rod: the one Ground Rod. A new one replaces the old.
+func _plant_rod(point: Vector3, ab: Dictionary) -> void:
+	if is_instance_valid(rod):
+		rod.queue_free()
+	var r := GroundRod.new()
+	r.life = float(ab.get("life", 10.0))
+	r.set_meta("relay", ab)
+	get_parent().add_child(r)
+	r.global_position = Vector3(point.x, global_position.y, point.z)
+	rod = r
+	_strike_t = 0.2
+
+
+## A lightning skill was cast near the rod: the rod answers with an arc of its own.
+func _rod_relay(aff: String, stage_mult: float) -> void:
+	if aff != "lightning" or not is_instance_valid(rod) or rod.is_queued_for_deletion():
+		return
+	var ab: Dictionary = rod.get_meta("relay", {})
+	if rod.global_position.distance_to(global_position) > float(ab.get("relay_radius", 8.0)):
+		return
+	var pick: Node3D = null
+	for e: Node3D in _enemies_near(rod.global_position, float(ab.get("relay_range", 5.0))):
+		if pick == null or e.global_position.distance_to(rod.global_position) < pick.global_position.distance_to(rod.global_position):
+			pick = e
+	if pick == null:
+		return
+	_line_visual(rod.global_position + Vector3.UP * 2.0, pick.global_position + Vector3.UP, GameData.affinity_color("lightning"))
+	apply_hit(pick, ab.get("relay_hit", {}), ["ability", "lightning", "ground_rod"], stage_mult)
+
+
+## A dash that does not pass through people has met one: it is thrown, or - if it is heavy - it
+## holds, and only loses its footing.
+func _dash_met(e: Node3D) -> void:
+	if _dash_on_stop.is_empty():
+		return
+	if float(e.get("shove_resist")) < 1.0 and _dash_heavy_poise > 0.0:
+		e.call("take_poise", _dash_heavy_poise)
+		return
+	apply_hit(e, _dash_on_stop, _dash_tags, 1.0, _dash_vel.normalized())
 
 
 # --- learning skills (design/05 step 5: scrolls) ----------------------------------------------
@@ -935,7 +1088,7 @@ func shove(dir: Vector3, metres: float) -> void:
 
 ## True while you are set for a braced skill: you take less and cannot be staggered.
 func is_braced() -> bool:
-	return _windup_t > 0.0 and bool(_windup.get("braced", false))
+	return (_windup_t > 0.0 and bool(_windup.get("braced", false))) or buffs.has("stonehide") or (_dash_time > 0.0 and _dash_braced)
 
 
 ## How far through a wind-up you are, 0 to 1; -1 when you are not winding anything up.
@@ -1083,12 +1236,12 @@ func _tick_slipstream(delta: float) -> void:
 	if _moving:
 		_still_t = 0.0
 		_pip_decay_t = 0.0
-		_pip_dist += dist
+		_pip_dist += dist * _zone_num("pip_gain_mult")
 		var per: float = float(cfg["metres_per_pip"])
 		while _pip_dist >= per:
 			_pip_dist -= per
 			pips = mini(int(cfg["max"]), pips + 1)
-	else:
+	elif not buffs.has("veil"):                  # behind the veil the wind stays with you
 		_still_t += delta
 		if _still_t >= float(cfg["still_delay_s"]):
 			_pip_decay_t += delta
@@ -1609,9 +1762,9 @@ func _burst(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 
 
 ## True if the next `step` metres along `dir` would run into an enemy.
-func _body_ahead(dir: Vector3, step: float) -> bool:
+func _body_ahead(dir: Vector3, step: float) -> Node3D:
 	if not is_inside_tree():
-		return false
+		return null
 	var a := Vector2(global_position.x, global_position.z)
 	var b: Vector2 = a + Vector2(dir.x, dir.z) * step
 	for node: Node in get_tree().get_nodes_in_group("enemies"):
@@ -1621,8 +1774,8 @@ func _body_ahead(dir: Vector3, step: float) -> bool:
 		var p := Vector2(e.global_position.x, e.global_position.z)
 		# only bodies in front count - one you are already past or beside does not stop you
 		if (p - a).dot(Vector2(dir.x, dir.z)) > 0.0 and Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= 0.4 + float(e.get("radius")):
-			return true
-	return false
+			return e
+	return null
 
 
 ## A dash is over: leave its trail on the ground, if it has one.
@@ -1865,7 +2018,7 @@ func cast_ability(index: int) -> void:
 			note("There is no room to raise stone there.")
 			return
 		blink_to = where
-	elif kind == "displace" or kind == "delayed_blast":
+	elif kind == "displace" or kind == "delayed_blast" or kind == "ground_zone" or kind == "rod":
 		blink_to = _aim_point(float(ab.get("range", 8.0)))
 	essence -= cost
 	reflux_by[aff] = heat + cost * float(ab["reflux_per_cost"])
@@ -1878,7 +2031,7 @@ func cast_ability(index: int) -> void:
 	var stage_mult: float = ability_damage_mult(int(state["stage"])) * float(ab.get("damage_all", 1.0))
 	var tags: Array = ["ability", aff, str(state["id"])]
 	var windup: float = float(ab.get("windup", 0.0))
-	if kind == "prop" or kind == "delayed_blast" or (kind == "displace" and strike_target == null):
+	if kind == "prop" or kind == "delayed_blast" or kind == "ground_zone" or kind == "rod" or (kind == "displace" and strike_target == null):
 		var to_spot: Vector3 = blink_to - global_position
 		to_spot.y = 0.0
 		if to_spot.length() > 0.2:
@@ -1886,6 +2039,8 @@ func cast_ability(index: int) -> void:
 	# Stone starts rising at once; everything else with a wind-up goes off when it ends.
 	if windup <= 0.0 or kind == "prop" or kind == "delayed_blast":
 		_perform_cast(ab, kind, aff, stage_mult, tags, strike_target, blink_to)
+	if kind != "rod":
+		_rod_relay(aff, stage_mult)
 	if windup > 0.0:
 		_windup_t = windup
 		_windup_total = windup
@@ -1950,6 +2105,9 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 			_dash_start = global_position
 			_dash_trail = ab.get("trail", {})
 			_dash_stops = bool(ab.get("stops_at_bodies", false))
+			_dash_braced = bool(ab.get("braced", false))
+			_dash_on_stop = ab.get("on_stop", {})
+			_dash_heavy_poise = float(ab.get("heavy_poise", 0.0))
 			_dash_color = GameData.affinity_color(aff)
 			if has_slipstream():
 				pips = mini(GameData.inum("slipstream", "max"), pips + int(ab.get("gain_pips", 0)))
@@ -2005,6 +2163,12 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 			_start_blast(blink_to, ab, stage_mult, tags)
 		"detonate":
 			_detonate(ab, stage_mult, tags)
+		"ground_zone":
+			_lay_zone(blink_to, ab, stage_mult, tags)
+		"self_buff":
+			_take_buff(ab)
+		"rod":
+			_plant_rod(blink_to, ab)
 		"chain":
 			_chain(strike_target, ab, stage_mult, tags)
 

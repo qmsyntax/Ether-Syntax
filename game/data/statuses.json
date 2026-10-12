@@ -94,6 +94,13 @@
       "lasts": 3.0,
       "color": "a8824a",
       "speed_mult": 0.6
+    },
+    "mired": {
+      "label": "Mired",
+      "stacks": 1,
+      "lasts": 0.7,
+      "color": "4f9be8",
+      "speed_mult": 0.7
     }
   }
 }

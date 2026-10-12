@@ -1,5 +1,5 @@
 {
-  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind, on that ability's affinity. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities); a full stage waits for a bound construct of the matching tier (design/01 LAW 4). Which abilities a character starts with comes from the kits in affinities.json. kinds: projectile | melee_burst | dash | beam | targeted_strike | blink (design/05 Appendix A). A skill touches an enemy through a hit payload - on_hit / on_pass / on_arrive - with any of: damage or damage_mult (taken from the skill when absent), status, shove (metres), marks (Live), interrupts. 'summary' is the one-line rule shown to the player. Water and lightning are built to design/05 step 1 and fire to step 3 (a dash may carry 'trail', a strip of ground that applies a payload every tick_s, and 'stops_at_bodies'; a targeted_strike may 'consume_status' for per_stack_damage and a 'burst'); wind to step 3 too (a projectile may 'pierce' and 'spend_pips' for 'pip_damage' each; a dash may 'gain_pips' and have 'no_recovery'; a targeted_strike may have its own 'range', go 'through' to 'through_dist' behind the target, 'force_rear', and take 'pip_mult' per pip with 'spend_all_pips'); earth to step 3 too: any skill may have a 'windup' (it is paid for at once and goes off that many seconds later; you are rooted and aimed until then) and be 'braced' through it (balance.braced); 'shatters_stone' breaks the caster's own stone (balance.stone); kind 'prop' raises a slab 'width' x 'thickness' x 'height' across your aim at the cursor, between 'min_range' and 'range' away, up in 'rise_time', standing 'life' seconds, and applies 'on_rise' to whoever is standing there. Abilities do NOT hurt their caster (Brent 2026-10-11). Every name and verse is original to this project - the two water skills that carried the books' own names were renamed on 2026-10-12 (ids kept for saves). Numbers are first guesses [MODEL]. STEP 5a: skills outside the starter kits are learned from scroll items (items.json kind 'scroll'). New kinds - displace (mode pull_area: enemies within 'radius' of the aimed point are dragged 'pull' metres toward it; pull_target: one enemy is hauled to 'keep' metres in front of you and turned away for 'turn_s'; aloft_area: on_hit to everyone in 'radius', +'pip_seconds' of it per pip spent); delayed_blast (a marked circle of 'radius' at the aimed point goes off after 'delay': on_hit to everyone in it, 'bonus_damage' to those with 'bonus_vs_status', may 'kill_projectiles', shatter stone, and 'leave_prop'); detonate (every enemy within 'range' carrying 'consume_status' loses it: 'per_stack_burst' damage per stack in 'burst_radius', or an Overload scaled by 'overload_fracs'); chain (on_hit to a target and up to 'jumps' more, each within 'jump_radius' of the last). A melee_burst may take its damage from heat ('damage_from_heat' per point above 'heat_floor', and the reflux drops to the floor) and may 'shatters_all_stone'.",
+  "_note": "Active abilities. cost is essence; reflux_per_cost is how much reflux each essence point leaves behind, on that ability's affinity. Progress (0-100 per stage) advances by essence spent through the ability times a use multiplier (balance.abilities); a full stage waits for a bound construct of the matching tier (design/01 LAW 4). Which abilities a character starts with comes from the kits in affinities.json. kinds: projectile | melee_burst | dash | beam | targeted_strike | blink (design/05 Appendix A). A skill touches an enemy through a hit payload - on_hit / on_pass / on_arrive - with any of: damage or damage_mult (taken from the skill when absent), status, shove (metres), marks (Live), interrupts. 'summary' is the one-line rule shown to the player. Water and lightning are built to design/05 step 1 and fire to step 3 (a dash may carry 'trail', a strip of ground that applies a payload every tick_s, and 'stops_at_bodies'; a targeted_strike may 'consume_status' for per_stack_damage and a 'burst'); wind to step 3 too (a projectile may 'pierce' and 'spend_pips' for 'pip_damage' each; a dash may 'gain_pips' and have 'no_recovery'; a targeted_strike may have its own 'range', go 'through' to 'through_dist' behind the target, 'force_rear', and take 'pip_mult' per pip with 'spend_all_pips'); earth to step 3 too: any skill may have a 'windup' (it is paid for at once and goes off that many seconds later; you are rooted and aimed until then) and be 'braced' through it (balance.braced); 'shatters_stone' breaks the caster's own stone (balance.stone); kind 'prop' raises a slab 'width' x 'thickness' x 'height' across your aim at the cursor, between 'min_range' and 'range' away, up in 'rise_time', standing 'life' seconds, and applies 'on_rise' to whoever is standing there. Abilities do NOT hurt their caster (Brent 2026-10-11). Every name and verse is original to this project - the two water skills that carried the books' own names were renamed on 2026-10-12 (ids kept for saves). Numbers are first guesses [MODEL]. STEP 5a: skills outside the starter kits are learned from scroll items (items.json kind 'scroll'). New kinds - displace (mode pull_area: enemies within 'radius' of the aimed point are dragged 'pull' metres toward it; pull_target: one enemy is hauled to 'keep' metres in front of you and turned away for 'turn_s'; aloft_area: on_hit to everyone in 'radius', +'pip_seconds' of it per pip spent); delayed_blast (a marked circle of 'radius' at the aimed point goes off after 'delay': on_hit to everyone in it, 'bonus_damage' to those with 'bonus_vs_status', may 'kill_projectiles', shatter stone, and 'leave_prop'); detonate (every enemy within 'range' carrying 'consume_status' loses it: 'per_stack_burst' damage per stack in 'burst_radius', or an Overload scaled by 'overload_fracs'); chain (on_hit to a target and up to 'jumps' more, each within 'jump_radius' of the last). A melee_burst may take its damage from heat ('damage_from_heat' per point above 'heat_floor', and the reflux drops to the floor) and may 'shatters_all_stone'. STEP 5b: kind ground_zone lays 'zone' (scripts/ground_zone.gd) at the aimed point, or from your feet along your aim if 'at' is 'feet'; kind self_buff puts 'buff' on the caster for 'duration' (player.buffs; what each does is read where it matters); kind rod places the one Ground Rod. A dash may be 'braced' and carry 'on_stop' for the first body it meets ('heavy_poise' if that body is heavy).",
   "abilities": {
     "water_bolt": {
       "name": "Water Bolt",
@@ -154,13 +154,20 @@
       "name": "Bedrock Shove",
       "affinity": "earth",
       "kind": "dash",
-      "cost": 10.0,
-      "reflux_per_cost": 0.8,
-      "dash_speed": 18.0,
+      "cost": 12.0,
+      "reflux_per_cost": 0.4,
+      "dash_speed": 11.667,
       "dash_time": 0.3,
+      "stops_at_bodies": true,
+      "braced": true,
+      "on_stop": {
+        "shove": 3.0,
+        "poise": 50.0
+      },
+      "heavy_poise": 60.0,
       "verse": "Put your shoulder where the mountain keeps its own.",
-      "icon": "shoulder",
-      "summary": "Not in the starter kit: earth starts with no movement skill. It returns as a scroll with the later skills."
+      "summary": "Shoulder first, 3.5 m, Braced throughout. The first enemy you meet is thrown 3 m and loses 50 poise; a heavy one stops you dead and loses 60.",
+      "icon": "shoulder"
     },
     "cutting_gust": {
       "name": "Cutting Gust",
@@ -471,6 +478,157 @@
       "verse": "Everything you have marked, all at once, for less.",
       "summary": "Every marked enemy within 12 m Overloads now: 40% of the full blow and stun at 1 mark, 70% at 2, all of it at 3. It grounds no reflux.",
       "icon": "short"
+    },
+    "standing_pool": {
+      "name": "Standing Pool",
+      "affinity": "water",
+      "kind": "ground_zone",
+      "cost": 12.0,
+      "reflux_per_cost": 0.7,
+      "range": 9.0,
+      "zone": {
+        "shape": "circle",
+        "radius": 3.5,
+        "life": 8.0,
+        "tick_s": 0.5,
+        "payload": {
+          "status": "soaked"
+        },
+        "extra_status": "mired",
+        "shove_mult": 2.0
+      },
+      "verse": "A tide that forgot to leave.",
+      "summary": "Point, 9 m: a pool 3.5 m across for 8 s. Enemies in it are Soaked and 30% slower, and a shove that starts in it goes twice as far. No damage.",
+      "icon": "pool"
+    },
+    "backwash": {
+      "name": "Backwash",
+      "affinity": "water",
+      "kind": "self_buff",
+      "cost": 12.0,
+      "reflux_per_cost": 0.7,
+      "buff": "backwash",
+      "duration": 6.0,
+      "hits": 3,
+      "melee_taken_mult": 0.5,
+      "shove": 3.0,
+      "verse": "Let it hit the water instead.",
+      "summary": "6 s or three blows, whichever ends first: each melee hit on you is halved, and whoever threw it is shoved 3 m and Soaked.",
+      "icon": "backwash"
+    },
+    "slag_pool": {
+      "name": "Slag Pool",
+      "affinity": "fire",
+      "kind": "ground_zone",
+      "cost": 12.0,
+      "reflux_per_cost": 1.0,
+      "range": 9.0,
+      "zone": {
+        "shape": "circle",
+        "radius": 3.0,
+        "life": 6.0,
+        "tick_s": 1.0,
+        "payload": {
+          "damage": 25.0,
+          "status": "alight",
+          "poise": 0.0
+        },
+        "bright": true
+      },
+      "verse": "The floor remembers being a furnace.",
+      "summary": "Lobbed to a point, 9 m: 3 m across for 6 s. 25 a second and 1 Alight a second to enemies standing in it.",
+      "icon": "slag"
+    },
+    "stoke": {
+      "name": "Stoke",
+      "affinity": "fire",
+      "kind": "self_buff",
+      "cost": 6.0,
+      "reflux_per_cost": 0.0,
+      "buff": "stoke",
+      "duration": 6.0,
+      "add_reflux": 25.0,
+      "verse": "Feed it. It was going to eat anyway.",
+      "summary": "At once, +25 heat. For 6 s every bare strike you land sets its target Alight. Light a man with your hands, then Kiln Fist him.",
+      "icon": "stoke"
+    },
+    "stonehide": {
+      "name": "Stonehide",
+      "affinity": "earth",
+      "kind": "self_buff",
+      "cost": 12.0,
+      "reflux_per_cost": 0.4,
+      "buff": "stonehide",
+      "duration": 8.0,
+      "move_speed_mult": 0.75,
+      "verse": "Decide to be somewhere, and be there.",
+      "summary": "8 s Braced: 40% less damage, and nothing staggers or shoves you. You move 25% slower.",
+      "icon": "stonehide"
+    },
+    "veil": {
+      "name": "Crosswind Veil",
+      "affinity": "wind",
+      "kind": "self_buff",
+      "cost": 12.0,
+      "reflux_per_cost": 0.7,
+      "buff": "veil",
+      "duration": 5.0,
+      "verse": "Nothing thrown at you arrives where you are.",
+      "summary": "5 s: enemy shots aimed at you curve away and miss, and your Slipstream does not drain. Blades still land.",
+      "icon": "veil"
+    },
+    "gale_lane": {
+      "name": "Gale Lane",
+      "affinity": "wind",
+      "kind": "ground_zone",
+      "cost": 12.0,
+      "reflux_per_cost": 0.7,
+      "at": "feet",
+      "zone": {
+        "shape": "strip",
+        "length": 10.0,
+        "width": 2.5,
+        "life": 6.0,
+        "tick_s": 1.0,
+        "push_per_s": 3.0,
+        "caster_speed_mult": 1.4,
+        "pip_gain_mult": 2.0
+      },
+      "verse": "A road only you can run.",
+      "summary": "A lane 10 m long from your feet, 6 s. In it you move 40% faster and gain pips twice as fast; enemies are pushed down it.",
+      "icon": "lane"
+    },
+    "static_coat": {
+      "name": "Static Coat",
+      "affinity": "lightning",
+      "kind": "self_buff",
+      "cost": 12.0,
+      "reflux_per_cost": 1.0,
+      "buff": "static_coat",
+      "duration": 6.0,
+      "retaliate": 25.0,
+      "strikes_per_mark": 2,
+      "verse": "Touch me and learn what I am carrying.",
+      "summary": "6 s: an enemy that hits you in melee takes 25 and a Live mark, and every second bare strike you land adds a mark.",
+      "icon": "coat_static"
+    },
+    "ground_rod": {
+      "name": "Ground Rod",
+      "affinity": "lightning",
+      "kind": "rod",
+      "cost": 6.0,
+      "reflux_per_cost": 0.4,
+      "range": 8.0,
+      "life": 10.0,
+      "relay_radius": 8.0,
+      "relay_range": 5.0,
+      "relay_hit": {
+        "damage": 40.0,
+        "marks": 1
+      },
+      "verse": "Give the sky a second place to land.",
+      "summary": "Point, 8 m: a rod for 10 s that blocks nothing. Each lightning skill you cast within 8 m of it also arcs from the rod to the nearest enemy within 5 m: 40 and a mark. One rod at a time.",
+      "icon": "rod"
     }
   }
 }

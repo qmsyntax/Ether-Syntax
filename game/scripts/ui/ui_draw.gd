@@ -240,6 +240,52 @@ static func icon(ci: CanvasItem, kind: String, c: Vector2, s: float, color: Colo
 			ci.draw_arc(c, s * 0.52, 0.5, TAU - 0.3, 26, color.darkened(0.2), 3.0, true)
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.1, -s * 0.4), c + Vector2(-s * 0.22, s * 0.06), c + Vector2(-s * 0.02, s * 0.06), c + Vector2(-s * 0.12, s * 0.4),
 				c + Vector2(s * 0.24, -s * 0.08), c + Vector2(s * 0.03, -s * 0.08), c + Vector2(s * 0.22, -s * 0.4)]), color)
+		"pool":      # standing pool: still water on the floor
+			for k: int in 3:
+				ci.draw_arc(c + Vector2(0, s * 0.1), s * (0.2 + 0.18 * k), 0.0, TAU, 28, color.darkened(0.12 * k), 3.0 - 0.5 * k, true)
+			ci.draw_circle(c + Vector2(0, s * 0.1), s * 0.08, color.lightened(0.3))
+		"backwash":  # backwash: a blow turned aside
+			ci.draw_arc(c + Vector2(-s * 0.1, 0), s * 0.44, -1.2, 1.2, 16, color, 5.0, true)
+			ci.draw_line(c + Vector2(s * 0.62, -s * 0.3), c + Vector2(s * 0.38, -s * 0.12), color.lightened(0.3), 3.0, true)
+			ci.draw_polyline(PackedVector2Array([c + Vector2(s * 0.38, -s * 0.12), c + Vector2(s * 0.5, s * 0.14), c + Vector2(s * 0.64, s * 0.4)]), color.darkened(0.25), 3.0, true)
+		"slag":      # slag pool: molten ground
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.56, s * 0.22), c + Vector2(-s * 0.3, s * 0.02), c + Vector2(s * 0.1, -s * 0.04), c + Vector2(s * 0.5, s * 0.1),
+				c + Vector2(s * 0.58, s * 0.3), c + Vector2(s * 0.2, s * 0.46), c + Vector2(-s * 0.3, s * 0.44)]), color.darkened(0.2))
+			for k: int in 3:
+				ci.draw_circle(c + Vector2(-s * 0.26 + k * s * 0.26, s * 0.22 - (s * 0.06 if k == 1 else 0.0)), s * 0.07, color.lightened(0.45))
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.1, -s * 0.12), c + Vector2(s * 0.14, -s * 0.12), c + Vector2(s * 0.04, -s * 0.56)]), color)
+		"stoke":     # stoke: a fire being fed
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.02, -s * 0.5), c + Vector2(s * 0.26, -s * 0.06), c + Vector2(s * 0.2, s * 0.22), c + Vector2(0, s * 0.3), c + Vector2(-s * 0.2, s * 0.22), c + Vector2(-s * 0.24, -s * 0.04)]), color)
+			ci.draw_line(c + Vector2(-s * 0.5, s * 0.46), c + Vector2(s * 0.3, s * 0.3), color.darkened(0.45), 4.0, true)
+			ci.draw_line(c + Vector2(s * 0.5, s * 0.46), c + Vector2(-s * 0.3, s * 0.3), color.darkened(0.35), 4.0, true)
+		"stonehide": # stonehide: a body made of blocks
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.3, -s * 0.22), Vector2(s * 0.6, s * 0.64)), color)
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.16, -s * 0.56), Vector2(s * 0.32, s * 0.3)), color.lightened(0.12))
+			ci.draw_line(c + Vector2(-s * 0.3, s * 0.08), c + Vector2(s * 0.3, s * 0.08), color.darkened(0.45), 2.0, true)
+			ci.draw_line(c + Vector2(0, -s * 0.22), c + Vector2(0, s * 0.08), color.darkened(0.45), 2.0, true)
+			ci.draw_line(c + Vector2(-s * 0.12, s * 0.08), c + Vector2(-s * 0.12, s * 0.42), color.darkened(0.45), 2.0, true)
+		"veil":      # crosswind veil: a shot curving past
+			ci.draw_circle(c + Vector2(-s * 0.1, s * 0.1), s * 0.14, color)
+			ci.draw_arc(c + Vector2(-s * 0.1, s * 0.1), s * 0.4, -2.2, 0.9, 20, color.darkened(0.2), 2.5, true)
+			ci.draw_polyline(PackedVector2Array([c + Vector2(s * 0.6, -s * 0.5), c + Vector2(s * 0.3, -s * 0.44), c + Vector2(s * 0.34, -s * 0.12), c + Vector2(s * 0.6, s * 0.06)]), color.lightened(0.3), 2.5, true)
+		"lane":      # gale lane: a road of wind
+			ci.draw_line(c + Vector2(-s * 0.6, -s * 0.34), c + Vector2(s * 0.6, -s * 0.34), color.darkened(0.3), 2.5, true)
+			ci.draw_line(c + Vector2(-s * 0.6, s * 0.34), c + Vector2(s * 0.6, s * 0.34), color.darkened(0.3), 2.5, true)
+			for k: int in 3:
+				var lx: float = c.x - s * 0.42 + k * s * 0.3
+				ci.draw_polyline(PackedVector2Array([Vector2(lx, c.y - s * 0.2), Vector2(lx + s * 0.2, c.y), Vector2(lx, c.y + s * 0.2)]), color.lightened(0.1 * k), 3.0, true)
+		"coat_static":   # static coat: a body with sparks standing off it
+			ci.draw_circle(c, s * 0.2, color)
+			for k: int in 6:
+				var sa: float = TAU * float(k) / 6.0 + 0.3
+				var so := Vector2(cos(sa), sin(sa))
+				var st2 := Vector2(-sin(sa), cos(sa)) * s * 0.08
+				ci.draw_polyline(PackedVector2Array([c + so * s * 0.32, c + so * s * 0.42 + st2, c + so * s * 0.5 - st2, c + so * s * 0.62]), color.lightened(0.35), 2.0, true)
+		"rod":       # ground rod: a spike waiting for the sky
+			ci.draw_line(c + Vector2(0, s * 0.46), c + Vector2(0, -s * 0.3), color.darkened(0.25), 4.0, true)
+			ci.draw_circle(c + Vector2(0, -s * 0.38), s * 0.1, color.lightened(0.3))
+			ci.draw_line(c + Vector2(-s * 0.36, s * 0.46), c + Vector2(s * 0.36, s * 0.46), color.darkened(0.4), 3.0, true)
+			ci.draw_polyline(PackedVector2Array([c + Vector2(s * 0.5, -s * 0.56), c + Vector2(s * 0.28, -s * 0.36), c + Vector2(s * 0.4, -s * 0.34), c + Vector2(s * 0.14, -s * 0.2)]), color.lightened(0.4), 2.5, true)
 		"wall":      # raise slab: a block standing on broken ground
 			ci.draw_rect(Rect2(c + Vector2(-s * 0.4, -s * 0.44), Vector2(s * 0.8, s * 0.74)), color)
 			ci.draw_line(c + Vector2(-s * 0.4, -s * 0.12), c + Vector2(s * 0.4, -s * 0.18), color.darkened(0.4), 2.0, true)

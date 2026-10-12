@@ -384,6 +384,10 @@ func shove(dir: Vector3, metres: float) -> void:
 	var mult: float = shove_resist
 	if has_status("soaked"):
 		mult *= float(GameData.status("soaked").get("shove_mult", 1.0))
+	if is_inside_tree():
+		for zone: Node in get_tree().get_nodes_in_group("ground_zones"):
+			if float(zone.get("shove_mult")) != 1.0 and bool(zone.call("has_point", global_position, radius)):
+				mult *= float(zone.get("shove_mult"))            # standing water: everything slides farther
 	_shove_dir = flat.normalized()
 	_shove_left = metres * mult
 	_leap_left = 0.0
@@ -402,6 +406,13 @@ func pull_toward(point: Vector3, metres: float, keep: float = 0.3) -> void:
 	_shove_left = go
 	_leap_left = 0.0
 	interrupt()
+
+
+## Moved a little by something on the ground (a lane of wind). It does not interrupt anything.
+func nudge(step: Vector3) -> void:
+	if body.is_dead() or _shove_left > 0.0 or _charge_left > 0.0 or _leap_left > 0.0:
+		return
+	move_and_collide(Vector3(step.x, 0.0, step.z))
 
 
 ## Face directly away from `point` and stay that way for `seconds`.

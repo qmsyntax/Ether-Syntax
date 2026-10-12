@@ -69,7 +69,7 @@ each doc proposes; nothing here is started in code unless marked.
    by Brent 2026-10-12 as recommended). One signature mechanic per affinity, 40 skills, cross-affinity rules,
    seven enemy archetypes, poise / stagger / interrupts. **Built (2026-10-12):** step 1 water and lightning, step 2
    the combat rules, step 3 fire, wind and earth - all five starter kits now play by their own rule (sprint-06
-   Parts O-U). Step 4 (Pavise Bearer, Censer-Bearer, War Drummer, the phased Wall Commander) is built too (Part W). Step 5a (scrolls, and ten of the 25 further skills) is built (Part X). **Not built:** cover in the chambers, the other 15 skills of step 5
+   Parts O-U). Step 4 (Pavise Bearer, Censer-Bearer, War Drummer, the phased Wall Commander) is built too (Part W). Steps 5a and 5b (scrolls, and twenty of the 25 further skills) are built (Parts X, Y). **Not built:** cover in the chambers, the five held skills of step 5c
    (the other 25 skills, learned from scrolls), step 6 (tempering rethought, the cross-affinity rules).
 2. **Loot, equipment slots, armour, ranged weapons** - `design/06-loot-and-equipment-v0.md` and
    `design/data-drafts/items-v2.json` (design agent, in progress). More slots, armour, ranged weapon families that

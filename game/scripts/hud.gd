@@ -179,6 +179,14 @@ func _draw_action_bar(vs: Vector2) -> void:
 			else:
 				draw_rect(block, Color(earth_col, 0.4), false, 1.5)
 		UiDraw.text(self, Vector2(sx + float(s_total) * 18.0, sy + 4.0), "stone" + ("  - braced" if set_now else ""), 11, Color(earth_col, 0.95 if set_now else 0.55))
+	# skills sitting on you: name and seconds left, to the left of the bar
+	var on_me: Dictionary = player.get("buffs")
+	var by: float = slab.position.y - 30.0
+	for id: String in on_me:
+		var b: Dictionary = on_me[id]
+		var bc: Color = GameData.affinity_color(str(b.get("affinity", ""))).lightened(0.3)
+		UiDraw.text(self, Vector2(slab.position.x, by), "%s  %d s" % [str(b.get("name", id)), int(ceil(float(b["t"])))], 12, bc)
+		by -= 15.0
 	# a wind-up: a thin bar filling over the skills until it goes off
 	var wind_up: float = float(player.call("windup_frac"))
 	if wind_up >= 0.0:

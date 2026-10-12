@@ -380,6 +380,96 @@
       "weight": 0.1,
       "value": 1200,
       "desc": "Teaches Dead Short to someone with the lightning affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_standing_pool": {
+      "name": "Scroll: Standing Pool",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "standing_pool",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Standing Pool to someone with the water affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_backwash": {
+      "name": "Scroll: Backwash",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "backwash",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Backwash to someone with the water affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_slag_pool": {
+      "name": "Scroll: Slag Pool",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "slag_pool",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Slag Pool to someone with the fire affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_stoke": {
+      "name": "Scroll: Stoke",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "stoke",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Stoke to someone with the fire affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_stonehide": {
+      "name": "Scroll: Stonehide",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "stonehide",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Stonehide to someone with the earth affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_veil": {
+      "name": "Scroll: Crosswind Veil",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "veil",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Crosswind Veil to someone with the wind affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_gale_lane": {
+      "name": "Scroll: Gale Lane",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "gale_lane",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Gale Lane to someone with the wind affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_static_coat": {
+      "name": "Scroll: Static Coat",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "static_coat",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Static Coat to someone with the lightning affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_ground_rod": {
+      "name": "Scroll: Ground Rod",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "ground_rod",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Ground Rod to someone with the lightning affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "scroll_bedrock_shove": {
+      "name": "Scroll: Bedrock Shove",
+      "slot": "",
+      "kind": "scroll",
+      "teaches": "bedrock_shove",
+      "weight": 0.1,
+      "value": 1200,
+      "desc": "Teaches Bedrock Shove to someone with the earth affinity. Read once; the scroll is used up. Click it in your pack to read it."
     }
   },
   "shop": [
@@ -442,6 +532,16 @@
     "scroll_downdraft",
     "scroll_updraft",
     "scroll_forked_path",
-    "scroll_dead_short"
+    "scroll_dead_short",
+    "scroll_standing_pool",
+    "scroll_backwash",
+    "scroll_slag_pool",
+    "scroll_stoke",
+    "scroll_stonehide",
+    "scroll_veil",
+    "scroll_gale_lane",
+    "scroll_static_coat",
+    "scroll_ground_rod",
+    "scroll_bedrock_shove"
   ]
 }

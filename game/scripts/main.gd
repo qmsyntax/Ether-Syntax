@@ -977,6 +977,9 @@ func _on_player_died() -> void:
 func _new_level(yaw_degrees: float) -> void:
 	if player != null:
 		player.call("drop_stones")           # stone does not follow you to a new place
+		for group: String in ["ground_zones", "ground_rods", "blasts", "censer_bursts"]:
+			for left: Node in get_tree().get_nodes_in_group(group):
+				left.queue_free()
 	if level != null:
 		for group: String in ["enemies", "hittable"]:
 			for n: Node in get_tree().get_nodes_in_group(group):
@@ -1282,14 +1285,14 @@ func _setup_ui_shot(which: String) -> void:
 					var ab: Dictionary = GameData.ability(str(id))
 					if str(ab.get("affinity", "")) != str(aff):
 						continue
-					var slot := Rect2(170.0 + col * 236.0, 60.0 + row * 150.0, 96.0, 96.0)
+					var slot := Rect2(150.0 + col * 206.0, 60.0 + row * 150.0, 84.0, 84.0)
 					sheet.draw_rect(slot, UiTheme.INSET)
 					sheet.draw_rect(slot, UiTheme.BRONZE_DIM, false, 2.0)
 					sheet.draw_line(Vector2(slot.get_center().x, slot.position.y), Vector2(slot.get_center().x, slot.end.y), Color(1, 1, 1, 0.08), 1.0)
 					sheet.draw_line(Vector2(slot.position.x, slot.get_center().y), Vector2(slot.end.x, slot.get_center().y), Color(1, 1, 1, 0.08), 1.0)
-					UiDraw.icon(sheet, str(ab.get("icon", "drop")), slot.get_center(), 48.0, GameData.affinity_color(str(aff)).lightened(0.3))
-					UiDraw.text(sheet, Vector2(slot.end.x + 10.0, slot.get_center().y), str(ab.get("name", id)), 15, UiTheme.TEXT)
-					UiDraw.text(sheet, Vector2(slot.end.x + 10.0, slot.get_center().y + 20.0), str(ab.get("kind", "")), 12, UiTheme.TEXT_DIM)
+					UiDraw.icon(sheet, str(ab.get("icon", "drop")), slot.get_center(), 42.0, GameData.affinity_color(str(aff)).lightened(0.3))
+					UiDraw.text(sheet, Vector2(slot.position.x, slot.end.y + 18.0), str(ab.get("name", id)), 14, UiTheme.TEXT)
+					UiDraw.text(sheet, Vector2(slot.position.x, slot.end.y + 34.0), str(ab.get("kind", "")), 11, UiTheme.TEXT_DIM)
 					col += 1
 				row += 1)
 		var layer := CanvasLayer.new()
