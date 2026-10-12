@@ -78,6 +78,7 @@ var _melee_cd := 0.0
 var _charge := 0.0
 var _charging := false
 var _meditate_block := 0.0
+var _shown_weapon := ""
 var _sitting := false                # holding meditate: rooted, but not yet settled
 var _sit_t := 0.0
 var _dash_time := 0.0
@@ -152,6 +153,9 @@ func _build_model() -> void:
 	_shown_windup = false
 	_rig.set_part_visible("arm_right", not arm_right_lost)
 	_shown_arm_lost = arm_right_lost
+	_shown_weapon = ""
+	if inventory != null:
+		_show_weapon()
 
 
 ## Keep the model in step with the character: lost arm, overcharge wind-up, meditation glow, walk.
@@ -816,6 +820,18 @@ func reach_now() -> float:
 ## Re-read what equipment grants. Call after anything is equipped or removed.
 func refresh_gear() -> void:
 	satellite_rate = float(_p["starter_satellite_rate"]) + inventory.stat("satellite_rate")
+	_show_weapon()
+
+
+## Put the equipped weapon in the model's hand (or take it away).
+func _show_weapon() -> void:
+	if _rig == null:
+		return
+	var id: String = str(inventory.equipped.get("weapon", ""))
+	if id == _shown_weapon:
+		return
+	_shown_weapon = id
+	_rig.set_weapon(Models.weapon(id) if id != "" else null)
 
 
 ## Kills leave items on the ground where the enemy fell.

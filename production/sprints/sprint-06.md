@@ -34,11 +34,19 @@ so the "defenceless body" risk is mostly theoretical in this build.
 | S06-8 | "my essence got above 100 at star 1" (238 at 59%) | `stars.full_tank` 400 -> 100, so a full star is 99. The baby star now starts at 20% (was 5%) so the opening tank is still 20 essence and can pay for one ability | selftest: baby star, growth, "one star never holds more than 100" |
 | S06-9 | "I can also meditate while running around which feels like cheating" (click-to-move kept walking while M was held) | Holding meditate roots you at once (move goal, attack and pickup targets dropped) and nothing is gathered until you have been still for `meditation.settle_s` (0.8 s) | selftest: 5 checks |
 
-## Part D — art pass 2
-Sub-agent still running when Part B was committed; integration (weapons in hand, projection / wisp / construct
-models) follows in its own commit.
+## Part D — art passes 2 and 3 (sub-agent; integration in the main session)
 
-Verified: self-test 146/146, smoke run, three bots, both UI click tests, `ui-nether.png` and `ui-hud.png` looked at.
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-12 | Pass 2: higher-detail meshes (`MeshKit`), four weapon models, projection, wisps, and a construct model per tier and concept | `shots/art-weapons.png`, `art-nether.png` | Done (sub-agent) |
+| S06-13 | Pass 3 (Brent: "too cartoonish"): realistic proportions, desaturated worn materials, one accent per character, dry scrub, colder nether models. Tone taken from the published covers viewed as thumbnails - notes only, no images kept, no canon character or costume recreated | `shots/art-close.png`, `art-preview.png` | Done (sub-agent) |
+| S06-14 | Equipped weapon shown in the model's hand; Netherecho uses the real models; bare-earth floors, dark slate walls, filmic tonemap, SSAO, light fog, lower warm sun | selftest (models), `shots/ui-hud.png`, `ui-nether.png` | Done |
+
+Rough edges (agent's report): the realistic player is thin at game zoom, so the lost arm reads less strongly; the
+brute is still rounded; bloom is heavy on the hit flash. Frame rate with a full wall of enemies and all animation
+in motion are unverified.
+
+Verified (Part B, at its commit): self-test 146/146, smoke run, three bots, both UI click tests, `ui-nether.png` and `ui-hud.png` looked at.
 Not verified: anything by hand - how the Netherecho plays, whether 12 hp is too fragile, whether the settle time
 feels right, and the ability costs against a 99-essence star (costs were tuned against a 400 tank).
 

@@ -354,11 +354,12 @@ func _on_projection_destroyed() -> void:
 
 ## The echo of a place: dark, violet, lit from nowhere. Living enemies and loose loot do not show.
 func _set_nether_look(on: bool) -> void:
-	_env.background_color = Color(0.03, 0.015, 0.07) if on else Color(0.07, 0.08, 0.1)
-	_env.ambient_light_color = Color(0.5, 0.42, 0.95) if on else Color(0.75, 0.75, 0.85)
-	_env.ambient_light_energy = 0.75 if on else 0.55
-	_sun.light_energy = 0.18 if on else 1.0
-	_sun.light_color = Color(0.7, 0.6, 1.0) if on else Color(1, 1, 1)
+	_env.background_color = Color(0.03, 0.015, 0.07) if on else Color(0.045, 0.05, 0.065)
+	_env.ambient_light_color = Color(0.5, 0.42, 0.95) if on else Color(0.5, 0.56, 0.7)
+	_env.ambient_light_energy = 0.75 if on else 0.6
+	_env.fog_light_color = Color(0.1, 0.05, 0.2) if on else Color(0.1, 0.11, 0.14)
+	_sun.light_energy = 0.18 if on else 1.35
+	_sun.light_color = Color(0.7, 0.6, 1.0) if on else Color(1.0, 0.87, 0.72)
 	for group: String in ["enemies", "pickups"]:
 		for n: Node in get_tree().get_nodes_in_group(group):
 			if n is Node3D:
@@ -593,8 +594,8 @@ func _repeat_mult() -> float:
 
 func _enter_arena() -> void:
 	_new_level(0.0)
-	_static_box(Vector3(0, -0.5, 0), Vector3(arena_half * 2.0, 1.0, arena_half * 2.0), Color(0.62, 0.53, 0.22))
-	var wall_color := Color(0.3, 0.3, 0.34)
+	_static_box(Vector3(0, -0.5, 0), Vector3(arena_half * 2.0, 1.0, arena_half * 2.0), Color(0.29, 0.26, 0.2))
+	var wall_color := Color(0.17, 0.17, 0.19)
 	var span: float = arena_half * 2.0 + 2.0
 	_static_box(Vector3(0, 1.0, -arena_half - 0.5), Vector3(span, 2.0, 1.0), wall_color)
 	_static_box(Vector3(0, 1.0, arena_half + 0.5), Vector3(span, 2.0, 1.0), wall_color)
@@ -639,8 +640,8 @@ func _enter_dungeon() -> void:
 	_new_level(45.0)
 	var total: float = float(chambers + 1) * ch_len
 	var mid_z: float = -total * 0.5
-	var wall_color := Color(0.26, 0.26, 0.3)
-	_static_box(Vector3(0, -0.5, mid_z), Vector3(ch_half_w * 2.0, 1.0, total), Color(0.5, 0.44, 0.22))
+	var wall_color := Color(0.16, 0.16, 0.18)
+	_static_box(Vector3(0, -0.5, mid_z), Vector3(ch_half_w * 2.0, 1.0, total), Color(0.27, 0.245, 0.2))
 	_static_box(Vector3(-ch_half_w - 0.5, 1.0, mid_z), Vector3(1.0, 2.0, total + 2.0), wall_color)
 	_static_box(Vector3(ch_half_w + 0.5, 1.0, mid_z), Vector3(1.0, 2.0, total + 2.0), wall_color)
 	_static_box(Vector3(0, 1.0, 0.5), Vector3(ch_half_w * 2.0, 2.0, 1.0), wall_color)
@@ -672,7 +673,7 @@ func _enter_dungeon() -> void:
 
 
 func _add_barrier(c: int) -> void:
-	var b: StaticBody3D = _static_box(Vector3(0, 1.0, -float(c) * ch_len), Vector3(gap_half * 2.0, 2.0, 0.6), Color(0.75, 0.15, 0.15))
+	var b: StaticBody3D = _static_box(Vector3(0, 1.0, -float(c) * ch_len), Vector3(gap_half * 2.0, 2.0, 0.6), Color(0.5, 0.09, 0.08))
 	barriers[c] = b
 
 
@@ -885,7 +886,7 @@ func _new_level(yaw_degrees: float) -> void:
 
 func _build_town() -> void:
 	_new_level(0.0)
-	_static_box(Vector3(0, -0.5, 0), Vector3(24.0, 1.0, 24.0), Color(0.33, 0.32, 0.3))
+	_static_box(Vector3(0, -0.5, 0), Vector3(24.0, 1.0, 24.0), Color(0.2, 0.19, 0.18))
 
 
 func _static_box(pos: Vector3, size: Vector3, color: Color) -> StaticBody3D:
@@ -914,12 +915,27 @@ func _build_world() -> void:
 	_env = Environment.new()
 	_env.background_mode = Environment.BG_COLOR
 	_env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	# Grim, low-key look (art pass 3): filmic, a little haze, contact shadows, restrained bloom.
+	_env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	_env.tonemap_exposure = 1.15
+	_env.ssao_enabled = true
+	_env.ssao_radius = 0.8
+	_env.ssao_intensity = 1.5
+	_env.glow_enabled = true
+	_env.glow_intensity = 0.6
+	_env.glow_bloom = 0.03
+	_env.glow_hdr_threshold = 1.0
+	_env.fog_enabled = true
+	_env.fog_density = 0.006
+	_env.adjustment_enabled = true
+	_env.adjustment_contrast = 1.08
+	_env.adjustment_saturation = 0.92
 	var world_env := WorldEnvironment.new()
 	world_env.environment = _env
 	add_child(world_env)
 
 	_sun = DirectionalLight3D.new()
-	_sun.rotation_degrees = Vector3(-52.0, 30.0, 0.0)
+	_sun.rotation_degrees = Vector3(-44.0, 38.0, 0.0)
 	_sun.shadow_enabled = true
 	add_child(_sun)
 	_set_nether_look(false)

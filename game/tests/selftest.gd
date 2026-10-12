@@ -25,6 +25,7 @@ func _ready() -> void:
 	await _test_inventory()
 	_test_slot_assignment()
 	await _test_weapons()
+	_test_models()
 	await _test_netherecho()
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
@@ -531,6 +532,33 @@ func _test_weapons() -> void:
 	e.queue_free()
 	p.queue_free()
 	q.queue_free()
+
+
+func _test_models() -> void:
+	print("models:")
+	var p := _new_player()
+	var rig: ModelRig = p.get("_rig")
+	var inv: Inventory = p.get("inventory")
+	_check("an unarmed character holds nothing", rig.get_weapon() == null)
+	inv.add("serrated_dagger")
+	inv.equip("serrated_dagger")
+	p.call("refresh_gear")
+	_check("an equipped weapon is in the model's hand", rig.get_weapon() != null)
+	inv.unequip("weapon")
+	p.call("refresh_gear")
+	_check("unequipping takes it out again", rig.get_weapon() == null)
+	p.queue_free()
+	for tier: String in ["vestige", "remnant"]:
+		for c: String in GameData.concept_ids():
+			var m: Node3D = NetherArt.construct(tier, c, 1.0, 0.4)
+			if not (m is ModelRig):
+				_check("every wild construct has a real model", false, "%s %s" % [tier, c])
+			m.free()
+	var proj_model: Node3D = NetherArt.projection()
+	var wisp_model: Node3D = NetherArt.wisp("water")
+	_check("the projection and wisps have real models", proj_model is ModelRig and wisp_model is Wisp)
+	proj_model.free()
+	wisp_model.free()
 
 
 func _test_netherecho() -> void:

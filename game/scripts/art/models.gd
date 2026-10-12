@@ -1,127 +1,575 @@
 class_name Models
 extends RefCounted
-## Procedural low-poly art library. Every builder returns a finished ModelRig assembled from
-## Godot primitive meshes - no image or mesh assets. All designs are original to this project.
+## Procedural art library. Every builder returns a finished ModelRig assembled in code from
+## Godot primitives and MeshKit shapes - no image or mesh assets. All designs are original
+## to this project. Identical models are baked once and stamped out from a snapshot.
 ##
 ## Usage:  var rig := Models.enemy("brute");  add_child(rig);  rig.animate(delta, speed, attacking)
 
 const ENEMY_DATA_PATH := "res://data/enemies.json"
 
-const SKIN := Color(0.88, 0.65, 0.47)
-const BONE := Color(0.93, 0.88, 0.74)
-const STEEL := Color(0.72, 0.76, 0.82)
-const IRON := Color(0.2, 0.2, 0.27)
-const LEATHER := Color(0.36, 0.23, 0.13)
+# A deliberately muted, low-value palette: worn cloth, leather, dull metal. Each character
+# gets ONE restrained emissive accent; kinds are told apart by silhouette, not body colour.
+const SKIN := Color(0.68, 0.52, 0.41)
+const BONE := Color(0.72, 0.67, 0.54)
+const STEEL := Color(0.46, 0.49, 0.53)
+const IRON := Color(0.12, 0.12, 0.15)
+const LEATHER := Color(0.23, 0.155, 0.1)
+const WOOD := Color(0.28, 0.19, 0.12)
+
+## How many different tufts / shrubs are baked per scenery kind.
+const SCENERY_VARIANTS := 6
 
 static var _enemy_data: Dictionary = {}
+static var _snaps: Dictionary[String, Dictionary] = {}
 
 
 # ---------------------------------------------------------------- public builders
 
-## The hero: an "archhuman" brawler in blue with a glowing cyan headband and sash, cream
-## hand-wraps and a steel gauntlet on the right arm. Supports
-## set_part_visible("arm_right", false), which also reveals a bandaged stump.
+## The hero: a lean brawler (about 7.4 heads tall) in a weathered slate coat with a leather
+## baldric and one spaulder, linen hand-wraps, a dull steel gauntlet on the right arm and a
+## single cyan accent (headband and gauntlet knuckle). Supports
+## set_part_visible("arm_right", false), which swaps the arm for a big bandaged stump with a
+## sling strap across the chest, and set_weapon() (see weapon()).
 static func player() -> ModelRig:
+	return _stamp("player", _build_player)
+
+
+## An enemy model for a kind in data/enemies.json ("grunt", "brute", "commander"). Radius,
+## height and base colour come from that file. Unknown kinds get a plain figure.
+static func enemy(kind: String) -> ModelRig:
+	return _stamp("enemy:" + kind, _build_enemy.bind(kind))
+
+
+## Living scenery: "grass" (a tuft of curved blades with pale seed heads, ~0.8 tall) or
+## "bush" (a clumpy berry shrub, ~1.1 tall). Each call picks one of a few variants and a
+## random facing. The returned node is a ModelRig, so set_highlight() / flash() work on it;
+## scale it freely to show damage.
+static func scenery(kind: String) -> Node3D:
+	var which: String = "bush" if kind == "bush" else "grass"
+	var r: ModelRig = _stamp("scenery:%s:%d" % [which, randi() % SCENERY_VARIANTS], _build_scenery.bind(which))
+	r.rotation.y = randf() * TAU
+	return r
+
+
+## A small loot object ~0.5 tall: a pale tied bundle, or a gold-banded chest if `equippable`.
+## The returned node is a ModelRig, so set_highlight() works on it.
+static func pickup(equippable: bool) -> Node3D:
+	return _stamp("pickup:%s" % equippable, _build_pickup.bind(equippable))
+
+
+## A weapon sized for the player's right hand, to pass to ModelRig.set_weapon(). Known ids:
+## "iron_knuckles", "serrated_dagger", "invader_cleaver", "commander_blade"; anything else
+## is a plain short club. The grip sits at the node's origin and the business end points
+## along -Z. The returned node is a ModelRig.
+static func weapon(item_id: String) -> Node3D:
+	var known: Array[String] = ["iron_knuckles", "serrated_dagger", "invader_cleaver", "commander_blade"]
+	var id: String = item_id if known.has(item_id) else "club"
+	return _stamp("weapon:" + id, _build_weapon.bind(id))
+
+
+## The player's soul projection for the Netherecho: a small (1.0 tall, radius 0.3) translucent
+## robed figure with a cyan glow. Same animate() contract as the player.
+static func projection() -> ModelRig:
+	return _stamp("projection", NetherModels.build_projection)
+
+
+## A drifting mote of essence about 0.25 across. `affinity` picks the colour ("water" is
+## blue, anything else pale white). It bobs and pulses by itself.
+static func wisp(affinity: String) -> Node3D:
+	return NetherModels.build_wisp(affinity)
+
+
+## A wild ether construct: `tier` is "vestige" (~0.9 tall), "remnant" (~1.5) or "spirit"
+## (~2.3); `concept` is "acceleration", "piercing", "compression", "tension", "reach" or
+## "stillness" (anything else is a generic floating shape). Translucent and self-lit;
+## supports set_highlight / flash / set_windup / animate, and sets height and radius.
+static func construct(tier: String, concept: String) -> ModelRig:
+	return _stamp("construct:%s:%s" % [tier, concept], NetherModels.build_construct.bind(tier, concept))
+
+
+# ---------------------------------------------------------------- player
+
+static func _build_player() -> ModelRig:
 	var r := ModelRig.new()
 	r.name = "PlayerModel"
 	r.height = 1.85
 	r.radius = 0.4
 	r.stride_speed = 5.0
 	r.stride_rate = 2.6
-	r.swing = 0.75
-	var blue := Color(0.15, 0.45, 0.75)
-	var blue_l := Color(0.3, 0.62, 0.95)
-	var navy := Color(0.1, 0.14, 0.3)
-	var wrap := Color(0.94, 0.9, 0.8)
-	var hair := Color(0.14, 0.09, 0.07)
-	var cyan := Color(0.4, 0.95, 1.0)
-	var boot := Color(0.22, 0.14, 0.1)
+	r.swing = 0.7
+	var coat := Color(0.19, 0.25, 0.33)
+	var coat_d := Color(0.15, 0.2, 0.27)
+	var coat_l := Color(0.3, 0.37, 0.45)
+	var cloth := Color(0.12, 0.12, 0.15)
+	var wrap := Color(0.62, 0.57, 0.46)
+	var wrap_d := Color(0.42, 0.37, 0.29)
+	var hair := Color(0.09, 0.07, 0.06)
+	var cyan := Color(0.25, 0.7, 0.8)
+	var sash := Color(0.1, 0.3, 0.34)
+	var boot := Color(0.17, 0.12, 0.08)
+	var brass := Color(0.5, 0.4, 0.2)
+	var none := Vector3.ZERO
+	var one := Vector3.ONE
 
+	# About 7.4 heads tall: hips at 0.96, shoulders at 1.5, a 0.25 head.
 	for side: int in [-1, 1]:
 		var n: String = "left" if side < 0 else "right"
-		r.add_part("leg_" + n, "", Vector3(0.15 * side, 0.86, 0.0))
-		r.add_shape("leg_" + n, _cyl(0.14, 0.115, 0.46), navy, Vector3(0, -0.2, 0))
-		r.add_part("shin_" + n, "leg_" + n, Vector3(0, -0.42, 0))
-		r.add_shape("shin_" + n, _cyl(0.11, 0.095, 0.34), navy, Vector3(0, -0.15, 0))
-		r.add_shape("shin_" + n, _cyl(0.105, 0.11, 0.1), wrap, Vector3(0, -0.27, 0))
-		r.add_shape("shin_" + n, _box(0.21, 0.14, 0.34), boot, Vector3(0, -0.37, -0.05))
+		var leg: String = "leg_" + n
+		var shin: String = "shin_" + n
+		r.add_part(leg, "", Vector3(0.095 * side, 0.96, 0.0))
+		r.add_shape(leg, lathe([0.062, -0.48, 0.07, -0.4, 0.088, -0.2, 0.095, -0.04, 0.08, 0.05], 10), cloth)
+		r.add_shape(leg, bbox(0.1, 0.11, 0.05, 0.02, 0.8, 1.0), LEATHER, Vector3(0.0, -0.44, -0.055), Vector3(-6, 0, 0))
+		r.add_part(shin, leg, Vector3(0, -0.47, 0))
+		r.add_shape(shin, lathe([0.05, -0.2, 0.066, -0.1, 0.066, 0.0, 0.058, 0.04], 10), cloth)
+		r.add_shape(shin, lathe([0.048, -0.42, 0.052, -0.34, 0.07, -0.18, 0.075, -0.1, 0.07, -0.09], 10), boot, none, none, one, 0.0, 0.2)
+		for y: float in [-0.16, -0.25]:
+			r.add_shape(shin, lathe([0.064, y - 0.012, 0.074, y, 0.064, y + 0.012], 8), LEATHER.lightened(0.12), none, none, one, 0.0, 0.2, true)
+		r.add_shape(shin, bbox(0.105, 0.085, 0.25, 0.028, 0.8, 0.82), boot, Vector3(0, -0.445, -0.045), none, one, 0.0, 0.2, true)
+		r.add_shape(shin, bbox(0.11, 0.022, 0.26, 0.008), boot.darkened(0.4), Vector3(0, -0.478, -0.045))
 
-	r.add_part("body", "", Vector3(0, 0.86, 0))
-	r.add_shape("body", _box(0.5, 0.2, 0.32), navy, Vector3(0, 0.04, 0))
-	r.add_shape("body", _cyl(0.27, 0.27, 0.1), cyan, Vector3(0, 0.17, 0), Vector3.ZERO, Vector3(1, 1, 0.7), 0.55)
-	r.add_shape("body", _box(0.12, 0.34, 0.05), cyan, Vector3(0.15, -0.02, -0.19), Vector3(-6, 0, 0), Vector3.ONE, 0.55)
+	r.add_part("body", "", Vector3(0, 0.96, 0))
+	r.add_shape("body", lathe([0.1, -0.12, 0.15, -0.05, 0.165, 0.04, 0.155, 0.14], 12), cloth, none, none, Vector3(1, 1, 0.7))
+	r.add_shape("body", lathe([0.158, 0.07, 0.172, 0.085, 0.172, 0.135, 0.158, 0.15], 12), LEATHER, none, none, Vector3(1, 1, 0.72), 0.0, 0.2)
+	r.add_shape("body", bbox(0.055, 0.06, 0.02, 0.008), brass, Vector3(0.0, 0.11, -0.125), none, one, 0.0, 0.8, true)
+	r.add_shape("body", bbox(0.09, 0.11, 0.06, 0.02, 0.85, 0.85), LEATHER.lightened(0.08), Vector3(-0.15, 0.03, -0.03), Vector3(0, 0, 6), one, 0.0, 0.2, true)
+	r.add_shape("body", MeshKit.sheet(0.11, 0.08, 0.36, 1.0, 0.012, -0.02, 0.05, 4, 4), sash, Vector3(0.1, 0.08, -0.125))
+	r.add_shape("body", MeshKit.sheet(0.08, 0.05, 0.27, 1.0, 0.012, -0.03, 0.04, 4, 3), sash.darkened(0.2), Vector3(0.14, 0.08, -0.105), Vector3(0, -30, -8))
 
-	r.add_part("torso", "body", Vector3(0, 0.2, 0))
-	r.add_shape("torso", _cyl(0.38, 0.25, 0.48), blue, Vector3(0, 0.24, 0), Vector3.ZERO, Vector3(1, 1, 0.66))
-	r.add_shape("torso", _box(0.3, 0.3, 0.04), blue_l, Vector3(0, 0.28, -0.2), Vector3(8, 0, 0))
-	r.add_shape("torso", _cyl(0.09, 0.1, 0.12), SKIN, Vector3(0, 0.52, 0))
+	r.add_part("torso", "body", Vector3(0, 0.14, 0))
+	r.add_shape("torso", lathe([0.15, -0.05, 0.15, 0.05, 0.175, 0.19, 0.205, 0.32, 0.205, 0.39, 0.13, 0.45, 0.055, 0.47], 12), coat, none, none, Vector3(1, 1, 0.62))
+	# Coat skirt, a darker crossed front panel, collar, a leather baldric, one spaulder.
+	r.add_shape("torso", lathe([0.2, -0.2, 0.185, -0.1, 0.16, -0.02, 0.15, 0.02], 12, 6, 0.05, 0.0, 0.035), coat_d, none, none, Vector3(1, 1, 0.72))
+	r.add_shape("torso", MeshKit.extrude(poly([-0.02, 0.44, 0.1, 0.43, 0.11, 0.2, 0.02, 0.0, -0.09, 0.0]), 0.02), coat_d, Vector3(0, 0, -0.118), Vector3(-7, 0, 0))
+	r.add_shape("torso", bbox(0.025, 0.47, 0.022, 0.006), coat_l, Vector3(-0.055, 0.215, -0.125), Vector3(-7, 0, -13), one, 0.0, 0.0, true)
+	r.add_shape("torso", lathe([0.058, 0.44, 0.052, 0.54], 8), SKIN)
+	r.add_shape("torso", lathe([0.07, 0.44, 0.085, 0.47, 0.075, 0.5], 10), coat_l, Vector3(0, 0, 0.01))
+	var strap: Array = []
+	var strap_r: Array = []
+	for i: int in 17:
+		var a: float = TAU * float(i) / 16.0
+		var x: float = cos(a) * (0.19 + 0.02 * cos(a))
+		strap.append_array([x, 0.2 - x * 0.95, sin(a) * 0.135])
+		strap_r.append(0.03)
+	r.add_shape("torso", tube(strap, strap_r, 5, 0.35, Vector3.UP), LEATHER, none, none, one, 0.0, 0.2)
+	r.add_shape("torso", lathe([0.105, -0.05, 0.1, 0.02, 0.06, 0.07, 0.0, 0.085], 6), LEATHER.lightened(0.1), Vector3(-0.215, 0.39, 0), Vector3(0, 0, 18), Vector3(1.0, 1.0, 1.15), 0.0, 0.25, true)
 
 	r.add_part("head", "torso", Vector3(0, 0.5, 0))
-	r.add_shape("head", _ball(0.19), SKIN, Vector3(0, 0.09, 0))
-	r.add_shape("head", _ball(0.2), hair, Vector3(0, 0.2, 0.02), Vector3.ZERO, Vector3(1.0, 0.62, 1.0))
-	r.add_shape("head", _cyl(0.195, 0.2, 0.05, 8), cyan, Vector3(0, 0.18, 0.0), Vector3(-6, 0, 0), Vector3.ONE, 0.7)
-	r.add_shape("head", _box(0.05, 0.04, 0.03), hair, Vector3(-0.075, 0.06, -0.175))
-	r.add_shape("head", _box(0.05, 0.04, 0.03), hair, Vector3(0.075, 0.06, -0.175))
-	r.add_part("band_tail", "head", Vector3(0, 0.15, 0.19), Vector3(0.75, 0, 0))
-	r.add_shape("band_tail", _box(0.06, 0.05, 0.36), cyan, Vector3(-0.05, 0, 0.18), Vector3(0, -10, 0), Vector3.ONE, 0.7)
-	r.add_shape("band_tail", _box(0.06, 0.05, 0.28), cyan, Vector3(0.05, -0.03, 0.14), Vector3(-14, 12, 0), Vector3.ONE, 0.7)
+	r.add_shape("head", ball(0.105, 12, 6), SKIN, Vector3(0, 0.125, 0.005), none, Vector3(0.9, 1.12, 1.0))
+	r.add_shape("head", bbox(0.13, 0.11, 0.13, 0.035, 1.25, 1.2), SKIN, Vector3(0, 0.055, -0.03), none, one, 0.0, 0.0, true)
+	r.add_shape("head", bbox(0.026, 0.05, 0.035, 0.008, 0.6, 0.5), SKIN.darkened(0.12), Vector3(0, 0.1, -0.103), none, one, 0.0, 0.0, true)
+	r.add_shape("head", bbox(0.15, 0.022, 0.03, 0.006), SKIN.darkened(0.45), Vector3(0, 0.137, -0.088), Vector3(-8, 0, 0))
+	r.add_shape("head", bbox(0.05, 0.01, 0.02, 0.003), SKIN.darkened(0.4), Vector3(0, 0.048, -0.098))
+	for side: int in [-1, 1]:
+		r.add_shape("head", ball(0.022, 6, 3), SKIN.darkened(0.08), Vector3(0.096 * side, 0.115, 0.0), none, Vector3(0.5, 1.0, 0.8))
+		r.add_shape("head", bbox(0.06, 0.018, 0.02, 0.005), hair, Vector3(0.042 * side, 0.152, -0.092), Vector3(0, 0, 9 * side))
+	r.add_shape("head", ball(0.112, 12, 6), hair, Vector3(0, 0.165, 0.018), none, Vector3(0.95, 0.72, 1.05))
+	r.add_shape("head", ball(0.098, 10, 5), hair, Vector3(0, 0.115, 0.05), none, Vector3(1.0, 1.05, 0.8))
+	var tufts: Array = [[-0.05, 0.215, -0.07, -62, 22, 0.1], [0.03, 0.225, -0.075, -68, -12, 0.11], [0.07, 0.2, -0.04, -40, -40, 0.09], [-0.02, 0.235, 0.02, -15, 10, 0.08], [0.0, 0.2, 0.11, 60, 0, 0.1]]
+	for tuft: Array in tufts:
+		r.add_shape("head", cyl(0.0, 0.04, float(tuft[5]), 5), hair.lightened(0.05), Vector3(float(tuft[0]), float(tuft[1]), float(tuft[2])), Vector3(float(tuft[3]), 0, float(tuft[4])), one, 0.0, 0.0, true)
+	r.add_shape("head", lathe([0.107, 0.168, 0.114, 0.174, 0.114, 0.198, 0.107, 0.204], 12), cyan, Vector3(0, 0.0, 0.012), Vector3(-6, 0, 0), one, 0.3)
+	r.add_part("band_tail", "head", Vector3(0, 0.17, 0.125), Vector3(0.75, 0, 0))
+	r.add_shape("band_tail", tube([-0.01, 0.0, 0.0, -0.03, -0.01, 0.09, -0.045, 0.0, 0.2, -0.03, -0.02, 0.3], [0.016, 0.02, 0.018, 0.006], 4, 0.35, Vector3.RIGHT), cyan, none, none, one, 0.3)
+	r.add_shape("band_tail", tube([0.01, 0.0, 0.0, 0.03, -0.02, 0.08, 0.05, -0.05, 0.16, 0.045, -0.09, 0.22], [0.016, 0.02, 0.016, 0.006], 4, 0.35, Vector3.RIGHT), cyan, none, none, one, 0.3)
 	r.sway_parts["band_tail"] = -0.6
 
 	for side: int in [-1, 1]:
 		var n: String = "left" if side < 0 else "right"
-		r.add_part("arm_" + n, "torso", Vector3(0.44 * side, 0.42, 0), Vector3(0, 0, 0.14 * side))
-		r.add_shape("arm_" + n, _ball(0.145, 6, 3), blue_l, Vector3.ZERO)
-		r.add_shape("arm_" + n, _cyl(0.105, 0.095, 0.3), SKIN, Vector3(0, -0.17, 0))
-		r.add_part("forearm_" + n, "arm_" + n, Vector3(0, -0.32, 0), Vector3(0.4, 0, 0))
+		var arm: String = "arm_" + n
+		var fore: String = "forearm_" + n
+		r.add_part(arm, "torso", Vector3(0.225 * side, 0.4, 0), Vector3(0, 0, 0.1 * side))
+		r.add_shape(arm, lathe([0.056, -0.31, 0.062, -0.2, 0.072, -0.08, 0.07, 0.0, 0.045, 0.05, 0.0, 0.065], 10), coat)
+		r.add_shape(arm, lathe([0.062, -0.33, 0.068, -0.31, 0.062, -0.29], 8), coat_l)
+		r.add_part(fore, arm, Vector3(0, -0.31, 0), Vector3(0.35, 0, 0))
 		if side < 0:
-			r.add_shape("forearm_" + n, _cyl(0.095, 0.115, 0.28), wrap, Vector3(0, -0.13, 0))
-			r.add_shape("forearm_" + n, _box(0.21, 0.2, 0.21), wrap, Vector3(0, -0.32, 0))
+			r.add_shape(fore, lathe([0.036, -0.27, 0.046, -0.16, 0.054, -0.05, 0.05, 0.02], 10), SKIN)
+			r.add_shape(fore, lathe([0.04, -0.28, 0.049, -0.17, 0.053, -0.1, 0.05, -0.09], 10), wrap)
+			for y: float in [-0.24, -0.19, -0.14]:
+				r.add_shape(fore, lathe([0.047, y - 0.01, 0.055, y, 0.047, y + 0.01], 8), wrap_d)
+			r.add_shape(fore, bbox(0.075, 0.095, 0.09, 0.025), wrap, Vector3(0, -0.325, -0.008), none, one, 0.0, 0.0, true)
+			r.add_shape(fore, bbox(0.08, 0.03, 0.04, 0.008), wrap_d, Vector3(0, -0.36, -0.035))
 		else:
-			r.add_shape("forearm_" + n, _cyl(0.12, 0.15, 0.3), STEEL, Vector3(0, -0.13, 0))
-			r.add_shape("forearm_" + n, _cyl(0.16, 0.16, 0.06), cyan, Vector3(0, -0.02, 0), Vector3.ZERO, Vector3.ONE, 0.7)
-			r.add_shape("forearm_" + n, _box(0.29, 0.25, 0.29), IRON.lightened(0.3), Vector3(0, -0.36, 0))
-			r.add_shape("forearm_" + n, _box(0.31, 0.09, 0.12), cyan, Vector3(0, -0.44, -0.1), Vector3.ZERO, Vector3.ONE, 0.9)
+			r.add_shape(fore, lathe([0.05, -0.28, 0.055, -0.18, 0.066, -0.06, 0.08, -0.01, 0.074, 0.02, 0.04, 0.03], 8), STEEL, none, none, one, 0.0, 0.9, true)
+			for y: float in [-0.21, -0.13]:
+				r.add_shape(fore, lathe([0.056, y - 0.012, 0.068, y, 0.06, y + 0.012], 8), STEEL.darkened(0.35), none, none, one, 0.0, 0.9, true)
+			r.add_shape(fore, bbox(0.095, 0.105, 0.105, 0.028), IRON.lightened(0.2), Vector3(0, -0.33, -0.008), none, one, 0.0, 0.8, true)
+			r.add_shape(fore, bbox(0.1, 0.022, 0.035, 0.007), cyan, Vector3(0, -0.375, -0.045), none, one, 0.6)
+	# Weapons ride here (see ModelRig.set_weapon): -Z runs forward-and-down out of the fist.
+	r.add_part("hand_right", "forearm_right", Vector3(0, -0.33, 0), Vector3(deg_to_rad(-45.0), 0, 0))
 
-	r.add_part("arm_right_stump", "torso", Vector3(0.44, 0.42, 0))
-	r.add_shape("arm_right_stump", _ball(0.145, 6, 3), blue_l, Vector3.ZERO)
-	r.add_shape("arm_right_stump", _cyl(0.11, 0.1, 0.12), wrap, Vector3(0.03, -0.12, 0), Vector3(0, 0, 12))
-	r.add_shape("arm_right_stump", _cyl(0.115, 0.1, 0.07), Color(0.75, 0.06, 0.06), Vector3(0.045, -0.21, 0), Vector3(0, 0, 12), Vector3.ONE, 0.25)
-	r.get_part("arm_right_stump").visible = false
+	# Shown instead of the right arm: torn sleeve, a fat bandaged stump with a stained end,
+	# a sling strap wound across the chest and a loose bandage tail.
+	var st: String = "arm_right_stump"
+	var blood := Color(0.4, 0.04, 0.04)
+	r.add_part(st, "torso", Vector3(0.225, 0.4, 0))
+	r.add_shape(st, lathe([0.085, -0.07, 0.078, 0.0, 0.045, 0.05, 0.0, 0.065], 10, 5, 0.12, 0.0, 0.035), coat)
+	r.add_shape(st, ball(0.092, 10, 5), wrap, Vector3(0.012, -0.06, 0), none, Vector3(1.0, 0.95, 1.0))
+	r.add_shape(st, lathe([0.07, -0.21, 0.082, -0.18, 0.086, -0.07, 0.075, -0.02], 10), wrap, Vector3(0.012, 0, 0), Vector3(0, 0, 12))
+	for y: float in [-0.15, -0.1]:
+		r.add_shape(st, lathe([0.084, y - 0.012, 0.094, y, 0.085, y + 0.012], 8), wrap_d, Vector3(0.012, 0, 0), Vector3(0, 0, 12))
+	r.add_shape(st, ball(0.076, 10, 5), blood, Vector3(0.056, -0.205, 0), Vector3(0, 0, 12), Vector3(1.0, 0.5, 1.0), 0.12)
+	var sling: Array = []
+	var sling_r: Array = []
+	for i: int in 17:
+		var a: float = TAU * float(i) / 16.0
+		var x: float = cos(a) * (0.2 + 0.025 * cos(a))
+		sling.append_array([x - 0.225, 0.22 + x * 0.75 - 0.4, sin(a) * 0.142])
+		sling_r.append(0.034)
+	r.add_shape(st, tube(sling, sling_r, 5, 0.35, Vector3.UP), wrap)
+	r.add_shape(st, tube([0.055, -0.2, 0.02, 0.07, -0.28, 0.04, 0.06, -0.36, 0.05, 0.075, -0.41, 0.045], [0.02, 0.024, 0.02, 0.006], 4, 0.3), wrap_d)
+	r.get_part(st).visible = false
 
 	r.finish()
 	return r
 
 
-## An enemy model for a kind in data/enemies.json ("grunt", "brute", "commander"). Radius,
-## height and base colour come from that file. Unknown kinds get a plain figure.
-static func enemy(kind: String) -> ModelRig:
+# ---------------------------------------------------------------- enemies
+
+static func _build_enemy(kind: String) -> ModelRig:
 	var def: Dictionary = _enemy_def(kind)
 	var radius: float = float(def.get("radius", 0.5))
 	var height: float = float(def.get("height", 1.7))
 	var rgb: Array = def.get("color", [0.6, 0.6, 0.6])
 	var color := Color(float(rgb[0]), float(rgb[1]), float(rgb[2]))
-	var r: ModelRig
-	match kind:
-		"grunt":
-			r = _grunt(color)
-		"brute":
-			r = _brute(color)
-		"commander":
-			r = _commander(color)
-		_:
-			r = _plain(color, radius, height)
+	var r := ModelRig.new()
 	r.name = "EnemyModel_" + kind
 	r.radius = radius
 	r.height = height
 	r.stride_speed = float(def.get("speed", 3.0))
+	match kind:
+		"grunt":
+			_grunt(r, color)
+		"brute":
+			_brute(r, color)
+		"commander":
+			_commander(r, color)
+		_:
+			_plain(r, color, radius, height)
 	r.finish()
 	return r
 
 
-## Living scenery: "grass" (a tuft of blades with seed heads, ~0.8 tall) or "bush" (a clumpy
-## shrub, ~1.1 tall). Each call is a little different. The returned node is a ModelRig, so
-## set_highlight() / flash() work on it; scale it freely to show damage.
-static func scenery(kind: String) -> Node3D:
+## Masked Skirmisher: small hunched cone of pleated, ragged cloak, drooping pointed hood,
+## pale mask with burning eye slits, long hooked knife.
+static func _grunt(r: ModelRig, color: Color) -> void:
+	r.stride_rate = 4.4
+	r.swing = 0.62
+	r.step_bob = 0.07
+	r.lean = 0.25
+	r.raise_arm = 2.7
+	r.raise_forearm = 0.3
+	r.strike_arm = 1.1
+	r.strike_forearm = 0.0
+	var cloak := grim(color, 0.5, 0.5)
+	var cloak_d := grim(color, 0.4, 0.3)
+	var cloak_l := grim(color, 0.5, 0.42)
+	var dark := Color(0.08, 0.065, 0.07)
+	var eye := Color(1.0, 0.72, 0.2)
+
+	for side: int in [-1, 1]:
+		var n: String = "left" if side < 0 else "right"
+		var leg: String = "leg_" + n
+		var shin: String = "shin_" + n
+		r.add_part(leg, "", Vector3(0.14 * side, 0.6, 0.0))
+		r.add_shape(leg, lathe([0.065, -0.31, 0.08, -0.15, 0.09, 0.02], 10), dark)
+		r.add_part(shin, leg, Vector3(0, -0.3, 0))
+		r.add_shape(shin, lathe([0.05, -0.27, 0.066, -0.14, 0.072, 0.02], 10), dark)
+		for y: float in [-0.2, -0.13]:
+			r.add_shape(shin, lathe([0.062, y - 0.015, 0.072, y, 0.062, y + 0.015], 8), BONE.darkened(0.4))
+		r.add_shape(shin, bbox(0.13, 0.085, 0.24, 0.03, 0.75, 0.85), dark.lightened(0.14), Vector3(0, -0.258, -0.05))
+		r.add_shape(shin, cyl(0.0, 0.05, 0.16, 6), dark.lightened(0.14), Vector3(0, -0.262, -0.22), Vector3(-78, 0, 0))
+
+	r.add_part("body", "", Vector3(0, 0.58, 0), Vector3(-0.16, 0, 0))
+	r.add_shape("body", lathe([0.31, -0.22, 0.3, -0.1, 0.25, 0.1, 0.2, 0.32, 0.165, 0.5, 0.12, 0.62], 16, 8, 0.13, 0.0, 0.11), cloak)
+	r.add_shape("body", lathe([0.3, 0.24, 0.27, 0.36, 0.2, 0.5, 0.12, 0.64], 14, 7, 0.1, 0.0, 0.07), cloak_d)
+	r.add_shape("body", bbox(0.06, 0.06, 0.03, 0.01), BONE.darkened(0.2), Vector3(0, 0.5, -0.2), Vector3(-25, 0, 45))
+	r.add_shape("body", lathe([0.255, 0.02, 0.27, 0.04, 0.255, 0.07], 12), LEATHER, Vector3(0, 0, 0.0), Vector3.ZERO, Vector3.ONE, 0.0, 0.2)
+	r.add_part("cloak", "body", Vector3(0, 0.5, 0.15), Vector3(-0.3, 0, 0))
+	r.add_shape("cloak", MeshKit.sheet(0.3, 0.44, 0.8, 2.5, 0.04, 0.1, 0.12, 10, 6), cloak_d)
+	r.sway_parts["cloak"] = -0.45
+
+	r.add_part("torso", "body", Vector3(0, 0.3, 0))
+	r.add_part("head", "torso", Vector3(0, 0.37, -0.05)).scale = Vector3.ONE * 0.7
+	r.add_shape("head", ball(0.225, 14, 7), cloak, Vector3(0, 0.07, 0.02))
+	r.add_shape("head", tube([0, 0.1, 0.02, 0, 0.26, 0.06, 0, 0.36, 0.16, 0, 0.385, 0.29, 0, 0.32, 0.4], [0.2, 0.15, 0.1, 0.055, 0.0], 10), cloak)
+	r.add_shape("head", torus(0.15, 0.225, 16, 6), cloak_l, Vector3(0, 0.07, -0.13), Vector3(90, 0, 0), Vector3(1.0, 1.0, 1.1))
+	r.add_shape("head", ball(0.17, 10, 5), dark, Vector3(0, 0.07, -0.07))
+	r.add_shape("head", ball(0.15, 12, 6), BONE, Vector3(0, 0.06, -0.175), Vector3.ZERO, Vector3(0.85, 1.15, 0.38), 0.0, 0.25)
+	r.add_shape("head", cyl(0.0, 0.075, 0.15, 6), BONE, Vector3(0, -0.13, -0.17), Vector3(180, 0, 0), Vector3(1.0, 1.0, 0.5), 0.0, 0.25, true)
+	r.add_shape("head", bbox(0.21, 0.035, 0.04, 0.01), BONE.darkened(0.2), Vector3(0, 0.135, -0.222), Vector3(-8, 0, 0))
+	r.add_shape("head", bbox(0.028, 0.11, 0.02, 0.006), cloak, Vector3(0, 0.185, -0.21), Vector3(-22, 0, 0))
+	for side: int in [-1, 1]:
+		r.add_shape("head", bbox(0.07, 0.034, 0.03, 0.008), eye, Vector3(0.056 * side, 0.09, -0.228), Vector3(0, 0, 15 * side), Vector3.ONE, 1.6)
+		r.add_shape("head", bbox(0.014, 0.055, 0.02, 0.004), dark, Vector3(0.028 * side, -0.03, -0.228))
+		r.add_shape("head", bbox(0.05, 0.02, 0.02, 0.005), cloak, Vector3(0.085 * side, 0.02, -0.215), Vector3(0, 0, -25 * side))
+	r.add_shape("head", bbox(0.014, 0.055, 0.02, 0.004), dark, Vector3(0, -0.035, -0.23))
+
+	for side: int in [-1, 1]:
+		var n: String = "left" if side < 0 else "right"
+		var arm: String = "arm_" + n
+		var fore: String = "forearm_" + n
+		r.add_part(arm, "torso", Vector3(0.19 * side, 0.22, -0.02), Vector3(0, 0, 0.2 * side))
+		r.add_shape(arm, lathe([0.075, -0.32, 0.062, -0.16, 0.06, 0.0, 0.03, 0.05], 8, 4, 0.12, 0.0, 0.05), cloak_d)
+		r.add_part(fore, arm, Vector3(0, -0.28, 0), Vector3(0.8, 0, 0))
+		r.add_shape(fore, lathe([0.042, -0.26, 0.052, -0.12, 0.058, 0.0], 8), dark)
+		for y: float in [-0.2, -0.14]:
+			r.add_shape(fore, lathe([0.05, y - 0.014, 0.06, y, 0.05, y + 0.014], 8), BONE.darkened(0.4))
+		r.add_shape(fore, ball(0.045, 8, 4), BONE.darkened(0.35), Vector3(0, -0.27, 0))
+	# Hooked knife: runs forward-and-down from the right fist so it levels out on the strike.
+	var hand := Vector3(0, -0.27, 0)
+	var held := Vector3(0, 90, -45)
+	r.add_shape("forearm_right", MeshKit.extrude(poly([-0.11, -0.022, 0.06, -0.022, 0.06, 0.022, -0.11, 0.022]), 0.045), LEATHER, hand, held)
+	r.add_shape("forearm_right", MeshKit.extrude(poly([0.045, -0.085, 0.085, -0.07, 0.085, 0.07, 0.045, 0.085]), 0.06), LEATHER.lightened(0.2), hand, held, Vector3.ONE, 0.0, 0.6)
+	r.add_shape("forearm_right", MeshKit.extrude(poly([0.085, -0.04, 0.24, -0.06, 0.5, -0.06, 0.66, -0.015, 0.76, 0.08, 0.6, 0.045, 0.5, 0.05, 0.46, 0.02, 0.3, 0.03, 0.085, 0.035]), 0.03), STEEL.darkened(0.15), hand, held, Vector3.ONE, 0.0, 1.0)
+	r.add_shape("forearm_right", MeshKit.extrude(poly([0.1, -0.04, 0.24, -0.06, 0.5, -0.06, 0.66, -0.015, 0.76, 0.08, 0.64, 0.0, 0.5, -0.035, 0.24, -0.035]), 0.036), STEEL.lightened(0.35), hand, held, Vector3.ONE, 0.0, 1.0)
+
+
+## Hide-Bound Brute: a wide hunched barrel with a spined back, a small sunk head with
+## up-curved tusks, and arms like tree trunks ending in bone-studded fists.
+static func _brute(r: ModelRig, color: Color) -> void:
+	r.stride_rate = 2.6
+	r.swing = 0.5
+	r.step_bob = 0.08
+	r.bob = 0.035
+	r.lean = 0.08
+	r.strike_both_arms = true
+	r.raise_arm = 2.7
+	r.raise_forearm = 0.5
+	r.strike_arm = 0.9
+	r.strike_forearm = 0.1
+	var hide := grim(color, 0.28, 1.0).lerp(Color(0.3, 0.27, 0.27), 0.3)
+	var hide_d := grim(color, 0.25, 0.6)
+	var hide_l := grim(color, 0.2, 1.0).lerp(Color(0.46, 0.41, 0.38), 0.55)
+	var strap := LEATHER.darkened(0.25)
+	var eye := Color(1.0, 0.4, 0.12)
+
+	for side: int in [-1, 1]:
+		var n: String = "left" if side < 0 else "right"
+		var leg: String = "leg_" + n
+		var shin: String = "shin_" + n
+		r.add_part(leg, "", Vector3(0.28 * side, 0.82, 0.0))
+		r.add_shape(leg, lathe([0.17, -0.43, 0.2, -0.3, 0.245, -0.12, 0.22, 0.06], 12), hide_d)
+		r.add_part(shin, leg, Vector3(0, -0.4, 0))
+		r.add_shape(shin, lathe([0.15, -0.36, 0.175, -0.25, 0.205, -0.1, 0.17, 0.03], 12), LEATHER)
+		for y: float in [-0.27, -0.14]:
+			r.add_shape(shin, lathe([0.18, y - 0.025, 0.2, y, 0.185, y + 0.025], 10), strap)
+		r.add_shape(shin, bbox(0.33, 0.15, 0.44, 0.055, 0.78, 0.8), hide_d, Vector3(0, -0.345, -0.07))
+		for k: int in 3:
+			r.add_shape(shin, cyl(0.0, 0.045, 0.16, 5), BONE, Vector3(-0.1 + 0.1 * float(k), -0.385, -0.31), Vector3(-100, 0, 0), Vector3.ONE, 0.0, 0.3)
+
+	r.add_part("body", "", Vector3(0, 0.82, 0))
+	r.add_shape("body", lathe([0.34, -0.12, 0.45, 0.04, 0.5, 0.24, 0.48, 0.46], 16), hide_d, Vector3.ZERO, Vector3.ZERO, Vector3(1, 1, 0.85))
+	r.add_shape("body", lathe([0.5, 0.13, 0.535, 0.16, 0.535, 0.27, 0.5, 0.3], 16), strap, Vector3.ZERO, Vector3.ZERO, Vector3(1, 1, 0.85))
+	r.add_shape("body", cyl(0.11, 0.11, 0.06, 8), BONE, Vector3(0, 0.215, -0.45), Vector3(90, 0, 0), Vector3.ONE, 0.0, 0.3)
+	r.add_shape("body", MeshKit.sheet(0.4, 0.3, 0.55, 1.5, 0.03, -0.03, 0.06, 8, 4), LEATHER, Vector3(0, 0.15, -0.44))
+	r.add_shape("body", MeshKit.sheet(0.44, 0.34, 0.5, 1.5, 0.03, 0.03, 0.06, 8, 4), LEATHER.darkened(0.1), Vector3(0, 0.15, 0.44))
+
+	r.add_part("torso", "body", Vector3(0, 0.42, 0), Vector3(-0.3, 0, 0))
+	r.add_shape("torso", lathe([0.46, -0.04, 0.56, 0.15, 0.64, 0.38, 0.62, 0.58, 0.48, 0.76, 0.24, 0.87], 18), hide, Vector3.ZERO, Vector3.ZERO, Vector3(1, 1, 0.8))
+	r.add_shape("torso", ball(0.3, 10, 5), hide_l, Vector3(0, 0.22, -0.3), Vector3.ZERO, Vector3(1.15, 1.0, 0.8))
+	for side: int in [-1, 1]:
+		r.add_shape("torso", ball(0.2, 12, 6), hide_l, Vector3(0.2 * side, 0.54, -0.37), Vector3.ZERO, Vector3(1.2, 0.9, 0.7))
+	r.add_shape("torso", ball(0.44, 14, 7), hide_d, Vector3(0, 0.66, 0.2), Vector3.ZERO, Vector3(1.2, 0.75, 0.95))
+	var back: Array = [[0.93, 0.18, 12.0, 0.26], [0.86, 0.42, 42.0, 0.3], [0.62, 0.58, 72.0, 0.28], [0.36, 0.56, 92.0, 0.22]]
+	for spine: Array in back:
+		r.add_shape("torso", cyl(0.0, 0.075, float(spine[3]), 6), BONE, Vector3(0, float(spine[0]), float(spine[1])), Vector3(float(spine[2]), 0, 0), Vector3.ONE, 0.0, 0.3)
+	var belt: Array = []
+	var belt_r: Array = []
+	for i: int in 21:
+		var a: float = TAU * float(i) / 20.0
+		var x: float = cos(a) * 0.64
+		belt.append_array([x, 0.42 + x * 0.45, sin(a) * 0.52])
+		belt_r.append(0.07)
+	r.add_shape("torso", tube(belt, belt_r, 6, 0.4, Vector3.UP), strap)
+	for side: int in [-1, 1]:
+		r.add_shape("torso", lathe([0.27, 0.0, 0.26, 0.09, 0.17, 0.2, 0.0, 0.25], 12), LEATHER, Vector3(0.5 * side, 0.63, 0), Vector3(0, 0, -16 * side))
+		r.add_shape("torso", lathe([0.275, -0.02, 0.29, 0.01, 0.27, 0.04], 12), strap, Vector3(0.5 * side, 0.63, 0), Vector3(0, 0, -16 * side))
+		r.add_shape("torso", cyl(0.0, 0.085, 0.36, 6), BONE, Vector3(0.56 * side, 0.94, 0.0), Vector3(0, 0, -16 * side), Vector3.ONE, 0.0, 0.3)
+		r.add_shape("torso", cyl(0.0, 0.06, 0.24, 6), BONE, Vector3(0.4 * side, 0.9, 0.16), Vector3(-18, 0, -8 * side), Vector3.ONE, 0.0, 0.3)
+
+	r.add_part("head", "torso", Vector3(0, 0.72, -0.38), Vector3(0.3, 0, 0))
+	r.add_shape("head", ball(0.24, 14, 7), hide_l, Vector3(0, 0.06, 0), Vector3.ZERO, Vector3(1.0, 0.92, 1.05))
+	r.add_shape("head", bbox(0.42, 0.1, 0.16, 0.035), hide_d, Vector3(0, 0.15, -0.17), Vector3(14, 0, 0))
+	r.add_shape("head", bbox(0.36, 0.17, 0.3, 0.055, 0.85, 0.9), hide_d, Vector3(0, -0.1, -0.1))
+	r.add_shape("head", ball(0.07, 8, 4), hide_d, Vector3(0, 0.0, -0.235), Vector3.ZERO, Vector3(1.2, 0.8, 0.8))
+	for side: int in [-1, 1]:
+		r.add_shape("head", tube([0.14 * side, -0.07, -0.2, 0.2 * side, -0.05, -0.3, 0.215 * side, 0.06, -0.37, 0.19 * side, 0.19, -0.37], [0.058, 0.052, 0.036, 0.0], 7), BONE, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, 0.0, 0.35)
+		r.add_shape("head", ball(0.04, 8, 4), eye, Vector3(0.1 * side, 0.075, -0.215), Vector3.ZERO, Vector3(0.9, 0.6, 1.0), 1.8)
+		r.add_shape("head", cyl(0.0, 0.065, 0.2, 5), hide, Vector3(0.26 * side, 0.1, 0.03), Vector3(0, 0, -68 * side))
+		r.add_shape("head", cyl(0.0, 0.03, 0.08, 4), BONE, Vector3(0.06 * side, -0.01, -0.245), Vector3(-10, 0, 0))
+
+	for side: int in [-1, 1]:
+		var n: String = "left" if side < 0 else "right"
+		var arm: String = "arm_" + n
+		var fore: String = "forearm_" + n
+		r.add_part(arm, "torso", Vector3(0.52 * side, 0.56, -0.02), Vector3(0.25, 0, 0.03 * side))
+		r.add_shape(arm, ball(0.21, 10, 5), hide)
+		r.add_shape(arm, lathe([0.14, -0.6, 0.165, -0.48, 0.21, -0.26, 0.2, -0.06, 0.16, 0.04], 10), hide)
+		r.add_part(fore, arm, Vector3(0, -0.58, 0), Vector3(0.3, 0, 0))
+		r.add_shape(fore, ball(0.155, 10, 5), hide_d)
+		r.add_shape(fore, lathe([0.15, -0.62, 0.2, -0.46, 0.2, -0.3, 0.165, -0.1, 0.14, 0.02], 10), hide)
+		r.add_shape(fore, lathe([0.205, -0.48, 0.218, -0.44, 0.218, -0.24, 0.195, -0.2], 8), LEATHER, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, 0.0, 0.2, true)
+		for k: int in 6:
+			var a: float = TAU * float(k) / 6.0
+			r.add_shape(fore, ball(0.035, 6, 3), BONE, Vector3(cos(a) * 0.218, -0.34, sin(a) * 0.218), Vector3.ZERO, Vector3.ONE, 0.0, 0.3)
+		r.add_shape(fore, bbox(0.27, 0.26, 0.29, 0.07), hide_d, Vector3(0, -0.74, 0), Vector3.ZERO, Vector3.ONE, 0.0, 0.0, true)
+		r.add_shape(fore, bbox(0.08, 0.15, 0.11, 0.03), hide_d, Vector3(-0.15 * side, -0.71, -0.06), Vector3.ZERO, Vector3.ONE, 0.0, 0.0, true)
+		for k: int in 4:
+			r.add_shape(fore, ball(0.04, 6, 3), BONE, Vector3(-0.095 + 0.063 * float(k), -0.86, -0.09), Vector3.ZERO, Vector3(1.0, 1.0, 1.0), 0.0, 0.3)
+
+
+## Wall Commander: tall iron-and-gold plate, crested great helm with a burning visor, heater
+## shield, greatsword, pleated crimson cape and a small back-banner. The leader of a wall.
+static func _commander(r: ModelRig, color: Color) -> void:
+	r.stride_rate = 2.2
+	r.swing = 0.42
+	r.step_bob = 0.04
+	r.lean = 0.05
+	r.raise_arm = 2.5
+	r.raise_forearm = 0.5
+	r.strike_arm = 0.7
+	r.strike_forearm = 0.0
+	var gold := grim(color, 0.6, 0.72)
+	var gold_d := gold.darkened(0.35)
+	var iron := IRON.lightened(0.05)
+	var iron_l := IRON.lightened(0.16)
+	var crimson := Color(0.33, 0.05, 0.07)
+	var crimson_d := crimson.darkened(0.35)
+	var fire := Color(1.0, 0.62, 0.15)
+	var m: float = 0.85
+	var none := Vector3.ZERO
+	var one := Vector3.ONE
+
+	for side: int in [-1, 1]:
+		var n: String = "left" if side < 0 else "right"
+		var leg: String = "leg_" + n
+		var shin: String = "shin_" + n
+		r.add_part(leg, "", Vector3(0.2 * side, 1.05, 0.0))
+		r.add_shape(leg, lathe([0.13, -0.52, 0.15, -0.36, 0.178, -0.1, 0.16, 0.05], 12), iron, none, none, one, 0.0, m)
+		r.add_shape(leg, bbox(0.2, 0.32, 0.06, 0.02, 0.85, 1.0), gold, Vector3(0, -0.2, -0.155), Vector3(-4, 0, 0), one, 0.0, m)
+		r.add_part(shin, leg, Vector3(0, -0.5, 0))
+		r.add_shape(shin, ball(0.135, 10, 5), gold, Vector3(0, 0, -0.05), none, Vector3(1.0, 1.0, 0.9), 0.0, m)
+		r.add_shape(shin, lathe([0.1, -0.47, 0.116, -0.36, 0.152, -0.14, 0.13, 0.02], 12), iron, none, none, one, 0.0, m)
+		r.add_shape(shin, bbox(0.07, 0.4, 0.05, 0.016), gold, Vector3(0, -0.24, -0.13), Vector3(3, 0, 0), one, 0.0, m)
+		r.add_shape(shin, lathe([0.12, -0.4, 0.132, -0.385, 0.12, -0.37], 10), gold_d, none, none, one, 0.0, m)
+		r.add_shape(shin, bbox(0.24, 0.15, 0.38, 0.05, 0.75, 0.8), iron_l, Vector3(0, -0.475, -0.05), none, one, 0.0, m)
+		r.add_shape(shin, cyl(0.0, 0.085, 0.2, 6), gold, Vector3(0, -0.5, -0.29), Vector3(-82, 0, 0), Vector3(1.0, 1.0, 0.7), 0.0, m)
+
+	r.add_part("body", "", Vector3(0, 1.05, 0))
+	r.add_shape("body", lathe([0.5, -0.44, 0.47, -0.25, 0.4, -0.05, 0.36, 0.1], 18, 9, 0.07, 0.0), crimson, none, none, Vector3(1, 1, 0.8))
+	r.add_shape("body", lathe([0.37, 0.07, 0.405, 0.1, 0.405, 0.18, 0.37, 0.21], 16), gold, none, none, Vector3(1, 1, 0.8), 0.0, m)
+	r.add_shape("body", bbox(0.22, 0.56, 0.05, 0.02, 0.85, 1.0), gold, Vector3(0, -0.17, -0.385), Vector3(13, 0, 0), one, 0.0, m)
+	r.add_shape("body", bbox(0.13, 0.13, 0.04, 0.012), gold_d, Vector3(0, -0.12, -0.425), Vector3(13, 0, 45), one, 0.0, m)
+	for side: int in [-1, 1]:
+		r.add_shape("body", bbox(0.24, 0.34, 0.05, 0.02, 0.9, 1.0), iron_l, Vector3(0.3 * side, -0.1, -0.24), Vector3(10, -42 * side, 0), one, 0.0, m)
+		r.add_shape("body", bbox(0.25, 0.05, 0.06, 0.012), gold, Vector3(0.31 * side, -0.26, -0.265), Vector3(10, -42 * side, 0), one, 0.0, m)
+
+	r.add_part("torso", "body", Vector3(0, 0.18, 0))
+	r.add_shape("torso", lathe([0.35, -0.02, 0.37, 0.14, 0.46, 0.36, 0.5, 0.54, 0.44, 0.68, 0.24, 0.77], 18), iron, none, none, Vector3(1, 1, 0.74), 0.0, m)
+	r.add_shape("torso", lathe([0.385, 0.16, 0.4, 0.18, 0.385, 0.2], 16), gold, none, none, Vector3(1, 1, 0.74), 0.0, m)
+	r.add_shape("torso", lathe([0.43, 0.3, 0.445, 0.32, 0.43, 0.34], 16), gold_d, none, none, Vector3(1, 1, 0.74), 0.0, m)
+	r.add_shape("torso", MeshKit.extrude(poly([-0.22, 0.2, -0.13, 0.2, 0.0, 0.0, 0.13, 0.2, 0.22, 0.2, 0.0, -0.16]), 0.05), gold, Vector3(0, 0.5, -0.365), Vector3(-10, 0, 0), one, 0.0, m)
+	r.add_shape("torso", lathe([0.2, 0.7, 0.26, 0.745, 0.25, 0.84, 0.2, 0.87], 14), gold, none, none, one, 0.0, m)
+	for side: int in [-1, 1]:
+		var at := Vector3(0.53 * side, 0.66, 0)
+		var tilt := Vector3(0, 0, -14 * side)
+		r.add_shape("torso", lathe([0.22, -0.17, 0.25, -0.05, 0.235, 0.0], 8), iron_l, at, tilt, Vector3(1.0, 1.0, 1.1), 0.0, m, true)
+		r.add_shape("torso", lathe([0.25, 0.0, 0.24, 0.07, 0.15, 0.17, 0.0, 0.2], 8), iron_l, at, tilt, Vector3(1.0, 1.0, 1.1), 0.0, m, true)
+		r.add_shape("torso", lathe([0.25, -0.015, 0.265, 0.01, 0.25, 0.035], 8), gold, at, tilt, Vector3(1.0, 1.0, 1.1), 0.0, m, true)
+		r.add_shape("torso", MeshKit.extrude(poly([-0.16, 0.0, 0.16, 0.0, 0.08, 0.12, -0.11, 0.09]), 0.03), gold, Vector3(0.5 * side, 0.84, 0.0), Vector3(0, 90, 0), one, 0.0, m)
+
+	r.add_part("cape", "torso", Vector3(0, 0.74, 0.3), Vector3(-0.14, 0, 0))
+	r.add_shape("cape", MeshKit.sheet(0.88, 1.1, 1.55, 3.0, 0.06, 0.1, 0.07, 14, 7), crimson)
+	r.add_shape("cape", MeshKit.sheet(0.94, 1.0, 0.45, 3.0, 0.03, 0.02, 0.0, 12, 3), crimson_d, Vector3(0, 0.02, 0.03))
+	var hem: Array = []
+	var hem_r: Array = []
+	for i: int in 15:
+		var u: float = float(i) / 14.0
+		hem.append_array([(u - 0.5) * 1.15, -1.55, 0.06 * cos(u * 3.0 * TAU) + 0.1])
+		hem_r.append(0.035)
+	r.add_shape("cape", bbox(0.3, 0.3, 0.03, 0.01), gold_d, Vector3(0, -0.8, 0.09), Vector3(4, 0, 45), one, 0.0, m)
+	r.sway_parts["cape"] = -0.5
+
+	# Banner rides behind the LEFT shoulder, clear of the helmet crest, and tops out at 2.75.
+	r.add_part("banner", "torso", Vector3(-0.56, 0.3, 0.36), Vector3(-0.06, 0, 0.05))
+	r.add_shape("banner", cyl(0.03, 0.03, 1.14, 6), LEATHER.darkened(0.3), Vector3(0, 0.57, 0))
+	r.add_shape("banner", bbox(0.52, 0.05, 0.05, 0.015), gold, Vector3(0, 1.07, 0), none, one, 0.0, m)
+	r.add_shape("banner", cyl(0.0, 0.05, 0.1, 5), gold, Vector3(0, 1.17, 0), none, one, 0.0, m)
+	r.add_shape("banner", MeshKit.sheet(0.46, 0.46, 0.5, 1.5, 0.02, 0.0, 0.09, 6, 4), crimson, Vector3(0, 1.05, 0))
+	for z: float in [-0.035, 0.035]:
+		r.add_shape("banner", bbox(0.18, 0.18, 0.02, 0.006), gold, Vector3(0, 0.84, z), Vector3(0, 0, 45), one, 0.0, m)
+	r.sway_parts["banner"] = 0.12
+
+	r.add_part("head", "torso", Vector3(0, 0.8, 0)).scale = Vector3.ONE * 0.86
+	r.add_shape("head", lathe([0.2, 0.0, 0.228, 0.06, 0.232, 0.2, 0.21, 0.32, 0.14, 0.41, 0.0, 0.45], 10), iron_l, none, none, one, 0.0, 0.9, true)
+	r.add_shape("head", lathe([0.234, 0.2, 0.248, 0.215, 0.248, 0.265, 0.228, 0.28], 16), gold, none, none, one, 0.0, m)
+	r.add_shape("head", bbox(0.27, 0.04, 0.06, 0.012), fire, Vector3(0, 0.165, -0.2), none, one, 2.0)
+	r.add_shape("head", bbox(0.055, 0.32, 0.05, 0.016), gold, Vector3(0, 0.14, -0.228), none, one, 0.0, m)
+	for side: int in [-1, 1]:
+		r.add_shape("head", bbox(0.05, 0.2, 0.17, 0.02, 0.7, 0.8), iron, Vector3(0.21 * side, 0.07, -0.1), Vector3(0, 0, 180), one, 0.0, m)
+		for k: int in 3:
+			r.add_shape("head", bbox(0.012, 0.05, 0.02, 0.003), Color(0.04, 0.04, 0.05), Vector3((0.06 + 0.035 * float(k)) * side, 0.07, -0.222 + 0.012 * float(k)))
+	r.add_shape("head", MeshKit.extrude(poly([-0.22, 0.34, -0.2, 0.47, -0.07, 0.565, 0.1, 0.575, 0.24, 0.5, 0.31, 0.36, 0.3, 0.22, 0.2, 0.3, 0.08, 0.4, -0.08, 0.41]), 0.06), crimson, none, Vector3(0, -90, 0))
+	r.add_shape("head", MeshKit.extrude(poly([-0.24, 0.3, -0.08, 0.435, 0.08, 0.425, 0.21, 0.32, 0.3, 0.2, 0.3, 0.14, 0.18, 0.26, 0.06, 0.37, -0.08, 0.38, -0.22, 0.25]), 0.075), gold, none, Vector3(0, -90, 0), one, 0.0, m)
+
+	# Right arm: greatsword running forward-and-down from the fist (levels out on the strike).
+	for side: int in [-1, 1]:
+		var n: String = "left" if side < 0 else "right"
+		# The shield arm is not an "arm_left": it stays put behind the shield instead of swinging.
+		var arm: String = "arm_right" if side > 0 else "shield_arm"
+		var fore: String = "forearm_right" if side > 0 else "shield_forearm"
+		r.add_part(arm, "torso", Vector3(0.58 * side, 0.62, 0), Vector3(0.15 if side > 0 else 0.2, 0, 0.08 * side))
+		r.add_shape(arm, lathe([0.11, -0.49, 0.13, -0.3, 0.152, -0.1, 0.13, 0.03], 12), iron, none, none, one, 0.0, m)
+		r.add_part(fore, arm, Vector3(0, -0.48, 0), Vector3(1.1 if side > 0 else 0.9, 0, 0))
+		r.add_shape(fore, ball(0.13, 10, 5), gold, none, none, one, 0.0, m)
+		r.add_shape(fore, lathe([0.11, -0.42, 0.13, -0.3, 0.162, -0.1, 0.14, 0.0], 12), gold, none, none, one, 0.0, m)
+		r.add_shape(fore, lathe([0.14, -0.2, 0.155, -0.18, 0.15, -0.16], 12), iron, none, none, one, 0.0, m)
+		r.add_shape(fore, bbox(0.22, 0.22, 0.24, 0.06), iron, Vector3(0, -0.5, 0), none, one, 0.0, m)
+	var hand := Vector3(0, -0.5, 0)
+	var held := Vector3(0, 90, -30)
+	var circle: Array = []
+	for i: int in 8:
+		circle.append_array([-0.27 + cos(TAU * float(i) / 8.0) * 0.065, sin(TAU * float(i) / 8.0) * 0.065])
+	r.add_shape("forearm_right", MeshKit.extrude(poly([-0.22, -0.035, 0.1, -0.035, 0.1, 0.035, -0.22, 0.035]), 0.065), LEATHER, hand, held)
+	r.add_shape("forearm_right", MeshKit.extrude(poly(circle), 0.1), gold, hand, held, one, 0.0, m)
+	r.add_shape("forearm_right", MeshKit.extrude(poly([0.08, -0.3, 0.17, -0.26, 0.16, -0.08, 0.16, 0.08, 0.17, 0.26, 0.08, 0.3, 0.04, 0.2, 0.09, 0.07, 0.09, -0.07, 0.04, -0.2]), 0.085), gold, hand, held, one, 0.0, m)
+	r.add_shape("forearm_right", MeshKit.extrude(poly([0.15, -0.085, 0.32, -0.1, 1.15, -0.075, 1.42, 0.0, 1.15, 0.075, 0.32, 0.1, 0.15, 0.085]), 0.04), STEEL, hand, held, one, 0.0, 1.0)
+	r.add_shape("forearm_right", MeshKit.extrude(poly([0.18, -0.022, 1.05, -0.016, 1.12, 0.0, 1.05, 0.016, 0.18, 0.022]), 0.052), STEEL.darkened(0.45), hand, held, one, 0.0, 1.0)
+
+	# Heater shield, strapped to the left side of the body.
+	r.add_part("shield", "torso", Vector3(-0.56, 0.02, -0.5), Vector3(0.0, 0.5, 0))
+	var outline: Array = [-0.32, 0.6, 0.0, 0.66, 0.32, 0.6, 0.34, 0.1, 0.26, -0.35, 0.0, -0.68, -0.26, -0.35, -0.34, 0.1]
+	var inner: Array = []
+	for i: int in range(0, outline.size(), 2):
+		inner.append_array([float(outline[i]) * 0.84, float(outline[i + 1]) * 0.86 + 0.01])
+	r.add_shape("shield", MeshKit.extrude(poly(outline), 0.07), gold, none, none, one, 0.0, m)
+	r.add_shape("shield", MeshKit.extrude(poly(inner), 0.1), iron_l, none, none, one, 0.0, 0.6)
+	r.add_shape("shield", bbox(0.56, 0.05, 0.03, 0.01), gold_d, Vector3(0, 0.14, -0.05), none, one, 0.0, m)
+	r.add_shape("shield", bbox(0.05, 1.05, 0.03, 0.01), gold_d, Vector3(0, 0.0, -0.05), none, one, 0.0, m)
+	r.add_shape("shield", bbox(0.26, 0.26, 0.05, 0.015), crimson, Vector3(0, 0.14, -0.06), Vector3(0, 0, 45))
+	r.add_shape("shield", ball(0.07, 8, 4), gold, Vector3(0, 0.14, -0.085), none, Vector3(1.0, 1.0, 0.6), 0.0, m)
+
+
+## Fallback for unknown kinds: a plain capsule body with a head.
+static func _plain(r: ModelRig, color: Color, radius: float, height: float) -> void:
+	var head_r: float = minf(radius * 0.55, height * 0.16)
+	var body_h: float = height - head_r * 1.6
+	var cap := CapsuleMesh.new()
+	cap.radius = radius * 0.75
+	cap.height = maxf(body_h, cap.radius * 2.0)
+	cap.radial_segments = 14
+	cap.rings = 5
+	r.add_part("body", "", Vector3(0, body_h * 0.5, 0))
+	r.add_shape("body", cap, color, Vector3.ZERO)
+	r.add_part("head", "body", Vector3(0, body_h * 0.5, 0))
+	r.add_shape("head", ball(head_r, 12, 6), color.lightened(0.25), Vector3(0, head_r * 0.5, 0))
+	r.add_shape("head", bbox(head_r * 1.2, head_r * 0.25, 0.05, 0.01), Color(1, 0.9, 0.5), Vector3(0, head_r * 0.6, -head_r * 0.95), Vector3.ZERO, Vector3.ONE, 1.0)
+
+
+# ---------------------------------------------------------------- scenery and loot
+
+static func _build_scenery(kind: String) -> ModelRig:
 	var r := ModelRig.new()
 	r.name = "SceneryModel_" + kind
 	if kind == "bush":
@@ -133,325 +581,183 @@ static func scenery(kind: String) -> Node3D:
 		r.radius = 0.4
 		_grass(r)
 	r.finish()
-	r.rotation.y = randf() * TAU
 	return r
 
 
-## A small loot object ~0.5 tall: a pale tied bundle, or a gold-banded chest if `equippable`.
-## The returned node is a ModelRig, so set_highlight() works on it.
-static func pickup(equippable: bool) -> Node3D:
+## Dry scrub: stiff, dark, sun-bleached stalks over a patch of bare earth, paling to straw
+## at the tips, with a few husked seed heads.
+static func _grass(r: ModelRig) -> void:
+	var stem := Color(0.2, 0.21, 0.11)
+	var straw := Color(0.52, 0.46, 0.27)
+	var husk := Color(0.66, 0.6, 0.42)
+	r.add_part("body")
+	r.add_shape("body", cyl(0.3, 0.37, 0.025, 12), Color(0.2, 0.17, 0.11), Vector3(0, 0.01, 0), Vector3.ZERO, Vector3.ONE, 0.001)
+	var blades: int = 18
+	for i: int in blades:
+		var yaw: float = TAU * float(i) / float(blades) + randf_range(-0.25, 0.25)
+		var h: float = randf_range(0.34, 0.76)
+		var out: float = h * randf_range(0.15, 0.7)
+		var w: float = randf_range(0.04, 0.065)
+		var start: float = randf_range(0.02, 0.14)
+		var bend: float = randf_range(0.3, 0.6)
+		var turn := Vector3(0, rad_to_deg(yaw), 0)
+		# Lower half dark, upper half bleached: two straight, kinked segments.
+		r.add_shape("body", tube([0, 0, start, 0, h * 0.55, start + out * bend * 0.4], [w, w * 0.8], 3, 0.35), stem.lerp(straw, randf() * 0.25), Vector3.ZERO, turn, Vector3.ONE, 0.0, 0.0, true)
+		r.add_shape("body", tube([0, h * 0.55, start + out * bend * 0.4, 0, h, start + out], [w * 0.8, 0.0], 3, 0.35), straw.lerp(stem, randf() * 0.35), Vector3.ZERO, turn, Vector3.ONE, 0.0, 0.0, true)
+	for i: int in 3:
+		var yaw: float = TAU * float(i) / 3.0 + randf_range(-0.6, 0.6)
+		var h: float = randf_range(0.5, 0.68)
+		var out: float = randf_range(0.03, 0.16)
+		r.add_shape("body", tube([0, 0, 0.02, 0, h, 0.02 + out], [0.014, 0.01], 3), stem, Vector3.ZERO, Vector3(0, rad_to_deg(yaw), 0))
+		var top: Vector3 = Basis.from_euler(Vector3(0, yaw, 0)) * Vector3(0, h + 0.03, 0.02 + out)
+		r.add_shape("body", lathe([0.0, -0.06, 0.032, -0.01, 0.026, 0.04, 0.0, 0.09], 5), husk, top, Vector3.ZERO, Vector3.ONE, 0.0, 0.0, true)
+
+
+## A thorn bush: bare dark branches carrying a few angular clumps of grey-green leaf and a
+## scatter of small rust-coloured hips.
+static func _bush(r: ModelRig) -> void:
+	var leaf := Color(0.15, 0.2, 0.12)
+	var leaf_l := Color(0.27, 0.31, 0.17)
+	var dry := Color(0.36, 0.32, 0.18)
+	var bark := Color(0.13, 0.1, 0.08)
+	var berry := Color(0.5, 0.16, 0.08)
+	r.add_part("body")
+	r.add_shape("body", cyl(0.5, 0.6, 0.025, 12), Color(0.2, 0.17, 0.11), Vector3(0, 0.01, 0), Vector3.ZERO, Vector3.ONE, 0.001)
+	var limbs: int = 7
+	for i: int in limbs:
+		var a: float = TAU * float(i) / float(limbs) + randf_range(-0.3, 0.3)
+		var reach: float = randf_range(0.3, 0.52)
+		var h: float = randf_range(0.5, 0.95)
+		var dir := Vector3(sin(a), 0, cos(a))
+		var knee: Vector3 = dir * reach * 0.45 + Vector3(0, h * 0.5, 0)
+		var tip: Vector3 = dir * reach + Vector3(0, h, 0)
+		r.add_shape("body", tube([0, 0, 0, knee.x, knee.y, knee.z, tip.x, tip.y, tip.z], [0.045, 0.03, 0.008], 4), bark, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, 0.0, 0.0, true)
+		var twig: Vector3 = knee + Vector3(dir.z, 0.6, -dir.x) * randf_range(0.15, 0.26)
+		r.add_shape("body", tube([knee.x, knee.y, knee.z, twig.x, twig.y, twig.z], [0.02, 0.0], 3), bark, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, 0.0, 0.0, true)
+		var col: Color = leaf.lerp(leaf_l, randf()) if i % 3 != 0 else leaf_l.lerp(dry, randf_range(0.4, 0.9))
+		var rad: float = randf_range(0.17, 0.26)
+		r.add_shape("body", ball(rad, 6, 3), col, tip * 0.82, Vector3(randf() * 60.0, randf() * 90.0, randf() * 40.0), Vector3(1.0, 0.7, 1.0), 0.0, 0.0, true)
+		r.add_shape("body", ball(rad * 0.7, 5, 3), col.darkened(0.15), knee + Vector3(0, 0.08, 0), Vector3(randf() * 60.0, randf() * 90.0, 0), Vector3(1.0, 0.7, 1.0), 0.0, 0.0, true)
+	r.add_shape("body", ball(0.3, 6, 4), leaf, Vector3(0, 0.5, 0), Vector3(20, randf() * 90.0, 10), Vector3(1.0, 0.75, 1.0), 0.0, 0.0, true)
+	for i: int in 6:
+		var a: float = randf() * TAU
+		var y: float = randf_range(0.4, 0.85)
+		var dist: float = lerpf(0.5, 0.3, (y - 0.4) / 0.45)
+		r.add_shape("body", ball(0.035, 5, 3), berry, Vector3(sin(a) * dist, y, cos(a) * dist))
+
+
+static func _build_pickup(equippable: bool) -> ModelRig:
 	var r := ModelRig.new()
 	r.name = "PickupModel"
 	r.height = 0.5
 	r.radius = 0.35
+	r.ao_strength = 0.6
+	var none := Vector3.ZERO
+	var one := Vector3.ONE
 	if equippable:
-		var wood := Color(0.5, 0.2, 0.12)
-		var gold := Color(1.0, 0.8, 0.25)
+		var wood := Color(0.25, 0.15, 0.1)
+		var gold := Color(0.55, 0.44, 0.2)
 		r.add_part("body", "", Vector3.ZERO, Vector3(0, 0.6, 0))
-		r.add_shape("body", _box(0.62, 0.28, 0.42), wood, Vector3(0, 0.14, 0))
-		r.add_shape("body", _cyl(0.21, 0.21, 0.62, 8), wood.lightened(0.15), Vector3(0, 0.28, 0), Vector3(0, 0, 90), Vector3(0.85, 1, 1))
+		r.add_shape("body", bbox(0.62, 0.28, 0.42, 0.03), wood, Vector3(0, 0.14, 0))
+		r.add_shape("body", cyl(0.21, 0.21, 0.6, 12), wood.lightened(0.15), Vector3(0, 0.28, 0), Vector3(0, 0, 90), Vector3(0.85, 1, 1))
 		for x: float in [-0.21, 0.21]:
-			r.add_shape("body", _box(0.11, 0.3, 0.45), gold, Vector3(x, 0.14, 0), Vector3.ZERO, Vector3.ONE, 0.35)
-			r.add_shape("body", _cyl(0.225, 0.225, 0.11, 8), gold, Vector3(x, 0.28, 0), Vector3(0, 0, 90), Vector3(0.85, 1, 1), 0.35)
-		r.add_shape("body", _box(0.16, 0.18, 0.08), gold, Vector3(0, 0.26, -0.21), Vector3.ZERO, Vector3.ONE, 1.0)
+			r.add_shape("body", bbox(0.1, 0.3, 0.45, 0.02), gold, Vector3(x, 0.14, 0), none, one, 0.0, 0.85)
+			r.add_shape("body", cyl(0.225, 0.225, 0.1, 12), gold, Vector3(x, 0.28, 0), Vector3(0, 0, 90), Vector3(0.85, 1, 1), 0.0, 0.85)
+		r.add_shape("body", bbox(0.64, 0.04, 0.44, 0.012), gold.darkened(0.2), Vector3(0, 0.27, 0), none, one, 0.0, 0.8)
+		r.add_shape("body", bbox(0.15, 0.18, 0.08, 0.025), Color(1.0, 0.75, 0.3), Vector3(0, 0.25, -0.21), none, one, 0.7, 0.8)
+		r.add_shape("body", bbox(0.04, 0.07, 0.09, 0.01), Color(0.1, 0.06, 0.04), Vector3(0, 0.23, -0.215))
 	else:
-		var cloth := Color(0.88, 0.89, 0.95)
-		var cord := Color(0.2, 0.32, 0.6)
+		var cloth := Color(0.55, 0.52, 0.45)
+		var cord := Color(0.2, 0.14, 0.1)
 		r.add_part("body")
-		r.add_shape("body", _ball(0.27, 7, 3), cloth, Vector3(0, 0.2, 0), Vector3.ZERO, Vector3(1, 0.8, 1))
-		r.add_shape("body", _cyl(0.15, 0.08, 0.14), cloth.darkened(0.08), Vector3(0, 0.45, 0))
-		r.add_shape("body", _cyl(0.1, 0.1, 0.06), cord, Vector3(0, 0.38, 0))
-		r.add_shape("body", _box(0.13, 0.13, 0.04), Color(0.55, 0.85, 1.0), Vector3(0.0, 0.26, -0.24), Vector3(-20, 0, 45), Vector3.ONE, 0.7)
+		r.add_shape("body", lathe([0.12, 0.0, 0.25, 0.08, 0.27, 0.22, 0.2, 0.34, 0.09, 0.39], 14, 7, 0.03, 0.08), cloth)
+		r.add_shape("body", lathe([0.075, 0.37, 0.1, 0.44, 0.16, 0.5, 0.15, 0.52], 12, 6, 0.1, 0.25), cloth.darkened(0.08))
+		r.add_shape("body", torus(0.075, 0.115, 12, 5), cord, Vector3(0, 0.385, 0))
+		r.add_shape("body", bbox(0.13, 0.13, 0.04, 0.012), Color(0.45, 0.8, 0.95), Vector3(0.0, 0.24, -0.265), Vector3(-12, 0, 45), one, 0.6)
 	r.finish()
 	return r
 
 
-# ---------------------------------------------------------------- enemies
+# ---------------------------------------------------------------- weapons
 
-## Masked Skirmisher: small hunched cone of ragged cloak, pointed hood, pale mask, long blade.
-static func _grunt(color: Color) -> ModelRig:
+static func _build_weapon(id: String) -> ModelRig:
 	var r := ModelRig.new()
-	r.stride_rate = 4.4
-	r.swing = 0.95
-	r.step_bob = 0.07
-	r.lean = 0.25
-	r.raise_arm = 2.7
-	r.raise_forearm = 0.3
-	r.strike_arm = 1.1
-	r.strike_forearm = 0.0
-	var cloak := color
-	var cloak_d := color.darkened(0.45)
-	var dark := Color(0.13, 0.09, 0.11)
-	var eye := Color(1.0, 0.85, 0.25)
-
-	for side: int in [-1, 1]:
-		var n: String = "left" if side < 0 else "right"
-		r.add_part("leg_" + n, "", Vector3(0.14 * side, 0.6, 0.0))
-		r.add_shape("leg_" + n, _cyl(0.085, 0.07, 0.32), dark, Vector3(0, -0.14, 0))
-		r.add_part("shin_" + n, "leg_" + n, Vector3(0, -0.3, 0))
-		r.add_shape("shin_" + n, _cyl(0.07, 0.06, 0.26), dark, Vector3(0, -0.12, 0))
-		r.add_shape("shin_" + n, _box(0.14, 0.09, 0.28), dark.lightened(0.12), Vector3(0, -0.255, -0.06))
-
-	r.add_part("body", "", Vector3(0, 0.58, 0), Vector3(-0.16, 0, 0))
-	r.add_shape("body", _cyl(0.2, 0.46, 0.72), cloak, Vector3(0, 0.2, 0.02))
-	for i: int in 6:
-		var a: float = TAU * float(i) / 6.0 + 0.5
-		r.add_shape("body", _prism(0.3, 0.26, 0.05), cloak_d, Vector3(sin(a) * 0.4, -0.25, cos(a) * 0.4 + 0.02), Vector3(180, rad_to_deg(a), 0))
-	r.add_shape("body", _cyl(0.3, 0.33, 0.12), cloak_d, Vector3(0, 0.55, 0.0))
-	r.add_part("cloak", "body", Vector3(0, 0.5, 0.18), Vector3(-0.3, 0, 0))
-	r.add_shape("cloak", _prism(0.5, 0.75, 0.05), cloak_d, Vector3(0, -0.36, 0.03), Vector3(180, 0, 0))
-	r.sway_parts["cloak"] = -0.7
-
-	r.add_part("torso", "body", Vector3(0, 0.3, 0))
-	r.add_part("head", "torso", Vector3(0, 0.36, -0.06))
-	r.add_shape("head", _cyl(0.02, 0.27, 0.5), cloak, Vector3(0, 0.2, 0.1), Vector3(32, 0, 0))
-	r.add_shape("head", _ball(0.2, 6, 3), cloak_d, Vector3(0, 0.08, 0.0))
-	r.add_shape("head", _box(0.25, 0.26, 0.06), BONE, Vector3(0, 0.08, -0.19), Vector3(-6, 0, 0))
-	r.add_shape("head", _prism(0.25, 0.16, 0.06), BONE, Vector3(0, -0.13, -0.175), Vector3(174, 0, 0))
-	r.add_shape("head", _box(0.07, 0.04, 0.03), eye, Vector3(-0.06, 0.11, -0.225), Vector3(0, 0, -14), Vector3.ONE, 1.2)
-	r.add_shape("head", _box(0.07, 0.04, 0.03), eye, Vector3(0.06, 0.11, -0.225), Vector3(0, 0, 14), Vector3.ONE, 1.2)
-
-	for side: int in [-1, 1]:
-		var n: String = "left" if side < 0 else "right"
-		r.add_part("arm_" + n, "torso", Vector3(0.27 * side, 0.2, -0.02), Vector3(0, 0, 0.25 * side))
-		r.add_shape("arm_" + n, _cyl(0.08, 0.06, 0.3), cloak_d, Vector3(0, -0.14, 0))
-		r.add_part("forearm_" + n, "arm_" + n, Vector3(0, -0.28, 0), Vector3(0.8, 0, 0))
-		r.add_shape("forearm_" + n, _cyl(0.055, 0.05, 0.26), dark, Vector3(0, -0.12, 0))
-		r.add_shape("forearm_" + n, _box(0.11, 0.11, 0.11), BONE.darkened(0.25), Vector3(0, -0.27, 0))
-	# Blade: runs forward-and-down from the right hand so it levels out in the guard pose.
-	r.add_shape("forearm_right", _box(0.05, 0.05, 0.2), LEATHER, Vector3(0, -0.27, 0), Vector3(-45, 0, 0))
-	r.add_shape("forearm_right", _box(0.2, 0.04, 0.05), eye, Vector3(0, -0.33, -0.06), Vector3(-45, 0, 0), Vector3.ONE, 0.5)
-	r.add_shape("forearm_right", _box(0.045, 0.13, 0.62), STEEL, Vector3(0, -0.57, -0.3), Vector3(-45, 0, 0), Vector3.ONE, 0.18)
-	r.add_shape("forearm_right", _prism(0.13, 0.2, 0.045), STEEL, Vector3(0, -0.86, -0.59), Vector3(-135, 0, 0), Vector3.ONE, 0.18)
+	r.name = "Weapon_" + id
+	r.height = 0.3
+	r.radius = 0.3
+	r.ao_strength = 0.0
+	var none := Vector3.ZERO
+	var one := Vector3.ONE
+	var flatwise := Vector3(0, 90, 0)
+	var dark_iron := Color(0.17, 0.17, 0.2)
+	var brass := Color(0.5, 0.4, 0.2)
+	var edge := Color(0.72, 0.75, 0.8)
+	match id:
+		"iron_knuckles":
+			# Authored in forearm space (fist at the origin, knuckles toward -Y); the part
+			# rotation undoes the hand's forward tilt so the bands sit square on the fist.
+			r.add_part("body", "", none, Vector3(deg_to_rad(45.0), 0, 0)).scale = Vector3.ONE * 0.5
+			r.add_shape("body", lathe([0.15, -0.085, 0.172, -0.065, 0.172, -0.005, 0.15, 0.015], 12), dark_iron, Vector3(0, 0, -0.01), none, Vector3(0.95, 1.0, 1.0), 0.0, 0.8)
+			for x: float in [-0.065, 0.065]:
+				r.add_shape("body", lathe([0.13, -0.022, 0.145, 0.0, 0.13, 0.022], 10), STEEL, Vector3(x, -0.01, -0.01), Vector3(0, 0, 90), Vector3(1.0, 1.0, 1.0), 0.0, 1.0)
+			r.add_shape("body", bbox(0.3, 0.085, 0.13, 0.025), dark_iron, Vector3(0, -0.105, -0.085), none, one, 0.0, 0.8)
+			for k: int in 4:
+				var x: float = -0.108 + 0.072 * float(k)
+				r.add_shape("body", cyl(0.0, 0.04, 0.1, 4), edge, Vector3(x, -0.165, -0.115), Vector3(-155, 0, 0), one, 0.0, 1.0, true)
+				r.add_shape("body", ball(0.02, 6, 3), brass, Vector3(x, -0.085, -0.153), none, one, 0.0, 0.9)
+		"serrated_dagger":
+			r.add_part("body")
+			var teeth: Array = [0.085, 0.05, 0.36, 0.05, 0.5, 0.0]
+			var x: float = 0.44
+			while x > 0.1:
+				teeth.append_array([x, -0.07, x - 0.022, -0.03])
+				x -= 0.055
+			teeth.append_array([0.085, -0.045])
+			r.add_shape("body", MeshKit.extrude(poly(teeth), 0.02), STEEL.lightened(0.15), none, flatwise, one, 0.0, 1.0)
+			r.add_shape("body", MeshKit.extrude(poly([0.1, 0.018, 0.38, 0.018, 0.38, 0.034, 0.1, 0.034]), 0.034), dark_iron, none, flatwise, one, 0.0, 0.8)
+			r.add_shape("body", MeshKit.extrude(poly([0.05, -0.09, 0.085, -0.075, 0.085, 0.075, 0.05, 0.09]), 0.055), brass, none, flatwise, one, 0.0, 0.9)
+			r.add_shape("body", MeshKit.extrude(poly([-0.13, -0.024, 0.05, -0.024, 0.05, 0.024, -0.13, 0.024]), 0.042), Color(0.2, 0.07, 0.06), none, flatwise)
+			r.add_shape("body", ball(0.036, 8, 4), brass, Vector3(0, 0, 0.14), none, one, 0.0, 0.9)
+		"invader_cleaver":
+			r.add_part("body").scale = Vector3.ONE * 0.8
+			r.add_shape("body", MeshKit.extrude(poly([0.09, 0.06, 0.3, 0.075, 0.36, 0.055, 0.42, 0.085, 0.6, 0.09, 0.66, 0.04, 0.66, -0.17, 0.6, -0.22, 0.18, -0.19, 0.12, -0.07, 0.09, -0.05]), 0.04), dark_iron, none, flatwise, one, 0.0, 0.8)
+			r.add_shape("body", MeshKit.extrude(poly([0.18, -0.19, 0.6, -0.22, 0.66, -0.17, 0.66, -0.12, 0.6, -0.17, 0.18, -0.145]), 0.046), edge, none, flatwise, one, 0.0, 1.0)
+			for at: Vector2 in [Vector2(0.52, 0.02), Vector2(0.2, 0.0), Vector2(0.3, 0.0)]:
+				r.add_shape("body", cyl(0.028, 0.028, 0.052, 8), brass if at.x < 0.4 else Color(0.06, 0.06, 0.08), Vector3(0, at.y, -at.x), Vector3(0, 0, 90), one, 0.0, 0.9)
+			r.add_shape("body", MeshKit.extrude(poly([-0.17, -0.03, 0.09, -0.03, 0.09, 0.03, -0.17, 0.03]), 0.052), WOOD, none, flatwise)
+			for x: float in [-0.12, -0.04, 0.04]:
+				r.add_shape("body", MeshKit.extrude(poly([x - 0.014, -0.034, x + 0.014, -0.034, x + 0.014, 0.034, x - 0.014, 0.034]), 0.058), LEATHER.lightened(0.15), none, flatwise)
+		"commander_blade":
+			r.add_part("body")
+			var gold := Color(0.55, 0.44, 0.2)
+			var fire := Color(1.0, 0.62, 0.15)
+			r.add_shape("body", MeshKit.extrude(poly([0.11, -0.055, 0.3, -0.045, 0.82, -0.042, 1.02, 0.0, 0.82, 0.042, 0.3, 0.045, 0.11, 0.055]), 0.024), STEEL.lightened(0.2), none, flatwise, one, 0.0, 1.0)
+			r.add_shape("body", MeshKit.extrude(poly([0.15, -0.012, 0.74, -0.009, 0.8, 0.0, 0.74, 0.009, 0.15, 0.012]), 0.03), STEEL.darkened(0.4), none, flatwise, one, 0.0, 1.0)
+			r.add_shape("body", MeshKit.extrude(poly([0.05, -0.17, 0.1, -0.21, 0.135, -0.16, 0.115, -0.06, 0.115, 0.06, 0.135, 0.16, 0.1, 0.21, 0.05, 0.17, 0.075, 0.06, 0.075, -0.06]), 0.045), gold, none, flatwise, one, 0.0, 0.9)
+			r.add_shape("body", ball(0.035, 8, 4), fire, Vector3(0, 0, -0.095), none, Vector3(1.4, 0.8, 0.8), 0.9)
+			r.add_shape("body", MeshKit.extrude(poly([-0.15, -0.023, 0.06, -0.023, 0.06, 0.023, -0.15, 0.023]), 0.042), Color(0.22, 0.05, 0.06), none, flatwise)
+			for x: float in [-0.1, -0.04, 0.02]:
+				r.add_shape("body", MeshKit.extrude(poly([x - 0.008, -0.027, x + 0.008, -0.027, x + 0.008, 0.027, x - 0.008, 0.027]), 0.048), gold, none, flatwise, one, 0.0, 0.9)
+			r.add_shape("body", lathe([0.0, -0.05, 0.04, -0.02, 0.045, 0.01, 0.0, 0.05], 8), gold, Vector3(0, 0, 0.18), Vector3(90, 0, 0), one, 0.0, 0.9, true)
+		_:
+			r.add_part("body")
+			r.add_shape("body", lathe([0.026, -0.12, 0.03, 0.05, 0.05, 0.3, 0.058, 0.4, 0.03, 0.44], 8), WOOD, none, Vector3(-90, 0, 0))
+			r.add_shape("body", lathe([0.05, 0.27, 0.06, 0.29, 0.056, 0.31], 8), dark_iron, none, Vector3(-90, 0, 0), one, 0.0, 0.8)
+			r.add_shape("body", lathe([0.03, -0.1, 0.036, -0.03, 0.03, 0.04], 8), LEATHER, none, Vector3(-90, 0, 0))
+	r.finish()
 	return r
-
-
-## Hide-Bound Brute: a wide hunched wedge, small sunk head with tusks, arms like tree trunks.
-static func _brute(color: Color) -> ModelRig:
-	var r := ModelRig.new()
-	r.stride_rate = 2.6
-	r.swing = 0.5
-	r.step_bob = 0.08
-	r.bob = 0.035
-	r.lean = 0.08
-	r.strike_both_arms = true
-	r.raise_arm = 2.7
-	r.raise_forearm = 0.5
-	r.strike_arm = 0.9
-	r.strike_forearm = 0.1
-	var hide := color.lightened(0.08)
-	var hide_d := color.darkened(0.4)
-	var hide_l := color.lightened(0.3)
-	var eye := Color(1.0, 0.45, 0.15)
-
-	for side: int in [-1, 1]:
-		var n: String = "left" if side < 0 else "right"
-		r.add_part("leg_" + n, "", Vector3(0.3 * side, 0.82, 0.0))
-		r.add_shape("leg_" + n, _cyl(0.23, 0.19, 0.44), hide_d, Vector3(0, -0.18, 0))
-		r.add_part("shin_" + n, "leg_" + n, Vector3(0, -0.4, 0))
-		r.add_shape("shin_" + n, _cyl(0.18, 0.2, 0.34), LEATHER, Vector3(0, -0.15, 0))
-		r.add_shape("shin_" + n, _box(0.38, 0.16, 0.5), hide_d, Vector3(0, -0.34, -0.07))
-
-	r.add_part("body", "", Vector3(0, 0.82, 0))
-	r.add_shape("body", _cyl(0.52, 0.44, 0.5), hide_d, Vector3(0, 0.2, 0), Vector3.ZERO, Vector3(1, 1, 0.85))
-	r.add_shape("body", _box(0.5, 0.5, 0.08), LEATHER, Vector3(0, -0.08, -0.37), Vector3(6, 0, 0))
-	r.add_shape("body", _cyl(0.54, 0.54, 0.1), LEATHER.darkened(0.2), Vector3(0, 0.2, 0), Vector3.ZERO, Vector3(1, 1, 0.85))
-
-	r.add_part("torso", "body", Vector3(0, 0.42, 0), Vector3(-0.3, 0, 0))
-	r.add_shape("torso", _cyl(0.68, 0.5, 0.72), hide, Vector3(0, 0.34, 0), Vector3.ZERO, Vector3(1, 1, 0.78))
-	r.add_shape("torso", _ball(0.5, 6, 3), hide_d, Vector3(0, 0.62, 0.22), Vector3.ZERO, Vector3(1.15, 0.7, 0.9))
-	r.add_shape("torso", _box(1.3, 0.14, 0.2), LEATHER, Vector3(0, 0.52, -0.42), Vector3(0, 0, 0))
-	r.add_shape("torso", _box(0.2, 0.75, 0.1), LEATHER, Vector3(0.2, 0.3, -0.45), Vector3(12, 0, 28))
-	for side: int in [-1, 1]:
-		r.add_shape("torso", _ball(0.36, 6, 3), LEATHER, Vector3(0.7 * side, 0.68, 0), Vector3.ZERO, Vector3(1, 0.7, 1))
-		r.add_shape("torso", _cyl(0.0, 0.11, 0.42, 5), BONE, Vector3(0.78 * side, 0.98, 0.0), Vector3(0, 0, -24 * side))
-		r.add_shape("torso", _cyl(0.0, 0.08, 0.3, 5), BONE, Vector3(0.52 * side, 0.96, 0.18), Vector3(-15, 0, -10 * side))
-
-	r.add_part("head", "torso", Vector3(0, 0.72, -0.38), Vector3(0.3, 0, 0))
-	r.add_shape("head", _ball(0.25, 6, 3), hide_l, Vector3(0, 0.06, 0), Vector3.ZERO, Vector3(1, 0.9, 1))
-	r.add_shape("head", _box(0.4, 0.16, 0.3), hide_d, Vector3(0, -0.1, -0.08))
-	r.add_shape("head", _box(0.36, 0.07, 0.06), hide_d, Vector3(0, 0.14, -0.21))
-	for side: int in [-1, 1]:
-		r.add_shape("head", _cyl(0.0, 0.07, 0.34, 5), BONE, Vector3(0.17 * side, 0.03, -0.24), Vector3(-20, 0, -12 * side))
-		r.add_shape("head", _box(0.08, 0.05, 0.04), eye, Vector3(0.1 * side, 0.08, -0.235), Vector3.ZERO, Vector3.ONE, 1.3)
-
-	for side: int in [-1, 1]:
-		var n: String = "left" if side < 0 else "right"
-		r.add_part("arm_" + n, "torso", Vector3(0.74 * side, 0.58, -0.02), Vector3(0.25, 0, 0.16 * side))
-		r.add_shape("arm_" + n, _cyl(0.24, 0.2, 0.62), hide, Vector3(0, -0.28, 0))
-		r.add_part("forearm_" + n, "arm_" + n, Vector3(0, -0.58, 0), Vector3(0.3, 0, 0))
-		r.add_shape("forearm_" + n, _cyl(0.21, 0.29, 0.58), hide_l, Vector3(0, -0.26, 0))
-		r.add_shape("forearm_" + n, _cyl(0.27, 0.3, 0.16), LEATHER, Vector3(0, -0.3, 0))
-		r.add_shape("forearm_" + n, _box(0.5, 0.42, 0.5), hide_d, Vector3(0, -0.72, 0))
-		for k: int in 3:
-			r.add_shape("forearm_" + n, _cyl(0.0, 0.075, 0.2, 4), BONE, Vector3(-0.15 + 0.15 * float(k), -0.9, -0.16), Vector3(150, 0, 0))
-	return r
-
-
-## Wall Commander: tall iron-and-gold armour, crested helm, tower shield, greatsword, crimson
-## cape and a back-banner. The leader of a wall.
-static func _commander(color: Color) -> ModelRig:
-	var r := ModelRig.new()
-	r.stride_rate = 2.2
-	r.swing = 0.42
-	r.step_bob = 0.04
-	r.lean = 0.05
-	r.raise_arm = 2.5
-	r.raise_forearm = 0.5
-	r.strike_arm = 0.7
-	r.strike_forearm = 0.0
-	var gold := color.lightened(0.2)
-	gold = Color(gold.r * 1.15, gold.g * 1.1, gold.b)
-	var iron := IRON
-	var crimson := Color(0.66, 0.07, 0.1)
-	var crimson_d := crimson.darkened(0.3)
-	var fire := Color(1.0, 0.75, 0.2)
-
-	for side: int in [-1, 1]:
-		var n: String = "left" if side < 0 else "right"
-		r.add_part("leg_" + n, "", Vector3(0.2 * side, 1.05, 0.0))
-		r.add_shape("leg_" + n, _cyl(0.17, 0.14, 0.54), iron, Vector3(0, -0.24, 0))
-		r.add_part("shin_" + n, "leg_" + n, Vector3(0, -0.5, 0))
-		r.add_shape("shin_" + n, _ball(0.16, 6, 3), gold, Vector3(0, 0, -0.04))
-		r.add_shape("shin_" + n, _cyl(0.15, 0.12, 0.44), iron, Vector3(0, -0.22, 0))
-		r.add_shape("shin_" + n, _box(0.2, 0.4, 0.06), gold, Vector3(0, -0.24, -0.13))
-		r.add_shape("shin_" + n, _box(0.27, 0.16, 0.42), iron.lightened(0.1), Vector3(0, -0.47, -0.06))
-
-	r.add_part("body", "", Vector3(0, 1.05, 0))
-	r.add_shape("body", _cyl(0.36, 0.52, 0.5), crimson, Vector3(0, -0.13, 0), Vector3.ZERO, Vector3(1, 1, 0.8))
-	r.add_shape("body", _cyl(0.39, 0.39, 0.1), gold, Vector3(0, 0.13, 0), Vector3.ZERO, Vector3(1, 1, 0.8))
-	r.add_shape("body", _box(0.2, 0.52, 0.06), gold, Vector3(0, -0.14, -0.38), Vector3(14, 0, 0))
-
-	r.add_part("torso", "body", Vector3(0, 0.18, 0))
-	r.add_shape("torso", _cyl(0.52, 0.34, 0.72), iron, Vector3(0, 0.36, 0), Vector3.ZERO, Vector3(1, 1, 0.74))
-	r.add_shape("torso", _prism(0.44, 0.4, 0.06), gold, Vector3(0, 0.44, -0.36), Vector3(188, 0, 0), Vector3.ONE, 0.25)
-	r.add_shape("torso", _cyl(0.2, 0.26, 0.12), gold, Vector3(0, 0.76, 0))
-	for side: int in [-1, 1]:
-		r.add_shape("torso", _ball(0.34, 6, 3), gold, Vector3(0.62 * side, 0.7, 0), Vector3.ZERO, Vector3(1.05, 0.72, 1.1))
-		r.add_shape("torso", _cyl(0.0, 0.1, 0.34, 5), gold, Vector3(0.78 * side, 0.9, 0), Vector3(0, 0, -38 * side))
-
-	r.add_part("cape", "torso", Vector3(0, 0.74, 0.3), Vector3(-0.14, 0, 0))
-	r.add_shape("cape", _box(1.0, 1.55, 0.06), crimson, Vector3(0, -0.78, 0.03))
-	r.add_shape("cape", _box(1.0, 0.14, 0.07), gold, Vector3(0, -1.5, 0.03))
-	r.sway_parts["cape"] = -0.5
-
-	r.add_part("banner", "torso", Vector3(-0.34, 0.2, 0.38), Vector3(-0.06, 0, 0.1))
-	r.add_shape("banner", _cyl(0.035, 0.035, 1.3, 5), LEATHER.darkened(0.3), Vector3(0, 0.62, 0))
-	r.add_shape("banner", _box(0.66, 0.05, 0.05), gold, Vector3(0, 1.2, 0))
-	r.add_shape("banner", _cyl(0.0, 0.07, 0.16, 4), gold, Vector3(0, 1.31, 0), Vector3.ZERO, Vector3.ONE, 0.3)
-	r.add_shape("banner", _box(0.56, 0.5, 0.03), crimson, Vector3(0, 0.94, 0.0))
-	r.add_shape("banner", _prism(0.28, 0.2, 0.03), crimson, Vector3(-0.14, 0.59, 0.0), Vector3(180, 0, 0))
-	r.add_shape("banner", _prism(0.28, 0.2, 0.03), crimson, Vector3(0.14, 0.59, 0.0), Vector3(180, 0, 0))
-	r.add_shape("banner", _box(0.2, 0.2, 0.045), fire, Vector3(0, 0.95, 0.0), Vector3(0, 0, 45), Vector3.ONE, 0.6)
-	r.sway_parts["banner"] = 0.12
-
-	r.add_part("head", "torso", Vector3(0, 0.8, 0))
-	r.add_shape("head", _cyl(0.19, 0.23, 0.36), iron.lightened(0.12), Vector3(0, 0.16, 0))
-	r.add_shape("head", _cyl(0.0, 0.2, 0.12), iron.lightened(0.12), Vector3(0, 0.4, 0))
-	r.add_shape("head", _box(0.3, 0.06, 0.06), fire, Vector3(0, 0.2, -0.2), Vector3.ZERO, Vector3.ONE, 1.4)
-	r.add_shape("head", _box(0.06, 0.26, 0.06), gold, Vector3(0, 0.14, -0.21))
-	r.add_shape("head", _box(0.08, 0.26, 0.52), crimson, Vector3(0, 0.46, 0.05), Vector3(-10, 0, 0))
-	r.add_shape("head", _box(0.085, 0.1, 0.56), gold, Vector3(0, 0.33, 0.05), Vector3(-10, 0, 0))
-
-	# Right arm: greatsword running forward-and-down from the fist (levels out on the strike).
-	r.add_part("arm_right", "torso", Vector3(0.64, 0.62, 0), Vector3(0.15, 0, 0.1))
-	r.add_shape("arm_right", _cyl(0.15, 0.13, 0.5), iron, Vector3(0, -0.24, 0))
-	r.add_part("forearm_right", "arm_right", Vector3(0, -0.48, 0), Vector3(1.1, 0, 0))
-	r.add_shape("forearm_right", _cyl(0.14, 0.17, 0.42), gold, Vector3(0, -0.2, 0))
-	r.add_shape("forearm_right", _box(0.26, 0.24, 0.26), iron, Vector3(0, -0.48, 0))
-	r.add_shape("forearm_right", _box(0.07, 0.07, 0.34), LEATHER, Vector3(0, -0.48, 0), Vector3(-30, 0, 0))
-	r.add_shape("forearm_right", _box(0.5, 0.08, 0.08), gold, Vector3(0, -0.57, -0.16), Vector3(-30, 0, 0))
-	r.add_shape("forearm_right", _box(0.07, 0.2, 1.25), STEEL, Vector3(0, -0.91, -0.74), Vector3(-30, 0, 0), Vector3.ONE, 0.2)
-	r.add_shape("forearm_right", _prism(0.2, 0.26, 0.07), STEEL, Vector3(0, -1.29, -1.4), Vector3(-120, 0, 0), Vector3.ONE, 0.2)
-
-	# Left arm carries the tower shield.
-	r.add_part("arm_left", "torso", Vector3(-0.64, 0.62, 0), Vector3(0.2, 0, -0.1))
-	r.add_shape("arm_left", _cyl(0.15, 0.13, 0.5), iron, Vector3(0, -0.24, 0))
-	r.add_part("forearm_left", "arm_left", Vector3(0, -0.48, 0), Vector3(0.9, 0, 0))
-	r.add_shape("forearm_left", _cyl(0.14, 0.17, 0.42), gold, Vector3(0, -0.2, 0))
-	r.add_part("shield", "torso", Vector3(-0.62, 0.02, -0.5), Vector3(0.0, 0.5, 0))
-	r.add_shape("shield", _box(0.8, 1.3, 0.08), iron.lightened(0.08), Vector3.ZERO)
-	r.add_shape("shield", _box(0.86, 0.1, 0.1), gold, Vector3(0, 0.62, 0))
-	r.add_shape("shield", _box(0.86, 0.1, 0.1), gold, Vector3(0, -0.62, 0))
-	r.add_shape("shield", _box(0.1, 1.3, 0.1), gold, Vector3(-0.39, 0, 0))
-	r.add_shape("shield", _box(0.1, 1.3, 0.1), gold, Vector3(0.39, 0, 0))
-	r.add_shape("shield", _box(0.3, 0.3, 0.06), fire, Vector3(0, 0.1, -0.05), Vector3(0, 0, 45), Vector3.ONE, 0.7)
-	return r
-
-
-## Fallback for unknown kinds: a plain capsule body with a head.
-static func _plain(color: Color, radius: float, height: float) -> ModelRig:
-	var r := ModelRig.new()
-	var head_r: float = minf(radius * 0.55, height * 0.16)
-	var body_h: float = height - head_r * 1.6
-	var cap := CapsuleMesh.new()
-	cap.radius = radius * 0.75
-	cap.height = maxf(body_h, cap.radius * 2.0)
-	cap.radial_segments = 6
-	cap.rings = 2
-	r.add_part("body", "", Vector3(0, body_h * 0.5, 0))
-	r.add_shape("body", cap, color, Vector3.ZERO)
-	r.add_part("head", "body", Vector3(0, body_h * 0.5, 0))
-	r.add_shape("head", _ball(head_r, 6, 3), color.lightened(0.25), Vector3(0, head_r * 0.5, 0))
-	r.add_shape("head", _box(head_r * 1.2, head_r * 0.25, 0.05), Color(1, 0.9, 0.5), Vector3(0, head_r * 0.6, -head_r * 0.95), Vector3.ZERO, Vector3.ONE, 1.0)
-	return r
-
-
-# ---------------------------------------------------------------- scenery
-
-static func _grass(r: ModelRig) -> void:
-	var green := Color(0.35, 0.62, 0.2)
-	var gold := Color(0.8, 0.7, 0.28)
-	var seed_col := Color(0.98, 0.9, 0.5)
-	r.add_part("body")
-	var blades: int = 11
-	for i: int in blades:
-		var yaw: float = TAU * float(i) / float(blades) + randf_range(-0.3, 0.3)
-		var tilt: float = randf_range(0.15, 0.62)
-		var h: float = randf_range(0.42, 0.78)
-		var base := Vector3(sin(yaw), 0.0, cos(yaw)) * randf_range(0.03, 0.13)
-		var col: Color = green.lerp(gold, randf_range(0.0, 0.3)).lightened(randf_range(0.0, 0.18))
-		_blade(r, base, h, tilt, yaw, col, 0.13)
-	# Two upright seed stalks give the tuft its golden-realm silhouette.
-	for i: int in 2:
-		var yaw: float = randf() * TAU
-		var tilt: float = randf_range(0.03, 0.14)
-		var h: float = randf_range(0.54, 0.66)
-		var basis := Basis.from_euler(Vector3(tilt, yaw, 0.0))
-		r.add_shape("body", _cyl(0.02, 0.028, h, 4), green.darkened(0.2), basis * Vector3(0, h * 0.5, 0), Vector3(rad_to_deg(tilt), rad_to_deg(yaw), 0))
-		r.add_shape("body", _cyl(0.0, 0.075, 0.24, 4), seed_col, basis * Vector3(0, h + 0.0, 0), Vector3(rad_to_deg(tilt), rad_to_deg(yaw), 0))
-
-
-static func _blade(r: ModelRig, base: Vector3, h: float, tilt: float, yaw: float, color: Color, width: float) -> void:
-	var basis := Basis.from_euler(Vector3(tilt, yaw, 0.0))
-	r.add_shape("body", _cyl(0.0, width, h, 4), color, base + basis * Vector3(0, h * 0.5, 0), Vector3(rad_to_deg(tilt), rad_to_deg(yaw), 0), Vector3(1, 1, 0.45))
-
-
-static func _bush(r: ModelRig) -> void:
-	var leaf := Color(0.16, 0.38, 0.14)
-	var leaf_l := Color(0.27, 0.5, 0.16)
-	var olive := Color(0.5, 0.5, 0.16)
-	var berry := Color(1.0, 0.6, 0.15)
-	r.add_part("body")
-	r.add_shape("body", _cyl(0.07, 0.11, 0.3, 5), LEATHER.darkened(0.2), Vector3(0, 0.15, 0))
-	r.add_shape("body", _ball(0.46, 6, 3), leaf, Vector3(0, 0.46, 0), Vector3(0, randf() * 60.0, 0), Vector3(1, 0.85, 1))
-	var clumps: int = 6
-	for i: int in clumps:
-		var a: float = TAU * float(i) / float(clumps) + randf_range(-0.25, 0.25)
-		var rad: float = randf_range(0.24, 0.34)
-		var dist: float = randf_range(0.3, 0.4)
-		var y: float = randf_range(0.26, 0.5)
-		var col: Color = leaf.lerp(leaf_l, randf()) if i % 3 != 0 else leaf_l.lerp(olive, randf_range(0.3, 0.8))
-		r.add_shape("body", _ball(rad, 6, 3), col, Vector3(sin(a) * dist, y, cos(a) * dist), Vector3(randf() * 40.0, randf() * 60.0, 0), Vector3(1, 0.85, 1))
-	r.add_shape("body", _ball(0.3, 6, 3), leaf_l, Vector3(randf_range(-0.1, 0.1), 0.82, randf_range(-0.1, 0.1)), Vector3(0, randf() * 60.0, 0), Vector3(1, 0.85, 1))
-	for i: int in 5:
-		var a: float = randf() * TAU
-		var y: float = randf_range(0.35, 0.85)
-		var dist: float = lerpf(0.66, 0.36, (y - 0.35) / 0.5)
-		r.add_shape("body", _ball(0.055, 5, 2), berry, Vector3(sin(a) * dist, y, cos(a) * dist), Vector3.ZERO, Vector3.ONE, 0.35)
 
 
 # ---------------------------------------------------------------- helpers
+
+## Returns a fresh rig for `key`, building and baking it only the first time.
+static func _stamp(key: String, builder: Callable) -> ModelRig:
+	if _snaps.has(key):
+		return ModelRig.from_snapshot(_snaps[key])
+	var rig: ModelRig = builder.call() as ModelRig
+	_snaps[key] = rig.snapshot()
+	return rig
+
 
 static func _enemy_def(kind: String) -> Dictionary:
 	if _enemy_data.is_empty() and FileAccess.file_exists(ENEMY_DATA_PATH):
@@ -462,13 +768,40 @@ static func _enemy_def(kind: String) -> Dictionary:
 	return def if def is Dictionary else {}
 
 
-static func _box(x: float, y: float, z: float) -> BoxMesh:
-	var m := BoxMesh.new()
-	m.size = Vector3(x, y, z)
-	return m
+## Pulls a (data-file) colour toward grey and darkens it: `keep` is how much saturation
+## survives, `value` scales brightness. Enemy body colours go through this.
+static func grim(color: Color, keep: float = 0.45, value: float = 0.7) -> Color:
+	var l: float = color.get_luminance()
+	return Color(lerpf(l, color.r, keep) * value, lerpf(l, color.g, keep) * value, lerpf(l, color.b, keep) * value)
 
 
-static func _cyl(top: float, bottom: float, h: float, sides: int = 6) -> CylinderMesh:
+## MeshKit.lathe from a flat [radius, y, radius, y, ...] list.
+static func lathe(profile: Array, sides: int = 12, ripple_n: int = 0, ripple_bottom: float = 0.0, ripple_top: float = 0.0, hem: float = 0.0) -> ArrayMesh:
+	return MeshKit.lathe(poly(profile), sides, ripple_n, ripple_bottom, ripple_top, hem)
+
+
+## MeshKit.tube from a flat [x, y, z, ...] path and a list of radii.
+static func tube(path: Array, radii: Array, sides: int = 8, flatten: float = 1.0, wide: Vector3 = Vector3.ZERO) -> ArrayMesh:
+	var points := PackedVector3Array()
+	for i: int in range(0, path.size() - 2, 3):
+		points.append(Vector3(float(path[i]), float(path[i + 1]), float(path[i + 2])))
+	return MeshKit.tube(points, PackedFloat32Array(radii), sides, flatten, wide)
+
+
+## Bevelled box; `top_x` / `top_z` taper the top face.
+static func bbox(x: float, y: float, z: float, bevel: float = 0.03, top_x: float = 1.0, top_z: float = 1.0) -> ArrayMesh:
+	return MeshKit.bevel_box(Vector3(x, y, z), bevel, Vector2(top_x, top_z))
+
+
+## A flat [x, y, x, y, ...] list as points.
+static func poly(points: Array) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i: int in range(0, points.size() - 1, 2):
+		out.append(Vector2(float(points[i]), float(points[i + 1])))
+	return out
+
+
+static func cyl(top: float, bottom: float, h: float, sides: int = 12) -> CylinderMesh:
 	var m := CylinderMesh.new()
 	m.top_radius = top
 	m.bottom_radius = bottom
@@ -478,7 +811,7 @@ static func _cyl(top: float, bottom: float, h: float, sides: int = 6) -> Cylinde
 	return m
 
 
-static func _ball(radius: float, sides: int = 8, rings: int = 4) -> SphereMesh:
+static func ball(radius: float, sides: int = 12, rings: int = 6) -> SphereMesh:
 	var m := SphereMesh.new()
 	m.radius = radius
 	m.height = radius * 2.0
@@ -487,7 +820,11 @@ static func _ball(radius: float, sides: int = 8, rings: int = 4) -> SphereMesh:
 	return m
 
 
-static func _prism(x: float, y: float, z: float) -> PrismMesh:
-	var m := PrismMesh.new()
-	m.size = Vector3(x, y, z)
+## A ring lying in the XZ plane; `inner` / `outer` are the hole and rim radii.
+static func torus(inner: float, outer: float, segments: int = 20, sides: int = 6) -> TorusMesh:
+	var m := TorusMesh.new()
+	m.inner_radius = inner
+	m.outer_radius = outer
+	m.rings = segments
+	m.ring_segments = sides
 	return m
