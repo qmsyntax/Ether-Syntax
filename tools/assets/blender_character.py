@@ -9,11 +9,14 @@
   track so the glTF exporter writes one animation per track and Godot imports them by name;
 - clothes, hair and beards are made here from the body itself: a garment is the body's own faces for
   the parts it covers, pushed out along the normals, so it keeps the body's skinning, region ids and
-  build shape keys. Loose parts (coat skirts, collars, belts, the long hair, packs) are lofted rings
-  or simple solids that copy their skinning and shape keys from the nearest body vertex;
-- each piece is its own mesh (body, eyes, hair_<style>, beard, cloth_<id>, stump_r); the game shows
-  and colours them by the look and the equipment.
-Prints the native ground speed of the walk and run loops (metres a second).
+  build shape keys. Loose parts (coat skirts, collars, belts, packs, the topknot's bun, the braid)
+  are lofted rings or simple solids that copy their skinning and shape keys from the nearest body
+  vertex. Hair and beards are cards grown over the scalp (see build_hair);
+- one-off clips are pinned in place (the game moves the body) and over-long ones trimmed (TRIM);
+- each piece is its own mesh (body, eyes, hair_<style>_cards, hair_topknot_bun, hair_braid_tail,
+  beard, beard_cards, cloth_<id>, stump_r); the game shows and colours them by the look and the
+  equipment (game/data/wardrobe.json).
+Prints the native ground speed of the walk, run and sprint loops (metres a second) for wardrobe.json.
 """
 import math
 import os
@@ -98,17 +101,6 @@ class Body:
         return self.kd.find(Vector(p))[1]
 
 
-def link_mesh(name, me, arm, material):
-    o = bpy.data.objects.new(name, me)
-    bpy.context.scene.collection.objects.link(o)
-    o.parent = arm
-    mod = o.modifiers.new("Armature", "ARMATURE")
-    mod.object = arm
-    me.materials.clear()
-    me.materials.append(bpy.data.materials.get(material) or bpy.data.materials.new(material))
-    return o
-
-
 def finish(o, uv_metres=0.35, smart=True):
     """Clean normals, smooth shading and, if asked, a fresh texture layout at uv_metres per tile."""
     me = o.data
@@ -142,7 +134,8 @@ def finish(o, uv_metres=0.35, smart=True):
 def from_body(B, name, material, keep_vert, offset, uv_metres=0.35, smooth=0, smooth_where=None, shoe=0.0):
     """A garment cut from the body: faces whose vertices all pass keep_vert(i), pushed out by
     offset(i) metres along the normal in every shape key; then `smooth` rounds of relaxing (open
-    edges stay put; smooth_where(i) limits it), which turns toes into a shoe.""" 
+    edges stay put; smooth_where(world position) limits it); `shoe` fills each foot out to its
+    convex hull first, which turns toes into a toe box."""
     me = B.obj.data.copy()
     me.name = name
     off = np.array([offset(i) for i in range(B.n)])
