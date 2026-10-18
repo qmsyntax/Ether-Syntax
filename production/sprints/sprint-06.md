@@ -614,3 +614,25 @@ once in a windowed run and did not come back in later runs.
 Verified: self-test 733/733 (two runs); zone probe; full-passage bots in scrubland and a random biome, gate and death
 bots; Netherecho death test; click and creation tests; screenshots of the Stubble, the Cut House and a close lineup.
 Not verified: by hand.
+
+
+## Part AD — a real character body (Brent 2026-10-18: "start the character"; Mixamo account ready)
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-148 | Blender Studio's Human Base Meshes (CC0) downloaded; the realistic male and female bodies exported at the base level (about 23k triangles) by `tools/assets/blender_export_body.py` | `body_male.fbx`, `body_female.fbx` (staging) | Done |
+| S06-149 | The male body auto-rigged by Mixamo (Brent's account, 65-bone skeleton); eleven Mixamo animations on that rig: idle, walk, run (in place), two sword slashes, hit, death, forward dodge, two casts, a cross-legged sit | `tools/assets/MANIFEST.csv` | Done |
+| S06-150 | `tools/assets/blender_character.py` packs body + animations into one .glb, one named animation per NLA track | `game/assets/characters/body_male.glb` | Done |
+| S06-151 | `RealCharacter` (extends ModelRig) answers the calls the player already makes: walk/run by speed (feet matched to the ground speed), a slash on each strike, a cast / area cast / dodge for skills, the sit while meditating, hit and death, highlight / wind-up / hit-flash as a glow, the weapon on the right-hand bone | `shots/ui-real-body.png` | Done |
+| S06-152 | Behind a switch, off by default: `balance.json` "art.real_bodies" (or `--real-body` for one run). The body has no skin texture, hair, face options or clothes yet and ignores the look options, so it is not yet a replacement | `shots/ui-real-body-inventory.png` | Done (off) |
+
+Also downloaded and not yet used: Quaternius' Universal Animation Library (CC0, 43 animations on a UE-style
+skeleton). CMU motion capture (approved) has not been fetched yet.
+
+Not done / rough: the female body is exported but not yet rigged; a lost arm cannot be shown on one skinned mesh;
+the weapon's grip on the hand bone is a first guess and was not seen in a screenshot; nobody has watched the body
+move in motion - the screenshots are single frames; strike and cast timings are Mixamo's, not the game's.
+
+Verified: self-test 733/733 with the switch off and on; zone probe; full-passage, gate and death bots; Netherecho
+death test; click and creation tests; screenshots of the field and the inventory with the real body.
+Not verified: by hand.

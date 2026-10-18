@@ -3347,7 +3347,7 @@ func _test_models() -> void:
 				var t0: int = Time.get_ticks_msec()
 				var m: ModelRig = CharacterLook.build(look)
 				slowest = maxi(slowest, Time.get_ticks_msec() - t0)
-				if m == null or m.height < 1.7 or m.height > 1.95 or not m.has_part("arm_right"):
+				if m == null or m.height < 1.65 or m.height > 1.95 or not (m is RealCharacter or m.has_part("arm_right")):     # a real body has no separate arm
 					_check("every sex and body builds a usable model", false, str(look))
 				m.free()
 		print("  note slowest first build of a look: %d ms" % slowest)

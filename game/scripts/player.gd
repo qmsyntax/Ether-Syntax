@@ -245,6 +245,8 @@ func _update_model(delta: float) -> void:
 	if glow != _shown_glow:
 		_shown_glow = glow
 		_rig.set_highlight(glow)
+	if _rig.has_method("set_activity"):
+		_rig.call("set_activity", "meditate" if (meditating or _sitting) else "")
 	_rig.animate(delta, velocity.length(), _strike_t > 0.0)
 
 
@@ -2080,6 +2082,13 @@ func cast_ability(index: int) -> void:
 func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float, tags: Array, strike_target: Node3D, blink_to: Vector3) -> void:
 	if (kind == "targeted_strike" or kind == "chain") and strike_target == null:
 		return                                   # whoever it was meant for is gone
+	if _rig != null and _rig.has_method("play_action"):
+		# a real body plays the motion that fits; a strike is left to animate(), which swings
+		var motion: String = {"dash": "dodge", "blink": "dodge", "detonate": "cast_area", "self_buff": "cast_area"}.get(kind, "cast")
+		if kind == "melee_burst" and float(ab.get("arc_deg", 0.0)) >= 360.0:
+			motion = "cast_area"
+		if kind != "targeted_strike" and not (kind == "melee_burst" and motion == "cast"):
+			_rig.call("play_action", motion)
 	match kind:
 		"projectile":
 			_fire_projectile(ab, stage_mult, GameData.affinity_color(aff), tags + ["projectile"])
