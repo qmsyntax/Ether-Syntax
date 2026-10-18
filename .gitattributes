@@ -30,3 +30,7 @@
 *.blend binary
 *.ttf binary
 *.otf binary
+
+# Godot writes these itself, with LF; keep them that way so every import does not show as a change
+*.import text eol=lf
+*.uid text eol=lf
