@@ -1475,12 +1475,36 @@ func _setup_ui_shot(which: String) -> void:
 		add_child(layer)
 		layer.add_child(sheet)
 		return
+	if which == "props":
+		# every real model in a row on bare ground, for looking at them up close
+		_select_talent(0)
+		walk_out()
+		for n: Node in level.get_children():
+			if n is MeshInstance3D or (n is Node3D and n.get_child_count() > 0 and not (n is StaticBody3D)):
+				pass
+		var spot: Vector3 = _zone.to_local(120.0, 150.0)
+		player.global_position = level.to_global(spot)
+		var ids: PackedStringArray = DirAccess.get_files_at("res://assets/models/props/")
+		var i := 0
+		for f: String in ids:
+			if not f.ends_with(".glb"):
+				continue
+			var id: String = f.get_basename()
+			var node: Node3D = RealProps.model(id, 1.0)
+			node.position = spot + Vector3(-7.5 + float(i % 6) * 3.0, 0.0, -6.0 + float(i / 6) * 3.4)
+			level.add_child(node)
+			i += 1
+		camera.size = 26.0 if not OS.get_cmdline_user_args().has("--close") else 9.0
+		player.set_physics_process(false)
+		return
 	if which == "stubble" or which == "stubble-cut":
 		# out of the Dross Gate, a little way down the road: the tip, the wall behind, the field ahead
 		_select_talent(0)
 		player.set("look", CharacterLook.default_look())
 		walk_out()
 		player.global_position = level.to_global(_zone.to_local(56.0, 30.0) if which == "stubble" else _zone.to_local(214.0, 108.0))
+		if OS.get_cmdline_user_args().has("--settle"):
+			_shot_countdown = 420             # long enough for shaders to compile, so the frame rate means something
 		player.set("_facing", Vector3(0, 0, 1))
 		player.set_physics_process(false)
 		return
@@ -1831,6 +1855,11 @@ func _save_shot() -> void:
 	if DisplayServer.get_name() == "headless":
 		get_tree().quit()
 		return
+	# what it cost to draw: frame rate, draw calls and triangles in view
+	print("render: %d fps, %d draw calls, %d objects, %d primitives in view" % [Engine.get_frames_per_second(),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)])
 	var img: Image = get_viewport().get_texture().get_image()
 	if img != null:
 		img.save_png(dir.path_join("shot.png"))

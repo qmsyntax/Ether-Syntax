@@ -591,3 +591,26 @@ gap, and they need real models (tools and permissions Brent has been asked about
 Verified: self-test 712/712; zone probe; scrubland full-passage bots; death bot; Netherecho death test; click and
 creation tests; screenshots of the Stubble, the Cut House and a dungeon passage. Not verified: by hand, or on
 other GPUs.
+
+
+## Part AC — real models: CC0 scans in the Stubble (Brent 2026-10-18: yes to Blender and to CC0 downloads from Poly Haven / ambientCG)
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-143 | `tools/assets/fetch_polyhaven.py` downloads a Poly Haven model (CC0) to a staging folder, checks it, merges the leaf transparency mask Poly Haven ships separately into the colour texture, and records every file in the manifest | 22 models fetched | Done |
+| S06-144 | `tools/assets/blender_optimize.py` (headless Blender 5.2) makes a scan game-ready: one mesh, origin at the middle of its base, solid surfaces cut to a triangle budget, leaf clusters thinned whole (never shredded), one .glb with textures inside. Budgets per model in `tools/assets/props.txt` | e.g. a boulder 59k -> 7k triangles; the searsia tree 616k -> 91k | Done |
+| S06-145 | `RealProps` stands real models in for the scrubland kit's boulder, outcrop, stones, log and dead tree, keeping the kit's footprint and collider; foliage drawn as cut-outs | `shots/ui-stubble.png` | Done |
+| S06-146 | The Stubble scatters real decor from zone data (rooibos bushes, quiver trees, three searsia trees, dead branches, bark, stumps, boulders) and its dross heap and hanging tree are built from real models | `--shot-ui=props` (`--close`) lineup | Done |
+| S06-147 | A screenshot prints its frame rate, draw calls and triangles; `--settle` waits for shaders to compile first | Stubble: 75 fps after settling, about 360-440k triangles and 310-370 draw calls in view (RTX 4080) | Done |
+
+Dropped from the set: a modern blue metal barrel (wrong setting). Two stone sets that lie in straight rows read as
+dotted lines across the field and are no longer scattered.
+
+Rough edges: the old procedural grass tufts and the character now look out of place beside the scans - they are the
+next pieces to replace. The quiver tree is a young, sparse one. The frame rate is measured on one machine only; the
+first seconds in the zone stutter while shaders compile. A navigation warning about overlapping polygons appeared
+once in a windowed run and did not come back in later runs.
+
+Verified: self-test 733/733 (two runs); zone probe; full-passage bots in scrubland and a random biome, gate and death
+bots; Netherecho death test; click and creation tests; screenshots of the Stubble, the Cut House and a close lineup.
+Not verified: by hand.

@@ -49,6 +49,7 @@ func build() -> void:
 	_cut_house(level)
 	var keep_clear: Array = _landmarks(level)
 	_scatter(level, keep_clear)
+	_decor(level, keep_clear)
 
 
 ## One edge: wall runs with the zone lines on that edge cut out of them. An open line is a gate
@@ -193,7 +194,8 @@ func _landmarks(level: Node3D) -> Array:
 		var at: Array = mark["at"]
 		var centre: Vector3 = to_local(float(at[0]), float(at[1]))
 		for p: Array in mark.get("props", []):
-			var prop: Node3D = Biomes.prop(str(p[0]), str(p[1]))
+			# ["model", id, dx, dy, scale] is a real model; anything else is [kit, kind, dx, dy]
+			var prop: Node3D = RealProps.model(str(p[1]), float(p[4]) if p.size() > 4 else 1.0) if str(p[0]) == "model" else Biomes.prop(str(p[0]), str(p[1]))
 			prop.position = centre + Vector3(float(p[2]), 0.0, float(p[3]))
 			prop.rotation.y = float(hash(str(mark["id"]) + str(p[1]))) * 0.001
 			level.add_child(prop)
@@ -271,6 +273,36 @@ func _scatter(level: Node3D, keep_clear: Array) -> void:
 		var spot: Vector3 = _free_spot(rng, keep_clear, 0.6, false)
 		if spot != Vector3.INF:
 			main.call("_spawn_cuttable", i, spot)
+
+
+## Real models scattered over the zone as the data lists them ("decor"): bushes, trees, dead
+## wood. With pathfinding, something solid may stand in the open; it gets a trunk collider.
+func _decor(level: Node3D, keep_clear: Array) -> void:
+	var rng: RandomNumberGenerator = main.get("rng")
+	for d: Dictionary in def.get("decor", []):
+		var id: String = str(d["model"])
+		if not RealProps.exists(id):
+			continue
+		var range_s: Array = d.get("scale", [1.0, 1.0])
+		var solid: float = float(d.get("solid", 0.0))
+		for i: int in int(d.get("count", 0)):
+			var spot: Vector3 = _free_spot(rng, keep_clear, maxf(solid, 0.5) + 0.5, false)
+			if spot == Vector3.INF:
+				continue
+			var node: Node3D = RealProps.model(id, rng.randf_range(float(range_s[0]), float(range_s[1])), rng.randf() * TAU)
+			node.position = spot
+			level.add_child(node)
+			if solid > 0.0:
+				var sb := StaticBody3D.new()
+				var col := CollisionShape3D.new()
+				var shape := CylinderShape3D.new()
+				shape.radius = solid
+				shape.height = 2.0
+				col.shape = shape
+				sb.add_child(col)
+				sb.position = spot + Vector3.UP
+				level.add_child(sb)
+				keep_clear.append([spot, solid + 1.5])
 
 
 ## A random spot for something of `radius`: off the road and clear of the given places; hard

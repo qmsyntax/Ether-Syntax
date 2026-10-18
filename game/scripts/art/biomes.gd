@@ -73,6 +73,8 @@ static func prop(id: String, kind: String) -> Node3D:
 ## The same, with the variant (0 .. VARIANTS - 1) chosen by the caller.
 static func prop_variant(id: String, kind: String, variant: int) -> Node3D:
 	var info_now: Dictionary = prop_meta(id, kind, variant)
+	if RealProps.has(id, kind):
+		return RealProps.kit_prop(id, kind, variant, info_now)      # a real model where one has been brought in
 	var root := Node3D.new()
 	root.name = "%s_%s" % [id, kind]
 	var inst: MeshInstance3D = EnvKit.instance(prop_mesh(id, kind, variant))

@@ -1,0 +1,22 @@
+# id                     target_tris   (Poly Haven CC0 models -> game/assets/models/props/<id>.glb via blender_optimize.py)
+namaqualand_boulder_02   6000
+namaqualand_boulder_03   7000
+namaqualand_boulder_04   7000
+namaqualand_boulder_05   5000
+namaqualand_boulder_06   5000
+namaqualand_boulders_01  4000
+namaqualand_rocks_01     4000
+namaqualand_stones_01    4000
+dead_quiver_trunk        4000
+dead_quiver_branch_01    2500
+dead_quiver_branch_02    2500
+dead_tree_trunk          6000
+dry_branches_medium_01   4000
+tree_stump_01            5000
+bark_debris_01           3000
+root_cluster_01          9000
+wild_rooibos_bush        14000  0.6
+searsia_burchellii       90000  0.25
+quiver_tree_01           50000  0.4
+wooden_crate_01          6576
+treasure_chest           9000

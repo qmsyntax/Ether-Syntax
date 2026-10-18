@@ -1,33 +1,294 @@
 {
-  "_note": "Overland zones (design/07, approved by Brent 2026-10-18). Coordinates are metres in the zone's own map frame: origin at the north-west corner, x east, y south; north is the far side of the screen. A zone is built by scripts/zone_builder.gd. lines: gaps in the edge that lead somewhere - 'to' is a zone id, 'town', or a dungeon; a line that is not 'open' is drawn shut with a sign. arrive: where you stand when you come in by that line. All numbers [MODEL].",
+  "_note": "Overland zones (design/07, approved by Brent 2026-10-18). Coordinates are metres in the zone's own map frame: origin at the north-west corner, x east, y south; north is the far side of the screen. A zone is built by scripts/zone_builder.gd. lines: gaps in the edge that lead somewhere - 'to' is a zone id, 'town', or a dungeon; a line that is not 'open' is drawn shut with a sign. arrive: where you stand when you come in by that line. All numbers [MODEL]. decor: real models (game/assets/models/props/<model>.glb) scattered over the zone, 'count' of each at a random 'scale' in the range; 'solid' gives it a trunk collider of that radius. A landmark prop may be [\"model\", id, dx, dy, scale].",
   "zones": {
     "the_stubble": {
       "name": "The Stubble",
       "desc": "The yard outside the Dross Gate: open scrub, the city tip, a dry well, a hanging tree, and at the far side the Cut House over the mouth of Tenwall Cut.",
       "biome": "scrubland",
-      "size": [240, 160],
+      "size": [
+        240,
+        160
+      ],
       "yaw": 45,
-      "edge_kits": {"north": "city", "south": "scrubland", "east": "scrubland", "west": "scrubland"},
+      "edge_kits": {
+        "north": "city",
+        "south": "scrubland",
+        "east": "scrubland",
+        "west": "scrubland"
+      },
       "lines": [
-        {"id": "dross_gate", "name": "The Dross Gate", "to": "town", "edge": "north", "at": 40, "width": 6, "open": true},
-        {"id": "drove_stile", "name": "The Drove Stile", "to": "longacre_drove", "edge": "east", "at": 36, "width": 8, "open": false,
-         "sign": "The Drove Stile. The road runs on to Longacre Drove - nobody has gone that way yet."},
-        {"id": "wet_gap", "name": "The Wet Gap", "to": "sumpside", "edge": "south", "at": 150, "width": 8, "open": false,
-         "sign": "The Wet Gap. Beyond the fence the ground turns to Sumpside - closed for now."}
+        {
+          "id": "dross_gate",
+          "name": "The Dross Gate",
+          "to": "town",
+          "edge": "north",
+          "at": 40,
+          "width": 6,
+          "open": true
+        },
+        {
+          "id": "drove_stile",
+          "name": "The Drove Stile",
+          "to": "longacre_drove",
+          "edge": "east",
+          "at": 36,
+          "width": 8,
+          "open": false,
+          "sign": "The Drove Stile. The road runs on to Longacre Drove - nobody has gone that way yet."
+        },
+        {
+          "id": "wet_gap",
+          "name": "The Wet Gap",
+          "to": "sumpside",
+          "edge": "south",
+          "at": 150,
+          "width": 8,
+          "open": false,
+          "sign": "The Wet Gap. Beyond the fence the ground turns to Sumpside - closed for now."
+        }
       ],
-      "road": {"points": [[40, 0], [40, 8], [240, 36]], "width": 8},
+      "road": {
+        "points": [
+          [
+            40,
+            0
+          ],
+          [
+            40,
+            8
+          ],
+          [
+            240,
+            36
+          ]
+        ],
+        "width": 8
+      },
       "landmarks": [
-        {"id": "dross_heap", "name": "The dross heap", "at": [62, 22], "site": true,
-         "props": [["scrubland", "stones", 0, 0], ["scrubland", "stones", 2.2, 1.0], ["scrubland", "stones", -1.6, 1.8], ["scrubland", "skull", 0.8, -1.2], ["scrubland", "skull", -1.0, 0.4], ["scrubland", "log", 2.6, -1.8]]},
-        {"id": "dry_well", "name": "The dry well", "at": [98, 70], "site": true, "props": [["city", "well", 0, 0], ["city", "trough", 2.6, 0.4]], "solid": 1.2},
-        {"id": "waystone", "name": "The waystone", "at": [188, 44], "site": true, "props": [["scrubland", "waystone", 0, 0]], "solid": 0.5},
-        {"id": "hanging_tree", "name": "The hanging tree", "at": [150, 96], "site": true, "props": [["scrubland", "dead_tree", 0, 0], ["scrubland", "skull", 1.4, 0.6]], "solid": 0.6}
+        {
+          "id": "dross_heap",
+          "name": "The dross heap",
+          "at": [
+            62,
+            22
+          ],
+          "site": true,
+          "props": [
+            [
+              "model",
+              "namaqualand_rocks_01",
+              0,
+              0,
+              2.0
+            ],
+            [
+              "model",
+              "namaqualand_stones_01",
+              1.5,
+              1.5,
+              2.0
+            ],
+            [
+              "scrubland",
+              "skull",
+              0.8,
+              -1.2
+            ],
+            [
+              "scrubland",
+              "skull",
+              -1.0,
+              0.4
+            ],
+            [
+              "model",
+              "dead_tree_trunk",
+              2.4,
+              -1.8,
+              0.8
+            ],
+            [
+              "model",
+              "bark_debris_01",
+              -1.8,
+              1.6,
+              1.6
+            ]
+          ]
+        },
+        {
+          "id": "dry_well",
+          "name": "The dry well",
+          "at": [
+            98,
+            70
+          ],
+          "site": true,
+          "props": [
+            [
+              "city",
+              "well",
+              0,
+              0
+            ],
+            [
+              "city",
+              "trough",
+              2.6,
+              0.4
+            ]
+          ],
+          "solid": 1.2
+        },
+        {
+          "id": "waystone",
+          "name": "The waystone",
+          "at": [
+            188,
+            44
+          ],
+          "site": true,
+          "props": [
+            [
+              "scrubland",
+              "waystone",
+              0,
+              0
+            ]
+          ],
+          "solid": 0.5
+        },
+        {
+          "id": "hanging_tree",
+          "name": "The hanging tree",
+          "at": [
+            150,
+            96
+          ],
+          "site": true,
+          "props": [
+            [
+              "model",
+              "dead_quiver_trunk",
+              0,
+              0,
+              1.9
+            ],
+            [
+              "model",
+              "dead_quiver_branch_01",
+              1.2,
+              0.6,
+              1.4
+            ],
+            [
+              "scrubland",
+              "skull",
+              1.4,
+              0.6
+            ]
+          ],
+          "solid": 0.6
+        }
       ],
-      "cut_house": {"name": "The Cut House", "to": "tenwall_cut", "yard": [212, 104, 232, 120], "door": [232, 112], "door_width": 4},
+      "cut_house": {
+        "name": "The Cut House",
+        "to": "tenwall_cut",
+        "yard": [
+          212,
+          104,
+          232,
+          120
+        ],
+        "door": [
+          232,
+          112
+        ],
+        "door_width": 4
+      },
       "props_per_100m2": 1.6,
       "tufts": 260,
       "edge_blockers": 26,
-      "arrive": {"dross_gate": [40, 4], "cut_house_door": [227, 112]}
+      "arrive": {
+        "dross_gate": [
+          40,
+          4
+        ],
+        "cut_house_door": [
+          227,
+          112
+        ]
+      },
+      "decor": [
+        {
+          "model": "wild_rooibos_bush",
+          "count": 90,
+          "scale": [
+            0.55,
+            1.0
+          ]
+        },
+        {
+          "model": "searsia_burchellii",
+          "count": 3,
+          "scale": [
+            0.45,
+            0.65
+          ],
+          "solid": 0.45
+        },
+        {
+          "model": "quiver_tree_01",
+          "count": 7,
+          "scale": [
+            0.9,
+            1.35
+          ],
+          "solid": 0.3
+        },
+        {
+          "model": "dead_quiver_branch_01",
+          "count": 35,
+          "scale": [
+            0.9,
+            1.6
+          ]
+        },
+        {
+          "model": "dead_quiver_branch_02",
+          "count": 35,
+          "scale": [
+            0.9,
+            1.6
+          ]
+        },
+        {
+          "model": "bark_debris_01",
+          "count": 25,
+          "scale": [
+            0.8,
+            1.4
+          ]
+        },
+        {
+          "model": "tree_stump_01",
+          "count": 8,
+          "scale": [
+            0.6,
+            0.9
+          ],
+          "solid": 0.45
+        },
+        {
+          "model": "namaqualand_boulder_04",
+          "count": 6,
+          "scale": [
+            0.7,
+            1.2
+          ],
+          "solid": 0.9
+        }
+      ]
     }
   }
 }
