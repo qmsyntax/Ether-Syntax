@@ -791,7 +791,7 @@ func _draw_tracker(vs: Vector2) -> void:
 	draw_rect(r, Color(UiTheme.PANEL, 0.92))
 	draw_rect(r, UiTheme.BRONZE, false, 2.0)
 	UiDraw.text(self, r.position + Vector2(14.0, 20.0), "THE PASSAGE", 13, UiTheme.TEXT_DIM)
-	_right_text(Vector2(r.end.x - 14.0, r.position.y + 20.0), "$%d banked" % int(passage.get("bank", 0)), 14, UiTheme.GOLD)
+	_right_text(Vector2(r.end.x - 14.0, r.position.y + 20.0), "spoils $%d" % int(passage.get("bank", 0)), 14, UiTheme.GOLD)
 	for i: int in walls:
 		var c := Vector2(r.position.x + 27.0 + i * step, r.position.y + 42.0)
 		var n: int = i + 1

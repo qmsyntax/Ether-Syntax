@@ -1326,6 +1326,10 @@ func _build_world() -> void:
 	# Grim, low-key look (art pass 3): filmic, a little haze, contact shadows, restrained bloom.
 	_env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	_env.tonemap_exposure = 1.15
+	# light bounced off the ground and walls into the shade, so shadows are not flat black
+	_env.ssil_enabled = true
+	_env.ssil_radius = 4.0
+	_env.ssil_intensity = 0.8
 	_env.ssao_enabled = true
 	_env.ssao_radius = 0.8
 	_env.ssao_intensity = 1.5

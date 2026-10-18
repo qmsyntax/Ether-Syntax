@@ -573,3 +573,21 @@ the arena.
 Verified: self-test 712/712 (three runs); the zone probe (out, edges, fog, minimap, door in, exit to the yard, gate
 home, death and corpse) PASS; full-passage, gate and death bots; Netherecho death test; inventory and creation click
 tests; screenshots of the field, the Cut House and town inspected. Not verified: by hand.
+
+
+## Part AB — real assets, first slice: textured ground (Brent 2026-10-18: "Get rid of the rule. Lets make some real assets.")
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-140 | The code-only art rule is gone. Asset rules in CLAUDE.md: `game/assets/`, a MANIFEST row per file (origin, maker, licence), generators in `tools/assets/`, own work or recorded-licence (CC0 preferred) only, nothing from the books' art or other games, downloads and new tools still need Brent's yes | CLAUDE.md | Done |
+| S06-141 | Real PBR ground for scrubland (the Stubble, and scrubland passages and arenas): dry earth with cracks and gravel, dead grass and straw, a large mask to break the repeat - seamless 1024 px albedo, normal and roughness maps made from scratch by `tools/assets/make_ground_textures.py` | `shots/ui-stubble.png` | Done |
+| S06-142 | Screen-space indirect light, so shade is not flat; the passage tracker says "spoils" | screenshots | Done |
+
+Tried and taken back: the AgX tonemapper at exposure 1.3 blew out the snow biome; filmic stays.
+
+The textured ground makes the procedural buildings, props and characters look worse beside it - they are the next
+gap, and they need real models (tools and permissions Brent has been asked about).
+
+Verified: self-test 712/712; zone probe; scrubland full-passage bots; death bot; Netherecho death test; click and
+creation tests; screenshots of the Stubble, the Cut House and a dungeon passage. Not verified: by hand, or on
+other GPUs.

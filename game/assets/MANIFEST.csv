@@ -1,0 +1,8 @@
+path,origin,made_by,licence,note,date
+assets/textures/ground/dry_earth_albedo.png,generated,tools/assets/make_ground_textures.py,own work (no source images),"Stubble ground: packed earth, cracks, pebbles",2026-10-18
+assets/textures/ground/dry_earth_normal.png,generated,tools/assets/make_ground_textures.py,own work (no source images),,2026-10-18
+assets/textures/ground/dry_earth_rough.png,generated,tools/assets/make_ground_textures.py,own work (no source images),,2026-10-18
+assets/textures/ground/dry_grass_albedo.png,generated,tools/assets/make_ground_textures.py,own work (no source images),Stubble ground: dead grass and straw,2026-10-18
+assets/textures/ground/dry_grass_normal.png,generated,tools/assets/make_ground_textures.py,own work (no source images),,2026-10-18
+assets/textures/ground/dry_grass_rough.png,generated,tools/assets/make_ground_textures.py,own work (no source images),,2026-10-18
+assets/textures/ground/ground_macro_mask.png,generated,tools/assets/make_ground_textures.py,own work (no source images),large-scale variation and grass mask,2026-10-18

@@ -38,7 +38,9 @@ static func info(id: String) -> Dictionary:
 static func floor(id: String, size: Vector2) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Floor_" + id
-	root.add_child(EnvKit.slab(Vector3(size.x, 0.4, size.y), Vector3(0, -0.2, 0), _floor_material(id)))
+	# a textured ground where one has been made (GroundMaterial), else the kit's procedural floor
+	var textured: Material = GroundMaterial.for_biome(id)
+	root.add_child(EnvKit.slab(Vector3(size.x, 0.4, size.y), Vector3(0, -0.2, 0), textured if textured != null else _floor_material(id)))
 	return root
 
 
