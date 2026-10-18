@@ -80,8 +80,11 @@ var _retreat_t := 0.0                # pouncer: how long the player has been run
 var _circle_sign := 1.0
 var _burn_t := 0.0                   # alight: time toward the next tick of burning
 var _spread_t := 0.0                 # alight: how long someone has stood close enough to catch
-var _walk_dir := Vector3.ZERO        # the way to walk to reach the player: through a doorway if need be
+var _walk_dir := Vector3.ZERO        # the way to walk to reach the player: along its path
 var _router: Node
+var _nav: LevelNav                   # the level's navigation, once it has been baked (see LevelNav)
+var _chase := NavPath.new()          # its path to the player
+var _errand := NavPath.new()         # its path somewhere else: an archer's vantage, a drummer's spot
 var _flash := 0.0
 var _base_color := Color(0.75, 0.2, 0.2)
 var _label: Label3D
@@ -549,7 +552,7 @@ func _physics_process(delta: float) -> void:
 	var dir: Vector3 = to / maxf(dist, 0.001)
 	var target_dead: bool = bool(target.get("dead"))
 	velocity = Vector3.ZERO
-	_walk_dir = _route_dir(dir)
+	_walk_dir = _route_dir(dir, delta)
 
 	if has_status("stunned") or has_status("staggered") or has_status("aloft"):
 		telegraph = {}
@@ -576,10 +579,58 @@ func _physics_process(delta: float) -> void:
 	_look(delta)
 
 
-## The direction to walk in order to reach the player. Usually straight at them; in the passage,
-## with a dividing wall in the way, toward the doorway first (see Route).
-func _route_dir(straight: Vector3) -> Vector3:
-	# standing stone in the way: head for the end of it (nothing pathfinds; this is one corner)
+## The direction to walk in order to reach the player: along its path on the level's navigation
+## mesh (round walls, blocks, props and corners, through doorways), stepping round standing stone,
+## which is not in the mesh. Where there is no mesh yet (or none at all: a unit test's little
+## world), the old steering: round stone, through the passage's doorway (Route), else `straight`.
+## Zero when the player cannot be reached and it already stands as near as it can get.
+func _route_dir(straight: Vector3, delta: float = 0.0) -> Vector3:
+	var nav: LevelNav = _level_nav()
+	if nav == null:
+		return _fallback_dir(straight)
+	var way: Vector3 = _chase.steer(nav, global_position, target.global_position, radius, delta)
+	return _round_stone(nav, _chase.next_point(target.global_position), way)
+
+
+## The level's navigation where it stands, or null.
+func _level_nav() -> LevelNav:
+	if not is_inside_tree():
+		return null
+	if _nav == null or not is_instance_valid(_nav) or not _nav.covers(global_position):
+		_nav = LevelNav.find(get_tree(), global_position)
+	return _nav
+
+
+## Walking `way` toward `next` (a corner of its path): if standing stone is in the way, head for
+## the end of it that can be walked to instead. Stone is not baked into the mesh - it stands 12 s
+## and Stone.way_round() already knows its one corner; this only checks the end is walkable.
+func _round_stone(nav: LevelNav, next: Vector3, way: Vector3) -> Vector3:
+	for node: Node in get_tree().get_nodes_in_group("stones"):
+		var s := node as Stone
+		if s == null:
+			continue
+		var detour: Variant = s.way_round(global_position, next, radius)
+		if detour == null:
+			continue
+		var spot: Vector3 = detour as Vector3
+		if not nav.standable(spot, radius, radius):
+			# that end is against a wall: try the other one
+			var across: Vector3 = s.global_transform.basis.x
+			across.y = 0.0
+			across = across.normalized()
+			spot -= across * 2.0 * across.dot(spot - s.global_position)
+			if not nav.standable(spot, radius, radius):
+				continue                         # it closes the way: walk on and press against it
+		var side: Vector3 = spot - global_position
+		side.y = 0.0
+		if side.length() > 0.05:
+			return side.normalized()
+	return way
+
+
+## The old steering, for where there is no navigation mesh: round standing stone, else through
+## the passage's doorway (see Route), else `straight`.
+func _fallback_dir(straight: Vector3) -> Vector3:
 	if is_inside_tree():
 		for s: Node in get_tree().get_nodes_in_group("stones"):
 			var detour: Variant = s.call("way_round", global_position, target.global_position, radius)
@@ -696,7 +747,12 @@ func _think_support(delta: float, dir: Vector3) -> void:
 	var goal: Vector3 = centre + (back.normalized() if back.length() > 0.1 else -dir) * float(_def.get("stand_behind", 6.0))
 	var to: Vector3 = goal - global_position
 	to.y = 0.0
-	if to.length() > 1.0 and _clear(global_position + Vector3.UP, global_position + Vector3.UP + to.normalized() * (radius + 0.8)):
+	if to.length() <= 1.0:
+		return
+	var nav: LevelNav = _level_nav()
+	if nav != null:
+		velocity = _round_stone(nav, _errand.next_point(goal), _errand.steer(nav, global_position, goal, radius, delta)) * speed
+	elif _clear(global_position + Vector3.UP, global_position + Vector3.UP + to.normalized() * (radius + 0.8)):
 		velocity = to.normalized() * speed
 
 
@@ -947,12 +1003,14 @@ func _retreat_dir(dir: Vector3) -> Vector3:
 	return Vector3.ZERO
 
 
-## The way to walk when the player is out of sight. Through a doorway if they are in another
-## chamber; otherwise to the nearest spot it can walk straight to and see them from. Nothing
-## here pathfinds: if no such spot is within reach it simply closes in, as before.
+## The way to walk when the player is out of sight: to the nearest spot it can get to and see
+## them from (by path where the level has a navigation mesh, so round a corner if need be);
+## if there is none within reach it simply closes in along its path. Without a mesh: through a
+## doorway if they are in another chamber, otherwise only to spots it can walk straight to.
 func _seek_line(delta: float) -> Vector3:
 	_vantage_t -= delta
-	if _router != null and is_instance_valid(_router):
+	var nav: LevelNav = _level_nav()
+	if nav == null and _router != null and is_instance_valid(_router):
 		var next: Vector3 = _router.call("route", global_position, target.global_position, radius)
 		if Vector2(next.x - target.global_position.x, next.z - target.global_position.z).length() > 0.5:
 			_vantage = null
@@ -961,21 +1019,28 @@ func _seek_line(delta: float) -> Vector3:
 	if _vantage == null or reached or _vantage_t <= 0.0:
 		_vantage = _find_vantage()
 		_vantage_t = 1.0
+		_errand.reset()
 	if _vantage == null:
 		return _walk_dir
+	if nav != null:
+		var way: Vector3 = _errand.steer(nav, global_position, _vantage as Vector3, radius, delta)
+		return _round_stone(nav, _errand.next_point(_vantage as Vector3), way)
 	var to: Vector3 = (_vantage as Vector3) - global_position
 	to.y = 0.0
 	return to.normalized() if to.length() > 0.05 else Vector3.ZERO
 
 
-## Looks round itself for somewhere to shoot from: a spot it can reach in a straight line, with
-## ground under it and a clear line to the player, not too close to them. The nearest wins, with
-## a preference for its usual shooting distance. Null if there is none within 8 m.
+## Looks round itself for somewhere to shoot from: a spot with ground under it and a clear line to
+## the player, not too close to them, that it can get to - by path on the navigation mesh (at most
+## vantage_max_path metres of walking), or without one only in a straight line. The nearest walk
+## wins, with a preference for its usual shooting distance. Null if there is none within 8 m.
 func _find_vantage() -> Variant:
 	var chest: Vector3 = global_position + Vector3.UP
 	var mark: Vector3 = target.global_position + Vector3.UP
 	var want: float = (float(_def.get("keep_range_min", 9.0)) + float(_def.get("keep_range_max", 12.0))) * 0.5
 	var too_close: float = float(_def.get("back_off_within", 4.0)) + 1.0
+	var nav: LevelNav = _level_nav()
+	var max_walk: float = GameData.num("navigation", "vantage_max_path")
 	var best: Variant = null
 	var best_cost: float = INF
 	for ring: float in [2.0, 4.0, 6.0, 8.0]:
@@ -988,11 +1053,27 @@ func _find_vantage() -> Variant:
 			var cost: float = ring + absf(from_player - want) * 0.4
 			if cost >= best_cost:
 				continue
-			# room for its body on the way, not just a hair's width
-			if not _clear(chest, spot + Vector3.UP + way * (radius + 0.2)) or not _has_floor(spot):
-				continue
-			if not _clear(spot + Vector3.UP, mark):
-				continue
+			if nav != null:
+				if not nav.standable(spot, radius):
+					continue                       # inside a wall or a block
+				spot = nav.closest(spot, radius)
+				if not _clear(spot + Vector3.UP, mark):
+					continue
+				var route: PackedVector3Array = nav.path(global_position, spot, radius)
+				if route.is_empty() or NavPath.flat(route[route.size() - 1], spot) > 0.3:
+					continue                       # it cannot get there
+				var walk: float = LevelNav.length_of(route)
+				if walk > max_walk:
+					continue
+				cost = walk + absf(from_player - want) * 0.4
+				if cost >= best_cost:
+					continue
+			else:
+				# room for its body on the way, not just a hair's width
+				if not _clear(chest, spot + Vector3.UP + way * (radius + 0.2)) or not _has_floor(spot):
+					continue
+				if not _clear(spot + Vector3.UP, mark):
+					continue
 			best = spot
 			best_cost = cost
 	return best

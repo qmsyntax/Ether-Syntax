@@ -41,6 +41,7 @@ func _ready() -> void:
 	await _test_step4_enemies()
 	await _test_step5a()
 	await _test_step5b()
+	await _test_pathfinding()
 	await _test_combat_rules()
 	_test_affinities()
 	_test_fog_map()
@@ -3695,4 +3696,191 @@ func _test_inventory_doll() -> void:
 	_check("the two columns either side of the figure hold each slot once", columns.size() == 12 and wanted.all(func(s: String) -> bool: return columns.count(s) == 1), str(columns))
 	for n: Node in [p, q]:
 		n.queue_free()
+	await get_tree().process_frame
+
+
+## Pathfinding (Brent 2026-10-18: "Get pathfinding working as well."): every level bakes navigation
+## meshes from its colliders (LevelNav) and enemies and the bot follow paths on them (NavPath).
+## Each part gets a little world of its own, far from the others; enemies are walked by hand at
+## 1/60 s a step inside a physics frame, so their walking uses that step too.
+func _test_pathfinding() -> void:
+	print("pathfinding (Brent 2026-10-18):")
+	await get_tree().process_frame
+	var p := _new_player()
+	var step := 1.0 / 60.0
+	# walk `e` until `done` says so or `seconds` of game time pass; returns the time it took
+	var walk := func(e: Node, seconds: float, done: Callable, watch: Callable = Callable()) -> float:
+		var t := 0.0
+		while t < seconds and is_instance_valid(e) and not bool(done.call()):
+			var was: Vector3 = (e as Node3D).global_position
+			e.call("_physics_process", step)
+			if watch.is_valid():
+				watch.call(was, (e as Node3D).global_position)
+			t += step
+		return t
+	var baked_world := func(at: Vector3, blocks: Array) -> Node3D:
+		var root: Node3D = _test_floor(at)
+		for b: Array in blocks:
+			_block(root, at + (b[0] as Vector3), b[1] as Vector3)
+		var made := LevelNav.new()
+		made.auto_rebake = false
+		root.add_child(made)
+		made.bake_now()
+		return root
+	var nav_of := func(root: Node) -> LevelNav:
+		for c: Node in root.get_children():
+			if c is LevelNav:
+				return c as LevelNav
+		return null
+
+	# ---------- a wall across the way, 12 m wide
+	var here := Vector3(2600, 0, 0)
+	var world: Node3D = baked_world.call(here, [[Vector3(0, 1, -5), Vector3(12, 2, 1)]])
+	var nav: LevelNav = nav_of.call(world)
+	_check("the colliders of a level bake into a mesh to walk on, for that level only", nav.is_ready() and nav.covers(here) and not nav.covers(here + Vector3(500, 0, 0)))
+	var route: PackedVector3Array = nav.path(here + Vector3(0, 0, -10), here, 0.5)
+	var round_end := true
+	for i: int in range(1, route.size()):
+		var a: Vector3 = route[i - 1] - here
+		var b: Vector3 = route[i] - here
+		if (a.z < -5.0) != (b.z < -5.0):
+			var cross_x: float = a.x + (b.x - a.x) * ((-5.0 - a.z) / (b.z - a.z))
+			round_end = round_end and absf(cross_x) >= 6.0 + 0.45
+	_check("a path runs round the wall from one side to the other", route.size() >= 3 and NavPath.flat(route[route.size() - 1], here) < 0.3 and LevelNav.length_of(route) > 10.5 and round_end,
+		"%d points, %.1f m" % [route.size(), LevelNav.length_of(route)])
+	var wide_route: PackedVector3Array = nav.path(here + Vector3(0, 0, -10), here, 0.9)
+	var wide_clear := true
+	for pt: Vector3 in wide_route:
+		if absf(pt.z - here.z + 5.0) < 0.6:
+			wide_clear = wide_clear and absf(pt.x - here.x) >= 6.0 + 0.9
+	_check("a big walker gets a mesh of its own and turns the corner wider", nav.map_for(0.9) != nav.map_for(0.5) and wide_route.size() >= 3 and wide_clear, str(wide_route))
+
+	# an enemy with that wall between it and you walks round it
+	p.global_position = here
+	await get_tree().physics_frame
+	_check("the walking below runs inside a physics frame", Engine.is_in_physics_frame())
+	var grunt := _fighter(p, Vector3(0, 0, -10.0))
+	var widest := [0.0]
+	var took: float = walk.call(grunt, 10.0, func() -> bool: return grunt.global_position.distance_to(p.global_position) <= 2.3,
+		func(_was: Vector3, now: Vector3) -> void: widest[0] = maxf(float(widest[0]), absf(now.x - here.x)))
+	_check("an enemy blocked by a wall reaches you by walking round it", grunt.global_position.distance_to(p.global_position) <= 2.3 and float(widest[0]) > 6.0,
+		"after %.1f s at %s, widest %.1f" % [took, str(grunt.global_position - here), float(widest[0])])
+	_check("and not slowly: about the length of the way round at its speed", took < 22.0 / float(grunt.get("speed")), "%.1f s" % took)
+	grunt.free()
+	world.free()
+
+	# ---------- a narrow gap a grunt fits through and a brute does not, and a wide one farther off
+	here = Vector3(2600, 0, 200)
+	world = baked_world.call(here, [[Vector3(-15.4, 1, -5), Vector3(29.2, 2, 1)], [Vector3(5.4, 1, -5), Vector3(9.2, 2, 1)], [Vector3(22.0, 1, -5), Vector3(16.0, 2, 1)]])
+	nav = nav_of.call(world)
+	var thin: PackedVector3Array = nav.path(here + Vector3(0, 0, -10), here, 0.5)
+	var fat: PackedVector3Array = nav.path(here + Vector3(0, 0, -10), here, 0.8)
+	_check("a grunt goes through the 1.6 m gap", thin.size() >= 2 and NavPath.flat(thin[thin.size() - 1], here) < 0.3 and LevelNav.length_of(thin) < 10.5, "%.1f m" % LevelNav.length_of(thin))
+	_check("a brute is not offered it, and goes round by the wide one", LevelNav.length_of(fat) > 20.0 and NavPath.flat(fat[fat.size() - 1], here) < 0.3, "%.1f m" % LevelNav.length_of(fat))
+	p.global_position = here
+	await get_tree().physics_frame
+	var brute := _fighter(p, Vector3(0, 0, -10.0), "brute")
+	took = walk.call(brute, 25.0, func() -> bool: return brute.global_position.distance_to(p.global_position) <= 2.6)
+	_check("and gets to you that way instead of wedging itself in the narrow one", brute.global_position.distance_to(p.global_position) <= 2.6,
+		"after %.1f s at %s" % [took, str(brute.global_position - here)])
+	brute.free()
+	world.free()
+
+	# ---------- a doorway: an enemy in the next chamber, off to one side, comes through it
+	here = Vector3(2600, 0, 400)
+	world = baked_world.call(here, [[Vector3(-8.5, 1, -6), Vector3(1, 2, 20)], [Vector3(8.5, 1, -6), Vector3(1, 2, 20)],
+		[Vector3(-5.0, 1, -6), Vector3(6, 2, 1)], [Vector3(5.0, 1, -6), Vector3(6, 2, 1)]])
+	nav = nav_of.call(world)
+	p.global_position = here + Vector3(5, 0, 0)
+	await get_tree().physics_frame
+	var way: Vector3 = p.call("_bot_way", here + Vector3(5, 0, -12), 0.0)
+	_check("the way the bot takes to the next chamber is toward the doorway, not into the wall", way.x < -0.3, str(way))
+	var door_x := [INF]
+	var comer := _fighter(p, Vector3(0, 0, -12.0))
+	took = walk.call(comer, 12.0, func() -> bool: return comer.global_position.distance_to(p.global_position) <= 2.3,
+		func(was: Vector3, now: Vector3) -> void:
+			if (was.z - here.z < -6.0) != (now.z - here.z < -6.0):
+				door_x[0] = now.x - here.x)
+	_check("an enemy in the next chamber comes through the doorway to reach you", comer.global_position.distance_to(p.global_position) <= 2.3 and absf(float(door_x[0])) < 2.0,
+		"after %.1f s at %s, crossed at x %.1f" % [took, str(comer.global_position - here), float(door_x[0])])
+	comer.free()
+	world.free()
+
+	# ---------- standing stone: not in the mesh, walked round all the same - by the open end
+	here = Vector3(2600, 0, 600)
+	world = baked_world.call(here, [[Vector3(2.7, 1, -5), Vector3(1, 2, 10)]])      # a wall just past the right end of the slab
+	p.global_position = here
+	var slab: Node3D = p.call("raise_stone", here + Vector3(0, 0, -4.0), Vector3(0, 0, -1), {})
+	slab.call("tick", 0.5)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_check("the stone is up", bool(slab.call("is_up")))
+	var round_x := [INF]
+	var stone_walker := _fighter(p, Vector3(0.6, 0, -8.0))
+	took = walk.call(stone_walker, 10.0, func() -> bool: return stone_walker.global_position.distance_to(p.global_position) <= 2.3,
+		func(was: Vector3, now: Vector3) -> void:
+			if (was.z - here.z < -4.0) != (now.z - here.z < -4.0):
+				round_x[0] = now.x - here.x)
+	_check("an enemy goes round standing stone to reach you", stone_walker.global_position.distance_to(p.global_position) <= 2.3 and absf(float(round_x[0])) > 1.5,
+		"after %.1f s at %s, passed the slab at x %.1f" % [took, str(stone_walker.global_position - here), float(round_x[0])])
+	_check("by the end that is open, not the one against the wall", float(round_x[0]) < -1.5, "x %.1f" % float(round_x[0]))
+	stone_walker.free()
+	p.call("drop_stones")
+	world.free()
+
+	# ---------- an archer in a pocket: every spot it can shoot from is round a corner
+	here = Vector3(2600, 0, 800)
+	world = baked_world.call(here, [[Vector3(0, 1, -6), Vector3(7, 2, 1)], [Vector3(-3, 1, -8.75), Vector3(1, 2, 4.5)], [Vector3(3, 1, -8.75), Vector3(1, 2, 4.5)]])
+	p.global_position = here
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var ar := _fighter(p, Vector3(0, 0, -9.0), "archer")
+	ar.set("facing", Vector3(0, 0, 1))
+	_check("in the pocket the archer cannot see you", not bool(ar.call("_sees_target")))
+	var spot: Variant = ar.call("_find_vantage")
+	_check("it finds a spot to shoot from that it can only reach round a corner", spot != null and not bool(ar.call("_clear", ar.global_position + Vector3.UP, (spot as Vector3) + Vector3.UP)), str(spot))
+	var aimed := [false]
+	took = walk.call(ar, 10.0, func() -> bool: return bool(aimed[0]),
+		func(_was: Vector3, _now: Vector3) -> void: aimed[0] = float(ar.get("_windup")) >= 0.0)
+	var out: Vector3 = ar.global_position - here
+	_check("and walks out and round to it, and draws", bool(aimed[0]) and bool(ar.call("_sees_target")) and (absf(out.x) > 3.5 or out.z < -11.0),
+		"after %.1f s at %s" % [took, str(out)])
+	ar.free()
+	world.free()
+
+	# ---------- a doorway that opens: the mesh is rebaked on its own, and only then do enemies use it
+	here = Vector3(2600, 0, 1000)
+	var gated: Node3D = _test_floor(here)
+	_block(gated, here + Vector3(-16, 1, -5), Vector3(28, 2, 1))
+	_block(gated, here + Vector3(16, 1, -5), Vector3(28, 2, 1))
+	var bar := StaticBody3D.new()
+	var bar_col := CollisionShape3D.new()
+	var bar_shape := BoxShape3D.new()
+	bar_shape.size = Vector3(4, 2, 0.6)
+	bar_col.shape = bar_shape
+	bar.add_child(bar_col)
+	bar.position = here + Vector3(0, 1, -5)
+	gated.add_child(bar)
+	var live := LevelNav.new()                 # this one watches its level, as in the game
+	gated.add_child(live)
+	p.global_position = here
+	var early := _fighter(p, Vector3(0, 0, -10.0))
+	_check("before its first bake lands a level has no mesh, and enemies steer the old way", not live.is_ready() and early.call("_level_nav") == null)
+	var waited: int = Time.get_ticks_msec()
+	while not live.is_ready() and Time.get_ticks_msec() - waited < 5000:
+		await get_tree().process_frame
+	_check("the level bakes itself in the background", live.is_ready(), "%.0f ms" % live.bake_ms)
+	var shut: PackedVector3Array = live.path(here + Vector3(0, 0, -10), here, 0.5)
+	_check("with the doorway sealed there is no way through", not shut.is_empty() and NavPath.flat(shut[shut.size() - 1], here) > 3.0, str(shut))
+	var seen_version: int = live.version
+	bar.queue_free()
+	waited = Time.get_ticks_msec()
+	while live.version == seen_version and Time.get_ticks_msec() - waited < 5000:
+		await get_tree().process_frame
+	var open: PackedVector3Array = live.path(here + Vector3(0, 0, -10), here, 0.5)
+	_check("open it and the mesh is rebaked with the doorway in it", live.version > seen_version and NavPath.flat(open[open.size() - 1], here) < 0.3 and LevelNav.length_of(open) < 10.5,
+		"v%d, %s" % [live.version, str(open)])
+	early.free()
+	gated.free()
+	p.free()
 	await get_tree().process_frame

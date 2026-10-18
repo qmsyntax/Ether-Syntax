@@ -385,6 +385,21 @@
       "poise": 40.0
     }
   },
+  "navigation": {
+    "_note": "Pathfinding (scripts/level_nav.gd, nav_path.gd). Every level bakes two navigation meshes from its static colliders: one for the common walker (agent_radius_small covers grunt, archer, harrier, censer, drummer, pavise and the player) and one for the big ones (agent_radius_large: brute 0.8, commander 0.9 - a whole number of cells, since the baker rounds the radius up to one); a walker with a radius above large_from_radius uses the second. cell_size is also the map's cell size. A walker re-asks for its path every repath_s, or sooner if its goal has moved repath_moved metres, and counts a corner reached within corner_reached. A path that ends more than unreachable_slack from where it was meant to go means the goal cannot be reached: the walker stops at the end instead of pressing into a wall. vantage_max_path is how far an archer will walk (by path) to a spot it can shoot from. Structural numbers, not balance.",
+    "agent_radius_small": 0.5,
+    "agent_radius_large": 1.0,
+    "large_from_radius": 0.6,
+    "agent_height": 1.5,
+    "agent_max_climb": 0.25,
+    "cell_size": 0.25,
+    "cell_height": 0.25,
+    "repath_s": 0.3,
+    "repath_moved": 1.0,
+    "corner_reached": 0.35,
+    "unreachable_slack": 1.5,
+    "vantage_max_path": 14.0
+  },
   "braced": {
     "_note": "Braced (design/05 2.3): during the wind-up of a skill marked braced you take damage_taken_mult of every blow and cannot be staggered. You are also rooted and committed to where you aimed. [MODEL]",
     "damage_taken_mult": 0.6

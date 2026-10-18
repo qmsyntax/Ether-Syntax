@@ -105,7 +105,7 @@ var _test_mode := false
 
 func _ready() -> void:
 	rng.randomize()
-	add_to_group("router")              # enemies and the bot ask the level how to get through a doorway
+	add_to_group("router")              # where there is no navigation mesh yet: the way through a doorway
 	_build_world()
 	_build_player()
 	_build_hud()
@@ -895,11 +895,10 @@ func _tick_dungeon(delta: float) -> void:
 		if leave_now and _pad_in_reach():
 			_extract()
 			return
+		# the bot paths there itself (player._bot_way): no lining up with the doorway first
 		var goal_local: Vector3
 		if leave_now and not pads.is_empty():
 			goal_local = level.to_local(pads.back().global_position)
-		elif absf(local.x) > 0.8:
-			goal_local = Vector3(0.0, 0.0, local.z)
 		else:
 			goal_local = Vector3(0.0, 0.0, -(float(cleared + 1) * ch_len + 4.0))
 		player.set("bot_goal", level.to_global(goal_local))
@@ -937,7 +936,8 @@ func _activate(c: int) -> void:
 
 
 ## Where something at `from` should walk next to reach `to` (both in world space). In the passage
-## that may be a doorway first; anywhere else it is `to` itself. See Route.
+## that may be a doorway first; anywhere else it is `to` itself. See Route. Only used until the
+## level's navigation mesh is baked (LevelNav); after that everything follows paths.
 func route(from: Vector3, to: Vector3, walker_radius: float) -> Vector3:
 	if state != "dungeon" or level == null:
 		return to
@@ -1159,6 +1159,16 @@ func _new_level(yaw_degrees: float) -> void:
 	gates.clear()
 	pads.clear()
 	_rent_accum = 0.0
+	_add_level_nav()
+
+
+## Pathfinding for the level about to be built: a LevelNav at the level's origin bakes its
+## navigation meshes from the colliders once the building is done (the frame after), and again
+## whenever a collider is added or taken away (a doorway sealed or opened). See LevelNav.
+func _add_level_nav() -> void:
+	var nav := LevelNav.new()
+	nav.name = "Nav"
+	level.add_child(nav)
 
 
 func _build_town() -> void:
@@ -1604,6 +1614,16 @@ func _setup_ui_shot(which: String) -> void:
 			e.set_physics_process(false)
 		player.set_physics_process(false)
 		player.call("_refresh_highlights")
+		return
+	if which == "nav" or which.begins_with("nav-"):
+		# the common walker's navigation mesh drawn over the passage, at the first doorway: --shot-ui=nav-city
+		forced_biome = which.trim_prefix("nav-") if which.begins_with("nav-") else "mountain"
+		_select_talent(0)
+		_show_screen(null, false)
+		_enter_dungeon()
+		player.global_position = level.to_global(Vector3(0.0, 0.0, -ch_len - 2.0))
+		(level.get_node("Nav") as LevelNav).show_debug(true)
+		player.set_physics_process(false)
 		return
 	if which.begins_with("biome-"):
 		# the passage in a given biome, two walls in: --shot-ui=biome-snow

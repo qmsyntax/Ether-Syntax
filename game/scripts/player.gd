@@ -89,6 +89,7 @@ var bot := false
 var bot_goal := Vector3.ZERO
 var bot_damage_mult := 25.0
 var _bot_dir := Vector3.ZERO
+var _bot_path := NavPath.new()
 
 # Hidden from the player on purpose: the notebook only ever gives a vague read.
 var _latent_aura := 0.0
@@ -466,7 +467,7 @@ func _physics_process(delta: float) -> void:
 		_update_model(delta)
 		return
 	if bot:
-		_bot_think()
+		_bot_think(delta)
 	else:
 		_update_aim()
 	if _windup_t > 0.0:
@@ -556,14 +557,8 @@ func _physics_process(delta: float) -> void:
 					attack_target = null
 		elif input == Vector2.ZERO:
 			dir = to.normalized()                  # walk into reach
-			if bot:
-				# a person steers through a doorway by hand; the bot has to be told where it is
-				var router: Node = get_tree().get_first_node_in_group("router")
-				if router != null:
-					var way: Vector3 = (router.call("route", global_position, attack_target.global_position, 0.4) as Vector3) - global_position
-					way.y = 0.0
-					if way.length() > 0.05:
-						dir = way.normalized()
+			if bot and _bot_dir != Vector3.ZERO:
+				dir = _bot_dir                     # a person steers round things by hand; the bot follows its path
 	elif pickup_target != null and is_instance_valid(pickup_target) and not pickup_target.is_queued_for_deletion():
 		var to_item: Vector3 = pickup_target.global_position - global_position
 		to_item.y = 0.0
@@ -2767,18 +2762,34 @@ func _nearest_enemy() -> Node3D:
 
 
 ## Test bot: returns true when it wants to swing.
-func _bot_think() -> bool:
+func _bot_think(delta: float = 0.0) -> bool:
 	var near: Node3D = _nearest_enemy()
 	var goal: Vector3 = near.global_position if near != null else bot_goal
 	var to: Vector3 = goal - global_position
 	to.y = 0.0
 	var dist: float = to.length()
-	_bot_dir = to / dist if dist > 0.6 else Vector3.ZERO
+	_bot_dir = _bot_way(goal, delta) if dist > 0.6 else Vector3.ZERO
 	if dist > 0.2:
 		_facing = to / dist
 	if near == null:
 		return false
 	return dist <= reach_now() + float(near.get("radius"))
+
+
+## Test bot: the way to walk to `goal` - along the level's navigation mesh, or where there is
+## none yet through the passage's doorway (Route, via the `router` group), else straight.
+func _bot_way(goal: Vector3, delta: float) -> Vector3:
+	var nav: LevelNav = LevelNav.find(get_tree(), global_position)
+	if nav != null:
+		var way: Vector3 = _bot_path.steer(nav, global_position, goal, 0.4, delta)
+		if way != Vector3.ZERO or _bot_path.blocked:
+			return way
+	var next: Vector3 = goal
+	var router: Node = get_tree().get_first_node_in_group("router")
+	if router != null:
+		next = router.call("route", global_position, goal, 0.4)
+	var flat := Vector3(next.x - global_position.x, 0.0, next.z - global_position.z)
+	return flat.normalized() if flat.length() > 0.05 else Vector3.ZERO
 
 
 func start_fight() -> void:
