@@ -98,12 +98,18 @@ func _process(delta: float) -> void:
 				_finish()
 				return
 			_expect("standard: you wake in town", str(main.get("state")) == "town", str(main.get("state")))
-			_expect("alive, and billed for the rescue", not bool(player.get("dead")) and not (player.get("body") as Body).is_dead()
-				and int(player.get("money")) == money_before - GameData.inum("town", "rescue_fee"), "money %d" % int(player.get("money")))
+			_expect("alive, naked, and your body left in the passage", not bool(player.get("dead")) and not (player.get("body") as Body).is_dead()
+				and int(player.get("money")) == money_before and (player.get("inventory") as Inventory).equipped.is_empty()
+				and (player.get("corpses") as Array).size() == 1, "money %d, corpses %d" % [int(player.get("money")), (player.get("corpses") as Array).size()])
 			_expect("nothing of the echo is left behind", get_tree().get_nodes_in_group("nether_enemies").is_empty())
 			# the game must still be running normally afterwards
 			main.call("enter_passage")
 			_expect("and you can go straight back in", str(main.get("state")) == "dungeon")
+			var lying: Array = get_tree().get_nodes_in_group("corpses")
+			_expect("your corpse is lying in the passage where you fell", lying.size() == 1)
+			if lying.size() == 1:
+				_expect("and taking it puts your things back on", bool(player.call("take_pickup", lying[0])) and not (player.get("inventory") as Inventory).equipped.is_empty()
+					and (player.get("corpses") as Array).is_empty())
 			_next()
 		4:
 			if t < 0.5:

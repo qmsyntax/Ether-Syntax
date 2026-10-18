@@ -534,3 +534,22 @@ an enemy within 4.5 m, so a point-blank arrow counts. Nothing but the timer show
 
 Verified: self-test 697/697 (three runs); three full-passage bot runs, gate and death bots; Netherecho death test;
 inventory and creation click tests; icon sheet inspected. Not verified: by hand.
+
+
+## Part Z — nothing pays cash; corpse runs; rent only for a room (Brent 2026-10-18, approving design/07 with changes)
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-131 | Kills pay no cash. Each kind leaves its remains to pick up and sell (mask, bowstave, pelt, hide, shield boss, ash, drumhead, sigil), worth about what its bounty was, and with weight | selftest, data | Done |
+| S06-132 | The passage exit pays its spoils as things to carry (strongbox $2,000 / 2.5 kg, case of relics $500 / 1 kg, salvage $100 / 0.5 kg), the most valuable first, as many as fit. The rest stays at the exit | bot runs (spoils counted at value) | Done |
+| S06-133 | Corpse runs: you wake in town naked; your body lies where you fell with everything worn and carried. Walk back and click it, or pay a flat fee ($250 x stars) to have the newest one brought. Death costs no money. Corpses are saved | selftest, death probe, bot | Done |
+| S06-134 | No rent outdoors: the arena's rest is free. The only rent is a room at the inn ($150 a night) and the owned passage's ticket and meter | — | Done |
+
+Hardcore is unchanged. Rough edges: a corpse is your character model lying face down; there is no decay timer and
+no limit on how many you leave; the arena corpse is placed in a fresh arena, so it is not the arena you died in.
+The bot never picks up remains, so its money only falls (it is invulnerable and cannot sell); the bot checks count
+the spoils it carried, not money. The 90-minute day and the world clock are not built (there is no clock yet).
+
+Verified: self-test 705/705 (two runs); three full-passage bot runs, gate and death bots; Netherecho death test both
+ways (now also finds and recovers the corpse in the passage); inventory and creation click tests; town screenshot.
+Not verified: by hand.

@@ -29,15 +29,28 @@ func build(root: Control) -> void:
 	var ticket: int = int(game.get("ticket_price"))
 	var mult: float = float(game.call("repeat_mult"))
 	left.add_child(UiWidgets.service_button("Enter the assault passage",
-		"Solo. The entrance seals behind you. Clear %d of %d walls to unlock an exit; pay is handed over only if you walk out. Rent runs inside. This passage now pays x%.2f." % [
+		"Owned: a ticket, and a meter while inside. Clear %d of %d walls to open an exit; carry the spoils out to keep them. Pays x%.2f." % [
 			int(game.get("gate_at")), int(game.get("chambers")), mult],
 		"ticket  $%d" % ticket, func() -> void: game.call("enter_passage"), bool(player.call("can_afford", ticket))))
-	left.add_child(UiWidgets.service_button("Practice arena", "Free. Kill bounties only, and rent ticks while you rest between waves.",
+	left.add_child(UiWidgets.service_button("Practice arena", "Free. Whatever you kill leaves something to sell.",
 		"free", func() -> void: game.call("enter_arena")))
-	left.add_child(UiWidgets.service_button("Rest the night", "Cuts close and bones knit a little. What is gone stays gone.",
-		"rent  $%d" % int(game.get("night_rent")), func() -> void:
+	left.add_child(UiWidgets.service_button("A room at the inn", "A night's sleep. Cuts close and bones knit a little. What is gone stays gone.",
+		"room  $%d" % int(game.get("night_rent")), func() -> void:
 			game.call("town_rest_night")
 			rebuild()))
+	var bodies: Array = player.get("corpses")
+	if not bodies.is_empty():
+		var fee: int = int(player.call("corpse_fee"))
+		left.add_child(UiWidgets.service_button("Corpse retrieval",
+			"Your body lies %s with everything you had on it. Walk back for it, or pay the collectors to bring it.%s" % [
+				"in the passage" if str((bodies.back() as Dictionary).get("where", "")) == "passage" else "in the arena",
+				"" if bodies.size() == 1 else "  (%d bodies; this brings the newest.)" % bodies.size()],
+			"$%d" % fee, func() -> void:
+				var why: String = player.call("buy_corpse_retrieval")
+				if why != "":
+					player.call("note", why)
+				game.call("save_now")
+				rebuild(), bool(player.call("can_afford", fee))))
 	var heal: Dictionary = player.call("next_healing")
 	left.add_child(UiWidgets.service_button("Healer", str(heal["desc"]),
 		("$%d" % int(heal["cost"])) if int(heal["cost"]) > 0 else "",
@@ -76,7 +89,7 @@ func build(root: Control) -> void:
 	right.add_child(UiWidgets.stat_row("Purse", UiTheme.money_text(money), UiTheme.BAD if money < 0 else UiTheme.GOLD))
 	var last: int = int(game.get("_last_payout"))
 	if last > 0:
-		right.add_child(UiWidgets.stat_row("Last delve paid", "$%d" % last))
+		right.add_child(UiWidgets.stat_row("Last delve carried out", "$%d" % last))
 	right.add_child(UiWidgets.stat_row("Delves made", str(int(game.get("delves")))))
 	right.add_child(UiWidgets.stat_row("Pack", "%d of %d kg" % [int(inv.weight()), int(inv.capacity())]))
 

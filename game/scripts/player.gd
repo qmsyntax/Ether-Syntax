@@ -139,6 +139,9 @@ var _shoved_left := 0.0              # metres still to slide from an enemy's sho
 var _shoved_dir := Vector3.ZERO
 ## Skills that sit on you for a while: buff id -> {"t": seconds left, ...its own numbers}.
 var buffs: Dictionary = {}
+## Bodies you died in and have not recovered: {id, where, chamber, pos, equipped, bag}.
+var corpses: Array = []
+var _corpse_seq := 0
 var rod: Node3D                      # the one Ground Rod standing, if any
 var _bare_strikes := 0               # counted for skills that pay on every other strike
 var _dash_braced := false
@@ -1444,7 +1447,6 @@ func add_aura(amount: float) -> void:
 
 
 func _on_kill(target: Node) -> void:
-	money += int(target.get("bounty"))
 	var hurt: float = 1.0 - body.total() / body.total_max()
 	var risk: float = 1.0 + hurt * float(_p["aura_hurt_risk_bonus"])
 	_latent_aura += float(target.get("aura_value")) * risk
@@ -2397,6 +2399,10 @@ func _roll_loot(target: Node) -> void:
 	var parent: Node = target.get_parent()
 	if parent == null:
 		return
+	# every kill leaves something to sell: the kind's remains (nothing pays cash - Brent 2026-10-18)
+	var remains: String = str(GameData.enemy(str(kind_v)).get("remains", ""))
+	if remains != "" and not bool(target.get("is_scenery")):
+		spawn_pickup(parent, remains, (target as Node3D).global_position)
 	for entry: Dictionary in GameData.enemy(str(kind_v)).get("loot", []):
 		if rng.randf() < float(entry["chance"]):
 			if bool(entry.get("learnable", false)):
@@ -2419,6 +2425,11 @@ static func spawn_pickup(parent: Node, item_id: String, at: Vector3) -> Node3D:
 
 ## Put a ground item in the bag, if there is room to carry it.
 func take_pickup(drop: Node3D) -> bool:
+	if drop.get("corpse_id") != null:
+		var back: bool = recover_corpse(str(drop.get("corpse_id")))
+		if back:
+			drop.call("take")
+		return back
 	var id: String = str(drop.get("item_id"))
 	var item_name: String = str(GameData.item(id).get("name", id))
 	if not inventory.add(id):
@@ -2440,7 +2451,7 @@ func to_save() -> Dictionary:
 		"arm_right": arm_right, "arm_right_lost": arm_right_lost,
 		"abilities": abilities.duplicate(true), "hotbar": hotbar.duplicate(),
 		"constructs": constructs.duplicate(true), "discoveries": discoveries.duplicate(),
-		"heal_points_total": heal_points_total, "inventory": inventory.to_dict(),
+		"heal_points_total": heal_points_total, "inventory": inventory.to_dict(), "corpses": corpses.duplicate(true),
 	}
 
 
@@ -2499,6 +2510,7 @@ func from_save(d: Dictionary) -> void:
 	for line: Variant in d.get("discoveries", []):
 		discoveries.append(str(line))
 	heal_points_total = float(d.get("heal_points_total", 0.0))
+	corpses = (d.get("corpses", []) as Array).duplicate(true)
 	inventory.from_dict(d.get("inventory", {}))
 	refresh_gear()
 
@@ -2649,7 +2661,9 @@ func buy_healing() -> void:
 
 ## Standard-mode death (design/03 section 7b): dragged out, patched up, and billed for it.
 ## The fee is charged with no credit check - this is how a character ends up in debt.
-func revive_in_debt(fee: int) -> void:
+## You wake in town with nothing (Brent 2026-10-18: corpse runs). Patched up, not healed: enough
+## to stand, and nothing lost comes back. What you had is on your corpse (die_to_corpse).
+func respawn_naked() -> void:
 	var town: Dictionary = GameData.balance["town"]
 	dead = false
 	in_combat = false
@@ -2659,11 +2673,67 @@ func revive_in_debt(fee: int) -> void:
 	_charging = false
 	_charge = 0.0
 	clear_reflux()
-	money -= fee
-	# Patched up, not healed: enough to stand, and nothing lost comes back.
+	buffs.clear()
 	body.hp = maxf(body.hp, body.total_max() * float(town["revive_health_frac"]))
 	_build_model()
-	note("You wake on a cot. Someone dragged you out. The bill is $%d." % fee)
+	refresh_gear()
+	note("You wake on a cot in town with nothing on you. Your body is where you fell.")
+
+
+## Everything worn and carried stays with the body, where it fell: `where` is "passage" or "arena",
+## `chamber` and `local_pos` place it in that level's own frame. Returns the corpse, or {} if
+## there was nothing on you to leave.
+func die_to_corpse(where: String, chamber: int, local_pos: Vector3) -> Dictionary:
+	if inventory.equipped.is_empty() and inventory.bag.is_empty():
+		return {}
+	_corpse_seq += 1
+	var c: Dictionary = {"id": "corpse_%d_%d" % [Time.get_unix_time_from_system(), _corpse_seq], "where": where, "chamber": chamber,
+		"pos": [local_pos.x, local_pos.y, local_pos.z], "equipped": inventory.equipped.duplicate(), "bag": inventory.bag.duplicate()}
+	corpses.append(c)
+	inventory.equipped.clear()
+	inventory.bag.clear()
+	refresh_gear()
+	return c
+
+
+## Take back everything on one of your corpses. What you are wearing now stays on; anything that
+## would have gone in a taken slot goes in the pack. It all comes back, however heavy.
+func recover_corpse(id: String) -> bool:
+	for i: int in corpses.size():
+		var c: Dictionary = corpses[i]
+		if str(c["id"]) != id:
+			continue
+		var gear: Dictionary = c.get("equipped", {})
+		for slot: String in gear:
+			if inventory.equipped.has(slot):
+				inventory.bag.append(str(gear[slot]))
+			else:
+				inventory.equipped[slot] = str(gear[slot])
+		for item: Variant in c.get("bag", []):
+			inventory.bag.append(str(item))
+		corpses.remove_at(i)
+		refresh_gear()
+		note("You take back everything that was on your corpse.")
+		_float("RECOVERED", Color(0.9, 0.85, 0.7))
+		return true
+	return false
+
+
+## The price to have one corpse brought to you: flat, by how many stars you have.
+func corpse_fee() -> int:
+	return GameData.inum("town", "corpse_fee_per_star") * stars
+
+
+## Pay to have the most recent corpse brought back. Returns "" or why not.
+func buy_corpse_retrieval() -> String:
+	if corpses.is_empty():
+		return "You have no corpse lying anywhere."
+	var fee: int = corpse_fee()
+	if not can_afford(fee):
+		return "The collectors will not go out on that much debt."
+	money -= fee
+	recover_corpse(str((corpses.back() as Dictionary)["id"]))
+	return ""
 
 
 ## A night in town: the body does what bodies do. Rent for the night is charged by the caller.

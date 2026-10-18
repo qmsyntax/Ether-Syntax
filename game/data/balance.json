@@ -66,12 +66,12 @@
   },
   "town": {
     "starting_money": 10000,
-    "rescue_fee": 600,
-    "revive_health_frac": 0.5
+    "revive_health_frac": 0.5,
+    "corpse_fee_per_star": 250,
+    "_note": "Brent 2026-10-18: corpse runs. Die and you wake in town naked; your body lies where you fell with everything you wore and carried. Walk back for it, or pay corpse_fee_per_star x your stars to have it brought (a flat fee, never a share of what is on it). revive_health_frac: how much of the bar you wake with. The night's rest is a room at the inn - the only rent there is."
   },
   "arena": {
     "half_size": 18.0,
-    "rent_per_s": 5.0,
     "first_rest": 4.0,
     "rest_between_waves": 10.0,
     "rest_extend": 10.0,
@@ -161,7 +161,8 @@
       "10": {
         "archer": 2
       }
-    }
+    },
+    "_note_owned": "This passage is owned (Brent 2026-10-18): it sells tickets and runs a meter (rent_per_s) while you are inside. Wild passages are nobody's and free; public ones are free for low levels. stage_value: the spoils each wall adds."
   },
   "scenery": {
     "grass_hp": 25.0,

@@ -21,7 +21,6 @@ const TALENT_CHOICES: Array[String] = [
 
 # Practice arena.
 var arena_half: float = GameData.num("arena", "half_size")
-var arena_rent_per_second: float = GameData.num("arena", "rent_per_s")
 
 # Assault passage. Rules follow design/01-systems-bible LAW 6b [C]: the entrance seals, a minimum
 # of progress unlocks the exit, stages escalate and spike past the midpoint, the reward is paid
@@ -41,7 +40,6 @@ var late_strength: float = GameData.num("passage", "late_strength")
 var exit_reach: float = GameData.num("passage", "exit_reach")
 
 # Town.
-var rescue_fee: int = GameData.inum("town", "rescue_fee")
 var night_rent: int = GameData.inum("night", "rent")
 
 var player: CharacterBody3D
@@ -157,11 +155,8 @@ func _process(delta: float) -> void:
 			_prompt = ""
 		"arena_rest":
 			rest_timer -= delta
-			# Rest is free for the body and costly for the wallet: rent ticks while you recover.
-			if wave >= 1:
-				_charge_rent(arena_rent_per_second, delta)
-			_prompt = "Wave %d in %d   -   resting heals you for free, but rent is $%d a second\n%s go now     %s rest longer     %s healer     hold %s to meditate     %s back to town" % [
-				wave + 1, int(ceil(rest_timer)), int(arena_rent_per_second),
+			_prompt = "Wave %d in %d   -   pick up what the last one left before it starts\n%s go now     %s rest longer     %s healer     hold %s to meditate     %s back to town" % [
+				wave + 1, int(ceil(rest_timer)),
 				_k("go_now"), _k("rest"), _k("healer"), _k("meditate"), _k("interact")]
 			if rest_timer <= 0.0:
 				_start_wave()
@@ -537,6 +532,7 @@ func town_buy(item_id: String) -> String:
 	return ""
 
 
+## A room at the inn for the night - the only rent there is (Brent 2026-10-18).
 func town_rest_night() -> void:
 	player.call("rest_night")
 	player.call("charge", night_rent)
@@ -650,6 +646,7 @@ func _enter_arena() -> void:
 		nether.populate_site(q, Vector2(6.0, 6.0))
 	player.global_position = Vector3.ZERO
 	player.set("active", true)
+	_place_corpses("arena")
 	wave = 0
 	rest_timer = GameData.num("arena", "first_rest")
 	state = "arena_rest"
@@ -729,6 +726,7 @@ func _enter_dungeon() -> void:
 		nether.populate_site(Vector3(0.0, 0.0, -(float(c) + 0.5) * ch_len), Vector2(ch_half_w - 1.5, ch_len * 0.5 - 1.5))
 	player.global_position = level.to_global(Vector3(0.0, 0.0, -4.0))
 	player.set("active", true)
+	_place_corpses("passage")
 	state = "dungeon"
 	player.call("note", "You step through into %s. Walk up the corridor (%s)." % [str(_biome.get("label", biome)).to_lower(), Keybinds.binding_text("move_up")])
 
@@ -846,7 +844,7 @@ func _on_wall_cleared() -> void:
 			(gates[next_c] as Node).call("set_open", true)
 	if cleared >= gate_at:
 		_spawn_pad(cleared)
-	player.call("note", "Wall %d cleared. $%d banked - yours only if you walk out." % [cleared, bank])
+	player.call("note", "Wall %d cleared. Spoils worth $%d waiting - yours only if you walk out with them." % [cleared, bank])
 	if cleared == gate_at:
 		hud.call("announce", "AN EXIT OPENS")
 
@@ -883,18 +881,33 @@ func _payout_now() -> int:
 
 
 func _extract() -> void:
-	var payout: int = _payout_now()
-	player.set("money", int(player.get("money")) + payout)
-	_last_payout = payout
+	var owed: int = _payout_now()
+	var carried: Array = grant_spoils(owed)
+	_last_payout = int(carried[0])
 	_last_cleared = cleared
 	_last_sealed = sealed
 	_bot_finished = _bot_mode
 	delves += 1
-	player.call("note", "You walk out after %d walls with $%d." % [cleared, payout])
+	player.call("note", "You walk out after %d walls carrying spoils worth $%d." % [cleared, int(carried[0])])
+	if int(carried[1]) > 0:
+		player.call("note", "You could not carry the rest - $%d of it stays at the exit." % int(carried[1]))
 	var rewards: Array[String] = grant_exit_rewards(cleared, cleared == chambers)
 	_enter_town()
 	if not rewards.is_empty():
 		player.call("note", "At the exit: %s." % ", ".join(rewards))
+
+
+## A delve's spoils as things to carry home and sell (nothing pays cash - Brent 2026-10-18): the
+## most valuable kind first, as many as the pack will take. Returns [value carried, value left].
+func grant_spoils(value: int) -> Array:
+	var inv: Inventory = player.get("inventory")
+	var left: int = value
+	for id: Variant in GameData.items_file.get("spoils", []):
+		var each: int = int(GameData.item(str(id)).get("value", 0))
+		while each > 0 and left >= each and inv.add(str(id)):
+			left -= each
+	player.call("refresh_gear")
+	return [value - left, left]
 
 
 func _set_dungeon_banner() -> void:
@@ -903,11 +916,11 @@ func _set_dungeon_banner() -> void:
 	elif current > cleared:
 		_prompt = ""
 	elif cleared >= chambers:
-		_prompt = "All %d walls down.   %s on a glowing exit to leave with $%d, full-clear bonus included." % [chambers, _k("interact"), _payout_now()]
+		_prompt = "All %d walls down.   %s on a glowing exit to leave with spoils worth $%d, full-clear bonus included - as much as you can carry." % [chambers, _k("interact"), _payout_now()]
 	elif cleared >= gate_at:
-		_prompt = "%s on a glowing exit to leave with $%d   -   or push on: wall %d banks $%d more.\nRent is $%d a second while you stand here." % [_k("interact"), _payout_now(), cleared + 1, stage_value * (cleared + 1), int(dungeon_rent_per_second)]
+		_prompt = "%s on a glowing exit to leave with spoils worth $%d   -   or push on: wall %d adds $%d more.\nRent is $%d a second while you stand here." % [_k("interact"), _payout_now(), cleared + 1, stage_value * (cleared + 1), int(dungeon_rent_per_second)]
 	else:
-		_prompt = "$%d banked, but no exit until wall %d.   Rest if you need it - rent is $%d a second." % [bank, gate_at, int(dungeon_rent_per_second)]
+		_prompt = "Spoils worth $%d waiting, but no exit until wall %d.   Rest if you need it - rent is $%d a second." % [bank, gate_at, int(dungeon_rent_per_second)]
 
 
 # --- shared ---------------------------------------------------------------------
@@ -967,11 +980,29 @@ func _on_player_died() -> void:
 	var lost: int = bank if state == "dungeon" else 0
 	_bot_died = true
 	_bot_finished = _bot_mode
-	player.call("revive_in_debt", rescue_fee)
+	# a corpse run (Brent 2026-10-18): the body stays where it fell with everything on it
+	var where: String = "passage" if state == "dungeon" else ("arena" if state.begins_with("arena") else "")
+	if where != "" and level != null:
+		var at: Vector3 = level.to_local(player.global_position)
+		player.call("die_to_corpse", where, Route.chamber_of(at, ch_len) if where == "passage" else 0, at)
+	player.call("respawn_naked")
 	if lost > 0:
-		player.call("note", "The $%d you had banked stayed in the passage." % lost)
+		player.call("note", "The spoils of the walls you cleared stayed in the passage.")
 	_last_payout = 0
 	_enter_town()
+
+
+## Your corpses that lie in this kind of level, laid back where they fell.
+func _place_corpses(where: String) -> void:
+	var CorpseScript: GDScript = load("res://scripts/corpse.gd")
+	for c: Dictionary in player.get("corpses"):
+		if str(c.get("where", "")) != where:
+			continue
+		var pos: Array = c.get("pos", [0.0, 0.0, 0.0])
+		var body_node: Node3D = CorpseScript.new()
+		body_node.call("setup", str(c["id"]), player.get("look"))
+		body_node.position = Vector3(float(pos[0]), 0.0, float(pos[2]))
+		level.add_child(body_node)
 
 
 func _new_level(yaw_degrees: float) -> void:
@@ -1595,9 +1626,12 @@ func _tick_bot_report() -> void:
 		var ok := false
 		if _bot_scenario == "die":
 			var money_now: int = int(player.get("money"))
-			ok = not bool(player.get("dead")) and money_now == _bot_money_before - rescue_fee and _last_payout == 0
-			print("BOT[die]: alive=%s money %d -> %d (fee %d) payout=%d state=%s -> %s" % [
-				str(not bool(player.get("dead"))), _bot_money_before, money_now, rescue_fee, _last_payout, state, "PASS" if ok else "FAIL"])
+			var inv: Inventory = player.get("inventory")
+			var left_behind: Array = player.get("corpses")
+			ok = not bool(player.get("dead")) and money_now == _bot_money_before and _last_payout == 0 \
+				and inv.equipped.is_empty() and left_behind.size() == 1 and str((left_behind[0] as Dictionary)["where"]) == "passage"
+			print("BOT[die]: alive=%s money %d -> %d payout=%d naked=%s corpses=%d state=%s -> %s" % [
+				str(not bool(player.get("dead"))), _bot_money_before, money_now, _last_payout, str(inv.equipped.is_empty()), left_behind.size(), state, "PASS" if ok else "FAIL"])
 		else:
 			var walls: int = chambers if _bot_scenario == "full" else gate_at
 			var banked: int = 0

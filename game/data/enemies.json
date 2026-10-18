@@ -1,5 +1,5 @@
 {
-  "_note": "Enemy kinds. hp and damage are multiplied by the spawn's strength factor (walls past the gate use passage.late_strength). aura_value feeds hidden latent aura on kill; bounty is cash. drops: unused since the Netherecho exists - constructs are subdued there, never looted. loot: item drops left on the ground, each rolled independently. shove_resist scales how far a shove moves this enemy: 1.0 light, 0.5 heavy, 0.25 elite - never zero. design/05 step 2: poise (see balance.combat); behaviour is melee | ranged | pouncer. A melee enemy may set attack_shape 'circle' (hits everything within attack_radius of itself when the wind-up ends), interruptible (a white flash; an interrupting skill or a poise break cancels it), stuck_after_miss (seconds it stands open after hitting nothing) and front_armour (share of damage it ignores from its front arc). ranged: holds between keep_range_min and max, aims for windup seconds along a line that stops following you aim_lock seconds before release, backs off if you come within back_off_within. pouncer: circles at circle_distance; when you have been moving away from the pack for pounce_after_retreat_s it crouches for windup and leaps pounce_range; any hit during the crouch or the leap knocks it down for knockdown_s; a leap that misses leaves it stuck. STEP 4 (design/05 6.1): front_armour may be dropped below front_armour_until_frac of health; blocks_shots: a piercing shot from the front stops on it; stagger_s: how long a poise break lasts for this kind; attack_shove: metres its blow pushes the player; death_burst: what it leaves when it dies (scripts/censer_burst.gd); aura_ring: a ring drawn on the ground round it. behaviour support (the Drummer): never attacks, stands stand_behind metres behind the line, gives aura_status to allies within aura_radius, and every attack_cooldown winds up a roll (interruptible) that gives roll_status to one ally. behaviour commander: melee with a counter-swing after a blocked hit, and by health phase2_at: 'calls' reinforcements once and adds the 'sweep'; phase3_at: adds the 'charge', which crashes if it ends on a wall or stone. loot: an entry {learnable, chance} drops a skill scroll this character can learn and does not have.",
+  "_note": "Enemy kinds. hp and damage are multiplied by the spawn's strength factor (walls past the gate use passage.late_strength). aura_value feeds hidden latent aura on kill; remains: the item every kill of this kind leaves (Brent 2026-10-18: kills pay loot, not cash). drops: unused since the Netherecho exists - constructs are subdued there, never looted. loot: item drops left on the ground, each rolled independently. shove_resist scales how far a shove moves this enemy: 1.0 light, 0.5 heavy, 0.25 elite - never zero. design/05 step 2: poise (see balance.combat); behaviour is melee | ranged | pouncer. A melee enemy may set attack_shape 'circle' (hits everything within attack_radius of itself when the wind-up ends), interruptible (a white flash; an interrupting skill or a poise break cancels it), stuck_after_miss (seconds it stands open after hitting nothing) and front_armour (share of damage it ignores from its front arc). ranged: holds between keep_range_min and max, aims for windup seconds along a line that stops following you aim_lock seconds before release, backs off if you come within back_off_within. pouncer: circles at circle_distance; when you have been moving away from the pack for pounce_after_retreat_s it crouches for windup and leaps pounce_range; any hit during the crouch or the leap knocks it down for knockdown_s; a leap that misses leaves it stuck. STEP 4 (design/05 6.1): front_armour may be dropped below front_armour_until_frac of health; blocks_shots: a piercing shot from the front stops on it; stagger_s: how long a poise break lasts for this kind; attack_shove: metres its blow pushes the player; death_burst: what it leaves when it dies (scripts/censer_burst.gd); aura_ring: a ring drawn on the ground round it. behaviour support (the Drummer): never attacks, stands stand_behind metres behind the line, gives aura_status to allies within aura_radius, and every attack_cooldown winds up a roll (interruptible) that gives roll_status to one ally. behaviour commander: melee with a counter-swing after a blocked hit, and by health phase2_at: 'calls' reinforcements once and adds the 'sweep'; phase3_at: adds the 'charge', which crashes if it ends on a wall or stone. loot: an entry {learnable, chance} drops a skill scroll this character can learn and does not have.",
   "enemies": {
     "grunt": {
       "hp": 240.0,
@@ -9,7 +9,6 @@
       "damage": 10.0,
       "heavy": false,
       "aura_value": 4.0,
-      "bounty": 150,
       "color": [
         0.75,
         0.2,
@@ -36,7 +35,8 @@
       "name": "Masked Skirmisher",
       "shove_resist": 1.0,
       "poise": 40.0,
-      "behaviour": "melee"
+      "behaviour": "melee",
+      "remains": "skirmisher_mask"
     },
     "brute": {
       "hp": 700.0,
@@ -46,7 +46,6 @@
       "damage": 45.0,
       "heavy": true,
       "aura_value": 12.0,
-      "bounty": 500,
       "color": [
         0.5,
         0.1,
@@ -86,7 +85,8 @@
       "attack_shape": "circle",
       "attack_radius": 3.0,
       "interruptible": true,
-      "stuck_after_miss": 1.5
+      "stuck_after_miss": 1.5,
+      "remains": "brute_hide"
     },
     "commander": {
       "hp": 1400.0,
@@ -96,7 +96,6 @@
       "damage": 28.0,
       "heavy": true,
       "aura_value": 30.0,
-      "bounty": 1500,
       "color": [
         0.75,
         0.55,
@@ -107,10 +106,6 @@
       "reach": 2.3,
       "drops": {},
       "loot": [
-        {
-          "item": "commander_sigil",
-          "chance": 1.0
-        },
         {
           "item": "brute_tusk",
           "chance": 0.4
@@ -165,7 +160,8 @@
         "crash_stun_s": 3.0,
         "crash_status": "dazed",
         "stuck_s": 1.0
-      }
+      },
+      "remains": "commander_sigil"
     },
     "archer": {
       "name": "Rampart Archer",
@@ -176,7 +172,6 @@
       "damage": 18.0,
       "heavy": false,
       "aura_value": 5.0,
-      "bounty": 200,
       "color": [
         0.42,
         0.36,
@@ -200,7 +195,8 @@
           "item": "sinew_cord",
           "chance": 0.5
         }
-      ]
+      ],
+      "remains": "rampart_bowstave"
     },
     "harrier": {
       "name": "Harrier",
@@ -211,7 +207,6 @@
       "damage": 20.0,
       "heavy": true,
       "aura_value": 6.0,
-      "bounty": 250,
       "color": [
         0.25,
         0.3,
@@ -236,7 +231,8 @@
           "item": "sinew_cord",
           "chance": 0.4
         }
-      ]
+      ],
+      "remains": "harrier_pelt"
     },
     "pavise": {
       "name": "Pavise Bearer",
@@ -247,7 +243,6 @@
       "damage": 14.0,
       "heavy": false,
       "aura_value": 7.0,
-      "bounty": 300,
       "color": [
         0.34,
         0.36,
@@ -274,7 +269,8 @@
           "learnable": true,
           "chance": 0.05
         }
-      ]
+      ],
+      "remains": "pavise_boss"
     },
     "censer": {
       "name": "Censer-Bearer",
@@ -285,7 +281,6 @@
       "damage": 8.0,
       "heavy": false,
       "aura_value": 6.0,
-      "bounty": 250,
       "color": [
         0.5,
         0.42,
@@ -321,7 +316,8 @@
           "learnable": true,
           "chance": 0.05
         }
-      ]
+      ],
+      "remains": "censer_ash"
     },
     "drummer": {
       "name": "War Drummer",
@@ -332,7 +328,6 @@
       "damage": 0.0,
       "heavy": false,
       "aura_value": 7.0,
-      "bounty": 300,
       "color": [
         0.45,
         0.2,
@@ -366,7 +361,8 @@
           "learnable": true,
           "chance": 0.08
         }
-      ]
+      ],
+      "remains": "war_drumhead"
     }
   }
 }

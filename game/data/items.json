@@ -1,5 +1,5 @@
 {
-  "_note": "Items. All names and numbers are original to this project [MODEL]. Canon facts used: carry capacity is an economic stat; a new archhuman has a backpack, not a storage ring (Brent 2026-09-23); satellites are items you find or buy, and a 1-star can use a 2-star satellite at full rate (Brent 2026-09-23). slot: back | satellite | trinket | '' (not equippable). stats are summed over equipped items: carry_capacity (kg), satellite_rate (essence/s), cost_mult (ability essence cost multiplier), reflux_shed_mult. Weapons (slot 'weapon') are held in the striking arm: melee_damage_mult, melee_cooldown_mult (below 1 = faster), melee_range_bonus (metres). They do nothing while that arm is lost. gear_sell_factor is what the merchant pays for gear; loot sells at full value. design/06 step 1 (approved by Brent 2026-10-12): slots 'body' and 'ranged'. armour is the percent of each hit a piece takes off (capped by balance.gear.armour_cap). A ranged weapon's shot does balance.ranged.ranged_damage x ranged_damage_mult every ranged_interval seconds out to ranged_range metres, for no essence. The draft catalogue in design/data-drafts/items-v2.json gives the Husk-Hide Jack 4 wound resistance as well; that stat is not read by the game until step 2, so it is left off the live item rather than listed and ignored. design/06 section 2, the paper doll (2026-10-12): the twelve slots are weapon (main hand), offhand, ranged, head, body, hands, feet, back, belt, satellite, trinket, trinket2 (trinket2 takes any 'trinket' item; the same item is never worn twice). The head, hands, feet, off-hand and belt pieces come from the draft catalogue with ONLY the stats the game reads: armour, cost_mult, reflux_shed_mult, and ranged_interval_mult (multiplies the time between shots; read in Player.ranged_interval). Left off because nothing reads them yet: wound_resist, poise, move_speed_mult, quick_slots, ammo_recover_add, and a glove's melee_cooldown_mult (weapon_stat only reads the main hand). Shields are not here at all - their whole effect is 'block', which is not built. The Rope Belt therefore does nothing yet and says so. kind 'scroll': an item that 'teaches' a skill - read from the pack, used up, only by a character with that skill's affinity; it is not loot (never sold by 'sell all loot'). shop_scrolls: the scrolls the merchant stocks; the shop shows only those this character could learn.",
+  "_note": "Items. All names and numbers are original to this project [MODEL]. Canon facts used: carry capacity is an economic stat; a new archhuman has a backpack, not a storage ring (Brent 2026-09-23); satellites are items you find or buy, and a 1-star can use a 2-star satellite at full rate (Brent 2026-09-23). slot: back | satellite | trinket | '' (not equippable). stats are summed over equipped items: carry_capacity (kg), satellite_rate (essence/s), cost_mult (ability essence cost multiplier), reflux_shed_mult. Weapons (slot 'weapon') are held in the striking arm: melee_damage_mult, melee_cooldown_mult (below 1 = faster), melee_range_bonus (metres). They do nothing while that arm is lost. gear_sell_factor is what the merchant pays for gear; loot sells at full value. design/06 step 1 (approved by Brent 2026-10-12): slots 'body' and 'ranged'. armour is the percent of each hit a piece takes off (capped by balance.gear.armour_cap). A ranged weapon's shot does balance.ranged.ranged_damage x ranged_damage_mult every ranged_interval seconds out to ranged_range metres, for no essence. The draft catalogue in design/data-drafts/items-v2.json gives the Husk-Hide Jack 4 wound resistance as well; that stat is not read by the game until step 2, so it is left off the live item rather than listed and ignored. design/06 section 2, the paper doll (2026-10-12): the twelve slots are weapon (main hand), offhand, ranged, head, body, hands, feet, back, belt, satellite, trinket, trinket2 (trinket2 takes any 'trinket' item; the same item is never worn twice). The head, hands, feet, off-hand and belt pieces come from the draft catalogue with ONLY the stats the game reads: armour, cost_mult, reflux_shed_mult, and ranged_interval_mult (multiplies the time between shots; read in Player.ranged_interval). Left off because nothing reads them yet: wound_resist, poise, move_speed_mult, quick_slots, ammo_recover_add, and a glove's melee_cooldown_mult (weapon_stat only reads the main hand). Shields are not here at all - their whole effect is 'block', which is not built. The Rope Belt therefore does nothing yet and says so. kind 'scroll': an item that 'teaches' a skill - read from the pack, used up, only by a character with that skill's affinity; it is not loot (never sold by 'sell all loot'). shop_scrolls: the scrolls the merchant stocks; the shop shows only those this character could learn. Brent 2026-10-18: nothing pays cash. A kill leaves its kind's remains (enemies.json 'remains'); a passage pays its spoils at the exit as 'spoils' items, the most valuable first, as many as you can carry. Money comes only from selling in town.",
   "base_carry_capacity": 8.0,
   "starting_equipped": {
     "back": "canvas_pack",
@@ -108,7 +108,7 @@
       "name": "Commander's Sigil",
       "slot": "",
       "weight": 2.0,
-      "value": 950,
+      "value": 1500,
       "desc": "Proof you put one down. Collectors pay."
     },
     "golden_seed": {
@@ -470,6 +470,76 @@
       "weight": 0.1,
       "value": 1200,
       "desc": "Teaches Bedrock Shove to someone with the earth affinity. Read once; the scroll is used up. Click it in your pack to read it."
+    },
+    "skirmisher_mask": {
+      "name": "Skirmisher's Mask",
+      "slot": "",
+      "weight": 1.0,
+      "value": 150,
+      "desc": "A pale lacquered mask, still warm. Collectors and the curious pay for them."
+    },
+    "rampart_bowstave": {
+      "name": "Rampart Bowstave",
+      "slot": "",
+      "weight": 1.5,
+      "value": 200,
+      "desc": "Seasoned wood under the grime. A bowyer will want it."
+    },
+    "harrier_pelt": {
+      "name": "Harrier Pelt",
+      "slot": "",
+      "weight": 2.0,
+      "value": 250,
+      "desc": "Short, coarse, and the colour of dusk. Furriers buy them."
+    },
+    "brute_hide": {
+      "name": "Brute Hide",
+      "slot": "",
+      "weight": 8.0,
+      "value": 500,
+      "desc": "A slab of hide as thick as a door. Worth a great deal to anyone who can carry it."
+    },
+    "pavise_boss": {
+      "name": "Pavise Boss",
+      "slot": "",
+      "weight": 3.0,
+      "value": 300,
+      "desc": "The iron boss from a body-length shield. Smiths buy the metal."
+    },
+    "censer_ash": {
+      "name": "Censer Ash",
+      "slot": "",
+      "weight": 0.5,
+      "value": 250,
+      "desc": "A pouch of what was burning. Apothecaries argue over what it is good for."
+    },
+    "war_drumhead": {
+      "name": "War Drumhead",
+      "slot": "",
+      "weight": 2.0,
+      "value": 300,
+      "desc": "Stretched skin, painted. It still hums when you touch it."
+    },
+    "spoils_strongbox": {
+      "name": "Sealed Strongbox",
+      "slot": "",
+      "weight": 2.5,
+      "value": 2000,
+      "desc": "Passage spoils, locked and heavy. The counting-house in town opens it and pays."
+    },
+    "spoils_relics": {
+      "name": "Case of Relics",
+      "slot": "",
+      "weight": 1.0,
+      "value": 500,
+      "desc": "Passage spoils: odd small things the passage gave up. They sell."
+    },
+    "spoils_salvage": {
+      "name": "Passage Salvage",
+      "slot": "",
+      "weight": 0.5,
+      "value": 100,
+      "desc": "Passage spoils: scrap worth having. It sells."
     }
   },
   "shop": [
@@ -543,5 +613,10 @@
     "scroll_static_coat",
     "scroll_ground_rod",
     "scroll_bedrock_shove"
+  ],
+  "spoils": [
+    "spoils_strongbox",
+    "spoils_relics",
+    "spoils_salvage"
   ]
 }
