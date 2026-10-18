@@ -142,6 +142,8 @@ var buffs: Dictionary = {}
 ## Bodies you died in and have not recovered: {id, where, chamber, pos, equipped, bag}.
 var corpses: Array = []
 var _corpse_seq := 0
+## What you have seen of each overland zone: zone id -> FogMap.to_text().
+var explored: Dictionary = {}
 var rod: Node3D                      # the one Ground Rod standing, if any
 var _bare_strikes := 0               # counted for skills that pay on every other strike
 var _dash_braced := false
@@ -2451,7 +2453,7 @@ func to_save() -> Dictionary:
 		"arm_right": arm_right, "arm_right_lost": arm_right_lost,
 		"abilities": abilities.duplicate(true), "hotbar": hotbar.duplicate(),
 		"constructs": constructs.duplicate(true), "discoveries": discoveries.duplicate(),
-		"heal_points_total": heal_points_total, "inventory": inventory.to_dict(), "corpses": corpses.duplicate(true),
+		"heal_points_total": heal_points_total, "inventory": inventory.to_dict(), "corpses": corpses.duplicate(true), "explored": explored.duplicate(),
 	}
 
 
@@ -2511,6 +2513,7 @@ func from_save(d: Dictionary) -> void:
 		discoveries.append(str(line))
 	heal_points_total = float(d.get("heal_points_total", 0.0))
 	corpses = (d.get("corpses", []) as Array).duplicate(true)
+	explored = (d.get("explored", {}) as Dictionary).duplicate()
 	inventory.from_dict(d.get("inventory", {}))
 	refresh_gear()
 

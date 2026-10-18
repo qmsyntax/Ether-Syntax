@@ -79,6 +79,11 @@ var _biome: Dictionary = {}
 ## Set by --biome=<id>: every level uses this one (tests, screenshots).
 var forced_biome := ""
 var pads: Array[Node3D] = []
+# overland (design/07)
+var zone_id := ""                   # the zone you are standing in, while state is "field"
+var _zone: ZoneBuilder
+var _return_to: Dictionary = {}      # where the passage's exit lets you out: {zone, at}, or town if empty
+var fog: FogMap                      # what has been seen of the zone you are in
 
 var _rent_accum := 0.0
 var _shot_mode := false
@@ -169,10 +174,13 @@ func _process(delta: float) -> void:
 				player.call("note", "Wave %d cleared." % wave)
 		"dungeon":
 			_tick_dungeon(delta)
+		"field":
+			_tick_field(delta)
 
 	hud.call("refresh", player, _where())
-	hud.set("show_world", state == "dungeon" or state == "arena_rest" or state == "arena_fight")
+	hud.set("show_world", state == "dungeon" or state == "arena_rest" or state == "arena_fight" or state == "field")
 	hud.call("set_nether", nether.hud_info())
+	hud.set("minimap", minimap_info())
 	if nether.active and screen == null:
 		_prompt = "Your body sits behind you, defenceless.   %s or walk back onto it to return.\nTouch wisps to gather them. Beat a construct down to subdue it." % _k("project")
 	hud.call("set_prompt", _prompt if screen == null else "")
@@ -238,6 +246,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif event.is_action_pressed("interact"):
 				if state == "arena_rest":
 					_enter_town()
+		"field":
+			if _cast_from_hotbar(event):
+				pass
+			elif event.is_action_pressed("ascend"):
+				player.call("try_ascend")
+			elif event.is_action_pressed("bind"):
+				player.call("bind_first_ready")
+			elif event.is_action_pressed("healer"):
+				player.call("note", "No healer out here. The town is back through the gate.")
+			elif event.is_action_pressed("interact"):
+				_field_interact()
 		"dungeon":
 			if _cast_from_hotbar(event):
 				pass
@@ -313,6 +332,108 @@ func _enter_town() -> void:
 	_show_screen(TownScreen.new(self), false)
 
 
+# --- overland zones (design/07) ----------------------------------------------------------------
+
+## Out of the Dross Gate into the yard outside the city.
+func walk_out() -> void:
+	enter_zone("the_stubble", "dross_gate")
+
+
+## Walk into an overland zone, arriving by the named line. No rent out here, no ticket, no meter.
+func enter_zone(id: String, arrive: String) -> void:
+	var def: Dictionary = GameData.zone(id)
+	if def.is_empty():
+		return
+	_show_screen(null, false)
+	if nether.active:
+		nether.exit("")
+	_new_level(float(def.get("yaw", 0.0)))
+	_use_biome(def.get("biome", "scrubland"), false)
+	zone_id = id
+	_zone = ZoneBuilder.new(self, def)
+	_zone.build()
+	var spot: Array = (def.get("arrive", {}) as Dictionary).get(arrive, [_zone.size.x * 0.5, _zone.size.y * 0.5])
+	player.global_position = level.to_global(_zone.to_local(float(spot[0]), float(spot[1])))
+	player.set("active", true)
+	player.set("has_move_goal", false)
+	player.call("end_fight")
+	_place_corpses(id)
+	fog = FogMap.new(_zone.size, GameData.num("minimap", "fog_cell_m"))
+	fog.from_text(str((player.get("explored") as Dictionary).get(id, "")))
+	state = "field"
+	_reveal()
+	player.call("note", "You walk out into %s." % str(def.get("name", id)))
+
+
+## Each frame in a zone: the lines you are standing at, and what the door ahead says.
+func _tick_field(_delta: float) -> void:
+	_prompt = ""
+	_reveal()
+	var here: Vector3 = level.to_local(player.global_position)
+	for line: Dictionary in _zone.def.get("lines", []):
+		var c: Vector3 = _zone.line_centre(line)
+		var d: float = Vector2(here.x - c.x, here.z - c.z).length()
+		if bool(line.get("open", false)) and d < 2.0:
+			if str(line["to"]) == "town":
+				player.call("note", "You come back in through %s." % str(line.get("name", "the gate")))
+				_enter_town()
+				return
+		elif not bool(line.get("open", false)) and d < 7.0:
+			_prompt = str(line.get("sign", "Closed."))
+	if _cut_door_in_reach():
+		_prompt = "%s the door into Tenwall Cut - an owned passage: ticket $%d, and a meter while you are inside." % [_k("interact"), ticket_price]
+
+
+## Clear the fog round where you stand, and keep what you have seen with the character.
+func _reveal() -> void:
+	if fog == null or _zone == null:
+		return
+	var at: Vector2 = zone_point(player.global_position)
+	if fog.reveal(at.x, at.y, GameData.num("minimap", "sight_m")):
+		(player.get("explored") as Dictionary)[zone_id] = fog.to_text()
+	fog.refresh_texture()
+
+
+## A world position as a point in the current zone's map frame (x east, y south).
+func zone_point(world: Vector3) -> Vector2:
+	var l: Vector3 = level.to_local(world)
+	return Vector2(l.x + _zone.size.x * 0.5, l.z + _zone.size.y * 0.5)
+
+
+## What the minimap needs this frame, or {} when you are not out in a zone.
+func minimap_info() -> Dictionary:
+	if state != "field" or _zone == null or fog == null:
+		return {}
+	var facing: Vector3 = level.global_transform.basis.inverse() * (player.get("_facing") as Vector3)
+	var lying: Array = []
+	for c: Dictionary in player.get("corpses"):
+		if str(c.get("where", "")) == zone_id:
+			var pos: Array = c.get("pos", [0.0, 0.0, 0.0])
+			lying.append(Vector2(float(pos[0]) + _zone.size.x * 0.5, float(pos[2]) + _zone.size.y * 0.5))
+	return {"def": _zone.def, "size": _zone.size, "fog": fog, "at": zone_point(player.global_position),
+		"facing": Vector2(facing.x, facing.z), "corpses": lying}
+
+
+func _cut_door_in_reach() -> bool:
+	var ch: Dictionary = _zone.def.get("cut_house", {}) if _zone != null else {}
+	if ch.is_empty():
+		return false
+	var door: Array = ch["door"]
+	var at: Vector3 = level.to_global(_zone.to_local(float(door[0]), float(door[1])))
+	return Vector2(at.x - player.global_position.x, at.z - player.global_position.z).length() <= 5.0
+
+
+## The interact key in a zone: the Cut House door, if you are at it.
+func _field_interact() -> void:
+	if _cut_door_in_reach():
+		var from_zone: String = zone_id
+		enter_passage()
+		if state == "dungeon":
+			_return_to = {"zone": from_zone, "at": "cut_house_door"}
+		return
+	player.call("note", "Nothing here to use.")
+
+
 # --- the Netherecho ------------------------------------------------------------------------
 
 ## Leave the body, or return to it. Only possible out of combat, in the field.
@@ -320,7 +441,7 @@ func toggle_projection() -> void:
 	if nether.active:
 		nether.exit("You return to your body.")
 		return
-	if state != "dungeon" and state != "arena_rest":
+	if state != "dungeon" and state != "arena_rest" and state != "field":
 		player.call("note", "There is nothing to find in the echo of this place." if state == "town" else "Not now.")
 		return
 	var why: String = nether.cannot_enter_reason()
@@ -457,6 +578,7 @@ func new_character() -> void:
 
 
 func enter_passage() -> void:
+	_return_to = {}
 	if not bool(player.call("can_afford", ticket_price)):
 		player.call("note", "No one will sell you a ticket on that much debt.")
 		return
@@ -892,7 +1014,12 @@ func _extract() -> void:
 	if int(carried[1]) > 0:
 		player.call("note", "You could not carry the rest - $%d of it stays at the exit." % int(carried[1]))
 	var rewards: Array[String] = grant_exit_rewards(cleared, cleared == chambers)
-	_enter_town()
+	if _return_to.is_empty():
+		_enter_town()
+	else:
+		var back: Dictionary = _return_to
+		_return_to = {}
+		enter_zone(str(back["zone"]), str(back["at"]))
 	if not rewards.is_empty():
 		player.call("note", "At the exit: %s." % ", ".join(rewards))
 
@@ -981,7 +1108,8 @@ func _on_player_died() -> void:
 	_bot_died = true
 	_bot_finished = _bot_mode
 	# a corpse run (Brent 2026-10-18): the body stays where it fell with everything on it
-	var where: String = "passage" if state == "dungeon" else ("arena" if state.begins_with("arena") else "")
+	var where: String = "passage" if state == "dungeon" else ("arena" if state.begins_with("arena") else (zone_id if state == "field" else ""))
+	_return_to = {}
 	if where != "" and level != null:
 		var at: Vector3 = level.to_local(player.global_position)
 		player.call("die_to_corpse", where, Route.chamber_of(at, ch_len) if where == "passage" else 0, at)
@@ -1266,7 +1394,9 @@ func _where() -> String:
 		"arena_rest", "arena_fight":
 			return "Practice arena  -  wave %d" % wave
 		"dungeon":
-			return "The passage  -  wall %d of %d  -  $%d banked" % [cleared, chambers, bank]
+			return "The passage  -  wall %d of %d  -  spoils $%d" % [cleared, chambers, bank]
+		"field":
+			return str(GameData.zone(zone_id).get("name", zone_id))
 	return ""
 
 
@@ -1330,6 +1460,15 @@ func _setup_ui_shot(which: String) -> void:
 		layer.layer = 100
 		add_child(layer)
 		layer.add_child(sheet)
+		return
+	if which == "stubble" or which == "stubble-cut":
+		# out of the Dross Gate, a little way down the road: the tip, the wall behind, the field ahead
+		_select_talent(0)
+		player.set("look", CharacterLook.default_look())
+		walk_out()
+		player.global_position = level.to_global(_zone.to_local(56.0, 30.0) if which == "stubble" else _zone.to_local(214.0, 108.0))
+		player.set("_facing", Vector3(0, 0, 1))
+		player.set_physics_process(false)
 		return
 	if which == "earth":
 		# an earth character set for a blow, two of their stones standing

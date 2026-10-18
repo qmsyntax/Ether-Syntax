@@ -43,6 +43,7 @@ func _ready() -> void:
 	await _test_step5b()
 	await _test_combat_rules()
 	_test_affinities()
+	_test_fog_map()
 	_test_models()
 	await _test_netherecho()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
@@ -2051,6 +2052,23 @@ func _test_step5b() -> void:
 	m.set("cursor_fixed", null)
 	m.free()
 	world.free()
+
+
+func _test_fog_map() -> void:
+	print("fog of war (Brent 2026-10-18):")
+	var fog := FogMap.new(Vector2(240, 160), 4.0)
+	_check("a zone starts unseen", fog.explored() == 0.0 and not fog.is_seen(10, 10))
+	_check("standing somewhere sees round you", fog.reveal(100, 80, 18.0) and fog.is_seen(100, 80) and fog.is_seen(112, 80) and not fog.is_seen(124, 80))
+	_check("seeing it again changes nothing", not fog.reveal(100, 80, 18.0))
+	_check("the edge of the zone is handled", fog.reveal(0, 0, 18.0) and fog.is_seen(1, 1) and fog.reveal(239, 159, 18.0))
+	var seen: float = fog.explored()
+	var again := FogMap.new(Vector2(240, 160), 4.0)
+	again.from_text(fog.to_text())
+	_check("what you saw survives being saved", _near(again.explored(), seen) and again.is_seen(100, 80) and not again.is_seen(124, 80))
+	var other := FogMap.new(Vector2(100, 100), 4.0)
+	other.from_text(fog.to_text())
+	_check("a saved map that does not fit the zone is ignored", other.explored() == 0.0)
+	_check("the map image is clear where seen and dark where not", fog.image.get_pixel(25, 20).a < 0.1 and fog.image.get_pixel(50, 20).a > 0.9)
 
 
 func _test_fire() -> void:

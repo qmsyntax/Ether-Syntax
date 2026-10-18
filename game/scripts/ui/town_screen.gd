@@ -14,7 +14,7 @@ func build(root: Control) -> void:
 
 	# --- services ---------------------------------------------------------------
 	var left: VBoxContainer = framed(root, 0.24, 0.04, 0.66, 0.775)
-	left.add_theme_constant_override("separation", 7)
+	left.add_theme_constant_override("separation", 4)
 	var head := HBoxContainer.new()
 	left.add_child(head)
 	var title := UiTheme.heading("TOWN", 30)
@@ -29,9 +29,11 @@ func build(root: Control) -> void:
 	var ticket: int = int(game.get("ticket_price"))
 	var mult: float = float(game.call("repeat_mult"))
 	left.add_child(UiWidgets.service_button("Enter the assault passage",
-		"Owned: a ticket, and a meter while inside. Clear %d of %d walls to open an exit; carry the spoils out to keep them. Pays x%.2f." % [
+		"Owned: ticket and meter. %d of %d walls for an exit; carry spoils out. x%.2f" % [
 			int(game.get("gate_at")), int(game.get("chambers")), mult],
 		"ticket  $%d" % ticket, func() -> void: game.call("enter_passage"), bool(player.call("can_afford", ticket))))
+	left.add_child(UiWidgets.service_button("Walk out of the Dross Gate", "Into the Stubble. No ticket, no rent; the passage door is at the far side.",
+		"", func() -> void: game.call("walk_out")))
 	left.add_child(UiWidgets.service_button("Practice arena", "Free. Whatever you kill leaves something to sell.",
 		"free", func() -> void: game.call("enter_arena")))
 	left.add_child(UiWidgets.service_button("A room at the inn", "A night's sleep. Cuts close and bones knit a little. What is gone stays gone.",
@@ -43,7 +45,7 @@ func build(root: Control) -> void:
 		var fee: int = int(player.call("corpse_fee"))
 		left.add_child(UiWidgets.service_button("Corpse retrieval",
 			"Your body lies %s with everything you had on it. Walk back for it, or pay the collectors to bring it.%s" % [
-				"in the passage" if str((bodies.back() as Dictionary).get("where", "")) == "passage" else "in the arena",
+				_where_name(str((bodies.back() as Dictionary).get("where", ""))),
 				"" if bodies.size() == 1 else "  (%d bodies; this brings the newest.)" % bodies.size()],
 			"$%d" % fee, func() -> void:
 				var why: String = player.call("buy_corpse_retrieval")
@@ -117,3 +119,12 @@ func build(root: Control) -> void:
 	right.add_child(aura)
 	var rate: float = float(player.get("satellite_rate"))
 	right.add_child(UiTheme.body(("Satellite: +%d essence per second." % int(rate)) if rate > 0.0 else "No satellite. Essence returns only when you meditate.", 14, UiTheme.TEXT_DIM))
+
+
+## Where a corpse lies, in words.
+func _where_name(where: String) -> String:
+	if where == "passage":
+		return "in the passage"
+	if where == "arena":
+		return "in the arena"
+	return "out in %s" % str(GameData.zone(where).get("name", where))

@@ -15,6 +15,7 @@ var _statuses: Dictionary = {}
 var _tempering: Dictionary = {}
 var _affinities: Dictionary = {}
 var _prime_default: Array = []
+var _zones: Dictionary = {}
 
 
 ## Loaded in the constructor: the singleton name resolves before the node enters the tree,
@@ -42,6 +43,7 @@ func _ensure() -> void:
 	var aff: Dictionary = _load("res://data/affinities.json")
 	_affinities = aff.get("affinities", {})
 	_prime_default = aff.get("prime_default", [])
+	_zones = _load("res://data/zones.json").get("zones", {})
 
 
 ## A tempering technique definition, or {} if the id is unknown.
@@ -74,6 +76,12 @@ func default_affinities() -> Array[String]:
 	for a: Variant in _prime_default:
 		out.append(str(a))
 	return out
+
+
+## An overland zone definition (data/zones.json), or {} if the id is unknown.
+func zone(id: String) -> Dictionary:
+	_ensure()
+	return _zones.get(id, {})
 
 
 ## An item definition, or {} if the id is unknown.

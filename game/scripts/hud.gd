@@ -33,6 +33,8 @@ var _health_c := Vector2.ZERO
 var _essence_c := Vector2.ZERO
 ## Passage progress for the tracker: {walls, cleared, current, gate, bank} or {} when not in one.
 var passage: Dictionary = {}
+## The overland minimap (main.minimap_info()), or {} when there is none to draw.
+var minimap: Dictionary = {}
 ## While the soul is out in the Netherecho: {hp, hp_max, leash, at_leash, gathered, subdued, hovered, target}.
 var nether: Dictionary = {}
 const WISP_LABEL_RANGE := 6.0        # metres from the projection
@@ -111,6 +113,7 @@ func _draw() -> void:
 		_draw_title(vs)
 		_draw_log(vs)
 		_draw_tracker(vs)
+		_draw_minimap(vs)
 		if not nether.is_empty():
 			_draw_nether_status(vs)
 	_draw_plate()
@@ -685,6 +688,94 @@ func _draw_nether_status(vs: Vector2) -> void:
 
 
 # --- top right: passage tracker -------------------------------------------------------------------
+
+## The minimap (top right, out in a zone): north up, as the screen is. What you have not been
+## near is under the fog; the edges, the road, the landmarks, the lines and the dungeon door show
+## once seen. Your arrow, and any corpse of yours, always show.
+func _draw_minimap(vs: Vector2) -> void:
+	if minimap.is_empty():
+		return
+	var zsize: Vector2 = minimap["size"]
+	var fog: FogMap = minimap["fog"]
+	var def: Dictionary = minimap["def"]
+	var w: float = GameData.num("minimap", "size_px")
+	var k: float = w / zsize.x
+	var r := Rect2(vs.x - w - 16.0, 16.0, w, zsize.y * k)
+	var to_map := func(x: float, y: float) -> Vector2:
+		return r.position + Vector2(x, y) * k
+	draw_rect(r.grow(5.0), Color(0, 0, 0, 0.55))
+	draw_rect(r.grow(2.0), Color(UiTheme.PANEL, 0.95))
+	draw_rect(r, Color(0.32, 0.26, 0.18, 0.92))
+	# the road
+	var road: Dictionary = def.get("road", {})
+	var pts: Array = road.get("points", [])
+	for i: int in pts.size() - 1:
+		draw_line(to_map.call(float(pts[i][0]), float(pts[i][1])), to_map.call(float(pts[i + 1][0]), float(pts[i + 1][1])),
+			Color(0.55, 0.47, 0.34), maxf(2.0, float(road.get("width", 8.0)) * k), true)
+	# the Cut House and its door
+	var ch: Dictionary = def.get("cut_house", {})
+	if not ch.is_empty():
+		var yard: Array = ch["yard"]
+		var a: Vector2 = to_map.call(float(yard[0]), float(yard[1]))
+		var b: Vector2 = to_map.call(float(yard[2]), float(yard[3]))
+		draw_rect(Rect2(a, b - a), Color(0.62, 0.36, 0.28), false, 2.0)
+		var door: Array = ch["door"]
+		draw_circle(to_map.call(float(door[0]), float(door[1])), 4.0, Color(0.95, 0.75, 0.35))
+	# landmarks
+	for mark: Dictionary in def.get("landmarks", []):
+		var at: Array = mark["at"]
+		draw_circle(to_map.call(float(at[0]), float(at[1])), 3.0, Color(0.9, 0.85, 0.7))
+	# the fog, over all of it
+	draw_texture_rect(fog.texture, r, false, Color(0.06, 0.05, 0.05, 0.96))
+	# zone lines: open ones bright, shut ones dim - drawn over the fog only where seen
+	for line: Dictionary in def.get("lines", []):
+		var at_l: float = float(line["at"])
+		var half: float = float(line["width"]) * 0.5
+		var p0: Vector2
+		var p1: Vector2
+		match str(line["edge"]):
+			"north":
+				p0 = to_map.call(at_l - half, 0.0)
+				p1 = to_map.call(at_l + half, 0.0)
+			"south":
+				p0 = to_map.call(at_l - half, zsize.y)
+				p1 = to_map.call(at_l + half, zsize.y)
+			"east":
+				p0 = to_map.call(zsize.x, at_l - half)
+				p1 = to_map.call(zsize.x, at_l + half)
+			_:
+				p0 = to_map.call(0.0, at_l - half)
+				p1 = to_map.call(0.0, at_l + half)
+		var mid: Vector2 = (p0 + p1) * 0.5
+		var seen_at: Vector2 = (mid - r.position) / k
+		if fog.is_seen(clampf(seen_at.x, 0.0, zsize.x - 0.1), clampf(seen_at.y, 0.0, zsize.y - 0.1)):
+			draw_line(p0, p1, Color(0.5, 1.0, 0.6) if bool(line.get("open", false)) else Color(0.7, 0.4, 0.35), 4.0, true)
+	# names of what you have seen
+	for mark: Dictionary in def.get("landmarks", []):
+		var at2: Array = mark["at"]
+		if fog.is_seen(float(at2[0]), float(at2[1])):
+			UiDraw.text(self, to_map.call(float(at2[0]), float(at2[1])) + Vector2(5.0, 4.0), str(mark.get("name", "")), 10, Color(0.95, 0.9, 0.78, 0.9))
+	if not ch.is_empty():
+		var door2: Array = ch["door"]
+		if fog.is_seen(float(door2[0]) - 1.0, float(door2[1])):
+			UiDraw.text(self, to_map.call(float(door2[0]), float(door2[1])) + Vector2(-60.0, -8.0), str(ch.get("name", "")), 10, Color(0.95, 0.75, 0.35))
+	# your corpses
+	for c: Vector2 in minimap.get("corpses", []):
+		var cp: Vector2 = to_map.call(c.x, c.y)
+		draw_line(cp + Vector2(-4, -4), cp + Vector2(4, 4), Color(1, 0.35, 0.3), 2.5, true)
+		draw_line(cp + Vector2(-4, 4), cp + Vector2(4, -4), Color(1, 0.35, 0.3), 2.5, true)
+	# you
+	var me: Vector2 = to_map.call((minimap["at"] as Vector2).x, (minimap["at"] as Vector2).y)
+	var f: Vector2 = minimap.get("facing", Vector2(0, -1))
+	if f.length() < 0.01:
+		f = Vector2(0, -1)
+	f = f.normalized()
+	var side := Vector2(-f.y, f.x)
+	draw_colored_polygon(PackedVector2Array([me + f * 7.0, me - f * 4.0 + side * 4.5, me - f * 2.0, me - f * 4.0 - side * 4.5]), Color(0.55, 0.9, 1.0))
+	draw_rect(r, UiTheme.BRONZE, false, 2.0)
+	UiDraw.text(self, Vector2(r.position.x, r.end.y + 16.0), str(def.get("name", "")), 13, UiTheme.TEXT_DIM)
+	_right_text(Vector2(r.end.x, r.end.y + 16.0), "%d%% explored" % int(round(fog.explored() * 100.0)), 11, UiTheme.TEXT_FAINT)
+
 
 func _draw_tracker(vs: Vector2) -> void:
 	if passage.is_empty():

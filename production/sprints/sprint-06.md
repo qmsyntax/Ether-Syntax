@@ -553,3 +553,23 @@ the spoils it carried, not money. The 90-minute day and the world clock are not 
 Verified: self-test 705/705 (two runs); three full-passage bot runs, gate and death bots; Netherecho death test both
 ways (now also finds and recovers the corpse in the passage); inventory and creation click tests; town screenshot.
 Not verified: by hand.
+
+
+## Part AA — the first zone: the Stubble, with a minimap and fog of war (design/07 step 1; Brent 2026-10-18)
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-135 | Zones are data (`data/zones.json`) built by `scripts/zone_builder.gd`: floor, four edges with their zone lines cut in, the road, landmarks with Netherecho sites, a walled yard round a dungeon door, scatter that blocks only along the edges | zone probe | Done |
+| S06-136 | The Stubble, 240 x 160 m: "Walk out of the Dross Gate" in town; the gate takes you home; the Drove Stile and the Wet Gap are shut with a sign | zone probe, `shots/ui-stubble.png` | Done |
+| S06-137 | The Cut House door is the passage: ticket at the door, and its exit lets you out into the Cut House yard instead of town | zone probe | Done |
+| S06-138 | Death out in a zone leaves your corpse there; walk back out and it is lying where you fell, and on the minimap | zone probe | Done |
+| S06-139 | Minimap, top right in a zone: north up as the screen is; edges, road, landmarks and their names, the Cut House, open and shut lines, your corpses, your arrow; what you have not been near is under fog. What you have seen is saved per character per zone | selftest, zone probe, `shots/ui-stubble.png` | Done |
+
+Not in this step (design/07 build step 2 onward): no enemies or camps yet - it is an empty field; no world clock or
+day; no position in the save (loading puts you in town); the landmarks are a few kit props each; the Cut House is two
+terraced houses from the city kit with a dungeon gate between them. The minimap is not shown in the passage or
+the arena.
+
+Verified: self-test 712/712 (three runs); the zone probe (out, edges, fog, minimap, door in, exit to the yard, gate
+home, death and corpse) PASS; full-passage, gate and death bots; Netherecho death test; inventory and creation click
+tests; screenshots of the field, the Cut House and town inspected. Not verified: by hand.
