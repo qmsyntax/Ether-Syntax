@@ -47,6 +47,7 @@ func _ready() -> void:
 	_test_fog_map()
 	_test_models()
 	await _test_netherecho()
+	_test_real_bodies()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
 	_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
@@ -3884,3 +3885,68 @@ func _test_pathfinding() -> void:
 	gated.free()
 	p.free()
 	await get_tree().process_frame
+
+
+func _test_real_bodies() -> void:
+	print("real character bodies (Brent 2026-10-18):")
+	var w: Dictionary = GameData.wardrobe
+	for sex: String in ["male", "female"]:
+		var id: String = "body_" + sex
+		_check("%s: the model exists" % id, RealCharacter.exists(id))
+		if not RealCharacter.exists(id):
+			continue
+		var rc: RealCharacter = RealCharacter.create(id)
+		add_child(rc)
+		var meshes: Dictionary = rc.get("_mesh")
+		var missing: Array[String] = []
+		for piece: String in w["pieces"]:
+			for m: Variant in (w["pieces"][piece] as Dictionary)["meshes"]:
+				if not meshes.has(str(m)):
+					missing.append(str(m))
+		for style: String in w["hair"]:
+			for m: Variant in w["hair"][style]:
+				if not meshes.has(str(m)):
+					missing.append(str(m))
+		_check("%s: every wardrobe and hair mesh is in the model" % id, missing.is_empty(), str(missing))
+		var ap: AnimationPlayer = rc.get("_player")
+		var clips: Array[String] = ["idle", "walk", "run", "slash_in", "slash_out", "slash_in_l", "slash_out_l", "heavy", "hit", "death", "cast", "cast_area", "dodge", "pickup", "throw", "power_up", "meditate"]
+		var no_clip: Array[String] = []
+		for c: String in clips:
+			if ap == null or not ap.has_animation(c):
+				no_clip.append(c)
+		_check("%s: every clip the game plays is there" % id, no_clip.is_empty(), str(no_clip))
+		var item_missing: Array[String] = []
+		for item: String in w["items"]:
+			if GameData.item(item).is_empty():
+				item_missing.append(item)
+		_check("wardrobe items are real items", item_missing.is_empty(), str(item_missing))
+		# everyday clothes with nothing equipped; a coat replaces the tunic and hides the skin under it
+		rc.apply_look({"sex": sex, "band": "off"})
+		rc.set_outfit({})
+		var everyday: Array[String] = ["trousers", "tunic", "wraps"]
+		_check("%s: nothing equipped wears tunic, trousers, wraps" % id, rc.worn_pieces() == everyday, str(rc.worn_pieces()))
+		rc.set_outfit({"body": "patched_coat", "feet": "hobnailed_boots", "head": "oilcloth_hood"})
+		var worn: Array[String] = rc.worn_pieces()
+		_check("%s: a coat replaces the tunic, boots the wraps" % id, worn.has("coat") and not worn.has("tunic") and worn.has("tallboots") and not worn.has("wraps"), str(worn))
+		var skin: ShaderMaterial = (meshes["body"] as MeshInstance3D).material_override
+		var mask: int = int(skin.get_shader_parameter("hidden_mask"))
+		_check("%s: skin under the coat and boots is not drawn" % id, (mask >> 2) & 1 == 1 and (mask >> 12) & 1 == 1 and (mask >> 14) & 1 == 1 and (mask >> 0) & 1 == 0, str(mask))
+		var trousers: ShaderMaterial = (meshes["cloth_trousers"] as MeshInstance3D).material_override
+		_check("%s: tall boots hide the trouser shins" % id, (int(trousers.get_shader_parameter("hidden_mask")) >> 13) & 1 == 1)
+		var hair_shown := false
+		for m: String in meshes:
+			if m.begins_with("hair_") and (meshes[m] as MeshInstance3D).visible:
+				hair_shown = true
+		_check("%s: a hood hides the hair" % id, not hair_shown)
+		rc.set_outfit({})
+		rc.apply_look({"sex": sex, "hair": "long", "face": "bearded", "body": "c"})
+		_check("%s: long hair and a beard show" % id, (meshes["hair_long_cards"] as MeshInstance3D).visible and (meshes["beard_cards"] as MeshInstance3D).visible)
+		var body_mesh: MeshInstance3D = meshes["body"]
+		_check("%s: a heavy build sets the heavy shape" % id, body_mesh.get_blend_shape_value(body_mesh.find_blend_shape_by_name("heavy")) > 0.9)
+		rc.set_part_visible("arm_right", false)
+		mask = int(skin.get_shader_parameter("hidden_mask"))
+		_check("%s: a lost arm hides forearm and hand and shows the stump" % id, (mask >> 7) & 1 == 1 and (mask >> 9) & 1 == 1 and (meshes["stump_r"] as MeshInstance3D).visible)
+		var blade: Node3D = Models.weapon("serrated_dagger")
+		rc.set_weapon(blade)
+		_check("%s: with the right arm gone the weapon is in the left hand" % id, blade.get_parent() == rc.get("_hand_l"))
+		rc.queue_free()

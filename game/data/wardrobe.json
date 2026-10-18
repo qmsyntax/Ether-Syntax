@@ -1,0 +1,529 @@
+{
+  "_note": "What the real character bodies wear (scripts/art/real_character.gd, models from tools/assets/blender_character.py). materials: tiling cloth/leather sets in assets/characters/textures/cloth/ with how they are shaded. pieces: named sets of meshes in the body .glb, the material, a colour ('coat' / 'accent' take the look's colours, else [r,g,b] in sRGB 0..1), the body regions the piece covers completely (hidden under it, and hidden on lower layers), and its layer (higher sits over lower). base: what everyone wears when a slot is empty. items: equippable item id -> piece. Region ids: 0 head, 1 neck, 2 torso, 3 hips, 4/5 upper arm (shoulder half) L/R, 16/17 upper arm (elbow half) L/R, 6/7 forearm, 8/9 hand, 10/11 thigh, 12/13 shin, 14/15 foot.",
+  "materials": {
+    "linen": {
+      "tex": "fabric061",
+      "tint": 1.0,
+      "uv_scale": 0.45,
+      "rough_bias": 0.0,
+      "grime": 0.35,
+      "normal_depth": 0.5
+    },
+    "canvas": {
+      "tex": "fabric030",
+      "tint": 1.0,
+      "uv_scale": 0.45,
+      "rough_bias": 0.0,
+      "grime": 0.35,
+      "normal_depth": 0.6
+    },
+    "wool": {
+      "tex": "fabric031",
+      "tint": 1.0,
+      "uv_scale": 0.5,
+      "rough_bias": 0.1,
+      "grime": 0.3,
+      "sheen": 0.15,
+      "normal_depth": 0.6
+    },
+    "felt": {
+      "tex": "fabric034",
+      "tint": 1.0,
+      "uv_scale": 0.6,
+      "rough_bias": 0.0,
+      "grime": 0.3,
+      "quilt": 1.0,
+      "normal_depth": 0.6
+    },
+    "oilcloth": {
+      "tex": "fabric031",
+      "tint": 1.0,
+      "uv_scale": 0.5,
+      "rough_bias": -0.25,
+      "grime": 0.3,
+      "normal_depth": 0.4
+    },
+    "leather": {
+      "tex": "leather014",
+      "tint": 0.35,
+      "uv_scale": 0.7,
+      "rough_bias": 0.05,
+      "grime": 0.2
+    },
+    "leather_plain": {
+      "tex": "leather037",
+      "tint": 0.75,
+      "uv_scale": 0.7,
+      "rough_bias": 0.12,
+      "grime": 0.25
+    },
+    "suede": {
+      "tex": "leather039",
+      "tint": 0.9,
+      "uv_scale": 0.8,
+      "rough_bias": 0.15,
+      "grime": 0.3,
+      "normal_depth": 0.7
+    },
+    "rope": {
+      "tex": "rope001",
+      "tint": 0.3,
+      "uv_scale": 2.0,
+      "rough_bias": 0.0,
+      "grime": 0.1
+    },
+    "wood": {
+      "tex": "wood060",
+      "tint": 0.2,
+      "uv_scale": 1.0,
+      "rough_bias": 0.0,
+      "grime": 0.1
+    }
+  },
+  "pieces": {
+    "tunic": {
+      "meshes": [
+        "cloth_tunic",
+        "cloth_tunic_skirt"
+      ],
+      "material": "canvas",
+      "color": "coat",
+      "covers": [
+        2,
+        4,
+        5,
+        16,
+        17
+      ],
+      "layer": 1
+    },
+    "trousers": {
+      "meshes": [
+        "cloth_trousers"
+      ],
+      "material": "wool",
+      "color": [
+        0.27,
+        0.24,
+        0.2
+      ],
+      "covers": [
+        3,
+        10,
+        11,
+        12,
+        13
+      ],
+      "layer": 0
+    },
+    "wraps": {
+      "meshes": [
+        "cloth_wraps"
+      ],
+      "material": "canvas",
+      "color": [
+        0.33,
+        0.29,
+        0.24
+      ],
+      "covers": [
+        14,
+        15
+      ],
+      "layer": 1
+    },
+    "coat": {
+      "meshes": [
+        "cloth_coat",
+        "cloth_coat_skirt",
+        "cloth_coat_collar"
+      ],
+      "material": "wool",
+      "color": "coat",
+      "covers": [
+        2,
+        4,
+        5,
+        16,
+        17
+      ],
+      "layer": 3,
+      "replaces": [
+        "tunic"
+      ]
+    },
+    "padded": {
+      "meshes": [
+        "cloth_padded",
+        "cloth_padded_skirt"
+      ],
+      "material": "felt",
+      "color": [
+        0.46,
+        0.38,
+        0.25
+      ],
+      "covers": [
+        2,
+        4,
+        5,
+        16,
+        17
+      ],
+      "layer": 3,
+      "replaces": [
+        "tunic"
+      ]
+    },
+    "hide": {
+      "meshes": [
+        "cloth_hide",
+        "cloth_hide_skirt"
+      ],
+      "material": "leather",
+      "color": [
+        0.36,
+        0.38,
+        0.3
+      ],
+      "covers": [],
+      "layer": 3
+    },
+    "hood": {
+      "meshes": [
+        "cloth_hood"
+      ],
+      "material": "oilcloth",
+      "color": [
+        0.17,
+        0.19,
+        0.14
+      ],
+      "covers": [],
+      "layer": 5,
+      "hair": "none",
+      "replaces": [
+        "headband"
+      ]
+    },
+    "cap": {
+      "meshes": [
+        "cloth_cap"
+      ],
+      "material": "leather",
+      "color": [
+        0.3,
+        0.2,
+        0.12
+      ],
+      "covers": [],
+      "layer": 5,
+      "hair": "cropped",
+      "replaces": [
+        "headband"
+      ]
+    },
+    "gloves": {
+      "meshes": [
+        "cloth_gloves"
+      ],
+      "material": "suede",
+      "color": [
+        0.24,
+        0.17,
+        0.11
+      ],
+      "covers": [
+        8,
+        9
+      ],
+      "layer": 4
+    },
+    "bracers": {
+      "meshes": [
+        "cloth_bracers"
+      ],
+      "material": "leather",
+      "color": [
+        0.33,
+        0.24,
+        0.16
+      ],
+      "covers": [],
+      "layer": 4
+    },
+    "boots": {
+      "meshes": [
+        "cloth_boots"
+      ],
+      "material": "leather_plain",
+      "color": [
+        0.22,
+        0.15,
+        0.1
+      ],
+      "covers": [
+        14,
+        15
+      ],
+      "layer": 2,
+      "replaces": [
+        "wraps"
+      ]
+    },
+    "tallboots": {
+      "meshes": [
+        "cloth_tallboots"
+      ],
+      "material": "leather",
+      "color": [
+        0.16,
+        0.12,
+        0.09
+      ],
+      "covers": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "layer": 2,
+      "replaces": [
+        "wraps"
+      ]
+    },
+    "beltrope": {
+      "meshes": [
+        "cloth_beltrope"
+      ],
+      "material": "rope",
+      "color": [
+        0.5,
+        0.42,
+        0.3
+      ],
+      "covers": [],
+      "layer": 6
+    },
+    "belt": {
+      "meshes": [
+        "cloth_belt",
+        "cloth_belt_gear"
+      ],
+      "material": "leather_plain",
+      "color": [
+        0.25,
+        0.17,
+        0.1
+      ],
+      "covers": [],
+      "layer": 6
+    },
+    "pack": {
+      "meshes": [
+        "cloth_pack"
+      ],
+      "material": "canvas",
+      "color": [
+        0.42,
+        0.36,
+        0.25
+      ],
+      "covers": [],
+      "layer": 7
+    },
+    "frame": {
+      "meshes": [
+        "cloth_frame"
+      ],
+      "material": "wood",
+      "color": [
+        0.35,
+        0.25,
+        0.16
+      ],
+      "covers": [],
+      "layer": 7
+    },
+    "headband": {
+      "meshes": [
+        "cloth_headband"
+      ],
+      "material": "wool",
+      "color": "accent",
+      "covers": [],
+      "layer": 6
+    }
+  },
+  "base": [
+    "tunic",
+    "trousers",
+    "wraps"
+  ],
+  "items": {
+    "patched_coat": "coat",
+    "padded_jack": "padded",
+    "husk_hide_jack": "hide",
+    "oilcloth_hood": "hood",
+    "boiled_cap": "cap",
+    "work_gloves": "gloves",
+    "hide_bracers": "bracers",
+    "street_boots": "boots",
+    "hobnailed_boots": "tallboots",
+    "rope_belt": "beltrope",
+    "quiver_belt": "belt",
+    "canvas_pack": "pack",
+    "delver_frame": "frame"
+  },
+  "hair": {
+    "messy": [
+      "hair_messy_cards"
+    ],
+    "shaved": [],
+    "cropped": [
+      "hair_cropped_cards"
+    ],
+    "topknot": [
+      "hair_topknot_cards",
+      "hair_topknot_bun"
+    ],
+    "long": [
+      "hair_long_cards"
+    ],
+    "braid": [
+      "hair_braid_cards",
+      "hair_braid_tail"
+    ],
+    "undercut": [
+      "hair_undercut_cards"
+    ],
+    "swept": [
+      "hair_swept_cards"
+    ]
+  },
+  "builds": {
+    "a": {
+      "scale": 1.0,
+      "heavy": 0.15,
+      "slight": 0.0
+    },
+    "b": {
+      "scale": 0.965,
+      "heavy": 0.0,
+      "slight": 0.9
+    },
+    "c": {
+      "scale": 1.025,
+      "heavy": 1.0,
+      "slight": 0.0
+    },
+    "d": {
+      "scale": 0.99,
+      "heavy": 0.0,
+      "slight": 0.55
+    }
+  },
+  "faces": {
+    "plain": {},
+    "scarred": {
+      "scar": 1.0
+    },
+    "heavy": {
+      "brow": 1.0,
+      "brow_weight": 1.3
+    },
+    "gaunt": {
+      "gaunt": 1.0
+    },
+    "stubble": {
+      "stubble": 0.7
+    },
+    "bearded": {
+      "stubble": 0.5,
+      "beard": true
+    }
+  },
+  "bodies": {
+    "_note": "walk/run/sprint: metres a second each loop covers at speed 1 (measured from the clips by blender_character.py); height for selection and bars",
+    "body_male": {
+      "walk_speed": 1.347,
+      "run_speed": 3.681,
+      "height": 1.74,
+      "sprint_speed": 5.408
+    },
+    "body_female": {
+      "walk_speed": 1.303,
+      "run_speed": 3.6,
+      "height": 1.69,
+      "sprint_speed": 5.322
+    }
+  },
+  "grip": {
+    "_note": "a weapon on the hand bone: rotation (degrees, XYZ) and position (metres) in the bone's frame; items: per-weapon overrides (knuckles sit over the fist, not in it). Checked by eye with tests/character_preview.gd grip=...",
+    "right": {
+      "rot_deg": [
+        0.0,
+        -90.0,
+        0.0
+      ],
+      "pos": [
+        0.0,
+        0.08,
+        0.03
+      ]
+    },
+    "left": {
+      "rot_deg": [
+        0.0,
+        90.0,
+        0.0
+      ],
+      "pos": [
+        0.0,
+        0.08,
+        0.03
+      ]
+    },
+    "items": {
+      "iron_knuckles": {
+        "right": {
+          "rot_deg": [
+            0.0,
+            0.0,
+            90.0
+          ],
+          "pos": [
+            0.0,
+            0.07,
+            0.0
+          ]
+        },
+        "left": {
+          "rot_deg": [
+            0.0,
+            0.0,
+            -90.0
+          ],
+          "pos": [
+            0.0,
+            0.07,
+            0.0
+          ]
+        }
+      }
+    }
+  },
+  "action_speed": {
+    "_note": "playback rate of one-off clips: a strike comes every 0.45 s (balance player.melee_cooldown) and may cut the last one short",
+    "slash_in": 2.0,
+    "slash_out": 2.3,
+    "heavy": 1.6,
+    "cast": 1.8,
+    "cast_area": 1.8,
+    "dodge": 2.4,
+    "hit": 1.4,
+    "pickup": 3.4,
+    "throw": 1.9,
+    "power_up": 1.2
+  }
+}

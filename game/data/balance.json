@@ -411,7 +411,7 @@
     "size_px": 300.0
   },
   "art": {
-    "_note": "real_bodies: the player is drawn with the real rigged body (assets/characters/body_<sex>.glb) instead of the procedural one. Off until the real body has skin, hair and clothes - it ignores the look options for now. --real-body on the command line turns it on for one run.",
-    "real_bodies": false
+    "_note": "real_bodies: the player is drawn with the real rigged, clothed body (assets/characters/body_<sex>.glb, scripts/art/real_character.gd, dressed by data/wardrobe.json) instead of the procedural one. On since 2026-10-18; false brings the procedural body back. --real-body on the command line forces it on for one run.",
+    "real_bodies": true
   }
 }

@@ -180,6 +180,8 @@ func _dress_figure(inv: Inventory) -> void:
 	var rig: ModelRig = _figure.rig()
 	if rig == null:
 		return
+	if rig.has_method("set_outfit"):
+		rig.call("set_outfit", inv.equipped)
 	var id: String = str(inv.equipped.get("weapon", ""))
 	if id != _figure_weapon:
 		_figure_weapon = id

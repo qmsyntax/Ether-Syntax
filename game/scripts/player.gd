@@ -1340,6 +1340,7 @@ func fire_ranged(toward: Vector3) -> bool:
 	get_parent().add_child(shot)
 	shot.global_position = _muzzle()
 	_ranged_cd = ranged_interval()
+	_rig_action("throw")
 	_strike_t = 0.18
 	return true
 
@@ -1943,6 +1944,7 @@ func _release_overcharge() -> void:
 	var self_cost: float = float(_p["overcharge_self_cost_base"]) + c * float(_p["overcharge_self_cost_per_charge"])
 	var applied: float = body.apply_self_harm(self_cost)
 	_float("arm -%d" % int(applied), Color(1, 0.4, 0.3))
+	_rig_action("heavy")
 	var heavy_target: Node3D = _overcharge_target(reach_now() + float(_p["overcharge_reach_bonus"]))
 	if heavy_target != null:
 		_strike_target(heavy_target, 1.0 + c * float(_p["overcharge_damage_per_charge"]), ["melee", "overcharge"])
@@ -2390,6 +2392,8 @@ func refresh_gear() -> void:
 func _show_weapon() -> void:
 	if _rig == null:
 		return
+	if _rig.has_method("set_outfit"):
+		_rig.call("set_outfit", inventory.equipped)       # a real body wears what is equipped
 	var id: String = str(inventory.equipped.get("weapon", ""))
 	if id == _shown_weapon:
 		return
@@ -2442,6 +2446,7 @@ func take_pickup(drop: Node3D) -> bool:
 		note("%s is too heavy - you are carrying %d of %d kg." % [item_name, int(inventory.weight()), int(inventory.capacity())])
 		return false
 	drop.call("take")
+	_rig_action("pickup")
 	note("Picked up %s." % item_name)
 	return true
 
@@ -2823,6 +2828,12 @@ func aura_read() -> String:
 	return "The star strains against itself.  %s to ascend" % Keybinds.binding_text("ascend")
 
 
+## A one-off motion on a real body (RealCharacter.play_action); the procedural body has none.
+func _rig_action(motion: String) -> void:
+	if _rig != null and _rig.has_method("play_action"):
+		_rig.call("play_action", motion)
+
+
 func try_ascend() -> void:
 	var full: bool = star_pct.back() >= GameData.num("stars", "max_pct")
 	if stars >= 2 or not full or _latent_aura < _aura_threshold:
@@ -2839,6 +2850,7 @@ func try_ascend() -> void:
 	clear_reflux()
 	for e: TalentEffect in effects:
 		e.on_ascend(stars)
+	_rig_action("power_up")
 	note("ASCENDED. A second star splits off - tiny, for now.")
 	note("Talent evolves: %s" % str(talent.get("evolve_2", "?")))
 	if talent_id != "one_percent_lifesteal":

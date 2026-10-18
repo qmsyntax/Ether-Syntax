@@ -2,27 +2,43 @@ class_name RealCharacter
 extends ModelRig
 ## A real character model standing in for a procedural ModelRig (Brent 2026-10-18: real assets).
 ## The body is Blender Studio's realistic base mesh (CC0), rigged by Mixamo's auto-rigger, with
-## Mixamo animations on the same skeleton; tools/assets/blender_character.py packs it all into one
-## .glb in game/assets/characters/. It answers the same calls gameplay already makes on a ModelRig
-## - animate(), set_windup(), flash(), set_highlight(), set_weapon(), set_dead_look() - so the
-## player does not need to know which kind of model it has. play_action(name) plays a one-off
+## Mixamo animations on the same skeleton; tools/assets/blender_body_prep.py bakes its skin maps and
+## tools/assets/blender_character.py adds clothes, hair and beards and packs it all into one .glb in
+## game/assets/characters/. It answers the same calls gameplay already makes on a ModelRig
+## - animate(), set_windup(), flash(), set_highlight(), set_weapon(), set_part_visible(),
+## set_dead_look() - so the player does not need to know which kind of model it has. On top:
+## apply_look(look) dresses it from the creator's options, set_outfit(equipped) from the
+## inventory (data/wardrobe.json says which item shows as what), play_action(name) plays a one-off
 ## (a cast, a dodge) and set_activity(name) holds a state (meditating).
 
 const DIR := "res://assets/characters/"
-const LOOPS: Array[String] = ["idle", "walk", "run", "meditate"]
-## Metres a second each moving loop covers at normal speed (to match feet to the ground).
-const WALK_SPEED := 1.45
-const RUN_SPEED := 4.6
+const TEX := "res://assets/characters/textures/"
+const LOOPS: Array[String] = ["idle", "walk", "run", "sprint", "meditate"]
+## Regions hidden by a lost right forearm: forearm, hand and the elbow half of the upper arm.
+const LOST_ARM_MASK := (1 << 7) | (1 << 9) | (1 << 17)
 
 static var _scenes: Dictionary = {}
+static var _textures: Dictionary = {}
 
+var _body_id := "body_male"
 var _model: Node3D
 var _player: AnimationPlayer
 var _skeleton: Skeleton3D
-var _bodies: Array[MeshInstance3D] = []
+var _mesh: Dictionary = {}                 # node name -> MeshInstance3D
 var _overlay: StandardMaterial3D
-var _hand: BoneAttachment3D
-var _one_shot := ""                  # an action playing to its end; the loops wait for it
+var _skin: ShaderMaterial
+var _hair: ShaderMaterial
+var _hair_cards: ShaderMaterial
+var _piece_mat: Dictionary = {}            # piece id -> ShaderMaterial
+var _hand_r: BoneAttachment3D
+var _hand_l: BoneAttachment3D
+var _look: Dictionary = {}
+var _outfit: Dictionary = {}
+var _arm_lost := false
+var _walk_speed := 1.35
+var _run_speed := 3.7
+var _sprint_speed := 6.0
+var _one_shot := ""                        # an action playing to its end; the loops wait for it
 var _activity := ""
 var _strike_side := false
 var _was_attacking := false
@@ -39,8 +55,19 @@ static func create(body_id: String) -> RealCharacter:
 		_scenes[body_id] = packed
 	var rc := RealCharacter.new()
 	rc.name = "RealCharacter_" + body_id
+	rc._body_id = body_id
 	rc._build(_scenes[body_id])
 	return rc
+
+
+static func _tex(path: String) -> Texture2D:
+	if not _textures.has(path):
+		_textures[path] = load(TEX + path)
+	return _textures[path]
+
+
+static func _wardrobe() -> Dictionary:
+	return GameData.wardrobe
 
 
 func _build(packed: PackedScene) -> void:
@@ -50,7 +77,7 @@ func _build(packed: PackedScene) -> void:
 	_player = _model.find_children("*", "AnimationPlayer", true, false).front() as AnimationPlayer
 	_skeleton = _model.find_children("*", "Skeleton3D", true, false).front() as Skeleton3D
 	for n: Node in _model.find_children("*", "MeshInstance3D", true, false):
-		_bodies.append(n as MeshInstance3D)
+		_mesh[String(n.name)] = n as MeshInstance3D
 	for anim_name: String in LOOPS:
 		if _player != null and _player.has_animation(anim_name):
 			_player.get_animation(anim_name).loop_mode = Animation.LOOP_LINEAR
@@ -59,24 +86,213 @@ func _build(packed: PackedScene) -> void:
 			if String(done) == _one_shot:
 				_one_shot = "")
 		_player.play("idle")
+	var body_cfg: Dictionary = (_wardrobe().get("bodies", {}) as Dictionary).get(_body_id, {})
+	_walk_speed = float(body_cfg.get("walk_speed", _walk_speed))
+	_run_speed = float(body_cfg.get("run_speed", _run_speed))
+	_sprint_speed = float(body_cfg.get("sprint_speed", _sprint_speed))
+	height = float(body_cfg.get("height", 1.72))
+	radius = 0.35
+
+	var sex: String = _body_id.trim_prefix("body_")
+	_skin = ShaderMaterial.new()
+	_skin.shader = load("res://assets/shaders/skin.gdshader")
+	_skin.set_shader_parameter("detail_tex", _tex("skin/skin_%s_detail.png" % sex))
+	_skin.set_shader_parameter("mask_a", _tex("skin/skin_%s_mask_a.png" % sex))
+	_skin.set_shader_parameter("mask_b", _tex("skin/skin_%s_mask_b.png" % sex))
+	_skin.set_shader_parameter("normal_tex", _tex("skin/skin_%s_normal.png" % sex))
+	_hair = ShaderMaterial.new()
+	_hair.shader = load("res://assets/shaders/hair.gdshader")
+	_hair_cards = ShaderMaterial.new()
+	_hair_cards.shader = load("res://assets/shaders/hair_cards.gdshader")
+	var eye := StandardMaterial3D.new()
+	eye.vertex_color_use_as_albedo = true
+	eye.roughness = 0.25
+	eye.metallic_specular = 0.45
 	_overlay = StandardMaterial3D.new()
 	_overlay.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_overlay.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_overlay.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	_overlay.albedo_color = Color(0, 0, 0, 0)
-	for mi: MeshInstance3D in _bodies:
+	for mesh_name: String in _mesh:
+		var mi: MeshInstance3D = _mesh[mesh_name]
 		mi.material_overlay = _overlay
+		if mesh_name == "body" or mesh_name == "stump_r":
+			mi.material_override = _skin
+		elif mesh_name == "eyes":
+			mi.material_override = eye
+		elif mesh_name.ends_with("_cards"):
+			mi.material_override = _hair_cards
+		elif mesh_name.begins_with("hair_") or mesh_name == "beard":
+			mi.material_override = _hair
+		mi.visible = mesh_name == "body" or mesh_name == "eyes"
 	if _skeleton != null:
-		var bone: int = _skeleton.find_bone("mixamorig_RightHand")
-		if bone < 0:
-			bone = _skeleton.find_bone("mixamorig:RightHand")
-		if bone >= 0:
-			_hand = BoneAttachment3D.new()
-			_hand.bone_name = _skeleton.get_bone_name(bone)
-			_skeleton.add_child(_hand)
-	height = 1.7
-	radius = 0.35
+		_hand_r = _attach("RightHand")
+		_hand_l = _attach("LeftHand")
+	apply_look({})
 	set_process(true)                          # ModelRig switches it off; the flash needs it
+
+
+func _attach(bone_name: String) -> BoneAttachment3D:
+	var bone: int = _skeleton.find_bone("mixamorig_" + bone_name)
+	if bone < 0:
+		bone = _skeleton.find_bone("mixamorig:" + bone_name)
+	if bone < 0:
+		return null
+	var at := BoneAttachment3D.new()
+	at.bone_name = _skeleton.get_bone_name(bone)
+	_skeleton.add_child(at)
+	return at
+
+
+## Dress the body from the creator's options (see PlayerLook): build, skin, face, hair, colours.
+func apply_look(look: Dictionary) -> void:
+	_look = CharacterLook.normalize(look)
+	var w: Dictionary = _wardrobe()
+	var build: Dictionary = (w.get("builds", {}) as Dictionary).get(str(_look.get("body", "a")), {})
+	var face: Dictionary = (w.get("faces", {}) as Dictionary).get(str(_look.get("face", "plain")), {})
+	_model.scale = Vector3.ONE * float(build.get("scale", 1.0))
+	for mi: MeshInstance3D in _mesh.values():
+		_set_shape(mi, "heavy", float(build.get("heavy", 0.0)))
+		_set_shape(mi, "slight", float(build.get("slight", 0.0)))
+		_set_shape(mi, "gaunt", float(face.get("gaunt", 0.0)))
+		_set_shape(mi, "brow", float(face.get("brow", 0.0)))
+	var hair_col: Color = _option_color("hair_color", Color(0.17, 0.11, 0.07))
+	_skin.set_shader_parameter("skin_color", _option_color("skin", Color(0.68, 0.52, 0.41)))
+	_skin.set_shader_parameter("hair_color", hair_col)
+	_skin.set_shader_parameter("stubble", float(face.get("stubble", 0.0)))
+	_skin.set_shader_parameter("scar", float(face.get("scar", 0.0)))
+	_skin.set_shader_parameter("brow_weight", float(face.get("brow_weight", 1.0)))
+	var style: String = str(_look.get("hair", "messy"))
+	# the scalp under the hair cards takes the hair's colour, so no skin shows between them
+	_skin.set_shader_parameter("scalp_shade", {"shaved": 0.55, "undercut": 0.6}.get(style, 0.9))
+	_hair.set_shader_parameter("hair_color", hair_col)
+	_hair_cards.set_shader_parameter("hair_color", hair_col)
+	_piece_mat.clear()
+	_refresh_outfit()
+
+
+## Show what is equipped (slot -> item id, as Inventory.equipped): data/wardrobe.json maps items
+## to pieces; empty slots fall back to the everyday clothes.
+func set_outfit(equipped: Dictionary) -> void:
+	_outfit = equipped.duplicate()
+	_refresh_outfit()
+
+
+func _set_shape(mi: MeshInstance3D, shape: String, value: float) -> void:
+	if mi.mesh == null:
+		return
+	var i: int = mi.find_blend_shape_by_name(shape)
+	if i >= 0:
+		mi.set_blend_shape_value(i, value)
+
+
+func _option_color(key: String, fallback: Color) -> Color:
+	for o: Dictionary in CharacterLook.options().get(key, []):
+		if str(o["id"]) == str(_look.get(key, "")):
+			return o.get("color", fallback)
+	return fallback
+
+
+## The pieces worn now, lowest layer first.
+func worn_pieces() -> Array[String]:
+	var w: Dictionary = _wardrobe()
+	var pieces: Dictionary = w.get("pieces", {})
+	var items: Dictionary = w.get("items", {})
+	var on: Array[String] = []
+	for p: Variant in w.get("base", []):
+		on.append(str(p))
+	for slot: Variant in _outfit:
+		var piece: String = str(items.get(str(_outfit[slot]), ""))
+		if piece != "" and pieces.has(piece) and not on.has(piece):
+			on.append(piece)
+	if str(_look.get("band", "off")) == "on":
+		on.append("headband")
+	var replaced: Array[String] = []
+	for p: String in on:
+		for r: Variant in (pieces[p] as Dictionary).get("replaces", []):
+			replaced.append(str(r))
+	var out: Array[String] = []
+	for p: String in on:
+		if not replaced.has(p):
+			out.append(p)
+	out.sort_custom(func(a: String, b: String) -> bool:
+		return int((pieces[a] as Dictionary).get("layer", 0)) < int((pieces[b] as Dictionary).get("layer", 0)))
+	return out
+
+
+func _refresh_outfit() -> void:
+	if _skin == null:
+		return
+	var w: Dictionary = _wardrobe()
+	var pieces: Dictionary = w.get("pieces", {})
+	var worn: Array[String] = worn_pieces()
+	var arm: int = LOST_ARM_MASK if _arm_lost else 0
+	for mesh_name: String in _mesh:
+		if mesh_name.begins_with("cloth_"):
+			(_mesh[mesh_name] as MeshInstance3D).visible = false
+	var body_mask := arm
+	var hair_rule := ""
+	for i: int in worn.size():
+		var cfg: Dictionary = pieces[worn[i]]
+		var above := arm
+		for j: int in range(i + 1, worn.size()):
+			var upper: Dictionary = pieces[worn[j]]
+			if int(upper.get("layer", 0)) > int(cfg.get("layer", 0)):
+				for r: Variant in upper.get("covers", []):
+					above |= 1 << int(r)
+		for r: Variant in cfg.get("covers", []):
+			body_mask |= 1 << int(r)
+		var mat: ShaderMaterial = _material_for(worn[i], cfg)
+		mat.set_shader_parameter("hidden_mask", above)
+		for mesh_name: Variant in cfg.get("meshes", []):
+			var mi: MeshInstance3D = _mesh.get(str(mesh_name), null)
+			if mi != null:
+				mi.visible = true
+				mi.material_override = mat
+		if cfg.has("hair"):
+			hair_rule = str(cfg["hair"])
+	_skin.set_shader_parameter("hidden_mask", body_mask)
+	# hair: the look's style, unless a hood hides it or a cap presses it flat
+	var style: String = str(_look.get("hair", "messy"))
+	var show: Array = (w.get("hair", {}) as Dictionary).get(style, [])
+	if hair_rule == "none":
+		show = []
+	elif hair_rule == "cropped" and not show.is_empty():
+		show = ["hair_cropped", "hair_cropped_cards"]
+	for mesh_name: String in _mesh:
+		if mesh_name.begins_with("hair_"):
+			(_mesh[mesh_name] as MeshInstance3D).visible = show.has(mesh_name)
+	var face: Dictionary = (w.get("faces", {}) as Dictionary).get(str(_look.get("face", "plain")), {})
+	for beard: String in ["beard", "beard_cards"]:
+		if _mesh.has(beard):
+			(_mesh[beard] as MeshInstance3D).visible = bool(face.get("beard", false))
+	if _mesh.has("stump_r"):
+		(_mesh["stump_r"] as MeshInstance3D).visible = _arm_lost
+
+
+func _material_for(piece: String, cfg: Dictionary) -> ShaderMaterial:
+	if _piece_mat.has(piece):
+		return _piece_mat[piece]
+	var mats: Dictionary = _wardrobe().get("materials", {})
+	var m: Dictionary = mats.get(str(cfg.get("material", "linen")), {})
+	var tex: String = str(m.get("tex", "fabric061"))
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://assets/shaders/cloth.gdshader")
+	mat.set_shader_parameter("albedo_tex", _tex("cloth/%s_color.jpg" % tex))
+	mat.set_shader_parameter("normal_tex", _tex("cloth/%s_normal.jpg" % tex))
+	mat.set_shader_parameter("rough_tex", _tex("cloth/%s_rough.jpg" % tex))
+	for key: String in ["tint", "uv_scale", "rough_bias", "grime", "quilt", "sheen", "normal_depth"]:
+		if m.has(key):
+			mat.set_shader_parameter(key, float(m[key]))
+	var col: Variant = cfg.get("color", [0.5, 0.5, 0.5])
+	var c := Color(0.5, 0.5, 0.5)
+	if col is String:
+		c = _option_color(str(col), c)
+	elif col is Array:
+		c = Color(float(col[0]), float(col[1]), float(col[2]))
+	mat.set_shader_parameter("color", c)
+	_piece_mat[piece] = mat
+	return mat
 
 
 func _process(delta: float) -> void:
@@ -103,25 +319,58 @@ func _refresh() -> void:
 	_overlay.albedo_color = c
 
 
-func set_part_visible(_part: String, _on: bool) -> void:
-	pass                                       # one skinned body: no separate arm to hide yet
+## "arm_right" off: the forearm and hand are gone (a bandaged stump shows), the weapon moves to
+## the left hand and strikes swing from the left.
+func set_part_visible(part: String, on: bool) -> void:
+	if part != "arm_right" or _arm_lost == (not on):
+		return
+	_arm_lost = not on
+	_refresh_outfit()
+	if _weapon != null and is_instance_valid(_weapon):
+		_place_weapon(_weapon)
 
 
-## The weapon rides the right hand bone.
+## The weapon rides the right hand bone (the left once the right arm is gone).
 func set_weapon(weapon: Node3D) -> void:
 	if weapon == _weapon:
 		return
 	if _weapon != null and is_instance_valid(_weapon):
+		if _weapon.get_parent() != null:
+			_weapon.get_parent().remove_child(_weapon)
 		_weapon.queue_free()
 	_weapon = weapon
-	if weapon == null or _hand == null:
+	if weapon != null:
+		_place_weapon(weapon)
+
+
+func _place_weapon(weapon: Node3D) -> void:
+	var hand: BoneAttachment3D = _hand_l if _arm_lost else _hand_r
+	if hand == null:
 		return
 	if weapon.get_parent() != null:
 		weapon.get_parent().remove_child(weapon)
-	# the weapon's grip is at its origin with the business end along -Z; the hand bone runs
-	# along +Y to the fingers, so the blade is turned to stand out of the fist
-	weapon.transform = Transform3D(Basis.from_euler(Vector3(deg_to_rad(-90.0), 0.0, 0.0)), Vector3(0.0, 0.08, 0.03))
-	_hand.add_child(weapon)
+	var grips: Dictionary = _wardrobe().get("grip", {})
+	var grip: Dictionary = grips.get("left" if _arm_lost else "right", {})
+	var by_item: Dictionary = (grips.get("items", {}) as Dictionary).get(str(weapon.get_meta("item_id", "")), {})
+	if by_item.has("left" if _arm_lost else "right"):
+		grip = by_item["left" if _arm_lost else "right"]
+	var rot: Array = grip.get("rot_deg", [-90.0, 0.0, 0.0])
+	var pos: Array = grip.get("pos", [0.0, 0.08, 0.03])
+	var basis := Basis.from_euler(Vector3(deg_to_rad(float(rot[0])), deg_to_rad(float(rot[1])), deg_to_rad(float(rot[2]))))
+	# the bone attachment sits under the armature's 1/100 scale; the weapon is sized in metres
+	var s: float = 1.0 / _scale_under_model(hand)
+	weapon.transform = Transform3D(basis.scaled(Vector3.ONE * s), Vector3(float(pos[0]), float(pos[1]), float(pos[2])) * s)
+	hand.add_child(weapon)
+
+
+func _scale_under_model(n: Node3D) -> float:
+	var s := 1.0
+	var p: Node = n.get_parent()
+	while p != null and p != _model:
+		if p is Node3D:
+			s *= (p as Node3D).scale.x
+		p = p.get_parent()
+	return maxf(s, 0.0001)
 
 
 func set_staggered(on: bool) -> void:
@@ -137,8 +386,28 @@ func set_dead_look() -> void:
 	_windup = false
 	_refresh()
 	if _player != null and _player.has_animation("death"):
+		_player.speed_scale = 1.0
 		_player.play("death", 0.15)
 		_one_shot = "death"
+
+
+## Already lying where it fell (a corpse): the death motion's last frame, no fall.
+func lie_dead() -> void:
+	set_dead_look()
+	if _player != null and _player.has_animation("death"):
+		_player.seek(_player.get_animation("death").length, true)
+
+
+## Freeze on one frame of a clip, at t seconds or (if t < 0) at fraction f of its length - for
+## previews and tests.
+func pose_at(anim: String, t: float, f: float = -1.0) -> void:
+	if _player == null or not _player.has_animation(anim):
+		return
+	_one_shot = anim
+	var at: float = t if t >= 0.0 else maxf(f, 0.0) * _player.get_animation(anim).length
+	_player.play(anim, 0.0)
+	_player.seek(at, true)
+	_player.pause()
 
 
 ## Hold a state until it is cleared with "": "meditate".
@@ -152,12 +421,17 @@ func set_activity(name_now: String) -> void:
 		_player.play(_activity, 0.35)
 
 
-## Play a one-off to its end: "cast", "cast_area", "dodge", "hit", "slash_in", "slash_out".
+## Play a one-off to its end: "cast", "cast_area", "dodge", "hit", "heavy", "pickup", "throw",
+## "power_up", "slash_in", "slash_out". Speeds come from data/wardrobe.json "action_speed".
 func play_action(name_now: String) -> void:
-	if _dead or _player == null or not _player.has_animation(name_now):
+	if _dead or _player == null:
+		return
+	if _arm_lost and _player.has_animation(name_now + "_l"):
+		name_now += "_l"
+	if not _player.has_animation(name_now):
 		return
 	_one_shot = name_now
-	_player.speed_scale = 1.0
+	_player.speed_scale = float((_wardrobe().get("action_speed", {}) as Dictionary).get(name_now.trim_suffix("_l"), 1.0))
 	_player.play(name_now, 0.08)
 
 
@@ -165,7 +439,7 @@ func play_action(name_now: String) -> void:
 func animate(_delta: float, speed: float, attacking: bool) -> void:
 	if _dead or _player == null:
 		return
-	if attacking and not _was_attacking and _one_shot == "":
+	if attacking and not _was_attacking and (_one_shot == "" or _one_shot.begins_with("slash")):
 		_strike_side = not _strike_side
 		play_action("slash_in" if _strike_side else "slash_out")
 	_was_attacking = attacking
@@ -175,12 +449,15 @@ func animate(_delta: float, speed: float, attacking: bool) -> void:
 		return
 	var want := "idle"
 	var rate := 1.0
-	if speed > 3.0:
+	if speed > 0.5 * (_run_speed + _sprint_speed) and _player.has_animation("sprint"):
+		want = "sprint"
+		rate = speed / _sprint_speed
+	elif speed > 0.5 * (_walk_speed + _run_speed):
 		want = "run"
-		rate = speed / RUN_SPEED
+		rate = speed / _run_speed
 	elif speed > 0.25:
 		want = "walk"
-		rate = speed / WALK_SPEED
+		rate = speed / _walk_speed
 	if _player.current_animation != want:
 		_player.play(want, 0.2)
 	_player.speed_scale = clampf(rate, 0.6, 1.8) if want != "idle" else 1.0

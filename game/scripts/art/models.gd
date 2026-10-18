@@ -85,7 +85,9 @@ static func pickup(equippable: bool) -> Node3D:
 static func weapon(item_id: String) -> Node3D:
 	var known: Array[String] = ["iron_knuckles", "serrated_dagger", "invader_cleaver", "commander_blade"]
 	var id: String = item_id if known.has(item_id) else "club"
-	return _stamp("weapon:" + id, _build_weapon.bind(id))
+	var w: Node3D = _stamp("weapon:" + id, _build_weapon.bind(id))
+	w.set_meta("item_id", id)                  # a real body looks up how to hold it (data/wardrobe.json "grip")
+	return w
 
 
 ## The player's soul projection for the Netherecho: a small (1.0 tall, radius 0.3) translucent

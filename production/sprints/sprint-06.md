@@ -636,3 +636,26 @@ move in motion - the screenshots are single frames; strike and cast timings are 
 Verified: self-test 733/733 with the switch off and on; zone probe; full-passage, gate and death bots; Netherecho
 death test; click and creation tests; screenshots of the field and the inventory with the real body.
 Not verified: by hand.
+
+
+## Part AE — the real characters finished: clothes, skin, hair, faces, the female body, motion (Brent 2026-10-18: "keep running through all 4 ... until they are done and look good and move right")
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-153 | The female body auto-rigged on Mixamo; both bodies get the same clip set: a sword-and-shield idle / walk / run, sprint, two slashes (and both mirrored for the left hand), heavy overhead, hit, two deaths, two casts, roll, pickup, throw, power-up, kneeling meditation | `shots/char-clips.png`, `shots/char-med.png` | Done |
+| S06-154 | `tools/assets/blender_body_prep.py`: UDIM layout repacked to one texture; normal, occlusion and cavity baked from the bundle's multires sculpt; tone, redness, lips, brows, eye shadow, beard area, scalp and scar painted from the body's shape; eyes split off and coloured; region ids per vertex; heavy / slight / gaunt / brow shape keys | `game/assets/characters/textures/skin/` | Done |
+| S06-155 | Clothes made from the body (they share its skinning and shape keys): tunic, trousers, foot wraps; patched coat (skirt, collar), padded jack (quilted), husk-hide jerkin, oilcloth hood, boiled cap, work gloves, hide bracers, street and hobnailed boots (feet filled to a toe box), rope belt, quiver belt with pouches, canvas pack, delver's frame, headband; nine CC0 ambientCG cloth/leather/rope/wood sets | `shots/char-outfits.png`, `shots/char-showcase.png` | Done |
+| S06-156 | Hair as cards grown over the scalp, combed per style (all eight creator styles) and a beard; the scalp under them takes the hair colour | `shots/char-heads2.png` | Done |
+| S06-157 | `RealCharacter` applies every creator option (sex, build, skin, face, hair, hair colour, headband, coat, accent) and what is equipped (`data/wardrobe.json`): layers replace and hide what is under them; a lost right arm hides forearm and hand, shows a bandaged stump, moves the weapon to the left hand and swings from the left | self-test "real character bodies" | Done |
+| S06-158 | Motion: one-off clips pinned so the body does not walk away from its collider; walk / run / sprint chosen and rate-matched by speed (native speeds measured from the clips); clip rates set against the 0.45 s strike; heavy on an overcharged release, pickup, sling throw and power-up on ascension wired in; weapons held by a checked grip (knuckles over the fist) | `shots/char-m-*.png`, `shots/char-knuck2.png` | Done |
+| S06-159 | Real bodies on by default (`balance.json` art.real_bodies = true) | `shots/ui-real-*.png` | Done |
+
+Not done / rough: enemies are still the procedural models (the real player now stands a little smaller beside them); clothes do not
+simulate (a coat skirt is stiff and a high knee can poke through it); hair cards are coarse up close; the Quaternius library and CMU
+motion capture were not needed - Mixamo covered every motion on the same rig - and CMU was not downloaded; the inventory and
+enemies screenshots report low fps on main too (a capture artefact), the field holds 75 fps.
+
+Verified: self-test 759/759 (new: both bodies, every wardrobe mesh and clip present, layering, hidden skin, hood hides hair,
+shape keys, lost arm and left-hand weapon); full-passage bots x4 (scrubland, mountain, city), gate, death; zone; Netherecho death
+(both modes); click (town, field); creation; contact sheets of every piece, style and clip; in-game shots.
+Not verified: by hand, in motion on screen - every motion check was frame strips.

@@ -81,11 +81,13 @@ static func label(key: String, id: String) -> String:
 
 ## A player model wearing `look`.
 static func build(look: Dictionary) -> ModelRig:
-	# a real, rigged and animated body where one has been made (only the male body so far)
+	# a real, rigged and animated body where one has been made
 	var sex: String = str(normalize(look).get("sex", "male"))
 	var wanted: bool = bool((GameData.balance.get("art", {}) as Dictionary).get("real_bodies", false)) or OS.get_cmdline_user_args().has("--real-body")
 	if wanted and RealCharacter.exists("body_" + sex):
-		return RealCharacter.create("body_" + sex)
+		var real: RealCharacter = RealCharacter.create("body_" + sex)
+		real.apply_look(look)
+		return real
 	if _arg_count("player") >= 1:
 		return _models.call("player", normalize(look))
 	return _models.call("player")

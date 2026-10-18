@@ -18,11 +18,15 @@ var _label: Label3D
 func setup(id: String, look: Dictionary) -> void:
 	corpse_id = id
 	_rig = CharacterLook.build(look)
-	_rig.rotation_degrees = Vector3(-90.0, 30.0, 0.0)       # face down where it fell
-	_rig.position = Vector3(0.0, 0.18, 0.7)
 	add_child(_rig)
-	if _rig.has_method("set_dead_look"):
-		_rig.set_dead_look()
+	if _rig.has_method("lie_dead"):
+		_rig.rotation_degrees.y = 30.0                         # a real body lies as its death motion ends
+		_rig.call("lie_dead")
+	else:
+		_rig.rotation_degrees = Vector3(-90.0, 30.0, 0.0)   # face down where it fell
+		_rig.position = Vector3(0.0, 0.18, 0.7)
+		if _rig.has_method("set_dead_look"):
+			_rig.set_dead_look()
 	_label = Label3D.new()
 	_label.text = "Your corpse"
 	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
