@@ -6,7 +6,7 @@ Outputs, per material, into game/assets/textures/ground/:
     <name>_albedo.png   sRGB colour
     <name>_normal.png   tangent-space normal (OpenGL convention, +Y up)
     <name>_rough.png    roughness, linear grey
-and a manifest row per file in game/assets/MANIFEST.csv.
+and a manifest row per file in tools/assets/MANIFEST.csv.
 
 Usage:  python tools/assets/make_ground_textures.py [--size 1024] [--seed 7]
 """
@@ -20,7 +20,7 @@ from PIL import Image, ImageDraw
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 OUT = ROOT / "game" / "assets" / "textures" / "ground"
-MANIFEST = ROOT / "game" / "assets" / "MANIFEST.csv"
+MANIFEST = ROOT / "tools" / "assets" / "MANIFEST.csv"
 
 
 # --- tileable building blocks -------------------------------------------------------------

@@ -579,7 +579,7 @@ tests; screenshots of the field, the Cut House and town inspected. Not verified:
 
 | # | Story | Evidence | Status |
 |---|-------|----------|--------|
-| S06-140 | The code-only art rule is gone. Asset rules in CLAUDE.md: `game/assets/`, a MANIFEST row per file (origin, maker, licence), generators in `tools/assets/`, own work or recorded-licence (CC0 preferred) only, nothing from the books' art or other games, downloads and new tools still need Brent's yes | CLAUDE.md | Done |
+| S06-140 | The code-only art rule is gone. Asset rules in CLAUDE.md: `game/assets/`, a `tools/assets/MANIFEST.csv` row per file (origin, maker, licence), generators in `tools/assets/`, own work or recorded-licence (CC0 preferred) only, nothing from the books' art or other games, downloads and new tools still need Brent's yes | CLAUDE.md | Done |
 | S06-141 | Real PBR ground for scrubland (the Stubble, and scrubland passages and arenas): dry earth with cracks and gravel, dead grass and straw, a large mask to break the repeat - seamless 1024 px albedo, normal and roughness maps made from scratch by `tools/assets/make_ground_textures.py` | `shots/ui-stubble.png` | Done |
 | S06-142 | Screen-space indirect light, so shade is not flat; the passage tracker says "spoils" | screenshots | Done |
 
