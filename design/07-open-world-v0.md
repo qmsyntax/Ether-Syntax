@@ -1,6 +1,6 @@
 # Open world v0 — the Tithe Country: a world of zones, with dungeons in it
 
-Draft for Brent to approve or redline, 2026-10-12. **Nothing here is built and nothing here has been played.** Every number is a
+Draft of 2026-10-12; section 1 approved by Brent 2026-10-18 with the changes boxed there. **Nothing here is built and nothing here has been played.** Every number is a
 first guess. Design and data drafts only; no file under `game/` was changed.
 
 Tags: **[B]** Brent's ruling, **[C]** read in the books (through the project's paraphrased notes only — the note is named),
@@ -26,6 +26,21 @@ region · 6 The first zone to build · 7 Build order · 8 Risks and open questio
 
 ---
 ## 1. The decisions (one page)
+
+**Brent's rulings, 2026-10-18** — section 1 approved, with these changes. They override anything below that disagrees
+(sections 3-8 still describe dawn rent, a collection crew and a 24-minute day; read them through this box):
+
+- **[B] Nothing pays cash.** Kills and dungeon clears pay **loot** — items, corpses, beast parts. Money comes only from selling
+  that loot in a town. (Replaces row 6's "dungeons still pay at the exit" and the passage's cash payout.)
+- **[B] A day is 90 real minutes**, not 24. (Row 5.)
+- **[B] Corpse runs.** You respawn **naked** in town; your body, with everything you wore and carried, lies where you fell. Walk
+  back for it, or pay for retrieval — a **flat fee that may scale with level (stars)**, never a percentage of what you had.
+  Hardcore is unchanged. (Replaces row 7.)
+- **[B] No rent outdoors, and no rent clock.** The only rent is for a place to sleep and keep things: a room at an inn, an
+  apartment, living quarters in an area. (Replaces the dawn rent in rows 5 and 13 and section 3.4.)
+- **[B] Passages are owned, wild, or public.** Owned passages near the city charge (the ticket and the meter); wild ones are
+  nobody's and free; some public ones are free for low levels. Tenwall Cut (today's passage) is owned. (Replaces row 13.)
+- **[B] Build pathfinding now** rather than at step 6. (Replaces row 14.)
 
 Each line is a decision, then my recommendation. "Go with your recommendations" approves the right-hand column.
 
