@@ -9,6 +9,10 @@ func backdrop() -> float:
 	return 0.6
 
 
+func hud_hides() -> Array[String]:
+	return HUD_MENU
+
+
 func build(root: Control) -> void:
 	var b: Body = player.get("body")
 	var box: VBoxContainer = framed(root, 0.2, 0.05, 0.8, 0.775)

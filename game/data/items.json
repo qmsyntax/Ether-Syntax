@@ -72,14 +72,14 @@
       },
       "desc": "Reflux bleeds off half again as fast."
     },
-    "husk_plate": {
+    "husk_plate": { "icon": "plate",
       "name": "Husk Plate",
       "slot": "",
       "weight": 3.0,
       "value": 55,
       "desc": "A slab of invader hide. Tanners buy it."
     },
-    "sinew_cord": {
+    "sinew_cord": { "icon": "cord",
       "name": "Sinew Cord",
       "slot": "",
       "weight": 1.0,
@@ -97,21 +97,21 @@
       },
       "desc": "An invader's blade. Light, quick, and legal to keep when it comes out of a passage."
     },
-    "brute_tusk": {
+    "brute_tusk": { "icon": "tusk",
       "name": "Brute Tusk",
       "slot": "",
       "weight": 6.0,
       "value": 280,
       "desc": "Heavy. Worth it if you can still walk."
     },
-    "commander_sigil": {
+    "commander_sigil": { "icon": "sigil",
       "name": "Commander's Sigil",
       "slot": "",
       "weight": 2.0,
       "value": 1500,
       "desc": "Proof you put one down. Collectors pay."
     },
-    "golden_seed": {
+    "golden_seed": { "icon": "seed",
       "name": "Golden Grass Seed",
       "slot": "",
       "weight": 0.1,
@@ -471,70 +471,70 @@
       "value": 1200,
       "desc": "Teaches Bedrock Shove to someone with the earth affinity. Read once; the scroll is used up. Click it in your pack to read it."
     },
-    "skirmisher_mask": {
+    "skirmisher_mask": { "icon": "mask",
       "name": "Skirmisher's Mask",
       "slot": "",
       "weight": 1.0,
       "value": 150,
       "desc": "A pale lacquered mask, still warm. Collectors and the curious pay for them."
     },
-    "rampart_bowstave": {
+    "rampart_bowstave": { "icon": "stave",
       "name": "Rampart Bowstave",
       "slot": "",
       "weight": 1.5,
       "value": 200,
       "desc": "Seasoned wood under the grime. A bowyer will want it."
     },
-    "harrier_pelt": {
+    "harrier_pelt": { "icon": "hide",
       "name": "Harrier Pelt",
       "slot": "",
       "weight": 2.0,
       "value": 250,
       "desc": "Short, coarse, and the colour of dusk. Furriers buy them."
     },
-    "brute_hide": {
+    "brute_hide": { "icon": "hide",
       "name": "Brute Hide",
       "slot": "",
       "weight": 8.0,
       "value": 500,
       "desc": "A slab of hide as thick as a door. Worth a great deal to anyone who can carry it."
     },
-    "pavise_boss": {
+    "pavise_boss": { "icon": "boss",
       "name": "Pavise Boss",
       "slot": "",
       "weight": 3.0,
       "value": 300,
       "desc": "The iron boss from a body-length shield. Smiths buy the metal."
     },
-    "censer_ash": {
+    "censer_ash": { "icon": "ash",
       "name": "Censer Ash",
       "slot": "",
       "weight": 0.5,
       "value": 250,
       "desc": "A pouch of what was burning. Apothecaries argue over what it is good for."
     },
-    "war_drumhead": {
+    "war_drumhead": { "icon": "drum",
       "name": "War Drumhead",
       "slot": "",
       "weight": 2.0,
       "value": 300,
       "desc": "Stretched skin, painted. It still hums when you touch it."
     },
-    "spoils_strongbox": {
+    "spoils_strongbox": { "icon": "chest",
       "name": "Sealed Strongbox",
       "slot": "",
       "weight": 2.5,
       "value": 2000,
       "desc": "Passage spoils, locked and heavy. The counting-house in town opens it and pays."
     },
-    "spoils_relics": {
+    "spoils_relics": { "icon": "relics",
       "name": "Case of Relics",
       "slot": "",
       "weight": 1.0,
       "value": 500,
       "desc": "Passage spoils: odd small things the passage gave up. They sell."
     },
-    "spoils_salvage": {
+    "spoils_salvage": { "icon": "salvage",
       "name": "Passage Salvage",
       "slot": "",
       "weight": 0.5,

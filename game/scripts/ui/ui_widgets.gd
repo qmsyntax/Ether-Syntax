@@ -12,12 +12,14 @@ class Icon extends Control:
 		kind = icon_kind
 		color = icon_color
 		custom_minimum_size = Vector2(px, px)
+		size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), UiTheme.INSET)
-		draw_rect(Rect2(Vector2.ZERO, size), UiTheme.BRONZE_DIM, false, 1.0)
-		UiDraw.icon(self, kind, size * 0.5, minf(size.x, size.y) * 0.62, color)
+		var side: float = minf(size.x, size.y)
+		var sq := Rect2((size - Vector2(side, side)) * 0.5, Vector2(side, side))      # square even if the row stretches it
+		UiDraw.frame(self, sq, "slot")
+		UiDraw.icon(self, kind, sq.get_center(), side * 0.62, color)
 
 
 ## A framed bar with an optional caption drawn over it.
@@ -36,7 +38,8 @@ class Bar extends Control:
 	func _draw() -> void:
 		UiDraw.bar(self, Rect2(Vector2(1, 1), size - Vector2(2, 2)), frac, color)
 		if caption != "":
-			UiDraw.text(self, Vector2(0, size.y * 0.5 + 5.0), caption, 13, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_CENTER, size.x)
+			var px: int = UiTheme.FS_CAPTION + 1 if size.y >= 18.0 else UiTheme.FS_CAPTION
+			UiDraw.outlined(self, Vector2(0, size.y * 0.5 + float(px) * 0.36), caption, px, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_CENTER, size.x)
 
 
 ## A big clickable row: bold title, smaller description underneath, optional price on the right.

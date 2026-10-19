@@ -19,6 +19,10 @@ func backdrop() -> float:
 	return 0.8
 
 
+func hud_hides() -> Array[String]:
+	return HUD_MENU
+
+
 func build(root: Control) -> void:
 	var box: VBoxContainer = framed(root, 0.32, 0.3, 0.68, 0.6)
 	box.alignment = BoxContainer.ALIGNMENT_CENTER

@@ -26,6 +26,10 @@ func close_actions() -> Array[String]:
 	return ["ethercosm", "settings"]
 
 
+func hud_hides() -> Array[String]:
+	return HUD_MENU
+
+
 func build(root: Control) -> void:
 	var abilities: Array = player.get("abilities")
 	selected = clampi(selected, 0, maxi(0, abilities.size() - 1))

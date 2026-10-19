@@ -258,3 +258,11 @@ assets/characters/textures/garments/male/cloth_tunic_skirt_fold.png,generated,to
 assets/characters/textures/garments/male/cloth_wraps_detail.png,generated,tools/assets/blender_character.py (cloth simulation drape + bakes),own work,"garment occlusion, fold crests, hem, stitching",2026-10-18
 assets/characters/textures/garments/male/cloth_wraps_fold.png,generated,tools/assets/blender_character.py (cloth simulation drape + bakes),own work,garment fold normals,2026-10-18
 assets/shaders/anatomy.gdshader,written,by hand,own work,"anatomy piece: skin colour, edge fade",2026-10-18
+assets/ui/panel.png,generated,tools/assets/make_ui_textures.py,own work (no source images),"panel frame: grain fill, bronze bevel, corner brackets",2026-10-18
+assets/ui/panel_plain.png,generated,tools/assets/make_ui_textures.py,own work (no source images),"inner panel / tooltip frame, no brackets",2026-10-18
+assets/ui/panel_nether.png,generated,tools/assets/make_ui_textures.py,own work (no source images),the Netherecho's panel frame,2026-10-18
+assets/ui/button.png,generated,tools/assets/make_ui_textures.py,own work (no source images),"button, normal",2026-10-18
+assets/ui/button_hover.png,generated,tools/assets/make_ui_textures.py,own work (no source images),"button, hovered",2026-10-18
+assets/ui/button_pressed.png,generated,tools/assets/make_ui_textures.py,own work (no source images),"button, pressed / selected",2026-10-18
+assets/ui/button_disabled.png,generated,tools/assets/make_ui_textures.py,own work (no source images),"button, disabled",2026-10-18
+assets/ui/slot.png,generated,tools/assets/make_ui_textures.py,own work (no source images),"sunken slot well (hotbar, pack cells, equipment slots)",2026-10-18
