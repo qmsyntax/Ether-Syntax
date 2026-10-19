@@ -64,6 +64,17 @@ conflicting — needs Brent (audiobooks) or a targeted Kindle read.
 - [F] **Delvers** work in parties and haul **whole corpses** out — carry capacity is an economic stat. (Tension with LAW 2: parties earn more money but less latent aura.)
 - [F] **Deviants**: off-pattern monsters; more dangerous; the arch route to a prime drop.
 - [F] Realm ecologies have their own clocks (e.g. a hive realm with a periodic red-sky frenzy).
+
+## The world's technology — ethertech
+- [B] **Ether tech means modern things still exist** (Brent 2026-10-18: "this world has ether tech which means stuff like TV and
+  Cell Phones still exist"). New Earth is not medieval: televisions, phones and other devices run on engineered ether.
+- [S] From the reading notes (research/book5-mechanics-notes.md, book5-ch226-230-notes.md): "ethertech" covers drones, phones and
+  broadcast sets; the level is a post-collapse rebuild - brick phones and tablets are new luxuries, broadcast sets are
+  state-subsidised, cars are armoured and unlicensed; videos of incidents circulate within hours.
+- [MODEL] Consequences for the game: towns are rebuilt modern cities and outposts (brick, concrete, signage, screens,
+  power lines, vehicles), not half-timbered villages; townsfolk carry phones and watch broadcasts; items and shops can include
+  ethertech goods (phones, radios, lamps, scanners, drones) alongside realm loot; the realms beyond the passages keep their own,
+  older looks. Ether density limits it: an "ether desert" has little working tech.
 - [F] **Trial dungeon**: single-entrant special passage with extreme time dilation, run by a spirit of Insanity, rewards for surviving.
 - [F] Debtors can be indentured to mine clan-owned realms.
 
