@@ -1,0 +1,216 @@
+{
+  "_note": "How each enemy kind (data/enemies.json) looks as a real body (scripts/art/real_character.gd, Models.enemy). body male|female; scale so the model matches the kind's height; build/skin/features/hair are look options; pieces are wardrobe pieces worn (no everyday clothes underneath); colors override a piece's colour ('enemy' = the kind's colour from enemies.json); weapon is a Models.weapon id; props are held or worn items built in code (see RealCharacter.PROP_KINDS); attack clips play on each wind-up, the strike landing at the clip's 'impact' fraction; idle overrides the idle loop.",
+  "grunt": {
+    "body": "male",
+    "build": "d",
+    "skin": "umber",
+    "features": "f2",
+    "hair": "shaved",
+    "pieces": [
+      "robe",
+      "hood",
+      "mask",
+      "bracers",
+      "wraps"
+    ],
+    "colors": {
+      "robe": "enemy",
+      "hood": "enemy"
+    },
+    "weapon": "invader_cleaver",
+    "attack": [
+      "slash_in",
+      "slash_out"
+    ],
+    "impact": 0.45
+  },
+  "archer": {
+    "body": "female",
+    "build": "b",
+    "skin": "tawny",
+    "features": "f3",
+    "hair": "braid",
+    "pieces": [
+      "robe",
+      "hood",
+      "mask",
+      "bracers",
+      "wraps"
+    ],
+    "colors": {
+      "robe": "enemy",
+      "hood": "enemy"
+    },
+    "props": [
+      "bow",
+      "quiver"
+    ],
+    "attack": [
+      "shoot"
+    ],
+    "impact": 0.55,
+    "idle": "aim"
+  },
+  "harrier": {
+    "body": "female",
+    "build": "d",
+    "skin": "olive",
+    "features": "f5",
+    "hair": "cropped",
+    "pieces": [
+      "hide",
+      "mask",
+      "bracers",
+      "wraps"
+    ],
+    "colors": {
+      "hide": "enemy"
+    },
+    "weapon": "serrated_dagger",
+    "attack": [
+      "pounce"
+    ],
+    "impact": 0.5
+  },
+  "pavise": {
+    "body": "male",
+    "build": "a",
+    "skin": "weathered",
+    "features": "f4",
+    "hair": "shaved",
+    "pieces": [
+      "padded",
+      "hood",
+      "mask",
+      "greaves",
+      "boots"
+    ],
+    "colors": {
+      "padded": "enemy",
+      "hood": "enemy"
+    },
+    "weapon": "invader_cleaver",
+    "props": [
+      "pavise"
+    ],
+    "attack": [
+      "slash_out"
+    ],
+    "impact": 0.42
+  },
+  "censer": {
+    "body": "male",
+    "build": "b",
+    "skin": "pale",
+    "features": "f3",
+    "hair": "shaved",
+    "pieces": [
+      "robe",
+      "hood",
+      "mask",
+      "wraps"
+    ],
+    "colors": {
+      "robe": "enemy",
+      "hood": "enemy"
+    },
+    "props": [
+      "censer"
+    ],
+    "attack": [
+      "slash_out",
+      "slash_in"
+    ],
+    "impact": 0.45
+  },
+  "drummer": {
+    "body": "male",
+    "build": "c",
+    "skin": "tawny",
+    "features": "f6",
+    "hair": "shaved",
+    "pieces": [
+      "robe",
+      "mask",
+      "bone_spaulders",
+      "wraps"
+    ],
+    "colors": {
+      "robe": "enemy",
+      "bone_spaulders": [
+        0.52,
+        0.48,
+        0.4
+      ]
+    },
+    "props": [
+      "drum"
+    ],
+    "attack": [
+      "power_up"
+    ],
+    "impact": 0.5
+  },
+  "brute": {
+    "body": "male",
+    "build": "c",
+    "skin": "deep",
+    "features": "f4",
+    "hair": "shaved",
+    "pieces": [
+      "hide",
+      "mask",
+      "bone_spaulders",
+      "bracers",
+      "tallboots"
+    ],
+    "colors": {
+      "hide": "enemy",
+      "bone_spaulders": [
+        0.52,
+        0.48,
+        0.4
+      ]
+    },
+    "weapon": "invader_cleaver",
+    "attack": [
+      "heavy"
+    ],
+    "impact": 0.55
+  },
+  "commander": {
+    "body": "male",
+    "build": "a",
+    "skin": "umber",
+    "features": "f1",
+    "hair": "shaved",
+    "pieces": [
+      "padded",
+      "cuirass",
+      "pauldrons",
+      "helmet",
+      "greaves",
+      "cape",
+      "gloves",
+      "tallboots"
+    ],
+    "colors": {
+      "padded": [
+        0.16,
+        0.12,
+        0.11
+      ],
+      "cape": "enemy"
+    },
+    "weapon": "commander_blade",
+    "props": [
+      "pavise_round"
+    ],
+    "attack": [
+      "slash_in",
+      "slash_out",
+      "heavy"
+    ],
+    "impact": 0.45
+  }
+}

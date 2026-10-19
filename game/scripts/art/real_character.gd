@@ -39,6 +39,15 @@ var _outfit: Dictionary = {}
 var _arm_lost := false
 var _bare := false                         # no everyday clothes under the empty slots
 var _skin_source := "painted"
+var _explicit: Array[String] = []          # an enemy's fixed costume (make_enemy); empty = base + outfit
+var _piece_colors: Dictionary = {}         # piece id -> Color, over the wardrobe's colour
+var _attack_clips: Array[String] = []      # enemy mode: a clip per wind-up, in turn
+var _attack_next := 0
+var _impact := 0.45
+var _windup_s := 0.45
+var _idle_clip := "idle"
+var _props: Array[Node3D] = []
+var _hanging: Array[Node3D] = []           # props that hang straight down from where they are held
 var _barefoot := false                     # no foot wraps under an empty feet slot
 var _walk_speed := 1.35
 var _run_speed := 3.7
@@ -269,6 +278,21 @@ func worn_pieces() -> Array[String]:
 	var pieces: Dictionary = w.get("pieces", {})
 	var items: Dictionary = w.get("items", {})
 	var on: Array[String] = []
+	if not _explicit.is_empty():
+		for p: String in _explicit:
+			if pieces.has(p):
+				on.append(p)
+		on.sort_custom(func(a: String, b: String) -> bool:
+			return int((pieces[a] as Dictionary).get("layer", 0)) < int((pieces[b] as Dictionary).get("layer", 0)))
+		var gone: Array[String] = []
+		for p: String in on:
+			for r: Variant in (pieces[p] as Dictionary).get("replaces", []):
+				gone.append(str(r))
+		var kept: Array[String] = []
+		for p: String in on:
+			if not gone.has(p):
+				kept.append(p)
+		return kept
 	for p: Variant in ([] if _bare else w.get("base", [])):
 		if _barefoot and str(p) == "wraps":
 			continue
@@ -358,12 +382,16 @@ func _material_for(piece: String, cfg: Dictionary, mesh_name: String) -> ShaderM
 	mat.set_shader_parameter("albedo_tex", _tex("cloth/%s_color.jpg" % tex))
 	mat.set_shader_parameter("normal_tex", _tex("cloth/%s_normal.jpg" % tex))
 	mat.set_shader_parameter("rough_tex", _tex("cloth/%s_rough.jpg" % tex))
-	for key: String in ["tint", "uv_scale", "rough_bias", "grime", "quilt", "sheen", "normal_depth"]:
+	for key: String in ["tint", "uv_scale", "rough_bias", "grime", "quilt", "sheen", "normal_depth", "metallic"]:
 		if m.has(key):
 			mat.set_shader_parameter(key, float(m[key]))
 	var col: Variant = cfg.get("color", [0.5, 0.5, 0.5])
 	var c := Color(0.5, 0.5, 0.5)
-	if col is String:
+	if _piece_colors.has(piece):
+		col = _piece_colors[piece]
+	if col is Color:
+		c = col
+	elif col is String:
 		c = _option_color(str(col), c)
 	elif col is Array:
 		c = Color(float(col[0]), float(col[1]), float(col[2]))
@@ -381,6 +409,10 @@ func _material_for(piece: String, cfg: Dictionary, mesh_name: String) -> ShaderM
 
 
 func _process(delta: float) -> void:
+	for h: Node3D in _hanging:                 # a censer on its chain: down is down, whatever the hand does
+		if is_instance_valid(h):
+			var s: Vector3 = h.global_transform.basis.get_scale()
+			h.global_transform = Transform3D(Basis(Vector3.UP, global_rotation.y).scaled(s), h.global_position)
 	if _flash_left > 0.0:
 		_flash_left -= delta
 		if _flash_left <= 0.0:
@@ -458,6 +490,132 @@ func _scale_under_model(n: Node3D) -> float:
 	return maxf(s, 0.0001)
 
 
+# --- enemies ----------------------------------------------------------------------------------
+
+## Dress this body as an enemy kind from data/enemy_looks.json (Models.enemy calls it): look,
+## costume, colour, weapon, props, attack clips and the size the kind is in enemies.json.
+func make_enemy(look_cfg: Dictionary, def: Dictionary) -> void:
+	var look: Dictionary = {"sex": str(look_cfg.get("body", "male"))}
+	for key: String in ["body", "skin", "features", "hair", "hair_color", "face"]:
+		var src: String = "build" if key == "body" else key
+		if look_cfg.has(src):
+			look[key] = look_cfg[src]
+	look["band"] = "off"
+	var tint: Array = def.get("color", [0.5, 0.2, 0.2])
+	var enemy_col := Color(float(tint[0]), float(tint[1]), float(tint[2])).darkened(0.25)
+	var colors: Dictionary = look_cfg.get("colors", {})
+	for piece: Variant in colors:
+		var v: Variant = colors[piece]
+		if str(v) == "enemy":
+			_piece_colors[str(piece)] = enemy_col
+		elif v is Array:
+			_piece_colors[str(piece)] = Color(float(v[0]), float(v[1]), float(v[2]))
+	_explicit.clear()
+	for p: Variant in look_cfg.get("pieces", []):
+		_explicit.append(str(p))
+	_piece_mat.clear()
+	apply_look(look)
+	for c: Variant in look_cfg.get("attack", []):
+		_attack_clips.append(str(c))
+	_impact = float(look_cfg.get("impact", 0.45))
+	_windup_s = float(def.get("windup", 0.45))
+	_idle_clip = str(look_cfg.get("idle", "idle"))
+	if _player != null and _player.has_animation(_idle_clip):
+		_player.get_animation(_idle_clip).loop_mode = Animation.LOOP_LINEAR
+		_player.play(_idle_clip)
+	var body_cfg: Dictionary = (_wardrobe().get("bodies", {}) as Dictionary).get(_body_id, {})
+	var stature: float = float(body_cfg.get("stature", 1.68)) * _model.scale.x
+	scale = Vector3.ONE * (float(def.get("height", 1.7)) / maxf(stature, 0.1))
+	height = float(def.get("height", 1.7))
+	radius = float(def.get("radius", 0.5))
+	if look_cfg.has("weapon"):
+		set_weapon(Models.weapon(str(look_cfg["weapon"])))
+	for p: Variant in look_cfg.get("props", []):
+		_add_prop(str(p))
+
+
+## A held or worn object built from data/wardrobe.json "props": parts (box / cyl / ball) in a
+## material, on a bone.
+func _add_prop(id: String) -> void:
+	var cfg: Dictionary = (_wardrobe().get("props", {}) as Dictionary).get(id, {})
+	if cfg.is_empty() or _skeleton == null:
+		return
+	var at: BoneAttachment3D = _attach(str(cfg.get("bone", "RightHand")))
+	if at == null:
+		return
+	var root := Node3D.new()
+	root.name = "Prop_" + id
+	for part: Variant in cfg.get("parts", []):
+		var pd: Dictionary = part
+		var mi := MeshInstance3D.new()
+		var size: Array = pd.get("size", [0.1, 0.1, 0.1])
+		match str(pd.get("shape", "box")):
+			"cyl":
+				var cm := CylinderMesh.new()
+				cm.top_radius = float(size[0])
+				cm.bottom_radius = float(size[1]) if size.size() > 2 else float(size[0])
+				cm.height = float(size[size.size() - 1])
+				cm.radial_segments = 20
+				mi.mesh = cm
+			"ball":
+				var sm := SphereMesh.new()
+				sm.radius = float(size[0])
+				sm.height = float(size[0]) * 2.0
+				mi.mesh = sm
+			_:
+				var bx := BoxMesh.new()
+				bx.size = Vector3(float(size[0]), float(size[1]), float(size[2]))
+				mi.mesh = bx
+		var pos: Array = pd.get("pos", [0, 0, 0])
+		var rot: Array = pd.get("rot_deg", [0, 0, 0])
+		mi.position = Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
+		mi.rotation_degrees = Vector3(float(rot[0]), float(rot[1]), float(rot[2]))
+		if pd.has("glow"):
+			var g: Array = pd["glow"]
+			var em := StandardMaterial3D.new()
+			em.albedo_color = Color(float(g[0]), float(g[1]), float(g[2]))
+			em.emission_enabled = true
+			em.emission = em.albedo_color
+			em.emission_energy_multiplier = 2.5
+			mi.material_override = em
+		else:
+			var key: String = "prop_%s_%d" % [id, root.get_child_count()]
+			mi.material_override = _material_for(key, {"material": pd.get("material", "wood"), "color": pd.get("color", [0.4, 0.3, 0.2])}, "")
+		mi.material_overlay = _overlay
+		root.add_child(mi)
+	var place: Array = cfg.get("pos", [0, 0, 0])
+	var turn: Array = cfg.get("rot_deg", [0, 0, 0])
+	var s: float = 1.0 / _scale_under_model(at)
+	var basis := Basis.from_euler(Vector3(deg_to_rad(float(turn[0])), deg_to_rad(float(turn[1])), deg_to_rad(float(turn[2]))))
+	root.transform = Transform3D(basis.scaled(Vector3.ONE * s), Vector3(float(place[0]), float(place[1]), float(place[2])) * s)
+	at.add_child(root)
+	_props.append(root)
+	if bool(cfg.get("hang", false)):
+		_hanging.append(root)
+
+
+## Enemy mode: each wind-up plays the next attack clip, timed so its blow lands as the wind-up ends.
+func set_windup(on: bool) -> void:
+	super.set_windup(on)
+	if on and not _attack_clips.is_empty() and _player != null and not _dead:
+		var clip: String = _attack_clips[_attack_next % _attack_clips.size()]
+		_attack_next += 1
+		if _player.has_animation(clip):
+			var length: float = _player.get_animation(clip).length
+			_one_shot = clip
+			_player.speed_scale = clampf(length * _impact / maxf(_windup_s, 0.1), 0.5, 3.0)
+			_player.play(clip, 0.1)
+
+
+## A dead enemy's body: it falls, lies a while, sinks away and frees itself.
+func lie_and_fade(lie_s: float) -> void:
+	set_dead_look()
+	var t: Tween = create_tween()
+	t.tween_interval(lie_s)
+	t.tween_property(self, "position:y", position.y - 0.6, 2.0)
+	t.tween_callback(queue_free)
+
+
 func set_staggered(on: bool) -> void:
 	if on and not _staggered:
 		play_action("hit")
@@ -524,7 +682,7 @@ func play_action(name_now: String) -> void:
 func animate(_delta: float, speed: float, attacking: bool) -> void:
 	if _dead or _player == null:
 		return
-	if attacking and not _was_attacking and (_one_shot == "" or _one_shot.begins_with("slash")):
+	if _attack_clips.is_empty() and attacking and not _was_attacking and (_one_shot == "" or _one_shot.begins_with("slash")):
 		_strike_side = not _strike_side
 		play_action("slash_in" if _strike_side else "slash_out")
 	_was_attacking = attacking
@@ -532,7 +690,7 @@ func animate(_delta: float, speed: float, attacking: bool) -> void:
 		return
 	if _activity != "":
 		return
-	var want := "idle"
+	var want := _idle_clip
 	var rate := 1.0
 	if speed > 0.5 * (_run_speed + _sprint_speed) and _player.has_animation("sprint"):
 		want = "sprint"
@@ -545,4 +703,4 @@ func animate(_delta: float, speed: float, attacking: bool) -> void:
 		rate = speed / _walk_speed
 	if _player.current_animation != want:
 		_player.play(want, 0.2)
-	_player.speed_scale = clampf(rate, 0.6, 1.8) if want != "idle" else 1.0
+	_player.speed_scale = clampf(rate, 0.6, 1.8) if want != _idle_clip else 1.0

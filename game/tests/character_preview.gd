@@ -133,7 +133,7 @@ func _make_cell(spec: Dictionary, size: Vector2i) -> SubViewport:
 		right["rot_deg"] = [float(g[0]), float(g[1]), float(g[2])]
 		if g.size() >= 6:
 			right["pos"] = [float(g[3]), float(g[4]), float(g[5])]
-	var rig: ModelRig = CharacterLook.build(look)
+	var rig: ModelRig = Models.enemy(str(spec["kind"])) if spec.has("kind") else CharacterLook.build(look)
 	vp.add_child(rig)
 	rig.rotation_degrees.y = float(spec.get("yaw", "0"))
 	var equipped: Dictionary = {}
@@ -190,7 +190,8 @@ func _make_cell(spec: Dictionary, size: Vector2i) -> SubViewport:
 			cam.position = GAME_OFFSET
 			cam.look_at(Vector3(0.0, 0.85, 0.0), Vector3.UP)
 		_:
+			var k: float = maxf(1.0, h / 1.72)            # step back for the big ones
 			cam.fov = 30.0
-			cam.position = Vector3(0.9, h * 0.62, -3.6)
+			cam.position = Vector3(0.9 * k, h * 0.62, -3.6 * k)
 			cam.look_at(Vector3(0.0, h * 0.5, 0.0), Vector3.UP)
 	return vp

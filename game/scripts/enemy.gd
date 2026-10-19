@@ -125,7 +125,8 @@ func setup(enemy_kind: String, player: Node3D, strength: float = 1.0) -> void:
 	_base_color = Color(float(c[0]), float(c[1]), float(c[2]))
 	body = Body.new(float(d.get("hp", 240.0)) * strength)
 
-	# The look is a procedural low-poly model (scripts/art). Gameplay size still comes from data.
+	# The look: a real body when real bodies are on (Models.enemy), else a procedural model.
+	# Gameplay size still comes from data.
 	_rig = Models.enemy(enemy_kind)
 	add_child(_rig)
 
@@ -244,6 +245,13 @@ func take_hit(amount: float, _heavy: bool, source: Node) -> float:
 		remove_from_group("hittable")
 		remove_from_group("enemies")
 		killed.emit(self)
+		if _rig != null and _rig.has_method("lie_and_fade") and get_parent() != null:
+			var at: Transform3D = _rig.global_transform
+			remove_child(_rig)
+			get_parent().add_child(_rig)
+			_rig.global_transform = at
+			_rig.call("lie_and_fade", GameData.num("combat", "corpse_lie_s"))
+			_rig = null
 		queue_free()
 		return applied
 	# a pouncer struck while it is crouched or in the air comes down hard
@@ -1166,11 +1174,13 @@ func _tick_leap(delta: float) -> void:
 # --- looks ------------------------------------------------------------------------------------
 
 func _apply_facing() -> void:
-	if _rig != null:
+	if _rig != null and is_instance_valid(_rig):
 		_rig.rotation.y = atan2(-facing.x, -facing.z)
 
 
 func _look(delta: float) -> void:
+	if _rig == null:
+		return                                      # the body has been handed to the world to lie
 	_strike_t -= delta
 	_apply_facing()
 	var winding: bool = _windup >= 0.0

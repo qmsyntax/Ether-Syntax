@@ -18,6 +18,8 @@ var _prime_default: Array = []
 var _zones: Dictionary = {}
 ## What the real character bodies wear: data/wardrobe.json (see scripts/art/real_character.gd).
 var wardrobe: Dictionary = {}
+## How each enemy kind looks as a real body: data/enemy_looks.json.
+var enemy_looks: Dictionary = {}
 
 
 ## Loaded in the constructor: the singleton name resolves before the node enters the tree,
@@ -47,6 +49,7 @@ func _ensure() -> void:
 	_prime_default = aff.get("prime_default", [])
 	_zones = _load("res://data/zones.json").get("zones", {})
 	wardrobe = _load("res://data/wardrobe.json")
+	enemy_looks = _load("res://data/enemy_looks.json")
 
 
 ## A tempering technique definition, or {} if the id is unknown.

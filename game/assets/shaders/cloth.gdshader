@@ -26,6 +26,7 @@ uniform float quilt_size = 0.2;
 uniform float grime = 0.3;
 uniform float wear = 0.35;
 uniform float sheen = 0.0;
+uniform float metallic = 0.0;
 uniform int hidden_mask = 0;
 
 varying flat int region;
@@ -93,6 +94,7 @@ void fragment() {
 	NORMAL_MAP = n * 0.5 + 0.5;
 	ROUGHNESS = clamp(rough, 0.05, 1.0);
 	SPECULAR = 0.35;
+	METALLIC = metallic;
 	RIM = sheen;
 	RIM_TINT = 0.6;
 }

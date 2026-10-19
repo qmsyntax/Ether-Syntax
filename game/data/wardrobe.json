@@ -88,6 +88,42 @@
       "rough_bias": 0.0,
       "grime": 0.1,
       "fold_depth": 1.6
+    },
+    "bone": {
+      "tex": "leather039",
+      "tint": 1.0,
+      "uv_scale": 2.5,
+      "rough_bias": 0.1,
+      "grime": 0.45,
+      "normal_depth": 0.4,
+      "fold_depth": 0.5
+    },
+    "metal_dark": {
+      "tex": "metal046b",
+      "tint": 0.6,
+      "uv_scale": 1.2,
+      "rough_bias": 0.0,
+      "grime": 0.35,
+      "metallic": 0.85,
+      "fold_depth": 0.6
+    },
+    "metal_steel": {
+      "tex": "metal038",
+      "tint": 0.4,
+      "uv_scale": 1.2,
+      "rough_bias": 0.0,
+      "grime": 0.3,
+      "metallic": 0.9,
+      "fold_depth": 0.6
+    },
+    "metal_rust": {
+      "tex": "metal053b",
+      "tint": 0.25,
+      "uv_scale": 1.0,
+      "rough_bias": 0.0,
+      "grime": 0.2,
+      "metallic": 0.6,
+      "fold_depth": 0.6
     }
   },
   "pieces": {
@@ -363,6 +399,123 @@
       "color": "accent",
       "covers": [],
       "layer": 6
+    },
+    "mask": {
+      "meshes": [
+        "cloth_mask"
+      ],
+      "material": "bone",
+      "color": [
+        0.78,
+        0.74,
+        0.64
+      ],
+      "covers": [],
+      "layer": 6
+    },
+    "robe": {
+      "meshes": [
+        "cloth_robe",
+        "cloth_robe_skirt"
+      ],
+      "material": "wool",
+      "color": "coat",
+      "covers": [
+        2,
+        3,
+        4,
+        5,
+        16,
+        17,
+        6,
+        7,
+        10,
+        11
+      ],
+      "layer": 3,
+      "replaces": [
+        "tunic",
+        "trousers"
+      ]
+    },
+    "cape": {
+      "meshes": [
+        "cloth_cape"
+      ],
+      "material": "wool",
+      "color": "accent",
+      "covers": [],
+      "layer": 7
+    },
+    "cuirass": {
+      "meshes": [
+        "cloth_cuirass",
+        "cloth_tassets"
+      ],
+      "material": "metal_dark",
+      "color": [
+        0.32,
+        0.3,
+        0.28
+      ],
+      "covers": [
+        2
+      ],
+      "layer": 4
+    },
+    "helmet": {
+      "meshes": [
+        "cloth_helmet",
+        "cloth_helmet_crest"
+      ],
+      "material": "metal_dark",
+      "color": [
+        0.32,
+        0.3,
+        0.28
+      ],
+      "covers": [],
+      "layer": 6,
+      "hair": "none"
+    },
+    "pauldrons": {
+      "meshes": [
+        "cloth_pauldrons"
+      ],
+      "material": "metal_dark",
+      "color": [
+        0.42,
+        0.34,
+        0.2
+      ],
+      "covers": [],
+      "layer": 5
+    },
+    "bone_spaulders": {
+      "meshes": [
+        "cloth_pauldrons"
+      ],
+      "material": "bone",
+      "color": [
+        0.8,
+        0.76,
+        0.66
+      ],
+      "covers": [],
+      "layer": 5
+    },
+    "greaves": {
+      "meshes": [
+        "cloth_greaves"
+      ],
+      "material": "metal_dark",
+      "color": [
+        0.32,
+        0.3,
+        0.28
+      ],
+      "covers": [],
+      "layer": 3
     }
   },
   "base": [
@@ -462,12 +615,14 @@
     "body_male": {
       "walk_speed": 1.347,
       "run_speed": 4.131,
-      "height": 1.74
+      "height": 1.74,
+      "stature": 1.684
     },
     "body_female": {
       "walk_speed": 1.303,
       "run_speed": 4.067,
-      "height": 1.69
+      "height": 1.69,
+      "stature": 1.641
     }
   },
   "grip": {
@@ -550,5 +705,415 @@
     "swept": 0.0529,
     "topknot": 0.0676,
     "undercut": 0.013
+  },
+  "props": {
+    "_note": "Held and worn objects for the enemies (RealCharacter._add_prop): a bone, a placement in the bone's frame (metres, degrees), parts in the prop's own frame. Shapes: box [x,y,z], cyl [radius, height] or [top, bottom, height], ball [radius]. Checked by eye with tests/character_preview.tscn (kind=...).",
+    "pavise": {
+      "bone": "LeftForeArm",
+      "pos": [
+        0.07,
+        0.14,
+        0.0
+      ],
+      "rot_deg": [
+        0,
+        0,
+        90
+      ],
+      "parts": [
+        {
+          "shape": "box",
+          "size": [
+            0.66,
+            1.15,
+            0.05
+          ],
+          "pos": [
+            0,
+            0,
+            0
+          ],
+          "material": "wood",
+          "color": [
+            0.33,
+            0.24,
+            0.16
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.7,
+            0.06,
+            0.06
+          ],
+          "pos": [
+            0,
+            0.5,
+            0.0
+          ],
+          "material": "metal_rust",
+          "color": [
+            0.3,
+            0.26,
+            0.22
+          ]
+        },
+        {
+          "shape": "box",
+          "size": [
+            0.7,
+            0.06,
+            0.06
+          ],
+          "pos": [
+            0,
+            -0.5,
+            0.0
+          ],
+          "material": "metal_rust",
+          "color": [
+            0.3,
+            0.26,
+            0.22
+          ]
+        },
+        {
+          "shape": "ball",
+          "size": [
+            0.09
+          ],
+          "pos": [
+            0,
+            0.05,
+            0.05
+          ],
+          "material": "bone",
+          "color": [
+            0.8,
+            0.76,
+            0.66
+          ]
+        }
+      ]
+    },
+    "pavise_round": {
+      "bone": "LeftForeArm",
+      "pos": [
+        0.12,
+        0.14,
+        0.0
+      ],
+      "rot_deg": [
+        0,
+        0,
+        90
+      ],
+      "parts": [
+        {
+          "shape": "cyl",
+          "size": [
+            0.3,
+            0.05
+          ],
+          "rot_deg": [
+            90,
+            0,
+            0
+          ],
+          "material": "metal_dark",
+          "color": [
+            0.5,
+            0.46,
+            0.42
+          ]
+        },
+        {
+          "shape": "cyl",
+          "size": [
+            0.12,
+            0.07
+          ],
+          "rot_deg": [
+            90,
+            0,
+            0
+          ],
+          "pos": [
+            0,
+            0,
+            0.03
+          ],
+          "material": "metal_steel",
+          "color": [
+            0.75,
+            0.6,
+            0.32
+          ]
+        }
+      ]
+    },
+    "censer": {
+      "bone": "RightHand",
+      "pos": [
+        0.0,
+        0.08,
+        0.0
+      ],
+      "rot_deg": [
+        0,
+        0,
+        0
+      ],
+      "parts": [
+        {
+          "shape": "cyl",
+          "size": [
+            0.008,
+            0.3
+          ],
+          "pos": [
+            0,
+            -0.15,
+            0
+          ],
+          "material": "metal_rust",
+          "color": [
+            0.25,
+            0.22,
+            0.2
+          ]
+        },
+        {
+          "shape": "ball",
+          "size": [
+            0.1
+          ],
+          "pos": [
+            0,
+            -0.33,
+            0
+          ],
+          "material": "metal_steel",
+          "color": [
+            0.6,
+            0.5,
+            0.3
+          ]
+        },
+        {
+          "shape": "ball",
+          "size": [
+            0.055
+          ],
+          "pos": [
+            0,
+            -0.33,
+            0
+          ],
+          "glow": [
+            1.0,
+            0.85,
+            0.55
+          ]
+        }
+      ],
+      "hang": true
+    },
+    "drum": {
+      "bone": "Spine",
+      "pos": [
+        0.0,
+        0.0,
+        0.22
+      ],
+      "rot_deg": [
+        20,
+        0,
+        0
+      ],
+      "parts": [
+        {
+          "shape": "cyl",
+          "size": [
+            0.18,
+            0.16,
+            0.26
+          ],
+          "material": "wood",
+          "color": [
+            0.34,
+            0.22,
+            0.14
+          ]
+        },
+        {
+          "shape": "cyl",
+          "size": [
+            0.185,
+            0.02
+          ],
+          "pos": [
+            0,
+            0.135,
+            0
+          ],
+          "material": "bone",
+          "color": [
+            0.62,
+            0.56,
+            0.46
+          ]
+        }
+      ]
+    },
+    "bow": {
+      "bone": "LeftHand",
+      "pos": [
+        0.0,
+        0.08,
+        0.02
+      ],
+      "rot_deg": [
+        0,
+        90,
+        0
+      ],
+      "parts": [
+        {
+          "shape": "cyl",
+          "size": [
+            0.016,
+            0.62
+          ],
+          "pos": [
+            0,
+            0.0,
+            0.32
+          ],
+          "rot_deg": [
+            80,
+            0,
+            0
+          ],
+          "material": "wood",
+          "color": [
+            0.3,
+            0.2,
+            0.12
+          ]
+        },
+        {
+          "shape": "cyl",
+          "size": [
+            0.016,
+            0.62
+          ],
+          "pos": [
+            0,
+            0.0,
+            -0.32
+          ],
+          "rot_deg": [
+            100,
+            0,
+            0
+          ],
+          "material": "wood",
+          "color": [
+            0.3,
+            0.2,
+            0.12
+          ]
+        },
+        {
+          "shape": "cyl",
+          "size": [
+            0.003,
+            1.2
+          ],
+          "pos": [
+            0,
+            -0.1,
+            0
+          ],
+          "rot_deg": [
+            90,
+            0,
+            0
+          ],
+          "material": "rope",
+          "color": [
+            0.6,
+            0.55,
+            0.45
+          ]
+        }
+      ]
+    },
+    "quiver": {
+      "bone": "Spine2",
+      "pos": [
+        0.1,
+        0.05,
+        -0.14
+      ],
+      "rot_deg": [
+        0,
+        0,
+        -20
+      ],
+      "parts": [
+        {
+          "shape": "cyl",
+          "size": [
+            0.055,
+            0.5
+          ],
+          "material": "leather",
+          "color": [
+            0.3,
+            0.2,
+            0.12
+          ]
+        },
+        {
+          "shape": "cyl",
+          "size": [
+            0.006,
+            0.2
+          ],
+          "pos": [
+            0.02,
+            0.33,
+            0.0
+          ],
+          "material": "wood",
+          "color": [
+            0.5,
+            0.42,
+            0.3
+          ]
+        },
+        {
+          "shape": "cyl",
+          "size": [
+            0.006,
+            0.2
+          ],
+          "pos": [
+            -0.02,
+            0.33,
+            0.01
+          ],
+          "material": "wood",
+          "color": [
+            0.5,
+            0.42,
+            0.3
+          ]
+        }
+      ]
+    }
   }
 }

@@ -354,6 +354,7 @@
     "armour_cap": 30.0
   },
   "combat": {
+    "corpse_lie_s": 8.0,
     "_note": "Combat rules (design/05 section 6, approved by Brent 2026-10-12; every number ours [MODEL]). POISE: enemies have poise; hits remove it (a bare strike strike_poise, a skill skill_poise unless its payload says otherwise); it refills at poise_regen_per_s after poise_regen_delay_s unhit; at zero the enemy is Staggered (statuses.json). OPENING: a bare strike on a Staggered enemy does opening_mult. WORKING IT OFF: each bare strike that lands sheds strike_sheds_reflux from your hottest affinity. REAR HITS: a hit within rear_arc_deg of straight behind an enemy does rear_mult; enemies turn at turn_rate_deg degrees a second (enemies.json may override) so a back exists. INTERRUPTS: a payload marked interrupts, or a poise break, cancels an interruptible attack and staggers the attacker for interrupt_stagger_s. SLOT RING: at most ring_slots melee enemies stand in striking range of you; the rest hold at ring_wait_distance. PLAYER: you have player_poise; only heavy attacks remove it (heavy_poise_damage each); at zero you are staggered for player_stagger_s - no moving, striking or casting. DASH: after any movement skill dash_recovery_s in which you cannot strike or cast; a second movement skill inside winded_s costs winded_cost_mult essence and reflux.",
     "strike_poise": 20.0,
     "skill_poise": 15.0,

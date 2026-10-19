@@ -215,7 +215,7 @@ DRAPE = {
     "cloth_coat": (0.12, 0.006, 0.0, 0.06), "cloth_coat_skirt": (0.03, 0.006, 0.22, 0.0),
     "cloth_padded": (0.12, 0.004, 0.0, 0.04), "cloth_padded_skirt": (0.03, 0.004, 0.12, 0.0),
     "cloth_hide": (0.12, 0.004, 0.0, 0.03), "cloth_hide_skirt": (0.03, 0.004, 0.10, 0.0),
-    "cloth_hood": (0.10, 0.008, 0.0, 0.06),
+    "cloth_robe": (0.12, 0.006, 0.0, 0.06), "cloth_robe_skirt": (0.03, 0.006, 0.2, 0.0),
 }
 
 
@@ -599,6 +599,54 @@ def build_clothes(B):
     # look: a headband
     from_body(B, "cloth_headband", "cloth_headband", lambda i: reg[i] == R_HEAD and abs(co[i][2] - (eye_z + 0.047 + 0.02 * min(0.0, B.front[i]))) < 0.012,
               lambda i: 0.0075)
+
+    build_invader_gear(B, face, eye_z, knee_z, torso, sleeve_end, toe_v)
+
+
+def build_invader_gear(B, face, eye_z, knee_z, torso, sleeve_end, toe_v):
+    """What the realm invaders wear (the enemies): a smooth bone mask with eye holes, a long robe,
+    a cape, plate (cuirass, helmet with a crest, pauldrons, greaves). Same method as the clothes."""
+    H, reg, co = B.H, B.reg, B.co
+    el, er = np.array(B.lm["eye_l"]), np.array(B.lm["eye_r"])
+    eye_hole = lambda i: min(np.linalg.norm(co[i] - el), np.linalg.norm(co[i] - er)) < 0.017
+    mask = lambda i: reg[i] == R_HEAD and B.front[i] > 0.3 and B.lm["chin_z"] - 0.012 < co[i][2] < eye_z + 0.055 and not eye_hole(i)
+    from_body(B, "cloth_mask", "cloth_mask", mask, lambda i: 0.012 + 0.006 * max(0.0, B.front[i] - 0.6), smooth=10, uv_metres=0.2)
+    wrist = lambda i: reg[i] in R_FARM and np.linalg.norm(co[i] - B.bone_head("LeftHand" if co[i][0] > 0 else "RightHand")) > 0.04
+    from_body(B, "cloth_robe", "cloth_robe", lambda i: torso(i) or reg[i] in R_UARM or wrist(i), lambda i: 0.016 + (0.006 if reg[i] == R_HIPS else 0.0), smooth=5)
+    skirt(B, "cloth_robe_skirt", "cloth_robe", B.zw - 0.01, 0.075 * H, 0.03, 0.13, opening=0.05)
+    # cape: a panel off the shoulder blades to the calves, hanging off the spine
+    rows, n = 12, 9
+    verts, faces = [], []
+    z0 = B.zneck - 0.03
+    for i in range(rows):
+        t = i / (rows - 1)
+        z = z0 - (z0 - 0.33 * H) * t
+        width = 0.17 + 0.09 * t
+        for j in range(n):
+            x = -width + 2 * width * j / (n - 1)
+            p = back_surface(B, x * (0.85 if t < 0.25 else 1.0), max(z, B.zc + 0.02) if t < 0.5 else z, 0.045 + 0.06 * t)
+            p.z = z
+            verts.append(tuple(p))
+    for i in range(rows - 1):
+        for j in range(n - 1):
+            a = i * n + j
+            faces.append((a, a + 1, a + n + 1, a + n))
+    o = new_piece(B, "cloth_cape", "cloth_cape", verts, faces, R_TORSO, weights_from=[R_TORSO])
+    blend_down(o, B, [("Spine2", z0, z0 - 0.15), ("Spine1", z0 - 0.15, z0 - 0.3), ("Spine", z0 - 0.3, B.zw - 0.05), ("Hips", B.zw - 0.05, 0.0)])
+    # plate
+    from_body(B, "cloth_cuirass", "cloth_cuirass", lambda i: torso(i) and co[i][2] > B.zc + 0.06, lambda i: 0.034, smooth=12)
+    skirt(B, "cloth_tassets", "cloth_cuirass", B.zw - 0.01, B.zc - 0.13, 0.04, 0.05)
+    from_body(B, "cloth_helmet", "cloth_helmet", lambda i: reg[i] == R_HEAD and (co[i][2] > eye_z + 0.012 or (B.front[i] < 0.3 and co[i][2] > B.lm["chin_z"] - 0.01)),
+              lambda i: 0.03, smooth=10, uv_metres=0.25)
+    crest = box(Vector((0.0, B.lm["head_c"][1] + 0.01, B.lm["top"] + 0.045)), (0.025, 0.24, 0.07))
+    new_piece(B, "cloth_helmet_crest", "cloth_helmet", crest[0], crest[1], R_HEAD, rigid="Head")
+    parts = []
+    for side, bone in ((1, "LeftArm"), (-1, "RightArm")):
+        p = Vector(tuple(B.bone_head(bone))) + Vector((side * 0.02, 0.0, 0.045))
+        parts.append(blob(p, (0.085, 0.095, 0.055), 6, 12))
+    v, f = merge(parts)
+    o = new_piece(B, "cloth_pauldrons", "cloth_pauldrons", v, f, R_TORSO, weights_from=[R_TORSO] + list(R_UARM))
+    from_body(B, "cloth_greaves", "cloth_greaves", lambda i: reg[i] in R_SHIN and 0.12 * H < co[i][2] < knee_z + 0.02, lambda i: 0.02, smooth=6)
 
 
 # --- per-garment texture sets ---------------------------------------------------------------
