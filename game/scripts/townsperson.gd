@@ -57,10 +57,10 @@ func setup(def: Dictionary, rng: RandomNumberGenerator) -> void:
 	_plate.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_plate.no_depth_test = true
 	_plate.font = UiTheme.font()
-	_plate.font_size = 30
+	_plate.font_size = 26
 	_plate.outline_size = 9
 	_plate.outline_modulate = Color(0.02, 0.015, 0.01, 0.9)
-	_plate.pixel_size = 0.0105
+	_plate.pixel_size = 0.0085
 	_plate.position.y = height + 0.42
 	add_child(_plate)
 	set_focus(false)
