@@ -4,80 +4,90 @@
     "linen": {
       "tex": "fabric061",
       "tint": 1.0,
-      "uv_scale": 0.45,
+      "uv_scale": 2.0,
       "rough_bias": 0.0,
       "grime": 0.35,
-      "normal_depth": 0.5
+      "normal_depth": 0.6,
+      "fold_depth": 1.6
     },
     "canvas": {
       "tex": "fabric030",
       "tint": 1.0,
-      "uv_scale": 0.45,
+      "uv_scale": 1.8,
       "rough_bias": 0.0,
       "grime": 0.35,
-      "normal_depth": 0.6
+      "normal_depth": 0.6,
+      "fold_depth": 1.6
     },
     "wool": {
       "tex": "fabric031",
       "tint": 1.0,
-      "uv_scale": 0.5,
+      "uv_scale": 1.6,
       "rough_bias": 0.1,
       "grime": 0.3,
       "sheen": 0.15,
-      "normal_depth": 0.6
+      "normal_depth": 0.6,
+      "fold_depth": 1.6
     },
     "felt": {
       "tex": "fabric034",
       "tint": 1.0,
-      "uv_scale": 0.6,
+      "uv_scale": 1.4,
       "rough_bias": 0.0,
       "grime": 0.3,
-      "quilt": 1.0,
-      "normal_depth": 0.6
+      "quilt": 0.6,
+      "normal_depth": 0.5,
+      "fold_depth": 1.6
     },
     "oilcloth": {
       "tex": "fabric031",
       "tint": 1.0,
-      "uv_scale": 0.5,
+      "uv_scale": 1.6,
       "rough_bias": -0.25,
       "grime": 0.3,
-      "normal_depth": 0.4
+      "normal_depth": 0.4,
+      "fold_depth": 1.6
     },
     "leather": {
       "tex": "leather014",
       "tint": 0.35,
-      "uv_scale": 0.7,
+      "uv_scale": 1.2,
       "rough_bias": 0.05,
-      "grime": 0.2
+      "grime": 0.2,
+      "fold_depth": 1.6
     },
     "leather_plain": {
       "tex": "leather037",
-      "tint": 0.75,
-      "uv_scale": 0.7,
+      "tint": 0.85,
+      "uv_scale": 1.2,
       "rough_bias": 0.12,
-      "grime": 0.25
+      "grime": 0.25,
+      "fold_depth": 1.6
     },
     "suede": {
       "tex": "leather039",
       "tint": 0.9,
-      "uv_scale": 0.8,
+      "uv_scale": 1.6,
       "rough_bias": 0.15,
       "grime": 0.3,
-      "normal_depth": 0.7
+      "normal_depth": 0.7,
+      "fold_depth": 1.6
     },
     "rope": {
       "tex": "rope001",
       "tint": 0.3,
       "uv_scale": 2.0,
       "rough_bias": 0.0,
-      "grime": 0.1
+      "grime": 0.1,
+      "fold_depth": 1.6
     },
     "wood": {
       "tex": "wood060",
       "tint": 0.2,
       "uv_scale": 1.0,
       "rough_bias": 0.0,
-      "grime": 0.1
+      "grime": 0.1,
+      "fold_depth": 1.6
     }
   },
   "pieces": {
@@ -258,9 +268,9 @@
       ],
       "material": "leather_plain",
       "color": [
-        0.22,
-        0.15,
-        0.1
+        0.13,
+        0.095,
+        0.07
       ],
       "covers": [
         14,
@@ -525,5 +535,7 @@
     "pickup": 3.4,
     "throw": 1.9,
     "power_up": 1.2
-  }
+  },
+  "skin_source": "gen",
+  "_skin_note": "skin_source: 'gen' = a face generated on Brent's ComfyUI (FLUX + depth ControlNet on our head's shape, fictional) projected over a MakeHuman CC0 photo skin for the body; 'mh' = the MakeHuman photo skin alone; 'painted' = the procedural skin from blender_body_prep.py. Compared 2026-10-18: gen looked most real."
 }

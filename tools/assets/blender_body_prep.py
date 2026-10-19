@@ -351,6 +351,11 @@ def pixels(img):
 
 
 def save_png(arr, path, colorspace="Non-Color"):
+    """Save a float RGBA array as PNG. Alpha here is data, never transparency: it is kept at least
+    1/255, because importers (Godot's "fix alpha border") rewrite the colour of fully clear texels."""
+    arr = np.array(arr, dtype=np.float32)
+    if arr.ndim == 3 and arr.shape[2] == 4:
+        arr[..., 3] = np.maximum(arr[..., 3], 1.0 / 255.0)
     h, w = arr.shape[:2]
     img = bpy.data.images.new(os.path.basename(path), w, h, alpha=True)
     img.colorspace_settings.name = colorspace
@@ -514,10 +519,11 @@ def main():
     ensure_material(body, "skin")
     ensure_material(hi, "high")
     img_n, _ = bake_image(body, prefix + "_normal", size)
+    img_n.generated_color = (0.5, 0.5, 1.0, 1.0)      # a ray that misses leaves the surface flat, not black
     select_only([hi, body], body)
     sc.render.bake.use_selected_to_active = True
-    sc.render.bake.cage_extrusion = 0.006
-    sc.render.bake.max_ray_distance = 0.02
+    sc.render.bake.cage_extrusion = 0.01
+    sc.render.bake.max_ray_distance = 0.03
     bpy.ops.object.bake(type="NORMAL", normal_space="TANGENT")
     nrm = pixels(img_n)
     # 2. ambient occlusion, from the sculpt

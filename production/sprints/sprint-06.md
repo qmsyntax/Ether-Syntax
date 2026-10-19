@@ -659,3 +659,22 @@ Verified: self-test 759/759 (new: both bodies, every wardrobe mesh and clip pres
 shape keys, lost arm and left-hand weapon); full-passage bots x4 (scrubland, mountain, city), gate, death; zone; Netherecho death
 (both modes); click (town, field); creation; contact sheets of every piece, style and clip; in-game shots.
 Not verified: by hand, in motion on screen - every motion check was frame strips.
+
+
+## Part AF — real textures and full bodies (Brent 2026-10-18: "do all 4 and use both"; "we need a fully skinned naked body too"; "full anatomical structure ala BG3")
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-160 | Cloth folds: every garment is draped by Blender's cloth simulation (top band and openings pinned, the cloth grown so it buckles), the folds moved into the game mesh and baked per garment: fold normals, occlusion, fold crests, hem band, stitching along hems and seams | `textures/garments/<sex>/` | Done |
+| S06-161 | Cloth shader: fabric tiled at real size over each garment's own layout, folds blended over the weave, dirt in fold valleys, wear on crests and hems, thread | `shots/char-final-outfits.png` | Done |
+| S06-162 | Skin source A: MakeHuman CC0 photo skins baked onto our body (their base mesh warped onto ours through 71 landmarks: face, joints, fingers, navel); eyes and mouth kept painted | `skin_<sex>_mh.png` | Done |
+| S06-163 | Skin source B: a fictional face generated on Brent's ComfyUI (FLUX + depth ControlNet on our head's own depth map), de-lit and projected onto the head over source A. Compared side by side, B looked most real and is the default ("skin_source" in wardrobe.json; "mh" and "painted" still work) | `skin_<sex>_gen.png`, `shots/char-skins3.png` | Done |
+| S06-164 | Fully skinned bare bodies with anatomy: MakeHuman community CC0 topologies supply male and female genitals, cut out, warped onto our body, skinned to the hips, with their own texture and an edge fade. Shown only on the bare body; clothes, armour and the everyday trousers hide it | `shots/char-final-bare.png`, self-test | Done |
+| S06-165 | Skin micro-relief (pores, fine wrinkles) tiled over the sculpt's normals; hair cards read a CC0 strand sheet and merge to solid hair as they shrink on screen | `skin_micro_normal.png`, `hair/strands.png` | Done |
+
+Not done / rough: the headband edge is jagged; hair is still coarse in the creator's face zoom; the generated faces are one per sex (more
+faces = more ComfyUI runs, a few minutes each); the inventory screenshot reports low fps on main too (a capture artefact).
+
+Verified: self-test 767/767 (new: anatomy on the bare body only, photo skin on, garments baked); bots (scrubland, city, gate, death);
+zone; Netherecho death; click; creation; contact sheets of bodies, faces, outfits, feet, hair; in-game shots.
+Not verified: by hand.

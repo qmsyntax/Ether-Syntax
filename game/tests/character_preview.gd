@@ -141,6 +141,10 @@ func _make_cell(spec: Dictionary, size: Vector2i) -> SubViewport:
 		equipped[str(GameData.item(id).get("slot", id))] = id
 	if rig.has_method("set_outfit"):
 		rig.call("set_outfit", equipped)
+	if spec.has("bare") and rig.has_method("set_bare"):
+		rig.call("set_bare", true)
+	if spec.has("skinsrc") and rig.has_method("set_skin_source"):
+		rig.call("set_skin_source", str(spec["skinsrc"]))
 	if str(spec.get("arm", "")) == "lost":
 		rig.set_part_visible("arm_right", false)
 	if spec.has("weapon"):
@@ -162,12 +166,20 @@ func _make_cell(spec: Dictionary, size: Vector2i) -> SubViewport:
 	match mode:
 		"head":
 			cam.fov = 22.0
-			cam.position = Vector3(0.3, h - 0.17, -1.25)
-			cam.look_at(Vector3(0.0, h - 0.22, 0.0), Vector3.UP)
+			cam.position = Vector3(0.3, h - 0.2, -1.25)
+			cam.look_at(Vector3(0.0, h - 0.24, 0.0), Vector3.UP)
 		"hands":
 			cam.fov = 30.0
 			cam.position = Vector3(-0.9, 1.1, -1.4)
 			cam.look_at(Vector3(-0.2, 0.9, 0.0), Vector3.UP)
+		"feet":
+			cam.fov = 26.0
+			cam.position = Vector3(0.4, 0.45, -1.4)
+			cam.look_at(Vector3(0.0, 0.12, 0.0), Vector3.UP)
+		"hips":
+			cam.fov = 24.0
+			cam.position = Vector3(0.25, 0.85, -1.5)
+			cam.look_at(Vector3(0.0, h * 0.46, 0.0), Vector3.UP)
 		"upper":
 			cam.fov = 28.0
 			cam.position = Vector3(0.6, 1.35, -2.0)

@@ -3946,6 +3946,17 @@ func _test_real_bodies() -> void:
 		rc.set_part_visible("arm_right", false)
 		mask = int(skin.get_shader_parameter("hidden_mask"))
 		_check("%s: a lost arm hides forearm and hand and shows the stump" % id, (mask >> 7) & 1 == 1 and (mask >> 9) & 1 == 1 and (meshes["stump_r"] as MeshInstance3D).visible)
+		# anatomy shows on the bare body only; the photo skin is on by default
+		rc.set_part_visible("arm_right", true)
+		rc.set_bare(true)
+		rc.set_outfit({})
+		_check("%s: the bare body shows its anatomy" % id, meshes.has("anatomy") and (meshes["anatomy"] as MeshInstance3D).visible)
+		rc.set_bare(false)
+		_check("%s: trousers cover the anatomy" % id, not (meshes["anatomy"] as MeshInstance3D).visible)
+		_check("%s: the skin wears its photo layer" % id, float(skin.get_shader_parameter("photo_mix")) > 0.5)
+		var coat_mat: ShaderMaterial = (meshes["cloth_tunic"] as MeshInstance3D).material_override
+		_check("%s: garments carry their baked folds" % id, bool(coat_mat.get_shader_parameter("baked")))
+		rc.set_part_visible("arm_right", false)
 		var blade: Node3D = Models.weapon("serrated_dagger")
 		rc.set_weapon(blade)
 		_check("%s: with the right arm gone the weapon is in the left hand" % id, blade.get_parent() == rc.get("_hand_l"))

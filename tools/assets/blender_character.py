@@ -1,6 +1,6 @@
 """Build a game character .glb inside Blender (headless):
 
-    blender -b --python tools/assets/blender_character.py -- <out.glb> <prepared body.blend> <animation dir>
+    blender -b --python tools/assets/blender_character.py -- <out.glb> <prepared body.blend> <animation dir> [<garment texture dir>]
 
 - <prepared body.blend> comes from tools/assets/blender_body_prep.py: the Mixamo-rigged body (rest
   pose, idle action, shape keys, UV2 region ids) and its eyes;
@@ -207,6 +207,108 @@ def fill_feet(bm, layers, mw, out, below=0.07):
         hb.free()
 
 
+DRAPE = {
+    # garment: (top band pinned (m), slack pushed out first (m), widen the hem (fraction),
+    #           growth while the openings are held (fraction: the excess buckles into folds))
+    "cloth_tunic": (0.10, 0.006, 0.0, 0.07), "cloth_tunic_skirt": (0.03, 0.004, 0.18, 0.0),
+    "cloth_trousers": (0.05, 0.005, 0.0, 0.10),
+    "cloth_coat": (0.12, 0.006, 0.0, 0.06), "cloth_coat_skirt": (0.03, 0.006, 0.22, 0.0),
+    "cloth_padded": (0.12, 0.004, 0.0, 0.04), "cloth_padded_skirt": (0.03, 0.004, 0.12, 0.0),
+    "cloth_hide": (0.12, 0.004, 0.0, 0.03), "cloth_hide_skirt": (0.03, 0.004, 0.10, 0.0),
+    "cloth_hood": (0.10, 0.008, 0.0, 0.06),
+}
+
+
+def drape(B, o, frames=36):
+    """A loose, finer copy of garment o (rest pose) dropped onto the body by Blender's cloth
+    simulation: the top band is pinned, the rest is pushed out by some slack (and the hem widened)
+    and falls under gravity against the body, which makes folds. Returns the settled copy,
+    "<name>_draped", for baking; o itself is untouched."""
+    band, slack, widen, grow = DRAPE.get(o.name, (0.08, 0.006, 0.0, 0.05))
+    h = o.copy()
+    h.data = o.data.copy()
+    h.name = o.name + "_draped"
+    bpy.context.scene.collection.objects.link(h)
+    h.parent = None
+    h.matrix_world = o.matrix_world.copy()
+    h.shape_key_clear()
+    for m in list(h.modifiers):
+        h.modifiers.remove(m)
+    prep.select_only([h], h)
+    sub = h.modifiers.new("Sub", "SUBSURF")
+    sub.levels = 2
+    bpy.ops.object.modifier_apply(modifier=sub.name)
+    mw = h.matrix_world
+    inv = mw.inverted()
+    pts = [mw @ v.co for v in h.data.vertices]
+    ztop = max(p.z for p in pts)
+    zbot = min(p.z for p in pts)
+    cx = sum(p.x for p in pts) / len(pts)
+    cy = sum(p.y for p in pts) / len(pts)
+    pin = h.vertex_groups.new(name="pin")
+    for v, p in zip(h.data.vertices, pts):
+        n = (mw.to_3x3() @ v.normal).normalized()
+        t = (ztop - p.z) / max(ztop - zbot, 1e-4)
+        q = p + n * slack * min(1.0, t * 4.0)
+        if widen > 0.0:
+            q = Vector((cx + (q.x - cx) * (1.0 + widen * t), cy + (q.y - cy) * (1.0 + widen * t), q.z))
+        v.co = inv @ q
+        if p.z > ztop - band:
+            pin.add([v.index], 1.0, "REPLACE")
+    keep = h.vertex_groups.new(name="keep_length")
+    if grow > 0.0:
+        # hold every opening (cuffs, hems, the neck) and let a 3 cm band beside it keep its length,
+        # so the growth buckles the cloth between them instead of frilling the edges
+        bm = bmesh.new()
+        bm.from_mesh(h.data)
+        bm.verts.ensure_lookup_table()
+        edge = [v for v in bm.verts if v.is_boundary]
+        pin.add([v.index for v in edge], 1.0, "REPLACE")
+        dist = {v.index: 0.0 for v in edge}
+        front = list(edge)
+        while front:
+            nxt = []
+            for v in front:
+                for e in v.link_edges:
+                    u = e.other_vert(v)
+                    d = dist[v.index] + e.calc_length() * mw.to_scale().x
+                    if d < 0.03 and d < dist.get(u.index, 9.0):
+                        dist[u.index] = d
+                        nxt.append(u)
+            front = nxt
+        bm.free()
+        for i, d in dist.items():
+            keep.add([i], 1.0 - d / 0.03, "REPLACE")
+    if not any(m.type == "COLLISION" for m in B.obj.modifiers):
+        B.obj.modifiers.new("Collision", "COLLISION")
+        B.obj.collision.thickness_outer = 0.004
+        B.obj.collision.cloth_friction = 8.0
+    cl = h.modifiers.new("Cloth", "CLOTH")
+    s = cl.settings
+    s.quality = 6
+    s.mass = 0.2
+    s.tension_stiffness = 10.0
+    s.compression_stiffness = 10.0
+    s.shear_stiffness = 4.0
+    s.bending_stiffness = 0.4
+    s.shrink_min = -grow                             # weight 0 in keep_length: grows by `grow`
+    s.shrink_max = 0.0                               # weight 1: keeps its length
+    s.vertex_group_shrink = "keep_length"
+    s.air_damping = 2.0
+    s.vertex_group_mass = "pin"
+    cl.collision_settings.distance_min = 0.004
+    cl.collision_settings.use_self_collision = False
+    cl.point_cache.frame_start = 1
+    cl.point_cache.frame_end = frames
+    sc = bpy.context.scene
+    for f in range(1, frames + 1):
+        sc.frame_set(f)
+    prep.select_only([h], h)
+    bpy.ops.object.modifier_apply(modifier=cl.name)
+    sc.frame_set(1)
+    return h
+
+
 def relax(bm, layers, rounds, where=None):
     """Laplacian relaxing of the base shape and every shape-key layer alike; boundary verts fixed."""
     bm.verts.ensure_lookup_table()
@@ -224,7 +326,7 @@ def relax(bm, layers, rounds, where=None):
             v.co = c
 
 
-def new_piece(B, name, material, verts, faces, region, weights_from=None, rigid=None, uv=None):
+def new_piece(B, name, material, verts, faces, region, weights_from=None, rigid=None, uv=None, loop_uv=None):
     """A loose piece: verts (world, rest pose), faces; skinning copied from the nearest body vertex
     (or all on one bone if rigid), shape-key deltas likewise; UV2 = region."""
     me = bpy.data.meshes.new(name)
@@ -257,10 +359,12 @@ def new_piece(B, name, material, verts, faces, region, weights_from=None, rigid=
         r2.data[loop.index].uv = (region + 0.5, 0.0)
         if uv is not None:
             reg.data[loop.index].uv = uv[loop.vertex_index]
+        elif loop_uv is not None:
+            reg.data[loop.index].uv = loop_uv[loop.index]
     mod = o.modifiers.new("Armature", "ARMATURE")
     mod.object = B.arm
     me.materials.append(bpy.data.materials.get(material) or bpy.data.materials.new(material))
-    return finish(o, smart=uv is None)
+    return finish(o, smart=uv is None and loop_uv is None)
 
 
 def ring_radii(B, z, regions, centre, n, band=0.025):
@@ -497,6 +601,224 @@ def build_clothes(B):
               lambda i: 0.0075)
 
 
+# --- per-garment texture sets ---------------------------------------------------------------
+
+def unique_uv(o, tile_metres=0.35):
+    """Pack the garment's layout into 0..1 (for its own baked maps) and record in UV2.y how many
+    fabric tiles one UV unit spans, so the shader can still tile the fabric at tile_metres."""
+    me = o.data
+    me.uv_layers.active = me.uv_layers[0]
+    prep.select_only([o], o)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.select_all(action="SELECT")
+    bpy.ops.uv.pack_islands(udim_source="CLOSEST_UDIM", rotate=True, scale=True, margin=0.01)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    uv = me.uv_layers[0].data
+    u0 = math.floor(min(d.uv.x for d in uv) + 1e-4)
+    v0 = math.floor(min(d.uv.y for d in uv) + 1e-4)
+    for d in uv:
+        d.uv = (d.uv.x - u0, d.uv.y - v0)
+    a3 = sum(p.area for p in me.polygons) * (o.matrix_world.to_scale().x ** 2)
+    a2 = 0.0
+    for p in me.polygons:
+        pts = [uv[li].uv for li in p.loop_indices]
+        for k in range(1, len(pts) - 1):
+            a2 += abs((pts[k].x - pts[0].x) * (pts[k + 1].y - pts[0].y) - (pts[k + 1].x - pts[0].x) * (pts[k].y - pts[0].y)) * 0.5
+    metres = math.sqrt(a3 / max(a2, 1e-9))
+    r2 = me.uv_layers["regions"].data
+    for d in r2:
+        d.uv = (d.uv.x, metres / tile_metres)
+    me.uv_layers[0].active_render = True
+    me.uv_layers.active = me.uv_layers[0]
+    return a3
+
+
+def take_folds(o, h, most=0.025):
+    """Move the game mesh's vertices onto the draped copy (at most `most` metres), in every shape
+    key, so the folds show in the silhouette too."""
+    bm = bmesh.new()
+    bm.from_mesh(h.data)
+    bm.transform(h.matrix_world)
+    tree = BVHTree.FromBMesh(bm)
+    bm.free()
+    me = o.data
+    mw = o.matrix_world
+    inv = mw.inverted().to_3x3()
+    keys = me.shape_keys.key_blocks if me.shape_keys else []
+    for v in me.vertices:
+        p = mw @ v.co
+        loc, _, _, dist = tree.find_nearest(p)
+        if loc is None:
+            continue
+        d = loc - p
+        if d.length > most:
+            d = d.normalized() * most
+        dl = inv @ d
+        v.co += dl
+        for k in keys:
+            k.data[v.index].co += dl
+
+
+def seam_fields(o, B):
+    """Per vertex: distance along the cloth to the nearest opening (hem) and to the nearest seam
+    (where the body region changes, e.g. the armhole; and the side lines). Stored as a colour
+    attribute: R hem distance / 0.05, G seam distance / 0.05."""
+    me = o.data
+    mw = o.matrix_world
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.verts.ensure_lookup_table()
+    reg_l = me.uv_layers["regions"].data
+    vreg = {}
+    for loop in me.loops:
+        vreg[loop.vertex_index] = int(reg_l[loop.index].uv.x)
+    nrm = {v.index: (mw.to_3x3() @ v.normal).normalized() for v in bm.verts}
+    same = lambda a, b: a == b or {a, b} in ({4, 16}, {5, 17})
+
+    def spread(seeds, limit=0.05):
+        dist = {i: 0.0 for i in seeds}
+        front = list(seeds)
+        while front:
+            nxt = []
+            for i in front:
+                v = bm.verts[i]
+                for e in v.link_edges:
+                    u = e.other_vert(v)
+                    d = dist[i] + ((mw @ u.co) - (mw @ v.co)).length
+                    if d < limit and d < dist.get(u.index, 9.0):
+                        dist[u.index] = d
+                        nxt.append(u.index)
+            front = nxt
+        return dist
+
+    hem = spread([v.index for v in bm.verts if v.is_boundary])
+    seams = set()
+    for e in bm.edges:
+        a, b = e.verts
+        if not same(vreg.get(a.index, 0), vreg.get(b.index, 0)):
+            seams.update((a.index, b.index))
+        na, nb = nrm[a.index], nrm[b.index]
+        if na.y * nb.y < 0.0 and abs(na.x) > 0.75 and abs(nb.x) > 0.75:   # the side line
+            seams.update((a.index, b.index))
+    seam = spread(list(seams))
+    bm.free()
+    col = me.color_attributes.new("fields", "FLOAT_COLOR", "POINT")
+    for i in range(len(me.vertices)):
+        col.data[i].color = (min(1.0, hem.get(i, 1.0) / 0.05), min(1.0, seam.get(i, 1.0) / 0.05), 0.0, 1.0)
+    return col
+
+
+def bake_garment(B, o, h, out_dir, size):
+    """Bake o's own maps: <name>_fold.png (tangent normals of the draped copy h) and
+    <name>_detail.png (R occlusion, G convexity of the folds (0.5 flat), B hem band, A stitching)."""
+    sc = bpy.context.scene
+    sc.render.engine = "CYCLES"
+    sc.cycles.device = "CPU"
+    keep_mats = list(o.data.materials)
+    mat = prep.ensure_material(o, o.name + "_bake")
+    for ob in bpy.data.objects:
+        if ob.type == "MESH":
+            ob.hide_render = ob not in (o, h, B.obj)
+    sc.render.bake.margin = 8
+    # 1. folds: normals of the draped copy onto the game mesh
+    img_n, _ = prep.bake_image(o, o.name + "_fold", size)
+    img_n.generated_color = (0.5, 0.5, 1.0, 1.0)
+    if h is not None:
+        prep.select_only([h, o], o)
+        sc.render.bake.use_selected_to_active = True
+        sc.render.bake.cage_extrusion = 0.02
+        sc.render.bake.max_ray_distance = 0.04
+        sc.cycles.samples = 1
+        bpy.ops.object.bake(type="NORMAL", normal_space="TANGENT")
+    nrm = prep.pixels(img_n)
+    # 2. occlusion (the body and the folds shade the cloth), off the game mesh alone
+    prep.select_only([o], o)
+    sc.render.bake.use_selected_to_active = False
+    img_ao, _ = prep.bake_image(o, o.name + "_ao", size)
+    sc.cycles.samples = 32
+    h_was = h.hide_render if h is not None else None
+    if h is not None:
+        h.hide_render = True
+    bpy.ops.object.bake(type="AO")
+    ao = prep.pixels(img_ao)[..., 0]
+    # 3. convexity of the folds, from the draped copy
+    conv = np.full(ao.shape, 0.5, dtype=np.float32)
+    if h is not None:
+        h.hide_render = False
+
+        def cav(nodes, links):
+            g = nodes.new("ShaderNodeNewGeometry")
+            mr = nodes.new("ShaderNodeMapRange")
+            mr.inputs["From Min"].default_value = 0.42
+            mr.inputs["From Max"].default_value = 0.58
+            links.new(g.outputs["Pointiness"], mr.inputs["Value"])
+            return mr.outputs["Result"]
+        prep.emission_material(h, h.name + "_cav", cav)
+        prep.select_only([h, o], o)
+        sc.render.bake.use_selected_to_active = True
+        img_c, _ = prep.bake_image(o, o.name + "_cav", size)
+        sc.cycles.samples = 1
+        bpy.ops.object.bake(type="EMIT")
+        conv = prep.pixels(img_c)[..., 0]
+    # 4. hem and seam distances, off the game mesh's own colour attribute
+    seam_fields(o, B)
+
+    def fields(nodes, links):
+        a = nodes.new("ShaderNodeVertexColor")
+        a.layer_name = "fields"
+        return a.outputs["Color"]
+    prep.emission_material(o, o.name + "_fields", fields)
+    prep.select_only([o], o)
+    sc.render.bake.use_selected_to_active = False
+    img_f, _ = prep.bake_image(o, o.name + "_f", size, float_buf=True)
+    sc.render.bake.margin = 8
+    bpy.ops.object.bake(type="EMIT")
+    f = prep.pixels(img_f)
+    hem_d = f[..., 0] * 0.05
+    seam_d = f[..., 1] * 0.05
+    hem = prep.smooth(0.022 - hem_d, 0.0, 0.004)
+    stitch_line = lambda d, at: np.clip(1.0 - np.abs(d - at) / 0.0011, 0.0, 1.0)
+    # dashes: alternate along the cloth by the other distance field's fine ripple
+    yy, xx = np.mgrid[0:size, 0:size]
+    dash = (np.sin((xx + yy) * (2 * math.pi / max(4, size / 180))) > -0.2).astype(np.float32)
+    stitch = np.clip(np.maximum(stitch_line(hem_d, 0.016), np.maximum(stitch_line(seam_d, 0.005), stitch_line(seam_d, 0.0))) * dash, 0, 1)
+    seam_groove = np.clip(1.0 - seam_d / 0.003, 0, 1)
+    ao2 = ao * (1.0 - 0.35 * seam_groove)
+    detail = np.stack([ao2, conv, hem, stitch], axis=-1).astype(np.float32)
+    # outside the islands (and their bake margin): neutral values, or small mipmaps darken every seam
+    inside = prep.pixels(img_ao)[..., 3] > 0.5
+    detail[~inside] = (1.0, 0.5, 0.0, 0.0)
+    nrm = np.array(nrm)
+    nrm[~inside] = (0.5, 0.5, 1.0, 1.0)
+    os.makedirs(out_dir, exist_ok=True)
+    prep.save_png(nrm, os.path.join(out_dir, o.name + "_fold.png"))
+    prep.save_png(detail, os.path.join(out_dir, o.name + "_detail.png"))
+    o.data.materials.clear()
+    for m in keep_mats:
+        o.data.materials.append(m)
+    for ob in bpy.data.objects:
+        if ob.type == "MESH":
+            ob.hide_render = False
+
+
+def texture_garments(B, out_dir):
+    """Drape, fold and bake every cloth piece (sizes by area: 1024 for big pieces, else 512)."""
+    arm_was = B.arm.data.pose_position
+    B.arm.data.pose_position = "REST"
+    for o in [ob for ob in bpy.data.objects if ob.type == "MESH" and ob.name.startswith("cloth_")]:
+        area = unique_uv(o)
+        h = drape(B, o) if o.name in DRAPE else None
+        if h is not None:
+            take_folds(o, h)
+        size = 1024 if area > 0.25 else 512
+        bake_garment(B, o, h, out_dir, size)
+        if h is not None:
+            bpy.data.objects.remove(h, do_unlink=True)
+        print("TEXTURED", o.name, "area %.2f m2" % area, size)
+    B.arm.data.pose_position = arm_was
+
+
 def build_hair(B):
     """Every hair style is a mop of hair cards (the skin shader tints the scalp under them in the
     hair colour, so no skin shows between): ribbons that start at roots spread over the scalp, follow
@@ -523,7 +845,7 @@ def build_hair(B):
         return Vector((0.9 * sx, 0.35, -0.2))
 
     styles = {
-        "cropped": dict(roots=scalp_roots(spacing=0.009), comb=radial, length=(0.018, 0.03), width=0.018, lift=0.003, gravity=0.0),
+        "cropped": dict(roots=scalp_roots(spacing=0.0065), comb=radial, length=(0.022, 0.036), width=0.022, lift=0.003, gravity=0.0),
         "messy": dict(roots=scalp_roots(), comb=lambda p: radial(p) + Vector(tuple(rng.normal(0, 0.05, 3))), length=(0.04, 0.075), width=0.022, lift=0.006, gravity=0.25, wild=0.6,
                       short_front=0.4),
         "swept": dict(roots=scalp_roots(), comb=lambda p: Vector((0.25 * p.x / 0.08, 1.0, 0.25)), length=(0.07, 0.11), width=0.022, lift=0.007, gravity=0.3),
@@ -545,8 +867,8 @@ def build_hair(B):
     blend_down(o, B, [("Head", eye_z - 0.05, eye_z - 0.11), ("Neck", eye_z - 0.11, eye_z - 0.18), ("Spine2", eye_z - 0.18, eye_z - 0.45)])
     # beard: a thin shell over the beard area and short cards combed down
     from_body(B, "beard", "hair", lambda i: reg[i] in (R_HEAD, R_NECK) and B.beard[i] > 0.7, lambda i: 0.0022, uv_metres=0.12)
-    beard_roots = roots_on(B, lambda i: reg[i] in (R_HEAD, R_NECK) and B.beard[i] > 0.4, 0.006, rng)
-    grow_cards(B, "beard_cards", dict(roots=beard_roots, comb=lambda p: Vector((0.0, -0.3, -1.0)), length=(0.02, 0.045), width=0.016, lift=0.004, gravity=0.5), rng)
+    beard_roots = roots_on(B, lambda i: reg[i] in (R_HEAD, R_NECK) and B.beard[i] > 0.4, 0.0045, rng)
+    grow_cards(B, "beard_cards", dict(roots=beard_roots, comb=lambda p: Vector((0.0, -0.3, -1.0)), length=(0.022, 0.05), width=0.02, lift=0.004, gravity=0.5), rng)
 
 
 def roots_on(B, keep, spacing, rng):
@@ -693,6 +1015,26 @@ def blend_down(o, B, spans):
             groups[name].add([v.index], float(wt), "REPLACE")
 
 
+def build_anatomy(B):
+    """The anatomy piece blender_anatomy.py left in the prepared .blend: skinned to the hips (its
+    shape keys from the nearest body vertex too), its own UVs and edge-fade alpha kept."""
+    src = bpy.data.objects.get("anatomy")
+    if src is None:
+        return
+    me = src.data
+    mw = src.matrix_world
+    verts = [tuple(mw @ v.co) for v in me.vertices]
+    faces = [tuple(p.vertices) for p in me.polygons]
+    loop_uv = [tuple(d.uv) for d in me.uv_layers[0].data]
+    fade = [c.color[3] for c in me.color_attributes["Col"].data]
+    bpy.data.objects.remove(src, do_unlink=True)
+    o = new_piece(B, "anatomy", "anatomy", verts, faces, R_HIPS, weights_from=[R_HIPS], loop_uv=loop_uv)
+    col = o.data.color_attributes.new("Col", "FLOAT_COLOR", "POINT")
+    for i, a in enumerate(fade):
+        col.data[i].color = (1.0, 1.0, 1.0, a)
+    o.data.color_attributes.active_color = col
+
+
 def build_stump(B):
     """A bandaged cap over the right upper arm where the lost forearm is hidden (regions 7, 9, 17)."""
     me = B.obj.data
@@ -816,6 +1158,7 @@ def native_speed(arm, action, foot="LeftToeBase"):
 def main():
     args = sys.argv[sys.argv.index("--") + 1:]
     out, prepared, anim_dir = args[0], args[1], args[2]
+    tex_dir = args[3] if len(args) > 3 else ""
     bpy.ops.wm.open_mainfile(filepath=prepared)
     arm = bpy.data.objects["Character"]
     body = bpy.data.objects["body"]
@@ -824,8 +1167,11 @@ def main():
     idle = arm.animation_data.action if arm.animation_data else bpy.data.actions[0]
     B = Body(arm, body, eyes)
     build_clothes(B)
+    if tex_dir:
+        texture_garments(B, tex_dir)
     build_hair(B)
     build_stump(B)
+    build_anatomy(B)
     hair_uv(B)
     arm.data.pose_position = "POSE"
 

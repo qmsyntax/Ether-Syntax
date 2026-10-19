@@ -29,12 +29,14 @@ var _overlay: StandardMaterial3D
 var _skin: ShaderMaterial
 var _hair: ShaderMaterial
 var _hair_cards: ShaderMaterial
+var _anatomy: ShaderMaterial
 var _piece_mat: Dictionary = {}            # piece id -> ShaderMaterial
 var _hand_r: BoneAttachment3D
 var _hand_l: BoneAttachment3D
 var _look: Dictionary = {}
 var _outfit: Dictionary = {}
 var _arm_lost := false
+var _bare := false                         # no everyday clothes under the empty slots
 var _walk_speed := 1.35
 var _run_speed := 3.7
 var _sprint_speed := 6.0
@@ -100,10 +102,20 @@ func _build(packed: PackedScene) -> void:
 	_skin.set_shader_parameter("mask_a", _tex("skin/skin_%s_mask_a.png" % sex))
 	_skin.set_shader_parameter("mask_b", _tex("skin/skin_%s_mask_b.png" % sex))
 	_skin.set_shader_parameter("normal_tex", _tex("skin/skin_%s_normal.png" % sex))
+	if ResourceLoader.exists(TEX + "skin/skin_micro_normal.png"):
+		_skin.set_shader_parameter("micro_tex", _tex("skin/skin_micro_normal.png"))
+	set_skin_source(str(_wardrobe().get("skin_source", "painted")))
 	_hair = ShaderMaterial.new()
 	_hair.shader = load("res://assets/shaders/hair.gdshader")
+	_anatomy = ShaderMaterial.new()
+	_anatomy.shader = load("res://assets/shaders/anatomy.gdshader")
+	if ResourceLoader.exists(TEX + "skin/skin_%s_anatomy.png" % sex):
+		_anatomy.set_shader_parameter("tex", _tex("skin/skin_%s_anatomy.png" % sex))
 	_hair_cards = ShaderMaterial.new()
 	_hair_cards.shader = load("res://assets/shaders/hair_cards.gdshader")
+	if ResourceLoader.exists(TEX + "hair/strands.png"):
+		_hair_cards.set_shader_parameter("strand_tex", _tex("hair/strands.png"))
+		_hair.set_shader_parameter("strand_tex", _tex("hair/strands.png"))
 	var eye := StandardMaterial3D.new()
 	eye.vertex_color_use_as_albedo = true
 	eye.roughness = 0.25
@@ -120,6 +132,8 @@ func _build(packed: PackedScene) -> void:
 			mi.material_override = _skin
 		elif mesh_name == "eyes":
 			mi.material_override = eye
+		elif mesh_name == "anatomy":
+			mi.material_override = _anatomy
 		elif mesh_name.ends_with("_cards"):
 			mi.material_override = _hair_cards
 		elif mesh_name.begins_with("hair_") or mesh_name == "beard":
@@ -144,6 +158,19 @@ func _attach(bone_name: String) -> BoneAttachment3D:
 	return at
 
 
+## Which skin the body wears: "painted" (made from the body's shape by blender_body_prep.py) or a
+## photographic one baked onto this body: "mh" (MakeHuman CC0 skins, blender_skin_transfer.py) or
+## "gen" (generated on Brent's ComfyUI and projected on). Missing files fall back to painted.
+func set_skin_source(source: String) -> void:
+	var sex: String = _body_id.trim_prefix("body_")
+	var path: String = "skin/skin_%s_%s.png" % [sex, source]
+	if source != "painted" and ResourceLoader.exists(TEX + path):
+		_skin.set_shader_parameter("photo_tex", _tex(path))
+		_skin.set_shader_parameter("photo_mix", 1.0)
+	else:
+		_skin.set_shader_parameter("photo_mix", 0.0)
+
+
 ## Dress the body from the creator's options (see PlayerLook): build, skin, face, hair, colours.
 func apply_look(look: Dictionary) -> void:
 	_look = CharacterLook.normalize(look)
@@ -158,6 +185,7 @@ func apply_look(look: Dictionary) -> void:
 		_set_shape(mi, "brow", float(face.get("brow", 0.0)))
 	var hair_col: Color = _option_color("hair_color", Color(0.17, 0.11, 0.07))
 	_skin.set_shader_parameter("skin_color", _option_color("skin", Color(0.68, 0.52, 0.41)))
+	_anatomy.set_shader_parameter("skin_color", _option_color("skin", Color(0.68, 0.52, 0.41)))
 	_skin.set_shader_parameter("hair_color", hair_col)
 	_skin.set_shader_parameter("stubble", float(face.get("stubble", 0.0)))
 	_skin.set_shader_parameter("scar", float(face.get("scar", 0.0)))
@@ -168,6 +196,12 @@ func apply_look(look: Dictionary) -> void:
 	_hair.set_shader_parameter("hair_color", hair_col)
 	_hair_cards.set_shader_parameter("hair_color", hair_col)
 	_piece_mat.clear()
+	_refresh_outfit()
+
+
+## Leave the everyday clothes off (true): only equipped pieces are worn over the bare body.
+func set_bare(on: bool) -> void:
+	_bare = on
 	_refresh_outfit()
 
 
@@ -199,7 +233,7 @@ func worn_pieces() -> Array[String]:
 	var pieces: Dictionary = w.get("pieces", {})
 	var items: Dictionary = w.get("items", {})
 	var on: Array[String] = []
-	for p: Variant in w.get("base", []):
+	for p: Variant in ([] if _bare else w.get("base", [])):
 		on.append(str(p))
 	for slot: Variant in _outfit:
 		var piece: String = str(items.get(str(_outfit[slot]), ""))
@@ -242,16 +276,18 @@ func _refresh_outfit() -> void:
 					above |= 1 << int(r)
 		for r: Variant in cfg.get("covers", []):
 			body_mask |= 1 << int(r)
-		var mat: ShaderMaterial = _material_for(worn[i], cfg)
-		mat.set_shader_parameter("hidden_mask", above)
 		for mesh_name: Variant in cfg.get("meshes", []):
 			var mi: MeshInstance3D = _mesh.get(str(mesh_name), null)
 			if mi != null:
+				var mat: ShaderMaterial = _material_for(worn[i], cfg, str(mesh_name))
+				mat.set_shader_parameter("hidden_mask", above)
 				mi.visible = true
 				mi.material_override = mat
 		if cfg.has("hair"):
 			hair_rule = str(cfg["hair"])
 	_skin.set_shader_parameter("hidden_mask", body_mask)
+	if _mesh.has("anatomy"):                   # only where nothing covers the hips
+		(_mesh["anatomy"] as MeshInstance3D).visible = (body_mask >> 3) & 1 == 0
 	# hair: the look's style, unless a hood hides it or a cap presses it flat
 	var style: String = str(_look.get("hair", "messy"))
 	var show: Array = (w.get("hair", {}) as Dictionary).get(style, [])
@@ -270,9 +306,12 @@ func _refresh_outfit() -> void:
 		(_mesh["stump_r"] as MeshInstance3D).visible = _arm_lost
 
 
-func _material_for(piece: String, cfg: Dictionary) -> ShaderMaterial:
-	if _piece_mat.has(piece):
-		return _piece_mat[piece]
+## The piece's material on one of its meshes: the shared cloth set, plus that mesh's own baked fold
+## and detail maps (textures/garments/<sex>/<mesh>_fold.png, _detail.png) where they exist.
+func _material_for(piece: String, cfg: Dictionary, mesh_name: String) -> ShaderMaterial:
+	var cache_key: String = piece + "/" + mesh_name
+	if _piece_mat.has(cache_key):
+		return _piece_mat[cache_key]
 	var mats: Dictionary = _wardrobe().get("materials", {})
 	var m: Dictionary = mats.get(str(cfg.get("material", "linen")), {})
 	var tex: String = str(m.get("tex", "fabric061"))
@@ -291,7 +330,15 @@ func _material_for(piece: String, cfg: Dictionary) -> ShaderMaterial:
 	elif col is Array:
 		c = Color(float(col[0]), float(col[1]), float(col[2]))
 	mat.set_shader_parameter("color", c)
-	_piece_mat[piece] = mat
+	var baked: String = "garments/%s/%s_" % [_body_id.trim_prefix("body_"), mesh_name]
+	if ResourceLoader.exists(TEX + baked + "fold.png") and ResourceLoader.exists(TEX + baked + "detail.png"):
+		mat.set_shader_parameter("fold_tex", _tex(baked + "fold.png"))
+		mat.set_shader_parameter("detail_tex", _tex(baked + "detail.png"))
+		mat.set_shader_parameter("baked", true)
+	for key2: String in ["wear", "fold_depth"]:
+		if m.has(key2):
+			mat.set_shader_parameter(key2, float(m[key2]))
+	_piece_mat[cache_key] = mat
 	return mat
 
 
