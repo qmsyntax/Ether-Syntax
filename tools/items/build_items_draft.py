@@ -1700,10 +1700,13 @@ def main():
     out["rules"] = OrderedDict([
         ("_note", "Proposed rules this catalogue assumes (design/10). None is in the game."),
         ("factors", RULES),
-        ("sell_factor_by_kind", OrderedDict([("gear", 0.5), ("consumable", 0.5), ("ammo", 0.5), ("scroll", 0.5), ("manual", 0.5),
-                                             ("spirit_imprint", 0.5), ("binding", 0.5), ("material", 1.0), ("reagent", 1.0),
+        # Brent 2026-10-18: "Allow full sale price" - made goods are not marked down; this is the live game's
+        # rule (worn gear at items.json gear_sell_factor, everything else in full). Recipes that turn a profit
+        # under it are a balance question for later (the validator lists them as warnings).
+        ("sell_factor_by_kind", OrderedDict([("gear", 0.5), ("consumable", 1.0), ("ammo", 1.0), ("scroll", 0.5), ("manual", 1.0),
+                                             ("spirit_imprint", 1.0), ("binding", 1.0), ("material", 1.0), ("reagent", 1.0),
                                              ("remains", 1.0), ("trade", 1.0), ("proof", 1.0), ("spoils", 1.0), ("catalyst", 1.0),
-                                             ("tool", 0.5), ("kit", 0.5), ("pattern", 0.5),
+                                             ("tool", 1.0), ("kit", 1.0), ("pattern", 1.0),
                                              ("key", 0.0), ("quest", 0.0)])),
         ("loud", OrderedDict([("free_bands_above_stars", 2),
                               ("_note", "An item more than two bands above your stars is Loud: its effect line, rune and toll are dormant and enemies of its band notice you from 50% further. Base numbers (and satellites, by Brent's ruling) always work.")])),

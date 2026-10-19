@@ -351,6 +351,17 @@ skills, regional patterns, trophies that matter, recipes that make a final item 
 ---
 ## 13. Open questions for Brent
 
+> **Brent's rulings, 2026-10-18** [B]: "go with your recommendations, keep the balance questions for later. Allow full sale
+> price. No cap based on stars for skill level on crafting."
+> - Approved as recommended: 2 (kinder failure), 3 (no class or race locks), 4 (regional pattern books), 6 (guild marks, with the
+>   badge system), 7 (no research skill for now), 8 (field rendering), 9 (dowsing gated by affinity), 10 (component trunk later),
+>   11 (build order - minus the sell-rule step, see below).
+> - 1, changed: twenty skills at 0-300, **no cap by stars** - any crafting skill can reach 300 at any star.
+> - Sell price: **full** - made goods are not marked down; the live rule stays (worn gear at items.json `gear_sell_factor`,
+>   everything else in full). design/10 §12.3's half-price proposal is withdrawn.
+> - Kept for later (balance): 5 (crafting and latent aura), the skill-up and success numbers, the 323 recipes that turn a profit
+>   at full price (the validator lists them as PROFIT / LIVE-RULE warnings), fees and prices per band.
+
 Each with my recommendation; "go with your recommendations" approves all of them.
 1. **Twenty skills at 0-300, 25 a band, capped by stars.** *Recommend:* yes.
 2. **Kinder failure** (half back, nothing fails past trivial + 13). *Recommend:* yes.

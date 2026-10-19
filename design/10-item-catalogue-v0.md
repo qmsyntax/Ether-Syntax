@@ -464,6 +464,9 @@ grow with the body while money grows four times; the corpse fee × V (Brent rule
 
 ### 12.3 The sell rule needs one change
 
+> **Withdrawn** [B, 2026-10-18]: "Allow full sale price." Made goods sell in full under the live rule; recipes that turn a profit
+> are a balance question for later (design/11 §13).
+
 Today `inventory.gd` sells anything with no slot at **full** value (only scrolls are excepted). Every alchemical consumable and
 every bundle of ammunition has no slot, so under today's rule 222 of the 955 recipes would make money from nothing (the
 validator lists them). Proposed `rules.sell_factor_by_kind`: gear, consumables, ammunition, scrolls, manuals, imprints and binding

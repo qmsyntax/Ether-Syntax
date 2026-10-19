@@ -4,7 +4,7 @@
   "_note": "design/11 section 4. Every number is a first guess [MODEL].",
   "skill_max": 300,
   "points_per_band": 25,
-  "skill_cap_by_stars": "min(300, 50 + 25 x stars): one star 75, two 100, ten 300",
+  "skill_cap_by_stars": "none (Brent 2026-10-18): any crafting skill can reach 300 at any star",
   "trivial": "25 x (band - 1) + offset (gather 6, refine 8, subcombine 12, plain 16, fine 22, runed 24)",
   "attempt_from": "trivial - 30 (the recipe is greyed out below that)",
   "success": "clamp(0.05, 0.95, 0.70 + (effective skill - trivial) / 50 + 0.03 x (tool tier - tier needed) + station bonus); at or past trivial + 13 a combine cannot fail",

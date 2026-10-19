@@ -198,7 +198,8 @@ for iid, it in items.items():
     cost_sale = sum(sale_proposed(k) * n for k, n in r["inputs"].items()) + r["fee"]
     out_sale = sale_proposed(iid) * r["makes"] + byp_sale
     if out_sale > cost_sale * 1.01 + 1:
-        err(f"{where}: sells for {out_sale:.0f}, inputs + fee only {cost_sale:.0f} (money from nothing)")
+        # Brent 2026-10-18: full sale price allowed; profitable recipes are a balance question for later
+        warn(f"PROFIT {where}: sells for {out_sale:.0f}, inputs + fee only {cost_sale:.0f}")
     live_cost = sum(sale_live(k) * n for k, n in r["inputs"].items()) + r["fee"]
     if sale_live(iid) * r["makes"] > live_cost * 1.01 + 1:
         warn(f"LIVE-RULE ARBITRAGE {where}: under today's sell rule it sells for {sale_live(iid) * r['makes']:.0f} against {live_cost:.0f}")
