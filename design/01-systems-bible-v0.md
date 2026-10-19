@@ -72,10 +72,11 @@ conflicting — needs Brent (audiobooks) or a targeted Kindle read.
   broadcast sets; the level is a post-collapse rebuild - brick phones and tablets are new luxuries, broadcast sets are
   state-subsidised, cars are armoured and unlicensed; videos of incidents circulate within hours.
 - [B] **Towns look like rebuilt modern cities, not villages** (Brent 2026-10-18).
+- [B] **Realms can look older; fantasy is fine there** (Brent 2026-10-18). Modern looks belong to New Earth (its cities,
+  outposts and the land around them); what lies beyond a passage keeps its own older or fantastical look.
 - [MODEL] Consequences for the game: towns are rebuilt modern cities and outposts (brick, concrete, signage, screens,
   power lines, vehicles), not half-timbered villages; townsfolk carry phones and watch broadcasts; items and shops can include
-  ethertech goods (phones, radios, lamps, scanners, drones) alongside realm loot; the realms beyond the passages keep their own,
-  older looks. Ether density limits it: an "ether desert" has little working tech.
+  ethertech goods (phones, radios, lamps, scanners, drones) alongside realm loot. Ether density limits it: an "ether desert" has little working tech.
 - [F] **Trial dungeon**: single-entrant special passage with extreme time dilation, run by a spirit of Insanity, rewards for surviving.
 - [F] Debtors can be indentured to mine clan-owned realms.
 
