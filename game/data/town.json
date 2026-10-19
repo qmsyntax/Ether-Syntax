@@ -1,0 +1,56 @@
+{
+	"_note": "The town as a place (design/08 section 3, Brent 2026-10-18: 'the town needs to not be a menu'). Built by scripts/town_builder.gd. Coordinates are the level's frame: origin at the middle of the square, x east, z south, metres. size: the walkable square. walls: wall height per side (the camera looks from the south-east, so south and east are low). exits: gaps in a side wall; 'at' is measured along that side from the middle; walk_through exits fire when you walk into the gateway (within exit_reach of its middle); the others are a shut door you use with the interact key; 'action' is the main.gd method called. arrive: where you stand when you come into town from each place. folk: one person per service; 'role' picks what talking to them offers (ui/talk_screen.gd); 'outfit' are item ids worn (data/wardrobe.json maps them to clothes); 'face' is the way they look when nobody is near. props: city kit props [kind, x, z, yaw degrees]. look_seed keeps the people looking the same every visit. talk_reach: how close you must stand to talk; leave_reach: walk further than this from the person you are talking to and the panel closes. Names, lines and layout are ours [MODEL].",
+	"size": [36.0, 30.0],
+	"floor_margin": 6.0,
+	"walls": {"north": 3.4, "west": 3.4, "south": 1.1, "east": 1.1},
+	"talk_reach": 2.7,
+	"leave_reach": 4.5,
+	"exit_reach": 1.5,
+	"face_player_within": 6.0,
+	"look_seed": 1018,
+	"exits": [
+		{"id": "arena", "edge": "north", "at": -0.5, "width": 3.6, "open": true, "walk_through": true, "action": "enter_arena", "name": "the arena gate", "prompt": "The practice arena. Walk through - it is free, and what you kill leaves something to sell."},
+		{"id": "dross_gate", "edge": "north", "at": 12.0, "width": 4.0, "open": true, "walk_through": true, "action": "walk_out", "name": "the Dross Gate", "prompt": "The Dross Gate. Walk through, out into the Stubble - no ticket, no rent."},
+		{"id": "passage", "edge": "west", "at": 2.0, "width": 3.6, "open": false, "walk_through": false, "action": "enter_passage", "name": "the passage door", "prompt": "the assault passage"}
+	],
+	"arrive": {
+		"square": [2.5, 5.5],
+		"arena": [-0.5, -11.0],
+		"dross_gate": [12.0, -11.0],
+		"passage": [-13.8, 2.0]
+	},
+	"folk": [
+		{"role": "healer", "name": "Sister Aud", "title": "healer", "sex": "female", "at": [-13.0, -10.4], "face": [0.0, 1.0],
+			"outfit": ["padded_jack", "work_gloves", "street_boots", "rope_belt", "oilcloth_hood"],
+			"line": "Sit. Tell me where it hurts, and I will tell you what it costs."},
+		{"role": "merchant", "name": "Haskel Brandt", "title": "merchant", "sex": "male", "at": [-6.0, -10.4], "face": [0.0, 1.0],
+			"outfit": ["patched_coat", "street_boots", "quiver_belt", "canvas_pack"],
+			"line": "Everything on the board is for sale, and everything you carry has a price."},
+		{"role": "innkeeper", "name": "Morrow Pell", "title": "innkeeper", "sex": "male", "at": [5.0, -12.2], "face": [0.0, 1.0],
+			"outfit": ["padded_jack", "street_boots", "rope_belt"],
+			"line": "A bed, a lock on the door, and a book with your name in it."},
+		{"role": "trainer", "name": "Tamsin Ree", "title": "skill trainer", "sex": "female", "at": [-14.4, -5.0], "face": [1.0, 0.2],
+			"outfit": ["husk_hide_jack", "hide_bracers", "hobnailed_boots", "quiver_belt"],
+			"line": "Show me what your affinity already does. Then we will see what else it will learn."},
+		{"role": "passage_clerk", "name": "Edda Kell", "title": "passage tickets", "sex": "female", "at": [-15.6, 5.8], "face": [1.0, -0.3],
+			"outfit": ["patched_coat", "boiled_cap", "street_boots", "rope_belt"],
+			"line": "The passage is owned. A ticket gets you in, and the meter runs while you are inside."},
+		{"role": "tempering", "name": "Gorran Vell", "title": "tempering yard", "sex": "male", "at": [-12.6, 10.8], "face": [1.0, -0.4],
+			"outfit": ["husk_hide_jack", "work_gloves", "hobnailed_boots", "rope_belt"],
+			"line": "A body is a blade. We fold it and beat it, and it comes back harder."},
+		{"role": "corpse_clerk", "name": "Nils Ostry", "title": "corpse retrieval", "sex": "male", "at": [8.2, 5.4], "face": [-1.0, 0.2],
+			"outfit": ["patched_coat", "boiled_cap", "street_boots", "delver_frame"],
+			"line": "We fetch what the passages keep. A flat fee by the star; nobody haggles over the dead."}
+	],
+	"props": [
+		["stall", -13.0, -12.9, 180], ["lamp_post", -16.8, -13.8, 0], ["sacks", -10.4, -13.6, 0],
+		["stall", -6.0, -12.9, 180], ["crate", -8.6, -13.6, 0], ["barrel", -3.6, -13.7, 0],
+		["signboard", 6.8, -14.4, 0], ["bench", 2.4, -13.8, 0], ["lamp_post", 8.6, -13.9, 0],
+		["lamp_post", 15.6, -13.9, 0], ["crate", 16.4, -9.0, 0], ["barrel", 16.6, -7.4, 0],
+		["bench", -17.0, -5.2, 90], ["crate", -16.8, -8.4, 0], ["barrel", -16.9, -2.2, 0], ["lamp_post", -17.0, -0.9, 90],
+		["signboard", -17.3, 4.4, 90], ["lamp_post", -17.0, 7.4, 90],
+		["trough", -15.4, 12.6, 20], ["barrel", -10.2, 13.4, 0], ["barrel", -9.4, 13.7, 0], ["sacks", -16.4, 9.6, 0],
+		["well", 0.0, 2.0, 0], ["bench", 3.6, 8.2, 200], ["lamp_post", -3.4, 4.6, 0],
+		["cart", 10.6, 6.2, 100], ["sacks", 9.4, 8.6, 0], ["lamp_post", 12.0, 11.8, 0], ["trough", 14.6, 0.4, 70]
+	]
+}

@@ -41,7 +41,7 @@ func build(root: Control) -> void:
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
 	box.add_child(foot)
-	foot.add_child(UiWidgets.small_button("Back to town", func() -> void: game.call("close_screen")))
+	foot.add_child(UiWidgets.small_button("Done", func() -> void: game.call("close_screen")))
 
 
 func _row(id: String) -> Control:

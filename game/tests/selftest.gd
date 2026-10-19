@@ -48,6 +48,8 @@ func _ready() -> void:
 	_test_models()
 	await _test_netherecho()
 	_test_real_bodies()
+	_test_skill_tree()
+	await _test_town()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
 	_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
@@ -3967,3 +3969,223 @@ func _test_real_bodies() -> void:
 		rc.set_weapon(blade)
 		_check("%s: with the right arm gone the weapon is in the left hand" % id, blade.get_parent() == rc.get("_hand_l"))
 		rc.queue_free()
+
+
+func _test_skill_tree() -> void:
+	print("skill points and the skill tree (design/08, Brent 2026-10-18):")
+	# every skill sits on exactly one tree, its own affinity's, and the roots are the old kits
+	var placed: Dictionary = {}
+	var wrong: Array[String] = []
+	for aff: String in GameData.affinity_ids():
+		var tree: Dictionary = GameData.skill_tree_of(aff)
+		for id: String in tree:
+			placed[id] = int(placed.get(id, 0)) + 1
+			if str(GameData.ability(id).get("affinity", "")) != aff:
+				wrong.append(id)
+			for need: Variant in (tree[id] as Dictionary).get("requires", []):
+				if not tree.has(str(need)):
+					wrong.append("%s needs %s off its tree" % [id, str(need)])
+		_check("%s: the tree's roots are its old starter kit" % aff, GameData.skill_roots([aff]) == (GameData.affinity(aff).get("kit", []) as Array), str(GameData.skill_roots([aff])))
+	var unplaced: Array[String] = []
+	for id: String in GameData.abilities:
+		if int(placed.get(id, 0)) != 1:
+			unplaced.append(id)
+	_check("every ability is on exactly one tree", unplaced.is_empty(), str(unplaced))
+	_check("every node is its own affinity's and needs only its own tree", wrong.is_empty(), str(wrong))
+
+	# exactly the two picked skills, and nothing else
+	var p: CharacterBody3D = _new_player("one_percent_lifesteal")
+	p.call("set_affinities", ["water"])
+	_check("a new character has no skill points", int(p.get("skill_points")) == int((GameData.skill_tree["points"] as Dictionary)["start"]))
+	_check("picking one skill is refused", str(p.call("start_with_skills", ["water_bolt"])) != "")
+	_check("picking three is refused", str(p.call("start_with_skills", ["water_bolt", "tsunami_strike", "hydraulic_flex"])) != "")
+	_check("the same skill twice is refused", str(p.call("start_with_skills", ["water_bolt", "water_bolt"])) != "")
+	_check("a skill of another affinity is refused", str(p.call("start_with_skills", ["water_bolt", "cinder_spit"])) != "")
+	_check("a skill that is not a root is refused", str(p.call("start_with_skills", ["water_bolt", "undertow"])) != "")
+	var why: String = p.call("start_with_skills", ["hydraulic_flex", "water_bolt"])
+	var abilities: Array = p.get("abilities")
+	var hotbar: Array = p.get("hotbar")
+	_check("two roots of a held affinity are accepted", why == "", why)
+	_check("the character starts with exactly the two chosen skills", abilities.size() == 2 and str(abilities[0]["id"]) == "hydraulic_flex" and str(abilities[1]["id"]) == "water_bolt",
+		str(abilities))
+	_check("they are on slots 1 and 2 and nothing else is on the bar", int(hotbar[0]) == 0 and int(hotbar[1]) == 1 and hotbar.slice(2).all(func(v: int) -> bool: return v == -1), str(hotbar))
+
+	# points come from star growth, and from ascending
+	var per: float = float((GameData.skill_tree["points"] as Dictionary)["per_star_pct"])
+	p.call("grow_star", per - 0.1)
+	_check("not quite %d%% of growth earns nothing yet" % int(per), int(p.get("skill_points")) == 0)
+	p.call("grow_star", 0.2)
+	_check("%d%% of star growth earns a skill point" % int(per), int(p.get("skill_points")) == 1 and _near(float(p.get("skill_growth")), 0.1, 0.001))
+	var before_cap: float = (p.get("star_pct") as Array)[0]
+	p.call("grow_star", 500.0)
+	var grown: float = GameData.num("stars", "max_pct") - before_cap
+	_check("growth stopped by the star's cap earns only for what was grown", int(p.get("skill_points")) == 1 + int((grown + 0.1) / per), "%d points" % int(p.get("skill_points")))
+	var at_full: int = int(p.get("skill_points"))
+	p.set("_latent_aura", 999999.0)
+	p.call("try_ascend")
+	_check("ascending earns its points", int(p.get("stars")) == 2 and int(p.get("skill_points")) == at_full + int((GameData.skill_tree["points"] as Dictionary)["on_ascend"]))
+	p.free()
+
+	# learning: points, money, prerequisites, affinity - and only through train_skill
+	var t: CharacterBody3D = _new_player("one_percent_lifesteal")
+	t.call("set_affinities", ["water"])
+	t.call("start_with_skills", ["water_bolt", "tsunami_strike"])
+	t.set("money", 5000)
+	_check("no points: a trainer cannot teach", str(t.call("cannot_train_reason", "undertow")).contains("point"), str(t.call("cannot_train_reason", "undertow")))
+	t.set("skill_points", 5)
+	_check("a tier-2 skill whose root you know can be taught", str(t.call("cannot_train_reason", "undertow")) == "")
+	_check("a tier-2 skill whose root you do not know cannot", str(t.call("cannot_train_reason", "backwash")).begins_with("Learn"), str(t.call("cannot_train_reason", "backwash")))
+	_check("the capstone needs one of its two parents", not bool(t.call("skill_unlocked", "standing_pool")))
+	_check("another affinity's skill cannot be taught at all", str(t.call("cannot_train_reason", "cinder_spit")).contains("affinity"), str(t.call("cannot_train_reason", "cinder_spit")))
+	_check("nor can one you know", str(t.call("cannot_train_reason", "water_bolt")).contains("already"))
+	var cost: Dictionary = t.call("skill_cost", "undertow")
+	_check("train_skill teaches it", str(t.call("train_skill", "undertow")) == "" and bool(t.call("knows", "undertow")))
+	_check("and spends the points and the fee", int(t.get("skill_points")) == 5 - int(cost["points"]) and int(t.get("money")) == 5000 - int(cost["price"]),
+		"%d pts, $%d" % [int(t.get("skill_points")), int(t.get("money"))])
+	_check("the new skill goes on the next empty slot", int((t.get("hotbar") as Array)[2]) == 2)
+	_check("one parent is enough for the capstone", bool(t.call("skill_unlocked", "standing_pool")) and int((t.call("skill_cost", "standing_pool") as Dictionary)["points"]) == 2)
+	t.set("skill_points", 1)
+	_check("the capstone costs two points", str(t.call("cannot_train_reason", "standing_pool")).contains("point"))
+	t.set("skill_points", 3)
+	t.set("money", -999999)
+	_check("deep in debt, nobody trains you", str(t.call("train_skill", "riptide_lash")) != "" and not bool(t.call("knows", "riptide_lash")))
+	t.set("money", 5000)
+	# drilling moves the bar on, never the stage
+	var drill: Dictionary = GameData.skill_tree["drill"]
+	_check("drilling a known skill moves its progress on", str(t.call("drill_skill", "water_bolt")) == ""
+		and _near(float((t.get("abilities") as Array)[0]["progress"]), float(drill["progress"])) and int((t.get("abilities") as Array)[0]["stage"]) == 0)
+	((t.get("abilities") as Array)[0] as Dictionary)["progress"] = 100.0
+	_check("a full bar cannot be drilled: the stage still needs a construct", str(t.call("drill_skill", "water_bolt")) != "")
+	_check("an unknown skill cannot be drilled", str(t.call("cannot_drill_reason", "backwash")) != "")
+	# scrolls still teach anywhere: no points, no prerequisites, only the affinity
+	t.set("skill_points", 0)
+	(t.get("inventory") as Inventory).add("scroll_backwash")
+	_check("a scroll still teaches a skill the tree has not opened, with no points", str(t.call("read_scroll", "scroll_backwash")) == "" and bool(t.call("knows", "backwash")))
+	(t.get("inventory") as Inventory).add("scroll_stoke")
+	_check("but not one of an affinity you do not hold", str(t.call("read_scroll", "scroll_stoke")) != "")
+
+	# the tree survives a save
+	t.set("skill_points", 4)
+	t.set("skill_growth", 3.25)
+	var data: Dictionary = JSON.parse_string(JSON.stringify(t.call("to_save")))
+	var back: CharacterBody3D = _new_player()
+	back.call("from_save", data)
+	var ids_then: Array = (t.get("abilities") as Array).map(func(a: Dictionary) -> String: return str(a["id"]))
+	var ids_now: Array = (back.get("abilities") as Array).map(func(a: Dictionary) -> String: return str(a["id"]))
+	_check("save/load keeps the skills learned and nothing more", ids_now == ids_then, "%s vs %s" % [str(ids_now), str(ids_then)])
+	_check("save/load keeps the bar", (back.get("hotbar") as Array) == (t.get("hotbar") as Array))
+	_check("save/load keeps the skill points and the growth toward the next", int(back.get("skill_points")) == 4 and _near(float(back.get("skill_growth")), 3.25))
+	t.free()
+	back.free()
+
+
+## The whole game, headless: character creation's spec, the town as a level, its people and
+## gateways, and the rule that only a trainer teaches.
+func _test_town() -> void:
+	print("the town as a place (design/08):")
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	main.set("_test_mode", true)
+	add_child(main)
+	await get_tree().process_frame
+	var p: Node3D = main.get("player")
+	var spec := {"talent_id": "grudge", "affinities": ["wind", "fire"], "name": "Test", "identity": "man", "look": CharacterLook.default_look()}
+	spec["skills"] = ["cutting_gust"]
+	_check("a character cannot begin without its two skills", str(main.call("begin_character", spec.duplicate(true))) != "" and str(main.get("state")) == "select")
+	spec["skills"] = ["cutting_gust", "flashover"]
+	_check("a character begins with two picked roots", str(main.call("begin_character", spec.duplicate(true))) == "" and str(main.get("state")) == "town")
+	var ids: Array = (p.get("abilities") as Array).map(func(a: Dictionary) -> String: return str(a["id"]))
+	_check("it starts with exactly those two skills, nothing auto-assigned", ids == ["cutting_gust", "flashover"], str(ids))
+	_check("the town is a place: you can walk in it", bool(p.get("active")) and main.get("screen") == null)
+	var town: TownBuilder = main.get("_town")
+	var roles: Array[String] = []
+	for f: Townsperson in town.folk:
+		roles.append(f.role)
+	_check("someone does every service", ["healer", "merchant", "innkeeper", "trainer", "passage_clerk", "tempering", "corpse_clerk"].all(func(r: String) -> bool: return roles.has(r)), str(roles))
+	_check("every person has a name plate", town.folk.all(func(f: Townsperson) -> bool: return f.folk_name != "" and f.find_children("*", "Label3D", false, false).size() == 1))
+	var exit_ids: Array = town.exits.map(func(e: Dictionary) -> String: return str(e["id"]))
+	_check("the gateways are in the town: the arena, the Dross Gate and the passage door", exit_ids.has("arena") and exit_ids.has("dross_gate") and exit_ids.has("passage"), str(exit_ids))
+	var clear := true
+	for where: String in (GameData.town["arrive"] as Dictionary):
+		if not town.exit_at((main.get("level") as Node3D).to_global(town.arrival(where))).is_empty() or town.folk_in_reach((main.get("level") as Node3D).to_global(town.arrival(where))) != null:
+			clear = false
+	_check("nobody arrives standing in a gateway or on top of somebody", clear)
+
+	# only the trainer teaches
+	p.set("skill_points", 3)
+	_check("away from the trainer, nothing is taught", str(main.call("train_skill", "downdraft")) != "" and not bool(p.call("knows", "downdraft")))
+	main.call("open_skill_tree", true)
+	_check("the tree opened anywhere else is for looking", main.get("screen") is SkillTreeScreen and not bool((main.get("screen") as Node).get("at_trainer")))
+	main.call("close_screen")
+	var trainer: Townsperson = town.person("trainer")
+	p.global_position = trainer.global_position + Vector3(1.4, 0.0, 0.0)
+	main.call("_town_interact")
+	_check("walk up to the trainer and press interact: they talk", main.get("screen") is TalkScreen and str(main.get("_talking_to")) == "trainer")
+	main.call("open_skill_tree", true)
+	_check("from the trainer, the tree teaches", main.get("screen") is SkillTreeScreen and bool((main.get("screen") as Node).get("at_trainer")))
+	_check("the trainer teaches a skill whose root you picked", str(main.call("train_skill", "downdraft")) == "" and bool(p.call("knows", "downdraft")) and int(p.get("skill_points")) == 2)
+	_check("but not one whose root you did not", str(main.call("train_skill", "veil")) != "" and not bool(p.call("knows", "veil")))
+	main.call("close_screen")
+	_check("closing what the trainer showed goes back to talking to them", main.get("screen") is TalkScreen)
+	p.global_position = trainer.global_position + Vector3(9.0, 0.0, 0.0)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check("walk away and the conversation ends", main.get("screen") == null and str(main.get("_talking_to")) == "")
+	_check("and the trainer's rule holds again", str(main.call("train_skill", "gale_lane")) != "")
+
+	# every service is reachable by talking to someone
+	var reached: Array[String] = []
+	for role: String in roles:
+		main.call("talk_to", role)
+		var s: Node = main.get("screen")
+		if s is TalkScreen and str(s.get("role")) == role and _has_button(s):
+			reached.append(role)
+		main.call("close_screen")
+	_check("each person's panel opens and offers something", reached.size() == roles.size(), str(reached))
+	main.call("talk_to", "merchant")
+	main.call("open_shop")
+	_check("the merchant shows the shop", main.get("screen") != null and (main.get("screen") as Node).get_script() == load("res://scripts/ui/shop_screen.gd"))
+	main.call("close_screen")
+	main.call("close_screen")
+	main.call("talk_to", "tempering")
+	main.call("open_tempering")
+	_check("the yard master shows the tempering yard", main.get("screen") is TemperingScreen)
+	main.call("close_screen")
+	main.call("close_screen")
+	_check("and closing everything leaves you in the street", main.get("screen") == null)
+
+	# the gateways are places you walk to
+	var level: Node3D = main.get("level")
+	for gate: Dictionary in town.exits:
+		if str(gate["id"]) == "arena":
+			p.global_position = level.to_global(gate["centre"])
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check("walk into the arena gate and you are in the arena", str(main.get("state")).begins_with("arena"), str(main.get("state")))
+	main.call("_enter_town", "arena")
+	for gate: Dictionary in (main.get("_town") as TownBuilder).exits:
+		if str(gate["id"]) == "passage":
+			p.global_position = (main.get("level") as Node3D).to_global(gate["centre"]) + Vector3(1.0, 0.0, 0.0)
+	await get_tree().process_frame
+	_check("at the passage door you are not taken in without asking", str(main.get("state")) == "town")
+	p.set("money", 5000)
+	main.call("_town_interact")
+	_check("interact at the passage door buys a ticket and takes you in", str(main.get("state")) == "dungeon" and int(p.get("money")) == 5000 - int(main.get("ticket_price")))
+	main.call("_enter_town", "passage")
+	for gate: Dictionary in (main.get("_town") as TownBuilder).exits:
+		if str(gate["id"]) == "dross_gate":
+			p.global_position = (main.get("level") as Node3D).to_global(gate["centre"])
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check("walk through the Dross Gate and you are out in the Stubble", str(main.get("state")) == "field", str(main.get("state")))
+	main.queue_free()
+	await get_tree().process_frame
+	get_tree().paused = false
+
+
+## A panel offers something: a service button besides Done (it may be greyed out - a healer with
+## nothing to heal).
+func _has_button(node: Node) -> bool:
+	for b: Node in node.find_children("*", "Button", true, false):
+		if b.name != "DoneButton":
+			return true
+	return node is TalkScreen and str(node.get("role")) == "corpse_clerk"     # nothing to fetch yet

@@ -2,10 +2,11 @@ class_name CreationScreen
 extends UiScreen
 ## Character creation, in steps: who you are (name, identity, body type), what you look like, and
 ## which prime vestige you take (talent + affinities). A turntable in the middle shows the
-## character as it will appear in play; drag it to turn it. The screen holds a draft `spec` and
+## character as it will appear in play; drag it to turn it. Then two starting skills, picked
+## from the prime's affinities (design/08: nothing is given that was not picked). The screen holds a draft `spec` and
 ## hands it to main.gd's `begin_character` at the end - it owns no game state.
 
-const STEPS: Array[String] = ["Origin", "Appearance", "Prime", "Embark"]
+const STEPS: Array[String] = ["Origin", "Appearance", "Prime", "Skills", "Embark"]
 
 var spec: Dictionary = {}
 var step := 0
@@ -33,7 +34,7 @@ func _init(game_node: Node) -> void:
 	_rng.randomize()
 	var cfg: Dictionary = GameData.creation
 	rerolls_left = GameData.inum("primes", "rerolls")
-	spec = {"name": "", "identity": str((cfg["identities"][0] as Dictionary)["id"]), "look": CharacterLook.default_look()}
+	spec = {"name": "", "identity": str((cfg["identities"][0] as Dictionary)["id"]), "look": CharacterLook.default_look(), "skills": []}
 	roll_offers()
 
 
@@ -47,6 +48,9 @@ func _take(index: int) -> void:
 	var o: Dictionary = offers[clampi(index, 0, offers.size() - 1)]
 	spec["talent_id"] = str(o["talent_id"])
 	spec["affinities"] = (o["affinities"] as Array).duplicate()
+	# a different prime may not reach the skills picked for the last one
+	var roots: Array[String] = GameData.skill_roots(spec["affinities"])
+	spec["skills"] = (spec.get("skills", []) as Array).filter(func(id: Variant) -> bool: return roots.has(str(id)))
 
 
 func build(root: Control) -> void:
@@ -236,6 +240,8 @@ func _refresh() -> void:
 			_build_appearance()
 		2:
 			_build_prime()
+		3:
+			_build_skills()
 		_:
 			_build_embark()
 	_build_nav()
@@ -291,6 +297,7 @@ func _build_left() -> void:
 	var t: Dictionary = TalentDB.get_talent(str(spec["talent_id"]))
 	_left.add_child(UiTheme.body("Prime:  %s" % str(t.get("name", "?")), 15, UiTheme.STAR))
 	_left.add_child(UiTheme.body("%s:  %s" % [_affinity_word(spec["affinities"]), _affinity_text(spec["affinities"])], 14, UiTheme.TEXT_DIM))
+	_left.add_child(UiTheme.body("Skills:  %s" % _skill_names(), 14, UiTheme.TEXT_DIM))
 
 	var gap := Control.new()
 	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -317,10 +324,11 @@ func _build_nav() -> void:
 	row.alignment = BoxContainer.ALIGNMENT_END
 	_right.add_child(row)
 	row.add_child(UiWidgets.small_button("Back", _go.bind(step - 1), step > 0))
+	var ready: bool = _chosen().size() == picks()
 	if step < STEPS.size() - 1:
-		row.add_child(UiWidgets.small_button("Next", _go.bind(step + 1)))
+		row.add_child(UiWidgets.small_button("Next", _go.bind(step + 1), step != 3 or ready))
 	else:
-		var go := UiWidgets.small_button("Begin", _begin)
+		var go := UiWidgets.small_button("Begin", _begin, ready)
 		go.name = "BeginButton"
 		go.add_theme_color_override("font_color", UiTheme.GOLD)
 		row.add_child(go)
@@ -571,7 +579,62 @@ func _rarity_color(slots: int) -> Color:
 	return UiTheme.TEXT_FAINT
 
 
-# --- step 4: embark -------------------------------------------------------------------------
+# --- step 4: skills -------------------------------------------------------------------------
+
+## How many starting skills are picked (data/skill_tree.json "start_picks").
+func picks() -> int:
+	return int(GameData.skill_tree.get("start_picks", 2))
+
+
+func _chosen() -> Array:
+	return spec.get("skills", [])
+
+
+## Pick a starting skill, or put one back. Only the prime's root skills can be picked, and only
+## `picks()` of them; a full hand has to put one back first.
+func toggle_skill(id: String) -> void:
+	var chosen: Array = _chosen()
+	if chosen.has(id):
+		chosen.erase(id)
+	elif chosen.size() < picks() and GameData.skill_roots(spec["affinities"]).has(id):
+		chosen.append(id)
+	spec["skills"] = chosen
+	_refresh()
+
+
+func _build_skills() -> void:
+	_right.add_child(UiTheme.heading("Skills", 28))
+	var chosen: Array = _chosen()
+	_right.add_child(UiTheme.body("Nothing is given. Pick %d skills to start with from what your %s can do. Everything else is trained in town, for skill points that come as your star grows." % [
+		picks(), _affinity_word(spec["affinities"]).to_lower()], 14, UiTheme.TEXT_DIM))
+	var count := UiTheme.body("%d of %d chosen" % [chosen.size(), picks()], 15, UiTheme.GOLD if chosen.size() == picks() else UiTheme.TEXT)
+	count.name = "PickCount"
+	_right.add_child(count)
+	_right.add_child(UiTheme.rule())
+	var list: VBoxContainer = scroller(_right)
+	list.add_theme_constant_override("separation", 6)
+	for aff: String in spec["affinities"]:
+		list.add_child(UiTheme.heading(str(GameData.affinity(aff).get("label", aff)), 17, GameData.affinity_color(aff).lightened(0.3)))
+		for id: String in GameData.skill_roots([aff]):
+			var ab: Dictionary = GameData.ability(id)
+			var on: bool = chosen.has(id)
+			var b := UiWidgets.service_button(str(ab.get("name", id)), str(ab.get("summary", ab.get("verse", ""))), "chosen" if on else "",
+				toggle_skill.bind(id), on or chosen.size() < picks())
+			b.set_meta("skill", id)
+			b.custom_minimum_size.y = 84                # room for a three-line summary
+			if on:
+				b.add_theme_stylebox_override("normal", UiTheme.box(Color("3a3024"), UiTheme.GOLD, 2, 4, 10))
+			list.add_child(b)
+
+
+func _skill_names() -> String:
+	var names: Array[String] = []
+	for id: Variant in _chosen():
+		names.append(str(GameData.ability(str(id)).get("name", id)))
+	return ", ".join(names) if not names.is_empty() else "(none yet)"
+
+
+# --- step 5: embark -------------------------------------------------------------------------
 
 func _build_embark() -> void:
 	_right.add_child(UiTheme.heading("Embark", 28))
@@ -581,6 +644,9 @@ func _build_embark() -> void:
 	_right.add_child(UiWidgets.stat_row("Identity", _identity_label()))
 	_right.add_child(UiWidgets.stat_row("Prime", str(t.get("name", "?")), UiTheme.STAR))
 	_right.add_child(UiWidgets.stat_row(_affinity_word(spec["affinities"]), _affinity_text(spec["affinities"]), _rarity_color((spec["affinities"] as Array).size()).lightened(0.3)))
+	_right.add_child(UiWidgets.stat_row("Skills", _skill_names(), UiTheme.TEXT if _chosen().size() == picks() else UiTheme.BAD))
+	if _chosen().size() != picks():
+		_right.add_child(UiTheme.body("Pick %d skills first (step 4)." % picks(), 13, UiTheme.BAD))
 	_right.add_child(UiWidgets.stat_row("Purse", UiTheme.money_text(GameData.inum("town", "starting_money")), UiTheme.GOLD))
 	_right.add_child(UiWidgets.stat_row("Soul", "one star, barely lit"))
 	_right.add_child(UiTheme.rule())
@@ -592,6 +658,9 @@ func _build_embark() -> void:
 
 func _begin() -> void:
 	_keep_name()
+	if _chosen().size() != picks():
+		_go(3)
+		return
 	if str(spec["name"]) == "":
 		spec["name"] = random_name()
 	game.call("begin_character", spec.duplicate(true))

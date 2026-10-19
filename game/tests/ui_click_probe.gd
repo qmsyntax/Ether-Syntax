@@ -8,8 +8,10 @@ extends Node
 ## dock's strike slot counts as over the interface (so a click there is not an attack order), and
 ## a key is rebound by clicking its button and pressing a key, then put back with "Reset to
 ## defaults", and the menu closed with its own button. The player's saved key bindings are
-## backed up first and restored at the end. Prints PASS/FAIL and exits 0/1.
-## `--field` does it in the arena, where the inventory pauses the game.
+## backed up first and restored at the end. Then, in town, the skill trainer: click the trainer
+## in the street to walk up and talk, click Training, click a node of the tree and click Learn.
+## Prints PASS/FAIL and exits 0/1.
+## `--field` does it in the arena, where the inventory pauses the game (and skips the trainer).
 
 var main: Node
 var frames := 0
@@ -18,6 +20,7 @@ var failed := false
 var _binds_backup: Variant = null      # user://keybinds.cfg as it was, or null if there was none
 var _step := ""
 var _step_ms := 0
+var _trainer_from := 0                 # the frame the trainer part began, 0 until then
 
 
 func _ready() -> void:
@@ -69,6 +72,29 @@ func _move(at: Vector2, held: bool) -> void:
 
 func _centre(c: Control) -> Vector2:
 	return c.get_global_rect().get_center()
+
+
+func _click_at(at: Vector2) -> void:
+	_move(at, false)
+	_mouse(at, MOUSE_BUTTON_LEFT, true)
+	_mouse(at, MOUSE_BUTTON_LEFT, false)
+
+
+## A visible control by node name.
+func _find(node: Node, wanted: String) -> Control:
+	for n: Node in node.find_children(wanted, "Control", true, false):
+		if (n as Control).is_visible_in_tree():
+			return n as Control
+	return null
+
+
+## A service button (UiWidgets.service_button) by its title.
+func _service(title: String) -> Button:
+	for n: Node in main.find_children("*", "Button", true, false):
+		for l: Node in n.find_children("*", "Label", true, false):
+			if (l as Label).text == title and (n as Control).is_visible_in_tree():
+				return n as Button
+	return null
 
 
 func _expect(label: String, ok: bool) -> void:
@@ -213,6 +239,48 @@ func _process(_delta: float) -> void:
 					_step_ms = Time.get_ticks_msec()
 	if frames > 145 and _step != "":
 		_settings_steps()
+	if _trainer_from > 0:
+		_trainer_steps(frames - _trainer_from)
+
+
+## The skill trainer in the street, counted in frames from the moment the controls menu closed.
+func _trainer_steps(at: int) -> void:
+	var player: Node = main.get("player")
+	match at:
+		1:
+			var town: TownBuilder = main.get("_town")
+			var trainer: Townsperson = town.person("trainer")
+			(player as Node3D).global_position = trainer.global_position + Vector3(1.6, 0.0, 0.6)
+			player.set("has_move_goal", false)
+			player.set("skill_points", 2)
+		10:
+			var trainer: Townsperson = (main.get("_town") as TownBuilder).person("trainer")
+			var cam: Camera3D = main.get("camera")
+			_click_at(cam.unproject_position(trainer.global_position + Vector3.UP * 1.1))
+		20:
+			var s: Node = main.get("screen")
+			_expect("clicking the trainer in the street opens their panel", s is TalkScreen and str(s.get("role")) == "trainer")
+			var b: Button = _service("Training")
+			_expect("the trainer offers training", b != null)
+			if b != null:
+				_click_at(_centre(b))
+		30:
+			var s: Node = main.get("screen")
+			_expect("Training opens the skill tree, teaching", s is SkillTreeScreen and bool(s.get("at_trainer")))
+			var node: Control = _find(main, "Node_undertow")
+			_expect("the tree shows Undertow", node != null)
+			if node != null:
+				_click_at(_centre(node))
+		40:
+			_expect("clicking a node selects it", main.get("screen") is SkillTreeScreen and str((main.get("screen") as Node).get("selected")) == "undertow")
+			var learn: Control = _find(main, "LearnButton")
+			_expect("its Learn button is live", learn != null and not (learn as Button).disabled)
+			if learn != null:
+				_click_at(_centre(learn))
+		50:
+			_expect("clicking Learn teaches it and spends a point", bool(player.call("knows", "undertow")) and int(player.get("skill_points")) == 1)
+			_trainer_from = 0
+			_finish()
 
 
 ## The controls menu ignores input for 200 ms after a capture starts, so these steps go by the clock.
@@ -247,7 +315,10 @@ func _settings_steps() -> void:
 			if since > 150:
 				_expect("the Close button shuts the controls menu", main.get("settings_menu") == null)
 				_step = ""
-				_finish()
+				if OS.get_cmdline_user_args().has("--field"):
+					_finish()
+				else:
+					_trainer_from = frames
 
 
 func _physical(action: String) -> Key:
