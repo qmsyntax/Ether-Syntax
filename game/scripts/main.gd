@@ -8,7 +8,6 @@ const SceneryScript := preload("res://scripts/scenery.gd")
 const HudScript := preload("res://scripts/hud.gd")
 const SettingsMenuScript := preload("res://scripts/settings_menu.gd")
 const TitleScreen := preload("res://scripts/ui/title_screen.gd")
-const TownScreen := preload("res://scripts/ui/town_screen.gd")
 const ShopScreen := preload("res://scripts/ui/shop_screen.gd")
 const InventoryScreen := preload("res://scripts/ui/inventory_screen.gd")
 const MessageScreen := preload("res://scripts/ui/message_screen.gd")
@@ -84,6 +83,10 @@ var zone_id := ""                   # the zone you are standing in, while state 
 var _zone: ZoneBuilder
 var _return_to: Dictionary = {}      # where the passage's exit lets you out: {zone, at}, or town if empty
 var fog: FogMap                      # what has been seen of the zone you are in
+# town (design/08)
+var _town: TownBuilder                # the town level's people and gateways, while it is built
+var _talking_to := ""                 # role of the townsperson whose panel is open
+var _walk_to: Townsperson = null      # the townsperson you clicked, being walked up to
 
 var _rent_accum := 0.0
 var _shot_mode := false
@@ -157,7 +160,7 @@ func _process(delta: float) -> void:
 
 	match state:
 		"town":
-			_prompt = ""
+			_tick_town(delta)
 		"arena_rest":
 			rest_timer -= delta
 			_prompt = "Wave %d in %d   -   pick up what the last one left before it starts\n%s go now     %s rest longer     %s healer     hold %s to meditate     %s back to town" % [
@@ -178,7 +181,7 @@ func _process(delta: float) -> void:
 			_tick_field(delta)
 
 	hud.call("refresh", player, _where())
-	hud.set("show_world", state == "dungeon" or state == "arena_rest" or state == "arena_fight" or state == "field")
+	hud.set("show_world", state == "dungeon" or state == "arena_rest" or state == "arena_fight" or state == "field" or state == "town")
 	hud.call("set_nether", nether.hud_info())
 	hud.set("minimap", minimap_info())
 	if nether.active and screen == null:
@@ -203,7 +206,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_echo():
 		return
 	if event.is_action_pressed("settings"):
-		if screen is ShopScreen or screen is InventoryScreen or screen is EthercosmScreen:
+		if screen is ShopScreen or screen is InventoryScreen or screen is EthercosmScreen or screen is TalkScreen \
+				or screen is TemperingScreen or screen is SkillTreeScreen or (screen is SavesScreen and state == "town"):
 			close_screen()
 		else:
 			_open_settings()
@@ -217,6 +221,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ethercosm"):
 		open_ethercosm()
 		return
+	if event.is_action_pressed("skills"):
+		open_skill_tree(false)
+		return
 	if event.is_action_pressed("project"):
 		toggle_projection()
 		return
@@ -224,6 +231,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		return                          # a soul has no hands for anything else
 
 	match state:
+		"town":
+			# no skills in town: nothing here to use them on
+			if event.is_action_pressed("interact"):
+				_town_interact()
+			elif event.is_action_pressed("strike"):
+				_town_click((event as InputEventMouseButton).position if event is InputEventMouseButton else get_viewport().get_mouse_position())
 		"arena_rest", "arena_fight":
 			if _cast_from_hotbar(event):
 				pass
@@ -245,7 +258,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					player.call("note", "The healer won't come in here mid-fight.")
 			elif event.is_action_pressed("interact"):
 				if state == "arena_rest":
-					_enter_town()
+					_enter_town("arena")
 		"field":
 			if _cast_from_hotbar(event):
 				pass
@@ -316,20 +329,157 @@ func _select_talent(index: int) -> void:
 	player.call("set_talent", TALENT_CHOICES[index])
 
 
-func _enter_town() -> void:
+func _enter_town(arrive: String = "square") -> void:
 	if nether.active:
 		nether.exit("")
 	_build_town()
-	player.set("active", false)
 	player.call("end_fight")
-	player.global_position = Vector3.ZERO
+	player.global_position = level.to_global(_town.arrival(arrive))
 	player.set("attack_target", null)
 	player.set("pickup_target", null)
 	player.set("has_move_goal", false)
+	player.set("active", true)                # the town is a place you walk round (design/08)
 	state = "town"
 	_prompt = ""
+	_talking_to = ""
+	_walk_to = null
 	save_now()
-	_show_screen(TownScreen.new(self), false)
+	_show_screen(null, false)
+
+
+# --- the town as a place (design/08) -----------------------------------------------------------
+
+## Each frame in town: who is close enough to talk to, the gateways you walk through, and the
+## person you clicked being walked up to. Walking away from someone closes what they showed you.
+func _tick_town(_delta: float) -> void:
+	_prompt = ""
+	if _town == null:
+		return
+	var near: Townsperson = _town.folk_in_reach(player.global_position)
+	for p: Townsperson in _town.folk:
+		var on: bool = p == near and screen == null
+		if is_instance_valid(p) and p.focused != on:
+			p.set_focus(on)
+	if _talking_to != "":
+		var who: Townsperson = _town.person(_talking_to)
+		if screen == null:
+			_talking_to = ""
+		elif who != null and _flat_dist(who.global_position, player.global_position) > float(GameData.town.get("leave_reach", 4.5)):
+			_talking_to = ""
+			_show_screen(null, false)
+	if _walk_to != null:
+		if not is_instance_valid(_walk_to) or screen != null or not bool(player.get("has_move_goal")):
+			_walk_to = null
+		elif _flat_dist(_walk_to.global_position, player.global_position) <= float(GameData.town.get("talk_reach", 2.7)):
+			var role: String = _walk_to.role
+			_walk_to = null
+			player.set("has_move_goal", false)
+			talk_to(role)
+			return
+		elif not Input.is_action_pressed("strike"):
+			player.set("move_goal", _walk_to.global_position)
+	var ex: Dictionary = _town.exit_at(player.global_position)
+	if not ex.is_empty() and bool(ex.get("walk_through", false)):
+		player.call("note", "You go through %s." % str(ex.get("name", "the gate")))
+		call(str(ex["action"]))
+		return
+	if screen != null:
+		return
+	if near != null:
+		_prompt = "%s talk to %s, %s" % [_k("interact"), near.folk_name, near.title]
+		return
+	var door: Dictionary = _town_door_in_reach()
+	if not door.is_empty():
+		_prompt = "%s the door into %s - an owned passage: ticket $%d, and a meter while you are inside." % [_k("interact"), str(door.get("prompt", "the passage")), ticket_price]
+		return
+	for gate: Dictionary in _town.exits:
+		if bool(gate.get("walk_through", false)) and _flat_dist(level.to_global(gate["centre"]), player.global_position) < 6.0:
+			_prompt = str(gate.get("prompt", ""))
+
+
+func _flat_dist(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length()
+
+
+## A shut door in town you are standing at (the passage), or {}.
+func _town_door_in_reach() -> Dictionary:
+	if _town == null:
+		return {}
+	for ex: Dictionary in _town.exits:
+		if not bool(ex.get("walk_through", false)) and _flat_dist(level.to_global(ex["centre"]), player.global_position) <= float(GameData.town.get("exit_reach", 1.5)) * 2.0:
+			return ex
+	return {}
+
+
+## The interact key in town: stop talking, talk to whoever is close, or use the door you are at.
+func _town_interact() -> void:
+	if screen != null:
+		close_screen()
+		return
+	var who: Townsperson = _town.folk_in_reach(player.global_position) if _town != null else null
+	if who != null:
+		talk_to(who.role)
+		return
+	var door: Dictionary = _town_door_in_reach()
+	if not door.is_empty():
+		call(str(door["action"]))
+		return
+	player.call("note", "Nobody close enough to talk to. Walk up to someone.")
+
+
+## A click in town at a screen point: on a person, walk up to them and talk.
+func _town_click(at: Vector2) -> void:
+	if screen != null or _town == null or bool(hud.call("mouse_over_ui")):
+		return
+	var who: Townsperson = _town.pick_screen(at, camera)
+	if who == null:
+		return
+	if _flat_dist(who.global_position, player.global_position) <= float(GameData.town.get("talk_reach", 2.7)):
+		talk_to(who.role)
+		return
+	_walk_to = who
+	player.set("move_goal", who.global_position)
+	player.set("has_move_goal", true)
+
+
+## Talk to the townsperson who does `role` (data/town.json "folk"): their panel opens.
+func talk_to(role: String) -> void:
+	if state != "town" or GameData.town_folk(role).is_empty():
+		return
+	_talking_to = role
+	_show_screen(TalkScreen.new(self, role), false)
+
+
+## The skill tree. From the trainer (`at_trainer`, only while talking to them in town) its Learn
+## and Drill buttons work; opened anywhere else it is for looking. Out of town it pauses the game.
+func open_skill_tree(at_trainer: bool = false) -> void:
+	if screen is SkillTreeScreen and not at_trainer:
+		close_screen()
+		return
+	if state == "select" or state == "dead":
+		return
+	var teaching: bool = at_trainer and state == "town" and _talking_to == "trainer"
+	_show_screen(SkillTreeScreen.new(self, teaching), state != "town")
+
+
+## Learn a skill from the trainer: only in town, only while talking to them. Returns "" or why not.
+func train_skill(ability_id: String) -> String:
+	if state != "town" or _talking_to != "trainer":
+		return "Only a trainer can teach you a skill. Find one in town."
+	var why: String = player.call("train_skill", ability_id)
+	if why == "":
+		save_now()
+	return why
+
+
+## Drill a known skill with the trainer: the same rule. Returns "" or why not.
+func drill_skill(ability_id: String) -> String:
+	if state != "town" or _talking_to != "trainer":
+		return "Only a trainer can drill you. Find one in town."
+	var why: String = player.call("drill_skill", ability_id)
+	if why == "":
+		save_now()
+	return why
 
 
 # --- overland zones (design/07) ----------------------------------------------------------------
@@ -376,7 +526,7 @@ func _tick_field(_delta: float) -> void:
 		if bool(line.get("open", false)) and d < 2.0:
 			if str(line["to"]) == "town":
 				player.call("note", "You come back in through %s." % str(line.get("name", "the gate")))
-				_enter_town()
+				_enter_town("dross_gate")
 				return
 		elif not bool(line.get("open", false)) and d < 7.0:
 			_prompt = str(line.get("sign", "Closed."))
@@ -509,10 +659,15 @@ func _show_screen(new_screen: Control, pause: bool) -> void:
 	get_tree().paused = _screen_paused or settings_menu != null
 
 
-## Close the open screen. In town that means back to the town screen.
+## Close the open screen. In town, a screen someone showed you goes back to talking to them, and
+## closing that leaves you standing in the street.
 func close_screen() -> void:
 	if state == "town":
-		_show_screen(TownScreen.new(self), false)
+		if _talking_to != "" and not (screen is TalkScreen):
+			_show_screen(TalkScreen.new(self, _talking_to), false)
+		else:
+			_talking_to = ""
+			_show_screen(null, false)
 	elif state == "select":
 		_show_screen(CreationScreen.new(self), false)
 	else:
@@ -550,21 +705,30 @@ func open_ethercosm() -> void:
 
 
 ## Quick start with a default look (tests and bots); the creation screen uses begin_character.
+## The two starting skills are the first two roots - a test convenience; a player always picks.
 func start_new_character(index: int) -> void:
-	begin_character({"talent_id": TALENT_CHOICES[index]})
+	player.call("set_affinities", GameData.default_affinities())
+	begin_character({"talent_id": TALENT_CHOICES[index], "skills": player.call("default_start_skills")})
 
 
 ## Start the character described by the creation screen: {name, identity, look, talent_id,
-## affinities}. The talent and the affinities are the prime that was picked from the rolled offers.
-func begin_character(spec: Dictionary) -> void:
+## affinities, skills}. The talent and the affinities are the prime that was picked from the
+## rolled offers; `skills` are the two starting skills the player picked (design/08) - nothing is
+## given that was not picked. Returns "" or why the character could not begin.
+func begin_character(spec: Dictionary) -> String:
 	var talent: String = str(spec.get("talent_id", TALENT_CHOICES[0]))
 	player.call("set_talent", talent if TALENT_CHOICES.has(talent) else TALENT_CHOICES[0])
 	player.call("set_affinities", spec.get("affinities", []))
+	var why: String = player.call("start_with_skills", spec.get("skills", []))
+	if why != "":
+		player.call("note", why)
+		return why
 	player.set("char_name", str(spec.get("name", "")).strip_edges().left(int(GameData.creation["name_max_length"])))
 	player.set("identity", str(spec.get("identity", "")))
 	player.call("set_look", spec.get("look", {}))
 	player.set("money", GameData.inum("town", "starting_money"))
 	_enter_town()
+	return ""
 
 
 func toggle_hardcore() -> void:
@@ -1015,7 +1179,7 @@ func _extract() -> void:
 		player.call("note", "You could not carry the rest - $%d of it stays at the exit." % int(carried[1]))
 	var rewards: Array[String] = grant_exit_rewards(cleared, cleared == chambers)
 	if _return_to.is_empty():
-		_enter_town()
+		_enter_town("passage")
 	else:
 		var back: Dictionary = _return_to
 		_return_to = {}
@@ -1171,15 +1335,14 @@ func _add_level_nav() -> void:
 	level.add_child(nav)
 
 
+## The town is a level (design/08): data/town.json built by TownBuilder - streets, gateways and
+## the people who do what the old town menu did.
 func _build_town() -> void:
 	_new_level(0.0)
 	var cfg: Dictionary = GameData.balance["biomes"]
 	_use_biome(cfg["town"], false)            # the town is always the town
-	_biome_floor(Vector3.ZERO, Vector2(28.0, 28.0))
-	# the two sides away from the camera
-	_biome_wall(Vector3(0, 0, -14.5), 28.0, 0.0, float(cfg["wall_height_far"]))
-	_biome_wall(Vector3(-14.5, 0, 0), 28.0, 90.0, float(cfg["wall_height_far"]))
-	_scatter_props(Vector3(0, 0, 0), Vector2(12.5, 12.5), int(cfg["town_props"]))
+	_town = TownBuilder.new(self, GameData.town)
+	_town.build()
 
 
 # --- biomes -------------------------------------------------------------------------------
@@ -1672,7 +1835,8 @@ func _setup_ui_shot(which: String) -> void:
 		# fixed offers so the picture does not depend on the dice: a common, a rare and a three-slot prime
 		screen.set("offers", [{"talent_id": "grudge", "affinities": ["earth"]}, {"talent_id": "tenth_strike", "affinities": ["wind", "fire"]},
 			{"talent_id": "one_percent_lifesteal", "affinities": ["water", "lightning", "earth"]}] as Array[Dictionary])
-		screen.call("set_spec", {"name": "Maren", "identity": "woman", "look": CharacterLook.default_look(), "talent_id": "tenth_strike", "affinities": ["wind", "fire"]})
+		screen.call("set_spec", {"name": "Maren", "identity": "woman", "look": CharacterLook.default_look(), "talent_id": "tenth_strike", "affinities": ["wind", "fire"],
+			"skills": ["cutting_gust", "flashover"]})
 		screen.call("_go", int(which.get_slice("-", 1)) - 1)
 		if which.ends_with("-face"):
 			screen.call("set_zoom", true)
@@ -1701,6 +1865,38 @@ func _setup_ui_shot(which: String) -> void:
 	match which:
 		"town":
 			_enter_town()
+		"town-gate", "town-folk":
+			# the north street from inside the Dross Gate, or the west side with the trainer and the passage door
+			_enter_town("dross_gate" if which == "town-gate" else "passage")
+			if which == "town-folk":
+				player.global_position = level.to_global(Vector3(-11.0, 0.0, -1.5))
+			player.set("_facing", Vector3(0, 0, -1))
+			if OS.get_cmdline_user_args().has("--settle"):
+				_shot_countdown = 300
+		"town-talk":
+			_enter_town()
+			player.global_position = _town.person("trainer").global_position + Vector3(1.6, 0.0, 0.5)
+			player.set("skill_points", 3)
+			_shot_countdown = 120                 # let the trainer turn to face you
+			talk_to("trainer")
+		"skill-tree", "skill-tree-field":
+			# a water + lightning character: two roots picked, one tier-2 learned, points to spend
+			player.call("set_affinities", ["water", "lightning"])
+			player.call("start_with_skills", ["water_bolt", "stepped_leader"])
+			player.call("learn", "undertow")
+			player.set("skill_points", 3)
+			if which == "skill-tree":
+				_enter_town()
+				player.global_position = _town.person("trainer").global_position + Vector3(1.6, 0.0, 0.5)
+				talk_to("trainer")
+				open_skill_tree(true)
+			else:
+				_show_screen(null, false)
+				enter_arena()
+				rest_timer = 9999.0
+				open_skill_tree(false)
+				get_tree().paused = false         # it pauses out here; the shot countdown has to tick
+			screen.call("select", "standing_pool")
 		"shop":
 			_enter_town()
 			open_shop()

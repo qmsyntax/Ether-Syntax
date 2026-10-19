@@ -62,6 +62,7 @@ func _build_detail() -> void:
 	var title := UiTheme.heading("Ethercosm", 28)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
+	head.add_child(UiWidgets.small_button("Skill tree  (%s)" % Keybinds.binding_text("skills"), func() -> void: game.call("open_skill_tree", false)))
 	head.add_child(UiWidgets.small_button("Close  (%s)" % Keybinds.binding_text("ethercosm"), func() -> void: game.call("close_screen")))
 	box.add_child(UiTheme.body("The inner space of your soul.", 14, UiTheme.TEXT_DIM))
 	box.add_child(UiTheme.rule())

@@ -2,7 +2,8 @@ extends Node
 ## Character creation click test (windowed run only - needs real GUI hit-testing):
 ##   godot --path game res://tests/creation_probe.tscn
 ## Walks the creation screen with synthetic mouse and keyboard events: types a name, picks an
-## identity, changes one appearance option, picks a prime, and presses Begin. Prints
+## identity, changes one appearance option, picks a prime, picks two starting skills (and checks
+## that nothing else is given), and presses Begin. Prints
 ## "CREATE: PASS" / "CREATE: FAIL" and exits 0/1.
 
 var main: Node
@@ -12,6 +13,15 @@ var failed := false
 var look_before := {}
 var first_offers: Array = []
 var picked: Dictionary = {}
+var skills_picked: Array = []
+
+
+func _skill_buttons() -> Array[Button]:
+	var out: Array[Button] = []
+	for n: Node in main.find_children("*", "Button", true, false):
+		if n.has_meta("skill") and (n as Control).is_visible_in_tree():
+			out.append(n as Button)
+	return out
 
 
 func _ready() -> void:
@@ -116,16 +126,44 @@ func _process(_delta: float) -> void:
 				and ((screen.get("spec") as Dictionary)["affinities"] as Array) == (picked["affinities"] as Array))
 			_click(_button("Next"))
 		54:
-			_expect("Next moves to embark", int(screen.get("step")) == 3)
+			_expect("Next moves to the skills", int(screen.get("step")) == 3)
+			var next: Button = _button("Next") as Button
+			_expect("Next waits until two skills are picked", next != null and next.disabled)
+			var choices: Array[Button] = _skill_buttons()
+			var roots: Array[String] = GameData.skill_roots(picked["affinities"])
+			_expect("the choices are the root skills of the prime's affinities", choices.size() == roots.size()
+				and choices.all(func(b: Button) -> bool: return roots.has(str(b.get_meta("skill")))), "%d buttons, roots %s" % [choices.size(), str(roots)])
+			if choices.size() >= 2:
+				_click(choices[1])
+		57:
+			_expect("clicking a skill picks it", (screen.get("spec")["skills"] as Array).size() == 1)
+			var choices: Array[Button] = _skill_buttons()
+			if not choices.is_empty():
+				_click(choices[0])
+		60:
+			skills_picked = ((screen.get("spec") as Dictionary)["skills"] as Array).duplicate()
+			_expect("clicking a second picks it too", skills_picked.size() == 2, str(skills_picked))
+			var rest: Array[Button] = _skill_buttons().filter(func(b: Button) -> bool: return not skills_picked.has(str(b.get_meta("skill"))))
+			_expect("with two picked, the others cannot be picked", not rest.is_empty() and rest.all(func(b: Button) -> bool: return b.disabled))
+			if not rest.is_empty():
+				_click(rest[0])
+		63:
+			_expect("and clicking one does nothing", ((screen.get("spec") as Dictionary)["skills"] as Array) == skills_picked)
+			_click(_button("Next"))
+		66:
+			_expect("Next moves to embark", int(screen.get("step")) == 4)
 			_click(_button("Begin"))
-		62:
+		74:
 			_expect("Begin starts the game in town", str(main.get("state")) == "town")
 			_expect("the character has the name, identity and prime chosen",
 				str(player.get("char_name")) == "Kin" and str(player.get("identity")) == "woman" and str(player.get("talent_id")) == str(picked["talent_id"]),
 				"%s / %s / %s" % [str(player.get("char_name")), str(player.get("identity")), str(player.get("talent_id"))])
 			_expect("the prime's affinities came with it", (player.get("affinities") as Array) == (picked["affinities"] as Array), str(player.get("affinities")))
-			var kit: Array = GameData.ability_loadout(picked["affinities"])
-			_expect("and their starter skills", (player.get("abilities") as Array).size() == kit.size() and str(((player.get("abilities") as Array)[0] as Dictionary)["id"]) == str(kit[0]))
+			var have: Array = (player.get("abilities") as Array).map(func(a: Dictionary) -> String: return str(a["id"]))
+			_expect("the character has exactly the two skills picked, nothing auto-assigned", have == skills_picked, "%s vs %s" % [str(have), str(skills_picked)])
+			var bar: Array = player.get("hotbar")
+			_expect("on slots 1 and 2", int(bar[0]) == 0 and int(bar[1]) == 1 and bar.slice(2).all(func(v: int) -> bool: return v == -1), str(bar))
+			_expect("and no skill points yet", int(player.get("skill_points")) == int((GameData.skill_tree["points"] as Dictionary)["start"]))
 			if CharacterLook.options().has("sex"):
 				_expect("the female body carries into the game", str((player.get("look") as Dictionary).get("sex", "")) == "female")
 			_expect("a new character starts with the purse", int(player.get("money")) == GameData.inum("town", "starting_money"))

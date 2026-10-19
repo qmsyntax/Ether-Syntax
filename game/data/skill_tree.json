@@ -1,0 +1,58 @@
+{
+	"_note": "Skill points and the skill tree (design/08, Brent 2026-10-18: no skill is given automatically; a new character picks two; the rest are trained in town for skill points). start_picks: how many root skills a new character picks at creation. points: per_star_pct - one point per that many percentage points of star capacity grown (any star); on_ascend - points for ascending; start - points a new character has. tiers: what learning a node of that tier costs at a trainer, in points and money. drill: a trainer pushes a known skill's stage progress by 'progress' (capped at 100 - the stage still needs a bound construct) for 'points' and 'price'. trees: one per affinity; a node's tier and column place it on the screen; 'requires' is ANY ONE of the listed skills (roots have none). All numbers and the shape are ours [MODEL].",
+	"start_picks": 2,
+	"points": {"per_star_pct": 10.0, "on_ascend": 2, "start": 0},
+	"tiers": {
+		"1": {"points": 1, "price": 300},
+		"2": {"points": 1, "price": 600},
+		"3": {"points": 2, "price": 1200}
+	},
+	"drill": {"points": 1, "price": 200, "progress": 40.0},
+	"trees": {
+		"water": {
+			"water_bolt": {"tier": 1, "col": 0},
+			"tsunami_strike": {"tier": 1, "col": 1},
+			"hydraulic_flex": {"tier": 1, "col": 2},
+			"undertow": {"tier": 2, "col": 0, "requires": ["water_bolt"]},
+			"riptide_lash": {"tier": 2, "col": 1, "requires": ["tsunami_strike"]},
+			"backwash": {"tier": 2, "col": 2, "requires": ["hydraulic_flex"]},
+			"standing_pool": {"tier": 3, "col": 0.5, "requires": ["undertow", "riptide_lash"]}
+		},
+		"fire": {
+			"cinder_spit": {"tier": 1, "col": 0},
+			"kiln_fist": {"tier": 1, "col": 1},
+			"flashover": {"tier": 1, "col": 2},
+			"stoke": {"tier": 2, "col": 0, "requires": ["cinder_spit"]},
+			"backdraft": {"tier": 2, "col": 1, "requires": ["kiln_fist"]},
+			"slag_pool": {"tier": 2, "col": 2, "requires": ["flashover"]},
+			"pyre_call": {"tier": 3, "col": 1.5, "requires": ["backdraft", "slag_pool"]}
+		},
+		"earth": {
+			"slingstone": {"tier": 1, "col": 0},
+			"landslide_blow": {"tier": 1, "col": 1},
+			"raise_slab": {"tier": 1, "col": 2},
+			"pillar": {"tier": 2, "col": 0, "requires": ["slingstone"]},
+			"bedrock_shove": {"tier": 2, "col": 1, "requires": ["landslide_blow"]},
+			"stonehide": {"tier": 2, "col": 2, "requires": ["raise_slab"]},
+			"tremor": {"tier": 3, "col": 0.5, "requires": ["pillar", "bedrock_shove"]}
+		},
+		"wind": {
+			"cutting_gust": {"tier": 1, "col": 0},
+			"crosscut": {"tier": 1, "col": 1},
+			"tailwind": {"tier": 1, "col": 2},
+			"downdraft": {"tier": 2, "col": 0, "requires": ["cutting_gust"]},
+			"veil": {"tier": 2, "col": 1, "requires": ["crosscut"]},
+			"gale_lane": {"tier": 2, "col": 2, "requires": ["tailwind"]},
+			"updraft": {"tier": 3, "col": 1, "requires": ["downdraft", "gale_lane"]}
+		},
+		"lightning": {
+			"arc_lash": {"tier": 1, "col": 0},
+			"thunderclap_palm": {"tier": 1, "col": 1},
+			"stepped_leader": {"tier": 1, "col": 2},
+			"forked_path": {"tier": 2, "col": 0, "requires": ["arc_lash"]},
+			"static_coat": {"tier": 2, "col": 1, "requires": ["thunderclap_palm"]},
+			"ground_rod": {"tier": 2, "col": 2, "requires": ["stepped_leader"]},
+			"dead_short": {"tier": 3, "col": 0.5, "requires": ["forked_path", "static_coat"]}
+		}
+	}
+}

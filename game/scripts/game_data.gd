@@ -18,6 +18,10 @@ var _prime_default: Array = []
 var _zones: Dictionary = {}
 ## What the real character bodies wear: data/wardrobe.json (see scripts/art/real_character.gd).
 var wardrobe: Dictionary = {}
+## Skill points and the skill tree: data/skill_tree.json (design/08).
+var skill_tree: Dictionary = {}
+## The town as a place: data/town.json (design/08, scripts/town_builder.gd).
+var town: Dictionary = {}
 
 
 ## Loaded in the constructor: the singleton name resolves before the node enters the tree,
@@ -47,6 +51,8 @@ func _ensure() -> void:
 	_prime_default = aff.get("prime_default", [])
 	_zones = _load("res://data/zones.json").get("zones", {})
 	wardrobe = _load("res://data/wardrobe.json")
+	skill_tree = _load("res://data/skill_tree.json")
+	town = _load("res://data/town.json")
 
 
 ## A tempering technique definition, or {} if the id is unknown.
@@ -85,6 +91,41 @@ func default_affinities() -> Array[String]:
 func zone(id: String) -> Dictionary:
 	_ensure()
 	return _zones.get(id, {})
+
+
+## A skill's place on its affinity's tree: {tier, col, requires}, or {} if it is on no tree.
+func skill_node(ability_id: String) -> Dictionary:
+	_ensure()
+	var aff: String = str(ability(ability_id).get("affinity", ""))
+	return ((skill_tree.get("trees", {}) as Dictionary).get(aff, {}) as Dictionary).get(ability_id, {})
+
+
+## Every node of one affinity's tree: ability id -> {tier, col, requires}.
+func skill_tree_of(aff: String) -> Dictionary:
+	_ensure()
+	return (skill_tree.get("trees", {}) as Dictionary).get(aff, {})
+
+
+## The root skills (tier 1, no prerequisite) of these affinities, in tree order: what a new
+## character picks its starting skills from.
+func skill_roots(for_affinities: Array) -> Array[String]:
+	_ensure()
+	var out: Array[String] = []
+	for a: Variant in for_affinities:
+		var tree: Dictionary = skill_tree_of(str(a))
+		for id: String in tree:
+			if int((tree[id] as Dictionary).get("tier", 1)) == 1 and ((tree[id] as Dictionary).get("requires", []) as Array).is_empty():
+				out.append(id)
+	return out
+
+
+## What one townsperson is (data/town.json "folk"), by role; {} if nobody does that.
+func town_folk(role: String) -> Dictionary:
+	_ensure()
+	for f: Dictionary in town.get("folk", []):
+		if str(f.get("role", "")) == role:
+			return f
+	return {}
 
 
 ## An item definition, or {} if the id is unknown.

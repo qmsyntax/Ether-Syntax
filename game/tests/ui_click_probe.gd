@@ -4,8 +4,10 @@ extends Node
 ## Opens the inventory and equips gear three ways with synthetic mouse events: left-click the item,
 ## right-click the item, and drag the item onto its slot; then the paper doll's own interactions:
 ## a head piece into the head slot, a second trinket, a drag onto the second trinket slot, and a
-## click on a worn piece to take it off. Prints PASS/FAIL and exits 0/1.
-## `--field` does it in the arena, where the inventory pauses the game.
+## click on a worn piece to take it off. Then, in town, the skill trainer: click the trainer in the
+## street to walk up and talk, click Training, click a node of the tree and click Learn.
+## Prints PASS/FAIL and exits 0/1.
+## `--field` does the inventory part in the arena, where the inventory pauses the game.
 
 var main: Node
 var frames := 0
@@ -62,6 +64,36 @@ func _move(at: Vector2, held: bool) -> void:
 
 func _centre(c: Control) -> Vector2:
 	return c.get_global_rect().get_center()
+
+
+func _click_at(at: Vector2) -> void:
+	_move(at, false)
+	_mouse(at, MOUSE_BUTTON_LEFT, true)
+	_mouse(at, MOUSE_BUTTON_LEFT, false)
+
+
+## A visible control by node name.
+func _find(node: Node, wanted: String) -> Control:
+	for n: Node in node.find_children(wanted, "Control", true, false):
+		if (n as Control).is_visible_in_tree():
+			return n as Control
+	return null
+
+
+## A service button (UiWidgets.service_button) by its title.
+func _service(title: String) -> Button:
+	for n: Node in main.find_children("*", "Button", true, false):
+		for l: Node in n.find_children("*", "Label", true, false):
+			if (l as Label).text == title and (n as Control).is_visible_in_tree():
+				return n as Button
+	return null
+
+
+func _finish() -> void:
+	for line: String in results:
+		print("UICLICK: " + line)
+	print("UICLICK: %s" % ("FAIL" if failed else "PASS"))
+	get_tree().quit(1 if failed else 0)
 
 
 func _expect(label: String, ok: bool) -> void:
@@ -182,7 +214,40 @@ func _process(_delta: float) -> void:
 			_expect("the starting boots are worn", boots != null and str(inv.equipped.get("feet", "")) == "street_boots")
 			var hood: Control = _find_item(main, "cooling_coil")
 			_expect("nothing worn is still listed in the pack", hood == null)
-			for line: String in results:
-				print("UICLICK: " + line)
-			print("UICLICK: %s" % ("FAIL" if failed else "PASS"))
-			get_tree().quit(1 if failed else 0)
+			if OS.get_cmdline_user_args().has("--field"):
+				_finish()
+				return
+			# the trainer, in the street
+			main.call("close_screen")
+			var town: TownBuilder = main.get("_town")
+			var trainer: Townsperson = town.person("trainer")
+			(player as Node3D).global_position = trainer.global_position + Vector3(1.6, 0.0, 0.6)
+			player.set("has_move_goal", false)
+			player.set("skill_points", 2)
+		125:
+			var trainer: Townsperson = (main.get("_town") as TownBuilder).person("trainer")
+			var cam: Camera3D = main.get("camera")
+			_click_at(cam.unproject_position(trainer.global_position + Vector3.UP * 1.1))
+		135:
+			var s: Node = main.get("screen")
+			_expect("clicking the trainer in the street opens their panel", s is TalkScreen and str(s.get("role")) == "trainer")
+			var b: Button = _service("Training")
+			_expect("the trainer offers training", b != null)
+			if b != null:
+				_click_at(_centre(b))
+		145:
+			var s: Node = main.get("screen")
+			_expect("Training opens the skill tree, teaching", s is SkillTreeScreen and bool(s.get("at_trainer")))
+			var node: Control = _find(main, "Node_undertow")
+			_expect("the tree shows Undertow", node != null)
+			if node != null:
+				_click_at(_centre(node))
+		155:
+			_expect("clicking a node selects it", main.get("screen") is SkillTreeScreen and str((main.get("screen") as Node).get("selected")) == "undertow")
+			var learn: Control = _find(main, "LearnButton")
+			_expect("its Learn button is live", learn != null and not (learn as Button).disabled)
+			if learn != null:
+				_click_at(_centre(learn))
+		165:
+			_expect("clicking Learn teaches it and spends a point", bool(player.call("knows", "undertow")) and int(player.get("skill_points")) == 1)
+			_finish()

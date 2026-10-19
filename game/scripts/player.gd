@@ -65,6 +65,10 @@ var projecting := false
 ## Learned abilities: [{id, stage, progress}]. Hotbar slot i casts abilities[hotbar[i]].
 var abilities: Array = []
 var hotbar: Array[int] = []
+## Unspent skill points (design/08): earned by star growth and ascension, spent at a trainer.
+var skill_points := 0
+## Star growth (percentage points) banked toward the next skill point.
+var skill_growth := 0.0
 ## Each star's capacity, 1..99 %. The essence tank is the sum of full_tank x capacity (Brent 2026-09-23).
 var star_pct: Array[float] = []
 ## Constructs carried, waiting to be bound: [{tier, concept}]. Placeholder source: enemy drops.
@@ -195,6 +199,7 @@ func _init() -> void:
 	affinities = GameData.default_affinities()
 	_reset_loadout()
 	_reset_tempering()
+	skill_points = int((GameData.skill_tree.get("points", {}) as Dictionary).get("start", 0))
 
 
 func _ready() -> void:
@@ -926,6 +931,144 @@ func scroll_for_me() -> String:
 		if str(def.get("kind", "")) == "scroll" and can_learn(str(def.get("teaches", ""))) == "" and not inventory.bag.has(id):
 			pool.append(id)
 	return pool[rng.randi() % pool.size()] if not pool.is_empty() else ""
+
+
+# --- the skill tree (design/08) -----------------------------------------------------------
+# No skill is given (Brent 2026-10-18): a new character picks two root skills, and the rest are
+# trained in town for skill points and money. The trainer is main.gd's business (train_skill only
+# goes through there); scrolls (read_scroll) still teach anywhere and skip the tree's rules.
+
+## Start the character over with exactly these skills, on the bar in order. They must be
+## `start_picks` different root skills of affinities the character holds. Returns "" or why not.
+func start_with_skills(ids: Array) -> String:
+	var want: int = int(GameData.skill_tree.get("start_picks", 2))
+	var roots: Array[String] = GameData.skill_roots(affinities)
+	var picked: Array[String] = []
+	for id: Variant in ids:
+		if not roots.has(str(id)):
+			return "%s is not a starting skill of your affinities." % str(GameData.ability(str(id)).get("name", id))
+		if picked.has(str(id)):
+			return "The same skill twice."
+		picked.append(str(id))
+	if picked.size() != want:
+		return "Pick %d starting skills." % want
+	drop_stones()
+	buffs.clear()
+	abilities.clear()
+	for i: int in hotbar.size():
+		hotbar[i] = -1
+	for id: String in picked:
+		learn(id)
+	return ""
+
+
+## The first `start_picks` root skills - only for quick starts in tests (start_new_character).
+func default_start_skills() -> Array[String]:
+	var roots: Array[String] = GameData.skill_roots(affinities)
+	return roots.slice(0, int(GameData.skill_tree.get("start_picks", 2)))
+
+
+## What learning a node costs at a trainer: {points, price}.
+func skill_cost(ability_id: String) -> Dictionary:
+	var node: Dictionary = GameData.skill_node(ability_id)
+	var tier: Dictionary = (GameData.skill_tree.get("tiers", {}) as Dictionary).get(str(int(node.get("tier", 1))), {})
+	return {"points": int(tier.get("points", 1)), "price": int(tier.get("price", 0))}
+
+
+## A node's prerequisites are met: it has none, or the character knows any one of them.
+func skill_unlocked(ability_id: String) -> bool:
+	var needs: Array = GameData.skill_node(ability_id).get("requires", [])
+	if needs.is_empty():
+		return true
+	for id: Variant in needs:
+		if knows(str(id)):
+			return true
+	return false
+
+
+## Why a trainer could not teach this skill now, or "" if they could.
+func cannot_train_reason(ability_id: String) -> String:
+	var why: String = can_learn(ability_id)
+	if why != "":
+		return why
+	if GameData.skill_node(ability_id).is_empty():
+		return "No trainer teaches that; it is not on any tree."
+	if not skill_unlocked(ability_id):
+		var names: Array[String] = []
+		for id: Variant in GameData.skill_node(ability_id).get("requires", []):
+			names.append(str(GameData.ability(str(id)).get("name", id)))
+		return "Learn %s first." % " or ".join(names)
+	var cost: Dictionary = skill_cost(ability_id)
+	if skill_points < int(cost["points"]):
+		return _points_short(int(cost["points"]))
+	if not can_afford(int(cost["price"])):
+		return "Nobody trains on that much debt."
+	return ""
+
+
+func _points_short(need: int) -> String:
+	return "Needs %d skill point%s; you have %d." % [need, "" if need == 1 else "s", skill_points]
+
+
+## Be taught a skill: the points and the fee are spent and the skill is yours. Only main.gd calls
+## this, and only while you are talking to a trainer. Returns "" or why not.
+func train_skill(ability_id: String) -> String:
+	var why: String = cannot_train_reason(ability_id)
+	if why != "":
+		return why
+	var cost: Dictionary = skill_cost(ability_id)
+	skill_points -= int(cost["points"])
+	charge(int(cost["price"]))
+	learn(ability_id)
+	var ab: Dictionary = GameData.ability(ability_id)
+	note("Trained: %s%s." % [str(ab.get("name", ability_id)), "" if hotbar.has(abilities.size() - 1) else " - the bar is full; place it from the soul screen"])
+	return ""
+
+
+## Why a trainer could not drill this skill now, or "" if they could.
+func cannot_drill_reason(ability_id: String) -> String:
+	var st: Dictionary = {}
+	for a: Dictionary in abilities:
+		if str(a["id"]) == ability_id:
+			st = a
+	if st.is_empty():
+		return "You do not know that skill."
+	if float(st["progress"]) >= 100.0:
+		return "Its bar is full. Only a bound construct takes it further."
+	var cfg: Dictionary = GameData.skill_tree.get("drill", {})
+	if skill_points < int(cfg.get("points", 1)):
+		return _points_short(int(cfg.get("points", 1)))
+	if not can_afford(int(cfg.get("price", 0))):
+		return "Nobody trains on that much debt."
+	return ""
+
+
+## Drill a known skill: its stage progress moves on (capped at 100 - the stage still needs a
+## bound construct, Brent 2026-09-23). Only main.gd calls this, at a trainer.
+func drill_skill(ability_id: String) -> String:
+	var why: String = cannot_drill_reason(ability_id)
+	if why != "":
+		return why
+	var cfg: Dictionary = GameData.skill_tree.get("drill", {})
+	skill_points -= int(cfg.get("points", 1))
+	charge(int(cfg.get("price", 0)))
+	for a: Dictionary in abilities:
+		if str(a["id"]) == ability_id:
+			a["progress"] = minf(100.0, float(a["progress"]) + float(cfg.get("progress", 0.0)))
+	note("You drill %s until your hands know it better." % str(GameData.ability(ability_id).get("name", ability_id)))
+	return ""
+
+
+## Star growth banks toward skill points: one per `points.per_star_pct` percentage points grown.
+func _earn_skill_points(grown: float) -> void:
+	var per: float = float((GameData.skill_tree.get("points", {}) as Dictionary).get("per_star_pct", 10.0))
+	if grown <= 0.0 or per <= 0.0:
+		return
+	skill_growth += grown
+	while skill_growth >= per:
+		skill_growth -= per
+		skill_points += 1
+		note("A skill point. A trainer in town can spend it (%s shows the tree)." % Keybinds.binding_text("skills"))
 
 
 # --- more skill behaviours (design/05 Appendix A) -------------------------------------------------
@@ -2461,6 +2604,7 @@ func to_save() -> Dictionary:
 		"body": body.to_dict(),
 		"arm_right": arm_right, "arm_right_lost": arm_right_lost,
 		"abilities": abilities.duplicate(true), "hotbar": hotbar.duplicate(),
+		"skill_points": skill_points, "skill_growth": skill_growth,
 		"constructs": constructs.duplicate(true), "discoveries": discoveries.duplicate(),
 		"heal_points_total": heal_points_total, "inventory": inventory.to_dict(), "corpses": corpses.duplicate(true), "explored": explored.duplicate(),
 	}
@@ -2514,6 +2658,8 @@ func from_save(d: Dictionary) -> void:
 	var saved_hotbar: Array = d.get("hotbar", [])
 	for i: int in mini(saved_hotbar.size(), hotbar.size()):
 		hotbar[i] = int(saved_hotbar[i])
+	skill_points = int(d.get("skill_points", 0))
+	skill_growth = float(d.get("skill_growth", 0.0))
 	constructs.clear()
 	for c: Variant in d.get("constructs", []):
 		constructs.append(c)
@@ -2546,6 +2692,7 @@ func grow_star(pct: float) -> void:
 	star_pct[i] = minf(cap, star_pct[i] + pct)
 	if star_pct[i] != before:
 		_recompute_essence_max()
+		_earn_skill_points(star_pct[i] - before)
 		if before < cap and star_pct[i] >= cap:
 			note("Your newest star is full. It will grow no further without ascending.")
 
@@ -2848,6 +2995,7 @@ func try_ascend() -> void:
 	essence = essence_max
 	body.scale_max(float(asc["body_scale"]))
 	clear_reflux()
+	skill_points += int((GameData.skill_tree.get("points", {}) as Dictionary).get("on_ascend", 0))
 	for e: TalentEffect in effects:
 		e.on_ascend(stars)
 	_rig_action("power_up")
