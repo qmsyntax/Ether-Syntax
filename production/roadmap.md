@@ -1,3 +1,5 @@
+> **Superseded 2026-10-18 by `production/build-plan.md`** (the full build plan after the review of v0.41.0). Kept for history.
+
 # Roadmap — from concept prototype to vertical slice
 
 > Written 2026-09-23 after Brent's first reaction to `v0.4.0` ("not half bad") and his list: satellites as
