@@ -40,7 +40,7 @@ sure we are as robust."* This builds on design/10 (the item catalogue, merged as
    fruit becomes spirit; resin and herbs become tanning liquor; tallow becomes quench oil; salt and spirit become ether quench.
    A band-2 sword is now five intermediates from four skills, plus a pattern book, plus a made thing's part from a kill.
 4. **Every recipe has a skill, a trivial, an attempt threshold and a tool tier**; every raw has a gathering skill, a trivial and a
-   tool; fishing needs bait; an affinity's settled stone can only be dowsed by someone who holds the affinity.
+   tool; fishing needs bait; anyone may dowse for an affinity's settled stone (an affinity shard), but it is very, very hard [B].
 5. **Rules are kinder than EverQuest's where EverQuest was tedious** (section 12): no 5% failure on a mastered recipe; a failed
    combine returns about half the inputs; the first success of each recipe always teaches; recipes are learned from pattern books
    instead of guessed; skill caps come from stars, not from an arbitrary "only one skill above X".
@@ -165,7 +165,7 @@ The 5% floor keeps a stretch recipe possible; the no-fail band past trivial remo
 | Felling | gather | living trees | Felling Saw | Logs, resin. Felling harms a living thing, so it pays the talent [C: anything alive counts - bible LAW 3] | smithing (the saw) |
 | Foraging | gather | flora | Gatherer's Sickle | Knit, bitter and cold herbs, cache fruit, flax | smithing (the sickle) |
 | Fishing | gather | fen, lake and realm water | Fishing Rod + bait | One fish per band: venom, oil and supper | bowyery (the rod), vendor (bait) |
-| Dowsing | gather | ether-rich sites | Dowsing Rod | Ether salt, settled ether; **an affinity's stone only for someone who holds that affinity** (as with attuned wisps - CLAUDE.md affinities) | artifice (the rod) |
+| Dowsing | gather | ether-rich sites | Dowsing Rod | Ether salt, settled ether; **affinity shards for anyone, very, very rarely** [B 2026-10-18]: trivial 100 over the band's (to 300), found on 0.2% of dowses below trivial and 1% at or past it | artifice (the rod) |
 
 Not a skill, on purpose: **binding a construct into an ability** - it is the soul's own act, irreversible and dangerous [B], not a
 workshop recipe; Etherwork only makes the Binding Salts that help it. **Satellites** are never made [B].
@@ -229,7 +229,9 @@ Vein Drake Hide $110,000 (+2 Veined Tallow $5,100); Lantern-Silk Bolt $12,000; R
   bait items, vendor-sold).
 - **Felling and foraging harm living things**, so a lifesteal character heals a little doing them [C: anything alive pays]; mining
   and fishing do not (fish are caught, then they are dead - [?] whether catching counts as harm).
-- **Dowsing is attunement-gated**: ether salt for anyone; an affinity's settled stone only for a character who holds that affinity.
+- **Dowsing is open to all** [B 2026-10-18]: ether salt and settled ether for anyone; an affinity shard for anyone too, but very,
+  very hard - its trivial sits 100 over the band's (capped at 300) and even past it a dowse turns one up only 1% of the time
+  (0.2% below). Numbers are first guesses for the balance pass.
   The Netherecho still gives nothing you can carry [B].
 - **Rendering in the field is a hauling decision**: a Flensing Kit turns a 10 kg Reedback Hide into a 7.5 kg scraped hide and
   two tallow on the spot, with no salvage on failure. Worth it when the pack is the limit, not when the money is.
@@ -354,8 +356,11 @@ skills, regional patterns, trophies that matter, recipes that make a final item 
 > **Brent's rulings, 2026-10-18** [B]: "go with your recommendations, keep the balance questions for later. Allow full sale
 > price. No cap based on stars for skill level on crafting."
 > - Approved as recommended: 2 (kinder failure), 3 (no class or race locks), 4 (regional pattern books), 6 (guild marks, with the
->   badge system), 7 (no research skill for now), 8 (field rendering), 9 (dowsing gated by affinity), 10 (component trunk later),
->   11 (build order - minus the sell-rule step, see below).
+>   badge system), 7 (no research skill for now), 8 (field rendering), 10 (component trunk later), 11 (build order - minus the
+>   sell-rule step, see below).
+> - 9, changed (Brent, same day): "dowsing should not be limited to your affinities ... it should be open. And you should be able
+>   to dowse for affinity shards (but this should be VERY VERY hard to do)." Dowsing is open to all; affinity shards are dowsable
+>   by anyone at a trivial 100 over the band's and a 0.2% / 1% find chance (section 9).
 > - 1, changed: twenty skills at 0-300, **no cap by stars** - any crafting skill can reach 300 at any star.
 > - Sell price: **full** - made goods are not marked down; the live rule stays (worn gear at items.json `gear_sell_factor`,
 >   everything else in full). design/10 §12.3's half-price proposal is withdrawn.
