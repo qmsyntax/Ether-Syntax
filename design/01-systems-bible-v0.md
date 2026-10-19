@@ -71,6 +71,7 @@ conflicting — needs Brent (audiobooks) or a targeted Kindle read.
 - [S] From the reading notes (research/book5-mechanics-notes.md, book5-ch226-230-notes.md): "ethertech" covers drones, phones and
   broadcast sets; the level is a post-collapse rebuild - brick phones and tablets are new luxuries, broadcast sets are
   state-subsidised, cars are armoured and unlicensed; videos of incidents circulate within hours.
+- [B] **Towns look like rebuilt modern cities, not villages** (Brent 2026-10-18).
 - [MODEL] Consequences for the game: towns are rebuilt modern cities and outposts (brick, concrete, signage, screens,
   power lines, vehicles), not half-timbered villages; townsfolk carry phones and watch broadcasts; items and shops can include
   ethertech goods (phones, radios, lamps, scanners, drones) alongside realm loot; the realms beyond the passages keep their own,
