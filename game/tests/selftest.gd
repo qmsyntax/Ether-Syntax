@@ -48,6 +48,7 @@ func _ready() -> void:
 	_test_models()
 	await _test_netherecho()
 	_test_real_bodies()
+	_test_real_enemies()
 	_test_skill_tree()
 	await _test_town()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
@@ -4189,3 +4190,22 @@ func _has_button(node: Node) -> bool:
 		if b.name != "DoneButton":
 			return true
 	return node is TalkScreen and str(node.get("role")) == "corpse_clerk"     # nothing to fetch yet
+
+
+func _test_real_enemies() -> void:
+	print("real enemies (Brent 2026-10-18):")
+	for kind: String in GameData.enemy_looks:
+		if kind.begins_with("_"):
+			continue
+		var rc: RealCharacter = RealCharacter.create("body_" + str(GameData.enemy_looks[kind].get("body", "male")))
+		add_child(rc)
+		rc.make_enemy(GameData.enemy_looks[kind], GameData.enemies.get(kind, {}))
+		var want: float = float(GameData.enemies[kind].get("height", 1.7))
+		_check("%s: a real body at its height in enemies.json" % kind, absf(rc.height - want) < 0.01 and rc.scale.x > 0.5 and rc.scale.x < 2.0, "scale %.2f" % rc.scale.x)
+		_check("%s: wears its costume and no everyday clothes" % kind, not rc.worn_pieces().has("tunic") and rc.worn_pieces().size() >= 3, str(rc.worn_pieces()))
+		var ap: AnimationPlayer = rc.get("_player")
+		rc.set_windup(true)
+		var clips: Array = GameData.enemy_looks[kind].get("attack", [])
+		_check("%s: a wind-up plays its attack" % kind, ap != null and clips.has(String(ap.current_animation)), String(ap.current_animation) if ap else "")
+		rc.set_windup(false)
+		rc.queue_free()

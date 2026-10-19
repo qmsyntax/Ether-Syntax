@@ -694,3 +694,19 @@ Not verified: by hand.
 Not done / rough: hair is static (no sway), bob and long have a smooth crown patch from their textures; the run plays ~1.6x at full speed.
 Verified: self-test 772/772; bots (full, gate, death); zone; Netherecho death; click; creation; contact sheets; in-game shots.
 Not verified: by hand - the wheel zoom feel especially.
+
+
+## Part AH — real enemies (Brent 2026-10-18: "do more faces then real enemies")
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-172 | Every enemy kind is a real body when real bodies are on: `data/enemy_looks.json` gives each its body, look, costume (wardrobe pieces), colours (its enemies.json colour), weapon, props, attack clips; scaled to its height in enemies.json | `shots/char-enemies3.png`, `shots/en-enemies4.png` | Done |
+| S06-173 | Invader gear made from the body: bone mask with eye holes, long robe (draped), cape, cuirass with tassets, helmet with crest, pauldrons, greaves; metal materials (ambientCG CC0) | same | Done |
+| S06-174 | Props built in code on bones (data/wardrobe.json "props"): pavise, round shield, censer on a chain that hangs straight down, war drum, bow, quiver | same | Done |
+| S06-175 | Each wind-up plays the kind's attack clip timed so the blow lands as the wind-up ends (slashes, the brute's overhead, the archer's shot, the harrier's leaping strike); a slain enemy's body falls and lies 8 s, then sinks away | self-test "real enemies" | Done |
+
+Not done / rough: props are simple shapes; the commander's shield does not block visibly; the drummer has no drumming motion;
+every grunt has the same face behind the mask; frame rate with a full wall of real enemies is not measured in play.
+Verified: self-test 861/861 (new: each kind's body, height, costume, attack on wind-up); bots (scrubland, city, gate, death);
+zone; Netherecho death; click; creation; contact sheets; arena screenshot.
+Not verified: by hand.

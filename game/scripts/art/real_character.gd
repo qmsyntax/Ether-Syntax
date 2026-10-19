@@ -490,6 +490,21 @@ func _scale_under_model(n: Node3D) -> float:
 	return maxf(s, 0.0001)
 
 
+## Triangles drawn now: the visible pieces of the body (index counts / 3), plus props and weapon.
+func triangle_count() -> int:
+	var total: int = 0
+	for mi: MeshInstance3D in _mesh.values():
+		if mi.visible and mi.mesh != null:
+			for s: int in mi.mesh.get_surface_count():
+				var idx: PackedInt32Array = mi.mesh.surface_get_arrays(s)[Mesh.ARRAY_INDEX]
+				total += (idx.size() if idx.size() > 0 else (mi.mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()) / 3
+	for p: Node3D in _props:
+		total += p.get_child_count() * 12
+	if _weapon is ModelRig:
+		total += (_weapon as ModelRig).triangle_count()
+	return total
+
+
 # --- enemies ----------------------------------------------------------------------------------
 
 ## Dress this body as an enemy kind from data/enemy_looks.json (Models.enemy calls it): look,
