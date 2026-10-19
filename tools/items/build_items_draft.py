@@ -22,6 +22,10 @@ import math
 from collections import OrderedDict
 from pathlib import Path
 
+from crafting_tables import (ATTEMPT_WINDOW, BAIT, BYPRODUCTS, CHAIN, CRAFT_RULES, CRAFT_SHAPES, FISH, LINE_SKILL,
+                             PATTERN_SKILLS, POINTS_PER_BAND, RAWS, REGION_WORD, SKILL_MAX, SKILLS, STATION_SKILL,
+                             TOOL_TIER_BAND, TOOL_TIER_PREFIX, TOOLS, TRIVIAL_OFFSET, tool_tier)
+
 ROOT = Path(__file__).resolve().parents[2]
 V2_PATH = ROOT / "design/data-drafts/items-v2.json"
 LIVE_PATH = ROOT / "game/data/items.json"
@@ -288,14 +292,40 @@ def slug(s):
     return out.strip("_")
 
 
+def chain_words(b):
+    """Words the chain's names are built from (crafting_tables.CHAIN)."""
+    info = BAND_INFO[b]
+    hide_name = "Brute Hide" if b == 1 else BESTIARY[b]["A"][1]
+    return dict(metal="Steel" if b == 1 else info["metal"], metal_lc="steel" if b == 1 else info["metal"].lower(),
+                leather=info["leather"], wood=info["wood"], cloth=info["cloth"], word="Barrow" if b == 1 else info["word"],
+                fruit="Barrow Sloe" if b == 1 else FLORA[b][3], hide=hide_name, fish=FISH[b],
+                mclause="" if b == 1 else MAT_CLAUSE["metal"][b], lclause="" if b == 1 else MAT_CLAUSE["leather"][b],
+                wclause="" if b == 1 else MAT_CLAUSE["wood"][b], cclause="" if b == 1 else MAT_CLAUSE["cloth"][b])
+
+
+def chain_name(b, pattern):
+    return pattern.format(**chain_words(b)).strip()
+
+
 def mat_ids(b):
-    """Ids of the refined and raw materials of band b."""
+    """Ids of the refined and raw materials of band b, and of every link of the crafting chain."""
+    out = base_mat_ids(b)
+    for row in CHAIN:
+        out.setdefault(row[0], slug(chain_name(b, row[6])))
+    for key, row in RAWS.items():
+        out.setdefault(key, slug(chain_name(b, row[0])))
+    for key, row in BYPRODUCTS.items():
+        out.setdefault(key, slug(chain_name(b, row[0])))
+    return out
+
+
+def base_mat_ids(b):
     if b == 1:
         return dict(bar="steel_billet", wire="binding_wire", leather="cured_hide", stave="heartwood_stave",
                     cloth="linen_bolt", salt="flux_salt", ink="rune_ink", ore="scrap_iron", log="rampart_bowstave",
-                    hide="husk_plate", fibre="flax_bundle", bone="brute_tusk", made="pavise_boss",
+                    hide="brute_hide", fibre="flax_bundle", bone="brute_tusk", made="pavise_boss",
                     elite="commander_sigil", knit="lockweed", bitter="slate_fern_root", cold="grey_lichen",
-                    fruit="barrow_sloe")
+                    fruit="barrow_sloe", flux="flux_salt")
     info = BAND_INFO[b]
     m, l, w, c = slug(info["metal"]), slug(info["leather"]), slug(info["wood"]), slug(info["cloth"])
     best = BESTIARY[b]
@@ -409,6 +439,7 @@ LINES = [
     ("belt_p", "tool_belt", "belt", "leather", "Belt", "leatherworks", {"*leather": 1, "wire": 1},
      ["A belt with loops for what you want without looking.", "A wide belt: braces, rings and a buckle you can work one-handed."]),
 ]
+LINES = [(l[0], l[1], l[2], l[3], l[4], CRAFT_SHAPES[l[0]][0], CRAFT_SHAPES[l[0]][1], l[7]) for l in LINES]
 LINE_LOOK = {"light_head_p": "hood", "light_body_p": "padded", "light_hands_p": "gloves", "light_feet_p": "boots",
              "light_body_f": "coat", "med_head_p": "cap", "med_body_p": "hide", "med_hands_p": "bracers",
              "med_feet_p": "tallboots", "med_body_f": "hide", "frame_p": "frame", "belt_p": "belt"}
@@ -727,18 +758,8 @@ def build_materials(b):
         add(slug(name), base_item(name, "", "reagent", "reagent", b, kg(fk * w), nice(fv * v), f"{name}. {FLORA_DESC[role]}",
                                   20 if role != "fruit" else 10, role=role, source=["gather"] if role != "fruit" else ["cache"],
                                   line=f"reagent_{role}"))
-    # refined (derived values)
-    def refined(iid, name, inputs, makes, fee_frac, desc, wt, line, station):
-        val, fee = derived_item_value(inputs, fee_frac, makes, 0.95)
-        add(iid, base_item(name, "", "material", "material", b, kg(wt), val, desc, stack_for_weight(wt), line=line,
-                           source=["craft"], recipe=recipe(station, b, inputs, fee, makes)))
-    refined(m["bar"], f"{info['metal']} Bar", {m["ore"]: 2}, 1, 0.15, f"A bar of {info['metal'].lower()}. {mc['metal']}", 2.0 * w, "mat_bar", "forge")
-    refined(m["wire"], f"{info['metal']} Wire", {m["bar"]: 1}, 4, 0.1, f"Drawn {info['metal'].lower()} wire. It holds grips, rims and rings together.", 0.3, "mat_wire", "forge")
-    refined(m["leather"], f"{info['leather']} Leather", {m["hide"]: 1}, 4, 0.05, f"Tanned and cut into working sides. {mc['leather']}", 2.0 * w, "mat_leather", "leatherworks")
-    refined(m["stave"], f"{info['wood']} Stave", {m["log"]: 1}, 2, 0.15, f"Split, seasoned and straight. {mc['wood']}", 1.5 * w, "mat_stave", "bowyer")
-    refined(m["cloth"], f"{info['cloth']} Bolt", {m["fibre"]: 1}, 4, 0.05, f"A bolt of woven cloth. {mc['cloth']}", 1.0 * w, "mat_cloth", "loom")
-    refined(m["ink"], f"{info['word']} Rune Ink", {m["salt"]: 2, m["bitter"]: 1}, 1, 0.3,
-            "Enough ink to write one rune onto one thing of this band. The runesetter does not give refunds.", 0.2, "mat_ink", "alchemist")
+    build_raws(b)
+    build_chain(b)
     # settled ether at a new grade
     if b in SETTLED_GRADES:
         for aff in AFFS:
@@ -750,16 +771,6 @@ def build_materials(b):
 
 def band1_recipes():
     """Recipes for band-1 materials whose values design/06 already fixed."""
-    m = mat_ids(1)
-    for iid, inputs, station in [("steel_billet", {"scrap_iron": 2, "flux_salt": 1}, "forge"),
-                                 ("binding_wire", {"steel_billet": 1}, "forge"),
-                                 ("cured_hide", {"husk_plate": 1}, "leatherworks"),
-                                 ("heartwood_stave", {"rampart_bowstave": 1}, "bowyer"),
-                                 ("linen_bolt", {"flax_bundle": 2}, "loom"),
-                                 ("rune_ink", {"censer_ash": 1, "flux_salt": 1}, "alchemist")]:
-        it = ITEMS[iid]
-        it["recipe"] = fixed_value_recipe(station, 1, inputs, it["value"], 1.0, stars=1)
-        it.setdefault("source", ["craft", "drop"])
     ITEMS["scrap_iron"]["category"] = "raw"
     ITEMS["flux_salt"]["category"] = "settled_ether"
     for iid, role in (("slate_fern_root", "bitter"), ("grey_lichen", "cold")):
@@ -772,6 +783,61 @@ def band1_recipes():
     ITEMS["brute_hide"]["role"] = "hide_heavy"
     ITEMS["harrier_pelt"]["role"] = "fur"
     ITEMS["rampart_bowstave"]["role"] = "wood"
+
+
+# ---------- the crafting chain (design/11) ----------
+def nice_floor(x):
+    """nice() that never rounds up (so a derived value never sells above its inputs)."""
+    if x < 100:
+        return max(1, int(x))
+    p = 10 ** (int(math.floor(math.log10(x))) - 1)
+    return int(math.floor(x / p) * p)
+
+
+def build_raws(b):
+    m = mat_ids(b)
+    for key, (pat, wt, v1, skill, desc) in RAWS.items():
+        iid = m[key]
+        if iid in ITEMS:
+            continue
+        src = ["gather", "shop"] if (b == 1 and key in ("clay", "flux")) else ["gather"]
+        add(iid, base_item(chain_name(b, pat), "", "material", "raw", b, kg(wt * W(b)), nice(v1 * V(b)), desc,
+                           stack_for_weight(wt * W(b)), line=f"raw_{key}", source=src))
+    for key, (pat, wt, v1, desc) in BYPRODUCTS.items():
+        iid = m[key]
+        if iid not in ITEMS:
+            add(iid, base_item(chain_name(b, pat), "", "material", "material", b, kg(wt), nice(v1 * V(b)), desc,
+                               stack_for_weight(wt), line=f"mat_{key}", source=["byproduct"]))
+
+
+def build_chain(b):
+    m = mat_ids(b)
+    for key, station, shape, makes, fee_frac, wt, pat, desc, byp in CHAIN:
+        iid = m[key]
+        inputs = OrderedDict((m[k], n) for k, n in shape.items())
+        if b == 1 and key == "ink":
+            inputs = OrderedDict([("censer_ash", 1), ("flux_salt", 1)])
+        if b == 1 and key == "cloth":
+            inputs = OrderedDict([("flax_bundle", 2)])
+        if iid in ITEMS:  # band-1 materials whose values design/06 fixed
+            it = ITEMS[iid]
+            it["recipe"] = fixed_value_recipe(station, b, inputs, it["value"], 1.0, stars=1)
+            it["line"] = f"mat_{key}"
+            it.setdefault("source", ["craft", "drop"])
+            continue
+        iv = inputs_value(inputs)
+        fee = fee_frac * iv
+        byv = sum(ITEMS[m[k]]["value"] * n for k, n in (byp or {}).items())
+        val = nice_floor((0.95 * (iv + fee) - byv) / makes)
+        r = recipe(station, b, inputs, fee, makes)
+        if byp:
+            r["byproducts"] = OrderedDict((m[k], n) for k, n in byp.items())
+        add(iid, base_item(chain_name(b, pat), "", "material", "material", b, kg(wt * (W(b) if wt >= 1 else 1)), val,
+                           chain_name(b, desc), stack_for_weight(wt), line=f"mat_{key}", source=["craft"], recipe=r))
+
+
+def pattern_id(skill, b):
+    return f"pattern_{skill}_b{b}"
 
 
 # ---------- gear lines ----------
@@ -793,12 +859,18 @@ def gear_recipe(spec, b, value):
     total = value * makes
     others = inputs_value({k: n for k, n in inputs.items() if k != m[prim_key]})
     unit = ITEMS[m[prim_key]]["value"]
-    n = max(shape["*" + prim_key], min(8, round((0.45 * total - others) / unit)))
+    n_target = max(1, min(8, round((0.45 * total - others) / unit)))
+    n = max(shape["*" + prim_key], n_target)
+    if others + n * unit > 0.65 * total:
+        n = n_target
     inputs[m[prim_key]] = n
     iv = inputs_value(inputs)
     fee = max(0.1 * total, 0.75 * total - iv)
-    return recipe(station, b, inputs, fee, makes, stars=b if fine else max(1, b - 1),
+    r = recipe(station, b, inputs, fee, makes, stars=b if fine else max(1, b - 1),
                   hours=(2 if fine else 1) * (1 + grade(b)))
+    if fine:
+        r["pattern"] = pattern_id(LINE_SKILL.get(line, STATION_SKILL[station]), b)
+    return r
 
 
 def make_line_item(spec, b):
@@ -853,7 +925,7 @@ def make_worn_lines(b):
                                        f"A charm set with {st.lower()} in {metal.lower()}. {AFF_LABEL[aff]} abilities cost less essence.",
                                        1, rarity="plain", affinity=aff, stats=stats, line=f"charm_{aff}", material=metal,
                                        source=["shop", "drop", "craft"]))
-        inputs = {sid: 1, m["bar"]: 1}
+        inputs = {sid: 1, m["fittings"]: 1}
         it["recipe"] = recipe("runesetter", b, inputs, max(0.1 * val, 0.75 * val - inputs_value(inputs)))
         # damage talisman
         val = nice(1800 * V(b))
@@ -865,13 +937,14 @@ def make_worn_lines(b):
                                        source=["drop", "craft", "shop_rotation"]))
         inputs = {sid: 2, m["wire"]: 1}
         it["recipe"] = recipe("runesetter", b, inputs, max(0.1 * val, 0.75 * val - inputs_value(inputs)), stars=b)
+        it["recipe"]["pattern"] = pattern_id("setting", b)
     val = nice(850 * V(b))
     name = f"{metal} Cooling Coil"
     it = add(slug(name), base_item(name, "trinket", "gear", "trinket", b, kg(0.5 * W(b)), val,
                                    f"A coil of {metal.lower()} that runs cold when you run hot. Reflux bleeds off a little faster.",
                                    1, rarity="plain", stats={"reflux_shed_mult": r3(1 + 0.15 * G(b))}, line="coil", material=metal,
                                    source=["shop", "drop", "craft"]))
-    inputs = {m["bar"]: 1, m["salt"]: 1}
+    inputs = {m["wire"]: 2, m["salt"]: 1}
     it["recipe"] = recipe("runesetter", b, inputs, max(0.1 * val, 0.75 * val - inputs_value(inputs)))
     val = nice(1600 * V(b))
     name = f"{info['cloth']} Mender's Thread"
@@ -881,6 +954,7 @@ def make_worn_lines(b):
                                    source=["drop", "craft"]))
     inputs = {m["cloth"]: 1, m["knit"]: 2}
     it["recipe"] = recipe("alchemist", b, inputs, max(0.1 * val, 0.75 * val - inputs_value(inputs)), stars=b)
+    it["recipe"]["pattern"] = pattern_id("alchemy", b)
     # satellite (found or bought, never made [B])
     if b >= 4:
         name = SATELLITE_NAMES[b]
@@ -903,7 +977,7 @@ def make_beyond_lines(b):
                                        f"A charm set with {AFF_STONE[aff].lower()} in {info['metal'].lower()}. {AFF_LABEL[aff]} abilities cost less essence.",
                                        1, rarity="plain", affinity=aff, stats={f"cost_mult_{aff}": r3(1 - 0.10 * G(b))},
                                        line=f"charm_{aff}", material=info["metal"], source=["drop", "craft"]))
-        inputs = {settled_id(aff, b): 1, m["bar"]: 1}
+        inputs = {settled_id(aff, b): 1, m["fittings"]: 1}
         it["recipe"] = recipe("runesetter", b, inputs, max(0.1 * val, 0.75 * val - inputs_value(inputs)))
     name = SATELLITE_NAMES[b]
     add(slug(name), base_item(name, "satellite", "gear", "satellite", b, kg(0.2 + 0.02 * b), nice(2400 * V(b)),
@@ -1153,30 +1227,31 @@ def make_ammo(b):
     metal = BAND_INFO[b]["metal"]
     mult = round(1 + 0.02 * (b - 1), 2)
 
-    def am(iid, name, kind, count, rec, inputs, makes, w, desc, line, **extra):
+    def am(iid, name, kind, count, rec, inputs, makes, w, desc, line, station="bowyer", **extra):
         val, fee = derived_item_value(inputs, 0.2, makes, 1.25)
         add(iid, base_item(name, "", "ammo", "ammo", b, kg(w * W(b)), val, desc, 10, ammo_kind=kind, count=count,
                            recover=rec, ammo_damage_mult=mult, line=line, source=["shop", "craft", "drop"],
-                           recipe=recipe("bowyer", b, inputs, fee, makes), **extra))
+                           recipe=recipe(station, b, inputs, fee, makes), **extra))
+    fl = {m["shaft"]: 1, m["arrowheads"]: 1, m["vanes"]: 1}
     if b > 1:  # band 1 has design/06's arrows, bolts and lead shot
-        am(slug(f"{metal} Tipped Arrows"), f"{metal}-Tipped Arrows", "arrow", 20, 0.5, {m["stave"]: 1, m["wire"]: 1}, 3, 0.8,
+        am(slug(f"{metal} Tipped Arrows"), f"{metal}-Tipped Arrows", "arrow", 20, 0.5, fl, 1, 0.8,
            f"Twenty arrows with {metal.lower()} heads. About half come back.", "arrows")
-        am(slug(f"{metal} Bolts"), f"{metal} Bolts", "bolt", 12, 0.6, {m["stave"]: 1, m["bar"]: 1}, 3, 1.0,
+        am(slug(f"{metal} Bolts"), f"{metal} Bolts", "bolt", 12, 0.6, fl, 2, 1.0,
            f"Twelve short bolts, {metal.lower()} to the shoulder. Most can be dug out.", "bolts")
         am(slug(f"{metal} Shot"), f"{metal} Shot", "shot", 30, 0.0, {m["bar"]: 1}, 2, 1.5,
-           f"Thirty cast {metal.lower()} bullets for a sling. Gone once thrown.", "shot")
+           f"Thirty cast {metal.lower()} bullets for a sling. Gone once thrown.", "shot", station="forge")
     if b in (4, 7, 10):
-        am(slug(f"{metal} Barbed Arrows"), f"{metal} Barbed Arrows", "arrow_barbed", 12, 0.0, {m["stave"]: 1, m["wire"]: 2}, 3, 0.6,
+        am(slug(f"{metal} Barbed Arrows"), f"{metal} Barbed Arrows", "arrow_barbed", 12, 0.0, {m["shaft"]: 1, m["arrowheads"]: 2, m["vanes"]: 1}, 1, 0.6,
            "Twelve barbed arrows. They do not come out the way they went in, so they do not come back.", "barbed_arrows",
            on_hit={"status": "bleeding", "stacks": 1})
     if b in (1, 4, 7, 10):
         mm = mat_ids(b)
         am("bodkin_arrows" if b == 1 else slug(f"{metal} Bodkins"), "Bodkin Arrows" if b == 1 else f"{metal} Bodkins",
-           "arrow_bodkin", 12, 0.4, {mm["stave"]: 1, mm["bar"]: 1}, 3, 0.7,
+           "arrow_bodkin", 12, 0.4, {mm["shaft"]: 1, mm["arrowheads"]: 1, mm["vanes"]: 1, mm["whetstone"]: 1}, 1, 0.7,
            "Twelve square-headed arrows for armour. Front armour and shields count half against them.", "bodkins",
            on_hit={"front_armour_ignore": 0.5})
         am("blunt_bolts" if b == 1 else slug(f"{metal} Blunt Bolts"), "Blunt Bolts" if b == 1 else f"{metal} Blunt Bolts",
-           "bolt_blunt", 12, 0.8, {mm["stave"]: 1, mm["leather"]: 1}, 3, 1.0,
+           "bolt_blunt", 12, 0.8, {mm["shaft"]: 1, mm["strap"]: 1, mm["vanes"]: 1}, 2, 1.0,
            "Twelve bolts with heavy blunt heads. They break poise, not skin, and nearly all come back.", "blunt_bolts",
            on_hit={"poise_add": 30})
 
@@ -1205,59 +1280,59 @@ def make_alchemy(b):
                    "poultice", station="camp")
     sink = round(12 * B(b))
     consumable(b, "knitting_salve" if b == 1 else slug(f"{fl[0]} Salve"), "Knitting Salve" if b == 1 else f"{fl[0]} Salve",
-               {m["knit"]: 2, m["salt"]: 1}, 1,
+               {m["knit"]: 2, m["tallow"]: 1, m["vial"]: 1}, 1,
                {"effect": "mend_wound", "sink_points": float(sink), "target": "oldest", "aura_penalty": 0.0},
                f"Rubbed into your oldest lasting wound, it does {sink} points of the healing that wound is waiting for. Slower than the bonesetter, and you can carry it.",
                "wound_salve")
     if b in (1, 4, 7, 10):
         consumable(b, "regrowth_draught" if b == 1 else slug(f"{word} Regrowth Draught"), bp("Regrowth Draught"),
-                   {m["knit"]: 3, m["fruit"]: 1, m["bone"]: 1}, 1,
+                   {m["knit"]: 3, m["fruit"]: 1, m["marrow"]: 2, m["vial"]: 1}, 1,
                    {"effect": "regrow_arm", "heal_points": round(25 * B(b), 1), "out_of_combat": True, "aura_penalty": 0.0},
                    "Drunk in a safe place, it grows back a lost arm over the night. It itches for a week.", "regrowth", w=0.5)
     if b in (2, 4, 6, 8, 10):
-        consumable(b, slug(f"{word} Clotting Powder"), f"{word} Clotting Powder", {m["knit"]: 1, m["bone"]: 1}, 3,
+        consumable(b, slug(f"{word} Clotting Powder"), f"{word} Clotting Powder", {m["knit"]: 1, m["meal"]: 1}, 3,
                    {"effect": "clot", "clears": ["bleeding"], "next_wound_sink_mult": 0.75, "aura_penalty": 0.0},
                    "Thrown into a wound mid-fight: bleeding stops, and the next wound you take is a quarter shallower.", "clotting", w=0.1)
     if b > 1:
-        consumable(b, slug(f"{fl[1]} Draught"), f"{fl[1]} Draught", {m["bitter"]: 2, m["salt"]: 1}, 1,
+        consumable(b, slug(f"{fl[1]} Draught"), f"{fl[1]} Draught", {m["bitter"]: 2, m["salt"]: 1, m["spirit"]: 1, m["vial"]: 1}, 1,
                    {"effect": "essence", "amount": float(30 * b), "reflux_all": 15.0, "aura_penalty": 0.1},
                    f"{30 * b} essence, now. It leaves 15 reflux on every affinity, and the delve teaches you a little less.",
                    "essence_draught", w=0.4)
         amt = float(min(60, 30 + 3 * (b - 1)))
         allaff = b >= 6
-        consumable(b, slug(f"{fl[2]} Paste"), f"{fl[2]} Paste", {m["cold"]: 2, m["salt"]: 1}, 1,
+        consumable(b, slug(f"{fl[2]} Paste"), f"{fl[2]} Paste", {m["cold"]: 2, m["salt"]: 1, m["tallow"]: 1}, 1,
                    {"effect": "shed_reflux", "amount": amt, "all_affinities": allaff, "aura_penalty": 0.1},
                    f"Cold, grey and smelling of pennies. Takes {int(amt)} reflux off {'every affinity' if allaff else 'your hottest affinity'}. The delve teaches you a little less for it.",
                    "cooling_paste")
     if b in (3, 5, 7, 9, 11):
         sec = 60 + 10 * k
-        consumable(b, slug(f"{word} Numbing Salt"), f"{word} Numbing Salt", {m["cold"]: 1, m["bitter"]: 1}, 2,
+        consumable(b, slug(f"{word} Numbing Salt"), f"{word} Numbing Salt", {m["cold"]: 1, m["bitter"]: 1, m["spirit"]: 1, m["vial"]: 1}, 2,
                    {"effect": "ignore_wounds", "for_s": float(sec), "wound_pool_add_frac": 0.1, "aura_penalty": 0.1},
                    f"For {sec} seconds your wounds cost you nothing. Then each one is a tenth deeper, and the delve teaches you a little less.",
                    "numbing_salt", w=0.1)
     if b in (1, 3, 5, 7, 9):
         pct = 10 + 2 * k
-        consumable(b, "iron_tonic" if b == 1 else slug(f"{word} Iron Tonic"), bp("Iron Tonic"), {m["bitter"]: 1, m["bone"]: 1, m["fruit"]: 1}, 2,
+        consumable(b, "iron_tonic" if b == 1 else slug(f"{word} Iron Tonic"), bp("Iron Tonic"), {m["bitter"]: 1, m["marrow"]: 1, m["spirit"]: 1, m["vial"]: 1}, 2,
                    {"effect": "tonic", "stat": "melee_damage_mult", "value": round(1 + pct / 100, 2), "for_s": 120.0,
                     "crash_value": 0.9, "crash_s": 120.0, "aura_penalty": 0.1},
                    f"An alchemist's strength tonic. Two minutes of strikes {pct}% harder, then two minutes of strikes a tenth weaker. The delve teaches you a little less.",
                    "iron_tonic")
     if b in (2, 4, 6, 8, 10):
-        consumable(b, slug(f"{word} Steadying Tonic"), f"{word} Steadying Tonic", {m["bone"]: 1, m["knit"]: 1}, 2,
+        consumable(b, slug(f"{word} Steadying Tonic"), f"{word} Steadying Tonic", {m["meal"]: 1, m["knit"]: 1, m["spirit"]: 1, m["vial"]: 1}, 2,
                    {"effect": "tonic", "stat": "poise", "value": 25.0 + 5 * k, "for_s": 120.0, "crash_value": -25.0,
                     "crash_s": 60.0, "aura_penalty": 0.1},
                    "Two minutes of steadier feet (more poise), then a minute of wobbling. The delve teaches you a little less.",
                    "steadying_tonic")
     if b in (1, 2, 4, 6, 8, 10):
         consumable(b, "yard_liniment" if b == 1 else slug(f"{word} Yard Liniment"), bp("Yard Liniment"),
-                   {m["knit"]: 1, m["cold"]: 1, m["cloth"]: 1}, 2,
+                   {m["knit"]: 1, m["cold"]: 1, m["tallow"]: 1}, 2,
                    {"effect": "temper_aid", "sessions": 1, "strain_mult": 0.7, "progress_mult": 0.9},
                    "Rubbed in before a tempering session: the strain it leaves is smaller, and so is what you learn.",
                    "yard_liniment")
     if b <= 10:
         frac = 0.08
         consumable(b, "pale_tincture" if b == 1 else slug(f"{word} Pale Tincture"), bp("Pale Tincture"),
-                   {m["fruit"]: 3, m["salt"]: 2, m["elite"]: 1}, 1,
+                   {m["fruit"]: 3, m["salt"]: 2, m["elite"]: 1, m["spirit"]: 1, m["vial"]: 1}, 1,
                    {"effect": "blank_aura", "aura_frac": frac, "talent_wear": 1, "ascension_quality": -0.05, "max_per_star": 5},
                    "An ascension aid. It pours blank growth into your newest star. The star fills; what it fills with is nobody in particular. Too many and the talent itself starts to wear.",
                    "pale_tincture", w=0.2, stars=max(1, b - 1), source=["craft", "shop_rotation"])
@@ -1279,50 +1354,55 @@ def make_alchemy(b):
                                           1, use={"effect": "sever_path", "placeholder": True}, line="severing", placeholder=True,
                                           source=["clinic", "auction"]))
     if b in (1, 3, 5, 7, 9, 11):
-        consumable(b, "bleeding_oil" if b == 1 else slug(f"{word} Bleeding Oil"), bp("Bleeding Oil"), {m["bone"]: 1, m["bitter"]: 1}, 2,
+        consumable(b, "bleeding_oil" if b == 1 else slug(f"{word} Bleeding Oil"), bp("Bleeding Oil"), {m["fish"]: 1, m["bitter"]: 1, m["tallow"]: 1}, 2,
                    {"effect": "coat", "strikes": 20 + 2 * k, "on_hit": {"status": "bleeding", "stacks": 1}},
                    f"Wiped on an edge: for {20 + 2 * k} base strikes each hit opens one more bleeding stack.", "bleeding_oil", w=0.2)
     if b in (2, 4, 6, 8, 10, 12):
         dps = round(6 * B(b) * G(b), 1)
-        consumable(b, slug(f"{word} Sap Venom"), f"{word} Sap Venom", {m["bitter"]: 2, m["cold"]: 1}, 2,
+        consumable(b, slug(f"{word} Sap Venom"), f"{word} Sap Venom", {m["fish"]: 2, m["bitter"]: 1, m["spirit"]: 1, m["vial"]: 1}, 2,
                    {"effect": "coat", "strikes": 15, "on_hit": {"status": "venom", "dps": dps, "for_s": 5.0}},
                    f"For 15 base strikes each hit poisons for {dps} a second over five seconds. Poison you laid pays your talent like any other harm.",
                    "sap_venom", w=0.2)
     if b in (1, 4, 7, 10):
-        consumable(b, "lead_lacquer" if b == 1 else slug(f"{word} Lead Lacquer"), bp("Lead Lacquer"), {m["bar"]: 1, m["salt"]: 1}, 3,
+        consumable(b, "lead_lacquer" if b == 1 else slug(f"{word} Lead Lacquer"), bp("Lead Lacquer"), {m["bar"]: 1, m["resin"]: 1}, 3,
                    {"effect": "coat", "strikes": 20, "strike_poise_mult": 1.5},
                    "A heavy lacquer for a weapon's head. For 20 base strikes they break poise half again as fast.", "lead_lacquer", w=0.3)
     if b in (1, 4, 7, 10):
-        consumable(b, "smoke_pot" if b == 1 else slug(f"{word} Smoke Pot"), bp("Smoke Pot"), {m["cold"]: 1, m["cloth"]: 1}, 2,
+        consumable(b, "smoke_pot" if b == 1 else slug(f"{word} Smoke Pot"), bp("Smoke Pot"), {m["cold"]: 1, m["vial"]: 1, m["resin"]: 1}, 2,
                    {"effect": "throw", "what": "smoke", "radius": 3.0, "for_s": 4.0 + k},
-                   "Thrown: a bank of smoke three metres across. Nothing shoots through it.", "smoke_pot", w=0.5)
+                   "Thrown: a bank of smoke three metres across. Nothing shoots through it.", "smoke_pot", w=0.5, station="workbench")
     if b in (2, 5, 8):
         consumable(b, slug(f"{word} Caltrops"), f"{word} Caltrops", {m["bar"]: 1}, 3,
                    {"effect": "throw", "what": "caltrops", "radius": 3.0, "for_s": 8.0, "slow": 0.4},
-                   "Thrown: a spray of spikes. Anything walking through them goes four-tenths slower.", "caltrops", w=0.5)
+                   "Thrown: a spray of spikes. Anything walking through them goes four-tenths slower.", "caltrops", w=0.5, station="workbench")
     if b in (3, 6, 9):
-        consumable(b, slug(f"{word} Flash Powder"), f"{word} Flash Powder", {m["salt"]: 1, m["bitter"]: 1}, 2,
+        consumable(b, slug(f"{word} Flash Powder"), f"{word} Flash Powder", {m["salt"]: 1, m["bitter"]: 1, m["vial"]: 1}, 2,
                    {"effect": "throw", "what": "flash", "radius": 4.0, "interrupts": True},
-                   "Thrown: a white flash. Every wind-up within four metres is broken.", "flash_powder", w=0.2)
+                   "Thrown: a white flash. Every wind-up within four metres is broken.", "flash_powder", w=0.2, station="workbench")
     if b in (1, 3, 5, 7, 9):
-        consumable(b, "tether_incense" if b == 1 else slug(f"{word} Tether Incense"), bp("Tether Incense"), {m["salt"]: 1, m["cold"]: 1}, 2,
+        consumable(b, "tether_incense" if b == 1 else slug(f"{word} Tether Incense"), bp("Tether Incense"), {m["salt"]: 1, m["resin"]: 1}, 2,
                    {"effect": "nether", "leash_bonus": 3.0 + k, "projections": 1},
-                   f"Burned before you sit: your next projection strays {3 + k} metres further from the body.", "tether_incense", w=0.1)
+                   f"Burned before you sit: your next projection strays {3 + k} metres further from the body.", "tether_incense", w=0.1, station="settling_vat")
     if b in (2, 4, 6, 8, 10):
-        consumable(b, slug(f"{word} Second-Skin Wax"), f"{word} Second-Skin Wax", {m["salt"]: 1, m["knit"]: 1}, 2,
+        consumable(b, slug(f"{word} Second-Skin Wax"), f"{word} Second-Skin Wax", {m["salt"]: 1, m["tallow"]: 1}, 2,
                    {"effect": "nether", "projection_hp_bonus": 3.0 + k, "projections": 1},
-                   f"Rubbed on the temples: your next projection has {3 + k} more life.", "second_skin_wax", w=0.1)
+                   f"Rubbed on the temples: your next projection has {3 + k} more life.", "second_skin_wax", w=0.1, station="settling_vat")
     if b in (1, 3, 5, 7, 9, 11):
-        consumable(b, "binding_salts" if b == 1 else slug(f"{word} Binding Salts"), bp("Binding Salts"), {m["salt"]: 2}, 1,
+        consumable(b, "binding_salts" if b == 1 else slug(f"{word} Binding Salts"), bp("Binding Salts"), {m["salt"]: 2, m["meal"]: 1}, 1,
                    {"effect": "bind_aid", "success_add": 0.05, "binds": 1},
-                   "Scattered in a circle before a binding: the next binding of a construct is a little likelier to hold.", "binding_salts", w=0.2)
+                   "Scattered in a circle before a binding: the next binding of a construct is a little likelier to hold.", "binding_salts", w=0.2, station="settling_vat")
     if b in (1, 4, 7, 10):
-        consumable(b, "trail_ration" if b == 1 else slug(f"{word} Trail Ration"), bp("Trail Ration"), {m["fruit"]: 1, m["knit"]: 1}, 4,
+        consumable(b, "trail_ration" if b == 1 else slug(f"{word} Trail Ration"), bp("Trail Ration"), {m["fruit"]: 1, m["fish"]: 1}, 4,
                    {"effect": "food", "regen_mult": 1.25, "for_hours": 1.0, "aura_penalty": 0.0},
                    "Hard bread, dried fruit and something salted. For an hour of the clock natural healing runs a quarter faster.",
                    "trail_ration", station="camp", w=0.4)
+    consumable(b, slug(f"{chain_words(b)['word']} Delver's Supper"), f"{chain_words(b)['word']} Delver's Supper",
+               {m["fish"]: 1, m["fruit"]: 1, m["marrow"]: 1}, 2,
+               {"effect": "food", "regen_mult": 1.5, "for_hours": 2.0, "poise_add": 10.0, "aura_penalty": 0.0},
+               "A hot supper of fish, fruit and marrow broth. For two hours of the clock natural healing runs half again as fast and you stand a little steadier.",
+               "supper", station="hearth", w=0.6)
     if b in (3, 6, 9):
-        consumable(b, slug(f"{word} Short-Night Pill"), f"{word} Short-Night Pill", {m["bitter"]: 1, m["cold"]: 1, m["fruit"]: 1}, 3,
+        consumable(b, slug(f"{word} Short-Night Pill"), f"{word} Short-Night Pill", {m["bitter"]: 1, m["cold"]: 1, m["spirit"]: 1, m["vial"]: 1}, 3,
                    {"effect": "short_night", "rest_hours": 1.0, "placeholder": True},
                    "A night's sleep in an hour. The body is rested; the mind will mention it later.", "short_night", w=0.05)
 
@@ -1351,14 +1431,14 @@ def make_skill_consumables(b):
         add(slug(name), base_item(name, "", "consumable", "skill_consumable", b, 0.1, val,
                                   f"{text.format(a=amt_fn(k))} Only for someone with the {aff} affinity. The delve teaches you a little less.",
                                   10, affinity=aff, use=use, line=f"empower_{aff}", source=["craft", "shop"],
-                                  recipe=recipe("alchemist", b, {settled_id(aff, b): 1, m["salt"]: 1}, fee, 2)))
+                                  recipe=recipe("settling_vat", b, {settled_id(aff, b): 1, m["salt"]: 1}, fee, 2)))
     name = f"{BAND_INFO[b]['grade_word']} Ether Sliver"
     cover = 12 * b
     val, fee = derived_item_value({m["salt"]: 2}, 0.2, 1, 1.25)
     add(slug(name), base_item(name, "", "consumable", "skill_consumable", b, 0.05, val,
                               f"A sliver of settled ether that burns in place of your stars: your next skill's essence cost, up to {cover}, is paid from it. Its reflux is still yours. The delve teaches you a little less.",
                               10, use={"effect": "pay_cost", "up_to": float(cover), "aura_penalty": 0.05}, line="ether_sliver",
-                              source=["craft", "shop"], recipe=recipe("alchemist", b, {m["salt"]: 2}, fee, 1)))
+                              source=["craft", "shop"], recipe=recipe("settling_vat", b, {m["salt"]: 2}, fee, 1)))
 
 
 # ---------- spoils, catalysts, keys, spirit imprints, concord stones ----------
@@ -1395,23 +1475,155 @@ def make_misc(b):
 
 
 # --------------------------------------------------------------------------------------------
+# ---------- tools, bait, field kits, pattern books, skills and gathering (design/11) ----------
+SKILL_OF_TOOL = {row[3]: sid for sid, row in SKILLS.items()}
+KITS = [("alchemist", "Field Alchemy Kit", "A folding case of burners, mortar and racks. Simple alchemy, anywhere you can sit."),
+        ("flensing_yard", "Flensing Kit", "Hooks, knives and a scraping beam that packs flat. Render a carcass where it fell and carry home only what is worth the weight."),
+        ("bowyer", "Fletcher's Roll", "A roll of jigs, glue and twine. Arrows and bolts, anywhere you can sit.")]
+KIT_GRADE = {1: 1, 4: 2, 7: 4}
+
+
+def build_tools():
+    for kind, (name, station, shape, v1, wt) in TOOLS.items():
+        skill = SKILL_OF_TOOL[kind]
+        sname = SKILLS[skill][0]
+        for tier, b in TOOL_TIER_BAND.items():
+            m = mat_ids(b)
+            nm = f"{TOOL_TIER_PREFIX[tier]}{name}"
+            inputs = OrderedDict((m[k], n) for k, n in shape.items())
+            iv = inputs_value(inputs)
+            val = nice(max(v1 * V(b), iv / 0.55))
+            fee = max(0.1 * val, 0.75 * val - iv)
+            add(slug(nm), base_item(nm, "", "tool", "tool", b, kg(wt * W(b)), val,
+                                    f"A {sname.lower()} tool, good for work up to the {BAND_INFO[min(12, b + 2)]['label']} band. It comes back to your hand after every combine and wears a little each time; a better tool makes hard work likelier to take.",
+                                    1, tool=OrderedDict([("skill", skill), ("kind", kind), ("tier", tier), ("uses", 150 * tier),
+                                                         ("success_add_per_tier", 0.03)]),
+                                    line=f"tool_{kind}", source=["shop", "craft"] if tier == 1 else ["craft", "drop"],
+                                    recipe=recipe(station, b, inputs, fee, 1)))
+
+
+def build_bait():
+    for b, (name, v1) in BAIT.items():
+        add(slug(name), base_item(name, "", "material", "bait", b, 0.1, nice(v1 * V(b)),
+                                  "Bait for a fishing line. Each catch uses one, whether or not it was worth catching.",
+                                  20, line="bait", source=["shop"]))
+
+
+def build_kits():
+    for station, name, desc in KITS:
+        for tier, b in ((1, 1), (2, 4), (3, 7)):
+            m = mat_ids(b)
+            nm = f"{TOOL_TIER_PREFIX[tier]}{name}"
+            inputs = OrderedDict([(m["strap"], 2), (m["fittings"], 2), (m["vial"], 2)])
+            iv = inputs_value(inputs)
+            val = nice(max(400 * V(b), iv / 0.55))
+            add(slug(nm), base_item(nm, "", "kit", "kit", b, kg(3.0 * W(b)), val,
+                                    f"{desc} It stands in for a grade-{KIT_GRADE[b]} station; nothing is returned from a failed combine made on it.",
+                                    1, kit=OrderedDict([("station", station), ("grade", KIT_GRADE[b]), ("salvage", 0.0)]),
+                                    line=f"kit_{station}", source=["shop", "craft"],
+                                    recipe=recipe("workbench", b, inputs, max(0.1 * val, 0.75 * val - iv), 1)))
+
+
+def build_patterns():
+    for b in range(1, 11):
+        for skill in PATTERN_SKILLS:
+            region = REGION_WORD.get(b, BAND_INFO[b]["word"])
+            sname = SKILLS[skill][0]
+            add(pattern_id(skill, b), base_item(f"{region} {sname} Patterns", "", "pattern", "pattern", b, 0.5, nice(1500 * V(b)),
+                                                f"A guild pattern book: every Fine {sname.lower()} recipe made of {BAND_INFO[b]['label']} materials. Read once and the patterns stay with you. The guild hall sells it to members in good standing.",
+                                                1, teaches_patterns=OrderedDict([("skill", skill), ("band", b)]),
+                                                line=f"pattern_{skill}", source=["shop"]))
+
+
+def recipe_level(it, r):
+    if it.get("rarity") == "runed":
+        return "runed"
+    if it.get("rarity") == "fine" or r.get("pattern"):
+        return "fine"
+    if it["kind"] in ("gear", "consumable", "ammo", "tool", "kit"):
+        return "plain"
+    if any(ITEMS[k].get("category") == "raw" or ITEMS[k]["kind"] == "remains" for k in r["inputs"]):
+        return "refine"
+    return "sub"
+
+
+def assign_craft_fields():
+    for iid, it in ITEMS.items():
+        r = it.get("recipe")
+        if not r:
+            continue
+        line = it.get("line", "")
+        skill = LINE_SKILL.get(line) or STATION_SKILL[r["station"]]
+        if it.get("rarity") == "runed":
+            skill = "auragraphy"
+        if iid == "field_dressing":
+            skill = "alchemy"
+        b = it["band"]
+        trivial = min(SKILL_MAX, POINTS_PER_BAND * (b - 1) + TRIVIAL_OFFSET[recipe_level(it, r)])
+        head = OrderedDict([("skill", skill), ("trivial", trivial), ("min_skill", max(0, trivial - ATTEMPT_WINDOW)),
+                            ("tool", OrderedDict([("kind", SKILLS[skill][3]), ("tier", tool_tier(b))]))])
+        it["recipe"] = OrderedDict(list(head.items()) + list(r.items()))
+
+
+def gather_skill(iid, it):
+    line = it.get("line", "")
+    if line in ("raw_ore", "raw_flux", "raw_clay", "raw_stone") or iid.endswith("_ore") or iid == "scrap_iron":
+        return "mining"
+    if line == "raw_resin" or iid.endswith("_log"):
+        return "felling"
+    if line == "raw_fish":
+        return "fishing"
+    if it["category"] == "settled_ether":
+        return "dowsing"
+    if it["category"] == "reagent" or iid == "flax_bundle":
+        return "foraging"
+    return None
+
+
+def assign_gather():
+    for iid in ("slate_fern_root", "grey_lichen"):
+        ITEMS[iid]["source"] = ["gather", "drop"]
+    ITEMS["scrap_iron"]["source"] = ["gather", "drop", "shop"]
+    ITEMS["flux_salt"]["source"] = ["gather", "drop", "shop"]
+    bait = {t: slug(BAIT[TOOL_TIER_BAND[t]][0]) for t in TOOL_TIER_BAND}
+    for iid, it in ITEMS.items():
+        src = it.get("source", [])
+        if "gather" not in src and "cache" not in src:
+            continue
+        skill = gather_skill(iid, it)
+        if not skill:
+            continue
+        b = it["band"]
+        g = OrderedDict([("skill", skill), ("trivial", POINTS_PER_BAND * (b - 1) + TRIVIAL_OFFSET["gather"]),
+                         ("tool", OrderedDict([("kind", SKILLS[skill][3]), ("tier", tool_tier(b))]))])
+        if skill == "fishing":
+            g["bait"] = bait[tool_tier(b)]
+        if skill == "dowsing" and it.get("affinity"):
+            g["attuned_only"] = True
+        it["gather"] = g
+
+
+
 def main():
     v2, live = build_band1()
     pieces = wardrobe_looks()
     build_band1_additions()
+    m1 = mat_ids(1)
+    build_raws(1)
+    build_chain(1)
     band1_recipes()
     band1_gear_recipes()
     make_alchemy(1)
     make_skill_consumables(1)
     make_ammo(1)
     # band-1 recipes for design/06 consumables and ammo whose values are fixed
-    m1 = mat_ids(1)
-    for iid, inputs in (("field_dressing", {"linen_bolt": 1}), ("bitter_draught", {"slate_fern_root": 2, "flux_salt": 1}),
-                        ("cooling_paste", {"grey_lichen": 2, "flux_salt": 1}), ("numbing_salt", {"grey_lichen": 1, "slate_fern_root": 1}),
-                        ("arrow_bundle", {"heartwood_stave": 1, "binding_wire": 1}), ("barbed_arrows", {"heartwood_stave": 1, "binding_wire": 2}),
-                        ("bolt_case", {"heartwood_stave": 1, "steel_billet": 1}), ("lead_shot", {"steel_billet": 1})):
+    sh, hd, vn, sp, vl, tl = m1["shaft"], m1["arrowheads"], m1["vanes"], m1["spirit"], m1["vial"], m1["tallow"]
+    for iid, inputs in (("field_dressing", {"linen_bolt": 1}), ("bitter_draught", {"slate_fern_root": 2, "flux_salt": 1, sp: 1, vl: 1}),
+                        ("cooling_paste", {"grey_lichen": 2, "flux_salt": 1, tl: 1}), ("numbing_salt", {"grey_lichen": 1, "slate_fern_root": 1, sp: 1, vl: 1}),
+                        ("arrow_bundle", {sh: 1, hd: 1, vn: 1}), ("barbed_arrows", {sh: 1, hd: 2, vn: 1}),
+                        ("bolt_case", {sh: 1, hd: 1, vn: 1}), ("lead_shot", {"steel_billet": 1})):
         it = ITEMS[iid]
-        station = "camp" if iid == "field_dressing" else ("bowyer" if it["kind"] == "ammo" else "alchemist")
+        station = "camp" if iid == "field_dressing" else ("forge" if iid == "lead_shot" else "bowyer" if it["kind"] == "ammo" else "alchemist")
         it["recipe"] = fixed_value_recipe(station, 1, inputs, it["value"], 1.25, stars=1)
         it.setdefault("source", ["shop", "craft"])
     for b in range(2, BAND_MAX + 1):
@@ -1435,6 +1647,12 @@ def main():
             it["recipe"] = recipe("runesetter", 1, {it["base"]: 1, "rune_ink": 1}, 0.6 * (it["value"] - base["value"]), 1, stars=1,
                                   note="fails 10% of the time: ink and fee lost, item kept (design/06 8.5)")
     make_specials()
+    build_tools()
+    build_bait()
+    build_kits()
+    build_patterns()
+    assign_craft_fields()
+    assign_gather()
     # defaults
     for iid, it in ITEMS.items():
         if "source" not in it:
@@ -1453,7 +1671,8 @@ def main():
             r = OrderedDict([("id", f"r_{iid}"), ("output", iid), ("band", it["band"])])
             r.update(it["recipe"])
             recipes.append(r)
-    station_order = ["camp", "forge", "leatherworks", "bowyer", "loom", "alchemist", "runesetter"]
+    station_order = ["camp", "flensing_yard", "kiln", "still", "forge", "leatherworks", "bowyer", "loom", "workbench",
+                     "settling_vat", "alchemist", "hearth", "runesetter"]
     recipes.sort(key=lambda r: (station_order.index(r["station"]), r["band"], r["output"]))
 
     bands = OrderedDict()
@@ -1484,6 +1703,7 @@ def main():
         ("sell_factor_by_kind", OrderedDict([("gear", 0.5), ("consumable", 0.5), ("ammo", 0.5), ("scroll", 0.5), ("manual", 0.5),
                                              ("spirit_imprint", 0.5), ("binding", 0.5), ("material", 1.0), ("reagent", 1.0),
                                              ("remains", 1.0), ("trade", 1.0), ("proof", 1.0), ("spoils", 1.0), ("catalyst", 1.0),
+                                             ("tool", 0.5), ("kit", 0.5), ("pattern", 0.5),
                                              ("key", 0.0), ("quest", 0.0)])),
         ("loud", OrderedDict([("free_bands_above_stars", 2),
                               ("_note", "An item more than two bands above your stars is Loud: its effect line, rune and toll are dormant and enemies of its band notice you from 50% further. Base numbers (and satellites, by Brent's ruling) always work.")])),
@@ -1503,12 +1723,18 @@ def main():
 
     stations = OrderedDict([
         ("camp", {"name": "Camp", "where": "anywhere you can sit; no fee is paid to anyone, the fee is the time", "grades": {"0": "anywhere"}}),
-        ("forge", {"name": "Forge", "what": "bars, wire, metal weapons, heavy armour, metal shields, flues, thrown weapons"}),
-        ("leatherworks", {"name": "Leatherworks", "what": "leather, medium armour, slings, belts, frames"}),
-        ("bowyer", {"name": "Bowyer-Fletcher", "what": "staves, bows, crossbows, wooden shields, ammunition"}),
-        ("loom", {"name": "Loom", "what": "cloth, light armour"}),
-        ("alchemist", {"name": "Alchemist's Bench", "what": "rune ink, potions, salves, tonics, poisons, skill consumables, sumps"}),
-        ("runesetter", {"name": "Runesetter", "what": "runes on Fine gear, charms, talismans, coils, focus tablets (design/06 8.5)"}),
+        ("flensing_yard", {"name": "Flensing Yard", "what": "rendering: scraped hides, tallow, bone meal, marrow, quench oil"}),
+        ("kiln", {"name": "Kiln and Wheel", "what": "pottery and stonework: crucibles, vials, moulds, whetstones, sumps, mortars, settling dishes"}),
+        ("still", {"name": "Still", "what": "brewing and distilling: spirits, tanning liquor"}),
+        ("forge", {"name": "Forge", "what": "smithing: bars, wire, sheet, rivets, fittings, folded alloy, metal weapons, heavy armour, metal shields, flues, most tools"}),
+        ("leatherworks", {"name": "Leatherworks", "what": "leatherwork: leather, grips, straps, medium armour, staff slings, belts, frames"}),
+        ("bowyer", {"name": "Bowyer-Fletcher", "what": "bowyery and fletching: staves, hafts, shafts, bows, crossbows, wooden shields, rods, ammunition"}),
+        ("loom", {"name": "Loom", "what": "tailoring: cloth, padding, bowstrings, vanes, light armour, slings"}),
+        ("workbench", {"name": "Artificer's Workbench", "what": "artifice: trigger locks, windlasses, flue throats, throwables, field kits, loupes, styluses"}),
+        ("settling_vat", {"name": "Settling Vat", "what": "etherwork: ether quench, affinity charges, ether slivers, Netherecho aids"}),
+        ("alchemist", {"name": "Alchemist's Bench", "what": "alchemy and poisoncraft: draughts, salves, tonics, tinctures, coatings"}),
+        ("hearth", {"name": "Hearth", "what": "cookery: suppers"}),
+        ("runesetter", {"name": "Runesetter", "what": "setting (charms, talismans, coils) and auragraphy (rune ink, runes, tablets)"}),
     ])
     grades = OrderedDict([("1", "Tithebarrow: the Ninth and Passage Row (design/07)"), ("2", "Winchgate (design/07 region 3)"),
                           ("3", "a city of the deep Understeps (not designed)"), ("4", "not designed"), ("5", "not designed"),
@@ -1517,7 +1743,13 @@ def main():
         if k != "camp":
             s["grades"] = grades
     rout = OrderedDict([
-        ("_note", "DRAFT - not loaded. Every recipe in items-full-v0.json, grouped by station (generated from the items' own 'recipe' fields; the item is the source of truth). grade: the station grade needed (bands 1-2 grade 1, 3-4 grade 2, ...). stars: the stars you need to work the materials yourself. fee: dollars paid for the station (and, for Fine work, the master's time). makes: how many come out. hours: world-clock hours. A recipe's output never sells for more than its inputs plus fee (design/10 section 12)."),
+        ("_note", "DRAFT - not loaded. design/11-crafting-depth-v0.md. skill: the crafting skill; trivial: the skill at which it stops teaching and can no longer fail; min_skill: the least skill that may try it; tool: the tool kind and tier needed (returned, wears). Every recipe in items-full-v0.json, grouped by station (generated from the items' own 'recipe' fields; the item is the source of truth). grade: the station grade needed (bands 1-2 grade 1, 3-4 grade 2, ...). stars: the stars you need to work the materials yourself. fee: dollars paid for the station (and, for Fine work, the master's time). makes: how many come out. hours: world-clock hours. A recipe's output never sells for more than its inputs plus fee (design/10 section 12)."),
+        ("rules", CRAFT_RULES),
+        ("skills", OrderedDict((sid, OrderedDict([("name", row[0]), ("kind", row[1]), ("stations", row[2]), ("tool", row[3]),
+                                                  ("makes", row[4]), ("max", SKILL_MAX)])) for sid, row in SKILLS.items())),
+        ("tools", OrderedDict((k, OrderedDict([("name", row[0]), ("skill", SKILL_OF_TOOL[k]), ("made_at", row[1]),
+                                               ("tiers", {str(t): f"band {b}" for t, b in TOOL_TIER_BAND.items()})]))
+                              for k, row in TOOLS.items())),
         ("stations", stations),
         ("recipes", recipes),
     ])

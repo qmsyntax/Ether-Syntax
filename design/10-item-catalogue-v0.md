@@ -280,6 +280,8 @@ piece of their band. Whether such made things exist in the books is unknown [?] 
 ---
 ## 7. Crafting [MODEL]
 
+> **Superseded in detail by `design/11-crafting-depth-v0.md`** (2026-10-18): crafting skills 0-300, trivials, tools, the per-band subcombine chain, gathering and pattern books. The invariants below (75% cost, half back when sold, no money from nothing) still hold; the recipe shapes and counts here are the design/10 originals.
+
 ### 7.1 Who crafts, where
 
 **You do, at a rented station.** The fee pays for the station, and for Fine work the master who stands over you. The setting

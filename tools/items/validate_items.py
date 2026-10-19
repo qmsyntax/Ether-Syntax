@@ -26,10 +26,12 @@ ITEMS_PATH = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "design/data-dra
 RECIPES_PATH = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "design/data-drafts/recipes-v0.json"
 
 KNOWN_SLOTS = {"weapon", "offhand", "ranged", "head", "body", "hands", "feet", "back", "belt", "satellite", "trinket"}
-KINDS = {"gear", "scroll", "manual", "spirit_imprint", "consumable", "ammo", "material", "reagent", "remains", "trade",
+KINDS = {"tool", "kit", "pattern", "gear", "scroll", "manual", "spirit_imprint", "consumable", "ammo", "material", "reagent", "remains", "trade",
          "proof", "spoils", "catalyst", "key", "quest", "binding"}
 RARITIES = {"salvage", "plain", "fine", "runed", "cursed", "unique"}
-NO_PRICE = {"key", "quest"}                  # not sold; left out of the value-curve check
+NO_PRICE = {"key", "quest"}
+SOURCES = {"shop", "shop_rotation", "drop", "gather", "cache", "exit", "deviant", "feat", "auction", "clinic", "quest",
+           "byproduct", "craft"}                  # not sold; left out of the value-curve check
 NEG_OK = {"max_health", "projection_hp_bonus", "crash_value", "ascension_quality", "step"}
 LIVE_SELL = 0.5                               # game/data/items.json gear_sell_factor
 # Names from the books and their world (research/ notes). None may appear in a name or description.
@@ -189,8 +191,12 @@ for iid, it in items.items():
         err(f"{where}: stars {r['stars']}")
     if any(inp not in items for inp in r.get("inputs", {})):
         continue
+    for bp in r.get("byproducts", {}):
+        if bp not in items:
+            err(f"{where}: byproduct '{bp}' does not exist")
+    byp_sale = sum(sale_proposed(k) * n for k, n in r.get("byproducts", {}).items() if k in items)
     cost_sale = sum(sale_proposed(k) * n for k, n in r["inputs"].items()) + r["fee"]
-    out_sale = sale_proposed(iid) * r["makes"]
+    out_sale = sale_proposed(iid) * r["makes"] + byp_sale
     if out_sale > cost_sale * 1.01 + 1:
         err(f"{where}: sells for {out_sale:.0f}, inputs + fee only {cost_sale:.0f} (money from nothing)")
     live_cost = sum(sale_live(k) * n for k, n in r["inputs"].items()) + r["fee"]
@@ -199,6 +205,87 @@ for iid, it in items.items():
     buy_cost = sum(items[k]["value"] * n for k, n in r["inputs"].items()) + r["fee"]
     if it["kind"] == "gear" and buy_cost > it["value"] * r["makes"] * 1.01:
         warn(f"{where}: making it ({buy_cost:.0f}) costs more than buying it ({it['value'] * r['makes']})")
+# ---------- crafting skills, tools, stations, patterns, sources (design/11) ----------
+skills = (recipes_file or {}).get("skills", {})
+stations = (recipes_file or {}).get("stations", {})
+tool_tiers = defaultdict(int)  # tool kind -> best tier that exists as an item
+for iid, it in items.items():
+    t = it.get("tool")
+    if t:
+        tool_tiers[t["kind"]] = max(tool_tiers[t["kind"]], t["tier"])
+        if t.get("skill") not in skills:
+            err(f"tool '{iid}': skill '{t.get('skill')}' is not a skill")
+        elif skills[t["skill"]]["tool"] != t["kind"]:
+            err(f"tool '{iid}': kind '{t['kind']}' is not the tool of {t['skill']}")
+    k = it.get("kit")
+    if k and k.get("station") not in stations:
+        err(f"kit '{iid}': station '{k.get('station')}' does not exist")
+byproduct_of = defaultdict(list)
+used_as_input = defaultdict(list)
+for iid, it in items.items():
+    r = it.get("recipe")
+    if not r:
+        continue
+    for bp in r.get("byproducts", {}):
+        byproduct_of[bp].append(iid)
+    for inp in r.get("inputs", {}):
+        used_as_input[inp].append(iid)
+for iid, it in items.items():
+    r = it.get("recipe")
+    if not r or not skills:
+        continue
+    where = f"recipe of '{iid}'"
+    sk = r.get("skill")
+    if sk not in skills:
+        err(f"{where}: skill '{sk}' does not exist")
+        continue
+    if skills[sk]["kind"] != "craft":
+        err(f"{where}: '{sk}' is a gathering skill")
+    if r.get("station") not in skills[sk]["stations"]:
+        err(f"{where}: {sk} is not done at a {r.get('station')}")
+    st = stations.get(r.get("station"), {})
+    if str(r.get("grade")) not in st.get("grades", {}):
+        err(f"{where}: station grade {r.get('grade')} does not exist at '{r.get('station')}'")
+    tv, ms = r.get("trivial"), r.get("min_skill")
+    if not isinstance(tv, int) or not isinstance(ms, int):
+        err(f"{where}: trivial and min_skill must be integers")
+    else:
+        if tv < ms:
+            err(f"{where}: trivial {tv} is below the skill needed to try it ({ms})")
+        if tv > skills[sk]["max"]:
+            err(f"{where}: trivial {tv} is past the skill maximum")
+        b = it["band"]
+        if not 25 * (b - 1) <= tv <= 25 * b:
+            warn(f"{where}: trivial {tv} is outside its band's range ({25 * (b - 1)}-{25 * b})")
+    tool = r.get("tool", {})
+    if tool.get("kind") != skills[sk]["tool"]:
+        err(f"{where}: tool '{tool.get('kind')}' is not the {sk} tool")
+    elif tool_tiers.get(tool["kind"], 0) < tool.get("tier", 99):
+        err(f"{where}: no tier-{tool.get('tier')} {tool['kind']} exists")
+    if "pattern" in r and items.get(r["pattern"], {}).get("kind") != "pattern":
+        err(f"{where}: pattern '{r['pattern']}' does not exist")
+for iid, it in items.items():
+    g = it.get("gather")
+    if g and skills:
+        if skills.get(g.get("skill"), {}).get("kind") != "gather":
+            err(f"item '{iid}': gathered by '{g.get('skill')}', which is not a gathering skill")
+        elif tool_tiers.get(g["tool"]["kind"], 0) < g["tool"]["tier"]:
+            err(f"item '{iid}': no tier-{g['tool']['tier']} {g['tool']['kind']} exists")
+        if g.get("bait") and g["bait"] not in items:
+            err(f"item '{iid}': bait '{g['bait']}' does not exist")
+# every ingredient has a source: a recipe, a byproduct, or somewhere it comes from
+for inp in used_as_input:
+    it = items.get(inp)
+    if not it:
+        continue
+    src = set(it.get("source", []))
+    if "recipe" not in it and not (src & (SOURCES - {"craft", "byproduct"})) and inp not in byproduct_of:
+        err(f"ingredient '{inp}' has no source (no recipe, not dropped, gathered or sold)")
+    if src == {"byproduct"} and inp not in byproduct_of:
+        err(f"ingredient '{inp}' claims to be a byproduct, but no recipe yields it")
+    if "gather" in src and "gather" not in it and it.get("category") in ("raw", "reagent", "settled_ether"):
+        warn(f"ingredient '{inp}' is gathered but has no gathering skill")
+
 # cycles
 graph = {iid: list(it.get("recipe", {}).get("inputs", {}).keys()) for iid, it in items.items()}
 state = {}
@@ -286,6 +373,36 @@ for ref, key in ((ROOT / "game/data/items.json", "items"), (ROOT / "design/data-
         err(f"{len(missing)} ids of {ref.name} are missing, e.g. {missing[:5]}")
 
 # ---------- summary ----------
+def crafting_summary():
+    if not skills:
+        return
+    print("\nCrafting per band")
+    head = ["recipes", "subcombines", "ingredients", "gathered", "tools", "patterns"]
+    print(f"{'band':>4}" + "".join(f"{h:>13}" for h in head))
+    tot = [0] * len(head)
+    for b in sorted({it["band"] for it in items.values()}):
+        rec = [i for i, it in items.items() if it["band"] == b and "recipe" in it]
+        sub = [i for i in rec if i in used_as_input]
+        ing = [i for i in used_as_input if items.get(i, {}).get("band") == b]
+        gat = [i for i, it in items.items() if it["band"] == b and "gather" in it]
+        tls = [i for i, it in items.items() if it["band"] == b and it.get("kind") == "tool"]
+        pat = [i for i, it in items.items() if it["band"] == b and it.get("kind") == "pattern"]
+        row = [len(rec), len(sub), len(ing), len(gat), len(tls), len(pat)]
+        tot = [x + y for x, y in zip(tot, row)]
+        print(f"{b:>4}" + "".join(f"{n:>13}" for n in row))
+    print(f"{'ALL':>4}" + "".join(f"{n:>13}" for n in tot))
+    per_skill = defaultdict(int)
+    for it in items.values():
+        if "recipe" in it:
+            per_skill[it["recipe"].get("skill")] += 1
+        if "gather" in it:
+            per_skill[it["gather"]["skill"]] += 1
+    print(f"\n{len(skills)} skills ({sum(1 for s in skills.values() if s['kind'] == 'craft')} crafting, "
+          f"{sum(1 for s in skills.values() if s['kind'] == 'gather')} gathering); recipes or gathered items per skill:")
+    print("  " + ", ".join(f"{k} {per_skill[k]}" for k in skills))
+
+
+
 cats = sorted(by_cat_band)
 bands = sorted({it["band"] for it in items.values()})
 w = max(len(c) for c in cats + ["category"]) + 1
@@ -304,6 +421,7 @@ print(f"{'band':>4} {'items':>6} {'min':>16} {'median':>16} {'max':>18}")
 for b in bands:
     vals = [it["value"] for it in items.values() if it["band"] == b and it["category"] not in NO_PRICE]
     print(f"{b:>4} {len(vals):>6} {min(vals):>16,} {statistics.median(vals):>16,.0f} {max(vals):>18,}")
+crafting_summary()
 rar = defaultdict(int)
 for it in items.values():
     if it.get("kind") == "gear":
