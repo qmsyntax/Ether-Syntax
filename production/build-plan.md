@@ -1,6 +1,6 @@
 # Passage — full build plan (2026-10-18)
 
-Written after a three-part review of main at `v0.41.0-real-enemies` (+ design commits to `bdd6983`): the designs against the
+Updated 2026-10-19 for Brent's ruling that the early levels are spent hunting non-starred monsters. Written after a three-part review of main at `v0.41.0-real-enemies` (+ design commits to `bdd6983`): the designs against the
 build, the code's health, and the content against the full-game targets. It replaces `production/roadmap.md` (2026-09-23),
 whose milestones 2-4 are done and whose fun gate never happened. Sizes are relative (S one build step, M two to four, L a sprint,
 XL several sprints); there is no velocity data, so there are no dates. Nothing here has been hand-played: every "built" means the
@@ -11,7 +11,7 @@ code and data exist and the automated tests pass.
 | Area | Now | Full game |
 |---|---|---|
 | Zones | 4 of 34 designed (town square, practice arena, the Stubble with no enemies, Tenwall Cut) | 34 in regions 1-5, then regions for 4★ and up (not designed) |
-| Enemies | 8 masked-human kinds, star 1 | + 3 band-1 kinds, 8 named rares, 55 drafted creatures for bands 2-12 (many non-human) |
+| Enemies | 8 masked-human kinds, star 1; no unstarred monsters | the early unstarred bestiary (3 designed + 4-6 to design), 8 named rares, 55 drafted creatures for bands 2-12 (many non-human) |
 | Items | 59 live | 1,984 drafted across 12 bands |
 | Skills | 35 of 40 (5 held skills missing); skill tree and trainer built | 40 |
 | Talents | 40 in data, 6 playable, evolutions only to 2★ | 108+ (design/04), evolutions per star to 10 |
@@ -69,7 +69,12 @@ code and data exist and the automated tests pass.
 - New Earth countryside: the Stubble made modern-rural (roads, wires, ruins) and populated; Longacre Drove, Carrion Flats,
   Sumpside, Hackle Foot.
 - Realms stay fantasy: Old Counting-House, Drowned Lock, the Muster; a second dungeon template beside the assault.
-- Enemies: Gleaner, Sod-Lurker, Thornback (first beasts - needs a creature rig source), the Sapper, the 8 named rares.
+- Enemies, unstarred first ([B] 2026-10-19: the early levels are spent hunting non-starred monsters): the Stubble and the
+  west of Longacre Drove hold only unstarred monsters - the Gleaner, Sod-Lurker and Thornback plus 4-6 more kinds to design,
+  at least two of them quadrupeds - whose remains feed Rendering and Leatherwork. Then the starred invaders (moved east and into
+  the later ring zones and Tenwall Cut), the Sapper and the 8 named rares. An unstarred kill's aura falls off as the star grows.
+- This makes the **creature source the first thing Phase 4 needs**: decide it during Phase 1 and prove one beast (rig, clips,
+  look, remains) on the existing pipeline before the zone work starts.
 - Done when (vertical slice): a new character can go from creation to 2★ in region 1 with the whole loop - town, crafting, field,
   dungeons, death, corpse run - and the playtest says it holds up.
 
@@ -84,7 +89,8 @@ code and data exist and the automated tests pass.
 **Phase 6 — Stars 3 to 10** (XL; needs Brent's canon answers).
 - Design the curve past 2★ (design/10 Q2), then ascension 3-10, the body curve per star, talent evolutions per star for every
   playable talent, construct tiers past remnant, band 2-12 items wired from the draft, band-scaled sinks, the Loud rule and caps.
-- The 55 band 2-12 creatures designed and built (behaviours, looks, remains); non-human rigs and animation sources.
+- The 55 band 2-12 creatures designed and built (behaviours, looks, remains) on the creature pipeline Phase 4 proved; each
+  later region keeps some unstarred wildlife for gathering and ambience, but its fights are starred.
 - Spirit abilities and aura compression once canon Q29/Q30 are answered.
 
 **Phase 7 — The wider world** (XL).
@@ -114,8 +120,9 @@ code and data exist and the automated tests pass.
 3. Phase 3 skills: design/08 Q1-6 (skill point pace, drill, scroll prerequisites, trainers per affinity, respec, town actions).
 4. Phase 4 world: design/07 Q3 (the passage meter), Q4 (does the clock run in dungeons), Q6 (a trunk in your room),
    Q8 (do herds belong), Q10 (bands per region).
-5. Phase 5 sources: audio sources (a CC0 library such as Freesound's CC0 subset, or generated), a creature rig source for
-   beasts, and the UI font from Google Fonts (design/09 Q1). Downloads still need your yes each time.
+5. Sources: a creature source for the unstarred beasts (now needed at the start of Phase 4, so decide it during Phase 1),
+   audio (a CC0 library such as Freesound's CC0 subset, or generated) and the UI font from Google Fonts (design/09 Q1) for
+   Phase 5. Downloads still need your yes each time.
 6. Phase 6 canon: how long later stars take (design/10 Q2), spirit abilities (design/02 Q29/Q30), soul construct (Q17),
    whether ability progress carries across ascension (Q5 follow-up).
 7. Repository: about 350 MB of history so far with every model re-export adding 10-13 MB; Git LFS for the large binaries
@@ -127,4 +134,5 @@ code and data exist and the automated tests pass.
 - Performance: real bodies are heavy (114 meshes and a 65-bone rig each) and a full wall has not been measured.
 - Canon gaps: stars past 6 and much of the later world are invented; the books cover less than the game needs.
 - No hand-play yet: every system is tested by scripts only; feel, pace and fun are unknown until Phase 1.
-- Asset sources: creatures, audio and modern architecture each need a source Brent approves.
+- Asset sources: creatures, audio and modern architecture each need a source Brent approves. Creatures come first now: the
+  opening hours are unstarred monsters, so region 1 cannot be populated without them.

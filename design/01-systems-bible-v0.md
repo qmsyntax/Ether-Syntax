@@ -28,6 +28,11 @@ conflicting — needs Brent (audiobooks) or a targeted Kindle read.
   → *This is a gift for a crawler: the universe itself justifies solo play, anti-grind scaling, and "no free lunch" consumables.*
 - [F] Ascending may grant a new, usually related, affinity. [F] Hybrid and unique affinities exist (e.g. "life flame", "Perished Water").
 - [F][?] Characters have a **"satellite"** with its own star rank — meaning unknown.
+- [B] **Not every monster has a star** (2026-10-19). Below 1★ is the mortal tier (the reading notes' ladder starts at "mortal
+  (no star)", research/book5-mechanics-notes.md). **The early levels are spent hunting unstarred monsters**: beasts and other
+  creatures of New Earth's countryside with no star in them. Starred foes (the invaders, the realms' dwellers) come after.
+  [MODEL] An unstarred kill pays little latent aura to a starred hunter, and less as the star grows, so the early hunt
+  carries you through the low part of 1★ and then points you at starred quarry; numbers are a balance question for later.
 
 ## LAW 3 — Talents and Prime Vestiges
 - [C] One talent per person, **permanent**, delivered by a **prime vestige** (sentient talking orb) that also carries 1+ affinities. Primes answer truthfully what they know, often cryptically.

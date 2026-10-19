@@ -50,6 +50,12 @@ region · 6 The first zone to build · 7 Build order · 8 Risks and open questio
   and one metropolis - the Empire's great city of this map - is the largest place in the game. (Changes row 2's "fringe city"
   scale and section 3's city kit; to be designed in the build plan.)
 
+**Brent's ruling, 2026-10-19** — what the early levels are for:
+- **[B] The early levels are spent hunting non-starred monsters** (design/01, LAW 2). The countryside nearest the starting town
+  is beast country: the Gleaner, the Sod-Lurker, the Thornback and more kinds like them, none with a star. The masked
+  invaders (star 1) and the realms come after, as the step up. This overrides the Stubble's and Longacre Drove's invader
+  camps in section 5.3 (see the note under that table) and makes a creature source an early need, not a late one.
+
 Each line is a decision, then my recommendation. "Go with your recommendations" approves the right-hand column.
 
 | # | Decision | Recommendation |
@@ -491,6 +497,14 @@ All three are original designs. Each exists because the open country asks someth
 | **Gleaner** — 90 hp, fast (7.5), no attack | A scavenger that hangs at the edge of a camp. When the camp is attacked it turns and **runs for the next camp**; if it gets there, that camp comes | *Can you stop it before it gets home?* A sling, a pull, a shove, a blink — or kill it first and take the camp second | A "flee to a point" behaviour (straight line, so no pathfinding). EQ's runner |
 | **Sod-Lurker** — 200 hp, 30 damage, does not move far | Lies under a patch of **visibly turned earth** off the road. Step on the patch and it comes up under you for a heavy hit and a stagger; it will not chase past 8 m | *Were you reading the ground, or running?* It is why the road is the safe way and the short cut is not. And it punishes fleeing blind | A dormant state and a trigger area. [C: burrowing predators exist in one realm, `intro` §7; this one is ours] |
 | **Thornback** — 1,600 hp, slow, **neutral** | A grazing herd beast. Ignores you until one of the herd is hit; then the herd lowers its heads and charges in straight lines (the Commander's charge, smaller) | *Is this worth the weight and the walk?* A carcass is 45 kg of hide and horn — more than the starting pack holds. And it is a great deal of living thing to harm, for talents that care [B: bigger creatures carry more vitality] | A neutral state; herd assist. The charge exists |
+
+**[B] 2026-10-19 — unstarred first.** The early levels are spent hunting monsters with no star, so the mixes above are
+re-read: **the Stubble and the west end of Longacre Drove hold unstarred monsters only** (beast camps and dens in place of
+the Skirmisher / Archer / Pavise / Brute camps, the Gleaners and Sod-Lurkers as they are, the Thornback herd); the
+invader camps begin at Longacre's Counting-House end and fill the later ring zones, and Tenwall Cut (starred invaders) is the
+first starred fight a new character chooses to take. The three kinds in 5.4 are unstarred. The region needs **four to six
+more unstarred kinds** [MODEL], at least two of them quadrupeds, designed with the zone (build plan, Phase 4). Unstarred
+remains are band-1 hides, bone, meat and fat, the raw stock of Rendering and Leatherwork (design/12).
 
 The **Sapper** proposed in design/05 §6.1 (it breaks standing stone) remains the fourth candidate; it belongs to dungeons.
 
