@@ -43,12 +43,12 @@ sure we are as robust."* This builds on design/10 (the item catalogue, merged as
    tool; fishing needs bait; anyone may dowse for an affinity's settled stone (an affinity shard), but it is very, very hard [B].
 5. **Rules are kinder than EverQuest's where EverQuest was tedious** (section 12): no 5% failure on a mastered recipe; a failed
    combine returns about half the inputs; the first success of each recipe always teaches; recipes are learned from pattern books
-   instead of guessed; skill caps come from stars, not from an arbitrary "only one skill above X".
+   instead of guessed; no skill cap at all beyond 300 [B: no cap by stars, 2026-10-18], and no "only one skill above X".
 6. **Kept from EverQuest because it works**: trivials, failure that costs something, tools that come back and stations that do
    not, portable kits that are worse than stations, region-specific patterns (EverQuest's cultural recipes), and a trophy that
    raises effective skill (ours are guild marks, tied to the setting's badges [C]).
-7. **The economy still cannot be broken by crafting**: 0 recipes sell for more than inputs plus fee under the half-price rule for
-   made goods; values still rise with band in every category and along every line; every ingredient has a source.
+7. **The economy**: values rise with band in every category and along every line, and every ingredient has a source. Made goods
+   sell at full price [B 2026-10-18]; 323 recipes then turn a profit - a balance question kept for later (§13).
 
 ---
 ## 2. EverQuest's tradeskills, as a reference [F]
@@ -96,7 +96,7 @@ years; where sources disagree I say so.
 |---|---|---|---|
 | ~12 skills, each with its own container | 7 stations, **no skills** | No skill, no progression, nothing to learn | **20 skills** (15 craft, 5 gather), 13 stations (section 5) |
 | Skill 0-300 (later 350), trivials | Recipes had a `stars` requirement only | No trivials | 0-300, **25 points a band**; every recipe has `trivial` and `min_skill` |
-| Cap: one skill above 200 until an advancement | none | - | Cap from **stars**: 50 + 25 × stars (75 at one star, 300 at ten). No "only one skill" rule - **EQ's is arbitrary; don't copy** |
+| Cap: one skill above 200 until an advancement | none | - | **No cap but 300** [B 2026-10-18: no cap by stars]. No "only one skill" rule - **EQ's is arbitrary; don't copy** |
 | Success formula, 5% floor, 5% fail even when trivial | Always succeeded | No risk | Success from skill vs trivial, 5% floor; **no failure at trivial + 13** (EQ's 5% fail on mastered recipes is pure tedium) |
 | Failure destroys inputs; Salvage advancement returns some | none | - | Failure: fee spent, **each input back on a 50% roll** (+10% per station grade above the recipe's); field kits salvage nothing |
 | Skill-up on success or failure, falling near trivial; stat-driven | none | - | Below trivial only: 0.35 × √((trivial − skill)/25), capped 60%, halved on failure; **first success of each recipe +1 for sure** (rewards breadth, not grind). No stats - we have none [F: no stat sheet - bible LAW 0] |
@@ -123,7 +123,7 @@ All of them are data in `recipes-v0.json` `rules`.
 | Rule | Value |
 |---|---|
 | Skill range | 0-300 for every skill; a band's recipes sit between 25 × (band − 1) and 25 × band |
-| Skill cap | min(300, 50 + 25 × stars). One star 75 (bands 1-3), two 100, ten 300. Tied to stars because materials of a band only yield to an essence close to their own (design/10 §7.1) |
+| Skill cap | 300 at any star [B 2026-10-18: "No cap based on stars for skill level on crafting"]. (The withdrawn proposal was min(300, 50 + 25 × stars).) A skilled one-star crafter can make high-band goods if they can get the materials |
 | Trivial | 25 × (band − 1) + gather 6, refine 8, subcombine 12, plain 16, fine 22, runed 24 |
 | May try from | trivial − 30 |
 | Success | clamp(5%, 95%, 70% + (effective skill − trivial) / 50 + 3% per tool tier above the one needed + station bonus); **at trivial + 13 a combine cannot fail**. So: 20% at 25 under trivial, 70% at trivial, certain 13 past it |
@@ -266,8 +266,8 @@ at the start.
 
 - **Crafting saves, never earns.** Gear inputs are set near 45% of the item's value and the fee brings the total to 75%: a
   quarter cheaper than buying, half back when sold. Intermediates are worth 95% of inputs plus fee (less any byproduct), and
-  never round up. Alchemy is worth 125% at the shop and sells at half. The validator finds **0 recipes that make money** under the
-  half-price rule for made goods (design/10 §12.3); 323 would under today's live sell rule, which is why that rule must change first.
+  never round up. Alchemy is worth 125% at the shop. Made goods sell at **full** price [B 2026-10-18; design/10 §12.3's half-price
+  rule is withdrawn], so 323 recipes turn a profit; the validator lists them as warnings for the balance pass (§13).
 - **Failure is the money sink** EverQuest's crafting was, without the bitterness: half the inputs on average, plus the fee.
 - **Crafted versus dropped**: Plain, Fine and Runed can be made; cursed and unique items only drop - the same split EverQuest
   players complained about, kept on purpose, because "gear is a floor" [B]. What crafting buys is *timing*: the Fine sword when you
