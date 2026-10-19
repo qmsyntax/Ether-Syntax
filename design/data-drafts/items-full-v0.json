@@ -7100,12 +7100,13 @@
    "line": "settled_water",
    "gather": {
     "skill": "dowsing",
-    "trivial": 6,
+    "trivial": 106,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 1
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "A fleck of water ether that pooled and set in thin ground. Charms and charges are made of it."
   },
@@ -7125,12 +7126,13 @@
    "line": "settled_fire",
    "gather": {
     "skill": "dowsing",
-    "trivial": 6,
+    "trivial": 106,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 1
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "A fleck of fire ether that pooled and set in thin ground. Charms and charges are made of it."
   },
@@ -7150,12 +7152,13 @@
    "line": "settled_earth",
    "gather": {
     "skill": "dowsing",
-    "trivial": 6,
+    "trivial": 106,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 1
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "A fleck of earth ether that pooled and set in thin ground. Charms and charges are made of it."
   },
@@ -7175,12 +7178,13 @@
    "line": "settled_wind",
    "gather": {
     "skill": "dowsing",
-    "trivial": 6,
+    "trivial": 106,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 1
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "A fleck of wind ether that pooled and set in thin ground. Charms and charges are made of it."
   },
@@ -7200,12 +7204,13 @@
    "line": "settled_lightning",
    "gather": {
     "skill": "dowsing",
-    "trivial": 6,
+    "trivial": 106,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 1
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "A fleck of lightning ether that pooled and set in thin ground. Charms and charges are made of it."
   },
@@ -15950,12 +15955,13 @@
    "line": "settled_water",
    "gather": {
     "skill": "dowsing",
-    "trivial": 56,
+    "trivial": 156,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 1
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Water ether that pooled and set in rich ground, clouded all the way through. Charms, talismans and charges are made of it."
   },
@@ -15975,12 +15981,13 @@
    "line": "settled_fire",
    "gather": {
     "skill": "dowsing",
-    "trivial": 56,
+    "trivial": 156,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 1
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Fire ether that pooled and set in rich ground, clouded all the way through. Charms, talismans and charges are made of it."
   },
@@ -16000,12 +16007,13 @@
    "line": "settled_earth",
    "gather": {
     "skill": "dowsing",
-    "trivial": 56,
+    "trivial": 156,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 1
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Earth ether that pooled and set in rich ground, clouded all the way through. Charms, talismans and charges are made of it."
   },
@@ -16025,12 +16033,13 @@
    "line": "settled_wind",
    "gather": {
     "skill": "dowsing",
-    "trivial": 56,
+    "trivial": 156,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 1
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Wind ether that pooled and set in rich ground, clouded all the way through. Charms, talismans and charges are made of it."
   },
@@ -16050,12 +16059,13 @@
    "line": "settled_lightning",
    "gather": {
     "skill": "dowsing",
-    "trivial": 56,
+    "trivial": 156,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 1
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Lightning ether that pooled and set in rich ground, clouded all the way through. Charms, talismans and charges are made of it."
   },
@@ -26428,12 +26438,13 @@
    "line": "settled_water",
    "gather": {
     "skill": "dowsing",
-    "trivial": 106,
+    "trivial": 206,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 2
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Water ether that pooled and set in rich ground, clear all the way through. Charms, talismans and charges are made of it."
   },
@@ -26453,12 +26464,13 @@
    "line": "settled_fire",
    "gather": {
     "skill": "dowsing",
-    "trivial": 106,
+    "trivial": 206,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 2
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Fire ether that pooled and set in rich ground, clear all the way through. Charms, talismans and charges are made of it."
   },
@@ -26478,12 +26490,13 @@
    "line": "settled_earth",
    "gather": {
     "skill": "dowsing",
-    "trivial": 106,
+    "trivial": 206,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 2
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Earth ether that pooled and set in rich ground, clear all the way through. Charms, talismans and charges are made of it."
   },
@@ -26503,12 +26516,13 @@
    "line": "settled_wind",
    "gather": {
     "skill": "dowsing",
-    "trivial": 106,
+    "trivial": 206,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 2
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Wind ether that pooled and set in rich ground, clear all the way through. Charms, talismans and charges are made of it."
   },
@@ -26528,12 +26542,13 @@
    "line": "settled_lightning",
    "gather": {
     "skill": "dowsing",
-    "trivial": 106,
+    "trivial": 206,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 2
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Lightning ether that pooled and set in rich ground, clear all the way through. Charms, talismans and charges are made of it."
   },
@@ -36726,12 +36741,13 @@
    "line": "settled_water",
    "gather": {
     "skill": "dowsing",
-    "trivial": 156,
+    "trivial": 256,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 3
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Water ether that pooled and set in rich ground, bright all the way through. Charms, talismans and charges are made of it."
   },
@@ -36751,12 +36767,13 @@
    "line": "settled_fire",
    "gather": {
     "skill": "dowsing",
-    "trivial": 156,
+    "trivial": 256,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 3
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Fire ether that pooled and set in rich ground, bright all the way through. Charms, talismans and charges are made of it."
   },
@@ -36776,12 +36793,13 @@
    "line": "settled_earth",
    "gather": {
     "skill": "dowsing",
-    "trivial": 156,
+    "trivial": 256,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 3
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Earth ether that pooled and set in rich ground, bright all the way through. Charms, talismans and charges are made of it."
   },
@@ -36801,12 +36819,13 @@
    "line": "settled_wind",
    "gather": {
     "skill": "dowsing",
-    "trivial": 156,
+    "trivial": 256,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 3
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Wind ether that pooled and set in rich ground, bright all the way through. Charms, talismans and charges are made of it."
   },
@@ -36826,12 +36845,13 @@
    "line": "settled_lightning",
    "gather": {
     "skill": "dowsing",
-    "trivial": 156,
+    "trivial": 256,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 3
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Lightning ether that pooled and set in rich ground, bright all the way through. Charms, talismans and charges are made of it."
   },
@@ -47196,12 +47216,13 @@
    "line": "settled_water",
    "gather": {
     "skill": "dowsing",
-    "trivial": 206,
+    "trivial": 300,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 3
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Water ether that pooled and set in rich ground, singing all the way through. Charms, talismans and charges are made of it."
   },
@@ -47221,12 +47242,13 @@
    "line": "settled_fire",
    "gather": {
     "skill": "dowsing",
-    "trivial": 206,
+    "trivial": 300,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 3
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Fire ether that pooled and set in rich ground, singing all the way through. Charms, talismans and charges are made of it."
   },
@@ -47246,12 +47268,13 @@
    "line": "settled_earth",
    "gather": {
     "skill": "dowsing",
-    "trivial": 206,
+    "trivial": 300,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 3
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Earth ether that pooled and set in rich ground, singing all the way through. Charms, talismans and charges are made of it."
   },
@@ -47271,12 +47294,13 @@
    "line": "settled_wind",
    "gather": {
     "skill": "dowsing",
-    "trivial": 206,
+    "trivial": 300,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 3
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Wind ether that pooled and set in rich ground, singing all the way through. Charms, talismans and charges are made of it."
   },
@@ -47296,12 +47320,13 @@
    "line": "settled_lightning",
    "gather": {
     "skill": "dowsing",
-    "trivial": 206,
+    "trivial": 300,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 3
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Lightning ether that pooled and set in rich ground, singing all the way through. Charms, talismans and charges are made of it."
   },
@@ -57695,12 +57720,13 @@
    "line": "settled_water",
    "gather": {
     "skill": "dowsing",
-    "trivial": 256,
+    "trivial": 300,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 4
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Water ether that pooled and set in rich ground, unblemished all the way through. Charms, talismans and charges are made of it."
   },
@@ -57720,12 +57746,13 @@
    "line": "settled_fire",
    "gather": {
     "skill": "dowsing",
-    "trivial": 256,
+    "trivial": 300,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 4
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Fire ether that pooled and set in rich ground, unblemished all the way through. Charms, talismans and charges are made of it."
   },
@@ -57745,12 +57772,13 @@
    "line": "settled_earth",
    "gather": {
     "skill": "dowsing",
-    "trivial": 256,
+    "trivial": 300,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 4
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Earth ether that pooled and set in rich ground, unblemished all the way through. Charms, talismans and charges are made of it."
   },
@@ -57770,12 +57798,13 @@
    "line": "settled_wind",
    "gather": {
     "skill": "dowsing",
-    "trivial": 256,
+    "trivial": 300,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 4
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Wind ether that pooled and set in rich ground, unblemished all the way through. Charms, talismans and charges are made of it."
   },
@@ -57795,12 +57824,13 @@
    "line": "settled_lightning",
    "gather": {
     "skill": "dowsing",
-    "trivial": 256,
+    "trivial": 300,
     "tool": {
      "kind": "dowsing_rod",
      "tier": 4
     },
-    "attuned_only": true
+    "find_chance": 0.002,
+    "find_chance_at_trivial": 0.01
    },
    "desc": "Lightning ether that pooled and set in rich ground, unblemished all the way through. Charms, talismans and charges are made of it."
   },

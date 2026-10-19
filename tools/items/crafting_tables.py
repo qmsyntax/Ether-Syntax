@@ -30,7 +30,7 @@ SKILLS = OrderedDict([
     ("felling", ("Felling", "gather", [], "saw", "Logs and resin from living trees (harming the living pays the talent [C])")),
     ("foraging", ("Foraging", "gather", [], "sickle", "Flora: knit, bitter and cold herbs, cache fruit, flax")),
     ("fishing", ("Fishing", "gather", [], "rod", "Fish from fen, lake and realm water (venom, oil, food)")),
-    ("dowsing", ("Dowsing", "gather", [], "dowsing_rod", "Ether salt and settled ether at ether-rich sites; an affinity's stone only for someone who holds it")),
+    ("dowsing", ("Dowsing", "gather", [], "dowsing_rod", "Ether salt and settled ether at ether-rich sites; affinity shards for anyone, very, very rarely")),
 ])
 STATION_SKILL = {"forge": "smithing", "leatherworks": "leatherwork", "loom": "tailoring", "bowyer": "bowyery",
                  "kiln": "pottery", "still": "brewing", "hearth": "cookery", "flensing_yard": "rendering",
@@ -79,11 +79,17 @@ def tool_tier(b):
 TRIVIAL_OFFSET = {"gather": 6, "refine": 8, "sub": 12, "plain": 16, "fine": 22, "runed": 24}
 ATTEMPT_WINDOW = 30
 
+# Affinity shards (an affinity's settled stone) by dowsing: open to everyone (Brent 2026-10-18), but VERY, very hard.
+# The trivial sits far above the band's; below it a dowse finds a shard at find_chance, at or past it at
+# find_chance_at_trivial. Every other dowse at the site still turns up ether salt as usual.
+AFFINITY_SHARD = OrderedDict([("extra_trivial", 100), ("find_chance", 0.002), ("find_chance_at_trivial", 0.01)])
+
 CRAFT_RULES = OrderedDict([
     ("_note", "design/11 section 4. Every number is a first guess [MODEL]."),
     ("skill_max", SKILL_MAX),
     ("points_per_band", POINTS_PER_BAND),
     ("skill_cap_by_stars", "none (Brent 2026-10-18): any crafting skill can reach 300 at any star"),
+    ("affinity_shards", "anyone may dowse for them; trivial +100 over the band's (to 300), found at 0.2% a dowse below trivial and 1% at or past it [B: open to all, very very hard]"),
     ("trivial", "25 x (band - 1) + offset (gather 6, refine 8, subcombine 12, plain 16, fine 22, runed 24)"),
     ("attempt_from", "trivial - 30 (the recipe is greyed out below that)"),
     ("success", "clamp(0.05, 0.95, 0.70 + (effective skill - trivial) / 50 + 0.03 x (tool tier - tier needed) + station bonus); at or past trivial + 13 a combine cannot fail"),

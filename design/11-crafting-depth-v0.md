@@ -40,15 +40,15 @@ sure we are as robust."* This builds on design/10 (the item catalogue, merged as
    fruit becomes spirit; resin and herbs become tanning liquor; tallow becomes quench oil; salt and spirit become ether quench.
    A band-2 sword is now five intermediates from four skills, plus a pattern book, plus a made thing's part from a kill.
 4. **Every recipe has a skill, a trivial, an attempt threshold and a tool tier**; every raw has a gathering skill, a trivial and a
-   tool; fishing needs bait; an affinity's settled stone can only be dowsed by someone who holds the affinity.
+   tool; fishing needs bait; anyone may dowse for an affinity's settled stone (an affinity shard), but it is very, very hard [B].
 5. **Rules are kinder than EverQuest's where EverQuest was tedious** (section 12): no 5% failure on a mastered recipe; a failed
    combine returns about half the inputs; the first success of each recipe always teaches; recipes are learned from pattern books
-   instead of guessed; skill caps come from stars, not from an arbitrary "only one skill above X".
+   instead of guessed; no skill cap at all beyond 300 [B: no cap by stars, 2026-10-18], and no "only one skill above X".
 6. **Kept from EverQuest because it works**: trivials, failure that costs something, tools that come back and stations that do
    not, portable kits that are worse than stations, region-specific patterns (EverQuest's cultural recipes), and a trophy that
    raises effective skill (ours are guild marks, tied to the setting's badges [C]).
-7. **The economy still cannot be broken by crafting**: 0 recipes sell for more than inputs plus fee under the half-price rule for
-   made goods; values still rise with band in every category and along every line; every ingredient has a source.
+7. **The economy**: values rise with band in every category and along every line, and every ingredient has a source. Made goods
+   sell at full price [B 2026-10-18]; 323 recipes then turn a profit - a balance question kept for later (§13).
 
 ---
 ## 2. EverQuest's tradeskills, as a reference [F]
@@ -96,7 +96,7 @@ years; where sources disagree I say so.
 |---|---|---|---|
 | ~12 skills, each with its own container | 7 stations, **no skills** | No skill, no progression, nothing to learn | **20 skills** (15 craft, 5 gather), 13 stations (section 5) |
 | Skill 0-300 (later 350), trivials | Recipes had a `stars` requirement only | No trivials | 0-300, **25 points a band**; every recipe has `trivial` and `min_skill` |
-| Cap: one skill above 200 until an advancement | none | - | Cap from **stars**: 50 + 25 × stars (75 at one star, 300 at ten). No "only one skill" rule - **EQ's is arbitrary; don't copy** |
+| Cap: one skill above 200 until an advancement | none | - | **No cap but 300** [B 2026-10-18: no cap by stars]. No "only one skill" rule - **EQ's is arbitrary; don't copy** |
 | Success formula, 5% floor, 5% fail even when trivial | Always succeeded | No risk | Success from skill vs trivial, 5% floor; **no failure at trivial + 13** (EQ's 5% fail on mastered recipes is pure tedium) |
 | Failure destroys inputs; Salvage advancement returns some | none | - | Failure: fee spent, **each input back on a 50% roll** (+10% per station grade above the recipe's); field kits salvage nothing |
 | Skill-up on success or failure, falling near trivial; stat-driven | none | - | Below trivial only: 0.35 × √((trivial − skill)/25), capped 60%, halved on failure; **first success of each recipe +1 for sure** (rewards breadth, not grind). No stats - we have none [F: no stat sheet - bible LAW 0] |
@@ -123,7 +123,7 @@ All of them are data in `recipes-v0.json` `rules`.
 | Rule | Value |
 |---|---|
 | Skill range | 0-300 for every skill; a band's recipes sit between 25 × (band − 1) and 25 × band |
-| Skill cap | min(300, 50 + 25 × stars). One star 75 (bands 1-3), two 100, ten 300. Tied to stars because materials of a band only yield to an essence close to their own (design/10 §7.1) |
+| Skill cap | 300 at any star [B 2026-10-18: "No cap based on stars for skill level on crafting"]. (The withdrawn proposal was min(300, 50 + 25 × stars).) A skilled one-star crafter can make high-band goods if they can get the materials |
 | Trivial | 25 × (band − 1) + gather 6, refine 8, subcombine 12, plain 16, fine 22, runed 24 |
 | May try from | trivial − 30 |
 | Success | clamp(5%, 95%, 70% + (effective skill − trivial) / 50 + 3% per tool tier above the one needed + station bonus); **at trivial + 13 a combine cannot fail**. So: 20% at 25 under trivial, 70% at trivial, certain 13 past it |
@@ -165,7 +165,7 @@ The 5% floor keeps a stretch recipe possible; the no-fail band past trivial remo
 | Felling | gather | living trees | Felling Saw | Logs, resin. Felling harms a living thing, so it pays the talent [C: anything alive counts - bible LAW 3] | smithing (the saw) |
 | Foraging | gather | flora | Gatherer's Sickle | Knit, bitter and cold herbs, cache fruit, flax | smithing (the sickle) |
 | Fishing | gather | fen, lake and realm water | Fishing Rod + bait | One fish per band: venom, oil and supper | bowyery (the rod), vendor (bait) |
-| Dowsing | gather | ether-rich sites | Dowsing Rod | Ether salt, settled ether; **an affinity's stone only for someone who holds that affinity** (as with attuned wisps - CLAUDE.md affinities) | artifice (the rod) |
+| Dowsing | gather | ether-rich sites | Dowsing Rod | Ether salt, settled ether; **affinity shards for anyone, very, very rarely** [B 2026-10-18]: trivial 100 over the band's (to 300), found on 0.2% of dowses below trivial and 1% at or past it | artifice (the rod) |
 
 Not a skill, on purpose: **binding a construct into an ability** - it is the soul's own act, irreversible and dangerous [B], not a
 workshop recipe; Etherwork only makes the Binding Salts that help it. **Satellites** are never made [B].
@@ -229,7 +229,9 @@ Vein Drake Hide $110,000 (+2 Veined Tallow $5,100); Lantern-Silk Bolt $12,000; R
   bait items, vendor-sold).
 - **Felling and foraging harm living things**, so a lifesteal character heals a little doing them [C: anything alive pays]; mining
   and fishing do not (fish are caught, then they are dead - [?] whether catching counts as harm).
-- **Dowsing is attunement-gated**: ether salt for anyone; an affinity's settled stone only for a character who holds that affinity.
+- **Dowsing is open to all** [B 2026-10-18]: ether salt and settled ether for anyone; an affinity shard for anyone too, but very,
+  very hard - its trivial sits 100 over the band's (capped at 300) and even past it a dowse turns one up only 1% of the time
+  (0.2% below). Numbers are first guesses for the balance pass.
   The Netherecho still gives nothing you can carry [B].
 - **Rendering in the field is a hauling decision**: a Flensing Kit turns a 10 kg Reedback Hide into a 7.5 kg scraped hide and
   two tallow on the spot, with no salvage on failure. Worth it when the pack is the limit, not when the money is.
@@ -264,8 +266,8 @@ at the start.
 
 - **Crafting saves, never earns.** Gear inputs are set near 45% of the item's value and the fee brings the total to 75%: a
   quarter cheaper than buying, half back when sold. Intermediates are worth 95% of inputs plus fee (less any byproduct), and
-  never round up. Alchemy is worth 125% at the shop and sells at half. The validator finds **0 recipes that make money** under the
-  half-price rule for made goods (design/10 §12.3); 323 would under today's live sell rule, which is why that rule must change first.
+  never round up. Alchemy is worth 125% at the shop. Made goods sell at **full** price [B 2026-10-18; design/10 §12.3's half-price
+  rule is withdrawn], so 323 recipes turn a profit; the validator lists them as warnings for the balance pass (§13).
 - **Failure is the money sink** EverQuest's crafting was, without the bitterness: half the inputs on average, plus the fee.
 - **Crafted versus dropped**: Plain, Fine and Runed can be made; cursed and unique items only drop - the same split EverQuest
   players complained about, kept on purpose, because "gear is a floor" [B]. What crafting buys is *timing*: the Fine sword when you
@@ -354,8 +356,11 @@ skills, regional patterns, trophies that matter, recipes that make a final item 
 > **Brent's rulings, 2026-10-18** [B]: "go with your recommendations, keep the balance questions for later. Allow full sale
 > price. No cap based on stars for skill level on crafting."
 > - Approved as recommended: 2 (kinder failure), 3 (no class or race locks), 4 (regional pattern books), 6 (guild marks, with the
->   badge system), 7 (no research skill for now), 8 (field rendering), 9 (dowsing gated by affinity), 10 (component trunk later),
->   11 (build order - minus the sell-rule step, see below).
+>   badge system), 7 (no research skill for now), 8 (field rendering), 10 (component trunk later), 11 (build order - minus the
+>   sell-rule step, see below).
+> - 9, changed (Brent, same day): "dowsing should not be limited to your affinities ... it should be open. And you should be able
+>   to dowse for affinity shards (but this should be VERY VERY hard to do)." Dowsing is open to all; affinity shards are dowsable
+>   by anyone at a trivial 100 over the band's and a 0.2% / 1% find chance (section 9).
 > - 1, changed: twenty skills at 0-300, **no cap by stars** - any crafting skill can reach 300 at any star.
 > - Sell price: **full** - made goods are not marked down; the live rule stays (worn gear at items.json `gear_sell_factor`,
 >   everything else in full). design/10 §12.3's half-price proposal is withdrawn.

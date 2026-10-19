@@ -22,7 +22,7 @@ import math
 from collections import OrderedDict
 from pathlib import Path
 
-from crafting_tables import (ATTEMPT_WINDOW, BAIT, BYPRODUCTS, CHAIN, CRAFT_RULES, CRAFT_SHAPES, FISH, LINE_SKILL,
+from crafting_tables import (AFFINITY_SHARD, ATTEMPT_WINDOW, BAIT, BYPRODUCTS, CHAIN, CRAFT_RULES, CRAFT_SHAPES, FISH, LINE_SKILL,
                              PATTERN_SKILLS, POINTS_PER_BAND, RAWS, REGION_WORD, SKILL_MAX, SKILLS, STATION_SKILL,
                              TOOL_TIER_BAND, TOOL_TIER_PREFIX, TOOLS, TRIVIAL_OFFSET, tool_tier)
 
@@ -1599,7 +1599,11 @@ def assign_gather():
         if skill == "fishing":
             g["bait"] = bait[tool_tier(b)]
         if skill == "dowsing" and it.get("affinity"):
-            g["attuned_only"] = True
+            # an affinity shard: anyone may dowse for one (Brent 2026-10-18: "it should be open"), but it is very,
+            # very hard - far past the band's usual trivial, and even a master finds one only now and then
+            g["trivial"] = min(SKILL_MAX, g["trivial"] + AFFINITY_SHARD["extra_trivial"])
+            g["find_chance"] = AFFINITY_SHARD["find_chance"]
+            g["find_chance_at_trivial"] = AFFINITY_SHARD["find_chance_at_trivial"]
         it["gather"] = g
 
 
