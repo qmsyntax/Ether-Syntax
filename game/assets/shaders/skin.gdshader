@@ -16,6 +16,9 @@ uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap;
 // (0.5 = average), A = where it is valid; photo_mix blends it in over the painted tone
 uniform sampler2D photo_tex : hint_default_black, filter_linear_mipmap;
 uniform float photo_mix = 0.0;
+// a generated face is stored as RGB (JPEG) with the coverage in a separate one-channel mask
+uniform sampler2D photo_mask : hint_default_white, filter_linear_mipmap;
+uniform bool photo_has_mask = false;
 // pores and fine wrinkles: a seamless tile (tools/assets/make_skin_micro.py) repeated finely over the
 // body's layout, on top of the sculpt's normals
 uniform sampler2D micro_tex : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -47,12 +50,16 @@ void fragment() {
 	base = mix(base, base * vec3(0.72, 0.66, 0.70), a.a * 0.5);
 	if (photo_mix > 0.0 && ((photo_regions >> region) & 1) == 1) {
 		vec4 p = texture(photo_tex, UV);
-		vec3 photo = skin_color * p.rgb * 2.0;
-		base = mix(base, photo, photo_mix * smoothstep(0.3, 0.9, p.a));
+		float pa = photo_has_mask ? texture(photo_mask, UV).r : p.a;
+		// keep the photo's light and dark fully but only some of its colour shifts, so a face
+		// photographed in one tone takes any chosen skin colour without casts
+		float pl = dot(p.rgb, vec3(0.3, 0.59, 0.11));
+		vec3 photo = skin_color * mix(vec3(pl), p.rgb, 0.45) * 2.0;
+		base = mix(base, photo, photo_mix * smoothstep(0.3, 0.9, pa));
 	}
 	float photo_cover = 0.0;
 	if (photo_mix > 0.0 && ((photo_regions >> region) & 1) == 1) {
-		photo_cover = photo_mix * smoothstep(0.3, 0.9, texture(photo_tex, UV).a);
+		photo_cover = photo_mix * smoothstep(0.3, 0.9, photo_has_mask ? texture(photo_mask, UV).r : texture(photo_tex, UV).a);
 	}
 	// painted brows only where no photo with brows of its own covers the skin
 	base = mix(base, hair_color * 0.85, clamp(a.b * 1.15, 0.0, 1.0) * 0.9 * brow_weight * (1.0 - photo_cover * 0.85));

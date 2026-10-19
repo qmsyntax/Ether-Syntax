@@ -150,8 +150,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	var focus: Vector3 = nether.projection.global_position if (nether.active and nether.projection != null) else player.global_position
-	camera.global_position = focus + CAMERA_OFFSET
-	camera.look_at(focus + Vector3.UP, Vector3.UP)
+	_place_camera(focus, delta)
 	if nether.active:
 		nether.tick(delta, camera)
 
@@ -199,8 +198,51 @@ func _process(delta: float) -> void:
 		_tick_bot_report()
 
 
+## Zoom (0 far .. 1 near) and where it is easing to; the wheel sets the target.
+var cam_zoom := 0.45
+var _cam_zoom_target := 0.45
+var _cam_debug := false             # a debug shot mode placed the camera itself
+
+
+## The BG3-style camera: perspective, at a fixed compass angle; zooming in brings it closer, lower
+## and flatter (towards over-the-shoulder), zooming out raises it to look down on the fight.
+func _place_camera(focus: Vector3, delta: float) -> void:
+	if _cam_debug:
+		camera.global_position = focus + CAMERA_OFFSET
+		camera.look_at(focus + Vector3.UP, Vector3.UP)
+		return
+	var c: Dictionary = GameData.balance["camera"]
+	cam_zoom = lerpf(cam_zoom, _cam_zoom_target, minf(1.0, delta * float(c["zoom_smoothing"]))) if delta > 0.0 else _cam_zoom_target
+	var t: float = cam_zoom
+	var dist: float = lerpf(float(c["distance_far"]), float(c["distance_near"]), t)
+	var pitch: float = deg_to_rad(lerpf(float(c["pitch_far_deg"]), float(c["pitch_near_deg"]), t))
+	var yaw: float = deg_to_rad(float(c["yaw_deg"]))
+	var look: Vector3 = focus + Vector3.UP * lerpf(float(c["look_height_far"]), float(c["look_height_near"]), t)
+	var back := Vector3(sin(yaw), 0.0, cos(yaw))
+	camera.fov = lerpf(float(c["fov_far_deg"]), float(c["fov_near_deg"]), t)
+	camera.global_position = look + back * cos(pitch) * dist + Vector3.UP * sin(pitch) * dist
+	camera.look_at(look, Vector3.UP)
+
+
+## Mouse wheel: up zooms in, down zooms out.
+func _zoom_input(event: InputEvent) -> bool:
+	if not (event is InputEventMouseButton) or not (event as InputEventMouseButton).pressed:
+		return false
+	var step: float = GameData.num("camera", "zoom_step")
+	match (event as InputEventMouseButton).button_index:
+		MOUSE_BUTTON_WHEEL_UP:
+			_cam_zoom_target = clampf(_cam_zoom_target + step, 0.0, 1.0)
+		MOUSE_BUTTON_WHEEL_DOWN:
+			_cam_zoom_target = clampf(_cam_zoom_target - step, 0.0, 1.0)
+		_:
+			return false
+	return true
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_echo():
+		return
+	if screen == null and _zoom_input(event):
 		return
 	if event.is_action_pressed("settings"):
 		if screen is ShopScreen or screen is InventoryScreen or screen is EthercosmScreen:
@@ -1369,9 +1411,15 @@ func _build_world() -> void:
 	nether.connect("projection_destroyed", _on_projection_destroyed)
 
 	camera = Camera3D.new()
-	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.projection = Camera3D.PROJECTION_PERSPECTIVE
 	camera.size = GameData.num("camera", "ortho_size")
-	camera.far = 200.0
+	camera.far = 300.0
+	camera.near = 0.1
+	_cam_zoom_target = GameData.num("camera", "zoom_default")
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--zoom="):              # screenshots at a chosen zoom
+			_cam_zoom_target = clampf(float(arg.get_slice("=", 1)), 0.0, 1.0)
+	cam_zoom = _cam_zoom_target
 	add_child(camera)
 	camera.current = true
 
@@ -1495,6 +1543,8 @@ func _setup_ui_shot(which: String) -> void:
 			level.add_child(node)
 			i += 1
 		camera.size = 26.0 if not OS.get_cmdline_user_args().has("--close") else 9.0
+		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		_cam_debug = true
 		player.set_physics_process(false)
 		return
 	if which == "stubble" or which == "stubble-cut":

@@ -212,8 +212,20 @@
     "rerolls": 3
   },
   "camera": {
-    "_note": "Orthographic size = metres of world shown top to bottom. 24 was the capsule-era value; 19 shows the models' detail.",
-    "ortho_size": 19.0
+    "_note": "Perspective, BG3-style (Brent 2026-10-18): the mouse wheel moves `zoom` between 0 (far: high and steep) and 1 (near: low and flat, behind the shoulder). Every value below is blended between its far and near end. ortho_size is only for the debug shot modes.",
+    "ortho_size": 19.0,
+    "zoom_default": 0.5,
+    "zoom_step": 0.08,
+    "zoom_smoothing": 9.0,
+    "distance_far": 24.0,
+    "distance_near": 4.2,
+    "pitch_far_deg": 58.0,
+    "pitch_near_deg": 16.0,
+    "fov_far_deg": 32.0,
+    "fov_near_deg": 42.0,
+    "look_height_far": 0.6,
+    "look_height_near": 1.45,
+    "yaw_deg": 45.0
   },
   "nether": {
     "_note": "The Netherecho [canon concept; every number is MODEL]. The projection is leashed to the body, has very little life, and its death is the character's death. Wisps are gathered by touch; constructs are subdued by beating them down. Sites are the spawn areas a level hands over (one per passage chamber).",

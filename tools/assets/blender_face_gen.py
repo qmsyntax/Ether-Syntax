@@ -8,7 +8,8 @@
 
     blender -b --python tools/assets/blender_face_gen.py -- project <prepared body.blend> <out dir> \
         <base skin png> <out png> [size]
-        projects <out dir>/face.png from the same camera onto every texel of the body that faces it
+        [size] [face file]
+        projects <out dir>/face.png (or the face file named) from the same camera onto every texel of the body that faces it
         and is not hidden, fading out as the surface turns away, over <base skin png> (a photo skin
         in the same form: variation around the average, 0.5 = average), and writes <out png>.
 """
@@ -151,14 +152,14 @@ def delight(img):
     return np.clip(img * (ref / np.maximum(broad, 1e-3))[..., None] ** 0.75, 0.0, 1.0)
 
 
-def do_project(prepared, out_dir, base_png, out_png, size):
+def do_project(prepared, out_dir, base_png, out_png, size, face_file="face.png"):
     arm, body, eyes = setup(prepared)
     cam = json.load(open(os.path.join(out_dir, "camera.json")))
     pos, target, fov = np.array(cam["pos"]), np.array(cam["target"]), cam["fov"]
     fwd, right, up = basis(pos, target)
     half = math.tan(fov * 0.5)
     depth = np.load(os.path.join(out_dir, "depth.npy"))
-    face = load_image(os.path.join(out_dir, "face.png"))[..., :3]
+    face = load_image(os.path.join(out_dir, face_file))[..., :3]
     face = np.where(face <= 0.04045, face / 12.92, ((face + 0.055) / 1.055) ** 2.4)    # sRGB -> linear
     face = delight(face)
     res = face.shape[0]
@@ -252,7 +253,7 @@ def main():
     if args[0] == "depth":
         do_depth(args[1], args[2])
     else:
-        do_project(args[1], args[2], args[3], args[4], int(args[5]) if len(args) > 5 else 2048)
+        do_project(args[1], args[2], args[3], args[4], int(args[5]) if len(args) > 5 else 2048, args[6] if len(args) > 6 else "face.png")
 
 
 if __name__ == "__main__":

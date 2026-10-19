@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://col2v268tgi4s"
-path="res://.godot/imported/skin_male_gen.png-bc7ad4df99648d381961fd64e12e1313.ctex"
+uid="uid://tp0g77225db2"
+path="res://.godot/imported/skin_male_gen_f1.jpg-391f54023ab6a45936faeb8a29456e22.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/characters/textures/skin/skin_male_gen.png"
-dest_files=["res://.godot/imported/skin_male_gen.png-bc7ad4df99648d381961fd64e12e1313.ctex"]
+source_file="res://assets/characters/textures/skin/skin_male_gen_f1.jpg"
+dest_files=["res://.godot/imported/skin_male_gen_f1.jpg-391f54023ab6a45936faeb8a29456e22.ctex"]
 
 [params]
 

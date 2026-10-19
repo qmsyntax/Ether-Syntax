@@ -22,16 +22,18 @@
   "look_labels": {
     "body": "Body type",
     "skin": "Skin",
-    "face": "Face",
+    "face": "Marks",
     "beard": "Beard",
     "hair": "Hair",
     "hair_color": "Hair colour",
     "band": "Headband",
     "coat": "Coat",
-    "accent": "Accent"
+    "accent": "Accent",
+    "features": "Features"
   },
   "look_order": [
     "skin",
+    "features",
     "face",
     "beard",
     "hair",

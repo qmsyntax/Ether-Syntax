@@ -2916,7 +2916,9 @@ func _update_aim() -> void:
 
 
 func _swing_visual(reach: float, heavy: bool, narrow: bool) -> void:
-	if not is_inside_tree():
+	# the strike's reach is not drawn (Brent 2026-10-18: "a hit box on attack that is visible ...
+	# needs to be invisible"); the body's own swing shows it. --show-reach brings the box back to debug.
+	if not is_inside_tree() or not OS.get_cmdline_user_args().has("--show-reach"):
 		return
 	var arc := MeshInstance3D.new()
 	var box := BoxMesh.new()

@@ -2,8 +2,10 @@
 union ControlNet in depth mode), for tools/assets/blender_face_gen.py:
 
     python tools/assets/comfy_face.py <dir with depth.png> male|female [seed] [--server http://host:8188]
+        [--who "a 45-year-old man with a broad nose"] [--out face_f2.png]
 
-Writes <dir>/face.png. The person is generated, not anyone real: an adult, bald (hair is a separate
+Writes <dir>/face.png (or --out). --who replaces the person in the prompt (the framing, lighting
+and shaved head stay). The person is generated, not anyone real: an adult, bald (hair is a separate
 mesh in the game), evenly lit from the front so little lighting is baked into the skin.
 """
 import json
@@ -63,16 +65,27 @@ def workflow(image, prompt, seed, strength=0.8):
     }
 
 
+FRAME = ("close-up studio portrait photograph of {who}, with a completely shaved bald head, facing the camera "
+         "straight on, neutral expression, eyes open looking into the camera, no makeup, natural skin texture with "
+         "visible pores, soft even diffuse light from the front, no harsh shadows, plain neutral grey background, "
+         "bare shoulders, sharp focus, high detail")
+
+
 def main():
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    server = "http://192.168.1.53:8188"
-    if "--server" in sys.argv:
-        server = sys.argv[sys.argv.index("--server") + 1]
-        args = [a for a in args if a != server]
+    argv = sys.argv[1:]
+    opts = {}
+    for k in ("--server", "--who", "--out"):
+        if k in argv:
+            i = argv.index(k)
+            opts[k] = argv[i + 1]
+            del argv[i:i + 2]
+    args = argv
+    server = opts.get("--server", "http://192.168.1.53:8188")
     out_dir, sex = args[0], args[1]
     seed = int(args[2]) if len(args) > 2 else 7
     image = upload(server, os.path.join(out_dir, "depth.png"))
-    pid = post(server, "/prompt", json.dumps({"prompt": workflow(image, PROMPTS[sex], seed), "client_id": "passage"}).encode())["prompt_id"]
+    prompt = FRAME.format(who=opts["--who"]) if "--who" in opts else PROMPTS[sex]
+    pid = post(server, "/prompt", json.dumps({"prompt": workflow(image, prompt, seed), "client_id": "passage"}).encode())["prompt_id"]
     t0 = time.time()
     while True:
         time.sleep(3)
@@ -88,8 +101,8 @@ def main():
                 img = outs["14"]["images"][0]
                 url = server + "/view?filename=%s&subfolder=%s&type=%s" % (img["filename"], img.get("subfolder", ""), img["type"])
                 with urllib.request.urlopen(url, timeout=120) as r:
-                    open(os.path.join(out_dir, "face.png"), "wb").write(r.read())
-                print("COMFY face.png in %.0f s (seed %d)" % (time.time() - t0, seed))
+                    open(os.path.join(out_dir, opts.get("--out", "face.png")), "wb").write(r.read())
+                print("COMFY %s in %.0f s (seed %d)" % (opts.get("--out", "face.png"), time.time() - t0, seed))
                 return
         if time.time() - t0 > 900:
             print("COMFY timed out")
