@@ -42,6 +42,14 @@ region · 6 The first zone to build · 7 Build order · 8 Risks and open questio
   nobody's and free; some public ones are free for low levels. Tenwall Cut (today's passage) is owned. (Replaces row 13.)
 - **[B] Build pathfinding now** rather than at step 6. (Replaces row 14.)
 
+**Brent's rulings, later the same day (2026-10-18)** — the setting's look and scale:
+- **[B] New Earth has ethertech**: TVs, phones and other modern devices exist (design/01, "The world's technology").
+- **[B] Towns are rebuilt modern cities, not villages.** Realms beyond the passages may look older; fantasy is fine there.
+- **[B] The main cities are massive and modern, and one is very big.** The game **starts in a smaller town**. Read Tithebarrow
+  as that smaller starting town (a rebuilt passage town, still a city you walk); Winchgate and the later cities grow in size,
+  and one metropolis - the Empire's great city of this map - is the largest place in the game. (Changes row 2's "fringe city"
+  scale and section 3's city kit; to be designed in the build plan.)
+
 Each line is a decision, then my recommendation. "Go with your recommendations" approves the right-hand column.
 
 | # | Decision | Recommendation |
