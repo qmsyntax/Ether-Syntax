@@ -387,28 +387,32 @@
   },
   "hair": {
     "messy": [
-      "hair_messy_cards"
+      "hair_messy"
     ],
     "shaved": [],
     "cropped": [
-      "hair_cropped_cards"
+      "hair_cropped"
     ],
     "topknot": [
-      "hair_topknot_cards",
-      "hair_topknot_bun"
+      "hair_topknot"
     ],
     "long": [
-      "hair_long_cards"
+      "hair_long"
     ],
     "braid": [
-      "hair_braid_cards",
-      "hair_braid_tail"
+      "hair_braid"
     ],
     "undercut": [
-      "hair_undercut_cards"
+      "hair_undercut"
     ],
     "swept": [
-      "hair_swept_cards"
+      "hair_swept"
+    ],
+    "bob": [
+      "hair_bob"
+    ],
+    "curls": [
+      "hair_curls"
     ]
   },
   "builds": {
@@ -454,18 +458,16 @@
     }
   },
   "bodies": {
-    "_note": "walk/run/sprint: metres a second each loop covers at speed 1 (measured from the clips by blender_character.py); height for selection and bars",
+    "_note": "walk/run: metres a second each loop covers at speed 1 (measured from the clips by blender_character.py; the run is Mixamo's 'Running', arms kept at the sides); height for selection and bars",
     "body_male": {
       "walk_speed": 1.347,
-      "run_speed": 3.681,
-      "height": 1.74,
-      "sprint_speed": 5.408
+      "run_speed": 4.131,
+      "height": 1.74
     },
     "body_female": {
       "walk_speed": 1.303,
-      "run_speed": 3.6,
-      "height": 1.69,
-      "sprint_speed": 5.322
+      "run_speed": 4.067,
+      "height": 1.69
     }
   },
   "grip": {
@@ -537,5 +539,16 @@
     "power_up": 1.2
   },
   "skin_source": "gen",
-  "_skin_note": "skin_source: 'gen' = a face generated on Brent's ComfyUI (FLUX + depth ControlNet on our head's shape, fictional) projected over a MakeHuman CC0 photo skin for the body; 'mh' = the MakeHuman photo skin alone; 'painted' = the procedural skin from blender_body_prep.py. Compared 2026-10-18: gen looked most real."
+  "_skin_note": "skin_source: 'gen' = a face generated on Brent's ComfyUI (FLUX + depth ControlNet on our head's shape, fictional) projected over a MakeHuman CC0 photo skin for the body; 'mh' = the MakeHuman photo skin alone; 'painted' = the procedural skin from blender_body_prep.py. Compared 2026-10-18: gen looked most real.",
+  "hair_luma": {
+    "bob": 0.021,
+    "braid": 0.0113,
+    "cropped": 0.0191,
+    "curls": 0.004,
+    "long": 0.0269,
+    "messy": 0.0547,
+    "swept": 0.0529,
+    "topknot": 0.0676,
+    "undercut": 0.013
+  }
 }

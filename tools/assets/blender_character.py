@@ -820,10 +820,10 @@ def texture_garments(B, out_dir):
 
 
 def build_hair(B):
-    """Every hair style is a mop of hair cards (the skin shader tints the scalp under them in the
-    hair colour, so no skin shows between): ribbons that start at roots spread over the scalp, follow
-    the style's combing direction along the head's surface (kept just above it), and fall under
-    gravity once they leave it. Beards likewise."""
+    """Hair: MakeHuman's CC0 hair meshes, fitted to this body by blender_mh_hair.py and left in the
+    prepared .blend as "mhhair_<style>"; skinned to the head (long styles blend down the neck and
+    back). Beards: hair cards grown over the beard area - ribbons from roots that follow a combing
+    direction along the face (kept just above it) and fall under gravity."""
     co, reg, lm, s = B.co, B.reg, B.lm, B.lm["s"]
     eye_z = lm["eye"][2]
     top = co[:, 2] - eye_z
@@ -834,37 +834,19 @@ def build_hair(B):
     rng = np.random.default_rng(7)
     on_top = lambda i: top[i] > 0.05 * s or (B.front[i] > 0.55 and top[i] > 0.035 * s)
 
-    def scalp_roots(keep=lambda i: True, spacing=0.0085):
-        return roots_on(B, lambda i: reg[i] == R_HEAD and B.scalp[i] > 0.5 and keep(i), spacing, rng)
-
-    def radial(p):
-        return p - crown
-
-    def side_part(p):
-        sx = 1.0 if p.x > 0.004 else (-1.0 if p.x < -0.004 else float(rng.choice([-1.0, 1.0])))
-        return Vector((0.9 * sx, 0.35, -0.2))
-
-    styles = {
-        "cropped": dict(roots=scalp_roots(spacing=0.0065), comb=radial, length=(0.022, 0.036), width=0.022, lift=0.003, gravity=0.0),
-        "messy": dict(roots=scalp_roots(), comb=lambda p: radial(p) + Vector(tuple(rng.normal(0, 0.05, 3))), length=(0.04, 0.075), width=0.022, lift=0.006, gravity=0.25, wild=0.6,
-                      short_front=0.4),
-        "swept": dict(roots=scalp_roots(), comb=lambda p: Vector((0.25 * p.x / 0.08, 1.0, 0.25)), length=(0.07, 0.11), width=0.022, lift=0.007, gravity=0.3),
-        "undercut": dict(roots=scalp_roots(on_top), comb=lambda p: Vector((0.6 * (1.0 if p.x > -0.015 else -1.0), 0.6, 0.2)), length=(0.06, 0.1), width=0.022, lift=0.008, gravity=0.35),
-        "topknot": dict(roots=scalp_roots(), comb=lambda p: (knot - p) if p.y > hc[1] - 0.02 else Vector((0.0, 1.0, 1.0)), length=(0.06, 0.12), width=0.02, lift=0.004, gravity=0.0, stop=knot),
-        "braid": dict(roots=scalp_roots(), comb=lambda p: (nape - p) if p.y > hc[1] - 0.02 else Vector((0.0, 1.0, 0.7)), length=(0.06, 0.13), width=0.02, lift=0.004, gravity=0.0, stop=nape),
-        "long": dict(roots=scalp_roots(spacing=0.0095), comb=side_part, length=(0.30, 0.40), width=0.026, lift=0.007, gravity=0.6, hang=True, stick_z=eye_z - 0.05),
-    }
-    for style, cfg in styles.items():
-        o = grow_cards(B, "hair_%s_cards" % style, cfg, rng)
-        if cfg.get("hang"):
-            blend_down(o, B, [("Head", eye_z - 0.03, eye_z - 0.10), ("Neck", eye_z - 0.10, eye_z - 0.17), ("Spine2", eye_z - 0.17, eye_z - 0.45)])
-    v, f = blob(knot + Vector((0, 0.012, 0.012)), (0.03, 0.03, 0.026))
-    new_piece(B, "hair_topknot_bun", "hair", v, f, R_HEAD, rigid="Head")
-    pts = [tuple(back_surface(B, 0.0, eye_z - 0.07 - 0.034 * k, 0.03 - 0.001 * k)) for k in range(10)]
-    parts = [blob(p, (0.021 - 0.001 * k, 0.019, 0.023), 5, 8) for k, p in enumerate(pts)]
-    v, f = merge(parts)
-    o = new_piece(B, "hair_braid_tail", "hair", v, f, R_HEAD, weights_from=[R_HEAD])
-    blend_down(o, B, [("Head", eye_z - 0.05, eye_z - 0.11), ("Neck", eye_z - 0.11, eye_z - 0.18), ("Spine2", eye_z - 0.18, eye_z - 0.45)])
+    # the hair styles themselves: MakeHuman's meshes fitted by blender_mh_hair.py
+    hang = {"long": 0.45, "braid": 0.5, "topknot": 0.42, "bob": 0.2}
+    for src in [o for o in bpy.data.objects if o.name.startswith("mhhair_")]:
+        style = src.name[len("mhhair_"):]
+        me = src.data
+        mw = src.matrix_world
+        verts = [tuple(mw @ v.co) for v in me.vertices]
+        faces = [tuple(p.vertices) for p in me.polygons]
+        loop_uv = [tuple(d.uv) for d in me.uv_layers[0].data]
+        bpy.data.objects.remove(src, do_unlink=True)
+        o = new_piece(B, "hair_" + style, "hair_" + style, verts, faces, R_HEAD, weights_from=[R_HEAD], loop_uv=loop_uv)
+        if style in hang:
+            blend_down(o, B, [("Head", eye_z - 0.05, eye_z - 0.11), ("Neck", eye_z - 0.11, eye_z - 0.18), ("Spine2", eye_z - 0.18, eye_z - hang[style])])
     # beard: a thin shell over the beard area and short cards combed down
     from_body(B, "beard", "hair", lambda i: reg[i] in (R_HEAD, R_NECK) and B.beard[i] > 0.7, lambda i: 0.0022, uv_metres=0.12)
     beard_roots = roots_on(B, lambda i: reg[i] in (R_HEAD, R_NECK) and B.beard[i] > 0.4, 0.0045, rng)
@@ -972,11 +954,11 @@ def grow_cards(B, name, cfg, rng):
 
 
 def hair_uv(B):
-    """Hair shells get a layout that runs top to bottom: U the arc round the head, V the drop (metres)."""
+    """The beard shell gets a layout that runs top to bottom: U the arc round the head, V the drop (metres)."""
     cx, cy = 0.0, B.lm["head_c"][1]
     top = B.lm["top"]
     for o in bpy.data.objects:
-        if o.type != "MESH" or o.name.endswith("_cards") or not (o.name.startswith("hair_") or o.name == "beard"):
+        if o.type != "MESH" or o.name != "beard":
             continue
         me = o.data
         uv = me.uv_layers[0].data

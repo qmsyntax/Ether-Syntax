@@ -30,6 +30,7 @@ var _skin: ShaderMaterial
 var _hair: ShaderMaterial
 var _hair_cards: ShaderMaterial
 var _anatomy: ShaderMaterial
+var _hair_mats: Array[ShaderMaterial] = []
 var _piece_mat: Dictionary = {}            # piece id -> ShaderMaterial
 var _hand_r: BoneAttachment3D
 var _hand_l: BoneAttachment3D
@@ -37,6 +38,8 @@ var _look: Dictionary = {}
 var _outfit: Dictionary = {}
 var _arm_lost := false
 var _bare := false                         # no everyday clothes under the empty slots
+var _skin_source := "painted"
+var _barefoot := false                     # no foot wraps under an empty feet slot
 var _walk_speed := 1.35
 var _run_speed := 3.7
 var _sprint_speed := 6.0
@@ -136,6 +139,8 @@ func _build(packed: PackedScene) -> void:
 			mi.material_override = _anatomy
 		elif mesh_name.ends_with("_cards"):
 			mi.material_override = _hair_cards
+		elif mesh_name.begins_with("hair_"):
+			mi.material_override = _hair_mesh(mesh_name.trim_prefix("hair_"))
 		elif mesh_name.begins_with("hair_") or mesh_name == "beard":
 			mi.material_override = _hair
 		mi.visible = mesh_name == "body" or mesh_name == "eyes"
@@ -144,6 +149,18 @@ func _build(packed: PackedScene) -> void:
 		_hand_l = _attach("LeftHand")
 	apply_look({})
 	set_process(true)                          # ModelRig switches it off; the flash needs it
+
+
+## A hair style's material: its own texture (textures/hair/<style>.png), tinted to the hair colour.
+func _hair_mesh(style: String) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = load("res://assets/shaders/hair_mesh.gdshader")
+	var path: String = "hair/%s.png" % style
+	if ResourceLoader.exists(TEX + path):
+		m.set_shader_parameter("tex", _tex(path))
+		m.set_shader_parameter("mean_luma", float((_wardrobe().get("hair_luma", {}) as Dictionary).get(style, 0.3)))
+	_hair_mats.append(m)
+	return m
 
 
 func _attach(bone_name: String) -> BoneAttachment3D:
@@ -162,9 +179,19 @@ func _attach(bone_name: String) -> BoneAttachment3D:
 ## photographic one baked onto this body: "mh" (MakeHuman CC0 skins, blender_skin_transfer.py) or
 ## "gen" (generated on Brent's ComfyUI and projected on). Missing files fall back to painted.
 func set_skin_source(source: String) -> void:
+	_skin_source = source
 	var sex: String = _body_id.trim_prefix("body_")
+	var feat: String = str(_look.get("features", "f1"))
+	var face: String = "skin/skin_%s_gen_%s.jpg" % [sex, feat]
+	var mask: String = "skin/skin_%s_gen_mask.png" % sex
 	var path: String = "skin/skin_%s_%s.png" % [sex, source]
-	if source != "painted" and ResourceLoader.exists(TEX + path):
+	_skin.set_shader_parameter("photo_has_mask", false)
+	if source == "gen" and ResourceLoader.exists(TEX + face) and ResourceLoader.exists(TEX + mask):
+		_skin.set_shader_parameter("photo_tex", _tex(face))     # one of the generated faces (look "features")
+		_skin.set_shader_parameter("photo_mask", _tex(mask))
+		_skin.set_shader_parameter("photo_has_mask", true)
+		_skin.set_shader_parameter("photo_mix", 1.0)
+	elif source != "painted" and ResourceLoader.exists(TEX + path):
 		_skin.set_shader_parameter("photo_tex", _tex(path))
 		_skin.set_shader_parameter("photo_mix", 1.0)
 	else:
@@ -194,8 +221,17 @@ func apply_look(look: Dictionary) -> void:
 	# the scalp under the hair cards takes the hair's colour, so no skin shows between them
 	_skin.set_shader_parameter("scalp_shade", {"shaved": 0.55, "undercut": 0.6}.get(style, 0.9))
 	_hair.set_shader_parameter("hair_color", hair_col)
+	set_skin_source(_skin_source)                # the face follows the look's "features"
 	_hair_cards.set_shader_parameter("hair_color", hair_col)
+	for m: ShaderMaterial in _hair_mats:
+		m.set_shader_parameter("hair_color", hair_col)
 	_piece_mat.clear()
+	_refresh_outfit()
+
+
+## Leave the foot wraps off when no footwear is worn (the creator shows bare feet).
+func set_barefoot(on: bool) -> void:
+	_barefoot = on
 	_refresh_outfit()
 
 
@@ -234,6 +270,8 @@ func worn_pieces() -> Array[String]:
 	var items: Dictionary = w.get("items", {})
 	var on: Array[String] = []
 	for p: Variant in ([] if _bare else w.get("base", [])):
+		if _barefoot and str(p) == "wraps":
+			continue
 		on.append(str(p))
 	for slot: Variant in _outfit:
 		var piece: String = str(items.get(str(_outfit[slot]), ""))
@@ -294,7 +332,7 @@ func _refresh_outfit() -> void:
 	if hair_rule == "none":
 		show = []
 	elif hair_rule == "cropped" and not show.is_empty():
-		show = ["hair_cropped", "hair_cropped_cards"]
+		show = ["hair_cropped"]
 	for mesh_name: String in _mesh:
 		if mesh_name.begins_with("hair_"):
 			(_mesh[mesh_name] as MeshInstance3D).visible = show.has(mesh_name)

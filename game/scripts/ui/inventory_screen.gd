@@ -22,7 +22,7 @@ const RIGHT_SLOTS: Array[String] = ["weapon", "offhand", "ranged", "satellite", 
 const BAG_COLUMNS := 7
 const BAG_MIN_CELLS := 35
 const CELL_PX := 62.0
-const GHOST := Color(0.3, 0.28, 0.25)
+const GHOST := Color(0.38, 0.35, 0.3)
 ## What a comparison says about each stat: label, how to print it, and whether more is better.
 const STAT_INFO := {
 	"melee_damage_mult": ["Strike damage", "mult", true],
@@ -57,6 +57,10 @@ func close_actions() -> Array[String]:
 	return ["inventory", "settings"]
 
 
+func hud_hides() -> Array[String]:
+	return HUD_MENU
+
+
 func build(root: Control) -> void:
 	var inv: Inventory = player.get("inventory")
 	_inspect_box = null
@@ -86,8 +90,8 @@ func _build_sheet(box: VBoxContainer, inv: Inventory) -> void:
 		held.append(str(GameData.affinity(aff).get("label", aff)))
 	if not held.is_empty():
 		box.add_child(UiTheme.body(", ".join(held), 13, UiTheme.TEXT_DIM))
-	box.add_child(UiTheme.rule())
 
+	box.add_child(UiTheme.section("Body"))
 	var star_pct: Array = player.get("star_pct")
 	box.add_child(UiWidgets.stat_row("Stars", str(int(player.get("stars"))), UiTheme.STAR))
 	if not star_pct.is_empty():
@@ -98,7 +102,7 @@ func _build_sheet(box: VBoxContainer, inv: Inventory) -> void:
 	if not body.wounds.is_empty():
 		box.add_child(UiWidgets.stat_row("Wounds", str(body.wounds.size()), UiTheme.BAD))
 	box.add_child(UiWidgets.stat_row("Armour", "%d%% off every hit" % int(float(player.call("armour")))))
-	box.add_child(UiTheme.rule())
+	box.add_child(UiTheme.section("Combat"))
 
 	var arm_lost: bool = bool(player.get("arm_right_lost"))
 	var strike: float = float(player.call("strike_damage")) * (GameData.num("player", "off_hand_factor") if arm_lost else 1.0)
@@ -109,7 +113,7 @@ func _build_sheet(box: VBoxContainer, inv: Inventory) -> void:
 	else:
 		box.add_child(UiWidgets.stat_row("Ranged damage", str(int(round(float(player.call("ranged_damage"))))), UiTheme.BAD if arm_lost else UiTheme.TEXT))
 		box.add_child(UiWidgets.stat_row("Time between shots", "%.2f s" % float(player.call("ranged_interval"))))
-	box.add_child(UiTheme.rule())
+	box.add_child(UiTheme.section("Soul"))
 
 	var rate: float = float(player.get("satellite_rate"))
 	box.add_child(UiWidgets.stat_row("Essence regeneration", ("+%s / s" % String.num(rate, 1)) if rate > 0.0 else "none"))
@@ -119,7 +123,7 @@ func _build_sheet(box: VBoxContainer, inv: Inventory) -> void:
 	var shed: float = inv.stat("reflux_shed_mult", true)
 	if not is_equal_approx(shed, 1.0):
 		box.add_child(UiWidgets.stat_row("Reflux shedding", "%+d%%" % int(round((shed - 1.0) * 100.0)), UiTheme.GOOD if shed > 1.0 else UiTheme.BAD))
-	box.add_child(UiTheme.rule())
+	box.add_child(UiTheme.section("Load"))
 
 	var w: float = inv.weight()
 	var cap: float = maxf(1.0, inv.capacity())
@@ -251,7 +255,7 @@ class SlotPanel extends PanelContainer:
 		col.add_theme_constant_override("separation", 2)
 		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(col)
-		col.add_child(_line(str(SLOT_LABELS[slot]).to_upper(), 11, UiTheme.TEXT_FAINT))
+		col.add_child(_line(str(SLOT_LABELS[slot]).to_upper(), UiTheme.FS_CAPTION, UiTheme.TEXT_FAINT))
 		var icon := UiWidgets.Icon.new(UiDraw.item_icon(def) if worn_id != "" else str(SLOT_GHOSTS[slot]), UiTheme.GOLD if worn_id != "" else GHOST, 44.0)
 		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		col.add_child(icon)
@@ -273,7 +277,7 @@ class SlotPanel extends PanelContainer:
 
 	func _style(lit: bool) -> void:
 		_lit = lit
-		add_theme_stylebox_override("panel", UiTheme.box(Color("2f2a1c") if lit else UiTheme.PANEL_HI, UiTheme.GOLD if lit else UiTheme.BRONZE_DIM, 2 if lit else 1, 4, 5))
+		add_theme_stylebox_override("panel", UiTheme.box(Color("2f2a1c") if lit else Color(UiTheme.PANEL_HI, 0.85), UiTheme.GOLD if lit else UiTheme.BRONZE_DIM, 2 if lit else 1, 3, 5))
 
 	func _gui_input(event: InputEvent) -> void:
 		var click: InputEventMouseButton = event as InputEventMouseButton
@@ -392,20 +396,25 @@ class ItemButton extends Button:
 		custom_minimum_size = Vector2(CELL_PX, CELL_PX)
 		focus_mode = Control.FOCUS_NONE
 		button_mask = MOUSE_BUTTON_MASK_LEFT | MOUSE_BUTTON_MASK_RIGHT
+		var well: StyleBox = UiTheme.frame("slot")
+		for state: String in ["normal", "hover", "pressed", "focus", "disabled"]:
+			add_theme_stylebox_override(state, well)
 		if equippable:
-			add_theme_stylebox_override("normal", UiTheme.box(UiTheme.PANEL_HI, UiTheme.BRONZE, 1, 4, 0))
 			pressed.connect(func() -> void: screen.call("equip_item", item_id))
 		else:
 			mouse_default_cursor_shape = Control.CURSOR_ARROW
-			add_theme_stylebox_override("normal", UiTheme.box(Color("1a1713"), Color("2c261f"), 1, 4, 0))
-			add_theme_stylebox_override("hover", UiTheme.box(Color("1f1b16"), UiTheme.BRONZE_DIM, 1, 4, 0))
-			add_theme_stylebox_override("pressed", UiTheme.box(Color("1f1b16"), UiTheme.BRONZE_DIM, 1, 4, 0))
 		mouse_entered.connect(func() -> void: screen.call("show_item", item_id, ""))
+		mouse_exited.connect(queue_redraw)
 
 	func _draw() -> void:
+		var r := Rect2(Vector2.ZERO, size)
+		if equippable:
+			draw_rect(r.grow(-3.0), Color(UiTheme.GOLD, 0.06))            # gear sits on a faint warm ground; loot does not
 		UiDraw.icon(self, UiDraw.item_icon(GameData.item(item_id)), size * 0.5, minf(size.x, size.y) * 0.5, UiTheme.GOLD if equippable else UiTheme.TEXT_DIM)
 		if count > 1:
-			UiDraw.text(self, Vector2(0, size.y - 6.0), "x%d" % count, 14, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_RIGHT, size.x - 5.0)
+			UiDraw.outlined(self, Vector2(0, size.y - 6.0), "x%d" % count, UiTheme.FS_SMALL, UiTheme.TEXT, HORIZONTAL_ALIGNMENT_RIGHT, size.x - 6.0)
+		if is_hovered():
+			draw_rect(r.grow(-1.0), UiTheme.GOLD if equippable else UiTheme.BRONZE, false, 1.5)
 
 	func _get_drag_data(_at: Vector2) -> Variant:
 		if not equippable:
@@ -425,8 +434,8 @@ class EmptyCell extends Control:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), UiTheme.INSET)
-		draw_rect(Rect2(Vector2.ZERO, size), Color("2c261f"), false, 1.0)
+		draw_style_box(UiTheme.frame("slot"), Rect2(Vector2.ZERO, size))
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0, 0, 0.35))
 
 
 # --- the description under the pack -------------------------------------------------------
@@ -569,12 +578,12 @@ func _build_soul(box: VBoxContainer) -> void:
 		var head := HBoxContainer.new()
 		head.add_theme_constant_override("separation", 10)
 		list.add_child(head)
-		head.add_child(UiWidgets.Icon.new(str(ab.get("icon", "drop")), UiTheme.ESSENCE.lightened(0.35), 40.0))
+		head.add_child(UiWidgets.Icon.new(str(ab.get("icon", "drop")), GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3), 44.0))
 		var col := VBoxContainer.new()
 		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		col.add_theme_constant_override("separation", 2)
 		head.add_child(col)
-		col.add_child(UiTheme.body("%s   -   stage %d" % [str(ab.get("name", "?")), int(st["stage"])], 16, UiTheme.TEXT))
+		col.add_child(UiTheme.body("%s   -   stage %d" % [str(ab.get("name", "?")), int(st["stage"])], UiTheme.FS_BODY + 1, UiTheme.TEXT))
 		var need: String = str(player.call("pending_tier", st))
 		col.add_child(UiWidgets.Bar.new(float(st["progress"]) / 100.0, UiTheme.GOLD if need != "" else UiTheme.ESSENCE,
 			("FULL - needs a %s" % need) if need != "" else "%d%%   costs %d essence" % [int(float(st["progress"])), int(round(float(ab.get("cost", 0.0))))], 22.0))
@@ -588,9 +597,11 @@ func _build_soul(box: VBoxContainer) -> void:
 			for ci: int in held.size():
 				if str(held[ci]["tier"]) == need:
 					var label: String = str(GameData.concept(str(held[ci]["concept"])).get("label", held[ci]["concept"]))
-					col.add_child(UiWidgets.small_button("Bind the %s of %s  (irreversible, may fail)" % [need, label], func() -> void:
+					var bind_b: Button = UiWidgets.small_button("Bind the %s of %s  (irreversible, may fail)" % [need, label], func() -> void:
 						player.call("bind_construct", ai, ci)
-						rebuild()))
+						rebuild())
+					bind_b.add_theme_font_size_override("font_size", UiTheme.FS_SMALL + 1)
+					col.add_child(bind_b)
 		list.add_child(UiTheme.rule())
 
 	box.add_child(UiTheme.heading("Constructs carried", 18))

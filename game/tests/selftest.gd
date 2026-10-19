@@ -3942,7 +3942,7 @@ func _test_real_bodies() -> void:
 		_check("%s: a hood hides the hair" % id, not hair_shown)
 		rc.set_outfit({})
 		rc.apply_look({"sex": sex, "hair": "long", "face": "bearded", "body": "c"})
-		_check("%s: long hair and a beard show" % id, (meshes["hair_long_cards"] as MeshInstance3D).visible and (meshes["beard_cards"] as MeshInstance3D).visible)
+		_check("%s: long hair and a beard show" % id, (meshes["hair_long"] as MeshInstance3D).visible and (meshes["beard_cards"] as MeshInstance3D).visible)
 		var body_mesh: MeshInstance3D = meshes["body"]
 		_check("%s: a heavy build sets the heavy shape" % id, body_mesh.get_blend_shape_value(body_mesh.find_blend_shape_by_name("heavy")) > 0.9)
 		rc.set_part_visible("arm_right", false)
@@ -3956,6 +3956,12 @@ func _test_real_bodies() -> void:
 		rc.set_bare(false)
 		_check("%s: trousers cover the anatomy" % id, not (meshes["anatomy"] as MeshInstance3D).visible)
 		_check("%s: the skin wears its photo layer" % id, float(skin.get_shader_parameter("photo_mix")) > 0.5)
+		rc.apply_look({"sex": sex, "features": "f4"})
+		var face_tex: Texture2D = skin.get_shader_parameter("photo_tex")
+		_check("%s: the look's features pick a generated face" % id, face_tex != null and face_tex.resource_path.ends_with("_gen_f4.jpg"), str(face_tex.resource_path if face_tex else ""))
+		rc.set_barefoot(true)
+		_check("%s: barefoot leaves the foot wraps off" % id, not rc.worn_pieces().has("wraps"))
+		rc.set_barefoot(false)
 		var coat_mat: ShaderMaterial = (meshes["cloth_tunic"] as MeshInstance3D).material_override
 		_check("%s: garments carry their baked folds" % id, bool(coat_mat.get_shader_parameter("baked")))
 		rc.set_part_visible("arm_right", false)

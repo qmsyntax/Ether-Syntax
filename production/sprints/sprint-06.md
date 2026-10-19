@@ -678,3 +678,19 @@ faces = more ComfyUI runs, a few minutes each); the inventory screenshot reports
 Verified: self-test 767/767 (new: anatomy on the bare body only, photo skin on, garments baked); bots (scrubland, city, gate, death);
 zone; Netherecho death; click; creation; contact sheets of bodies, faces, outfits, feet, hair; in-game shots.
 Not verified: by hand.
+
+
+## Part AG — Brent's review fixes (2026-10-18: faces, hair, socks, hit box, zoom, running arms)
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-166 | Camera: perspective, BG3-style. The mouse wheel zooms between far (high, steep) and near (low, flat, behind the shoulder); the default is closer than before. Numbers in balance.json "camera" | `shots/zoom-sheet.png`, `shots/cam-sheet.png` | Done |
+| S06-167 | The strike's reach box is no longer drawn (`--show-reach` brings it back for debugging) | code | Done |
+| S06-168 | Character creation shows bare feet (no foot wraps on the creator's figure) | `shots/p-create-2.png` | Done |
+| S06-169 | Running: Mixamo's "Running" (arms swing at the sides) replaces the sword-and-shield run and the sprint whose hands crossed the chest; one run loop, rate-matched to speed | `shots/runs-sheet.png` | Done |
+| S06-170 | Hair: MakeHuman's CC0 hair meshes (nine styles; "Bob" and "Tight curls" are new) fitted to our bodies through their own .mhclo fitting data on the warped base mesh, textured with their own strands, tinted to the chosen colour; replaces the generated hair cards (beards stay cards) | `shots/char-hairmh.png` | Done |
+| S06-171 | Faces: six generated faces per sex (ComfyUI, fictional adults of varied age and features), chosen by the new look option "Features"; the old "Face" option is now "Marks" (scar, stubble, beard...) | `shots/char-faces12.png` | Done |
+
+Not done / rough: hair is static (no sway), bob and long have a smooth crown patch from their textures; the run plays ~1.6x at full speed.
+Verified: self-test 772/772; bots (full, gate, death); zone; Netherecho death; click; creation; contact sheets; in-game shots.
+Not verified: by hand - the wheel zoom feel especially.

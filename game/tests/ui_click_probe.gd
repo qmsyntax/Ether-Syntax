@@ -4,15 +4,23 @@ extends Node
 ## Opens the inventory and equips gear three ways with synthetic mouse events: left-click the item,
 ## right-click the item, and drag the item onto its slot; then the paper doll's own interactions:
 ## a head piece into the head slot, a second trinket, a drag onto the second trinket slot, and a
-## click on a worn piece to take it off. Then, in town, the skill trainer: click the trainer in the
-## street to walk up and talk, click Training, click a node of the tree and click Learn.
+## click on a worn piece to take it off. Then the HUD and the controls menu: a point on the
+## dock's strike slot counts as over the interface (so a click there is not an attack order), and
+## a key is rebound by clicking its button and pressing a key, then put back with "Reset to
+## defaults", and the menu closed with its own button. The player's saved key bindings are
+## backed up first and restored at the end. Then, in town, the skill trainer: click the trainer
+## in the street to walk up and talk, click Training, click a node of the tree and click Learn.
 ## Prints PASS/FAIL and exits 0/1.
-## `--field` does the inventory part in the arena, where the inventory pauses the game.
+## `--field` does it in the arena, where the inventory pauses the game (and skips the trainer).
 
 var main: Node
 var frames := 0
 var results: Array[String] = []
 var failed := false
+var _binds_backup: Variant = null      # user://keybinds.cfg as it was, or null if there was none
+var _step := ""
+var _step_ms := 0
+var _trainer_from := 0                 # the frame the trainer part began, 0 until then
 
 
 func _ready() -> void:
@@ -87,13 +95,6 @@ func _service(title: String) -> Button:
 			if (l as Label).text == title and (n as Control).is_visible_in_tree():
 				return n as Button
 	return null
-
-
-func _finish() -> void:
-	for line: String in results:
-		print("UICLICK: " + line)
-	print("UICLICK: %s" % ("FAIL" if failed else "PASS"))
-	get_tree().quit(1 if failed else 0)
 
 
 func _expect(label: String, ok: bool) -> void:
@@ -214,40 +215,153 @@ func _process(_delta: float) -> void:
 			_expect("the starting boots are worn", boots != null and str(inv.equipped.get("feet", "")) == "street_boots")
 			var hood: Control = _find_item(main, "cooling_coil")
 			_expect("nothing worn is still listed in the pack", hood == null)
-			if OS.get_cmdline_user_args().has("--field"):
-				_finish()
-				return
-			# the trainer, in the street
-			main.call("close_screen")
+			main.call("open_inventory")              # closes it
+		125:
+			# the real cursor is not moved by pushed events, so the HUD's own hit test is asked directly
+			var hud: Node = main.get("hud")
+			var strike: Rect2 = hud.get("_strike_rect")
+			_expect("the dock has a strike slot", strike.size.x > 0.0)
+			_expect("a point on the strike slot is over the interface", bool(hud.call("ui_at", strike.get_center())))
+			_expect("a point on open ground is not", not bool(hud.call("ui_at", get_viewport().get_visible_rect().size * Vector2(0.5, 0.45))))
+		135:
+			if FileAccess.file_exists(Keybinds.SAVE_PATH):
+				_binds_backup = FileAccess.get_file_as_string(Keybinds.SAVE_PATH)
+			main.call("open_settings")
+		145:
+			var menu: Node = main.get("settings_menu")
+			_expect("the controls menu opens", menu != null)
+			if menu != null:
+				var btn: Control = (menu.get("_rows") as Dictionary).get("ascend")
+				_expect("the controls menu lists Ascend", btn != null and btn.is_visible_in_tree())
+				if btn != null:
+					_click(btn)
+					_step = "rebind"
+					_step_ms = Time.get_ticks_msec()
+	if frames > 145 and _step != "":
+		_settings_steps()
+	if _trainer_from > 0:
+		_trainer_steps(frames - _trainer_from)
+
+
+## The skill trainer in the street, counted in frames from the moment the controls menu closed.
+func _trainer_steps(at: int) -> void:
+	var player: Node = main.get("player")
+	match at:
+		1:
 			var town: TownBuilder = main.get("_town")
 			var trainer: Townsperson = town.person("trainer")
 			(player as Node3D).global_position = trainer.global_position + Vector3(1.6, 0.0, 0.6)
 			player.set("has_move_goal", false)
 			player.set("skill_points", 2)
-		125:
+		10:
 			var trainer: Townsperson = (main.get("_town") as TownBuilder).person("trainer")
 			var cam: Camera3D = main.get("camera")
 			_click_at(cam.unproject_position(trainer.global_position + Vector3.UP * 1.1))
-		135:
+		20:
 			var s: Node = main.get("screen")
 			_expect("clicking the trainer in the street opens their panel", s is TalkScreen and str(s.get("role")) == "trainer")
 			var b: Button = _service("Training")
 			_expect("the trainer offers training", b != null)
 			if b != null:
 				_click_at(_centre(b))
-		145:
+		30:
 			var s: Node = main.get("screen")
 			_expect("Training opens the skill tree, teaching", s is SkillTreeScreen and bool(s.get("at_trainer")))
 			var node: Control = _find(main, "Node_undertow")
 			_expect("the tree shows Undertow", node != null)
 			if node != null:
 				_click_at(_centre(node))
-		155:
+		40:
 			_expect("clicking a node selects it", main.get("screen") is SkillTreeScreen and str((main.get("screen") as Node).get("selected")) == "undertow")
 			var learn: Control = _find(main, "LearnButton")
 			_expect("its Learn button is live", learn != null and not (learn as Button).disabled)
 			if learn != null:
 				_click_at(_centre(learn))
-		165:
+		50:
 			_expect("clicking Learn teaches it and spends a point", bool(player.call("knows", "undertow")) and int(player.get("skill_points")) == 1)
+			_trainer_from = 0
 			_finish()
+
+
+## The controls menu ignores input for 200 ms after a capture starts, so these steps go by the clock.
+func _settings_steps() -> void:
+	var since: int = Time.get_ticks_msec() - _step_ms
+	match _step:
+		"rebind":
+			if since > 400:
+				var key := InputEventKey.new()
+				key.physical_keycode = KEY_Y
+				key.keycode = KEY_Y
+				key.pressed = true
+				get_viewport().push_input(key)
+				var up := key.duplicate() as InputEventKey
+				up.pressed = false
+				get_viewport().push_input(up)
+				_step = "check_rebind"
+				_step_ms = Time.get_ticks_msec()
+		"check_rebind":
+			if since > 150:
+				_expect("clicking Ascend and pressing Y binds Ascend to Y", _physical("ascend") == KEY_Y)
+				_click(_button_named("Reset to defaults"))
+				_step = "check_reset"
+				_step_ms = Time.get_ticks_msec()
+		"check_reset":
+			if since > 150:
+				_expect("Reset to defaults puts Ascend back on T", _physical("ascend") == KEY_T)
+				_click(_button_named("Close"))
+				_step = "check_close"
+				_step_ms = Time.get_ticks_msec()
+		"check_close":
+			if since > 150:
+				_expect("the Close button shuts the controls menu", main.get("settings_menu") == null)
+				_step = ""
+				if OS.get_cmdline_user_args().has("--field"):
+					_finish()
+				else:
+					_trainer_from = frames
+
+
+func _physical(action: String) -> Key:
+	var events: Array[InputEvent] = InputMap.action_get_events(action)
+	return (events[0] as InputEventKey).physical_keycode if not events.is_empty() and events[0] is InputEventKey else KEY_NONE
+
+
+func _button_named(text: String) -> Control:
+	return _find_button(main, text)
+
+
+func _find_button(node: Node, text: String) -> Control:
+	if node is Button and (node as Button).text == text and (node as Control).is_visible_in_tree():
+		return node
+	for c: Node in node.get_children():
+		var b: Control = _find_button(c, text)
+		if b != null:
+			return b
+	return null
+
+
+func _click(c: Control) -> void:
+	if c == null:
+		return
+	_move(_centre(c), false)
+	_mouse(_centre(c), MOUSE_BUTTON_LEFT, true)
+	_mouse(_centre(c), MOUSE_BUTTON_LEFT, false)
+
+
+## Put the player's own key bindings back as they were before the test touched them.
+func _restore_binds() -> void:
+	if _binds_backup != null:
+		var f := FileAccess.open(Keybinds.SAVE_PATH, FileAccess.WRITE)
+		f.store_string(str(_binds_backup))
+		f.close()
+		Keybinds.call("_load")
+	else:
+		Keybinds.reset_defaults()
+
+
+func _finish() -> void:
+	_restore_binds()
+	for line: String in results:
+		print("UICLICK: " + line)
+	print("UICLICK: %s" % ("FAIL" if failed else "PASS"))
+	get_tree().quit(1 if failed else 0)

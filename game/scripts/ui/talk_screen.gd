@@ -16,6 +16,11 @@ func backdrop() -> float:
 	return 0.2
 
 
+## The ledger on the right repeats the HUD's plate and log.
+func hud_hides() -> Array[String]:
+	return HUD_MENU
+
+
 func build(root: Control) -> void:
 	var f: Dictionary = GameData.town_folk(role)
 	var box: VBoxContainer = framed(root, 0.24, 0.06, 0.62, 0.56)

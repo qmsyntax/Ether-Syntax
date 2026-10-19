@@ -4,6 +4,9 @@ extends Control
 ## public methods; it owns no game state. `rebuild()` throws the contents away and builds them
 ## again from the current state - simple, and screens are small.
 
+## What a menu screen hides of the HUD: everything but the dock (see hud_hides).
+const HUD_MENU: Array[String] = ["plate", "hints", "log", "tags", "buffs", "tracker"]
+
 var game: Node
 var player: Node
 var _content: Control
@@ -40,6 +43,13 @@ func _unhandled_input(event: InputEvent) -> void:
 ## Override: whether the screen swallows clicks on its empty areas.
 func blocks_clicks() -> bool:
 	return true
+
+
+## Override: which parts of the HUD to hide while this screen is open, so a menu never sits on
+## top of something it repeats: "plate", "hints", "log", "tags", "buffs", "tracker". The dock
+## (orbs and skill slots) always stays.
+func hud_hides() -> Array[String]:
+	return []
 
 
 ## Override: darkness of the backdrop behind the panel (0 = none).

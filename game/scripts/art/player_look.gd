@@ -6,7 +6,7 @@ extends RefCounted
 ## option, and the default look is the stock player. All designs are original.
 
 ## Look keys, in the order the creator should show them.
-const KEYS: Array[String] = ["sex", "body", "skin", "face", "hair", "hair_color", "band", "coat", "accent"]
+const KEYS: Array[String] = ["sex", "body", "skin", "features", "face", "hair", "hair_color", "band", "coat", "accent"]
 
 const SEXES: Array[Array] = [
 	["male", "Male"],
@@ -31,6 +31,10 @@ const SKINS: Array[Array] = [
 	["deep", "Deep brown", Color(0.31, 0.2, 0.14)],
 	["ebony", "Ebony", Color(0.2, 0.135, 0.105)],
 ]
+# which generated face (real bodies: textures/skin/skin_<sex>_gen_<id>.jpg); the procedural body ignores it
+const FEATURES: Array[Array] = [
+	["f1", "First"], ["f2", "Second"], ["f3", "Third"], ["f4", "Fourth"], ["f5", "Fifth"], ["f6", "Sixth"],
+]
 const FACES: Array[Array] = [
 	["plain", "Plain"],
 	["scarred", "Scarred"],
@@ -43,11 +47,13 @@ const HAIRS: Array[Array] = [
 	["messy", "Short and messy"],
 	["shaved", "Shaved"],
 	["cropped", "Cropped"],
-	["topknot", "Topknot"],
+	["topknot", "Tied back"],
 	["long", "Long and loose"],
 	["braid", "Braid"],
 	["undercut", "Undercut"],
 	["swept", "Swept back"],
+	["bob", "Bob"],
+	["curls", "Tight curls"],
 ]
 const HAIR_COLORS: Array[Array] = [
 	["black", "Soot black", Color(0.09, 0.07, 0.06)],
@@ -135,6 +141,8 @@ static func _table(key: String) -> Array[Array]:
 			return SKINS
 		"face":
 			return FACES
+		"features":
+			return FEATURES
 		"hair":
 			return HAIRS
 		"hair_color":

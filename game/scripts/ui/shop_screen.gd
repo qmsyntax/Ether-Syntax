@@ -6,6 +6,10 @@ func backdrop() -> float:
 	return 0.6
 
 
+func hud_hides() -> Array[String]:
+	return HUD_MENU
+
+
 func build(root: Control) -> void:
 	var inv: Inventory = player.get("inventory")
 	var money: int = int(player.get("money"))

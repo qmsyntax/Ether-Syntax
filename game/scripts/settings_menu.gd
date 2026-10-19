@@ -4,6 +4,17 @@ extends Control
 
 signal closed
 
+## The controls in groups, two columns of them. An action not named here (a new one) is listed
+## under "Other", so nothing bindable is ever missing from the menu.
+const GROUPS: Array = [
+	["Movement", ["move_up", "move_down", "move_left", "move_right"], 0],
+	["Combat", ["strike", "overcharge", "ranged_stance"], 0],
+	["Skills", ["ability_1", "ability_2", "ability_3", "ability_4", "ability_5", "ability_6"], 0],
+	["Soul", ["meditate", "ascend", "bind", "project"], 1],
+	["Screens", ["inventory", "ethercosm", "settings"], 1],
+	["Town and passage", ["interact", "healer", "rest", "go_now", "restart"], 1],
+]
+
 var _rows: Dictionary = {}          # action -> Button
 var _capturing := ""
 var _armed_ms := 0
@@ -19,10 +30,10 @@ func _ready() -> void:
 	add_child(dim)
 
 	var panel := PanelContainer.new()
-	panel.anchor_left = 0.3
-	panel.anchor_right = 0.7
-	panel.anchor_top = 0.04
-	panel.anchor_bottom = 0.96
+	panel.anchor_left = 0.17
+	panel.anchor_right = 0.83
+	panel.anchor_top = 0.06
+	panel.anchor_bottom = 0.94
 	panel.offset_left = 0
 	panel.offset_right = 0
 	panel.offset_top = 0
@@ -30,48 +41,81 @@ func _ready() -> void:
 	add_child(panel)
 	var outer := VBoxContainer.new()
 	panel.add_child(outer)
-	outer.add_child(UiTheme.heading("Controls", 30))
-	outer.add_child(UiTheme.body("Click an action, then press the key or mouse button you want. Esc closes.", 14, UiTheme.TEXT_DIM))
+	outer.add_child(UiTheme.heading("Controls", UiTheme.FS_TITLE))
+	outer.add_child(UiTheme.body("Click a key, then press the key or mouse button you want for it. Esc cancels, or closes this menu.", UiTheme.FS_SMALL, UiTheme.TEXT_DIM))
 	outer.add_child(UiTheme.rule())
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	outer.add_child(scroll)
-	var box := VBoxContainer.new()
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", 4)
-	scroll.add_child(box)
+	var cols := HBoxContainer.new()
+	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_theme_constant_override("separation", 40)
+	scroll.add_child(cols)
+	var column: Array[VBoxContainer] = []
+	for i: int in 2:
+		var c := VBoxContainer.new()
+		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		c.add_theme_constant_override("separation", 4)
+		cols.add_child(c)
+		column.append(c)
 
+	var listed: Dictionary = {}
+	var groups: Array = GROUPS.duplicate(true)
+	var other: Array = []
 	for action: String in Keybinds.action_names():
-		var row := HBoxContainer.new()
-		var name := Label.new()
-		name.text = Keybinds.label_for(action)
-		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(name)
-		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(190, 30)
-		btn.focus_mode = Control.FOCUS_NONE
-		btn.pressed.connect(_begin_capture.bind(action))
-		row.add_child(btn)
-		box.add_child(row)
-		_rows[action] = btn
+		var found := false
+		for g: Array in groups:
+			if (g[1] as Array).has(action):
+				found = true
+		if not found:
+			other.append(action)
+	if not other.is_empty():
+		groups.append(["Other", other, 1])
+	for g: Array in groups:
+		var box: VBoxContainer = column[int(g[2])]
+		if box.get_child_count() > 0:
+			var gap := Control.new()
+			gap.custom_minimum_size = Vector2(0, 8)
+			box.add_child(gap)
+		box.add_child(UiTheme.section(str(g[0])))
+		for action: String in g[1]:
+			if not Keybinds.action_names().has(action) or listed.has(action):
+				continue
+			listed[action] = true
+			var row := HBoxContainer.new()
+			var name := UiTheme.body(Keybinds.label_for(action), UiTheme.FS_BODY, UiTheme.TEXT)
+			name.autowrap_mode = TextServer.AUTOWRAP_OFF
+			name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			row.add_child(name)
+			var btn := Button.new()
+			btn.custom_minimum_size = Vector2(132, 32)
+			btn.focus_mode = Control.FOCUS_NONE
+			btn.add_theme_font_size_override("font_size", UiTheme.FS_BODY)
+			btn.pressed.connect(_begin_capture.bind(action))
+			row.add_child(btn)
+			box.add_child(row)
+			_rows[action] = btn
 
 	outer.add_child(UiTheme.rule())
+	var foot := HBoxContainer.new()
+	foot.add_theme_constant_override("separation", 12)
+	outer.add_child(foot)
 	_status = Label.new()
 	_status.add_theme_color_override("font_color", UiTheme.GOLD)
-	outer.add_child(_status)
-
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 12)
+	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	foot.add_child(_status)
 	var reset := Button.new()
 	reset.text = "Reset to defaults"
 	reset.pressed.connect(_reset)
-	buttons.add_child(reset)
+	foot.add_child(reset)
 	var close := Button.new()
 	close.text = "Close"
+	close.custom_minimum_size = Vector2(110, 0)
 	close.pressed.connect(_close)
-	buttons.add_child(close)
-	outer.add_child(buttons)
+	foot.add_child(close)
 
 	_refresh()
 
@@ -80,6 +124,7 @@ func _refresh() -> void:
 	for action: String in _rows:
 		var btn: Button = _rows[action]
 		btn.text = "press a key..." if action == _capturing else Keybinds.binding_text(action)
+		btn.add_theme_color_override("font_color", UiTheme.GOLD if action == _capturing else UiTheme.TEXT)
 
 
 func _begin_capture(action: String) -> void:

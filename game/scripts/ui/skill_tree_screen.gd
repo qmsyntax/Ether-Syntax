@@ -26,6 +26,10 @@ func close_actions() -> Array[String]:
 	return ["skills", "settings"]
 
 
+func hud_hides() -> Array[String]:
+	return HUD_MENU
+
+
 func build(root: Control) -> void:
 	var affs: Array = player.get("affinities")
 	if affinity == "" or not affs.has(affinity):

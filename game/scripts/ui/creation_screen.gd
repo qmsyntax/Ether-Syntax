@@ -214,6 +214,8 @@ func _refresh_model() -> void:
 	if _rig != null:
 		_rig.queue_free()
 	_rig = CharacterLook.build(spec["look"])
+	if _rig.has_method("set_barefoot"):
+		_rig.call("set_barefoot", true)        # no foot wraps in the creator (Brent 2026-10-18)
 	_pivot.add_child(_rig)
 
 
