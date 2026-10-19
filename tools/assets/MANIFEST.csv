@@ -280,3 +280,11 @@ assets/characters/textures/skin/skin_female_gen_f5.jpg,generated + projected,"Br
 assets/characters/textures/skin/skin_female_gen_f6.jpg,generated + projected,"Brent's ComfyUI (FLUX.1-dev fp8 + union ControlNet, depth) on our head's depth map -> tools/assets/comfy_face.py (--who), blender_face_gen.py project; over skin_female_mh.png",own work (generated; fictional person); FLUX.1-dev outputs usable under its licence,face f6: 36-year-old woman of East African descent,2026-10-18
 assets/characters/textures/skin/skin_female_gen_mask.png,generated,tools/assets/blender_face_gen.py,own work,where the photo skin applies (the generated faces share it),2026-10-18
 assets/shaders/hair_mesh.gdshader,written,by hand,own work,"hair meshes: texture brightness in the chosen hair colour, alpha cut",2026-10-18
+assets/ui/panel.png,generated,tools/assets/make_ui_textures.py,own work (no source images),"panel frame: grain fill, bronze bevel, corner brackets",2026-10-18
+assets/ui/panel_plain.png,generated,tools/assets/make_ui_textures.py,own work (no source images),"inner panel / tooltip frame, no brackets",2026-10-18
+assets/ui/panel_nether.png,generated,tools/assets/make_ui_textures.py,own work (no source images),the Netherecho's panel frame,2026-10-18
+assets/ui/button.png,generated,tools/assets/make_ui_textures.py,own work (no source images),"button, normal",2026-10-18
+assets/ui/button_hover.png,generated,tools/assets/make_ui_textures.py,own work (no source images),"button, hovered",2026-10-18
+assets/ui/button_pressed.png,generated,tools/assets/make_ui_textures.py,own work (no source images),"button, pressed / selected",2026-10-18
+assets/ui/button_disabled.png,generated,tools/assets/make_ui_textures.py,own work (no source images),"button, disabled",2026-10-18
+assets/ui/slot.png,generated,tools/assets/make_ui_textures.py,own work (no source images),"sunken slot well (hotbar, pack cells, equipment slots)",2026-10-18

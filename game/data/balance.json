@@ -422,6 +422,15 @@
     "sight_m": 18.0,
     "size_px": 300.0
   },
+  "hud": {
+    "_note": "Interface tunables (design/09-ui-review-v0.md). log_seconds / log_max: how long a message line stays and how many show. hints_alpha_in_combat: the key reminders in the bottom-right corner fade to this while a fight is on (0 = gone). show_untouched_enemy_bars: 1 draws a health bar over every enemy, 0 only over hurt or hovered ones. wisp_label_range: metres from the projection within which a wisp says what it is. tooltip_delay_s: how long the cursor rests on a slot or orb before its tooltip opens. [MODEL]",
+    "log_seconds": 9.0,
+    "log_max": 6,
+    "hints_alpha_in_combat": 0.0,
+    "show_untouched_enemy_bars": 0,
+    "wisp_label_range": 6.0,
+    "tooltip_delay_s": 0.25
+  },
   "art": {
     "_note": "real_bodies: the player is drawn with the real rigged, clothed body (assets/characters/body_<sex>.glb, scripts/art/real_character.gd, dressed by data/wardrobe.json) instead of the procedural one. On since 2026-10-18; false brings the procedural body back. --real-body on the command line forces it on for one run.",
     "real_bodies": true

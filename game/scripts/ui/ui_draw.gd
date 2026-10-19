@@ -1,5 +1,7 @@
 class_name UiDraw
 extends RefCounted
+
+const STAR_TINT := Color("cdbcf2")
 ## Procedural drawing helpers for the HUD: liquid orbs, gauges, bars and small glyph icons.
 ## Every function draws onto the CanvasItem passed in, from inside its _draw().
 
@@ -75,12 +77,13 @@ static func ring(ci: CanvasItem, c: Vector2, r: float, frac: float, color: Color
 
 ## A framed horizontal bar.
 static func bar(ci: CanvasItem, rect: Rect2, frac: float, color: Color, back: Color = UiTheme.INSET) -> void:
-	ci.draw_rect(rect.grow(1.0), Color(0, 0, 0, 0.7))
+	ci.draw_rect(rect.grow(1.0), Color(0, 0, 0, 0.75))
 	ci.draw_rect(rect, back)
 	if frac > 0.0:
 		var f := Rect2(rect.position, Vector2(rect.size.x * clampf(frac, 0.0, 1.0), rect.size.y))
 		ci.draw_rect(f, color)
 		ci.draw_rect(Rect2(f.position, Vector2(f.size.x, maxf(1.0, f.size.y * 0.35))), Color(1, 1, 1, 0.14))
+		ci.draw_rect(Rect2(f.position.x, f.end.y - maxf(1.0, f.size.y * 0.2), f.size.x, maxf(1.0, f.size.y * 0.2)), Color(0, 0, 0, 0.18))
 	ci.draw_rect(rect.grow(1.0), UiTheme.BRONZE_DIM, false, 1.0)
 
 
@@ -89,6 +92,101 @@ static func text(ci: CanvasItem, pos: Vector2, s: String, size: int, color: Colo
 	if shadow:
 		ci.draw_string(f, pos + Vector2(1, 1), s, align, width, size, Color(0, 0, 0, 0.85))
 	ci.draw_string(f, pos, s, align, width, size, color)
+
+
+## Text with a dark outline all round: readable over any ground, any fill. Everything the HUD
+## draws straight onto the world uses this, not the shadowed text above.
+static func outlined(ci: CanvasItem, pos: Vector2, s: String, size: int, color: Color, align: int = HORIZONTAL_ALIGNMENT_LEFT, width: float = -1.0, bold: bool = false) -> void:
+	var f: Font = UiTheme.font(bold)
+	var o: int = maxi(3, int(round(float(size) * 0.28)))
+	ci.draw_string_outline(f, pos, s, align, width, size, o, Color(UiTheme.OUTLINE, UiTheme.OUTLINE.a * color.a))
+	ci.draw_string(f, pos, s, align, width, size, color)
+
+
+static func text_width(s: String, size: int, bold: bool = false) -> float:
+	return UiTheme.font(bold).get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+
+
+## A key as a small chip: [W]. `at` is the chip's left edge on the text's baseline. Returns its width.
+static func keycap(ci: CanvasItem, at: Vector2, key: String, size: int, alpha: float = 1.0) -> float:
+	var w: float = maxf(float(size) + 6.0, text_width(key, size - 1) + 10.0)
+	var r := Rect2(at.x, at.y - float(size) + 1.0, w, float(size) + 6.0)
+	ci.draw_rect(r.grow(1.0), Color(0, 0, 0, 0.7 * alpha))
+	ci.draw_rect(r, Color(UiTheme.PANEL_HI, 0.95 * alpha))
+	ci.draw_rect(Rect2(r.position, Vector2(r.size.x, 1.0)), Color(1, 0.95, 0.8, 0.12 * alpha))
+	ci.draw_rect(r, Color(UiTheme.BRONZE, alpha), false, 1.0)
+	ci.draw_string(UiTheme.font(), Vector2(r.position.x, at.y), key, HORIZONTAL_ALIGNMENT_CENTER, w, size - 1, Color(UiTheme.TEXT, alpha))
+	return w
+
+
+## Width of a line drawn by `rich` (key names in square brackets become keycaps).
+static func rich_width(s: String, size: int) -> float:
+	var w := 0.0
+	for part: Array in _rich_parts(s):
+		if bool(part[1]):
+			w += maxf(float(size) + 6.0, text_width(str(part[0]), size - 1) + 10.0) + 2.0
+		else:
+			w += text_width(str(part[0]), size)
+	return w
+
+
+## One line of text where "[Key]" is drawn as a keycap. Centred in `width` when `width` > 0.
+static func rich(ci: CanvasItem, pos: Vector2, s: String, size: int, color: Color, width: float = -1.0, outline: bool = true) -> void:
+	var x: float = pos.x
+	if width > 0.0:
+		x += (width - rich_width(s, size)) * 0.5
+	for part: Array in _rich_parts(s):
+		if bool(part[1]):
+			x += keycap(ci, Vector2(x + 1.0, pos.y), str(part[0]), size, color.a) + 2.0
+		else:
+			if outline:
+				outlined(ci, Vector2(x, pos.y), str(part[0]), size, color)
+			else:
+				ci.draw_string(UiTheme.font(), Vector2(x, pos.y), str(part[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, size, color)
+			x += text_width(str(part[0]), size)
+
+
+## [[text, is_key], ...]: a bracketed run of up to 12 characters is a key name.
+static func _rich_parts(s: String) -> Array:
+	var out: Array = []
+	var i := 0
+	while i < s.length():
+		var open: int = s.find("[", i)
+		var close: int = s.find("]", open) if open >= 0 else -1
+		if open < 0 or close < 0 or close - open > 13:
+			out.append([s.substr(i), false])
+			break
+		if open > i:
+			out.append([s.substr(i, open - i), false])
+		out.append([s.substr(open + 1, close - open - 1), true])
+		i = close + 1
+	return out
+
+
+## A nine-patch frame (UiTheme.FRAMES) drawn into `rect`, tinted by `modulate`.
+static func frame(ci: CanvasItem, rect: Rect2, kind: String = "panel", modulate: Color = Color(1, 1, 1)) -> void:
+	var sb: StyleBox = UiTheme.frame(kind)
+	if sb is StyleBoxTexture and modulate != Color(1, 1, 1):
+		sb = sb.duplicate()
+		(sb as StyleBoxTexture).modulate_color = modulate
+	ci.draw_style_box(sb, rect)
+
+
+## A dark wedge over `rect` for the part of a wait still to come (1 = all of it), sweeping
+## clockwise from the top as it runs out, the way a cooldown is shown.
+static func sweep(ci: CanvasItem, rect: Rect2, left: float, color: Color = Color(0, 0, 0, 0.62)) -> void:
+	if left <= 0.0:
+		return
+	var c: Vector2 = rect.get_center()
+	var r: float = rect.size.length() * 0.5
+	var pts := PackedVector2Array([c])
+	var start: float = -PI / 2.0 + TAU * (1.0 - clampf(left, 0.0, 1.0))
+	var steps := 24
+	for i: int in steps + 1:
+		var a: float = lerpf(start, 1.5 * PI, float(i) / float(steps))
+		var p: Vector2 = c + Vector2(cos(a), sin(a)) * r
+		pts.append(Vector2(clampf(p.x, rect.position.x, rect.end.x), clampf(p.y, rect.position.y, rect.end.y)))
+	ci.draw_colored_polygon(pts, color)
 
 
 ## Small procedural glyphs so abilities and items read at a glance without art assets.
@@ -352,14 +450,89 @@ static func icon(ci: CanvasItem, kind: String, c: Vector2, s: float, color: Colo
 		"coin":
 			ci.draw_circle(c, s * 0.42, color.darkened(0.3))
 			ci.draw_circle(c, s * 0.32, color)
+		"tusk":      # a curved tusk
+			var tp := PackedVector2Array()
+			for i: int in 13:
+				var u: float = float(i) / 12.0
+				tp.append(c + Vector2(-s * 0.42 + u * s * 0.8, s * 0.36 - sin(u * PI * 0.62) * s * 0.78 + u * s * 0.1))
+			for i: int in range(12, -1, -1):
+				var u2: float = float(i) / 12.0
+				tp.append(c + Vector2(-s * 0.42 + u2 * s * 0.8, s * 0.36 - sin(u2 * PI * 0.62) * s * 0.78 + u2 * s * 0.1 + s * 0.22 * (1.0 - u2)))
+			ci.draw_colored_polygon(tp, color)
+			ci.draw_line(c + Vector2(-s * 0.46, s * 0.36), c + Vector2(-s * 0.4, s * 0.58), color.darkened(0.4), 3.0, true)
+		"plate":     # a curved plate of shell or armour
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.46, -s * 0.2), c + Vector2(0, -s * 0.44), c + Vector2(s * 0.46, -s * 0.2),
+				c + Vector2(s * 0.36, s * 0.34), c + Vector2(0, s * 0.48), c + Vector2(-s * 0.36, s * 0.34)]), color.darkened(0.15))
+			ci.draw_polyline(PackedVector2Array([c + Vector2(-s * 0.36, -s * 0.06), c + Vector2(0, -s * 0.24), c + Vector2(s * 0.36, -s * 0.06)]), color.lightened(0.3), 2.0, true)
+			ci.draw_polyline(PackedVector2Array([c + Vector2(-s * 0.3, s * 0.14), c + Vector2(0, -s * 0.02), c + Vector2(s * 0.3, s * 0.14)]), color.darkened(0.45), 2.0, true)
+		"cord":      # a coil of cord
+			for k: int in 3:
+				ci.draw_arc(c + Vector2(0, s * 0.04), s * (0.18 + 0.14 * k), 0.0, TAU - (0.6 if k == 2 else 0.0), 24, color.darkened(0.12 * k), 3.0, true)
+			ci.draw_line(c + Vector2(s * 0.46, s * 0.04), c + Vector2(s * 0.58, s * 0.5), color, 3.0, true)
+		"sigil":     # a seal: a ring with a mark struck in it
+			ci.draw_circle(c, s * 0.44, color.darkened(0.35))
+			ci.draw_arc(c, s * 0.36, 0.0, TAU, 28, color.lightened(0.2), 2.0, true)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -s * 0.24), c + Vector2(s * 0.2, s * 0.16), c + Vector2(-s * 0.2, s * 0.16)]), color.lightened(0.3))
+		"seed":      # a seed head
+			ci.draw_line(c + Vector2(0, s * 0.56), c + Vector2(0, -s * 0.1), color.darkened(0.3), 2.0, true)
+			for k: int in 5:
+				var sy2: float = -s * 0.46 + k * s * 0.12
+				ci.draw_circle(c + Vector2(-s * 0.08, sy2), s * 0.07, color)
+				ci.draw_circle(c + Vector2(s * 0.08, sy2 + s * 0.06), s * 0.07, color)
+		"mask":      # a face mask with eye holes
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.4, -s * 0.36), c + Vector2(s * 0.4, -s * 0.36), c + Vector2(s * 0.36, s * 0.14),
+				c + Vector2(0, s * 0.52), c + Vector2(-s * 0.36, s * 0.14)]), color)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.3, -s * 0.12), c + Vector2(-s * 0.08, -s * 0.16), c + Vector2(-s * 0.1, -s * 0.02), c + Vector2(-s * 0.28, -s * 0.02)]), Color(0, 0, 0, 0.85))
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.3, -s * 0.12), c + Vector2(s * 0.08, -s * 0.16), c + Vector2(s * 0.1, -s * 0.02), c + Vector2(s * 0.28, -s * 0.02)]), Color(0, 0, 0, 0.85))
+		"stave":     # an unstrung bow stave
+			ci.draw_arc(c + Vector2(s * 0.5, 0), s * 0.72, PI * 0.72, PI * 1.28, 18, color, 4.0, true)
+			ci.draw_line(c + Vector2(-s * 0.14, -s * 0.5), c + Vector2(-s * 0.14, s * 0.5), color.darkened(0.45), 1.0, true)
+		"hide":      # a stretched hide
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.3, -s * 0.48), c + Vector2(s * 0.3, -s * 0.48), c + Vector2(s * 0.5, -s * 0.2), c + Vector2(s * 0.34, s * 0.06),
+				c + Vector2(s * 0.48, s * 0.4), c + Vector2(s * 0.14, s * 0.5), c + Vector2(-s * 0.14, s * 0.5), c + Vector2(-s * 0.48, s * 0.4), c + Vector2(-s * 0.34, s * 0.06), c + Vector2(-s * 0.5, -s * 0.2)]), color.darkened(0.1))
+			ci.draw_line(c + Vector2(0, -s * 0.4), c + Vector2(0, s * 0.42), color.darkened(0.4), 1.5, true)
+		"boss":      # a shield boss
+			ci.draw_circle(c, s * 0.48, color.darkened(0.4))
+			ci.draw_circle(c, s * 0.3, color)
+			ci.draw_circle(c + Vector2(-s * 0.08, -s * 0.08), s * 0.1, color.lightened(0.4))
+			for k: int in 6:
+				var ra: float = TAU * float(k) / 6.0
+				ci.draw_circle(c + Vector2(cos(ra), sin(ra)) * s * 0.4, s * 0.04, color.lightened(0.2))
+		"ash":       # a heap of ash with smoke over it
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.5, s * 0.42), c + Vector2(-s * 0.2, s * 0.06), c + Vector2(s * 0.08, s * 0.12), c + Vector2(s * 0.5, s * 0.42)]), color.darkened(0.2))
+			ci.draw_arc(c + Vector2(-s * 0.1, -s * 0.12), s * 0.16, PI, TAU, 10, color.lightened(0.2), 2.0, true)
+			ci.draw_arc(c + Vector2(s * 0.12, -s * 0.3), s * 0.14, 0.0, PI, 10, color.lightened(0.2), 2.0, true)
+		"drum":      # a drumhead
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.4, -s * 0.18), Vector2(s * 0.8, s * 0.5)), color.darkened(0.35))
+			ci.draw_arc(c + Vector2(0, -s * 0.18), s * 0.4, PI, TAU, 16, color, 3.0, true)
+			ci.draw_line(c + Vector2(-s * 0.4, -s * 0.18), c + Vector2(s * 0.4, -s * 0.18), color, 3.0, true)
+			for k: int in 3:
+				ci.draw_line(c + Vector2(-s * 0.3 + k * s * 0.3, -s * 0.12), c + Vector2(-s * 0.2 + k * s * 0.3, s * 0.3), color.lightened(0.2), 1.5, true)
+		"chest":     # a bound strongbox
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.46, -s * 0.2), Vector2(s * 0.92, s * 0.6)), color.darkened(0.2))
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.46, -s * 0.4), Vector2(s * 0.92, s * 0.22)), color)
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.08, -s * 0.24), Vector2(s * 0.16, s * 0.22)), color.lightened(0.4))
+			ci.draw_line(c + Vector2(-s * 0.3, -s * 0.4), c + Vector2(-s * 0.3, s * 0.4), color.darkened(0.5), 2.0, true)
+			ci.draw_line(c + Vector2(s * 0.3, -s * 0.4), c + Vector2(s * 0.3, s * 0.4), color.darkened(0.5), 2.0, true)
+		"relics":    # a case with three small things in it
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.48, -s * 0.3), Vector2(s * 0.96, s * 0.66)), color.darkened(0.45))
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.48, -s * 0.3), Vector2(s * 0.96, s * 0.66)), color, false, 2.0)
+			ci.draw_circle(c + Vector2(-s * 0.24, s * 0.04), s * 0.1, color.lightened(0.3))
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -s * 0.14), c + Vector2(s * 0.1, s * 0.04), c + Vector2(0, s * 0.2), c + Vector2(-s * 0.1, s * 0.04)]), STAR_TINT)
+			ci.draw_rect(Rect2(c + Vector2(s * 0.16, -s * 0.06), Vector2(s * 0.16, s * 0.2)), color.lightened(0.2))
+		"salvage":   # scrap: a bent bar and a ring
+			ci.draw_polyline(PackedVector2Array([c + Vector2(-s * 0.5, s * 0.3), c + Vector2(-s * 0.1, s * 0.1), c + Vector2(s * 0.1, -s * 0.36)]), color, 4.0, true)
+			ci.draw_arc(c + Vector2(s * 0.24, s * 0.2), s * 0.2, 0.0, TAU, 18, color.lightened(0.2), 3.0, true)
 		_:           # loot and anything unknown: a plain crate
 			ci.draw_rect(Rect2(c - Vector2(s * 0.36, s * 0.36), Vector2(s * 0.72, s * 0.72)), color.darkened(0.25))
 			ci.draw_rect(Rect2(c - Vector2(s * 0.36, s * 0.36), Vector2(s * 0.72, s * 0.72)), color, false, 2.0)
 			ci.draw_line(c - Vector2(s * 0.36, 0), c + Vector2(s * 0.36, 0), color, 2.0)
 
 
-## Which glyph an item uses.
+## Which glyph an item uses: its own "icon" key in items.json first, then one per slot.
 static func item_icon(def: Dictionary) -> String:
+	if def.has("icon"):
+		return str(def["icon"])
 	if str(def.get("kind", "")) == "scroll":
 		return "scroll"
 	match str(def.get("slot", "")):
