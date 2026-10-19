@@ -69,6 +69,12 @@ var hotbar: Array[int] = []
 var skill_points := 0
 ## Star growth (percentage points) banked toward the next skill point.
 var skill_growth := 0.0
+## Crafting (design/12, rules in scripts/crafting.gd): skill per craft 0-300, recipes learned,
+## recipes made at least once (the first success always teaches), uses left on the tool in use.
+var craft_skill: Dictionary = {}
+var craft_known: Array = []
+var craft_made: Array = []
+var tool_uses: Dictionary = {}
 ## Each star's capacity, 1..99 %. The essence tank is the sum of full_tank x capacity (Brent 2026-09-23).
 var star_pct: Array[float] = []
 ## Constructs carried, waiting to be bound: [{tier, concept}]. Placeholder source: enemy drops.
@@ -2605,6 +2611,8 @@ func to_save() -> Dictionary:
 		"arm_right": arm_right, "arm_right_lost": arm_right_lost,
 		"abilities": abilities.duplicate(true), "hotbar": hotbar.duplicate(),
 		"skill_points": skill_points, "skill_growth": skill_growth,
+		"craft_skill": craft_skill.duplicate(), "craft_known": craft_known.duplicate(), "craft_made": craft_made.duplicate(),
+		"tool_uses": tool_uses.duplicate(),
 		"constructs": constructs.duplicate(true), "discoveries": discoveries.duplicate(),
 		"heal_points_total": heal_points_total, "inventory": inventory.to_dict(), "corpses": corpses.duplicate(true), "explored": explored.duplicate(),
 	}
@@ -2660,6 +2668,16 @@ func from_save(d: Dictionary) -> void:
 		hotbar[i] = int(saved_hotbar[i])
 	skill_points = int(d.get("skill_points", 0))
 	skill_growth = float(d.get("skill_growth", 0.0))
+	craft_skill.clear()
+	var saved_craft: Dictionary = d.get("craft_skill", {})
+	for s: String in saved_craft:
+		craft_skill[s] = int(saved_craft[s])
+	craft_known = (d.get("craft_known", []) as Array).map(func(v: Variant) -> String: return str(v))
+	craft_made = (d.get("craft_made", []) as Array).map(func(v: Variant) -> String: return str(v))
+	tool_uses.clear()
+	var saved_uses: Dictionary = d.get("tool_uses", {})
+	for t: String in saved_uses:
+		tool_uses[t] = int(saved_uses[t])
 	constructs.clear()
 	for c: Variant in d.get("constructs", []):
 		constructs.append(c)

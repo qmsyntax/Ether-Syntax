@@ -202,7 +202,15 @@ func _figure_drop(_at: Vector2, data: Variant) -> void:
 
 
 ## Equip an item from the pack - into `into`, or wherever it fits - and say why not if it fails.
+## A field kit opens its crafting instead; a crafting tool or material only says what it is for.
 func equip_item(id: String, into: String = "") -> void:
+	var kind: String = str(GameData.item(id).get("kind", ""))
+	if kind == "kit":
+		game.call("open_field_kit", id)
+		return
+	if kind == "tool" or kind == "material":
+		player.call("note", "%s is for crafting: a tool goes back to your hand after each combine, a material goes into one." % str(GameData.item(id).get("name", id)))
+		return
 	if str(GameData.item(id).get("kind", "")) == "scroll":
 		# reading it: the skill is yours and the scroll is gone
 		var why: String = player.call("read_scroll", id)
@@ -509,7 +517,13 @@ func _fill_inspect() -> void:
 	act.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(act)
 
-	if item_slot == "":
+	if str(def.get("kind", "")) == "kit":
+		_inspect_box.add_child(UiTheme.body("A field kit. Click it in your pack to work with it here.", 14, UiTheme.TEXT_DIM))
+	elif str(def.get("kind", "")) == "tool":
+		_inspect_box.add_child(UiTheme.body("A crafting tool. It is used at a station and wears a little with every combine.", 14, UiTheme.TEXT_DIM))
+	elif str(def.get("kind", "")) == "material":
+		_inspect_box.add_child(UiTheme.body("A crafting material. It sells for what it is worth, one at a time.", 14, UiTheme.TEXT_DIM))
+	elif item_slot == "":
 		_inspect_box.add_child(UiTheme.body("Loot. Only good for selling.", 14, UiTheme.TEXT_DIM))
 	elif worn and _inspect_slot == "weapon" and bool(player.get("arm_right_lost")):
 		_inspect_box.add_child(UiTheme.body("No arm to hold it - it does nothing.", 14, UiTheme.BAD))

@@ -135,9 +135,11 @@ func unequip(slot: String) -> String:
 
 ## Loot = bag items with no equipment slot. Returns their total sale value.
 ## Loot is what is only good for selling: no slot to wear it in, and not something to read.
+## Loot is what "sell your loot" sells in one go: not gear, not a scroll to read, and not a
+## crafting tool, kit or material you may be keeping for a combine (those sell one at a time).
 static func is_loot(id: String) -> bool:
 	var def: Dictionary = GameData.item(id)
-	return str(def.get("slot", "")) == "" and str(def.get("kind", "")) != "scroll"
+	return str(def.get("slot", "")) == "" and not ["scroll", "tool", "kit", "material"].has(str(def.get("kind", "")))
 
 
 func loot_value() -> int:
@@ -152,7 +154,9 @@ func loot_value() -> int:
 func sale_price(id: String) -> int:
 	var def: Dictionary = GameData.item(id)
 	var value: float = float(def.get("value", 0))
-	if not is_loot(id):
+	# gear and scrolls at a fraction, everything else in full (Brent 2026-10-18: full sale price,
+	# the live rule unchanged - made goods are not marked down)
+	if str(def.get("slot", "")) != "" or str(def.get("kind", "")) == "scroll":
 		value *= float(GameData.items_file.get("gear_sell_factor", 0.5))
 	return int(value)
 

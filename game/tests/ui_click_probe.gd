@@ -279,6 +279,47 @@ func _trainer_steps(at: int) -> void:
 				_click_at(_centre(learn))
 		50:
 			_expect("clicking Learn teaches it and spends a point", bool(player.call("knows", "undertow")) and int(player.get("skill_points")) == 1)
+			# the smith at the forge (design/12): what a billet needs, and enough skill that it cannot fail
+			main.call("close_screen")
+			main.call("close_screen")
+			var smith: Townsperson = (main.get("_town") as TownBuilder).person("smith")
+			(player as Node3D).global_position = smith.global_position + Vector3(1.4, 0.0, 0.8)
+			player.set("has_move_goal", false)
+			var inv: Inventory = player.get("inventory")
+			for id: String in ["smiths_hammer", "scrap_iron", "scrap_iron", "scrap_iron", "scrap_iron", "flux_salt", "barrow_crucible"]:
+				inv.add(id)
+			(player.get("craft_skill") as Dictionary)["smithing"] = 30
+		60:
+			var smith: Townsperson = (main.get("_town") as TownBuilder).person("smith")
+			var cam: Camera3D = main.get("camera")
+			_click_at(cam.unproject_position(smith.global_position + Vector3.UP * 1.1))
+		70:
+			var s: Node = main.get("screen")
+			_expect("clicking the smith opens their panel", s is TalkScreen and str(s.get("role")) == "smith")
+			var teach: Control = _find(main, "TeachButton")
+			_expect("the smith offers to teach the trade", teach != null and not (teach as Button).disabled)
+			if teach != null:
+				_click_at(_centre(teach))
+		80:
+			_expect("clicking it teaches the forge's recipes", Crafting.knows(player, "r_steel_billet"))
+			var work: Control = _find(main, "WorkButton")
+			if work != null:
+				_click_at(_centre(work))
+		90:
+			_expect("Work at the forge opens the crafting screen", main.get("screen") is CraftScreen)
+			var rec: Control = _find(main, "Recipe_r_steel_billet")
+			_expect("it lists Steel Billet", rec != null)
+			if rec != null:
+				_click_at(_centre(rec))
+		100:
+			_expect("clicking a recipe selects it", main.get("screen") is CraftScreen and str((main.get("screen") as Node).get("selected")) == "r_steel_billet")
+			var go: Control = _find(main, "CombineButton")
+			_expect("its Combine button is live", go != null and not (go as Button).disabled)
+			if go != null:
+				_click_at(_centre(go))
+		110:
+			_expect("clicking Combine makes two billets from the scrap", (player.get("inventory") as Inventory).bag.count("steel_billet") == 2
+				and not (player.get("inventory") as Inventory).bag.has("scrap_iron"))
 			_trainer_from = 0
 			_finish()
 

@@ -249,7 +249,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("settings"):
 		if screen is ShopScreen or screen is InventoryScreen or screen is EthercosmScreen or screen is TalkScreen \
-				or screen is TemperingScreen or screen is SkillTreeScreen or (screen is SavesScreen and state == "town"):
+				or screen is TemperingScreen or screen is SkillTreeScreen or screen is CraftScreen or (screen is SavesScreen and state == "town"):
 			close_screen()
 		else:
 			_open_settings()
@@ -522,6 +522,69 @@ func drill_skill(ability_id: String) -> String:
 	if why == "":
 		save_now()
 	return why
+
+# --- crafting (design/12) ------------------------------------------------------------------------
+
+## The station of the craftsperson you are talking to, or "".
+func _talking_station() -> String:
+	return str(GameData.town_folk(_talking_to).get("station", "")) if state == "town" and _talking_to != "" else ""
+
+
+## Work at a station: only in town, while talking to the person who keeps it.
+func open_crafting(station_id: String) -> void:
+	if _talking_station() != station_id or Crafting.station(station_id).is_empty():
+		return
+	_show_screen(CraftScreen.new(self, {"station": station_id, "grade": int(Crafting.station(station_id).get("grade", 1)), "kit": ""}), false)
+
+
+## The craftsperson's tools and supplies (data/crafting.json stations.<id>.sells).
+func open_station_shop(station_id: String) -> void:
+	if _talking_station() != station_id:
+		return
+	var st: Dictionary = Crafting.station(station_id)
+	_show_screen(ShopScreen.new(self, st.get("sells", []), str(st.get("name", "Supplies"))), false)
+
+
+## Pay the craftsperson you are talking to and learn every recipe of their skill.
+func learn_trade(station_id: String) -> String:
+	if _talking_station() != station_id:
+		return "Only the keeper of that station can teach it."
+	var why: String = Crafting.teach(player, str(Crafting.station(station_id).get("skill", "")))
+	if why == "":
+		save_now()
+	return why
+
+
+## Open a field kit from the pack: its station's recipes, anywhere, with no fee and no salvage.
+## Out of town it pauses the game, like the pack itself.
+func open_field_kit(kit_id: String) -> void:
+	var kit: Dictionary = GameData.item(kit_id).get("kit", {})
+	if kit.is_empty() or not (player.get("inventory") as Inventory).bag.has(kit_id) or state == "select" or state == "dead":
+		return
+	_talking_to = ""
+	_show_screen(CraftScreen.new(self, {"station": str(kit["station"]), "grade": int(kit.get("grade", 1)), "kit": kit_id}), state != "town")
+
+
+## One combine, if this is a place you may make it: the station of the person you are talking to,
+## or a kit in your pack. Returns Crafting.combine's result ({ok, why, success, ...}).
+func craft(recipe_id: String, ctx: Dictionary) -> Dictionary:
+	var kit: String = str(ctx.get("kit", ""))
+	var here: Dictionary
+	if kit != "":
+		var k: Dictionary = GameData.item(kit).get("kit", {})
+		if k.is_empty() or not (player.get("inventory") as Inventory).bag.has(kit):
+			return {"ok": false, "why": "You do not have that kit."}
+		here = {"station": str(k["station"]), "grade": int(k.get("grade", 1)), "kit": kit}
+	else:
+		var station_id: String = _talking_station()
+		if station_id == "" or station_id != str(ctx.get("station", "")):
+			return {"ok": false, "why": "You can only work at a station whose keeper you are talking to."}
+		here = {"station": station_id, "grade": int(Crafting.station(station_id).get("grade", 1)), "kit": ""}
+	var res: Dictionary = Crafting.combine(player, recipe_id, here, player.get("rng"))
+	player.call("refresh_gear")
+	if bool(res.get("ok", false)):
+		save_now()
+	return res
 
 
 # --- overland zones (design/07) ----------------------------------------------------------------
@@ -1923,6 +1986,34 @@ func _setup_ui_shot(which: String) -> void:
 			player.set("_facing", Vector3(0, 0, -1))
 			if OS.get_cmdline_user_args().has("--settle"):
 				_shot_countdown = 300
+		"stations":
+			# the craft row along the south side: rendering block, tanning vats, forge
+			_enter_town()
+			player.global_position = level.to_global(Vector3(3.0, 0.0, 12.8))
+			player.set("_facing", Vector3(0, 0, 1))
+			_shot_countdown = 200
+		"craft", "craft-done", "craft-item":
+			# at the forge with what an iron knuckle needs: before the combine, after it, and the result worn
+			_enter_town()
+			player.global_position = _town.person("smith").global_position + Vector3(1.4, 0.0, -0.8)
+			(player.get("craft_skill") as Dictionary)["smithing"] = 9
+			(player.get("craft_known") as Array).append_array(Crafting.recipes_of("smithing"))
+			for id: String in ["smiths_hammer", "steel_billet", "steel_billet", "barrow_fitting_mould", "barrow_quench_oil", "cured_hide_grip_wrap", "scrap_iron", "scrap_iron", "flux_salt"]:
+				inv.add(id)
+			_shot_countdown = 120
+			talk_to("smith")
+			open_crafting("forge")
+			screen.set("selected", "r_iron_knuckles")
+			screen.call("rebuild")
+			if which != "craft":
+				# certain at this skill, so the picture does not depend on the dice
+				(player.get("craft_skill") as Dictionary)["smithing"] = 29
+				screen.call("combine", "r_iron_knuckles")
+			if which == "craft-item":
+				close_screen()
+				close_screen()
+				open_inventory()
+				screen.call("show_item", "iron_knuckles", "")
 		"town-talk":
 			_enter_town()
 			player.global_position = _town.person("trainer").global_position + Vector3(1.6, 0.0, 0.5)

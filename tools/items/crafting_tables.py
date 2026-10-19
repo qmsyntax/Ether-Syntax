@@ -95,6 +95,28 @@ CRAFT_RULES = OrderedDict([
     ("growth", "proposed: a combine of your own band or above, below trivial, adds a little latent aura [F: crafting is a source of latent aura - bible LAW 2]; nothing at or past trivial"),
 ])
 
+# CRAFT_RULES as numbers, for the game (tools/items/emit_crafting_game.py writes them into
+# game/data/crafting.json "rules"). Keep the two in step: CRAFT_RULES is the words, this the values.
+CRAFT_NUMBERS = OrderedDict([
+    ("skill_max", SKILL_MAX),               # no cap by stars (Brent 2026-10-18)
+    ("attempt_window", ATTEMPT_WINDOW),     # may try from trivial - this
+    ("success_at_trivial", 0.70),
+    ("success_per_point", 1.0 / 50.0),      # each point of skill above (or below) trivial
+    ("success_floor", 0.05),
+    ("success_cap", 0.95),
+    ("certain_past_trivial", 13),           # at trivial + this a combine cannot fail
+    ("tool_tier_bonus", 0.03),              # success per tool tier above the one needed
+    ("station_grade_success", 0.0),         # the "station bonus": none yet
+    ("salvage", 0.5),                       # each input back on a failure with this chance
+    ("salvage_per_grade", 0.1),             # + this per station grade above the recipe's
+    ("skillup_k", 0.35),                    # chance = k x sqrt((trivial - skill) / skillup_scale)
+    ("skillup_scale", 25.0),
+    ("skillup_cap", 0.60),
+    ("skillup_fail_mult", 0.5),             # halved on a failure
+    ("first_success_up", 1),                # the first success of each recipe, for sure
+    ("tool_uses_per_tier", 150),
+])
+
 # The per-band chain of subcombines (design/11 section 5). key: (station, inputs by chain key, makes, fee share,
 #   kg, name pattern, description, byproducts). Names use {metal} {leather} {wood} {cloth} {word} {fruit} {hide}.
 CHAIN = [

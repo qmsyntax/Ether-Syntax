@@ -54,6 +54,9 @@ func build(root: Control) -> void:
 				func() -> void: game.call("open_tempering")))
 		"corpse_clerk":
 			_corpses(box)
+		_:
+			if f.has("station"):
+				_craft(box, str(f["station"]))
 
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -132,6 +135,34 @@ func _corpses(box: VBoxContainer) -> void:
 				player.call("note", why)
 			game.call("save_now")
 			rebuild(), bool(player.call("can_afford", fee))))
+
+
+## A craftsperson at their station (design/12): work there, buy tools and supplies, learn the trade.
+func _craft(box: VBoxContainer, station_id: String) -> void:
+	var st: Dictionary = Crafting.station(station_id)
+	var skill: String = str(st.get("skill", ""))
+	var known := 0
+	var all: Array[String] = Crafting.recipes_of(skill)
+	for rid: String in all:
+		if Crafting.knows(player, rid):
+			known += 1
+	var work := UiWidgets.service_button("Work at the %s" % str(st.get("name", station_id)).to_lower(),
+		"%s. Each combine pays the station's fee." % str(st.get("what", "")).capitalize(),
+		"%s %d" % [Crafting.skill_name(skill), Crafting.skill_of(player, skill)], func() -> void: game.call("open_crafting", station_id))
+	work.name = "WorkButton"
+	box.add_child(work)
+	box.add_child(UiWidgets.service_button("Tools and supplies", "What the trade needs and nobody here makes yet.", "",
+		func() -> void: game.call("open_station_shop", station_id)))
+	var price: int = int(((GameData.crafting.get("skills", {}) as Dictionary).get(skill, {}) as Dictionary).get("teach_price", 0))
+	var teach := UiWidgets.service_button("Learn the trade",
+		("Every %s recipe taught here: %d of %d known." % [Crafting.skill_name(skill).to_lower(), known, all.size()]) if known < all.size() else "You know everything taught here.",
+		("$%d" % price) if known < all.size() else "", func() -> void:
+			var why: String = game.call("learn_trade", station_id)
+			if why != "":
+				player.call("note", why)
+			rebuild(), known < all.size() and bool(player.call("can_afford", price)))
+	teach.name = "TeachButton"
+	box.add_child(teach)
 
 
 ## Where a corpse lies, in words.

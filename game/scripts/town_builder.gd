@@ -29,6 +29,7 @@ func build() -> void:
 	for edge: String in ["north", "south", "east", "west"]:
 		_edge(level, edge)
 	_props(level)
+	_stations(level)
 	_folk(level)
 
 
@@ -126,6 +127,20 @@ func _props(level: Node3D) -> void:
 			sb.add_child(col)
 			sb.position = prop.position + Vector3.UP
 			level.add_child(sb)
+
+
+## The crafting stations (design/12): a model and a solid box, each worked by a townsperson whose
+## folk entry names the station.
+func _stations(level: Node3D) -> void:
+	for st: Dictionary in def.get("stations", []):
+		var at: Array = st.get("at", [0.0, 0.0])
+		var model: Node3D = StationModels.build(str(st["id"]))
+		model.position = Vector3(float(at[0]), 0.0, float(at[1]))
+		model.rotation_degrees.y = float(st.get("yaw", 0.0))
+		level.add_child(model)
+		var solid: Array = st.get("solid", [2.0, 1.5])
+		var sb: StaticBody3D = main.call("_static_box", model.position + Vector3.UP, Vector3(float(solid[0]), 2.0, float(solid[1])), Color.BLACK, false)
+		sb.rotation_degrees.y = model.rotation_degrees.y
 
 
 ## One person per service, looking the same every visit (a fixed seed).

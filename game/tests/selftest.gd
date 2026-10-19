@@ -51,6 +51,8 @@ func _ready() -> void:
 	_test_real_enemies()
 	_test_skill_tree()
 	await _test_town()
+	_test_crafting()
+	await _test_crafting_town()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
 	_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
@@ -4209,3 +4211,288 @@ func _test_real_enemies() -> void:
 		_check("%s: a wind-up plays its attack" % kind, ap != null and clips.has(String(ap.current_animation)), String(ap.current_animation) if ap else "")
 		rc.set_windup(false)
 		rc.queue_free()
+
+
+## Crafting step 1 (design/12; rules design/11 section 4): the data, then every rule on a bare player.
+func _test_crafting() -> void:
+	print("crafting step 1 (design/12):")
+	var recipes: Dictionary = GameData.crafting.get("recipes", {})
+	var stations: Dictionary = GameData.crafting.get("stations", {})
+	_check("three skills, three stations and their band-1 recipes are loaded", recipes.size() >= 15 and stations.has("forge") and stations.has("leatherworks") and stations.has("flensing_yard"))
+	# every input has a source in the live game: a remains drop, a craftsperson's stock, or another recipe
+	var sold: Array = []
+	for sid: String in stations:
+		sold.append_array((stations[sid] as Dictionary).get("sells", []))
+	var made: Array = []
+	for rid: String in recipes:
+		made.append_array(Crafting.outputs(rid).keys())
+	var drops: Array = []
+	for kind: String in GameData.enemies:
+		drops.append(str(GameData.enemy(kind).get("remains", "")))
+		for e: Dictionary in GameData.enemy(kind).get("loot", []):
+			drops.append(str(e.get("item", "")))
+	var orphans: Array[String] = []
+	for rid: String in recipes:
+		for id: String in ((recipes[rid] as Dictionary)["inputs"] as Dictionary):
+			if GameData.item(id).is_empty() or not (sold.has(id) or made.has(id) or drops.has(id)):
+				orphans.append(id)
+	_check("every input of every recipe exists and has a source (drop, vendor or recipe)", orphans.is_empty(), str(orphans))
+	_check("the rendering inputs drop from kills: brute hide (remains) and brute tusk (loot)", drops.has("brute_hide") and drops.has("brute_tusk"))
+	_check("live item ids keep their live definitions", int(GameData.item("iron_knuckles").get("value", 0)) == 350 and str(GameData.item("iron_knuckles").get("slot", "")) == "weapon")
+	_check("craft items join the item list", str(GameData.item("scraped_brute_hide").get("kind", "")) == "material" and str(GameData.item("smiths_hammer").get("kind", "")) == "tool")
+
+	# a made-up recipe and tool for the rules, removed at the end
+	recipes["r_test"] = {"output": "steel_sheet", "makes": 1, "skill": "smithing", "trivial": 60, "min_skill": 30, "tool": {"kind": "hammer", "tier": 1},
+		"station": "forge", "grade": 1, "inputs": {"flux_salt": 2}, "fee": 7, "hours": 1}
+	recipes["r_test_kit"] = {"output": "scraped_brute_hide", "makes": 1, "skill": "rendering", "trivial": 60, "min_skill": 0, "tool": {"kind": "flensing_knife", "tier": 1},
+		"station": "flensing_yard", "grade": 1, "inputs": {"flux_salt": 2}, "fee": 25, "hours": 1}
+	GameData.items["test_hammer_t3"] = {"name": "Test Hammer", "slot": "", "kind": "tool", "weight": 0.1, "value": 1, "tool": {"skill": "smithing", "kind": "hammer", "tier": 3}}
+	var p: CharacterBody3D = _new_player("one_percent_lifesteal")
+	var inv: Inventory = p.get("inventory")
+	inv.bag.clear()
+	p.set("money", 100000)
+	var forge := {"station": "forge", "grade": 1, "kit": ""}
+	var levels: Dictionary = p.get("craft_skill")
+	(p.get("craft_known") as Array).append_array(["r_test", "r_test_kit", "r_steel_sheet", "r_binding_wire"])
+	inv.add("smiths_hammer")
+	inv.add("flux_salt")
+	inv.add("flux_salt")
+
+	# the attempt window: from trivial - 30
+	levels["smithing"] = 29
+	_check("below trivial - 30 the recipe cannot be tried", not Crafting.in_window(p, "r_test") and str(Crafting.why_not(p, "r_test", forge)).begins_with("Beyond"))
+	levels["smithing"] = 30
+	_check("at trivial - 30 it can", Crafting.in_window(p, "r_test") and Crafting.why_not(p, "r_test", forge) == "")
+	# the success curve
+	levels["smithing"] = 0
+	_check("far below trivial the chance is the 5% floor", _near(Crafting.chance(p, "r_test", forge), 0.05))
+	levels["smithing"] = 35
+	_check("25 under trivial: 20%", _near(Crafting.chance(p, "r_test", forge), 0.20))
+	levels["smithing"] = 60
+	_check("at trivial: 70%", _near(Crafting.chance(p, "r_test", forge), 0.70))
+	levels["smithing"] = 72
+	_check("12 past trivial: 94%", _near(Crafting.chance(p, "r_test", forge), 0.94))
+	inv.add("test_hammer_t3")
+	_check("a better tool adds, but the chance is capped at 95% short of certainty", _near(Crafting.chance(p, "r_test", forge), 0.95))
+	inv.remove("test_hammer_t3")
+	levels["smithing"] = 73
+	_check("at trivial + 13 it is certain", _near(Crafting.chance(p, "r_test", forge), 1.0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1018
+	var fails := 0
+	for i: int in 200:
+		inv.add("flux_salt")
+		inv.add("flux_salt")
+		var res: Dictionary = Crafting.combine(p, "r_test", forge, rng)
+		if not bool(res.get("success", false)):
+			fails += 1
+		inv.remove("steel_sheet")
+		(p.get("tool_uses") as Dictionary).erase("smiths_hammer")
+	_check("past trivial + 13, 200 combines and not one fails", fails == 0)
+	_check("and the skill does not rise at or past trivial", int(levels["smithing"]) == 73 + 1, "%d (the first success gave +1)" % int(levels["smithing"]))
+
+	# failure: the fee goes, about half the inputs come back
+	levels["smithing"] = 0
+	(p.get("craft_known") as Array).append("r_test")
+	var given := 0
+	var back := 0
+	var money_before: int = int(p.get("money"))
+	var tries := 0
+	while tries < 300:
+		levels["smithing"] = 30                    # hold it still: the window, and the curve's floor
+		inv.bag.clear()
+		inv.add("smiths_hammer")
+		inv.add("flux_salt")
+		inv.add("flux_salt")
+		var res2: Dictionary = Crafting.combine(p, "r_test", forge, rng)
+		tries += 1
+		if not bool(res2.get("success", true)):
+			given += 2
+			back += inv.bag.count("flux_salt")
+		(p.get("tool_uses") as Dictionary).erase("smiths_hammer")
+	var frac: float = float(back) / float(maxi(1, given))
+	_check("a failure returns about half the inputs (%d of %d)" % [back, given], absf(frac - 0.5) < 0.07 and given > 200)
+	_check("and the fee is paid on every combine", int(p.get("money")) == money_before - 300 * 7)
+
+	# skill-ups: only below trivial; the first success of a recipe +1 for sure
+	levels["smithing"] = 60
+	_check("no skill-up chance at trivial", _near(Crafting.skillup_chance(p, "r_test", true), 0.0) and _near(Crafting.skillup_chance(p, "r_test", false), 0.0))
+	levels["smithing"] = 35
+	var up: float = minf(0.6, 0.35 * sqrt(25.0 / 25.0))
+	_check("25 under trivial: 0.35 x sqrt(1), halved on a failure", _near(Crafting.skillup_chance(p, "r_test", true), up) and _near(Crafting.skillup_chance(p, "r_test", false), up * 0.5))
+	levels["smithing"] = 0
+	(recipes["r_test"] as Dictionary)["trivial"] = 200
+	_check("far under trivial the chance is capped at 60%", _near(Crafting.skillup_chance(p, "r_test", true), 0.6))
+	(recipes["r_test"] as Dictionary)["trivial"] = 60
+	levels["smithing"] = 200
+	inv.bag.clear()
+	inv.add("smiths_hammer")
+	inv.add("steel_billet")
+	var first: Dictionary = Crafting.combine(p, "r_steel_sheet", forge, rng)
+	_check("the first success of a recipe gives +1, even past its trivial", bool(first["success"]) and int(levels["smithing"]) == 201)
+	inv.add("steel_billet")
+	Crafting.combine(p, "r_steel_sheet", forge, rng)
+	_check("the second gives nothing past trivial", int(levels["smithing"]) == 201)
+	# no cap by stars (Brent 2026-10-18): one star, and the skill still reaches 300 and stops there
+	levels["smithing"] = 299
+	inv.add("steel_billet")
+	Crafting.combine(p, "r_binding_wire", forge, rng)
+	_check("a one-star character reaches 300", int(p.get("stars")) == 1 and int(levels["smithing"]) == 300)
+	(p.get("craft_made") as Array).erase("r_binding_wire")
+	for id: String in ["steel_rivets", "binding_wire", "binding_wire", "binding_wire", "binding_wire"]:
+		inv.remove(id)
+	inv.add("steel_billet")
+	Crafting.combine(p, "r_binding_wire", forge, rng)
+	_check("and never past it", int(levels["smithing"]) == 300)
+
+	# tools: one use a combine, and they break
+	inv.bag.clear()
+	(p.get("tool_uses") as Dictionary).clear()
+	inv.add("smiths_hammer")
+	_check("a new tier-1 tool has 150 uses", Crafting.tool_uses_left(p, "smiths_hammer") == 150)
+	inv.add("steel_billet")
+	Crafting.combine(p, "r_steel_sheet", forge, rng)
+	_check("a combine costs it one", Crafting.tool_uses_left(p, "smiths_hammer") == 149 and inv.bag.has("smiths_hammer"))
+	(p.get("tool_uses") as Dictionary)["smiths_hammer"] = 1
+	inv.add("steel_billet")
+	var last: Dictionary = Crafting.combine(p, "r_steel_sheet", forge, rng)
+	_check("its last use breaks it", str(last["broke"]) == "smiths_hammer" and not inv.bag.has("smiths_hammer"))
+	inv.add("steel_billet")
+	_check("and without one nothing can be made", str(Crafting.why_not(p, "r_steel_sheet", forge)).begins_with("You need"))
+	inv.add("smiths_hammer")
+	_check("a recipe you have not learned cannot be made", str(Crafting.why_not(p, "r_iron_knuckles", forge)).contains("not learned"))
+	_check("nor one of another station", str(Crafting.why_not(p, "r_test_kit", forge)) != "")
+
+	# a field kit: no fee, and nothing back from a failure
+	inv.bag.clear()
+	inv.add("flensing_knife")
+	inv.add("flensing_kit")
+	levels["rendering"] = 0
+	var kit := {"station": "flensing_yard", "grade": 1, "kit": "flensing_kit"}
+	var m0: int = int(p.get("money"))
+	var kit_back := 0
+	var kit_fails := 0
+	for i: int in 40:
+		levels["rendering"] = 0
+		inv.add("flux_salt")
+		inv.add("flux_salt")
+		var r3: Dictionary = Crafting.combine(p, "r_test_kit", kit, rng)
+		if not bool(r3["success"]):
+			kit_fails += 1
+			kit_back += inv.bag.count("flux_salt")
+		for gone: String in ["flux_salt", "scraped_brute_hide", "barrow_tallow"]:
+			while inv.bag.has(gone):
+				inv.remove(gone)
+	_check("on a field kit there is no station fee", int(p.get("money")) == m0)
+	_check("and a failure there gives nothing back", kit_fails > 20 and kit_back == 0)
+
+	# selling: the live rule, full price for everything but gear and scrolls (Brent 2026-10-18)
+	_check("a made material sells at its full value", inv.sale_price("cured_hide") == int(GameData.item("cured_hide")["value"]))
+	_check("a tool sells at its full value", inv.sale_price("smiths_hammer") == int(GameData.item("smiths_hammer")["value"]))
+	_check("made gear sells as gear always has", inv.sale_price("iron_knuckles") == int(350 * float(GameData.items_file["gear_sell_factor"])))
+	_check("tools, kits and materials are not swept up by 'sell your loot'", not Inventory.is_loot("smiths_hammer") and not Inventory.is_loot("flensing_kit") and not Inventory.is_loot("cured_hide") and Inventory.is_loot("brute_hide"))
+
+	# teaching, and the save
+	var known_before: int = (p.get("craft_known") as Array).size()
+	var m1: int = int(p.get("money"))
+	_check("a craftsperson teaches every recipe of the trade for a price", Crafting.teach(p, "leatherwork") == "" and (p.get("craft_known") as Array).size() == known_before + Crafting.recipes_of("leatherwork").size()
+		and int(p.get("money")) == m1 - int(GameData.crafting["skills"]["leatherwork"]["teach_price"]))
+	_check("and not twice", Crafting.teach(p, "leatherwork") != "")
+	(p.get("tool_uses") as Dictionary)["flensing_knife"] = 77
+	var data: Dictionary = JSON.parse_string(JSON.stringify(p.call("to_save")))
+	var q: CharacterBody3D = _new_player()
+	q.call("from_save", data)
+	_check("save/load keeps crafting skills", (q.get("craft_skill") as Dictionary) == (p.get("craft_skill") as Dictionary), str(q.get("craft_skill")))
+	_check("save/load keeps recipes known and made", (q.get("craft_known") as Array) == (p.get("craft_known") as Array) and (q.get("craft_made") as Array) == (p.get("craft_made") as Array))
+	_check("save/load keeps tool wear", Crafting.tool_uses_left(q, "flensing_knife") == 77)
+	recipes.erase("r_test")
+	recipes.erase("r_test_kit")
+	GameData.items.erase("test_hammer_t3")
+	p.free()
+	q.free()
+
+
+## The whole loop in the game: render a kill's hide, tan it, smith a weapon and wear it, sell a made
+## material at full price, and render in the field on a kit. Skills are set high enough that every
+## combine is certain, so the scenario does not depend on the dice (the dice are _test_crafting's).
+func _test_crafting_town() -> void:
+	print("crafting in town (design/12):")
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	main.set("_test_mode", true)
+	add_child(main)
+	await get_tree().process_frame
+	main.call("start_new_character", 0)
+	var p: Node = main.get("player")
+	var inv: Inventory = p.get("inventory")
+	p.set("money", 20000)
+	var town: TownBuilder = main.get("_town")
+	for role: String in ["renderer", "tanner", "smith"]:
+		_check("the %s works at a station in town" % role, town.person(role) != null and GameData.town_folk(role).has("station"))
+	var levels: Dictionary = p.get("craft_skill")
+	for s: String in ["rendering", "leatherwork", "smithing"]:
+		levels[s] = 30
+
+	# the renderer
+	main.call("talk_to", "renderer")
+	_check("away from the smith, the forge cannot be used", not bool((main.call("craft", "r_steel_billet", {"station": "forge"}) as Dictionary)["ok"]))
+	main.call("open_crafting", "forge")
+	_check("nor opened", not (main.get("screen") is CraftScreen))
+	_check("the renderer teaches rendering", str(main.call("learn_trade", "flensing_yard")) == "")
+	main.call("open_station_shop", "flensing_yard")
+	_check("the renderer sells the knife and the kit", main.get("screen") != null and (main.get("screen") as Node).get_script() == load("res://scripts/ui/shop_screen.gd") and ((main.get("screen") as Node).get("stock") as Array).has("flensing_knife"))
+	main.call("town_buy", "flensing_knife")
+	main.call("close_screen")
+	main.call("open_crafting", "flensing_yard")
+	_check("talking to the renderer, the flensing yard opens", main.get("screen") is CraftScreen)
+	inv.add("brute_hide")
+	var r1: Dictionary = main.call("craft", "r_scraped_brute_hide", {"station": "flensing_yard"})
+	_check("a brute hide renders: a scraped hide and two tallow", bool(r1["ok"]) and bool(r1["success"]) and inv.bag.count("scraped_brute_hide") == 1 and inv.bag.count("barrow_tallow") == 2 and not inv.bag.has("brute_hide"))
+	var r2: Dictionary = main.call("craft", "r_barrow_quench_oil", {"station": "flensing_yard"})
+	_check("tallow renders into quench oil", bool(r2["success"]) and inv.bag.count("barrow_quench_oil") == 2)
+	main.call("close_screen")
+	main.call("close_screen")
+
+	# the tanner
+	main.call("talk_to", "tanner")
+	main.call("learn_trade", "leatherworks")
+	main.call("town_buy", "curriers_knife")
+	main.call("town_buy", "heartwood_tanning_liquor")
+	var r3: Dictionary = main.call("craft", "r_cured_hide", {"station": "leatherworks"})
+	_check("the scraped hide tans into leather", bool(r3["success"]) and inv.bag.count("cured_hide") == 9, str(r3))
+	var r4: Dictionary = main.call("craft", "r_cured_hide_grip_wrap", {"station": "leatherworks"})
+	_check("leather cuts into grip wraps", bool(r4["success"]) and inv.bag.count("cured_hide_grip_wrap") == 4)
+
+	# the smith
+	main.call("talk_to", "smith")
+	main.call("learn_trade", "forge")
+	for id: String in ["smiths_hammer", "scrap_iron", "scrap_iron", "scrap_iron", "scrap_iron", "flux_salt", "barrow_crucible", "barrow_fitting_mould"]:
+		main.call("town_buy", id)
+	var r5: Dictionary = main.call("craft", "r_steel_billet", {"station": "forge"})
+	_check("scrap, flux and a crucible smelt into two billets", bool(r5["success"]) and inv.bag.count("steel_billet") == 2, str(r5))
+	var r6: Dictionary = main.call("craft", "r_iron_knuckles", {"station": "forge"})
+	_check("the smith makes Iron Knuckles from the chain", bool(r6["success"]) and inv.bag.has("iron_knuckles"), str(r6))
+	_check("all three skills rose on their first successes", int(levels["rendering"]) > 30 and int(levels["leatherwork"]) > 30 and int(levels["smithing"]) > 30)
+	_check("and the made knuckles can be worn", inv.equip("iron_knuckles") == "equipped" and str(inv.equipped.get("weapon", "")) == "iron_knuckles")
+	var money_before: int = int(p.get("money"))
+	var got: int = main.call("town_sell_item", "steel_billet")
+	_check("a made billet sells at its full value", got == int(GameData.item("steel_billet")["value"]) and int(p.get("money")) == money_before + got)
+
+	# rendering in the field, on a kit
+	main.call("talk_to", "renderer")
+	main.call("town_buy", "flensing_kit")
+	main.call("close_screen")
+	main.call("walk_out")
+	for id: String in inv.bag.duplicate():
+		if id == "cured_hide":
+			inv.remove(id)                            # room for a hide
+	inv.add("brute_hide")
+	main.call("open_field_kit", "flensing_kit")
+	_check("out in the field the kit opens the rendering recipes", str(main.get("state")) == "field" and main.get("screen") is CraftScreen and get_tree().paused)
+	var m2: int = int(p.get("money"))
+	var r7: Dictionary = main.call("craft", "r_scraped_brute_hide", {"station": "flensing_yard", "kit": "flensing_kit"})
+	_check("a hide renders on the kit, with no fee", bool(r7["success"]) and int(p.get("money")) == m2)
+	_check("but a kit cannot do a smith's work", not bool((main.call("craft", "r_steel_billet", {"station": "forge", "kit": "flensing_kit"}) as Dictionary)["ok"]))
+	main.call("close_screen")
+	get_tree().paused = false
+	main.queue_free()
+	await get_tree().process_frame

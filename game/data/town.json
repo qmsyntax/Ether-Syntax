@@ -1,5 +1,5 @@
 {
-	"_note": "The town as a place (design/08 section 3, Brent 2026-10-18: 'the town needs to not be a menu'). Built by scripts/town_builder.gd. Coordinates are the level's frame: origin at the middle of the square, x east, z south, metres. size: the walkable square. walls: wall height per side (the camera looks from the south-east, so south and east are low). exits: gaps in a side wall; 'at' is measured along that side from the middle; walk_through exits fire when you walk into the gateway (within exit_reach of its middle); the others are a shut door you use with the interact key; 'action' is the main.gd method called. arrive: where you stand when you come into town from each place. folk: one person per service; 'role' picks what talking to them offers (ui/talk_screen.gd); 'outfit' are item ids worn (data/wardrobe.json maps them to clothes); 'face' is the way they look when nobody is near. props: city kit props [kind, x, z, yaw degrees]. look_seed keeps the people looking the same every visit. talk_reach: how close you must stand to talk; leave_reach: walk further than this from the person you are talking to and the panel closes. Names, lines and layout are ours [MODEL].",
+	"_note": "The town as a place (design/08 section 3, Brent 2026-10-18: 'the town needs to not be a menu'). Built by scripts/town_builder.gd. Coordinates are the level's frame: origin at the middle of the square, x east, z south, metres. size: the walkable square. walls: wall height per side (the camera looks from the south-east, so south and east are low). exits: gaps in a side wall; 'at' is measured along that side from the middle; walk_through exits fire when you walk into the gateway (within exit_reach of its middle); the others are a shut door you use with the interact key; 'action' is the main.gd method called. arrive: where you stand when you come into town from each place. folk: one person per service; 'role' picks what talking to them offers (ui/talk_screen.gd); 'outfit' are item ids worn (data/wardrobe.json maps them to clothes); 'face' is the way they look when nobody is near. props: city kit props [kind, x, z, yaw degrees]. look_seed keeps the people looking the same every visit. talk_reach: how close you must stand to talk; leave_reach: walk further than this from the person you are talking to and the panel closes. stations (design/12): crafting stations as places - id (a data/crafting.json station), at, yaw, solid [x, z] metres of collider; a person with a 'station' works that station (ui/talk_screen.gd offers its crafting). Names, lines and layout are ours [MODEL].",
 	"size": [36.0, 30.0],
 	"floor_margin": 6.0,
 	"walls": {"north": 3.4, "west": 3.4, "south": 1.1, "east": 1.1},
@@ -40,7 +40,21 @@
 			"line": "A body is a blade. We fold it and beat it, and it comes back harder."},
 		{"role": "corpse_clerk", "name": "Nils Ostry", "title": "corpse retrieval", "sex": "male", "at": [8.2, 5.4], "face": [-1.0, 0.2],
 			"outfit": ["patched_coat", "boiled_cap", "street_boots", "delver_frame"],
-			"line": "We fetch what the passages keep. A flat fee by the star; nobody haggles over the dead."}
+			"line": "We fetch what the passages keep. A flat fee by the star; nobody haggles over the dead."},
+		{"role": "renderer", "station": "flensing_yard", "name": "Ama Thresh", "title": "renderer", "sex": "female", "at": [-4.5, 10.7], "face": [0.0, 1.0],
+			"outfit": ["padded_jack", "work_gloves", "hobnailed_boots", "rope_belt"],
+			"line": "Bring me what you killed. Hide, fat and bone: nothing on a carcass is waste if you know where to cut."},
+		{"role": "tanner", "station": "leatherworks", "name": "Joss Calder", "title": "tanner", "sex": "male", "at": [1.5, 10.7], "face": [0.0, 1.0],
+			"outfit": ["husk_hide_jack", "work_gloves", "street_boots"],
+			"line": "A scraped hide goes in the vat and comes out leather. After that it is only cutting and stitching."},
+		{"role": "smith", "station": "forge", "name": "Hesk Varga", "title": "smith", "sex": "male", "at": [7.5, 10.7], "face": [0.0, 1.0],
+			"outfit": ["work_gloves", "hobnailed_boots", "quiver_belt"],
+			"line": "Scrap and flux and a hot fire. Strike while it is bright, and keep your hammer dry."}
+	],
+	"stations": [
+		{"id": "flensing_yard", "at": [-4.5, 8.5], "yaw": 0, "solid": [2.8, 1.6]},
+		{"id": "leatherworks", "at": [1.5, 8.5], "yaw": 0, "solid": [3.0, 1.8]},
+		{"id": "forge", "at": [7.5, 8.5], "yaw": 0, "solid": [3.4, 1.8]}
 	],
 	"props": [
 		["stall", -13.0, -12.9, 180], ["lamp_post", -16.8, -13.8, 0], ["sacks", -10.4, -13.6, 0],
@@ -50,7 +64,7 @@
 		["bench", -17.0, -5.2, 90], ["crate", -16.8, -8.4, 0], ["barrel", -16.9, -2.2, 0], ["lamp_post", -17.0, -0.9, 90],
 		["signboard", -17.3, 4.4, 90], ["lamp_post", -17.0, 7.4, 90],
 		["trough", -15.4, 12.6, 20], ["barrel", -10.2, 13.4, 0], ["barrel", -9.4, 13.7, 0], ["sacks", -16.4, 9.6, 0],
-		["well", 0.0, 2.0, 0], ["bench", 3.6, 8.2, 200], ["lamp_post", -3.4, 4.6, 0],
-		["cart", 10.6, 6.2, 100], ["sacks", 9.4, 8.6, 0], ["lamp_post", 12.0, 11.8, 0], ["trough", 14.6, 0.4, 70]
+		["well", 0.0, 2.0, 0], ["lamp_post", -3.4, 4.6, 0],
+		["cart", 10.6, 6.2, 100], ["lamp_post", 12.0, 11.8, 0], ["trough", 14.6, 0.4, 70]
 	]
 }

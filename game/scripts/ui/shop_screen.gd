@@ -2,6 +2,18 @@ extends UiScreen
 ## The merchant. Hard prices, honest ones: what you see is what it costs (Pillar 4).
 
 
+## What this shop sells (item ids), and its name. Empty: the merchant's own stock and scrolls.
+var stock: Array = []
+var title := "Merchant"
+
+
+func _init(game_node: Node, sells: Array = [], shop_name: String = "") -> void:
+	super(game_node)
+	stock = sells
+	if shop_name != "":
+		title = shop_name
+
+
 func backdrop() -> float:
 	return 0.6
 
@@ -17,9 +29,9 @@ func build(root: Control) -> void:
 
 	var head := HBoxContainer.new()
 	box.add_child(head)
-	var title := UiTheme.heading("Merchant", 30)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(title)
+	var heading := UiTheme.heading(title, 30)
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(heading)
 	var purse := UiTheme.body("Purse  %s      Pack  %d / %d kg" % [UiTheme.money_text(money), int(inv.weight()), int(inv.capacity())], 16,
 		UiTheme.BAD if money < 0 else UiTheme.GOLD)
 	purse.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -28,10 +40,10 @@ func build(root: Control) -> void:
 	box.add_child(UiTheme.rule())
 
 	var list: VBoxContainer = scroller(box)
-	for id: Variant in GameData.items_file.get("shop", []):
+	for id: Variant in (stock if not stock.is_empty() else GameData.items_file.get("shop", [])):
 		list.add_child(_row(str(id), inv))
 	# scrolls: only the ones this character could read, and does not already own
-	for id: Variant in GameData.items_file.get("shop_scrolls", []):
+	for id: Variant in ([] if not stock.is_empty() else GameData.items_file.get("shop_scrolls", [])):
 		if str(player.call("can_learn", str(GameData.item(str(id)).get("teaches", "")))) == "" and not inv.bag.has(str(id)):
 			list.add_child(_row(str(id), inv))
 

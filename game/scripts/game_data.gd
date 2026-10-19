@@ -24,6 +24,8 @@ var enemy_looks: Dictionary = {}
 var skill_tree: Dictionary = {}
 ## The town as a place: data/town.json (design/08, scripts/town_builder.gd).
 var town: Dictionary = {}
+## Crafting step 1: data/crafting.json, generated from the drafts (design/12, scripts/crafting.gd).
+var crafting: Dictionary = {}
 
 
 ## Loaded in the constructor: the singleton name resolves before the node enters the tree,
@@ -56,6 +58,12 @@ func _ensure() -> void:
 	enemy_looks = _load("res://data/enemy_looks.json")
 	skill_tree = _load("res://data/skill_tree.json")
 	town = _load("res://data/town.json")
+	crafting = _load("res://data/crafting.json")
+	# its materials, tools and kits join the item list; a live id in items.json always wins
+	var craft_items: Dictionary = crafting.get("items", {})
+	for id: String in craft_items:
+		if not items.has(id):
+			items[id] = craft_items[id]
 
 
 ## A tempering technique definition, or {} if the id is unknown.
