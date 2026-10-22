@@ -1,0 +1,262 @@
+{
+  "affinity": "blood",
+  "reflux_tier": "low",
+  "reflux_per_cost": 0.7,
+  "reflux_why": "The blood that is already out does the work; essence only steers it. Little spent heat is left behind, and what limits a blood fighter is how much blood is out, not how hot they run.",
+  "rule": "Blood works blood that is already out: its hits open Bleeding, bleeding enemies spill pools on the floor, and you keep what you drink as held blood (up to 10); blood skills spend Bleeding, pools or held blood, never your health.",
+  "rule_why": "design/14 said blood works 'spilled and stored blood' but not where that blood is or how much there is. This names the three places it can be (in an open cut, on the floor, held by you), how each fills, and a count, so every blood skill can say exactly what it spends. It keeps Brent's ruling: nothing here ever spends the caster's health, and blood never heals.",
+  "skills": [
+    {
+      "id": "red_lancet", "name": "Red Lancet", "affinity": "blood", "base_rune": "BLD-1a", "rune": "Bleed",
+      "status": "new", "starter": true,
+      "kind": "projectile", "targeting": "aimed",
+      "summary": "A thin blade of essence thrown along your aim. The first enemy it hits takes 50 and starts Bleeding (2 stacks).",
+      "verb_fit": "It opens a cut. The 50 is incidental; what it is for is the Bleeding it leaves, which is where every other blood skill gets its blood.",
+      "numbers": {"cost": 7, "reflux_per_cost": 0.7, "damage": 50, "speed": 26, "life": 1.15, "recovery": 0.1,
+        "on_hit": {"status": "bleeding", "stacks": 2}},
+      "signature": ["on_hit.status", "on_hit.stacks"],
+      "new_mechanics": [
+        {"name": "bleeding", "kind": "status", "definition": "Up to 5 stacks, 6 s, refreshed when added: 4 damage a second per stack, dealt through whoever opened it, doubled while the target is moving or attacking; every 1.5 s it drips a blood pool under the target. Enemies only; it is not the player's wound system."},
+        {"name": "blood_pool", "kind": "field", "definition": "Spilled blood on the floor: 1 m across, 15 s, one measure of blood. Pools that touch merge (up to 2 m and 3 measures). An enemy that dies Bleeding leaves a 2 m, 3-measure pool. At most 12 in a level; the oldest dries first. Pools do nothing on their own; blood skills drink, still or ride them."},
+        {"name": "held_blood", "kind": "behaviour", "definition": "Blood the caster carries outside their own veins: 0 to 10 measures, shown as a row of red beads. Filled by Drink skills, and +2 when an enemy dies while Bleeding by your hand. Spent by skills with spend_blood. Out of a fight it thins away, 1 measure every 5 s. It is never health and never heals."}
+      ],
+      "good_modifiers": [
+        {"rune": "Thin", "word": "a quicker, longer lancet: 25% faster and 10% more range, a touch lighter"},
+        {"rune": "Within", "word": "the lancet cuts through the whole line, opening every body it passes"},
+        {"rune": "Drink", "word": "a second cut into an open one: +25% against an enemy already Bleeding, and a little more range"},
+        {"rune": "Choke", "word": "a cut across the throat: interrupts and Chokes the first enemy hit, the answer to an archer or a drummer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Staunch", "why": "closing wounds on the skill that exists to open them. A projectile has no duration, so most of it falls back to a small damage bonus; only the reflux cut lands."},
+        {"rune": "Self", "why": "a lancet thrown at yourself. A projectile has no duration for Self to lengthen, so all of it falls back to a small damage bonus."}
+      ]
+    },
+    {
+      "id": "tourniquet", "name": "Tourniquet", "affinity": "blood", "base_rune": "BLD-1b", "rune": "Staunch",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "For 6 s no blow opens a wound on you: each one that would have spends 2 held blood instead. The blow still takes health from the bar; with too little held blood, the wound opens as usual.",
+      "verb_fit": "Staunching is stopping the flow before it starts. It works on the wound model, not the bar: it keeps cuts from opening, paid for with blood that was already spilled.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "duration": 6, "buff": "tourniquet", "blood_per_wound": 2},
+      "signature": ["duration", "blood_per_wound"],
+      "new_mechanics": [
+        {"name": "tourniquet", "kind": "behaviour", "definition": "A self_buff read in take_hit: when a blow would add a wound (balance.wounds big_hit_frac / low_health_frac), spend blood_per_wound held blood and add no wound; the damage to the bar is unchanged."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a tourniquet that holds half as long again"},
+        {"rune": "Self", "word": "all of it turned on your own body: 30% longer"},
+        {"rune": "Breathe", "word": "a steadier bind: 20% less reflux left behind"},
+        {"rune": "Essence", "word": "cheaper to tie: 15% less essence"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Spill", "why": "spilling is the opposite of staunching. It has no reach to widen, so it only makes the buff dearer (cost +10%) and gives a sliver back as a cost cut."},
+        {"rune": "Choke", "why": "a self buff hits nobody, so neither the interrupt nor Choked has anything to land on; both fall back to a small cost cut."}
+      ]
+    },
+    {
+      "id": "deep_draught", "name": "Deep Draught", "affinity": "blood", "base_rune": "BLD-2a", "rune": "Drink",
+      "status": "new", "starter": false,
+      "kind": "channel", "targeting": "self",
+      "summary": "Hold for up to 4 s: every half second, one Bleeding stack is drawn out of each bleeding enemy within 5 m (12 damage each) and one blood pool in reach is drunk. Each stack or pool becomes 1 held blood. You walk at 60%.",
+      "verb_fit": "Drink is taking blood in. This is the skill that fills held blood from what is already out: open cuts and the floor.",
+      "numbers": {"cost": 4, "cost_note": "per second, cheap channel", "reflux_per_cost": 0.7, "radius": 5, "tick": 0.5, "duration": 4, "move_factor": 0.6,
+        "on_hit": {"damage": 12, "consume_stacks": {"bleeding": 1}}, "pools_per_tick": 1, "blood_per_take": 1},
+      "signature": ["radius", "on_hit.consume_stacks"],
+      "new_mechanics": [
+        {"name": "channel", "kind": "behaviour", "definition": "design/05 Appendix A behaviour 8, not yet built (step 5c): cost is per second while held; ends on release, empty essence, a lock, or at full held blood."}
+      ],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "a wider draw: 30% more reach, each pull a little weaker"},
+        {"rune": "Attract", "word": "drawing the blood draws the body: each tick also drags bleeding enemies 1.5 m toward you"},
+        {"rune": "Take", "word": "all of it comes to you cleanly: 15% less reflux"},
+        {"rune": "Persist", "word": "a longer swallow: hold it half as long again"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Spill", "why": "giving blood out while drinking it in. The numbers would still apply (wider, dearer) but the word contradicts itself; it should not form."},
+        {"rune": "Clot", "why": "clotted blood cannot be drunk. A channel has no wind-up to brace and no poise payload, so only the small damage bump lands and the rest falls back."},
+        {"rune": "Loose", "why": "let go at once, on a skill that is nothing but holding. There is no wind-up to cut, so it falls back, and the 10% damage loss lands."}
+      ]
+    },
+    {
+      "id": "outpour", "name": "Outpour", "affinity": "blood", "base_rune": "BLD-2b", "rune": "Spill",
+      "status": "new", "starter": false,
+      "kind": "melee_burst", "targeting": "aimed",
+      "summary": "Pour every measure of held blood out in a cone 6 m long: 30 damage plus 18 for each measure spent (210 with all ten), 1 Bleeding, and the floor where it lands runs with fresh pools. With no held blood it does 30.",
+      "verb_fit": "Spill is giving blood out as a weapon. This is where held blood goes: the whole reserve, thrown, and it lands as more spilled blood.",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.7, "windup": 0.2, "arc_deg": 70, "reach_bonus": 4.5, "damage": 30,
+        "spend_blood": "all", "per_stack_damage": 18, "pools_per_two_spent": 1,
+        "on_hit": {"status": "bleeding", "stacks": 1}},
+      "signature": ["per_stack_damage", "spend_blood"],
+      "new_mechanics": [
+        {"name": "spend_blood", "kind": "behaviour", "definition": "A skill key: the cast takes that many held blood (or 'all'), and per_stack_damage is paid per measure taken, as a detonate pays per stack."}
+      ],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "a broader wash: 30% more reach, each measure a little thinner"},
+        {"rune": "Focus", "word": "a jet instead of a wave: 30% harder, 20% shorter"},
+        {"rune": "Repel", "word": "a flood that knocks them back 1.5 m as it lands"},
+        {"rune": "Thin", "word": "thin blood runs farther: 10% more reach for a little less weight"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Drink", "why": "drinking back what you are pouring out. The numbers would land (+25% on the bleeding, more reach) but the word contradicts itself."},
+        {"rune": "Staunch", "why": "a closed wound spills nothing. Outpour has no duration to lengthen, so that half falls back to a small damage bonus; only the reflux cut lands."},
+        {"rune": "Within", "why": "a wave is not a shot; pierce does nothing on a burst and falls back to a small damage bonus."}
+      ]
+    },
+    {
+      "id": "clotblade", "name": "Clotblade", "affinity": "blood", "base_rune": "BLD-3a", "rune": "Clot",
+      "status": "new", "starter": true,
+      "kind": "melee_burst", "targeting": "aimed",
+      "summary": "A wide sweep with blades of hardened blood: 1.8x strike damage in front of you. Every Bleeding stack on a target it hits sets hard in the cut for +22 damage and +12 poise damage, and those stacks are spent.",
+      "verb_fit": "Clot is blood hardening into blades. The blades are clotted blood, and so is what they do to a bleeding target: its open cuts set solid around the edge.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "windup": 0.15, "damage_mult": 1.8, "reach_bonus": 0.8, "arc_deg": 140,
+        "consume_status": "bleeding", "per_stack_damage": 22, "per_stack_poise": 12,
+        "on_hit": {"poise": 25}},
+      "signature": ["per_stack_damage", "consume_status"],
+      "new_mechanics": [
+        {"name": "melee_burst consume_status", "kind": "behaviour", "definition": "A melee_burst may carry consume_status (as targeted_strike already does), applied to each target it hits separately: per_stack_damage and per_stack_poise for each stack removed."}
+      ],
+      "good_modifiers": [
+        {"rune": "Bleed", "word": "the sweep leaves a fresh cut where it spent the old ones: 1 Bleeding on everything hit, ready for the next"},
+        {"rune": "Thin", "word": "thinner, longer blades: 10% more reach and arc, a touch lighter"},
+        {"rune": "Pulse", "word": "the heart drives the swing: 20% quicker wind-up and 10% harder, a little hotter"},
+        {"rune": "Sever", "word": "blades that cut through guard: 30% more poise damage"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Staunch", "why": "it closes the cuts the blade is meant to harden. No duration to lengthen, so that falls back; only the reflux cut lands."},
+        {"rune": "Within", "why": "pierce means nothing on a sweep; it falls back to a small damage bonus."},
+        {"rune": "Many", "why": "a sweep already hits everything in its arc. Extra jumps do nothing here and fall back; the 15% damage loss lands, so it is a straight loss."}
+      ]
+    },
+    {
+      "id": "thinblood_rush", "name": "Thinblood Rush", "affinity": "blood", "base_rune": "BLD-3b", "rune": "Thin",
+      "status": "new", "starter": true,
+      "kind": "dash", "targeting": "aimed",
+      "summary": "A fast 4.8 m dash that slips between bodies. Every blood pool you cross carries you 1.5 m further (up to +3 m), and you move 20% faster for 2 s after.",
+      "verb_fit": "Thin is blood running quick: speed and reach. You run as thin blood runs, and spilled blood on the floor is road for you.",
+      "numbers": {"cost": 7, "reflux_per_cost": 0.7, "dash_speed": 28, "dash_time": 0.17, "passes_bodies": true,
+        "pool_bonus_m": 1.5, "pool_bonus_max": 2, "after_speed_mult": 1.2, "duration": 2},
+      "signature": ["dash_speed", "pool_bonus_m"],
+      "new_mechanics": [
+        {"name": "pool_bonus_m", "kind": "behaviour", "definition": "A dash key: each blood_pool the dash path crosses adds pool_bonus_m to its distance, up to pool_bonus_max pools. Pools are not used up."}
+      ],
+      "good_modifiers": [
+        {"rune": "Motion", "word": "faster still: 25% more speed, so 25% more distance"},
+        {"rune": "Clot", "word": "you rush inside a shell of hardened blood: braced for the whole dash"},
+        {"rune": "Straight", "word": "a true line: 20% faster"},
+        {"rune": "Essence", "word": "a cheaper rush: 15% less essence"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Bleed", "why": "the dash touches nobody, so Bleeding has nothing to land on; it falls back to a small cost cut."},
+        {"rune": "Focus", "why": "no damage to concentrate and no reach field to shorten; both fall back to a small cost cut."},
+        {"rune": "Choke", "why": "nothing it hits to interrupt or choke; it falls back to a small cost cut."}
+      ]
+    },
+    {
+      "id": "hammering_heart", "name": "Hammering Heart", "affinity": "blood", "base_rune": "BLD-4a", "rune": "Pulse",
+      "status": "new", "starter": false,
+      "kind": "detonate", "targeting": "self",
+      "summary": "Every Bleeding enemy within 10 m feels its heart hammer three times in 1.5 s. Each beat does 8 for every Bleeding stack it carries and throws a blood pool on the floor. The stacks are not spent.",
+      "verb_fit": "Pulse is the heart pounding. It works the enemies' own hearts: each beat drives their blood out through the cuts you opened.",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.7, "range": 10, "needs_status": "bleeding", "consume": false,
+        "beats": 3, "beat_s": 0.5, "per_stack_damage": 8, "pool_per_beat": 1, "on_hit": {}},
+      "signature": ["per_stack_damage", "beats"],
+      "new_mechanics": [
+        {"name": "detonate beats", "kind": "behaviour", "definition": "A detonate with consume false and beats n: instead of removing the status it pays per_stack_damage n times, beat_s apart, reading the stacks at each beat."}
+      ],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "every heart within 13 m answers, each beat a little softer"},
+        {"rune": "Repeat", "word": "the heart keeps hammering: 15% harder, 15% dearer"},
+        {"rune": "Fury", "word": "a heart racing in rage: 20% harder, 10% dearer"},
+        {"rune": "Choke", "word": "each beat floods the throat: interrupts every bleeder and Chokes it"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Still", "why": "a slowed heart cannot hammer. The numbers would apply Sluggish, but the two verbs cancel; the word should not form."},
+        {"rune": "Within", "why": "pierce means nothing on a detonate and falls back to a small damage bonus."},
+        {"rune": "Stillness", "why": "held in place, on a skill that is all motion of the blood. It has no duration or speed field, so both halves fall back."}
+      ]
+    },
+    {
+      "id": "heavy_heart", "name": "Heavy Heart", "affinity": "blood", "base_rune": "BLD-4b", "rune": "Still",
+      "status": "new", "starter": false,
+      "kind": "ground_zone", "targeting": "point",
+      "summary": "Point, 9 m: a 3 m circle for 6 s where hearts slow. Enemies in it are Sluggish: 30% slower, and their attacks take half again as long to wind up. Every blood pool the circle touches goes still too and does the same for its 6 s.",
+      "verb_fit": "Still is the heart slowing. The circle does nothing but slow hearts, and the spilled blood it touches carries the slowing out to wherever the fight bled.",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.7, "range": 9,
+        "zone": {"shape": "circle", "radius": 3.0, "life": 6.0, "tick_s": 0.5, "payload": {"status": "sluggish"}, "stills_pools": true}},
+      "signature": ["zone.payload.status", "zone.life"],
+      "new_mechanics": [
+        {"name": "sluggish", "kind": "status", "definition": "1 stack, 1 s refreshed while in the zone (4 s otherwise): speed_mult 0.7 and attack wind-ups x1.5; Bleeding on it ticks at half rate (a slow heart pumps less)."},
+        {"name": "stills_pools", "kind": "behaviour", "definition": "A ground_zone key: every blood_pool the zone overlaps when cast becomes a small copy of the zone (same payload) for the zone's life."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "the stillness lingers: half as long again"},
+        {"rune": "Expand", "word": "a wider circle: 30% larger"},
+        {"rune": "Spill", "word": "spilled wider: 25% larger, 10% dearer"},
+        {"rune": "Choke", "word": "slow hearts and stopped breath: everything inside is interrupted and Choked"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Pulse", "why": "a pounding heart in a field of slow ones. The zone has no wind-up and no damage, so most of it falls back; only the extra reflux lands."},
+        {"rune": "Haste", "why": "hurrying a skill whose point is slowness; the zone has no wind-up, so it falls back to a small cost cut."}
+      ]
+    },
+    {
+      "id": "gullet_knot", "name": "Gullet Knot", "affinity": "blood", "base_rune": "BLD-5a", "rune": "Choke",
+      "status": "new", "starter": false,
+      "kind": "new:hex", "targeting": "target",
+      "summary": "One enemy within 10 m: its own blood knots in its throat. 30 damage and interrupted. If it is Bleeding it is Choked for 2.5 s (1 s if not): it cannot attack, shoot, cast or call for help, and walks at half speed.",
+      "verb_fit": "Choke is cutting off breath. It reaches in through an open cut and uses the target's blood to close its throat.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "range": 10, "duration": 2.5, "clean_duration_frac": 0.4,
+        "on_hit": {"damage": 30, "interrupts": true, "status": "choked"}},
+      "signature": ["on_hit.status", "on_hit.interrupts"],
+      "new_mechanics": [
+        {"name": "hex", "kind": "behaviour", "definition": "A new kind, shared by blood, life, death and nature: the enemy under the cursor (or the locked target) within range takes on_hit at once. No travel and no movement of the caster; needs line of sight (walls and stone block it). Checked before essence is spent."},
+        {"name": "choked", "kind": "status", "definition": "1 stack, lasts the skill's duration: cannot start an attack, shoot, cast or send for reinforcements (any wind-up in progress is interrupted); speed_mult 0.5."}
+      ],
+      "good_modifiers": [
+        {"rune": "Far", "word": "a knot tied from 40% further away"},
+        {"rune": "Persist", "word": "the knot holds half as long again"},
+        {"rune": "Still", "word": "stopped breath and a slowed heart: Choked and Sluggish together"},
+        {"rune": "Drink", "word": "draws on the open cut: +25% against a bleeding throat, a little more range"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Breathe", "why": "giving breath to the throat you are closing. The reflux cut lands; the wind-up cut has nothing to shorten and falls back."},
+        {"rune": "Many", "why": "one throat at a time: a hex does not jump, so that falls back, and the 15% damage loss lands."}
+      ]
+    },
+    {
+      "id": "long_breath", "name": "Long Breath", "affinity": "blood", "base_rune": "BLD-5b", "rune": "Breathe",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "Breathe out up to 4 held blood: each takes 6 off your hottest reflux at once. Then for 6 s your poise is refilled and doubled, and reflux sheds twice as fast.",
+      "verb_fit": "Breathe gives breath and steadies the body. The spilled blood you carry is breathed clean, and the steadied body is hard to knock off its feet.",
+      "numbers": {"cost": 8, "reflux_per_cost": 0.7, "duration": 6, "buff": "long_breath",
+        "spend_blood": 4, "shed_per_blood": 6, "poise_mult": 2.0, "shed_mult": 2.0},
+      "signature": ["duration", "shed_per_blood"],
+      "new_mechanics": [
+        {"name": "long_breath", "kind": "behaviour", "definition": "A self_buff: on cast spend up to spend_blood held blood, each shedding shed_per_blood from the hottest affinity's reflux; while it lasts the player's poise is full and doubled and reflux sheds x shed_mult."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a breath held half as long again"},
+        {"rune": "Calm", "word": "a calm breath: 20% less reflux left by casting it"},
+        {"rune": "Essence", "word": "cheaper: 15% less essence"},
+        {"rune": "Self", "word": "all of it turned inward: 30% longer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Choke", "why": "cutting off the breath the skill gives. A self buff hits nobody, so both the interrupt and Choked fall back to a small cost cut."},
+        {"rune": "Fury", "why": "a frenzy is the opposite of a long breath. There is no damage to raise, so that half falls back, and the 10% cost rise lands."}
+      ]
+    }
+  ],
+  "effects": {
+    "Bleed": "status bleeding 1",
+    "Staunch": "duration x1.3; reflux x0.9",
+    "Drink": "reach x1.15; bonus bleeding +0.25",
+    "Spill": "reach x1.25; cost x1.1",
+    "Clot": "power x1.1; poise x1.2; braced",
+    "Thin": "speed x1.25; reach x1.1; power x0.9",
+    "Pulse": "windup x0.8; power x1.1; reflux x1.1",
+    "Still": "status sluggish",
+    "Choke": "interrupts; status choked",
+    "Breathe": "reflux x0.8; windup x0.9"
+  }
+}

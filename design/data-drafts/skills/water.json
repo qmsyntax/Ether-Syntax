@@ -1,0 +1,1192 @@
+{
+ "affinity": "water",
+ "reflux_tier": "middling",
+ "rule": "Water moves bodies: every water skill shoves, drags or sets up a shove, and a shoved body that hits something is Crushed.",
+ "skills": [
+  {
+   "id": "water_bolt",
+   "name": "Water Bolt",
+   "affinity": "water",
+   "base_rune": "WAT-2a",
+   "rune": "Surge",
+   "status": "existing",
+   "starter": true,
+   "kind": "projectile",
+   "targeting": "aimed",
+   "summary": "First enemy hit is Soaked and knocked back a step.",
+   "verb_fit": "Surge is \"push bodies away\": the bolt exists to knock its target back a step.",
+   "numbers": {
+    "cost": 8.0,
+    "reflux_per_cost": 1.0,
+    "damage": 70.0,
+    "speed": 20.0,
+    "life": 1.5,
+    "on_hit": {
+     "status": "soaked",
+     "shove": 1.5
+    }
+   },
+   "signature": [
+    "on_hit.shove"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Seep",
+     "word": "Seeping Bolt: soaks through the first body and carries on, Soaking and shoving every one in the line"
+    },
+    {
+     "rune": "Gush",
+     "word": "Gushing Bolt: a faster, harder jet; easier to land on a runner"
+    },
+    {
+     "rune": "Drown",
+     "word": "Choking Bolt: a mouthful of water - interrupts and Dazes what it hits"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Self",
+     "why": "a thrown bolt does nothing to its caster; no duration to stretch, falls back to a little power"
+    },
+    {
+     "rune": "Persist",
+     "why": "a bolt has nothing that lasts; falls back to a little power"
+    },
+    {
+     "rune": "Ebb",
+     "why": "pull 1.5 on a bolt that shoves 1.5: the two cancel and the target stays put. Maths lets it act; it should not"
+    }
+   ]
+  },
+  {
+   "id": "tsunami_strike",
+   "name": "Breaker",
+   "affinity": "water",
+   "base_rune": "WAT-2a",
+   "rune": "Surge",
+   "status": "existing",
+   "starter": true,
+   "kind": "melee_burst",
+   "targeting": "aimed",
+   "summary": "A wide blow that throws everyone it hits 4 m away from you. Stand so the wall is behind them.",
+   "verb_fit": "Surge made into a blow: every enemy in the arc is thrown 4 m away from you.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 1.0,
+    "damage_mult": 2.0,
+    "reach_bonus": 0.8,
+    "arc_deg": 120.0,
+    "on_hit": {
+     "shove": 4.0
+    }
+   },
+   "signature": [
+    "on_hit.shove"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Soak",
+     "word": "Drenching Breaker: everyone hit is Soaked as they go, so the same blow throws them half as far again"
+    },
+    {
+     "rune": "Wave",
+     "word": "Rolling Breaker: a wider arc that also hammers poise"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Breaker: a broader, longer arc for crowds, at a little less damage"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Seep",
+     "why": "a melee arc has nothing to pierce; falls back to a little power"
+    },
+    {
+     "rune": "Self",
+     "why": "nothing lasts and nothing lands on you; falls back to a little power"
+    },
+    {
+     "rune": "Ebb",
+     "why": "a pull added to a 4 m throw: the blow drags in and throws out at once. Maths lets it act; it should not"
+    }
+   ]
+  },
+  {
+   "id": "hydraulic_flex",
+   "name": "Sluice Step",
+   "affinity": "water",
+   "base_rune": "WAT-6a",
+   "rune": "Sweep",
+   "status": "changed",
+   "starter": true,
+   "kind": "dash",
+   "targeting": "aimed",
+   "summary": "A short dash straight through enemies. Each one you pass is Soaked and swept 2 m along with you, the way you are going.",
+   "verb_fit": "Sweep is \"a current that carries things along\": you are the current, and what you pass goes with you.",
+   "numbers": {
+    "cost": 7.0,
+    "reflux_per_cost": 0.7,
+    "dash_speed": 26.0,
+    "dash_time": 0.18,
+    "on_pass": {
+     "status": "soaked",
+     "shove": 2.0,
+     "shove_dir": "along"
+    },
+    "pass_radius": 1.1
+   },
+   "signature": [
+    "on_pass.shove",
+    "pass_radius"
+   ],
+   "new_mechanics": [
+    {
+     "name": "shove_dir \"along\"",
+     "kind": "field",
+     "definition": "A dash payload's shove pushes the body the way the dash is travelling, not away from the caster."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Surge",
+     "word": "Torrent Step: the bodies you pass are thrown on much farther - drive a line of them into the far wall"
+    },
+    {
+     "rune": "Gush",
+     "word": "Jet Step: a faster dash"
+    },
+    {
+     "rune": "Drown",
+     "word": "Choking Step: everyone you pour through comes out interrupted and Dazed"
+    },
+    {
+     "rune": "Motion",
+     "word": "a quicker dash"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Seep",
+     "why": "it already passes through bodies; pierce has nothing to add and falls back to a little power"
+    },
+    {
+     "rune": "Persist",
+     "why": "a dash lasts 0.18 s and leaves nothing; falls back to a little power"
+    },
+    {
+     "rune": "Settle",
+     "why": "its own opposite: Mired in the moment they are swept along - the current both carries and drops them. Maths lets it act; it should not"
+    }
+   ]
+  },
+  {
+   "id": "undertow",
+   "name": "Undertow",
+   "affinity": "water",
+   "base_rune": "WAT-2b",
+   "rune": "Ebb",
+   "status": "existing",
+   "starter": false,
+   "kind": "displace",
+   "targeting": "point",
+   "summary": "Point, 9 m: every enemy within 4 m of the spot is dragged up to 4 m toward it and Soaked. No damage of its own - but bodies that collide Crush each other.",
+   "verb_fit": "Ebb is \"draw bodies in\": the floor leans and everything slides to one spot.",
+   "numbers": {
+    "mode": "pull_area",
+    "cost": 12.0,
+    "reflux_per_cost": 1.0,
+    "range": 9.0,
+    "radius": 4.0,
+    "pull": 4.0,
+    "on_hit": {
+     "status": "soaked"
+    }
+   },
+   "signature": [
+    "pull"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Settle",
+     "word": "Silting Undertow: they arrive and stick - Mired where they piled up"
+    },
+    {
+     "rune": "Drown",
+     "word": "Drowning Undertow: the whole gathered knot is interrupted and Dazed"
+    },
+    {
+     "rune": "Contract",
+     "word": "Tight Undertow: a smaller net that packs them closer"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Undertow: a bigger net"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Surge",
+     "why": "a push away from the point inside a pull toward it: the two fight. Maths lets it act; it should not"
+    },
+    {
+     "rune": "Seep",
+     "why": "nothing to pierce; falls back to a little power (and it deals no damage, so to cost)"
+    },
+    {
+     "rune": "Self",
+     "why": "it acts on a spot on the floor, not on you; falls back"
+    }
+   ]
+  },
+  {
+   "id": "riptide_lash",
+   "name": "Riptide Lash",
+   "affinity": "water",
+   "base_rune": "WAT-2b",
+   "rune": "Ebb",
+   "status": "existing",
+   "starter": false,
+   "kind": "displace",
+   "targeting": "target",
+   "summary": "One enemy within 10 m is hauled to arm's length, takes 60, is Soaked and interrupted - and arrives with its back to you for a second.",
+   "verb_fit": "Ebb for one body: a rope of water that hauls a single enemy in.",
+   "numbers": {
+    "mode": "pull_target",
+    "cost": 12.0,
+    "reflux_per_cost": 1.0,
+    "range": 10.0,
+    "pull": 10.0,
+    "keep": 1.5,
+    "turn_s": 1.0,
+    "on_hit": {
+     "damage": 60.0,
+     "status": "soaked",
+     "interrupts": true
+    }
+   },
+   "signature": [
+    "pull",
+    "keep"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Drown",
+     "word": "Choking Lash: it arrives Dazed as well as interrupted - take +50% for 3 s"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Lash: a longer rope for the archer at the back"
+    },
+    {
+     "rune": "One",
+     "word": "Single Lash: the one body takes more from the yank"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Surge",
+     "why": "shove 1.5 on a body you are hauling in: it lands a step short of you, which undoes the skill. Maths lets it act"
+    },
+    {
+     "rune": "Seep",
+     "why": "nothing to pierce; falls back to a little power"
+    },
+    {
+     "rune": "Persist",
+     "why": "a yank has nothing that lasts; falls back to a little power"
+    }
+   ]
+  },
+  {
+   "id": "standing_pool",
+   "name": "Standing Pool",
+   "affinity": "water",
+   "base_rune": "WAT-1a",
+   "rune": "Flood",
+   "status": "existing",
+   "starter": false,
+   "kind": "ground_zone",
+   "targeting": "point",
+   "summary": "Point, 9 m: a pool 3.5 m across for 8 s. Enemies in it are Soaked and 30% slower, and a shove that starts in it goes twice as far. No damage.",
+   "verb_fit": "Flood is \"fill an area with water\": a pool that stays and turns the ground wet.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.7,
+    "range": 9.0,
+    "zone": {
+     "shape": "circle",
+     "radius": 3.5,
+     "life": 8.0,
+     "tick_s": 0.5,
+     "payload": {
+      "status": "soaked"
+     },
+     "extra_status": "mired",
+     "shove_mult": 2.0
+    }
+   },
+   "signature": [
+    "zone.radius",
+    "zone.payload.status"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Ebb",
+     "word": "Whirlpool: every half second the pool drags those in it toward its middle"
+    },
+    {
+     "rune": "Drip",
+     "word": "Slow Pool: it lingers 40% longer and costs less"
+    },
+    {
+     "rune": "Persist",
+     "word": "Lasting Pool: it stays half as long again"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Pool: a larger pool"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Gush",
+     "why": "a pool does not jet: no speed and no damage, falls back to a cost cut"
+    },
+    {
+     "rune": "Seep",
+     "why": "nothing to pierce; falls back to a cost cut"
+    },
+    {
+     "rune": "Drown",
+     "why": "maths lets it through, but on a payload that repeats every tick it re-interrupts every tick: a permanent lock, not a modifier"
+    }
+   ]
+  },
+  {
+   "id": "backwash",
+   "name": "Backwash",
+   "affinity": "water",
+   "base_rune": "WAT-7a",
+   "rune": "Splash",
+   "status": "changed",
+   "starter": false,
+   "kind": "self_buff",
+   "targeting": "self",
+   "summary": "6 s or three blows, whichever ends first: each melee hit on you is halved, and the water splashes off you - whoever threw the blow, and everyone else within 2 m of you, is shoved 3 m and Soaked.",
+   "verb_fit": "Splash is \"burst outward on contact, spraying those near\": the blow lands, and the water bursts off you onto everyone close.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.7,
+    "buff": "backwash",
+    "duration": 6.0,
+    "hits": 3,
+    "melee_taken_mult": 0.5,
+    "radius": 2.0,
+    "on_hit": {
+     "shove": 3.0,
+     "status": "soaked"
+    }
+   },
+   "signature": [
+    "radius",
+    "on_hit.shove"
+   ],
+   "new_mechanics": [
+    {
+     "name": "Backwash payload",
+     "kind": "field",
+     "definition": "The splash is now an on_hit payload (shove 3, Soaked) applied to the attacker and to everyone within radius (2 m) of you, so modifiers can reach it; it replaces the old top-level shove."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Surge",
+     "word": "Heavy Backwash: the splash throws them much farther"
+    },
+    {
+     "rune": "Persist",
+     "word": "Long Backwash: it stays up longer"
+    },
+    {
+     "rune": "Wave",
+     "word": "Rolling Backwash: a wider splash"
+    },
+    {
+     "rune": "Drown",
+     "word": "Choking Backwash: whoever is splashed is also interrupted and Dazed"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Seep",
+     "why": "nothing to pierce; falls back to a cost cut"
+    },
+    {
+     "rune": "Gush",
+     "why": "no speed and no damage to raise; falls back to a cost cut"
+    },
+    {
+     "rune": "Ebb",
+     "why": "a pull on a skill whose point is throwing attackers off you: it drags them back into reach. Maths lets it act; it should not"
+    }
+   ]
+  },
+  {
+   "id": "pressure_jet",
+   "name": "Pressure Jet",
+   "affinity": "water",
+   "base_rune": "WAT-5a",
+   "rune": "Gush",
+   "status": "existing",
+   "starter": false,
+   "kind": "channel",
+   "targeting": "aimed",
+   "summary": "Hold: an 8 m stream, 1 m wide, at the first enemy in the line: 90 damage a second and it is pushed back 5 m a second. Pinned against a wall or stone it takes 1.5x. You turn slowly and walk at 45% while holding. 10 essence a second.",
+   "verb_fit": "Gush is \"a sudden forceful jet\": this is the jet, held.",
+   "numbers": {
+    "cost": 10.0,
+    "cost_per_s": true,
+    "reflux_per_cost": 1.4,
+    "shape": "line",
+    "range": 8.0,
+    "width": 1.0,
+    "tick": 0.25,
+    "on_hit": {
+     "damage": 22.5,
+     "shove": 1.25
+    },
+    "pinned_mult": 1.5,
+    "move_factor": 0.45,
+    "turn_rate": 120.0
+   },
+   "signature": [
+    "on_hit.damage",
+    "on_hit.shove"
+   ],
+   "new_mechanics": [
+    {
+     "name": "new:channel",
+     "kind": "behaviour",
+     "definition": "design/05 Appendix A behaviour 8 (not built): held, essence per second (cost with cost_per_s), payload every tick to the first enemy on the line."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Surge",
+     "word": "Fire-hose: the stream throws as well as presses"
+    },
+    {
+     "rune": "Contract",
+     "word": "Needle Jet: a shorter, harder stream"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Jet: reaches across the room"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Persist",
+     "why": "a channel already lasts as long as you hold it; nothing to stretch, falls back to a little power"
+    },
+    {
+     "rune": "Self",
+     "why": "it acts on what you point at; falls back"
+    },
+    {
+     "rune": "Ebb",
+     "why": "a pull added to a stream that pushes: each tick drags in and pushes out. Maths lets it act; it should not"
+    }
+   ]
+  },
+  {
+   "id": "drawdown",
+   "name": "Drawdown",
+   "affinity": "water",
+   "base_rune": "WAT-1b",
+   "rune": "Drain",
+   "status": "new",
+   "starter": false,
+   "kind": "detonate",
+   "targeting": "self",
+   "summary": "Every Soaked enemy within 8 m has the water torn out of it toward you: its Soak ends and it is dragged 3 m toward you. You get 2 essence back for each. Your Standing Pool in range empties toward you too, dragging those in it twice as far, and is gone.",
+   "verb_fit": "Drain is \"empty the water from an area or a target, and draw it in\": it empties every Soak and pool in reach and the water comes to you, bringing the bodies with it.",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 1.0,
+    "range": 8.0,
+    "consume_status": "soaked",
+    "on_hit": {
+     "pull": 3.0
+    },
+    "refund_per_stack": 2.0,
+    "pool_pull_mult": 2.0
+   },
+   "signature": [
+    "on_hit.pull",
+    "refund_per_stack"
+   ],
+   "new_mechanics": [
+    {
+     "name": "refund_per_stack",
+     "kind": "field",
+     "definition": "Essence returned to the caster for each status stack the skill consumes, never more than the skill cost."
+    },
+    {
+     "name": "pool_pull_mult",
+     "kind": "field",
+     "definition": "Enemies standing in one of the caster's own water zones within range are pulled this many times as far, and the zone ends."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Ebb",
+     "word": "Deep Drawdown: drags them farther"
+    },
+    {
+     "rune": "Settle",
+     "word": "Silting Drawdown: they land at your feet Mired"
+    },
+    {
+     "rune": "Far",
+     "word": "Wide Drawdown: reaches Soaked enemies farther off"
+    },
+    {
+     "rune": "Drown",
+     "word": "Choking Drawdown: everything drained is interrupted and Dazed as it comes"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Surge",
+     "why": "shoves the drained bodies away while the water drags them in. Maths lets it act; it should not"
+    },
+    {
+     "rune": "Seep",
+     "why": "nothing to pierce; falls back to a cost cut"
+    },
+    {
+     "rune": "Persist",
+     "why": "it is one pull, nothing lasts; falls back to a cost cut"
+    }
+   ]
+  },
+  {
+   "id": "drench",
+   "name": "Drench",
+   "affinity": "water",
+   "base_rune": "WAT-3a",
+   "rune": "Soak",
+   "status": "new",
+   "starter": false,
+   "kind": "delayed_blast",
+   "targeting": "point",
+   "summary": "Point, 10 m: a cloudburst gathers for 0.6 s, then falls on a 3 m circle. Everyone under it is Waterlogged for 6 s and interrupted. A Waterlogged heavy enemy is shoved as if it were light, and an elite as if it were heavy.",
+   "verb_fit": "Soak is \"saturate a target\": this soaks them through until the water is doing the work of moving them.",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 1.0,
+    "range": 10.0,
+    "radius": 3.0,
+    "delay": 0.6,
+    "on_hit": {
+     "status": "waterlogged",
+     "interrupts": true
+    }
+   },
+   "signature": [
+    "on_hit.status"
+   ],
+   "new_mechanics": [
+    {
+     "name": "waterlogged",
+     "kind": "status",
+     "definition": "6 s, 1 stack. Counts as Soaked (shoves x1.5, conducts). The target is also shoved as one weight class lighter: heavy as light, elite as heavy."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Surge",
+     "word": "Beating Rain: the downpour also flattens them outward from the middle"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Drench: a bigger cloud"
+    },
+    {
+     "rune": "Haste",
+     "word": "Sudden Drench: falls sooner, harder to step out of"
+    },
+    {
+     "rune": "Settle",
+     "word": "Mudding Drench: Mired as well"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Seep",
+     "why": "nothing to pierce; falls back to a cost cut"
+    },
+    {
+     "rune": "Self",
+     "why": "a cloudburst over a spot, not over you; falls back to a cost cut"
+    },
+    {
+     "rune": "Gush",
+     "why": "falling rain has no speed and no damage to raise; falls back to a cost cut"
+    }
+   ]
+  },
+  {
+   "id": "wringing_grip",
+   "name": "Wringing Grip",
+   "affinity": "water",
+   "base_rune": "WAT-3b",
+   "rune": "Dry",
+   "status": "new",
+   "starter": false,
+   "kind": "targeted_strike",
+   "targeting": "target",
+   "summary": "One enemy within reach: you grip it and wring the water out. A 1.6x blow, +90 if it was Soaked (+180 if Waterlogged) - the grip uses the Soak up - and it reels back 1 m. Little more than a slap on a dry target.",
+   "verb_fit": "Dry is \"pull the water out of a body: damage by how wet it is\": the damage is the water you take out.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 1.0,
+    "damage_mult": 1.6,
+    "range_bonus": 1.0,
+    "consume_status": "soaked",
+    "per_stack_damage": 90.0,
+    "waterlogged_stacks": 2,
+    "on_hit": {
+     "shove": 1.0,
+     "poise": 25.0
+    }
+   },
+   "signature": [
+    "per_stack_damage"
+   ],
+   "new_mechanics": [
+    {
+     "name": "waterlogged_stacks",
+     "kind": "field",
+     "definition": "A consume_status of soaked counts a Waterlogged target as this many stacks."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Surge",
+     "word": "Wring and Throw: the dried body is flung back, not just staggered"
+    },
+    {
+     "rune": "Drown",
+     "word": "Choking Grip: it reels back interrupted and Dazed"
+    },
+    {
+     "rune": "One",
+     "word": "Hard Grip: more from the one body"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Soak",
+     "why": "its own opposite: Soaks the body as you wring it dry. Maths lets it act; it undoes the skill"
+    },
+    {
+     "rune": "Seep",
+     "why": "a grip has nothing to pierce; falls back to a little power"
+    },
+    {
+     "rune": "Persist",
+     "why": "nothing lasts; falls back to a little power"
+    }
+   ]
+  },
+  {
+   "id": "upwelling",
+   "name": "Upwelling",
+   "affinity": "water",
+   "base_rune": "WAT-4a",
+   "rune": "Float",
+   "status": "new",
+   "starter": false,
+   "kind": "displace",
+   "targeting": "point",
+   "summary": "Point, 9 m: a spring bursts up under everyone within 2.5 m. 30 damage; light enemies are lifted Aloft and come down 2 m out from the spring (4 m, since Aloft doubles a shove). Heavy enemies lose 50 poise and slide 1 m.",
+   "verb_fit": "Float is buoyancy - \"lift, lighten\": the water lifts them off their feet, and a floating body goes wherever the water sends it.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 1.0,
+    "mode": "aloft_area",
+    "range": 9.0,
+    "radius": 2.5,
+    "on_hit": {
+     "damage": 30.0,
+     "status": "aloft",
+     "shove": 2.0,
+     "shove_dir": "from_point"
+    }
+   },
+   "signature": [
+    "on_hit.status",
+    "on_hit.shove"
+   ],
+   "new_mechanics": [
+    {
+     "name": "shove_dir \"from_point\"",
+     "kind": "field",
+     "definition": "A shove in a point-cast payload pushes each body away from the aimed point."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Surge",
+     "word": "Geyser: they come down much farther out"
+    },
+    {
+     "rune": "Soak",
+     "word": "Wet Spring: Soaked as they fly, half as far again"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Spring: catches more of the pack"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Drown",
+     "why": "its own opposite: held under while being floated. Maths lets it act; it should not"
+    },
+    {
+     "rune": "Fall",
+     "why": "knocks flat what it just lifted, and it has no poise field: falls back to a little power"
+    },
+    {
+     "rune": "Seep",
+     "why": "nothing to pierce; falls back to a little power"
+    }
+   ]
+  },
+  {
+   "id": "drowning_hold",
+   "name": "Drowning Hold",
+   "affinity": "water",
+   "base_rune": "WAT-4b",
+   "rune": "Drown",
+   "status": "new",
+   "starter": false,
+   "kind": "new:seize",
+   "targeting": "target",
+   "summary": "One enemy within 8 m: a ball of water closes over its head for 3 s. It is interrupted, cannot attack, cast, drum or call for help, and takes 20 at once and 15 a second. When the water lets go it heaves the enemy 3 m away from you, so put the wall behind it first.",
+   "verb_fit": "Drown is \"water in the lungs: no casting, no calls for help, damage over time\" - all three, on one body.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 1.0,
+    "range": 8.0,
+    "duration": 3.0,
+    "on_hit": {
+     "damage": 20.0,
+     "status": "drowning",
+     "interrupts": true
+    },
+    "release_shove": 3.0
+   },
+   "signature": [
+    "on_hit.status",
+    "on_hit.interrupts"
+   ],
+   "new_mechanics": [
+    {
+     "name": "new:seize",
+     "kind": "behaviour",
+     "definition": "An instant effect on the one enemy under the cursor (or your locked target) within range; walls and stone block it; it is checked before essence is spent. With a delay, the target is marked and the hit lands that many seconds later wherever it has moved."
+    },
+    {
+     "name": "drowning",
+     "kind": "status",
+     "definition": "1 stack, lasts the skill's duration. Cannot attack, cast, drum or call for reinforcements; 15 damage a second through the caster; ends early after 150 damage taken."
+    },
+    {
+     "name": "release_shove",
+     "kind": "field",
+     "definition": "When the skill's status ends, the target is shoved this far away from the caster (a Crush if it meets something)."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Hold: held under longer"
+    },
+    {
+     "rune": "Soak",
+     "word": "Soaked Hold: it comes out Soaked, so the heave throws it half as far again"
+    },
+    {
+     "rune": "Far",
+     "word": "Reaching Hold: catch the drummer at the back"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Float",
+     "why": "its own opposite: Aloft while held under. Maths lets it act; it should not"
+    },
+    {
+     "rune": "Seep",
+     "why": "nothing to pierce; falls back to a little power"
+    },
+    {
+     "rune": "Haste",
+     "why": "there is no wind-up to shorten; falls back to a little power"
+    }
+   ]
+  },
+  {
+   "id": "steady_drip",
+   "name": "Steady Drip",
+   "affinity": "water",
+   "base_rune": "WAT-5b",
+   "rune": "Drip",
+   "status": "new",
+   "starter": false,
+   "kind": "new:seize",
+   "targeting": "target",
+   "summary": "Cheap. One enemy within 10 m drips for 10 s: every second it is nudged half a step away from you and loses 8 poise, and its poise does not recover while it drips. Leave it on a big enemy and it staggers on its own.",
+   "verb_fit": "Drip is \"a slow steady trickle that wears and lingers\": a little, every second, for a long time.",
+   "numbers": {
+    "cost": 6.0,
+    "reflux_per_cost": 0.7,
+    "range": 10.0,
+    "duration": 10.0,
+    "on_hit": {
+     "status": "dripping"
+    },
+    "nudge_per_s": 0.4,
+    "poise_per_s": 8.0
+   },
+   "signature": [
+    "duration",
+    "poise_per_s"
+   ],
+   "new_mechanics": [
+    {
+     "name": "dripping",
+     "kind": "status",
+     "definition": "1 stack, lasts the skill's duration. Every second: nudged nudge_per_s away from the caster (too soft to Crush) and loses poise_per_s poise; poise does not regenerate while Dripping."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Endless Drip: lasts half as long again"
+    },
+    {
+     "rune": "Soak",
+     "word": "Wet Drip: each nudge goes half as far again"
+    },
+    {
+     "rune": "Far",
+     "word": "Distant Drip: start it on someone across the room"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Gush",
+     "why": "its own opposite, a sudden jet; and it has no speed or damage to raise: falls back to a cost cut"
+    },
+    {
+     "rune": "Haste",
+     "why": "no wind-up to shorten; falls back"
+    },
+    {
+     "rune": "Seep",
+     "why": "nothing to pierce; falls back"
+    }
+   ]
+  },
+  {
+   "id": "siltfall",
+   "name": "Siltfall",
+   "affinity": "water",
+   "base_rune": "WAT-6b",
+   "rune": "Settle",
+   "status": "new",
+   "starter": false,
+   "kind": "detonate",
+   "targeting": "self",
+   "summary": "Everything you moved settles. Every enemy within 10 m that a water skill shoved or dragged in the last 1.5 s sinks where it now stands: Pinned (60% slower) for 2 s and 30 poise. Bodies still sliding finish their slide first.",
+   "verb_fit": "Settle is \"the water goes still, and what it carries sinks and stays\": it acts only on what your water has carried.",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 1.0,
+    "range": 10.0,
+    "consume_status": "adrift",
+    "on_hit": {
+     "status": "pinned",
+     "poise": 30.0
+    }
+   },
+   "signature": [
+    "on_hit.status"
+   ],
+   "new_mechanics": [
+    {
+     "name": "adrift",
+     "kind": "status",
+     "definition": "1 stack, 1.5 s. Put on any body when a water shove or pull on it ends. Nothing on its own; Siltfall consumes it."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Drown",
+     "word": "Sinking Silt: they go under as they settle - interrupted and Dazed"
+    },
+    {
+     "rune": "Fall",
+     "word": "Heavy Silt: knocked down harder, more poise"
+    },
+    {
+     "rune": "Far",
+     "word": "Wide Silt: reaches what you threw farthest"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Sweep",
+     "why": "its own opposite: a current that carries them on, the moment they settle. Maths lets it act; it should not"
+    },
+    {
+     "rune": "Seep",
+     "why": "nothing to pierce; falls back to a cost cut"
+    },
+    {
+     "rune": "Gush",
+     "why": "no speed and no damage; falls back to a cost cut"
+    }
+   ]
+  },
+  {
+   "id": "seepage",
+   "name": "Seepage",
+   "affinity": "water",
+   "base_rune": "WAT-7b",
+   "rune": "Seep",
+   "status": "new",
+   "starter": false,
+   "kind": "new:seize",
+   "targeting": "target",
+   "summary": "One enemy within 9 m: water soaks in under its guard for 0.6 s, then wells up behind it - 50 damage that ignores its shield and armour, and a 1.5 m tug toward you. For 4 s its shield and armour count for nothing, against anyone.",
+   "verb_fit": "Seep is \"soak in slowly, getting behind shields and armour\": slow to arrive, and it arrives behind the shield.",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 1.0,
+    "range": 9.0,
+    "delay": 0.6,
+    "duration": 4.0,
+    "on_hit": {
+     "damage": 50.0,
+     "status": "seeped",
+     "pull": 1.5
+    }
+   },
+   "signature": [
+    "on_hit.status",
+    "delay"
+   ],
+   "new_mechanics": [
+    {
+     "name": "seeped",
+     "kind": "status",
+     "definition": "1 stack, lasts the skill's duration. The target's front block and armour do nothing."
+    },
+    {
+     "name": "ignores block",
+     "kind": "behaviour",
+     "definition": "The hit that applies Seeped already ignores front block and armour."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Soak",
+     "word": "Saturating Seep: Soaked through as well"
+    },
+    {
+     "rune": "Ebb",
+     "word": "Drawing Seep: the tug becomes a real drag out of the shield line"
+    },
+    {
+     "rune": "Haste",
+     "word": "Quick Seep: wells up sooner"
+    },
+    {
+     "rune": "Persist",
+     "word": "Lasting Seep: the guard stays open longer"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Splash",
+     "why": "its own opposite: bursting outward on contact is exactly what seeping in is not. Maths lets it act"
+    },
+    {
+     "rune": "Motion",
+     "why": "nothing travels; no speed to raise, falls back to a little power"
+    },
+    {
+     "rune": "Fall",
+     "why": "no poise to raise and nothing to knock down; falls back to a little power"
+    }
+   ]
+  },
+  {
+   "id": "tidal_bore",
+   "name": "Tidal Bore",
+   "affinity": "water",
+   "base_rune": "WAT-8a",
+   "rune": "Wave",
+   "status": "new",
+   "starter": false,
+   "kind": "projectile",
+   "targeting": "aimed",
+   "summary": "Dear. A wall of water 5 m wide rolls 12 m forward from you. Everyone it meets is picked up and carried to where it breaks: 45 damage, Soaked, 30 poise. If it breaks against a wall, everyone it carries is Crushed. Heavy enemies are dropped halfway; elites split it.",
+   "verb_fit": "Wave is \"a rolling wall of water\": it rolls, it is a wall, and it takes them with it.",
+   "numbers": {
+    "cost": 20.0,
+    "reflux_per_cost": 1.0,
+    "damage": 45.0,
+    "speed": 9.0,
+    "life": 1.4,
+    "width": 5.0,
+    "pierce": true,
+    "carry": true,
+    "on_hit": {
+     "status": "soaked",
+     "poise": 30.0
+    }
+   },
+   "signature": [
+    "life",
+    "on_hit.poise",
+    "carry"
+   ],
+   "new_mechanics": [
+    {
+     "name": "carry",
+     "kind": "behaviour",
+     "definition": "A projectile with carry picks up each light enemy it touches and moves it along with it until it ends; heavy enemies ride half its remaining distance; elites are hit but not carried. If it stops on a wall, every carried body is Crushed by its remaining distance."
+    },
+    {
+     "name": "width (projectile)",
+     "kind": "field",
+     "definition": "A projectile may be this wide across its line instead of a point."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Surge",
+     "word": "Breaking Bore: when it breaks it throws them on"
+    },
+    {
+     "rune": "Gush",
+     "word": "Racing Bore: faster and harder"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Bore: rolls farther"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Seep",
+     "why": "it already passes through everything it meets; falls back to a little power"
+    },
+    {
+     "rune": "Self",
+     "why": "nothing lasts on you; falls back to a little power"
+    },
+    {
+     "rune": "Ebb",
+     "why": "drags back toward you the bodies it is carrying away. Maths lets it act; it should not"
+    }
+   ]
+  },
+  {
+   "id": "slack_water",
+   "name": "Slack Water",
+   "affinity": "water",
+   "base_rune": "WAT-8b",
+   "rune": "Slack",
+   "status": "new",
+   "starter": false,
+   "kind": "melee_burst",
+   "targeting": "self",
+   "summary": "The tide stops to turn. Everything within 4.5 m is interrupted and hangs still for 2 s (60% slower), and the next shove or drag on each of them goes twice as far. Your water reflux drops by 20. No damage.",
+   "verb_fit": "Slack is \"the still moment at the turn of the tide: everything pauses, reflux eases\" - both halves, then the tide turns.",
+   "numbers": {
+    "cost": 8.0,
+    "reflux_per_cost": 0.0,
+    "arc_deg": 360.0,
+    "reach_bonus": 2.2,
+    "on_hit": {
+     "status": "stilled",
+     "interrupts": true
+    },
+    "vent_reflux": 20.0
+   },
+   "signature": [
+    "vent_reflux",
+    "on_hit.status"
+   ],
+   "new_mechanics": [
+    {
+     "name": "stilled",
+     "kind": "status",
+     "definition": "1 stack, 2 s. 60% slower; the next shove or pull on it goes twice as far and ends the status."
+    },
+    {
+     "name": "vent_reflux",
+     "kind": "field",
+     "definition": "Lowers the caster's reflux on the skill's affinity by this much when cast."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Surge",
+     "word": "Turning Tide: the tide turns at once and pushes them out (twice as far, since they are Stilled)"
+    },
+    {
+     "rune": "Ebb",
+     "word": "Ebbing Tide: the tide turns inward instead"
+    },
+    {
+     "rune": "Soak",
+     "word": "Full Tide: Soaked too, so the next shove goes three times as far"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Slack: a bigger ring"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Gush",
+     "why": "its own opposite in spirit, a sudden jet; no speed and no damage to raise: falls back to a cost cut"
+    },
+    {
+     "rune": "Seep",
+     "why": "nothing to pierce; falls back to a cost cut"
+    },
+    {
+     "rune": "Motion",
+     "why": "the point is that nothing moves; no speed to raise, falls back to a cost cut"
+    }
+   ]
+  }
+ ],
+ "effects": {}
+}

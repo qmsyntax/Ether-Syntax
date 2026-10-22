@@ -1,0 +1,791 @@
+{
+ "affinity": "wind",
+ "reflux_tier": "low",
+ "rule": "Wind is paid for by moving: running earns Slipstream pips, and every wind skill spends (or earns) pips for its real effect.",
+ "skills": [
+  {
+   "id": "cutting_gust",
+   "name": "Cutting Gust",
+   "affinity": "wind",
+   "base_rune": "WIN-2a",
+   "rune": "Lash",
+   "status": "existing",
+   "starter": true,
+   "kind": "projectile",
+   "targeting": "aimed",
+   "summary": "A short gust that passes through everything in its line. Spends up to 3 pips for +15 each - weak from a standstill.",
+   "verb_fit": "Lash is \"air that strikes and cuts\": a thin edge of air through everything in the line.",
+   "numbers": {
+    "cost": 7.0,
+    "reflux_per_cost": 0.7,
+    "damage": 45.0,
+    "speed": 32.0,
+    "life": 0.375,
+    "pierce": true,
+    "spend_pips": 3,
+    "pip_damage": 15.0,
+    "on_hit": {
+     "poise": 15.0
+    }
+   },
+   "signature": [
+    "damage",
+    "pip_damage"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Far",
+     "word": "Long Gust: flies farther"
+    },
+    {
+     "rune": "Carry",
+     "word": "Riding Gust: faster and farther"
+    },
+    {
+     "rune": "Lift",
+     "word": "Lifting Gust: throws light enemies Aloft"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Within",
+     "why": "it already passes through everything; falls back to a little power"
+    },
+    {
+     "rune": "Persist",
+     "why": "a gust has nothing that lasts; falls back"
+    },
+    {
+     "rune": "Buffer",
+     "why": "its own opposite: cushioned air has no edge, and it has no wind-up to shorten: falls back"
+    }
+   ]
+  },
+  {
+   "id": "crosscut",
+   "name": "Crosscut",
+   "affinity": "wind",
+   "base_rune": "WIN-2a",
+   "rune": "Lash",
+   "status": "existing",
+   "starter": true,
+   "kind": "targeted_strike",
+   "targeting": "target",
+   "summary": "One enemy within 7 m: you cut through and stop behind it. Always a hit from behind. Spends every pip for +10% each.",
+   "verb_fit": "Lash as a blade: you are the edge that cuts through and out the other side.",
+   "numbers": {
+    "cost": 7.0,
+    "reflux_per_cost": 0.7,
+    "damage_mult": 1.6,
+    "range": 7.0,
+    "through": true,
+    "through_dist": 2.0,
+    "pip_mult": 0.1,
+    "spend_all_pips": true,
+    "force_rear": true,
+    "recovery": 0.25,
+    "on_hit": {
+     "poise": 15.0
+    }
+   },
+   "signature": [
+    "damage_mult",
+    "pip_mult"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Hold",
+     "word": "Held Cut: store the cut for a harder one"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Cut: from farther away"
+    },
+    {
+     "rune": "Drop",
+     "word": "Felling Cut: more poise"
+    },
+    {
+     "rune": "Lift",
+     "word": "Rising Cut: cuts them up into the air"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Buffer",
+     "why": "its own opposite: a cushioned cut. Maths lets it act (shorter recovery); the word is nonsense"
+    },
+    {
+     "rune": "Persist",
+     "why": "nothing lasts; falls back to a little power"
+    },
+    {
+     "rune": "Self",
+     "why": "it acts on the one you cut; falls back"
+    }
+   ]
+  },
+  {
+   "id": "tailwind",
+   "name": "Tailwind",
+   "affinity": "wind",
+   "base_rune": "WIN-4a",
+   "rune": "Carry",
+   "status": "existing",
+   "starter": true,
+   "kind": "dash",
+   "targeting": "aimed",
+   "summary": "The longest dash, +3 pips, and the only one with no recovery: you can strike or cast the instant it ends.",
+   "verb_fit": "Carry is \"be carried along, faster\": the wind at your back, and nothing else.",
+   "numbers": {
+    "cost": 6.0,
+    "reflux_per_cost": 0.7,
+    "dash_speed": 30.0,
+    "dash_time": 0.22,
+    "stops_at_bodies": true,
+    "gain_pips": 3,
+    "no_recovery": true
+   },
+   "signature": [
+    "dash_speed",
+    "gain_pips"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Motion",
+     "word": "Swift Tailwind: faster"
+    },
+    {
+     "rune": "Essence",
+     "word": "Cheap Tailwind: less essence"
+    },
+    {
+     "rune": "Straight",
+     "word": "True Tailwind: faster, in a line nothing turns"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Stall",
+     "why": "its own opposite, and it hits nothing to slow: falls back to a cost cut"
+    },
+    {
+     "rune": "Hold",
+     "why": "a dash cannot be held, and it has no damage or wind-up: falls back to a cost cut"
+    },
+    {
+     "rune": "Persist",
+     "why": "nothing lasts; falls back to a cost cut"
+    }
+   ]
+  },
+  {
+   "id": "downdraft",
+   "name": "Downdraft",
+   "affinity": "wind",
+   "base_rune": "WIN-3b",
+   "rune": "Drop",
+   "status": "existing",
+   "starter": false,
+   "kind": "delayed_blast",
+   "targeting": "point",
+   "summary": "Point, 8 m, 4 m wide: 50, interrupts, pins enemies for 2 s, knocks their shots out of the air, and does +100 to anything Aloft.",
+   "verb_fit": "Drop is \"slam down\": the sky is brought down on one spot.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.7,
+    "range": 8.0,
+    "radius": 4.0,
+    "delay": 0.25,
+    "on_hit": {
+     "damage": 50.0,
+     "interrupts": true,
+     "status": "pinned"
+    },
+    "bonus_vs_status": "aloft",
+    "bonus_damage": 100.0,
+    "kill_projectiles": true,
+    "shatters_stone": true
+   },
+   "signature": [
+    "on_hit.status",
+    "bonus_damage"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Contract",
+     "word": "Hammer Draft: smaller and harder"
+    },
+    {
+     "rune": "Haste",
+     "word": "Sudden Draft: lands sooner"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Draft: a bigger circle"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Lift",
+     "why": "its own opposite: throws Aloft what it slams flat. Maths lets it act; it should not"
+    },
+    {
+     "rune": "Motion",
+     "why": "a blast at a spot does not travel; falls back to a little power"
+    },
+    {
+     "rune": "Self",
+     "why": "it lands on a spot, not on you; falls back"
+    }
+   ]
+  },
+  {
+   "id": "updraft",
+   "name": "Updraft",
+   "affinity": "wind",
+   "base_rune": "WIN-3a",
+   "rune": "Lift",
+   "status": "existing",
+   "starter": false,
+   "kind": "displace",
+   "targeting": "point",
+   "summary": "Point, 8 m: enemies within 2.5 m are thrown Aloft for 1.2 s (+0.2 s a pip, up to 4) - helpless, and taking 25% more. Heavy ones lose poise instead.",
+   "verb_fit": "Lift is \"raise aloft\": exactly that, to everyone on the spot.",
+   "numbers": {
+    "mode": "aloft_area",
+    "cost": 12.0,
+    "reflux_per_cost": 0.7,
+    "range": 8.0,
+    "radius": 2.5,
+    "on_hit": {
+     "status": "aloft"
+    },
+    "spend_pips": 4,
+    "pip_seconds": 0.2
+   },
+   "signature": [
+    "on_hit.status",
+    "pip_seconds"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Whirl",
+     "word": "Twister: lifts and gathers them"
+    },
+    {
+     "rune": "Blow",
+     "word": "Gusting Updraft: throws them up and out"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Updraft: a bigger column"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Drop",
+     "why": "its own opposite, and it has no poise field: falls back to a cost cut"
+    },
+    {
+     "rune": "Within",
+     "why": "nothing to pierce; falls back"
+    },
+    {
+     "rune": "Motion",
+     "why": "nothing travels; falls back"
+    }
+   ]
+  },
+  {
+   "id": "veil",
+   "name": "Crosswind Veil",
+   "affinity": "wind",
+   "base_rune": "WIN-2b",
+   "rune": "Buffer",
+   "status": "existing",
+   "starter": false,
+   "kind": "self_buff",
+   "targeting": "self",
+   "summary": "5 s: enemy shots aimed at you curve away and miss, and your Slipstream does not drain. Blades still land.",
+   "verb_fit": "Buffer is \"cushioning air\": a layer of moving air around you that shots slide off.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.7,
+    "buff": "veil",
+    "duration": 5.0
+   },
+   "signature": [
+    "duration"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Veil: lasts longer"
+    },
+    {
+     "rune": "Self",
+     "word": "it acts on you: longer"
+    },
+    {
+     "rune": "Essence",
+     "word": "cheaper"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Lash",
+     "why": "its own opposite, and it has no damage or speed: falls back to a cost cut"
+    },
+    {
+     "rune": "Drop",
+     "why": "nothing to knock down; falls back"
+    },
+    {
+     "rune": "Within",
+     "why": "nothing to pierce; falls back"
+    }
+   ]
+  },
+  {
+   "id": "gale_lane",
+   "name": "Gale Lane",
+   "affinity": "wind",
+   "base_rune": "WIN-1a",
+   "rune": "Blow",
+   "status": "existing",
+   "starter": false,
+   "kind": "ground_zone",
+   "targeting": "feet",
+   "summary": "A lane 10 m long from your feet, 6 s. In it you move 40% faster and gain pips twice as fast; enemies are pushed down it.",
+   "verb_fit": "Blow is \"moving air pushes\": a lane of wind that pushes them one way and you the other.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.7,
+    "at": "feet",
+    "zone": {
+     "shape": "strip",
+     "length": 10.0,
+     "width": 2.5,
+     "life": 6.0,
+     "tick_s": 1.0,
+     "push_per_s": 3.0,
+     "caster_speed_mult": 1.4,
+     "pip_gain_mult": 2.0
+    }
+   },
+   "signature": [
+    "zone.push_per_s"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Far",
+     "word": "Long Lane: a 15 m lane"
+    },
+    {
+     "rune": "Persist",
+     "word": "Lasting Lane: stays longer"
+    },
+    {
+     "rune": "Carry",
+     "word": "Fast Lane: a longer, quicker run"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Lull",
+     "why": "its own opposite: dead air in a wind lane. Maths lets it act (less reflux); the word is nonsense"
+    },
+    {
+     "rune": "Stall",
+     "why": "a lane has no hit to slow anyone with; falls back to a cost cut"
+    },
+    {
+     "rune": "Within",
+     "why": "nothing to pierce; falls back"
+    }
+   ]
+  },
+  {
+   "id": "spindrift",
+   "name": "Spindrift",
+   "affinity": "wind",
+   "base_rune": "WIN-1a",
+   "rune": "Blow",
+   "status": "existing",
+   "starter": false,
+   "kind": "channel",
+   "targeting": "self",
+   "summary": "Hold while you run: you keep full speed, and every 0.25 s the nearest enemy within 3 m takes 25 (with Lee if you are behind it). Costs 6 essence a second and 1 pip every half second; ends when the pips run out.",
+   "verb_fit": "Blow, loosely: the wind you make running is the blade. (Weak verb fit - see the report.)",
+   "numbers": {
+    "cost": 6.0,
+    "cost_per_s": true,
+    "reflux_per_cost": 0.7,
+    "shape": "nearest",
+    "radius": 3.0,
+    "tick": 0.25,
+    "on_hit": {
+     "damage": 25.0
+    },
+    "move_factor": 1.0,
+    "pip_cost_per_s": 2.0
+   },
+   "signature": [
+    "on_hit.damage",
+    "pip_cost_per_s"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Lash",
+     "word": "Razor Spindrift: sharper cuts"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Spindrift: reaches farther"
+    },
+    {
+     "rune": "Many",
+     "word": "Twin Spindrift: more targets"
+    },
+    {
+     "rune": "Essence",
+     "word": "Lean Spindrift: cheaper to hold"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Persist",
+     "why": "a held channel lasts as long as you hold; nothing to stretch, falls back to a little power"
+    },
+    {
+     "rune": "Lull",
+     "why": "its own opposite: dead air while you run. Maths lets it act (less reflux); the word is nonsense"
+    },
+    {
+     "rune": "Here",
+     "why": "it moves with you; no wind-up to shorten, falls back"
+    }
+   ]
+  },
+  {
+   "id": "dead_air",
+   "name": "Dead Air",
+   "affinity": "wind",
+   "base_rune": "WIN-1b",
+   "rune": "Lull",
+   "status": "new",
+   "starter": false,
+   "kind": "ground_zone",
+   "targeting": "feet",
+   "summary": "Spend every pip: a 4 m bubble of still air where you stand, lasting 1 s plus 1 s per pip spent. Enemy shots that enter it drop to the floor, your pips do not drain, and your wind reflux sheds while you stand in it. Step out and it ends. Cast from a standstill it is one breath long.",
+   "verb_fit": "Lull is \"dead air; shots drop\": both, and it is how a wind fighter pays - with the pips running earned - to stand still.",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 0.7,
+    "at": "feet",
+    "spend_all_pips": true,
+    "pip_seconds": 1.0,
+    "zone": {
+     "shape": "circle",
+     "radius": 4.0,
+     "life": 1.0,
+     "kill_projectiles": true,
+     "freeze_pips": true,
+     "shed_standing": true,
+     "ends_if_left": true
+    }
+   },
+   "signature": [
+    "zone.life",
+    "pip_seconds"
+   ],
+   "new_mechanics": [
+    {
+     "name": "pip_seconds (zone)",
+     "kind": "field",
+     "definition": "With spend_all_pips, the zone lasts its life plus this many seconds per pip spent."
+    },
+    {
+     "name": "shed_standing",
+     "kind": "field",
+     "definition": "Inside the zone the caster's wind reflux sheds at the moving rate while standing."
+    },
+    {
+     "name": "ends_if_left",
+     "kind": "field",
+     "definition": "The zone ends the moment the caster steps out of it."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Lull: lasts longer"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Lull: covers more"
+    },
+    {
+     "rune": "Calm",
+     "word": "Calm Air: leaves less reflux"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Blow",
+     "why": "its own opposite: wind in the dead air; and it hits nothing to shove: falls back to a cost cut"
+    },
+    {
+     "rune": "Lash",
+     "why": "it deals no damage and has no speed; falls back to a cost cut"
+    },
+    {
+     "rune": "Motion",
+     "why": "the point is not moving; falls back"
+    }
+   ]
+  },
+  {
+   "id": "headwind",
+   "name": "Headwind",
+   "affinity": "wind",
+   "base_rune": "WIN-4b",
+   "rune": "Stall",
+   "status": "new",
+   "starter": false,
+   "kind": "melee_burst",
+   "targeting": "aimed",
+   "summary": "A wall of wind in front of you, a 70-degree cone 6.5 m long: 20 damage, enemies in it are Slowed for 3 s, a charge or pounce in it stops dead, and you take 1 pip from each enemy caught (up to 4). The one wind skill that pays you for standing your ground.",
+   "verb_fit": "Stall is \"stalled; slipstream stolen\": you stall them, and their slipstream becomes yours.",
+   "numbers": {
+    "cost": 8.0,
+    "reflux_per_cost": 0.7,
+    "arc_deg": 70.0,
+    "reach_bonus": 4.0,
+    "on_hit": {
+     "damage": 20.0,
+     "status": "slowed",
+     "interrupts_moving": true
+    },
+    "gain_pips_per_hit": 1,
+    "gain_pips_max": 4
+   },
+   "signature": [
+    "on_hit.status",
+    "gain_pips_per_hit"
+   ],
+   "new_mechanics": [
+    {
+     "name": "interrupts_moving",
+     "kind": "field",
+     "definition": "Interrupts only an attack that moves its user (a charge, a pounce, a leap)."
+    },
+    {
+     "name": "gain_pips_per_hit",
+     "kind": "field",
+     "definition": "Pips the caster gains for each enemy the skill hits, up to gain_pips_max."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Expand",
+     "word": "Wide Headwind: a broader wall"
+    },
+    {
+     "rune": "Bind",
+     "word": "Pinning Headwind: Pinned, not just slowed"
+    },
+    {
+     "rune": "Will",
+     "word": "Commanding Headwind: interrupts every attack, not only charges"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Headwind: reaches farther"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Carry",
+     "why": "its own opposite: carried along by the wind you are blowing against them. Partly acts (reach); the word is nonsense"
+    },
+    {
+     "rune": "Persist",
+     "why": "nothing on the skill lasts; falls back to a little power"
+    },
+    {
+     "rune": "Motion",
+     "why": "it stops motion; no speed to raise, falls back"
+    }
+   ]
+  },
+  {
+   "id": "dust_devil",
+   "name": "Dust Devil",
+   "affinity": "wind",
+   "base_rune": "WIN-5a",
+   "rune": "Whirl",
+   "status": "new",
+   "starter": false,
+   "kind": "ground_zone",
+   "targeting": "point",
+   "summary": "Point, 9 m: a whirlwind 3 m across that drags enemies toward its middle and cuts them for 15 every half second. It drifts at walking pace the way you were running when you cast it, taking them along. Lasts 1.5 s, plus 1 s per pip spent (up to 4).",
+   "verb_fit": "Whirl is \"spin together\": it spins them and gathers them, and keeps them together as it goes.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.7,
+    "range": 9.0,
+    "spend_pips": 4,
+    "pip_seconds": 1.0,
+    "zone": {
+     "shape": "circle",
+     "radius": 3.0,
+     "life": 1.5,
+     "tick_s": 0.5,
+     "payload": {
+      "damage": 15.0
+     },
+     "pull_per_s": 2.5,
+     "drift_speed": 2.0,
+     "drift": "caster_motion"
+    }
+   },
+   "signature": [
+    "zone.pull_per_s",
+    "zone.radius"
+   ],
+   "new_mechanics": [
+    {
+     "name": "pull_per_s",
+     "kind": "field",
+     "definition": "A zone that drags enemies inside toward its centre at this speed."
+    },
+    {
+     "name": "drift",
+     "kind": "field",
+     "definition": "The zone moves at drift_speed along the caster's movement direction at the cast (still if the caster was standing)."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Devil: spins longer"
+    },
+    {
+     "rune": "Lash",
+     "word": "Razor Devil: sharper cuts"
+    },
+    {
+     "rune": "Expand",
+     "word": "Great Devil: a bigger whirl"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Disperse",
+     "why": "its own opposite: blowing apart what it gathers. Maths lets it act (reach, power); it should not"
+    },
+    {
+     "rune": "Lift",
+     "why": "maths lets it through, but on a payload that repeats every tick, so nothing in it ever acts again it re-applies Aloft every tick, so nothing in it ever acts again: a permanent lock, not a modifier"
+    },
+    {
+     "rune": "Within",
+     "why": "nothing to pierce; falls back"
+    }
+   ]
+  },
+  {
+   "id": "blowout",
+   "name": "Blowout",
+   "affinity": "wind",
+   "base_rune": "WIN-5b",
+   "rune": "Disperse",
+   "status": "new",
+   "starter": false,
+   "kind": "melee_burst",
+   "targeting": "self",
+   "summary": "Everything within 4.5 m is blown apart: 30 damage and thrown 2 m outward, and each one lands facing away from you for 1 s, so your next hit is from behind. Spends up to 4 pips: +0.5 m and +10 damage each. It also blows smoke and gas away and knocks shots in flight out of the ring.",
+   "verb_fit": "Disperse is \"blow apart\": the pack, the cloud and the volley, all scattered.",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 0.7,
+    "arc_deg": 360.0,
+    "reach_bonus": 2.2,
+    "on_hit": {
+     "damage": 30.0,
+     "shove": 2.0,
+     "turn_s": 1.0
+    },
+    "spend_pips": 4,
+    "pip_damage": 10.0,
+    "pip_shove": 0.5,
+    "clears_clouds": true,
+    "kill_projectiles": true
+   },
+   "signature": [
+    "reach_bonus",
+    "on_hit.shove"
+   ],
+   "new_mechanics": [
+    {
+     "name": "turn_s (payload)",
+     "kind": "field",
+     "definition": "A hit payload that turns each target to face away from the caster for this long (Riptide Lash's turn, for any payload)."
+    },
+    {
+     "name": "pip_shove",
+     "kind": "field",
+     "definition": "Extra shove per pip spent."
+    },
+    {
+     "name": "clears_clouds",
+     "kind": "field",
+     "definition": "Ends enemy smoke, gas and cloud zones that overlap the burst."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Blow",
+     "word": "Gale Blowout: throws them farther"
+    },
+    {
+     "rune": "Lift",
+     "word": "Scattering Lift: blown up and out, Aloft"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Blowout: a bigger ring"
+    },
+    {
+     "rune": "Lash",
+     "word": "Cutting Blowout: hits harder"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Whirl",
+     "why": "its own opposite: pulls in what it blows apart. Maths lets it act; it should not"
+    },
+    {
+     "rune": "Persist",
+     "why": "one burst; nothing lasts. Falls back to a little power"
+    },
+    {
+     "rune": "Motion",
+     "why": "a burst from where you stand; no speed, falls back"
+    }
+   ]
+  }
+ ],
+ "effects": {}
+}

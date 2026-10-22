@@ -1,0 +1,247 @@
+{
+  "affinity": "poison",
+  "reflux_tier": "low",
+  "reflux_why": "Low (0.7 per essence). Poison works quietly and slowly; most of its damage arrives seconds after the cast, so its casts are cheap in essence and leave little heat. What it costs is time: you pay by waiting for the bill.",
+  "rule": "Poison puts doses in one body: the first dose starts a 6 s clock, later doses add to the bill but not the clock, and when the clock runs out every dose is paid at once (20 each). It never spreads on its own.",
+  "rule_why": "design/14's first pass ('doses stack inside a body and come due later') is kept, and made exact: one clock per body, started by the first dose and never refreshed, so 'later' is a number on the screen and stacking fast before it runs out is the skill. Damage arrives as one lump, not a tick, which sets it apart from Alight (ticks, spreads by touch) and from Disease (clouds, spreads by air). Poison never jumps body to body; it can only be moved on purpose (Funnel).",
+  "skills": [
+    {
+      "id": "sting_dart", "name": "Sting Dart", "affinity": "poison", "base_rune": "POI-1a", "rune": "Poison",
+      "status": "new", "starter": true,
+      "kind": "projectile", "targeting": "aimed",
+      "summary": "A fast dart: 50 and 2 doses. The first dose starts a 6 s clock over its head; when it runs out, every dose in the body is paid at once, 20 each.",
+      "verb_fit": "Poison is to dose a target. The dart's hit is ordinary; its job is the two doses it leaves inside.",
+      "numbers": {"cost": 6, "reflux_per_cost": 0.7, "damage": 50, "speed": 26, "life": 1.15, "on_hit": {"status": "dosed", "stacks": 2}},
+      "signature": ["on_hit.stacks"],
+      "new_mechanics": [
+        {"name": "dosed", "kind": "status", "definition": "Dosed (up to 10 doses): the first dose starts a 6 s clock (shown as a shrinking ring and a number); more doses add to the bill but never reset the clock; when it runs out the target takes 20 per dose at once through whoever dosed it (tags poison, dot) and the doses clear."}
+      ],
+      "good_modifiers": [
+        {"rune": "Contaminate", "word": "A fouler dart: an extra dose, and the clock runs 30% longer for a bigger bill."},
+        {"rune": "Corrode", "word": "A dart that also eats armour: the shield is a third weaker after each one."},
+        {"rune": "Within", "word": "Through one body and into the next, dosing both."},
+        {"rune": "Motion", "word": "A quicker dart for moving targets."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Purge", "why": "Its own opposite: clearing doses on the skill that gives them. The fallback is +40% against dosed targets, which reads as 'stronger' but is a different skill's job."},
+        {"rune": "Neutralise", "why": "An antidote on the dosing dart: the meaning cancels. The fallback is an interrupting dart that hits 10% softer."},
+        {"rune": "Rise", "why": "A dart does not lift a body; the fallback is a free Aloft on a 6-essence bolt."}
+      ]
+    },
+    {
+      "id": "black_purge", "name": "Black Purge", "affinity": "poison", "base_rune": "POI-1b", "rune": "Purge",
+      "status": "new", "starter": false,
+      "kind": "targeted_strike", "targeting": "target",
+      "summary": "One enemy in reach: a heavy blow that drives every dose in it through at once - the whole bill now, at half again (30 a dose) - and interrupts.",
+      "verb_fit": "Purge clears doses. It clears them the hard way: all of them leave the body at once, and the body pays for it.",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.7, "damage_mult": 2.0, "range_bonus": 1.0, "consume_status": "dosed", "per_stack_damage": 30, "on_hit": {"interrupts": true}},
+      "signature": ["consume_status", "per_stack_damage"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Hold", "word": "Hold the purge: 30% more on a big bill."},
+        {"rune": "Once", "word": "All of it, once: 20% harder."},
+        {"rune": "One", "word": "One body pays everything: 25% harder."},
+        {"rune": "Fall", "word": "It folds them over: 30% more poise damage."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Linger", "why": "Its own opposite in spirit: residue that stays, on a skill that empties the body at once; the fallback adds a fresh dose straight after the bill is paid."},
+        {"rune": "Persist", "why": "Nothing on an all-at-once blow lasts; the fallback lengthens nothing."},
+        {"rune": "Many", "why": "A purge is one body's bill; jumping to a second target splits the blow, and the fallback costs 15% power."}
+      ]
+    },
+    {
+      "id": "fouling_slide", "name": "Fouling Slide", "affinity": "poison", "base_rune": "POI-2a", "rune": "Contaminate",
+      "status": "new", "starter": true,
+      "kind": "dash", "targeting": "aimed",
+      "summary": "Slide 5 m straight through enemies, fouling each one you brush: 2 doses each.",
+      "verb_fit": "Contaminate fouls a thing. You are the thing that fouls: everything you touch on the way through is left dirty.",
+      "numbers": {"cost": 7, "reflux_per_cost": 0.7, "dash_speed": 26, "dash_time": 0.19, "pass_through": true, "pass_radius": 1.1, "on_pass": {"status": "dosed", "stacks": 2}},
+      "signature": ["on_pass.stacks"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Poison", "word": "A filthier slide: 4 doses on each body you pass."},
+        {"rune": "Corrode", "word": "Acid on the way through: every body you pass is Corroded."},
+        {"rune": "Elsewhere", "word": "A 6.4 m slide, through a deeper line."},
+        {"rune": "Motion", "word": "A quicker slide."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Cleanse", "why": "Its own opposite: cleaning the bodies you foul. The fallback only cools reflux, which reads as harmless but means nothing."},
+        {"rune": "Stillness", "why": "A held, slow slide contradicts it: the fallback cuts its speed by 20%."},
+        {"rune": "Hold", "why": "A charged slide is a different skill; the dash has no damage for the +30%, so the fallback only adds wind-up."}
+      ]
+    },
+    {
+      "id": "clean_air", "name": "Clean Air", "affinity": "poison", "base_rune": "POI-2b", "rune": "Cleanse",
+      "status": "new", "starter": false,
+      "kind": "ground_zone", "targeting": "point",
+      "summary": "Point, 9 m: air 4 m across for 8 s that nothing foul can use. Enemies in it cannot be healed or Frenzied, and a Censer-Bearer that dies inside bursts for nothing.",
+      "verb_fit": "Cleanse makes a thing clean again. The censer's smoke is a drug and its burst a draught; clean air leaves them nothing to work with.",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.7, "range": 9, "zone": {"shape": "circle", "radius": 4.0, "life": 8.0, "no_heal": true, "ends_status": ["frenzied"], "blocks_status": ["frenzied"]}},
+      "signature": ["zone.no_heal"],
+      "new_mechanics": [
+        {"name": "no_heal", "kind": "field", "definition": "A zone with no_heal stops every heal on enemies inside it (the Censer-Bearer's burst among them), and its blocks_status list cannot be applied inside (ends_status is removed on entry)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "Clean air for 12 s: wait the censer out."},
+        {"rune": "Expand", "word": "A 5.2 m patch, round the whole pack."},
+        {"rune": "Far", "word": "Laid 12.6 m away, under the censer's feet."},
+        {"rune": "Calm", "word": "Clean air for you too: 20% less reflux."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Contaminate", "why": "Its own opposite: fouling the clean air. The fallback doses everyone in it, a second skill inside a modifier."},
+        {"rune": "Linger", "why": "Residue left in clean air contradicts it; the fallback adds doses to a zone that is meant to deny, not harm."},
+        {"rune": "Repel", "why": "Clean air has no force; a shove every tick would push the censer out of the zone that is meant to catch its death."}
+      ]
+    },
+    {
+      "id": "caustic_spew", "name": "Caustic Spew", "affinity": "poison", "base_rune": "POI-3a", "rune": "Corrode",
+      "status": "new", "starter": true,
+      "kind": "melee_burst", "targeting": "aimed",
+      "summary": "A spray of acid in front of you, 3.1 m: a solid hit, a dose, and Corroded - each stack takes a third off their armour, shields included.",
+      "verb_fit": "Corrode is acid that eats armour and metal. The spray is that acid, and the hit is incidental: what matters is the armour it leaves thinner.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "damage_mult": 1.6, "reach_bonus": 0.8, "arc_deg": 120, "on_hit": {"statuses": [{"id": "corroded", "stacks": 1}, {"id": "dosed", "stacks": 1}]}},
+      "signature": ["on_hit.statuses.corroded"],
+      "new_mechanics": [
+        {"name": "corroded", "kind": "status", "definition": "Corroded (up to 3 stacks, 10 s, refreshed): front armour, and worn armour (Disease's flesh), each lose a third per stack - a Pavise Bearer's 80% shield is 53%, 27%, then gone. Applies even through a frontal block, because the acid is on the shield."},
+        {"name": "statuses", "kind": "field", "definition": "A hit payload may carry statuses, a list of {id, stacks}, when it applies more than one status; each is applied in order."}
+      ],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "A wider spray, 4 m: the whole shield line."},
+        {"rune": "Poison", "word": "Acid and venom: 2 more doses on each."},
+        {"rune": "Near", "word": "Point-blank and 20% harder."},
+        {"rune": "Fall", "word": "It eats their footing too: 30% more poise damage."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Neutralise", "why": "Its own opposite: rendering the acid harmless. The fallback interrupts and weakens a spray whose point is the Corroded it would still leave."},
+        {"rune": "Rise", "why": "Acid does not lift; the fallback is a free Aloft burst."},
+        {"rune": "Straight", "why": "A spray is not a line, and the burst has no speed; the fallback is 10% reach."}
+      ]
+    },
+    {
+      "id": "counterdose", "name": "Counterdose", "affinity": "poison", "base_rune": "POI-3b", "rune": "Neutralise",
+      "status": "new", "starter": false,
+      "kind": "projectile", "targeting": "aimed",
+      "summary": "A dart of counter-agent: 45, and the target's doses are cancelled - no bill - while its body seizes for 0.3 s a dose (2.5 s at most), interrupting whatever it was doing.",
+      "verb_fit": "Neutralise renders a poison harmless. The bill is cancelled; the reaction of agent meeting agent is the seizure, so the more you dosed it, the longer it locks.",
+      "numbers": {"cost": 8, "reflux_per_cost": 0.7, "damage": 45, "speed": 22, "life": 1.0, "consume_status": "dosed", "stun_per_stack": 0.3, "stun_max": 2.5, "on_hit": {"interrupts": true}},
+      "signature": ["stun_per_stack"],
+      "new_mechanics": [
+        {"name": "stun_per_stack", "kind": "behaviour", "definition": "A hit with consume_status and stun_per_stack removes that status and Stuns the target for stun_per_stack seconds per stack removed, up to stun_max, instead of paying any damage the status would have done."}
+      ],
+      "good_modifiers": [
+        {"rune": "Motion", "word": "A quicker dart, for the Brute already winding up."},
+        {"rune": "Straight", "word": "A truer, farther dart."},
+        {"rune": "Within", "word": "Through one body and into the next: two seizures."},
+        {"rune": "Far", "word": "Neutralise the Drummer 31 m away."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Poison", "why": "Dosing with the dart that cancels doses: the fallback lands 2 fresh doses after the cancel and starts a new bill, which fights the point."},
+        {"rune": "Purge", "why": "Calling the bill due on a skill that cancels it: the two cancel, and the fallback is only +40% on the dart's small hit."},
+        {"rune": "Fade", "why": "Shortens the seizure by 40%, the skill's whole effect, for +25% on a 45-damage hit."}
+      ]
+    },
+    {
+      "id": "residue", "name": "Residue", "affinity": "poison", "base_rune": "POI-4a", "rune": "Linger",
+      "status": "new", "starter": false,
+      "kind": "ground_zone", "targeting": "point",
+      "summary": "Point, 9 m: a slick of residue 3 m across for 10 s. Anything standing in it takes a dose every second. It stays exactly where you put it.",
+      "verb_fit": "Linger leaves residue that stays. The slick is that residue: it does not spread, drift or fade early, and it keeps dosing whoever is fool enough to stand in it.",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.7, "range": 9, "zone": {"shape": "circle", "radius": 3.0, "life": 10.0, "tick_s": 1.0, "drift_speed": 0.0, "payload": {"status": "dosed", "stacks": 1}}},
+      "signature": ["zone.life"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "A 3.9 m slick across a doorway."},
+        {"rune": "Poison", "word": "A richer slick: 2 more doses each second."},
+        {"rune": "Corrode", "word": "Acid residue: Corroded every second, so a Pavise standing in it loses its shield."},
+        {"rune": "Persist", "word": "It stays 15 s."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Flush", "why": "Its own opposite: cleaning the area out. The fallback shoves everyone out of the slick every second."},
+        {"rune": "Motion", "why": "A slick that moves is a Disease cloud, not residue; the zone has no speed, so the fallback does nothing but name the wrong affinity."},
+        {"rune": "Fade", "why": "Cuts the lasting slick to 6 s, its whole nature, for +25% on a zone that deals no direct damage."}
+      ]
+    },
+    {
+      "id": "funnel", "name": "Funnel", "affinity": "poison", "base_rune": "POI-4b", "rune": "Flush",
+      "status": "new", "starter": false,
+      "kind": "detonate", "targeting": "target",
+      "summary": "One enemy within 10 m: every other dosed enemy within 6 m of it is flushed clean, and all their doses pour into it - up to 20. Its clock does not change.",
+      "verb_fit": "Flush cleans an area out. The area is cleaned, and the poison has to go somewhere: into the one body you choose.",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.7, "range": 10, "gather_radius": 6, "consume_status": "dosed", "gather_into": "target", "gather_cap": 20},
+      "signature": ["gather_radius"],
+      "new_mechanics": [
+        {"name": "gather_into", "kind": "behaviour", "definition": "A detonate with gather_into removes consume_status from every enemy within gather_radius of the target and adds those stacks to the target, up to gather_cap (above the status's usual cap); the target's own clock is kept."}
+      ],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "Flush a 7.8 m circle into one body."},
+        {"rune": "Far", "word": "Pick the sink 14 m away."},
+        {"rune": "Attract", "word": "Flush the bodies too: everyone flushed is dragged 1.5 m toward the sink."},
+        {"rune": "Essence", "word": "A cheaper flush."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Linger", "why": "Its own opposite: leaving residue where you are flushing clean; the fallback doses the very bodies just emptied."},
+        {"rune": "Repel", "why": "Pushing bodies away from the sink contradicts gathering; the fallback scatters the pack you are funnelling."},
+        {"rune": "Many", "why": "Two sinks split the bill, which is the opposite of the skill; the fallback halves its point."}
+      ]
+    },
+    {
+      "id": "sapping_tether", "name": "Sapping Tether", "affinity": "poison", "base_rune": "POI-5a", "rune": "Sap",
+      "status": "new", "starter": false,
+      "kind": "channel", "targeting": "target",
+      "summary": "Hold on one enemy within 7 m: a thin thread drips a dose into it every half second, and while it holds the target deals 30% less damage and moves 30% slower. You walk at half speed; the thread breaks past 9 m or behind stone.",
+      "verb_fit": "Sap is to weaken. The thread drains the strength out of one body for as long as you hold it, and the doses it drips make the weakness pay later.",
+      "numbers": {"cost_per_s": 6, "reflux_per_cost": 0.7, "shape": "tether", "range": 7, "break_range": 9, "tick": 0.5, "payload": {"statuses": [{"id": "dosed", "stacks": 1}, {"id": "sapped", "stacks": 1}]}, "move_factor": 0.5},
+      "signature": ["tick", "payload.statuses.sapped"],
+      "new_mechanics": [
+        {"name": "sapped", "kind": "status", "definition": "Sapped (1 stack, while tethered and 2 s after): deals 30% less damage and moves at 70%."},
+        {"name": "tether", "kind": "field", "definition": "Channel shape tether: locks onto one enemy within range at the start and follows it; ends if it gets farther than break_range or a wall or stone comes between."}
+      ],
+      "good_modifiers": [
+        {"rune": "Far", "word": "A longer thread: grab from 9.8 m, hold to 12.6 m."},
+        {"rune": "Poison", "word": "A heavier drip: 2 more doses each tick - a full bill in under 2 s."},
+        {"rune": "Bind", "word": "The thread binds as it saps: the target is Pinned too."},
+        {"rune": "Essence", "word": "A cheaper thread to hold."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Stimulate", "why": "Its own opposite: strengthening the body you are sapping; the fallback only speeds and heats the channel."},
+        {"rune": "Many", "why": "A tether is one thread on one body; the fallback's jump has nothing to jump along."},
+        {"rune": "Repel", "why": "Shoving the target away every tick snaps the thread at 9 m; the fallback breaks the skill."}
+      ]
+    },
+    {
+      "id": "bitter_tonic", "name": "Bitter Tonic", "affinity": "poison", "base_rune": "POI-5b", "rune": "Stimulate",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "Drink it: for 8 s you move 15% faster, recover from skills a quarter sooner, and the doses you give come due in 4 s instead of 6.",
+      "verb_fit": "Stimulate is poison used as a drug. You dose yourself with the useful kind, and everything - you and your poisons - runs faster.",
+      "numbers": {"cost": 8, "reflux_per_cost": 0.7, "buff": "bitter_tonic", "duration": 8.0, "move_speed_mult": 1.15, "recovery_mult": 0.75, "dose_clock": 4.0},
+      "signature": ["recovery_mult", "dose_clock"],
+      "new_mechanics": [
+        {"name": "dose_clock", "kind": "field", "definition": "While a buff with dose_clock is on the caster, Dosed clocks the caster starts run for dose_clock seconds instead of 6."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "12 s on the tonic."},
+        {"rune": "Self", "word": "It stays in you 30% longer."},
+        {"rune": "Remember", "word": "The effects stick 30% longer."},
+        {"rune": "Essence", "word": "A cheaper draught."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Sap", "why": "Its own opposite: weakening yourself with the drink that strengthens you; there is no hit to carry Sapped, so the fallback does nothing."},
+        {"rune": "Corrode", "why": "Acid in a drink for yourself makes no sense, and there is no hit; the fallback does nothing."},
+        {"rune": "Repel", "why": "No hit to carry a shove; the fallback does nothing."}
+      ]
+    }
+  ],
+  "effects": {
+    "Poison": "status dosed 2",
+    "Purge": "bonus dosed +0.4",
+    "Contaminate": "status dosed; duration x1.3",
+    "Cleanse": "reflux x0.7",
+    "Corrode": "status corroded",
+    "Neutralise": "interrupts; power x0.9",
+    "Linger": "duration x1.6; status dosed",
+    "Flush": "reach x1.2; shove +1",
+    "Sap": "status sapped",
+    "Stimulate": "windup x0.75; reflux x1.15"
+  }
+}

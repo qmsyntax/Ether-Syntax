@@ -1,0 +1,249 @@
+{
+  "affinity": "light",
+  "reflux_tier": "low",
+  "reflux_why": "Light is the cleanest power there is and leaves little heat (0.7 per essence). What it costs is position: it only goes in straight lines, and anything opaque stops it, so a light fighter pays by moving to where the line is clear.",
+  "rule": "Light arrives at once along a dead straight line and stops on the first opaque thing; whatever it touches is Lit: shown through any cover, with the gaps in its armour open (front armour counts half).",
+  "rule_why": "design/14's first pass ('straight and instant; reveals the hidden') overlapped lightning, which is also instant, and 'reveals' had nothing to bite on because the game has almost nothing hidden. Refined: light is the affinity of the clear line (it never jumps, curves or travels; walls, stone, bodies and raised shields stop it, so where you stand decides everything), and 'reveal' now means two concrete things: a Lit body cannot hide, and Lit shows the gaps in its guard, halving front armour. Lightning picks a target and jumps between bodies; light needs a line and shows what is on it.",
+  "skills": [
+    {
+      "id": "dayline", "name": "Dayline", "affinity": "light", "base_rune": "LGT-1a", "rune": "Shine",
+      "status": "new", "starter": true,
+      "kind": "beam", "targeting": "aimed",
+      "summary": "An instant line of daylight, 16 m: the first thing on it takes 60 and is Lit for 6 s. Walls, stone and a raised shield stop it.",
+      "verb_fit": "Shine is to illuminate. The skill's real effect is the light it leaves on its target: Lit is what Shine means in a fight. It is also the longest instant reach in the game, because light reaches as far as you can see.",
+      "numbers": {"cost": 7, "reflux_per_cost": 0.7, "damage": 60, "range": 16, "width": 0.5, "on_hit": {"status": "lit"}},
+      "signature": ["on_hit.status", "range"],
+      "new_mechanics": [
+        {"name": "lit", "kind": "status", "definition": "Lit (1 stack, 6 s): the body glows; it cannot be hidden by anything (smoke, steam cloud, darkness, a hides zone, invisibility), illusions it wears fall away, and front armour on it counts half against every hit."},
+        {"name": "opaque", "kind": "behaviour", "definition": "Every light line stops on the first opaque thing it meets: a wall, standing stone, a body, or a shield held to the front (Pavise Bearer); it never curves or jumps. A light skill with needs_clear_line reaches only targets with an unbroken line to its source (bodies do not shade, walls, stone and a raised shield do)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Glare", "word": "A line that blinds as it lights: the long-range answer to a Rampart Archer, which loses its aim."},
+        {"rune": "Clarity", "word": "A sharper, farther line: 18 m and harder, for picking the back rank."},
+        {"rune": "Flash", "word": "A line that stuns as it lights: the target is Dazed and takes 50% more from your follow-up."},
+        {"rune": "Far", "word": "22 m of light for a little less damage: the whole room is in reach."},
+        {"rune": "Reflect", "word": "The line glances on to one more body after the first."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Curve", "why": "Light that bends breaks the affinity's rule; on an instant line it only nudges reach and damage by 5-10%."},
+        {"rune": "Attract", "why": "A ray of light that hauls its target 1.5 m toward you has no meaning; the fallback is a free pull that belongs to water."},
+        {"rune": "Rise", "why": "Light does not lift bodies; the fallback is a free Aloft on a cheap bolt, a second skill hidden in a modifier."}
+      ]
+    },
+    {
+      "id": "dusk_well", "name": "Dusk Well", "affinity": "light", "base_rune": "LGT-1b", "rune": "Dim",
+      "status": "new", "starter": false,
+      "kind": "ground_zone", "targeting": "point",
+      "summary": "Point, 10 m: a pool of dusk 4 m across for 7 s. Nothing outside can see or shoot into it, and nothing inside can see out. Lit enemies stay in plain view.",
+      "verb_fit": "Dim is to dull the light. The skill turns the light down over one patch of floor, and the only thing that matters about light being turned down is that nobody can see through it.",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.7, "range": 10, "zone": {"shape": "circle", "radius": 4.0, "life": 7.0, "hides": true, "lit_shows": true}},
+      "signature": ["zone.hides"],
+      "new_mechanics": [
+        {"name": "hides", "kind": "field", "definition": "A zone with hides blocks sight both ways: an enemy outside cannot target or aim at anything inside it, and an enemy inside cannot target anything outside; Lit bodies are exempt."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "A long dusk: 10.5 s of cover to stand in."},
+        {"rune": "Expand", "word": "A wide dusk, 5.2 m across, big enough to hide a whole fight from the archers."},
+        {"rune": "Bend", "word": "Dusk thrown farther and sooner: the light bends away over a spot 11.5 m off."},
+        {"rune": "Far", "word": "Dropped 14 m away, over the archers' nest instead of over you: they cannot see out."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Shine", "why": "Lighting the dark undoes it: Lit bodies show through the well, so the fallback (Lit on everyone in it) cancels the skill's only effect."},
+        {"rune": "Glare", "why": "The well has no hit to carry Blinded, and a glare inside a dusk contradicts it; the fallback does nothing."},
+        {"rune": "Repel", "why": "A patch of dark has no force; there is no hit to carry a shove, so the fallback does nothing."}
+      ]
+    },
+    {
+      "id": "glint", "name": "Glint", "affinity": "light", "base_rune": "LGT-2a", "rune": "Flash",
+      "status": "new", "starter": true,
+      "kind": "new:streak", "targeting": "aimed",
+      "summary": "You are a streak of light: up to 7 m along your aim in an instant, through enemies, lighting each one you pass. A wall, stone or a raised shield stops you short.",
+      "verb_fit": "Flash is a sudden burst of light. Glint is you becoming that burst: there is no travel time at all, only before and after, and the flash leaves its mark on everything it passed.",
+      "numbers": {"cost": 8, "reflux_per_cost": 0.7, "range": 7, "recovery": 0.2, "pass_radius": 1.1, "on_pass": {"status": "lit"}},
+      "signature": ["range"],
+      "new_mechanics": [
+        {"name": "streak", "kind": "behaviour", "definition": "Moves the caster in one frame along the aim, up to range, passing through bodies (on_pass to each within pass_radius of the line) and stopping just short of the first wall, stone or raised shield."}
+      ],
+      "good_modifiers": [
+        {"rune": "Elsewhere", "word": "A 9 m streak: across a room in no time."},
+        {"rune": "Haste", "word": "Out of the streak and casting a quarter sooner."},
+        {"rune": "Glare", "word": "A streak that blinds the line it crosses: run through the archers and they lose you."},
+        {"rune": "Far", "word": "A 9.8 m streak; the longest instant move there is."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Stillness", "why": "Holding a streak in place contradicts it; it has no speed to lower and no lasting effect but Lit, so the fallback just stretches Lit."},
+        {"rune": "Hold", "why": "Light that has to be charged is not a flash; the streak has no power to raise, so the fallback only slows the cast."},
+        {"rune": "Delay", "why": "A delayed instant is a contradiction; there is no damage to build, so the fallback only adds wind-up."}
+      ]
+    },
+    {
+      "id": "still_lamp", "name": "Still Lamp", "affinity": "light", "base_rune": "LGT-2b", "rune": "Glow",
+      "status": "new", "starter": false,
+      "kind": "prop", "targeting": "point",
+      "summary": "Point, 9 m: hang a steady lamp for 12 s. Every enemy within 5 m of it is Lit while it stays: it cannot hide and its armour's gaps show. One lamp at a time; it blocks nothing.",
+      "verb_fit": "Glow is a steady soft light. The lamp is that light given a place: it does no harm, it just keeps everything near it lit, for as long as it lasts.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "range": 9, "shape": "lamp", "life": 12.0, "light_radius": 5.0, "tick_s": 0.5, "payload": {"status": "lit"}, "blocks_movement": false, "blocks_shots": false, "max_count": 1},
+      "signature": ["light_radius", "life"],
+      "new_mechanics": [
+        {"name": "lamp", "kind": "field", "definition": "Prop shape lamp: a light hung at a point that blocks nothing and applies its payload every tick_s to enemies within light_radius that have a clear line to it."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "An 18 s lamp: light a doorway for the whole wall."},
+        {"rune": "Expand", "word": "A brighter lamp, lighting 6.5 m around."},
+        {"rune": "Radiate", "word": "A lamp that throws its light 30% farther, for a little more essence."},
+        {"rune": "Far", "word": "Hung 12.6 m away, behind the shield line."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Motion", "why": "A still lamp that moves is a different skill; the lamp has no speed, so the fallback does nothing."},
+        {"rune": "Repel", "why": "A lamp that shoves everything near it every half second makes no sense; the fallback is a free knockback zone."},
+        {"rune": "Fade", "why": "A short lamp loses the steadiness that is its whole point; it has no damage for the +25% to raise."}
+      ]
+    },
+    {
+      "id": "noonburst", "name": "Noonburst", "affinity": "light", "base_rune": "LGT-3a", "rune": "Radiate",
+      "status": "new", "starter": true,
+      "kind": "melee_burst", "targeting": "self",
+      "summary": "Light and heat pour out of you: everything within 3.5 m with a clear line to you takes a heavy hit and is Lit. A raised shield shades whoever holds it.",
+      "verb_fit": "Radiate is to send light and heat outward. The burst goes out from you in every direction at once, and like all light it only reaches what it can see: walls, stone and shields cast shadows it does not cross.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "damage_mult": 1.8, "reach_bonus": 1.2, "arc_deg": 360, "needs_clear_line": true, "on_hit": {"status": "lit", "poise": 30}},
+      "signature": ["arc_deg", "reach_bonus"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "A wider noon: 4.5 m, a little weaker."},
+        {"rune": "Flash", "word": "A blinding noon: the whole ring is Dazed and takes 50% more from what follows."},
+        {"rune": "Glare", "word": "Everything around you is Blinded: the melee ring loses track of you."},
+        {"rune": "Focus", "word": "A tighter, hotter burst: 2.8 m and 30% harder."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Reflect", "why": "A burst in every direction has no single path to bounce; the fallback hands one random enemy a stray extra hit."},
+        {"rune": "Within", "why": "There is no projectile to pierce; Pierce on a burst does nothing."},
+        {"rune": "Straight", "why": "A ring is not a line; the burst has no speed, and 10% reach is all that is left of the word."}
+      ]
+    },
+    {
+      "id": "gathered_light", "name": "Gathered Light", "affinity": "light", "base_rune": "LGT-3b", "rune": "Absorb",
+      "status": "new", "starter": false,
+      "kind": "detonate", "targeting": "self",
+      "summary": "Every Lit enemy within 12 m that has a clear line to you gives its light back: it takes 60 and loses Lit, and the ray coming home hits everything between it and you for 40.",
+      "verb_fit": "Absorb is to draw light and heat in. You pull back every light you have set, and because light only travels straight, each one comes home along a line that burns whatever stands on it.",
+      "numbers": {"cost": 14, "reflux_per_cost": 0.7, "range": 12, "consume_status": "lit", "per_target_damage": 60, "ray_damage": 40, "needs_clear_line": true},
+      "signature": ["consume_status", "ray_damage"],
+      "new_mechanics": [
+        {"name": "homing_ray", "kind": "behaviour", "definition": "A detonate with ray_damage also draws a straight line from each consumed target to the caster and applies ray_damage once to every other enemy on it; walls and stone end the ray."}
+      ],
+      "good_modifiers": [
+        {"rune": "Far", "word": "Call the light home from 16.8 m."},
+        {"rune": "Clarity", "word": "Sharper light, called from farther and hitting 10% harder."},
+        {"rune": "Focus", "word": "Fewer, brighter returns: 9.6 m reach, 30% harder."},
+        {"rune": "Take", "word": "The heat comes home with the light: 15% less reflux."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Shine", "why": "Lighting the bodies you are emptying of light contradicts the word: the fallback re-applies the Lit it just took."},
+        {"rune": "Repel", "why": "Pushing targets away from a skill that draws in makes no sense; the fallback shoves every target 1.5 m out of the lines."},
+        {"rune": "Radiate", "why": "Its own opposite: sending light out on a skill that draws it in. The fallback only stretches range for more essence."}
+      ]
+    },
+    {
+      "id": "hard_glare", "name": "Hard Glare", "affinity": "light", "base_rune": "LGT-4a", "rune": "Glare",
+      "status": "new", "starter": false,
+      "kind": "melee_burst", "targeting": "aimed",
+      "summary": "A cone of hard light, 8 m long: everything in it takes 20 and is Blinded for 3 s. Archers lose their aim; others only swing at what is right in front of them.",
+      "verb_fit": "Glare is a blinding glare. The skill barely hurts; what it does is take away sight, which is exactly what a glare does.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "damage": 20, "reach_bonus": 5.7, "arc_deg": 50, "not_melee": true, "on_hit": {"status": "blinded"}},
+      "signature": ["on_hit.status"],
+      "new_mechanics": [
+        {"name": "blinded", "kind": "status", "definition": "Blinded (1 stack, 3 s): cannot aim; a ranged attack being aimed is dropped and none can start, melee attacks only land on what is within 1.5 m in front, and it cannot see anything (so Dream cannot reach it)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "Blinded for 4.5 s: a long window to close on the back line."},
+        {"rune": "Far", "word": "An 11 m cone, reaching archers who stand at their full range."},
+        {"rune": "Flash", "word": "A glare that also Dazes: the blinded take 50% more while they stumble."},
+        {"rune": "Scatter", "word": "A wider cone that catches the whole shield line."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Clarity", "why": "Its own opposite: restoring sight on a skill that takes it away; the fallback only adds 10% to a 20-damage hit."},
+        {"rune": "Dim", "why": "A dimmed glare is a contradiction; the fallback just weakens it."},
+        {"rune": "Within", "why": "A cone has no projectile to pierce; the fallback does nothing."}
+      ]
+    },
+    {
+      "id": "clear_eye", "name": "Clear Eye", "affinity": "light", "base_rune": "LGT-4b", "rune": "Clarity",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "For 6 s you see every gap: each enemy within 15 m is Lit at once, and your hits on Lit enemies ignore front armour completely.",
+      "verb_fit": "Clarity restores and sharpens sight. The skill sharpens yours: it shows you everything nearby and every gap in every guard.",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.7, "buff": "clear_eye", "duration": 6.0, "reveal_radius": 15.0, "lit_front_armour_mult": 0.0},
+      "signature": ["lit_front_armour_mult", "reveal_radius"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "9 s of clear sight: a whole Pavise pair's worth."},
+        {"rune": "Self", "word": "It stays with you 30% longer."},
+        {"rune": "Far", "word": "Everything within 21 m is Lit on the cast."},
+        {"rune": "Essence", "word": "A cheaper look: 15% less essence."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Glare", "why": "Blinding is the opposite of clear sight, and a self-buff has no hit to carry Blinded; the fallback does nothing."},
+        {"rune": "Repel", "why": "No hit to carry a shove; the fallback does nothing."},
+        {"rune": "Many", "why": "A buff on you has no targets to jump between; the fallback only costs 15% power the buff does not have."}
+      ]
+    },
+    {
+      "id": "glancing_ray", "name": "Glancing Ray", "affinity": "light", "base_rune": "LGT-5a", "rune": "Reflect",
+      "status": "new", "starter": false,
+      "kind": "beam", "targeting": "aimed",
+      "summary": "A ray that glances off walls, stone and raised shields up to twice, 14 m in all, hitting the first body on each leg for 55 and lighting it. Bank it off a wall to reach the back of a shield line.",
+      "verb_fit": "Reflect turns light back. The ray is ordinary light whose whole point is the turn: it is how a light fighter, who can only shoot straight, gets round a corner or a shield.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "damage": 55, "range": 14, "width": 0.5, "bounces": 2, "bounce_off": ["wall", "stone", "shield"], "on_hit": {"status": "lit"}},
+      "signature": ["bounces"],
+      "new_mechanics": [
+        {"name": "bounces", "kind": "field", "definition": "A beam with bounces reflects off walls, stone and raised shields at the mirror angle, up to that many times within its total range, and hits the first body on each leg."}
+      ],
+      "good_modifiers": [
+        {"rune": "Far", "word": "A 19.6 m path: room for a long bank shot."},
+        {"rune": "Clarity", "word": "A sharper ray that reaches farther and hits harder."},
+        {"rune": "Many", "word": "A third leg, for a little less on each hit."},
+        {"rune": "Glare", "word": "Every body the ray finds is Blinded too."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Curve", "why": "A bent ray stops being a reflection: the bank shot depends on straight legs. The fallback only nudges reach and damage."},
+        {"rune": "Absorb", "why": "Absorbing light on a skill that throws it back is contradictory; the fallback is a bonus against Lit targets that the ray lights itself."},
+        {"rune": "Near", "why": "A shorter path ruins the bank shot (11.9 m); +20% damage does not make up for missing the target."}
+      ]
+    },
+    {
+      "id": "bent_light", "name": "Bent Light", "affinity": "light", "base_rune": "LGT-5b", "rune": "Bend",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "For 5 s the light bends round you: nothing more than 3 m away can see you, so archers cannot aim and the pack loses you. Your first hit out of it counts as from behind, and ends it.",
+      "verb_fit": "Bend is to bend light into false images or into nothing. This is the 'nothing': light passes round you as if you were not there.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "buff": "bent_light", "duration": 5.0, "unseen_beyond": 3.0, "first_hit_rear": true, "ends_on_hit": true},
+      "signature": ["unseen_beyond", "duration"],
+      "new_mechanics": [
+        {"name": "unseen", "kind": "behaviour", "definition": "While unseen, no enemy farther than unseen_beyond can target or aim at the caster; those already chasing go to the last place they saw you."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "7.5 s out of sight: time to walk round a whole pack."},
+        {"rune": "Self", "word": "It clings to you 30% longer."},
+        {"rune": "Remember", "word": "The bend holds 30% longer."},
+        {"rune": "Essence", "word": "A cheaper vanishing: 15% less essence."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Shine", "why": "Lighting yourself up while bending light away is a contradiction; there is no hit to carry Lit, so the fallback does nothing."},
+        {"rune": "Glare", "why": "A blinding glare announces you; no hit to carry Blinded, so the fallback does nothing."},
+        {"rune": "Expand", "why": "Reach grows unseen_beyond from 3 m to 3.9 m, so enemies see you from farther: the modifier makes the skill worse."}
+      ]
+    }
+  ],
+  "effects": {
+    "Shine": "status lit",
+    "Dim": "power x0.9; reflux x0.7",
+    "Flash": "windup x0.75; status dazed",
+    "Glow": "duration x1.5; reflux x0.85",
+    "Radiate": "reach x1.3; cost x1.1",
+    "Absorb": "bonus lit +0.3; reflux x0.85",
+    "Glare": "status blinded",
+    "Clarity": "power x1.1; reach x1.15",
+    "Reflect": "jumps +1",
+    "Bend": "windup x0.8; reach x1.15"
+  }
+}

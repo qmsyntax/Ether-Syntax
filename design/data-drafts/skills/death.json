@@ -1,0 +1,254 @@
+{
+  "affinity": "death",
+  "reflux_tier": "high",
+  "reflux_per_cost": 1.4,
+  "reflux_why": "Touching an ending is heavy on the channels: death is cold, but working it leaves a lot of spent heat behind. High reflux gives Death a reason to keep the corpses it makes: Lay to Rest turns corpses into essence and sheds reflux, the way Backdraft is fire's way down.",
+  "rule": "What has died stays useful: for a Death fighter every enemy corpse lies 20 s and Death skills spend it, and a living target below half health is Dying and takes 30% more from Death.",
+  "rule_why": "design/14 named the two halves (corpses are material, below half is prey) but not how long a corpse lasts, how a skill finds one, or what 'prey' does in numbers. Today a corpse lies 8 s (balance.combat.corpse_lie_s); 20 s gives a fight time to use them. Dying is a fixed +30%, the mirror of Life's +25% on the hale, so the two read as opposites. Death skills say plainly whether they need a corpse, and each is checked before essence is spent.",
+  "skills": [
+    {
+      "id": "endstroke", "name": "Endstroke", "affinity": "death", "base_rune": "DTH-1a", "rune": "Kill",
+      "status": "new", "starter": true,
+      "kind": "targeted_strike", "targeting": "target",
+      "summary": "One enemy in reach: 2.0x strike damage, 30% more if it is Dying (below half). Anything short of an elite left under 15% of its health dies outright.",
+      "verb_fit": "Kill is finishing the dying. It is an ordinary blow on a healthy target and a certain one on a failing one.",
+      "numbers": {"cost": 12, "reflux_per_cost": 1.4, "windup": 0.15, "damage_mult": 2.0, "range_bonus": 1.0, "execute_below": 0.15,
+        "execute_excludes": ["elite"], "on_hit": {"poise": 20}},
+      "signature": ["execute_below"],
+      "new_mechanics": [
+        {"name": "dying", "kind": "status", "definition": "Derived, never applied: a living target below half its health. Death hits on it do x1.3 (affinity key dying_mult). Shown as a faint mark over its head while a Death fighter is in the fight."},
+        {"name": "execute_below", "kind": "behaviour", "definition": "A strike key: after the hit, a non-elite target whose health is below that fraction of its maximum dies at once (the kill is yours, with every on-kill rule)."},
+        {"name": "corpse", "kind": "field", "definition": "An enemy's body where it fell. For a character holding Death it lies 20 s instead of balance.combat.corpse_lie_s. Death skills that need one target a corpse within their range (the cursor snaps to the nearest corpse) and are refused, with nothing spent, if there is none. A corpse can be spent once; Lingering Shade does not spend it."}
+      ],
+      "good_modifiers": [
+        {"rune": "One", "word": "everything into one body: 25% harder"},
+        {"rune": "Hold", "word": "a drawn-back killing blow: 30% harder, 30% longer wind-up"},
+        {"rune": "Lay", "word": "down for good: 30% more poise damage and it interrupts"},
+        {"rune": "Fury", "word": "a furious finish: 20% harder, 10% dearer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Spare", "why": "a killing blow that holds the life at the edge. The numbers would land (Spared, 15% weaker) and then the execute can never fire, because a Spared target cannot die; the two verbs cancel."},
+        {"rune": "Many", "why": "a finishing blow is on one body. Extra jumps do nothing and fall back; the 15% damage loss lands."}
+      ]
+    },
+    {
+      "id": "last_mercy", "name": "Last Mercy", "affinity": "death", "base_rune": "DTH-1b", "rune": "Spare",
+      "status": "new", "starter": false,
+      "kind": "new:hex", "targeting": "target",
+      "summary": "One enemy within 10 m is Spared for 4 s: nothing can take it below 1 health. If it is already below half, it kneels and does nothing. Hold a Censer-Bearer at the edge until it is clear of its friends.",
+      "verb_fit": "Spare is holding a life at the edge. The target cannot die, and one already failing is held there helpless.",
+      "numbers": {"cost": 10, "reflux_per_cost": 1.4, "range": 10, "duration": 4,
+        "on_hit": {"status": "spared"}},
+      "signature": ["on_hit.status", "duration"],
+      "new_mechanics": [
+        {"name": "hex", "kind": "behaviour", "definition": "Defined in blood.json (gullet_knot): a target within range takes on_hit at once, no travel, needs line of sight."},
+        {"name": "spared", "kind": "status", "definition": "1 stack, lasts the skill's duration: the target's health cannot fall below 1 (no death, so no death-burst). If it is Dying it kneels: it cannot move or act. When Spared ends, the next blow can kill it as normal."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a longer mercy: half as long again"},
+        {"rune": "Far", "word": "spare from 40% further away"},
+        {"rune": "Haunt", "word": "spared, and haunted while it waits: Spared and Dreading together"},
+        {"rune": "Stillness", "word": "held quite still at the edge: 40% longer, a little dearer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Kill", "why": "finishing the life you are holding. Last Mercy deals no damage on a hit, so the bonus has nothing to add to; it falls back to a small cost cut."},
+        {"rune": "Fury", "why": "rage in a mercy. No damage to raise, so that falls back, and the 10% cost rise lands."}
+      ]
+    },
+    {
+      "id": "rise_again", "name": "Rise Again", "affinity": "death", "base_rune": "DTH-2a", "rune": "Animate",
+      "status": "new", "starter": false,
+      "kind": "new:summon", "targeting": "point",
+      "summary": "Point at a corpse within 10 m: it gets up and fights for you for 15 s, with 120 health, hitting the nearest enemy for 15 a blow. Two at a time. Without a corpse nothing happens and nothing is spent.",
+      "verb_fit": "Animate is the dead getting up. The corpse is the material; the skill gives it 15 s of use.",
+      "numbers": {"cost": 14, "reflux_per_cost": 1.4, "range": 10, "duration": 15, "needs": "corpse", "max_count": 2,
+        "thrall": {"hp": 120, "damage": 15, "attack_s": 1.2, "speed": 5.0, "living": false}},
+      "signature": ["duration", "thrall.damage"],
+      "new_mechanics": [
+        {"name": "summon", "kind": "behaviour", "definition": "A new kind: spends a corpse and puts a thrall (an ally body using the corpse's model with set_dead_look) at it for duration. A thrall walks to the nearest enemy and strikes; enemies may attack it; it is not living (Life cannot touch it). Its kills are credited to the caster. A third pushes out the oldest."}
+      ],
+      "good_modifiers": [
+        {"rune": "Preserve", "word": "an embalmed thrall: 40% longer, a little less reflux"},
+        {"rune": "Persist", "word": "the dead stay up half as long again"},
+        {"rune": "Essence", "word": "cheaper: 15% less essence"},
+        {"rune": "Remember", "word": "it remembers how to fight a little longer: 30% longer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Lay", "why": "putting down for good what you are raising. The summon has no hit of its own, so the poise and interrupt fall back to a small cost cut; the verbs cancel."},
+        {"rune": "Exorcise", "why": "banishing the thing you made. Nothing it hits to interrupt and no damage to raise; both fall back to a small cost cut."}
+      ]
+    },
+    {
+      "id": "lay_to_rest", "name": "Lay to Rest", "affinity": "death", "base_rune": "DTH-2b", "rune": "Lay",
+      "status": "new", "starter": false,
+      "kind": "new:field_pulse", "targeting": "self",
+      "summary": "Every corpse within 6 m of you (up to 4) goes into the ground for good. Each gives you back 5 essence and takes 8 off your death reflux, and the ground drags down the enemies standing next to it: 40 poise damage and interrupted.",
+      "verb_fit": "Lay is putting the dead down for good. The corpses are gone, nothing can raise them, and what they had left is yours.",
+      "numbers": {"cost": 6, "reflux_per_cost": 1.4, "radius": 6, "max_corpses": 4, "per_corpse_essence": 5, "per_corpse_reflux": 8,
+        "drag_radius": 2, "on_hit": {"poise": 40, "interrupts": true}},
+      "signature": ["per_corpse_essence", "on_hit.interrupts"],
+      "new_mechanics": [
+        {"name": "field_pulse", "kind": "behaviour", "definition": "A new kind: acts on the caster's own field pieces (corpses here; growth patches in nature.json) within radius of the caster or of an aimed point. Per piece it pays a reward or a burst, and on_hit lands on enemies within drag_radius of each piece once."}
+      ],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "a wider burial: 30% more reach"},
+        {"rune": "Calm", "word": "a quiet burial: 20% less reflux from casting it"},
+        {"rune": "Fall", "word": "the ground pulls harder: 30% more poise damage"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Animate", "why": "getting the dead up while you put them down. There is no duration or speed here, so both halves fall back to a small cost cut."},
+        {"rune": "Haunt", "why": "a body laid to rest leaves no spirit. Dread would land on whoever the ground drags, but the word contradicts itself; the duration half falls back."}
+      ]
+    },
+    {
+      "id": "rotting_bolt", "name": "Rotting Bolt", "affinity": "death", "base_rune": "DTH-3a", "rune": "Rot",
+      "status": "new", "starter": true,
+      "kind": "projectile", "targeting": "aimed",
+      "summary": "A clot of decay thrown along your aim: 50 and Rotting for 6 s (its armour and shield count for half, and lost poise does not come back). If it hits a corpse instead, the corpse bursts: 60 and Rotting to everything within 2.5 m.",
+      "verb_fit": "Rot is decay. On the living it decays guard and armour; on the dead it decays the whole body at once.",
+      "numbers": {"cost": 8, "reflux_per_cost": 1.4, "damage": 50, "speed": 20, "life": 1.4, "recovery": 0.1, "hits_corpses": true,
+        "on_hit": {"status": "rotting"},
+        "corpse_burst": {"radius": 2.5, "damage": 60, "status": "rotting"}},
+      "signature": ["on_hit.status", "corpse_burst.damage"],
+      "new_mechanics": [
+        {"name": "rotting", "kind": "status", "definition": "1 stack, 6 s: the target's armour, front armour and front_block count at half, and its poise does not refill."},
+        {"name": "hits_corpses", "kind": "behaviour", "definition": "A projectile key: corpses are in its path like bodies; one hit bursts (corpse_burst payload in its radius) and is spent."}
+      ],
+      "good_modifiers": [
+        {"rune": "Within", "word": "rot that goes through: pierces the line, rotting every body and bursting every corpse it crosses"},
+        {"rune": "Kill", "word": "decay that finds the failing: +40% against the Dying"},
+        {"rune": "Haunt", "word": "what rots, haunts: Dreading as well as Rotting"},
+        {"rune": "Far", "word": "thrown 40% further, a little weaker"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Preserve", "why": "stopping the decay the bolt is made of. A projectile has no duration, so that falls back to a small damage bonus; the reflux cut lands."},
+        {"rune": "Pure", "why": "cleansing the rot. The reflux cut lands; the word contradicts itself."}
+      ]
+    },
+    {
+      "id": "embalm", "name": "Embalm", "affinity": "death", "base_rune": "DTH-3b", "rune": "Preserve",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "For 5 s you cannot die: your health stops at 1, though blows that land still open wounds as usual. You heal nothing while it lasts.",
+      "verb_fit": "Preserve stops decay, the user's own body included. For five seconds your body will not end.",
+      "numbers": {"cost": 18, "reflux_per_cost": 1.4, "duration": 5, "buff": "embalmed", "floor_health": 1, "blocks_healing": true},
+      "signature": ["duration"],
+      "new_mechanics": [
+        {"name": "embalmed", "kind": "behaviour", "definition": "A self_buff read in take_hit: the bar cannot fall below floor_health; wounds are still added by the wound rules; all healing to the player is refused while it lasts. Nothing happens when it ends (no skill hurts its caster)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "preserved half as long again"},
+        {"rune": "Self", "word": "all on you: 30% longer"},
+        {"rune": "Essence", "word": "cheaper: 15% less essence"},
+        {"rune": "Remember", "word": "the body holds its shape a little longer: 30% longer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Rot", "why": "decay put into your own preservation. A self buff hits nobody; Rotting falls back to a small cost cut."},
+        {"rune": "Kill", "why": "a killing edge on a skill that stops you dying. No damage on a hit, so the bonus falls back to a small cost cut."}
+      ]
+    },
+    {
+      "id": "lingering_shade", "name": "Lingering Shade", "affinity": "death", "base_rune": "DTH-4a", "rune": "Haunt",
+      "status": "new", "starter": false,
+      "kind": "ground_zone", "targeting": "point",
+      "summary": "Point at a corpse within 10 m, or where something died in the last 10 s: its shade lingers there for 8 s in a 3 m circle. Enemies inside take 15 a second and are Dreading: they back out and will not walk in. The corpse is left for other uses.",
+      "verb_fit": "Haunt is what dies lingering as a spirit. The body stays; what lingers is the dead man's shade, and the living fear its ground.",
+      "numbers": {"cost": 12, "reflux_per_cost": 1.4, "range": 10, "needs": "corpse_or_recent_death", "recent_death_s": 10, "spends_corpse": false,
+        "zone": {"shape": "circle", "radius": 3.0, "life": 8.0, "tick_s": 1.0, "payload": {"damage": 15, "status": "dread"}}},
+      "signature": ["zone.payload.status", "zone.life"],
+      "new_mechanics": [
+        {"name": "dread", "kind": "status", "definition": "1 stack, 1.5 s, refreshed while in the zone: the target moves away from the zone's centre, will not path into it (the zone is a blocked area in its routing), and a ranged enemy inside loses its aim."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "the shade lingers half as long again"},
+        {"rune": "Expand", "word": "a wider haunting: 30% larger, a little softer"},
+        {"rune": "Rot", "word": "haunted ground that rots: Rotting as well as Dread"},
+        {"rune": "Remember", "word": "the dead remember longer: 30% longer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Exorcise", "why": "banishing the spirit you called up. The numbers would land (interrupts, 10% harder) but the verbs cancel; the word should not form."},
+        {"rune": "Attract", "why": "pulling enemies into ground they flee. The pull would land and fight the Dread every tick; the word contradicts itself."}
+      ]
+    },
+    {
+      "id": "banishing_line", "name": "Banishing Line", "affinity": "death", "base_rune": "DTH-4b", "rune": "Exorcise",
+      "status": "new", "starter": false,
+      "kind": "beam", "targeting": "aimed",
+      "summary": "An instant line 10 m long through everything: 55, 20 poise damage, and interrupts. Constructs, spirits and anything animated take triple.",
+      "verb_fit": "Exorcise banishes spirits and constructs. Against them it is the strongest hit Death has; against the living it is a line that stops what they were doing.",
+      "numbers": {"cost": 10, "reflux_per_cost": 1.4, "range": 10, "width": 0.8, "damage": 55, "pierce": true, "unliving_mult": 3.0,
+        "on_hit": {"interrupts": true, "poise": 20}},
+      "signature": ["unliving_mult", "on_hit.interrupts"],
+      "new_mechanics": [
+        {"name": "unliving_mult", "kind": "behaviour", "definition": "A damage multiplier against targets with living false (enemies.json; defined in life.json)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Far", "word": "a longer line: 40% more range"},
+        {"rune": "Focus", "word": "a narrower, harder line: 30% harder, 20% shorter"},
+        {"rune": "Kill", "word": "banishing what is failing: +40% against the Dying"},
+        {"rune": "Soul", "word": "it strikes the spirit: 20% more poise damage"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Haunt", "why": "making the spirits it banishes. Dread would land, but the word contradicts itself; a beam has no duration, so that half falls back."},
+        {"rune": "Animate", "why": "raising what you banish. No duration or speed on a beam; both fall back to a small damage bonus."}
+      ]
+    },
+    {
+      "id": "gravestep", "name": "Gravestep", "affinity": "death", "base_rune": "DTH-5a", "rune": "Vanish",
+      "status": "new", "starter": true,
+      "kind": "blink", "targeting": "point",
+      "summary": "You pass out of sight and step out up to 6 m away, or up to 12 m away onto a corpse. Every enemy that was aiming at you loses its aim.",
+      "verb_fit": "Vanish is passing out of sight and reach. You are gone before you are back, and anything taking aim at you has nothing to aim at.",
+      "numbers": {"cost": 8, "reflux_per_cost": 1.4, "range": 6, "corpse_range": 12, "recovery": 0.25, "breaks_aim": true},
+      "signature": ["range", "corpse_range"],
+      "new_mechanics": [
+        {"name": "breaks_aim", "kind": "behaviour", "definition": "A movement key: every enemy winding up a ranged attack on the caster loses it (as interrupt(), without the stagger)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Far", "word": "out of reach entirely: 40% further"},
+        {"rune": "Elsewhere", "word": "you step out somewhere else: 30% further"},
+        {"rune": "Haste", "word": "gone sooner: a quarter less recovery"},
+        {"rune": "Essence", "word": "cheaper: 15% less essence"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Manifest", "why": "appearing on the skill that is disappearing. A blink has no damage or poise fields, so both halves fall back to a small cost cut."},
+        {"rune": "Rot", "why": "the step touches nobody; Rotting falls back to a small cost cut."}
+      ]
+    },
+    {
+      "id": "death_mask", "name": "Death Mask", "affinity": "death", "base_rune": "DTH-5b", "rune": "Manifest",
+      "status": "new", "starter": false,
+      "kind": "prop", "targeting": "point",
+      "summary": "Point, 8 m: a likeness of you takes form out of grave-dust. For 5 s every enemy within 6 m turns on it instead of you. When it breaks or its time runs out, it falls apart: 40 to everything within 3 m.",
+      "verb_fit": "Manifest is appearing, taking form. Something that looks like you appears where you are not, and the room believes it.",
+      "numbers": {"cost": 12, "reflux_per_cost": 1.4, "range": 8, "life": 5, "hp": 150, "radius": 6, "blocks": false,
+        "damage": 40, "collapse_radius": 3},
+      "signature": ["life", "radius"],
+      "new_mechanics": [
+        {"name": "decoy", "kind": "behaviour", "definition": "A prop key: while it stands, enemies within radius take it as their target instead of the player (it holds slots like the player); it has hp and blocks nothing. When it breaks or its life ends it deals damage within collapse_radius."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "the likeness holds half as long again"},
+        {"rune": "Expand", "word": "it draws from 30% further, and falls apart a little softer"},
+        {"rune": "Order", "word": "a better-made likeness: 10% harder when it falls"},
+        {"rune": "Remember", "word": "they keep believing it: 30% longer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Vanish", "why": "a likeness nobody can see draws nobody. The 20% reach would land (it pulls from further) while the word contradicts itself; the prop has no wind-up, so that half falls back."},
+        {"rune": "Veil", "why": "hiding the thing that must be seen. No wind-up to cut; it falls back to a small damage bonus."}
+      ]
+    }
+  ],
+  "effects": {
+    "Kill": "bonus dying +0.4",
+    "Spare": "status spared; power x0.85",
+    "Animate": "duration x1.3; speed x1.15",
+    "Lay": "poise x1.3; interrupts",
+    "Rot": "status rotting",
+    "Preserve": "duration x1.4; reflux x0.9",
+    "Haunt": "status dread; duration x1.15",
+    "Exorcise": "interrupts; power x1.1",
+    "Vanish": "reach x1.2; windup x0.85",
+    "Manifest": "power x1.1; poise x1.2"
+  }
+}

@@ -1,0 +1,258 @@
+{
+  "affinity": "nature",
+  "reflux_tier": "low",
+  "reflux_per_cost": 0.5,
+  "reflux_why": "The plants do the work after the cast: a patch planted at the start of a fight is still working at the end of it. Little spent heat for what you get, and the price is time and place instead: growth is slow to pay out, and weak on stone floors.",
+  "rule": "Nature plants growth in the ground that stays, spreads and grows stronger with age (sprout, grown, bloom); its skills plant it, feed it or cash it in.",
+  "rule_why": "design/14 said what Nature plants stays, spreads and gets stronger over time. This makes that countable: a patch has three ages that scale its effect, it puts out one new patch every 5 s once grown, one caster keeps at most 12, and it only spreads on open ground. That gives Nature a place-dependence like water's wetness (strong in scrub and swamp, weaker in the city and the dungeon) and gives fire a reason to matter to it (Alight burns growth away).",
+  "skills": [
+    {
+      "id": "heartwood", "name": "Heartwood", "affinity": "nature", "base_rune": "NAT-1a", "rune": "Grow",
+      "status": "new", "starter": false,
+      "kind": "prop", "targeting": "point",
+      "summary": "Point, 8 m: a sapling bursts up into a tree trunk in 0.6 s, shoving anyone standing there aside for 25. It blocks walking and shots for 30 s, gets tougher every second it stands, and every 5 s spreads a bramble patch at its foot. One at a time.",
+      "verb_fit": "Grow makes a thing larger and stronger. A seedling becomes a trunk in a breath, and it goes on growing for as long as it stands.",
+      "numbers": {"cost": 14, "reflux_per_cost": 0.5, "windup": 0.3, "range": 8, "min_range": 1.5,
+        "width": 1.2, "thickness": 1.2, "height": 2.5, "rise_time": 0.6, "life": 30, "hp": 300, "hp_per_s": 10,
+        "spread_every": 5, "spread_kind": "bramble", "max_count": 1,
+        "on_rise": {"damage": 25, "shove": 1.0}},
+      "signature": ["life", "spread_every"],
+      "new_mechanics": [
+        {"name": "growth", "kind": "field", "definition": "A patch of the caster's plants, 2 m across, of one kind (bramble or snarevine). Ages: sprout (0-5 s) x1, grown (5-15 s) x1.5, bloom (15 s on) x2 to its effect. Every 5 s each grown or bloom patch puts out one new sprout patch beside it, until the caster has 12; on paved or rock floors (biome key soil false) patches grow but never spread. A patch lasts until it is wilted, burned (an Alight enemy or fire skill on it burns it away in 2 s) or the level is left. Enemies route round growth as costly ground."},
+        {"name": "bramble", "kind": "field", "definition": "A growth kind: enemies inside are Slowed and take 6 damage a second while they move (times the patch's age)."},
+        {"name": "growing prop", "kind": "behaviour", "definition": "A prop key: hp_per_s adds to its health while it stands; spread_every drops a growth patch of spread_kind at its base (counted in the caster's 12)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "an old tree: half as long again"},
+        {"rune": "Flourish", "word": "a thriving trunk: 30% longer, 10% harder as it rises"},
+        {"rune": "Expand", "word": "a broader trunk: 30% wider and further, a little softer as it rises"},
+        {"rune": "Sow", "word": "planted deep: a slower rise, a harder shove, a longer life"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Shrink", "why": "making smaller the thing that is Grow. The numbers would land (Dwindled on whoever it shoves) but the verbs cancel; the word should not form."},
+        {"rune": "Wilt", "why": "a wilting tree. The rise hits 15% harder but the trunk lives 30% shorter; the word kills what it grows."}
+      ]
+    },
+    {
+      "id": "dwindling_gall", "name": "Dwindling Gall", "affinity": "nature", "base_rune": "NAT-1b", "rune": "Shrink",
+      "status": "new", "starter": false,
+      "kind": "new:hex", "targeting": "target",
+      "summary": "A gall-vine takes root in one enemy within 9 m and shrinks it for 8 s: 20 damage, it counts one weight class lighter (shoves move it, Aloft lifts it), and its reach is cut by 30%. When it dies, the gall falls and grows a bramble patch.",
+      "verb_fit": "Shrink makes a thing smaller. A plant does it: a gall that feeds on its host, and stays in the world when the host is gone.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.5, "range": 9, "duration": 8,
+        "on_hit": {"damage": 20, "status": "dwindled"}, "on_death_growth": "bramble"},
+      "signature": ["on_hit.status", "duration"],
+      "new_mechanics": [
+        {"name": "hex", "kind": "behaviour", "definition": "Defined in blood.json (gullet_knot): a target within range takes on_hit at once, no travel, needs line of sight."},
+        {"name": "dwindled", "kind": "status", "definition": "1 stack, lasts the skill's duration: the target counts one weight class lighter (elite as heavy, heavy as light) for shove_resist and Aloft, and its attack reach x0.7."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a slow gall: half as long again"},
+        {"rune": "Far", "word": "rooted from 40% further away"},
+        {"rune": "Tangle", "word": "shrunk and held: Dwindled and Rooted together"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Grow", "why": "making larger the thing you are shrinking. The numbers would land (more range, more damage, dearer) but the verbs cancel; the word should not form."},
+        {"rune": "Within", "why": "a hex is not a shot; pierce falls back to a small damage bonus."}
+      ]
+    },
+    {
+      "id": "thornburst", "name": "Thornburst", "affinity": "nature", "base_rune": "NAT-2a", "rune": "Sprout",
+      "status": "new", "starter": true,
+      "kind": "delayed_blast", "targeting": "point",
+      "summary": "Point, 9 m: after 0.35 s thorns burst up from the ground. 60 and Slowed to everything within 1.5 m, and the thorns stay as a bramble patch that spreads and thickens the longer it stands.",
+      "verb_fit": "Sprout is growing plants from the ground. The hit is the plants coming up; what is left afterwards is the plants.",
+      "numbers": {"cost": 8, "reflux_per_cost": 0.5, "range": 9, "radius": 1.5, "delay": 0.35,
+        "on_hit": {"damage": 60, "status": "slowed"},
+        "leave_growth": {"kind": "bramble", "radius": 1.0}},
+      "signature": ["on_hit.status", "leave_growth"],
+      "new_mechanics": [
+        {"name": "leave_growth", "kind": "behaviour", "definition": "A skill key: where the skill lands it plants a growth patch of that kind (defined under heartwood)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Tangle", "word": "the shoots grab: Rooted as well as Slowed"},
+        {"rune": "Grow", "word": "a bigger burst: 20% wider and 10% harder, a little dearer"},
+        {"rune": "Haste", "word": "it comes up sooner: a quarter less delay"},
+        {"rune": "Expand", "word": "a wider bed of thorns: 30% larger, a little softer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Wilt", "why": "killing the plants the skill grows. The 15% damage would land, but the word contradicts itself; there is no duration field, so that half falls back."},
+        {"rune": "Within", "why": "a burst from the ground is not a shot; pierce falls back to a small damage bonus."}
+      ]
+    },
+    {
+      "id": "sere_ground", "name": "Sere Ground", "affinity": "nature", "base_rune": "NAT-2b", "rune": "Wilt",
+      "status": "new", "starter": false,
+      "kind": "new:field_pulse", "targeting": "point",
+      "summary": "Point, 10 m: every patch of your growth within 4 m dies at once, and everything standing in one takes 30 (45 if the patch was grown, 60 if in bloom). The ground is clear again.",
+      "verb_fit": "Wilt is killing plants and clearing ground. You give up growth you planted, and its dying is the damage.",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.5, "range": 10, "radius": 4, "per_stack_damage": 30, "age_scales": true,
+        "on_hit": {}},
+      "signature": ["per_stack_damage", "radius"],
+      "new_mechanics": [
+        {"name": "field_pulse", "kind": "behaviour", "definition": "Defined in death.json (lay_to_rest): acts on the caster's own field pieces within radius; here each growth patch is removed and pays per_stack_damage (times its age) to every enemy standing in it."}
+      ],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "a wider clearing: 30% more reach, a little softer"},
+        {"rune": "Once", "word": "all of it at once: 20% harder, 10% dearer"},
+        {"rune": "Blight", "word": "it dies of a blight that jumps to them: Blighted on everyone caught"},
+        {"rune": "Fury", "word": "a violent clearing: 20% harder, 10% dearer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Sprout", "why": "growing what you are killing. Slowed would land on those caught, but the word contradicts itself; there is no duration here, so that half falls back."},
+        {"rune": "Flourish", "why": "strengthening growth as you kill it. The 10% damage lands, the word contradicts itself, and the duration half falls back."}
+      ]
+    },
+    {
+      "id": "greening", "name": "Greening", "affinity": "nature", "base_rune": "NAT-3a", "rune": "Flourish",
+      "status": "new", "starter": false,
+      "kind": "new:field_pulse", "targeting": "self",
+      "summary": "Every patch of your growth within 12 m grows one age at once and puts out a new patch, and for 6 s all of it works 50% harder.",
+      "verb_fit": "Flourish is thriving: strengthening what grows. It makes your planted growth older, bigger and stronger at once.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.5, "radius": 12, "duration": 6, "ages_added": 1, "spreads": 1, "effect_mult": 1.5},
+      "signature": ["radius", "duration"],
+      "new_mechanics": [
+        {"name": "field_pulse", "kind": "behaviour", "definition": "Defined in death.json (lay_to_rest); here it advances each growth patch ages_added ages, makes it spread spreads times at once (still capped at 12), and multiplies its effect by effect_mult for duration."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a long season: half as long again"},
+        {"rune": "Expand", "word": "the greening reaches 30% further"},
+        {"rune": "Remember", "word": "the ground remembers: 30% longer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Wilt", "why": "killing what you make thrive. The 30% shorter duration lands, the word contradicts itself, and the damage half falls back to a small cost change."},
+        {"rune": "Blight", "why": "a sickness of growing things on the skill that makes them thrive. Greening hits nobody, so it falls back to a small cost cut."}
+      ]
+    },
+    {
+      "id": "heartrot", "name": "Heartrot", "affinity": "nature", "base_rune": "NAT-3b", "rune": "Blight",
+      "status": "new", "starter": false,
+      "kind": "chain", "targeting": "target",
+      "summary": "One enemy within 9 m, then two more within 5 m of each other: 40 each and Blighted for 8 s. The wood they carry rots: shields stop half as much and bows take half again as long to aim, and Nature hits them 20% harder.",
+      "verb_fit": "Blight is a sickness of growing things. It does not sicken the man; it rots the wood in his hands, and it spreads from one piece of wood to the next.",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.5, "range": 9, "jumps": 2, "jump_radius": 5, "duration": 8,
+        "on_hit": {"damage": 40, "status": "blighted"}},
+      "signature": ["on_hit.status", "jumps"],
+      "new_mechanics": [
+        {"name": "blighted", "kind": "status", "definition": "1 stack, lasts the skill's duration: the target's front_block is halved and its ranged aim (wind-up) is x1.5, because its wooden shield and bow are rotting; it takes x1.2 from Nature."}
+      ],
+      "good_modifiers": [
+        {"rune": "Many", "word": "it spreads to one more, each a little weaker"},
+        {"rune": "Persist", "word": "the rot lasts half as long again"},
+        {"rune": "Expand", "word": "it jumps 30% further"},
+        {"rune": "Shrink", "word": "the rot shrinks what it reaches: Dwindled as well"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Flourish", "why": "making thrive the wood you are rotting. The numbers would land (harder, longer) but the verbs cancel; the word should not form."},
+        {"rune": "Unravel", "why": "freeing what the rot binds. The 1 m shove would land on each body it reaches; the wind-up half falls back. The word says nothing about blight."}
+      ]
+    },
+    {
+      "id": "reaping_sweep", "name": "Reaping Sweep", "affinity": "nature", "base_rune": "NAT-4a", "rune": "Harvest",
+      "status": "new", "starter": true,
+      "kind": "melee_burst", "targeting": "aimed",
+      "summary": "A wide scything sweep through 180 degrees: 1.8x strike damage. Each patch of your growth in the arc is cut back to a sprout and adds 15% to the blow (up to 60%) and 1 essence to you; the roots stay and regrow.",
+      "verb_fit": "Harvest is taking what has grown and its yield. The sweep is a reaping, and what it reaps from your growth comes back to you as power and essence.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.5, "windup": 0.15, "damage_mult": 1.8, "reach_bonus": 1.2, "arc_deg": 180,
+        "patch_bonus": 0.15, "patch_bonus_max": 0.6, "per_patch_essence": 1,
+        "on_hit": {"poise": 20}},
+      "signature": ["damage_mult", "patch_bonus"],
+      "new_mechanics": [
+        {"name": "harvest", "kind": "behaviour", "definition": "A melee_burst key: each growth patch inside the arc is reset to sprout age (not removed), adds patch_bonus to the blow's damage up to patch_bonus_max, and returns per_patch_essence."}
+      ],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "a wider swathe: 30% more reach, a little softer"},
+        {"rune": "Grow", "word": "a bigger scythe: 20% longer and 10% harder, a little dearer"},
+        {"rune": "Sever", "word": "a cutting stroke: 30% more poise damage"},
+        {"rune": "Tangle", "word": "the cut stalks catch their legs: Rooted on everything hit"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Sow", "why": "planting and reaping in one stroke. The numbers would land (a slower, harder sweep) but the verbs cancel; the sweep has no duration, so that part falls back."},
+        {"rune": "Within", "why": "pierce means nothing on a sweep; it falls back to a small damage bonus."}
+      ]
+    },
+    {
+      "id": "scatter_seed", "name": "Scatter Seed", "affinity": "nature", "base_rune": "NAT-4b", "rune": "Sow",
+      "status": "new", "starter": false,
+      "kind": "new:seed", "targeting": "point",
+      "summary": "Throw five seeds over a 2.5 m spread at a point within 9 m. Each lies hidden until an enemy steps on it (or for 6 s), then bursts up: 35 damage and Rooted for 1 s, and a snarevine patch that stays and spreads.",
+      "verb_fit": "Sow is planting a thing to act later. The seeds do nothing when they land; they act when the ground is stepped on, or when they are ready.",
+      "numbers": {"cost": 7, "reflux_per_cost": 0.5, "range": 9, "seeds": 5, "radius": 2.5, "delay": 6, "duration": 20, "trigger_radius": 0.6,
+        "on_hit": {"damage": 35, "status": "rooted"}, "burst_radius": 1.2, "leave_growth": {"kind": "snarevine", "radius": 1.0}},
+      "signature": ["delay", "seeds"],
+      "new_mechanics": [
+        {"name": "seed", "kind": "behaviour", "definition": "A new kind: drops `seeds` hidden seeds spread over radius around the aimed point. Each sprouts when an enemy comes within trigger_radius, or after delay: on_hit to everyone within burst_radius, and it plants leave_growth. Unsprouted seeds wither after duration."},
+        {"name": "snarevine", "kind": "field", "definition": "A growth kind: an enemy that enters it is Rooted for 1 s (times the patch's age), once every 4 s per enemy."},
+        {"name": "rooted", "kind": "status", "definition": "1 stack, 1 s unless the skill says otherwise: the target cannot move or turn, but can still strike what is already in reach. Heavy enemies are held half as long, elites a quarter."}
+      ],
+      "good_modifiers": [
+        {"rune": "Scatter", "word": "seed flung wider: 30% larger spread, each a little weaker"},
+        {"rune": "Grow", "word": "bigger seeds: 20% wider spread and 10% harder, a little dearer"},
+        {"rune": "Persist", "word": "seeds that wait half as long again for a foot"},
+        {"rune": "Haste", "word": "quick seed: they sprout on their own a quarter sooner"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Harvest", "why": "reaping seed before it has grown. The numbers would land (harder, cheaper) but the verbs cancel; the word should not form."},
+        {"rune": "Wilt", "why": "seeds that die in the ground. The bursts hit 15% harder but the seeds wait 30% less; the word kills what it plants."}
+      ]
+    },
+    {
+      "id": "vine_reach", "name": "Vine Reach", "affinity": "nature", "base_rune": "NAT-5a", "rune": "Tangle",
+      "status": "new", "starter": true,
+      "kind": "new:grapple", "targeting": "point",
+      "summary": "A vine lashes out to a point within 9 m and hauls you there. Enemies within 1.5 m of where you land are Rooted for 1 s, and a snarevine patch takes root on the spot.",
+      "verb_fit": "Tangle is vines binding. The vine binds to a point and pulls you to it, then binds whatever is standing there.",
+      "numbers": {"cost": 8, "reflux_per_cost": 0.5, "range": 9, "dash_speed": 24, "arrive_radius": 1.5,
+        "on_arrive": {"status": "rooted"}, "leave_growth": {"kind": "snarevine", "radius": 1.0}},
+      "signature": ["on_arrive.status", "leave_growth"],
+      "new_mechanics": [
+        {"name": "grapple", "kind": "behaviour", "definition": "A new movement kind: like a blink it needs a reachable point within range (checked before essence is spent), but the caster is moved there by exact distance at dash_speed, stopping at walls and stone; counts as a dash for recovery and Winded; on_arrive to enemies within arrive_radius."}
+      ],
+      "good_modifiers": [
+        {"rune": "Far", "word": "a longer vine: 40% further"},
+        {"rune": "Motion", "word": "a faster haul: 25% quicker"},
+        {"rune": "Grow", "word": "a longer, thicker vine: 20% further, a little dearer"},
+        {"rune": "Sprout", "word": "shoots come up where you land: Slowed as well as Rooted"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Unravel", "why": "a vine that lets go of what it is holding. The 1 m shove would land on the enemies beside you and push them out of the Rooted hold the vine is meant to put on them; the wind-up half has nothing to cut and falls back."},
+        {"rune": "Stillness", "why": "held in place, on the skill that moves you. It slows the haul by 20%, and the duration half has nothing to lengthen and falls back to a small cost cut."}
+      ]
+    },
+    {
+      "id": "unwinding", "name": "Unwinding", "affinity": "nature", "base_rune": "NAT-5b", "rune": "Unravel",
+      "status": "new", "starter": false,
+      "kind": "detonate", "targeting": "self",
+      "summary": "Every enemy your vines are holding within 10 m is let go at once and whipped 3 m away from you, for 40 (and a Crush if it hits something). Anything holding you lets go too.",
+      "verb_fit": "Unravel is freeing what is bound. Your vines unwind all at once, and the unwinding is the throw; you come loose in the same moment.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.5, "range": 10, "consume_status": "rooted", "frees_caster": true,
+        "on_hit": {"damage": 40, "shove": 3.0}},
+      "signature": ["consume_status", "on_hit.shove"],
+      "new_mechanics": [
+        {"name": "frees_caster", "kind": "behaviour", "definition": "A skill key: on cast, the player's own holds (slowed, pinned, mired, rooted and any later hold status) are removed."}
+      ],
+      "good_modifiers": [
+        {"rune": "Repel", "word": "a harder whip: 1.5 m further"},
+        {"rune": "Expand", "word": "the vines let go 30% further out, a little softer"},
+        {"rune": "Rise", "word": "they are flung up as well as out: Aloft"},
+        {"rune": "Fury", "word": "a violent unwinding: 20% harder, 10% dearer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Tangle", "why": "binding again what you release. Rooted would land on everything it throws, and the two verbs cancel."},
+        {"rune": "Attract", "why": "pulling in what you are flinging out. The pull lands against the shove; the word contradicts itself."}
+      ]
+    }
+  ],
+  "effects": {
+    "Grow": "reach x1.2; power x1.1; cost x1.1",
+    "Shrink": "status dwindled",
+    "Sprout": "status slowed; duration x1.3",
+    "Wilt": "power x1.15; duration x0.7",
+    "Flourish": "power x1.1; duration x1.3",
+    "Blight": "status blighted",
+    "Harvest": "power x1.1; cost x0.85",
+    "Sow": "windup x1.3; power x1.25; duration x1.2",
+    "Tangle": "status rooted",
+    "Unravel": "shove +1; windup x0.9"
+  }
+}

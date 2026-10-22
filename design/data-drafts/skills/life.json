@@ -1,0 +1,252 @@
+{
+  "affinity": "life",
+  "reflux_tier": "middling",
+  "reflux_per_cost": 1.0,
+  "reflux_why": "Working inside a body is careful, ordinary work: neither cheap and hot like fire nor slow and cold like earth. Middling is the reference tier, and a Life fighter who heals must be able to keep casting through a fight without locking up.",
+  "rule": "Life works inside living bodies: its harm passes armour and shields and hits the hale (above half health) 25% harder, it does nothing to the unliving, and its healing fills the bar fast but closes wounds slowly.",
+  "rule_why": "design/14 said Life works inside bodies and does nothing to stone, constructs or the dead. That is a weakness, not something you feel on a key press. Two hooks are added: past armour (it is already inside), and strongest on the hale, which makes Life the opener and pairs it against Death, which preys on the dying. The healing half is pinned to the health model: the bar and the wound sinks are separate, and only one Life skill fills sinks at a useful rate.",
+  "skills": [
+    {
+      "id": "knit", "name": "Knit", "affinity": "life", "base_rune": "LIF-1a", "rune": "Heal",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "For 6 s you regain 5 health a second. It fills the bar only up to the ceiling your wounds allow; once the bar is full, what is left seeps into your oldest wound at a quarter of the rate. A blow does not break it.",
+      "verb_fit": "Heal is restoring health and closing wounds. Knit does both, in the order the body does: the bar first, quickly, then the wounds, slowly.",
+      "numbers": {"cost": 12, "reflux_per_cost": 1.0, "duration": 6, "buff": "knit", "heal_per_s": 5, "overflow_to_sink": 0.25},
+      "signature": ["heal_per_s", "duration"],
+      "new_mechanics": [
+        {"name": "life healing", "kind": "behaviour", "definition": "Life heal points go to body.heal() first, capped at total_max() (the ceiling wounds have cut). Points left over once the bar is full go to body.fill_sinks() at overflow_to_sink (4 heal points make 1 sink point), oldest wound first. A sink that fills closes its wound and gives its share of the bar back empty, as now. It never touches a lost arm. This is separate from talent healing (_spend_heal_points)."},
+        {"name": "hale", "kind": "status", "definition": "Derived, never applied: a living target above half its health. Life harm on it does x1.25 (affinity key hale_mult)."},
+        {"name": "living", "kind": "behaviour", "definition": "An enemies.json key, true by default; false for constructs, spirits, stone and anything animated. Life skills do nothing at all to an unliving target (no damage, no status) and the cast is still spent."},
+        {"name": "inside", "kind": "behaviour", "definition": "Life harm ignores front armour, front_block and gear armour: it is already inside the body. Every Life skill that hits carries it."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a slower, longer knitting: half as long again, so half as much again in all"},
+        {"rune": "Regrow", "word": "the body keeps rebuilding: 40% longer"},
+        {"rune": "Essence", "word": "a cheaper mend: 15% less essence"},
+        {"rune": "Self", "word": "all of it turned on your own body: 30% longer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Wither", "why": "harm from within, put into your own healing. A self buff hits nobody, so Withering has nowhere to land and both ops fall back to a small cost cut. (No skill hurts its caster, so it could not land on you either.)"},
+        {"rune": "Exhaust", "why": "fatigue added to a mend. It has nobody to land on and falls back to a small cost cut."}
+      ]
+    },
+    {
+      "id": "withering_needle", "name": "Withering Needle", "affinity": "life", "base_rune": "LIF-1b", "rune": "Wither",
+      "status": "new", "starter": true,
+      "kind": "projectile", "targeting": "aimed",
+      "summary": "A needle of life turned inward. The first enemy hit takes 45 and 1 Withering (7 a second for 6 s, up to 3 stacks), straight past shields and armour. It does nothing to constructs or the dead.",
+      "verb_fit": "Wither is harm from within. The needle's damage is the small part; the Withering it leaves works inside the body, where no shield is.",
+      "numbers": {"cost": 7, "reflux_per_cost": 1.0, "damage": 45, "speed": 22, "life": 1.3, "recovery": 0.1, "inside": true,
+        "on_hit": {"status": "withering", "stacks": 1}},
+      "signature": ["on_hit.status", "inside"],
+      "new_mechanics": [
+        {"name": "withering", "kind": "status", "definition": "Up to 3 stacks, 6 s, refreshed when added: 7 damage a second per stack, dealt through whoever applied it; passes armour and shields (inside). Living targets only."}
+      ],
+      "good_modifiers": [
+        {"rune": "Straight", "word": "a needle that flies true: 20% faster, 10% further"},
+        {"rune": "Within", "word": "it goes through one body into the next: pierces the line, withering each"},
+        {"rune": "Sicken", "word": "the needle carries an illness: Sick as well as Withering"},
+        {"rune": "Arrest", "word": "the target cannot fight it off: Arrested, so the Withering does not run down"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Heal", "why": "healing the body you are withering. It has no duration to lengthen, so that half falls back to a small damage bonus; the reflux cut lands."},
+        {"rune": "Self", "why": "a needle turned on yourself, which no skill may do. A projectile has no duration, so it all falls back to a small damage bonus."}
+      ]
+    },
+    {
+      "id": "fresh_stride", "name": "Fresh Stride", "affinity": "life", "base_rune": "LIF-2a", "rune": "Renew",
+      "status": "new", "starter": true,
+      "kind": "dash", "targeting": "aimed",
+      "summary": "A 5.2 m dash on renewed legs. It never leaves you Winded, and it clears Winded if you are, so the dash after it costs the normal price. You move 15% faster for 3 s after. It stops at bodies.",
+      "verb_fit": "Renew is restoring vigour and stamina. Winded is the game's fatigue for moving, and this is the one movement skill that removes it instead of adding to it.",
+      "numbers": {"cost": 7, "reflux_per_cost": 1.0, "dash_speed": 26, "dash_time": 0.2, "stops_at_bodies": true,
+        "clears_winded": true, "never_winds": true, "after_speed_mult": 1.15, "duration": 3},
+      "signature": ["clears_winded", "dash_speed"],
+      "new_mechanics": [
+        {"name": "clears_winded", "kind": "behaviour", "definition": "A dash key: casting it removes Winded (balance.combat winded_s) and, with never_winds, it does not start the Winded window itself."}
+      ],
+      "good_modifiers": [
+        {"rune": "Motion", "word": "a livelier stride: 25% faster, so 25% further"},
+        {"rune": "Heal", "word": "a stride that mends the strain as it goes: 25% less reflux and the quickening lasts a little longer"},
+        {"rune": "Essence", "word": "cheaper: 15% less essence"},
+        {"rune": "Persist", "word": "the fresh legs last: the 15% quickening runs half as long again"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Exhaust", "why": "fatigue on the skill that cures fatigue. The dash hits nobody, so Spent has nowhere to land; it falls back to a small cost cut."},
+        {"rune": "Weaken", "why": "nothing it hits to waste; it falls back to a small cost cut."}
+      ]
+    },
+    {
+      "id": "wearying_sweep", "name": "Wearying Sweep", "affinity": "life", "base_rune": "LIF-2b", "rune": "Exhaust",
+      "status": "new", "starter": true,
+      "kind": "melee_burst", "targeting": "self",
+      "summary": "Everything within 3 m of you takes 1.7x strike damage and is Spent for 4 s: it moves 25% and attacks 30% slower. Enemies above half health take 25% more.",
+      "verb_fit": "Exhaust drains stamina. The damage is ordinary; the point is that the whole ring around you is suddenly tired.",
+      "numbers": {"cost": 10, "reflux_per_cost": 1.0, "windup": 0.2, "damage_mult": 1.7, "reach_bonus": 1.2, "arc_deg": 360,
+        "on_hit": {"status": "spent", "poise": 15}},
+      "signature": ["on_hit.status"],
+      "new_mechanics": [
+        {"name": "spent", "kind": "status", "definition": "1 stack, 4 s: speed_mult 0.75 and attack_rate_mult 0.7 (its wind-ups and recoveries are longer). Living targets only."}
+      ],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "the weariness spreads: 30% wider ring, a little softer"},
+        {"rune": "Strengthen", "word": "a heavier push: 20% more damage, 25% more poise damage"},
+        {"rune": "Weaken", "word": "tired and wasted at once: Spent and Wasted together"},
+        {"rune": "Fall", "word": "they drop where they stand: 30% more poise damage"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Renew", "why": "restoring the stamina it drains. There is no speed to raise, so that half falls back; the 10% cost cut lands."},
+        {"rune": "Within", "why": "pierce means nothing on a burst, and the skill is already inside; it falls back to a small damage bonus."}
+      ]
+    },
+    {
+      "id": "corded_muscle", "name": "Corded Muscle", "affinity": "life", "base_rune": "LIF-3a", "rune": "Strengthen",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "For 7 s your muscles thicken: bare strikes do 40% more damage and 50% more poise damage, and heavy blows take only half as much of your own poise.",
+      "verb_fit": "Strengthen grows muscle and body. It changes your own body's strength, read through the plain attack.",
+      "numbers": {"cost": 12, "reflux_per_cost": 1.0, "duration": 7, "buff": "corded", "strike_mult": 1.4, "strike_poise_mult": 1.5, "poise_loss_mult": 0.5},
+      "signature": ["strike_mult", "duration"],
+      "new_mechanics": [
+        {"name": "corded", "kind": "behaviour", "definition": "A self_buff read in deal_damage for bare strikes (strike_mult, strike_poise_mult) and in take_hit for the player's own poise loss (poise_loss_mult)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "the muscle stays: half as long again"},
+        {"rune": "Regrow", "word": "the body keeps building: 40% longer"},
+        {"rune": "Essence", "word": "cheaper: 15% less essence"},
+        {"rune": "Self", "word": "all on you: 30% longer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Weaken", "why": "wasting the body you are building. A self buff hits nobody, so Wasted falls back to a small cost cut."},
+        {"rune": "Scatter", "why": "spreading a buff on one body. It has no reach or damage fields (strike_mult is read by the buff, not the cast), so both halves fall back."}
+      ]
+    },
+    {
+      "id": "wasting_grip", "name": "Wasting Grip", "affinity": "life", "base_rune": "LIF-3b", "rune": "Weaken",
+      "status": "new", "starter": false,
+      "kind": "targeted_strike", "targeting": "target",
+      "summary": "One enemy in reach: a grip that wastes the body under it. 2.0x strike damage, and for 6 s it is Wasted: its blows do 30% less and its poise is cut to 60%, so it staggers sooner. Open a Brute with it.",
+      "verb_fit": "Weaken wastes the body away. The grip's lasting effect is a smaller, frailer body: weaker blows and less to stand on.",
+      "numbers": {"cost": 12, "reflux_per_cost": 1.0, "windup": 0.2, "damage_mult": 2.0, "range_bonus": 1.0,
+        "on_hit": {"status": "wasted", "poise": 20}},
+      "signature": ["on_hit.status"],
+      "new_mechanics": [
+        {"name": "wasted", "kind": "status", "definition": "1 stack, 6 s: damage it deals x0.7 and its maximum poise x0.6 (current poise is cut to fit). Living targets only."}
+      ],
+      "good_modifiers": [
+        {"rune": "Exhaust", "word": "wasted and tired: Wasted and Spent together"},
+        {"rune": "Sever", "word": "the grip tears what holds it up: 30% more poise damage"},
+        {"rune": "Hold", "word": "a longer, deeper grip: 30% harder, 30% longer wind-up"},
+        {"rune": "Arrest", "word": "and it cannot recover: Arrested, so the wasting does not run down"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Heal", "why": "mending the body you are wasting. No duration to lengthen, so that falls back to a small damage bonus; the reflux cut lands."},
+        {"rune": "Many", "why": "a grip is on one body. Extra jumps do nothing and fall back; the 15% damage loss lands."}
+      ]
+    },
+    {
+      "id": "fever_break", "name": "Fever Break", "affinity": "life", "base_rune": "LIF-4a", "rune": "Cure",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "At once, ends every harmful thing on you: stagger, Winded, burning, slows and holds, sickness and poison. For 5 s after, new ones last half as long.",
+      "verb_fit": "Cure ends a sickness or a poison. It is a cleanse of your own body and a short resistance after.",
+      "numbers": {"cost": 10, "reflux_per_cost": 1.0, "duration": 5, "buff": "fever_break", "cleanse": true, "new_status_mult": 0.5},
+      "signature": ["duration", "cleanse"],
+      "new_mechanics": [
+        {"name": "fever_break", "kind": "behaviour", "definition": "A self_buff: on cast it ends the player's stagger and Winded and removes every harmful status the player carries (a list in balance.json, so later poison and disease statuses join it); while it lasts, harmful statuses applied to the player last x new_status_mult."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "the resistance lasts half as long again"},
+        {"rune": "Self", "word": "all on you: 30% longer"},
+        {"rune": "Essence", "word": "cheaper: 15% less essence"},
+        {"rune": "Remember", "word": "the body remembers the cure: 30% longer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Sicken", "why": "making ill on the skill that cures. A self buff hits nobody; it falls back to a small cost cut."},
+        {"rune": "Tainted", "why": "corrupting a cleanse. Nothing to slow; it falls back to a small cost cut."}
+      ]
+    },
+    {
+      "id": "turn_the_stomach", "name": "Turn the Stomach", "affinity": "life", "base_rune": "LIF-4b", "rune": "Sicken",
+      "status": "new", "starter": false,
+      "kind": "new:hex", "targeting": "target",
+      "summary": "One living enemy within 9 m is Sick for 8 s: every 2.5 s it retches, loses whatever it was doing and stands still for half a second. 20 damage.",
+      "verb_fit": "Sicken makes ill. The illness is in one body and does one thing you can see: it keeps breaking off to retch.",
+      "numbers": {"cost": 10, "reflux_per_cost": 1.0, "range": 9, "duration": 8, "retch_every": 2.5, "retch_s": 0.5,
+        "on_hit": {"damage": 20, "status": "sick"}},
+      "signature": ["on_hit.status", "duration"],
+      "new_mechanics": [
+        {"name": "hex", "kind": "behaviour", "definition": "Defined in blood.json (gullet_knot): a target within range takes on_hit at once, no travel, needs line of sight."},
+        {"name": "sick", "kind": "status", "definition": "1 stack, lasts the skill's duration: every retch_every seconds the target's action is cancelled (as interrupt(), so a wind-up is lost) and it stands still for retch_s. It does not spread. Living targets only."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a long illness: half as long again"},
+        {"rune": "Far", "word": "sicken from 40% further away"},
+        {"rune": "Exhaust", "word": "sick and worn out: Sick and Spent together"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Cure", "why": "curing the sickness as you give it. The numbers would land (cheaper, less reflux) but the two verbs cancel; the word should not form."},
+        {"rune": "Within", "why": "it is already inside, and a hex is not a shot: pierce falls back to a small damage bonus."}
+      ]
+    },
+    {
+      "id": "regrowth", "name": "Regrowth", "affinity": "life", "base_rune": "LIF-5a", "rune": "Regrow",
+      "status": "new", "starter": false,
+      "kind": "channel", "targeting": "self",
+      "summary": "Hold, standing still, for up to 8 s: 1.5 points a second go into your oldest wound until it closes and gives its share of the bar back, then into the next. A lost arm mends too, at half the rate, which rest never does. Any blow breaks it.",
+      "verb_fit": "Regrow restores what was lost, limbs included. It is the only skill that works on the wound sinks first and the only one that brings an arm back.",
+      "numbers": {"cost": 4, "cost_note": "per second, cheap channel", "reflux_per_cost": 1.0, "duration": 8, "sink_per_s": 1.5, "arm_rate": 0.5,
+        "move_factor": 0.0, "breaks_on_hit": true},
+      "signature": ["sink_per_s"],
+      "new_mechanics": [
+        {"name": "regrowth", "kind": "behaviour", "definition": "A channel that calls body.fill_sinks(sink_per_s x delta) oldest first, including wounds marked not natural; a lost arm takes arm_rate of it. When no wound is left the rest goes to body.heal(). Rooted while held; any hit taken ends it. 1.5 sink a second for 4 essence a second, so a 15-point wound costs about 40 essence: it competes with the healer and the inn, it does not replace them."}
+      ],
+      "good_modifiers": [
+        {"rune": "Heal", "word": "healing and regrowing together: 25% less reflux, a little longer"},
+        {"rune": "Essence", "word": "cheaper to hold: 15% less essence a second"},
+        {"rune": "Calm", "word": "a calm, deep mending: 20% less reflux"},
+        {"rune": "Persist", "word": "you can hold it half as long again"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Arrest", "why": "stopping the healing you are doing. A self channel hits nobody, so Arrested falls back to a small cost cut."},
+        {"rune": "Haste", "why": "regrowth cannot be hurried, and this channel has no wind-up to cut; it falls back to a small cost cut."}
+      ]
+    },
+    {
+      "id": "unmending", "name": "Unmending", "affinity": "life", "base_rune": "LIF-5b", "rune": "Arrest",
+      "status": "new", "starter": false,
+      "kind": "delayed_blast", "targeting": "point",
+      "summary": "Point, 9 m: after 0.4 s everything living within 3 m takes 30 and is Arrested for 8 s. It cannot heal or get its poise back, and the Life statuses on it stop running down. Cast it on the pack before the Censer-Bearer falls.",
+      "verb_fit": "Arrest stops healing. It does exactly that to a group: no mending, no recovering poise, and whatever you did to them stays.",
+      "numbers": {"cost": 12, "reflux_per_cost": 1.0, "range": 9, "radius": 3, "delay": 0.4, "duration": 8,
+        "on_hit": {"damage": 30, "status": "arrested"}},
+      "signature": ["on_hit.status", "radius"],
+      "new_mechanics": [
+        {"name": "arrested", "kind": "status", "definition": "1 stack, lasts the skill's duration: the target cannot be healed (a Censer-Bearer's burst heals it nothing) or regain poise, and Withering, Spent, Wasted and Sick on it do not count down while it lasts. Living targets only."}
+      ],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "a wider stoppage: 30% larger circle, a little softer"},
+        {"rune": "Persist", "word": "the arrest holds half as long again"},
+        {"rune": "Wither", "word": "and what is stopped starts to wither: Withering on everyone caught, 10% harder"},
+        {"rune": "Haste", "word": "it lands sooner: 25% shorter delay"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Regrow", "why": "restoring what the skill stops from mending. The numbers would land (40% longer) but the verbs cancel; the word should not form."},
+        {"rune": "Motion", "why": "a stoppage that travels. A delayed blast has no speed, so it falls back to a small damage bonus."}
+      ]
+    }
+  ],
+  "effects": {
+    "Heal": "reflux x0.75; duration x1.1",
+    "Wither": "status withering; power x1.1",
+    "Renew": "speed x1.15; cost x0.9",
+    "Exhaust": "status spent",
+    "Strengthen": "power x1.2; poise x1.25",
+    "Weaken": "status wasted",
+    "Cure": "cost x0.85; reflux x0.9",
+    "Sicken": "status sick",
+    "Regrow": "duration x1.4",
+    "Arrest": "status arrested"
+  }
+}

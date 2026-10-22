@@ -1,0 +1,832 @@
+{
+ "affinity": "fire",
+ "reflux_tier": "high",
+ "rule": "Fire runs on its own heat: fire reflux is a damage multiplier, and fire skills build it, scale with it, or spend it.",
+ "skills": [
+  {
+   "id": "kiln_fist",
+   "name": "Kiln Fist",
+   "affinity": "fire",
+   "base_rune": "FIR-1a",
+   "rune": "Burn",
+   "status": "existing",
+   "starter": true,
+   "kind": "targeted_strike",
+   "targeting": "target",
+   "summary": "One enemy in reach: a heavy blow, 2 Alight, interrupts. If it was already burning, every stack is spent for +40 and the blow bursts, lighting those beside it.",
+   "verb_fit": "Burn is \"set a target burning\": two Alight in one blow, and it cashes in a burn that is already there.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 1.4,
+    "damage_mult": 3.0,
+    "range_bonus": 1.0,
+    "on_hit": {
+     "status": "alight",
+     "stacks": 2,
+     "interrupts": true
+    },
+    "consume_status": "alight",
+    "per_stack_damage": 40.0,
+    "burst_radius": 2.0,
+    "burst": {
+     "status": "alight"
+    }
+   },
+   "signature": [
+    "on_hit.status",
+    "on_hit.stacks"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Blaze",
+     "word": "Furnace Fist: a hotter blow that leaves you hotter"
+    },
+    {
+     "rune": "Explode",
+     "word": "Bursting Fist: a wider burst and more damage, for more essence"
+    },
+    {
+     "rune": "Flare",
+     "word": "Flashing Fist: the target is Dazed as well"
+    },
+    {
+     "rune": "Hold",
+     "word": "Banked Fist: hold it for a harder blow"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Snuff",
+     "why": "its own opposite in spirit, and it already interrupts: nothing to add, falls back to a little power"
+    },
+    {
+     "rune": "Smoulder",
+     "why": "it already sets Alight and nothing on it lasts; falls back to a little power"
+    },
+    {
+     "rune": "Persist",
+     "why": "nothing lasts; falls back to a little power"
+    }
+   ]
+  },
+  {
+   "id": "cinder_spit",
+   "name": "Cinder Spit",
+   "affinity": "fire",
+   "base_rune": "FIR-2a",
+   "rune": "Ignite",
+   "status": "existing",
+   "starter": true,
+   "kind": "projectile",
+   "targeting": "aimed",
+   "summary": "A quick, cheap bolt that sets its target Alight. Weak cold; it is how you get hot.",
+   "verb_fit": "Ignite is \"start a fire at a point\": a coal that starts one where it lands, as fast as you can spit.",
+   "numbers": {
+    "cost": 7.0,
+    "reflux_per_cost": 1.4,
+    "damage": 55.0,
+    "speed": 24.0,
+    "life": 1.25,
+    "recovery": 0.06,
+    "on_hit": {
+     "status": "alight"
+    }
+   },
+   "signature": [
+    "on_hit.status",
+    "recovery"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Blaze",
+     "word": "Blazing Spit: hits harder and builds heat faster"
+    },
+    {
+     "rune": "Within",
+     "word": "Piercing Spit: passes through, lighting each body in the line"
+    },
+    {
+     "rune": "Haste",
+     "word": "Rapid Spit: even less recovery"
+    },
+    {
+     "rune": "Essence",
+     "word": "Cheap Spit: less essence for the same heat - pure heat-building"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Burn",
+     "why": "it already sets Alight; falls back to a little power"
+    },
+    {
+     "rune": "Persist",
+     "why": "a coal in flight has nothing that lasts; falls back"
+    },
+    {
+     "rune": "Snuff",
+     "why": "its own opposite: a spit that puts the fire out as it lights it. Maths lets it act; it should not"
+    }
+   ]
+  },
+  {
+   "id": "flashover",
+   "name": "Flashover",
+   "affinity": "fire",
+   "base_rune": "FIR-2a",
+   "rune": "Ignite",
+   "status": "existing",
+   "starter": true,
+   "kind": "dash",
+   "targeting": "aimed",
+   "summary": "A short dash that leaves a line of flame for 3 s: anything standing in it catches. It does not carry you through enemies.",
+   "verb_fit": "Ignite along a line: the dash starts a fire everywhere you were.",
+   "numbers": {
+    "cost": 7.0,
+    "reflux_per_cost": 1.4,
+    "dash_speed": 30.0,
+    "dash_time": 0.14,
+    "stops_at_bodies": true,
+    "trail": {
+     "life": 3.0,
+     "width": 1.0,
+     "tick_s": 1.0,
+     "payload": {
+      "status": "alight"
+     }
+    }
+   },
+   "signature": [
+    "trail.payload.status",
+    "trail.life"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Smoulder",
+     "word": "Smouldering Trail: the line burns half as long again"
+    },
+    {
+     "rune": "Persist",
+     "word": "Lasting Trail: the line stays longer"
+    },
+    {
+     "rune": "Motion",
+     "word": "Quick Flashover: a faster dash"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Trail: a broader line of flame"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Snuff",
+     "why": "maths lets it through, but on a payload that repeats every tick it re-interrupts every tick: a permanent lock, not a modifier; and it is the opposite of a fire you leave behind"
+    },
+    {
+     "rune": "Implode",
+     "why": "a trail that drags everyone standing in it toward its middle line every tick. Maths lets it act; it should not"
+    },
+    {
+     "rune": "Hold",
+     "why": "a dash cannot be held, and it has no damage or wind-up: falls back to a cost cut"
+    }
+   ]
+  },
+  {
+   "id": "pyre_call",
+   "name": "Pyre Call",
+   "affinity": "fire",
+   "base_rune": "FIR-3a",
+   "rune": "Explode",
+   "status": "existing",
+   "starter": false,
+   "kind": "detonate",
+   "targeting": "self",
+   "summary": "Every Alight enemy within 10 m loses its stacks, and each stack bursts for 35 in 2 m. Spread the burns first; call them once.",
+   "verb_fit": "Explode is \"blast outward\": every burn you set blows out at once.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 1.0,
+    "range": 10.0,
+    "consume_status": "alight",
+    "per_stack_burst": 35.0,
+    "burst_radius": 2.0
+   },
+   "signature": [
+    "per_stack_burst",
+    "burst_radius"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Blaze",
+     "word": "Roaring Pyre: bigger bursts"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Pyre: bursts reach farther"
+    },
+    {
+     "rune": "Far",
+     "word": "Distant Pyre: calls fires from farther off"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Implode",
+     "why": "its own opposite, and it has no hit payload to pull with: falls back to a little power"
+    },
+    {
+     "rune": "Snuff",
+     "why": "nothing it hits to interrupt (no hit payload); falls back to a little power"
+    },
+    {
+     "rune": "Persist",
+     "why": "one blast; nothing lasts. Falls back to a little power"
+    }
+   ]
+  },
+  {
+   "id": "backdraft",
+   "name": "Backdraft",
+   "affinity": "fire",
+   "base_rune": "FIR-3b",
+   "rune": "Implode",
+   "status": "changed",
+   "starter": false,
+   "kind": "melee_burst",
+   "targeting": "self",
+   "summary": "Open the door. First every enemy within 5 m is drawn 2 m toward you, then the blast: they take 4 x the heat you carry above 20, and your fire reflux drops to 20. 320 at full heat; nothing when cold.",
+   "verb_fit": "Implode is \"flame rushing inward\": the air rushes in, then the fire follows it out.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.0,
+    "windup": 0.3,
+    "arc_deg": 360.0,
+    "reach_bonus": 2.7,
+    "damage_from_heat": 4.0,
+    "heat_floor": 20.0,
+    "on_hit": {
+     "poise": 15.0
+    },
+    "pull": 2.0,
+    "pull_before_blast": true
+   },
+   "signature": [
+    "pull",
+    "damage_from_heat"
+   ],
+   "new_mechanics": [
+    {
+     "name": "pull_before_blast",
+     "kind": "field",
+     "definition": "A melee_burst with a top-level pull drags every enemy within its reach that far toward the caster when the wind-up starts, before the hit."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Expand",
+     "word": "Wide Backdraft: a 6.5 m room-clearer"
+    },
+    {
+     "rune": "Contract",
+     "word": "Tight Backdraft: smaller and harder"
+    },
+    {
+     "rune": "Haste",
+     "word": "Sudden Backdraft: shorter wind-up"
+    },
+    {
+     "rune": "Quench",
+     "word": "Quenching Backdraft: cashes in the same heat for more"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Smoulder",
+     "why": "Backdraft spends all the fire at once; nothing it leaves lasts. Duration falls back; Alight only partly lands"
+    },
+    {
+     "rune": "Persist",
+     "why": "nothing lasts; falls back to a little power"
+    },
+    {
+     "rune": "Calm",
+     "why": "it leaves no reflux to calm; falls back to a little power"
+    }
+   ]
+  },
+  {
+   "id": "bellows_breath",
+   "name": "Bellows Breath",
+   "affinity": "fire",
+   "base_rune": "FIR-4a",
+   "rune": "Blaze",
+   "status": "existing",
+   "starter": false,
+   "kind": "channel",
+   "targeting": "aimed",
+   "summary": "Hold: a cone of fire 5 m long and 60 degrees wide. 50 damage a second and 1 Alight every half second to everything in it. You walk at 45% while holding. 6 essence a second, and every second of it heats you - the fastest way to get hot.",
+   "verb_fit": "Blaze is \"a fierce, spreading fire\": a fire you keep feeding, spreading across everything in front of you.",
+   "numbers": {
+    "cost": 6.0,
+    "cost_per_s": true,
+    "reflux_per_cost": 1.4,
+    "shape": "cone",
+    "range": 5.0,
+    "arc_deg": 60.0,
+    "tick": 0.5,
+    "on_hit": {
+     "damage": 25.0,
+     "status": "alight"
+    },
+    "move_factor": 0.45
+   },
+   "signature": [
+    "on_hit.damage",
+    "reflux_per_cost"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Far",
+     "word": "Long Breath: a 7 m cone"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Breath: a broader cone"
+    },
+    {
+     "rune": "Flare",
+     "word": "Dazzling Breath: Dazes what it burns"
+    },
+    {
+     "rune": "Explode",
+     "word": "Roaring Breath: bigger and harder, for more essence"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Smother",
+     "why": "maths lets it through, but on a payload that repeats every tick it re-interrupts every tick: a permanent lock, not a modifier, and smoke smothers the fire it is breathing"
+    },
+    {
+     "rune": "Ignite",
+     "why": "it already sets Alight every tick and has no wind-up; falls back to a little power"
+    },
+    {
+     "rune": "Snuff",
+     "why": "maths lets it through, but on a payload that repeats every tick it re-interrupts every tick: a permanent lock, not a modifier"
+    }
+   ]
+  },
+  {
+   "id": "stoke",
+   "name": "Stoke",
+   "affinity": "fire",
+   "base_rune": "FIR-4a",
+   "rune": "Blaze",
+   "status": "changed",
+   "starter": false,
+   "kind": "self_buff",
+   "targeting": "self",
+   "summary": "At once, +25 heat. For 6 s every bare strike you land sets its target Alight. Light a man with your hands, then Kiln Fist him.",
+   "verb_fit": "Blaze is \"a fierce, spreading fire\": you throw fuel on your own fire at once, and it spreads to everything your hands touch.",
+   "numbers": {
+    "cost": 6.0,
+    "reflux_per_cost": 0.0,
+    "buff": "stoke",
+    "duration": 6.0,
+    "add_reflux": 25.0,
+    "strike_status": "alight"
+   },
+   "signature": [
+    "add_reflux",
+    "duration"
+   ],
+   "new_mechanics": [
+    {
+     "name": "Stoke on Blaze",
+     "kind": "field",
+     "definition": "Rune moved from Smoulder (FIR-4b) to Blaze (FIR-4a), approved; numbers unchanged. strike_status names what its bare strikes apply (it was implied by the buff id)."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Stoke: your strikes light things for longer"
+    },
+    {
+     "rune": "Self",
+     "word": "it acts on you: longer"
+    },
+    {
+     "rune": "Smoulder",
+     "word": "Banked Stoke: lasts half as long again"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Quench",
+     "why": "the opposite of feeding the fire, and it has no reflux or damage to change: falls back to a cost cut"
+    },
+    {
+     "rune": "Snuff",
+     "why": "nothing it hits; falls back to a cost cut"
+    },
+    {
+     "rune": "Far",
+     "why": "a fire inside you has no reach; falls back to a cost cut"
+    }
+   ]
+  },
+  {
+   "id": "slag_pool",
+   "name": "Slag Pool",
+   "affinity": "fire",
+   "base_rune": "FIR-4b",
+   "rune": "Smoulder",
+   "status": "existing",
+   "starter": false,
+   "kind": "ground_zone",
+   "targeting": "point",
+   "summary": "Lobbed to a point, 9 m: 3 m across for 6 s. 25 a second and 1 Alight a second to enemies standing in it.",
+   "verb_fit": "Smoulder is \"a low, lasting burn\": molten floor that keeps burning whatever stands on it.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 1.0,
+    "range": 9.0,
+    "zone": {
+     "shape": "circle",
+     "radius": 3.0,
+     "life": 6.0,
+     "tick_s": 1.0,
+     "payload": {
+      "damage": 25.0,
+      "status": "alight",
+      "poise": 0.0
+     },
+     "bright": true
+    }
+   },
+   "signature": [
+    "zone.life",
+    "zone.payload.status"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Slag: lasts half as long again"
+    },
+    {
+     "rune": "Contract",
+     "word": "Dense Slag: smaller and hotter"
+    },
+    {
+     "rune": "Blaze",
+     "word": "Blazing Slag: hits harder and heats you more"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Slag: a bigger pool"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Snuff",
+     "why": "maths lets it through, but on a payload that repeats every tick it re-interrupts every tick: a permanent lock, not a modifier, on a fire you meant to keep burning"
+    },
+    {
+     "rune": "Motion",
+     "why": "a pool does not travel; no speed, falls back to a little power"
+    },
+    {
+     "rune": "Haste",
+     "why": "no wind-up to shorten; falls back to a little power"
+    }
+   ]
+  },
+  {
+   "id": "hiss",
+   "name": "Hiss",
+   "affinity": "fire",
+   "base_rune": "FIR-1b",
+   "rune": "Quench",
+   "status": "new",
+   "starter": false,
+   "kind": "new:seize",
+   "targeting": "target",
+   "summary": "One burning enemy within 9 m: every Alight stack on it goes out at once and it takes 48 per stack, all now - what the burn would still have done, and a little more. Your fire reflux drops 6 per stack. Five stacks: 240 damage and 30 heat off. Leaves no reflux of its own.",
+   "verb_fit": "Quench is \"put fire out, and cash the heat in\": it puts one body's fire out, cashes it as damage, and cools you.",
+   "numbers": {
+    "cost": 8.0,
+    "reflux_per_cost": 0.0,
+    "range": 9.0,
+    "consume_status": "alight",
+    "per_stack_damage": 48.0,
+    "vent_per_stack": 6.0,
+    "on_hit": {
+     "poise": 20.0
+    }
+   },
+   "signature": [
+    "per_stack_damage",
+    "vent_per_stack"
+   ],
+   "new_mechanics": [
+    {
+     "name": "new:seize",
+     "kind": "behaviour",
+     "definition": "An instant effect on the one enemy under the cursor (or your locked target) within range; walls and stone block it; it is checked before essence is spent. With a delay, the target is marked and the hit lands that many seconds later wherever it has moved."
+    },
+    {
+     "name": "vent_per_stack",
+     "kind": "field",
+     "definition": "Lowers the caster's fire reflux by this much for each stack consumed (after the hit, so its Heat bonus is measured hot)."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "One",
+     "word": "Cold Iron: more from each stack"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Hiss: reaches farther"
+    },
+    {
+     "rune": "Snuff",
+     "word": "Choking Hiss: the fire goes out and so does its swing - interrupts"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Burn",
+     "why": "its own opposite: relights what it just put out. Maths lets it act; it should not"
+    },
+    {
+     "rune": "Persist",
+     "why": "one moment; nothing lasts. Falls back to a little power"
+    },
+    {
+     "rune": "Motion",
+     "why": "nothing travels; falls back to a little power"
+    }
+   ]
+  },
+  {
+   "id": "wickpinch",
+   "name": "Wickpinch",
+   "affinity": "fire",
+   "base_rune": "FIR-2b",
+   "rune": "Snuff",
+   "status": "new",
+   "starter": false,
+   "kind": "new:seize",
+   "targeting": "target",
+   "summary": "Costs no essence: it burns 15 of your heat instead, and cannot be cast below 15. One enemy within 7 m has its flame pinched out: whatever it was doing is interrupted - even an attack that is not marked as interruptible - and it loses 40 poise. A Censer-Bearer snuffed this way no longer bursts when it dies.",
+   "verb_fit": "Snuff is \"put out one flame or source at once\": one body, one flame, out.",
+   "numbers": {
+    "cost": 0.0,
+    "heat_cost": 15.0,
+    "reflux_per_cost": 0.0,
+    "range": 7.0,
+    "recovery": 0.1,
+    "on_hit": {
+     "interrupts": true,
+     "hard_interrupt": true,
+     "poise": 40.0
+    },
+    "quells_censer": true
+   },
+   "signature": [
+    "on_hit.interrupts",
+    "on_hit.hard_interrupt"
+   ],
+   "new_mechanics": [
+    {
+     "name": "new:seize",
+     "kind": "behaviour",
+     "definition": "An instant effect on the one enemy under the cursor (or your locked target) within range; walls and stone block it; it is checked before essence is spent. With a delay, the target is marked and the hit lands that many seconds later wherever it has moved."
+    },
+    {
+     "name": "heat_cost",
+     "kind": "behaviour",
+     "definition": "The skill is paid in the caster's fire reflux instead of essence; it cannot be cast with less heat than this."
+    },
+    {
+     "name": "hard_interrupt",
+     "kind": "field",
+     "definition": "An interrupt that cancels any enemy wind-up, not only those marked interruptible (elites included)."
+    },
+    {
+     "name": "quells_censer",
+     "kind": "field",
+     "definition": "A Censer-Bearer hit by it loses its death burst for good."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Flare",
+     "word": "Flash and Pinch: Dazed as well"
+    },
+    {
+     "rune": "Smother",
+     "word": "Choke the Wick: Slowed after"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Pinch: reach the drummer at the back"
+    },
+    {
+     "rune": "Fall",
+     "word": "Heavy Pinch: more poise"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Ignite",
+     "why": "its own opposite: lights the thing it puts out. Maths lets it act (status and recovery); it should not"
+    },
+    {
+     "rune": "Essence",
+     "why": "it costs no essence to cut; falls back to a little power"
+    },
+    {
+     "rune": "Blaze",
+     "why": "it deals no damage and leaves no reflux; falls back to a little power"
+    }
+   ]
+  },
+  {
+   "id": "flashpan",
+   "name": "Flashpan",
+   "affinity": "fire",
+   "base_rune": "FIR-5a",
+   "rune": "Flare",
+   "status": "new",
+   "starter": false,
+   "kind": "melee_burst",
+   "targeting": "aimed",
+   "summary": "A flash of flame from your hands across a 90-degree cone 6 m deep. 30 damage, and everyone in it that is facing you is Blinded: it cannot aim and its blows miss you, for 1 s plus 1 s for every 30 heat you carry (up to 4 s). Archers lose their aim. Enemies with their backs to you are not blinded.",
+   "verb_fit": "Flare is \"a sudden flash of flame\": the flash is the weapon; the hotter you are, the brighter it is.",
+   "numbers": {
+    "cost": 7.0,
+    "reflux_per_cost": 1.4,
+    "arc_deg": 90.0,
+    "reach_bonus": 3.5,
+    "on_hit": {
+     "damage": 30.0,
+     "status": "blinded"
+    },
+    "status_s": 1.0,
+    "status_s_per_heat": 0.0333,
+    "status_s_max": 4.0,
+    "needs_facing": true
+   },
+   "signature": [
+    "on_hit.status",
+    "status_s_per_heat"
+   ],
+   "new_mechanics": [
+    {
+     "name": "blinded",
+     "kind": "status",
+     "definition": "1 stack, time set by the skill. Cannot aim: its attacks on the caster miss and a ranged enemy loses its aim and must start again."
+    },
+    {
+     "name": "status_s_per_heat",
+     "kind": "field",
+     "definition": "The applied status lasts status_s plus this many seconds per point of fire reflux, up to status_s_max."
+    },
+    {
+     "name": "needs_facing",
+     "kind": "field",
+     "definition": "Only enemies whose front faces the caster take the status."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Burn",
+     "word": "Burning Flash: sets them Alight too"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Flash: a broader cone"
+    },
+    {
+     "rune": "Blaze",
+     "word": "Bright Flash: more damage, more heat"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Flash: a deeper cone"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Smother",
+     "why": "its own opposite: smoke over the flash. Maths lets it act (interrupt and slow); it should not"
+    },
+    {
+     "rune": "Persist",
+     "why": "a flash has nothing that lasts on the skill itself; falls back to a little power"
+    },
+    {
+     "rune": "Hold",
+     "why": "a flash is instant; there is no wind-up to hold. Only the damage half lands"
+    }
+   ]
+  },
+  {
+   "id": "smokepall",
+   "name": "Smokepall",
+   "affinity": "fire",
+   "base_rune": "FIR-5b",
+   "rune": "Smother",
+   "status": "new",
+   "starter": false,
+   "kind": "ground_zone",
+   "targeting": "point",
+   "summary": "Lobbed to a point, 9 m: a pall of smoke 3 m across. Enemies in it are Slowed, ranged enemies cannot see into or through it, and Alight burns on enemies inside do not run down. Lasts 4 s, plus 1 s for every 20 heat you carry (up to 9 s).",
+   "verb_fit": "Smother is \"starve a fire, or a foe, of air\": the foes choke and slow; the fires inside are banked, not fed.",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 1.4,
+    "range": 9.0,
+    "zone": {
+     "shape": "circle",
+     "radius": 3.0,
+     "life": 4.0,
+     "tick_s": 1.0,
+     "payload": {
+      "status": "slowed"
+     },
+     "blocks_sight": true,
+     "banks": "alight",
+     "life_per_heat": 0.05,
+     "life_max": 9.0
+    }
+   },
+   "signature": [
+    "zone.payload.status",
+    "zone.life"
+   ],
+   "new_mechanics": [
+    {
+     "name": "blocks_sight",
+     "kind": "field",
+     "definition": "A zone that ranged enemies cannot see into or through: they cannot target anyone inside or beyond it."
+    },
+    {
+     "name": "banks",
+     "kind": "field",
+     "definition": "A status on enemies inside the zone does not run down while they stay in it."
+    },
+    {
+     "name": "life_per_heat",
+     "kind": "field",
+     "definition": "The zone lasts its life plus this many seconds per point of fire reflux at the cast, up to life_max."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Thick Pall: lasts longer"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Pall: covers more"
+    },
+    {
+     "rune": "Smoulder",
+     "word": "Smouldering Pall: lasts longer, and lights those inside"
+    },
+    {
+     "rune": "Burn",
+     "word": "Ember Pall: everyone inside catches - and their burns are banked"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Flare",
+     "why": "its own opposite: a flash inside the smoke. Maths lets it act (Dazed); it should not"
+    },
+    {
+     "rune": "Motion",
+     "why": "a pall does not travel; no speed, falls back to a cost cut"
+    },
+    {
+     "rune": "Haste",
+     "why": "no wind-up to shorten; falls back to a cost cut"
+    }
+   ]
+  }
+ ],
+ "effects": {}
+}
