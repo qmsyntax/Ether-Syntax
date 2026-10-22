@@ -1,5 +1,8 @@
 # Runes v0 — writing a skill in the ethercosm
 
+> **2026-10-21: §2-3 superseded by design/14** (base runes per affinity and universal runes; the skill is the verb,
+> runes are its means). The cage, facets, flaws and forms below are parked until that layer settles.
+
 Pitch for Brent to approve or redline, 2026-10-21. Nothing here is built. Every number is a first guess.
 Tags: **[B]** Brent's ruling, **[C]** read in the books (paraphrased notes only: design/01 LAW 4c,
 research/book5-ch226-230-notes.md), **[MODEL]** our invention. Untagged text under a [MODEL] heading is [MODEL].
