@@ -1,0 +1,4491 @@
+{
+ "method": "Hidden property profiles for every rune, computed from language (Brent 2026-10-22).",
+ "axes": {
+  "heat": {
+   "plus": "hot heat burn fire warm scorch blaze",
+   "minus": "cold freeze ice chill frost cool frozen"
+  },
+  "motion": {
+   "plus": "move fast rush flow swift speed race",
+   "minus": "still stop rest halt stillness static motionless"
+  },
+  "force": {
+   "plus": "push strike crush blast force slam smash",
+   "minus": "gentle soft delicate weak ease light tender"
+  },
+  "form": {
+   "plus": "build solid structure harden shape forge form",
+   "minus": "break shatter dissolve crumble decay melt scatter"
+  },
+  "vitality": {
+   "plus": "life heal grow alive birth vigor living",
+   "minus": "death kill die rot corpse dead perish"
+  },
+  "light": {
+   "plus": "light bright shine glow reveal visible radiant",
+   "minus": "dark shadow hide conceal obscure gloom darkness"
+  },
+  "mind": {
+   "plus": "mind thought dream imagine perceive feel memory",
+   "minus": "body flesh matter physical material muscle bone"
+  },
+  "extent": {
+   "plus": "spread wide expand everywhere vast widespread broad",
+   "minus": "focus narrow point single concentrate small precise"
+  },
+  "duration": {
+   "plus": "linger last persist endure lasting long remain",
+   "minus": "instant sudden brief quick flash momentary abrupt"
+  },
+  "binding": {
+   "plus": "bind hold join grip attach tie fasten",
+   "minus": "release sever free loosen detach cut separate"
+  },
+  "direction": {
+   "plus": "outward emit release expel radiate push spill",
+   "minus": "inward absorb draw pull suck take gather"
+  }
+ },
+ "runes": [
+  {
+   "id": "WAT-1a",
+   "affinity": "Water",
+   "name": "Flood",
+   "meaning": "fill an area with water; the ground turns Wet",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.125,
+    "motion": 0.538,
+    "force": -0.171,
+    "form": 0.544,
+    "vitality": -0.057,
+    "light": 0.1,
+    "mind": -0.191,
+    "extent": 0.464,
+    "duration": -0.359,
+    "binding": -0.196,
+    "direction": 0.8
+   }
+  },
+  {
+   "id": "WAT-1b",
+   "affinity": "Water",
+   "name": "Drain",
+   "meaning": "empty the water from an area or a target, and draw it in",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": -0.081,
+    "motion": 0.387,
+    "force": -0.18,
+    "form": -0.034,
+    "vitality": 0.127,
+    "light": 0.257,
+    "mind": -0.436,
+    "extent": -0.113,
+    "duration": -0.007,
+    "binding": -0.501,
+    "direction": -0.8
+   }
+  },
+  {
+   "id": "WAT-2a",
+   "affinity": "Water",
+   "name": "Surge",
+   "meaning": "push bodies away",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.019,
+    "motion": 0.805,
+    "force": 0.87,
+    "form": 0.284,
+    "vitality": 0.235,
+    "light": 0.207,
+    "mind": 0.077,
+    "extent": 0.361,
+    "duration": -0.558,
+    "binding": -0.27,
+    "direction": 0.123
+   }
+  },
+  {
+   "id": "WAT-2b",
+   "affinity": "Water",
+   "name": "Ebb",
+   "meaning": "draw bodies in",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.114,
+    "motion": 0.285,
+    "force": -0.8,
+    "form": 0.146,
+    "vitality": -0.214,
+    "light": 0.043,
+    "mind": -0.306,
+    "extent": 0.244,
+    "duration": 0.311,
+    "binding": 0.286,
+    "direction": -0.679
+   }
+  },
+  {
+   "id": "WAT-3a",
+   "affinity": "Water",
+   "name": "Soak",
+   "meaning": "saturate a target",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.217,
+    "motion": -0.283,
+    "force": 0.115,
+    "form": -0.922,
+    "vitality": -0.358,
+    "light": 0.273,
+    "mind": 0.227,
+    "extent": 0.156,
+    "duration": 0.291,
+    "binding": 0.209,
+    "direction": 0.8
+   }
+  },
+  {
+   "id": "WAT-3b",
+   "affinity": "Water",
+   "name": "Dry",
+   "meaning": "pull the water out of a body: damage by how wet it is",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": -0.046,
+    "motion": 0.17,
+    "force": -0.86,
+    "form": 0.217,
+    "vitality": 0.146,
+    "light": 0.227,
+    "mind": -0.687,
+    "extent": -0.107,
+    "duration": 0.436,
+    "binding": -0.196,
+    "direction": -0.8
+   }
+  },
+  {
+   "id": "WAT-4a",
+   "affinity": "Water",
+   "name": "Float",
+   "meaning": "buoyancy: lift, lighten, walk on water",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": -0.319,
+    "motion": 0.079,
+    "force": -0.725,
+    "form": -0.193,
+    "vitality": 0.8,
+    "light": 0.107,
+    "mind": -0.073,
+    "extent": -0.472,
+    "duration": 0.089,
+    "binding": -0.078,
+    "direction": -0.485
+   }
+  },
+  {
+   "id": "WAT-4b",
+   "affinity": "Water",
+   "name": "Drown",
+   "meaning": "water in the lungs: no casting, no calls for help, damage over time",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": 0.483,
+    "motion": -0.127,
+    "force": 0.125,
+    "form": -0.587,
+    "vitality": -0.8,
+    "light": -0.149,
+    "mind": 0.528,
+    "extent": -0.203,
+    "duration": 0.216,
+    "binding": -0.453,
+    "direction": -0.224
+   }
+  },
+  {
+   "id": "WAT-5a",
+   "affinity": "Water",
+   "name": "Gush",
+   "meaning": "a sudden forceful jet",
+   "pair_axis": "force",
+   "profile": {
+    "heat": 0.359,
+    "motion": 0.577,
+    "force": 0.8,
+    "form": -0.367,
+    "vitality": -0.334,
+    "light": 0.575,
+    "mind": 0.298,
+    "extent": 0.09,
+    "duration": -0.984,
+    "binding": -0.375,
+    "direction": 0.767
+   }
+  },
+  {
+   "id": "WAT-5b",
+   "affinity": "Water",
+   "name": "Drip",
+   "meaning": "a slow steady trickle that wears and lingers",
+   "pair_axis": "force",
+   "profile": {
+    "heat": 0.135,
+    "motion": -0.322,
+    "force": -0.956,
+    "form": -0.805,
+    "vitality": -0.302,
+    "light": 0.513,
+    "mind": 0.122,
+    "extent": 0.095,
+    "duration": -0.452,
+    "binding": 0.164,
+    "direction": 0.027
+   }
+  },
+  {
+   "id": "WAT-6a",
+   "affinity": "Water",
+   "name": "Sweep",
+   "meaning": "a current that carries things along",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": 0.199,
+    "motion": 0.8,
+    "force": 0.666,
+    "form": 0.693,
+    "vitality": 0.186,
+    "light": -0.074,
+    "mind": 0.511,
+    "extent": 0.222,
+    "duration": 0.373,
+    "binding": 0.333,
+    "direction": -0.105
+   }
+  },
+  {
+   "id": "WAT-6b",
+   "affinity": "Water",
+   "name": "Settle",
+   "meaning": "the water goes still, and what it carries sinks and stays",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": -0.158,
+    "motion": -0.8,
+    "force": -0.568,
+    "form": 0.687,
+    "vitality": 0.57,
+    "light": 0.072,
+    "mind": 0.076,
+    "extent": -0.53,
+    "duration": 0.79,
+    "binding": 0.168,
+    "direction": -0.204
+   }
+  },
+  {
+   "id": "WAT-7a",
+   "affinity": "Water",
+   "name": "Splash",
+   "meaning": "burst outward on contact, spraying those near",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": 0.613,
+    "motion": 0.309,
+    "force": 0.32,
+    "form": -0.447,
+    "vitality": -0.183,
+    "light": 0.75,
+    "mind": -0.061,
+    "extent": 0.8,
+    "duration": -0.907,
+    "binding": -0.238,
+    "direction": 0.363
+   }
+  },
+  {
+   "id": "WAT-7b",
+   "affinity": "Water",
+   "name": "Seep",
+   "meaning": "soak in slowly, getting behind shields and armour",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": 0.045,
+    "motion": -0.053,
+    "force": -0.324,
+    "form": -0.845,
+    "vitality": 0.189,
+    "light": -0.009,
+    "mind": -0.204,
+    "extent": -0.8,
+    "duration": 0.189,
+    "binding": 0.379,
+    "direction": -0.32
+   }
+  },
+  {
+   "id": "WAT-8a",
+   "affinity": "Water",
+   "name": "Wave",
+   "meaning": "a rolling wall of water",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.059,
+    "motion": 0.499,
+    "force": 0.8,
+    "form": 0.302,
+    "vitality": -0.06,
+    "light": 0.522,
+    "mind": 0.059,
+    "extent": 0.573,
+    "duration": -0.735,
+    "binding": -0.333,
+    "direction": 0.251
+   }
+  },
+  {
+   "id": "WAT-8b",
+   "affinity": "Water",
+   "name": "Slack",
+   "meaning": "the still moment at the turn of the tide: everything pauses, reflux eases",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.358,
+    "motion": -0.239,
+    "force": -0.853,
+    "form": -0.457,
+    "vitality": 0.488,
+    "light": 0.323,
+    "mind": 0.537,
+    "extent": -0.608,
+    "duration": -0.19,
+    "binding": 0.128,
+    "direction": -0.516
+   }
+  },
+  {
+   "id": "FIR-1a",
+   "affinity": "Fire",
+   "name": "Burn",
+   "meaning": "set a target burning (Alight)",
+   "pair_axis": "heat",
+   "profile": {
+    "heat": 0.982,
+    "motion": -0.259,
+    "force": 0.749,
+    "form": -0.61,
+    "vitality": -0.79,
+    "light": 0.318,
+    "mind": -0.425,
+    "extent": -0.228,
+    "duration": -0.051,
+    "binding": -0.31,
+    "direction": 0.063
+   }
+  },
+  {
+   "id": "FIR-1b",
+   "affinity": "Fire",
+   "name": "Quench",
+   "meaning": "put fire out, and cash the heat in",
+   "pair_axis": "heat",
+   "profile": {
+    "heat": -0.8,
+    "motion": -0.034,
+    "force": 0.472,
+    "form": -0.599,
+    "vitality": -0.609,
+    "light": 0.418,
+    "mind": 0.093,
+    "extent": 0.319,
+    "duration": -0.63,
+    "binding": -0.081,
+    "direction": -0.002
+   }
+  },
+  {
+   "id": "FIR-2a",
+   "affinity": "Fire",
+   "name": "Ignite",
+   "meaning": "start a fire at a point",
+   "pair_axis": "heat",
+   "profile": {
+    "heat": 0.935,
+    "motion": 0.44,
+    "force": 0.836,
+    "form": -0.263,
+    "vitality": -0.195,
+    "light": 0.269,
+    "mind": 0.385,
+    "extent": -0.113,
+    "duration": -0.453,
+    "binding": 0.196,
+    "direction": -0.033
+   }
+  },
+  {
+   "id": "FIR-2b",
+   "affinity": "Fire",
+   "name": "Snuff",
+   "meaning": "put out one flame or source at once",
+   "pair_axis": "heat",
+   "profile": {
+    "heat": -0.8,
+    "motion": -0.26,
+    "force": 0.7,
+    "form": -0.372,
+    "vitality": -0.258,
+    "light": -0.069,
+    "mind": 0.086,
+    "extent": -0.174,
+    "duration": -0.17,
+    "binding": -0.254,
+    "direction": -0.153
+   }
+  },
+  {
+   "id": "FIR-3a",
+   "affinity": "Fire",
+   "name": "Explode",
+   "meaning": "blast outward",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.871,
+    "motion": -0.438,
+    "force": 0.94,
+    "form": -0.843,
+    "vitality": -0.754,
+    "light": 0.304,
+    "mind": -0.356,
+    "extent": 0.423,
+    "duration": -0.469,
+    "binding": 0.102,
+    "direction": 0.842
+   }
+  },
+  {
+   "id": "FIR-3b",
+   "affinity": "Fire",
+   "name": "Implode",
+   "meaning": "flame rushing inward",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.709,
+    "motion": 0.019,
+    "force": 0.381,
+    "form": -0.926,
+    "vitality": -0.634,
+    "light": 0.465,
+    "mind": 0.511,
+    "extent": 0.264,
+    "duration": -0.659,
+    "binding": 0.739,
+    "direction": -0.8
+   }
+  },
+  {
+   "id": "FIR-4a",
+   "affinity": "Fire",
+   "name": "Blaze",
+   "meaning": "a fierce, spreading fire",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": 0.989,
+    "motion": -0.017,
+    "force": 0.895,
+    "form": -0.331,
+    "vitality": -0.795,
+    "light": -0.259,
+    "mind": -0.194,
+    "extent": 0.865,
+    "duration": -0.31,
+    "binding": -0.493,
+    "direction": 0.712
+   }
+  },
+  {
+   "id": "FIR-4b",
+   "affinity": "Fire",
+   "name": "Smoulder",
+   "meaning": "a low, lasting burn",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": 0.931,
+    "motion": -0.725,
+    "force": -0.201,
+    "form": -0.838,
+    "vitality": -0.318,
+    "light": 0.279,
+    "mind": -0.494,
+    "extent": -0.8,
+    "duration": 0.393,
+    "binding": 0.031,
+    "direction": 0.479
+   }
+  },
+  {
+   "id": "FIR-5a",
+   "affinity": "Fire",
+   "name": "Flare",
+   "meaning": "a sudden flash of flame",
+   "pair_axis": "light",
+   "profile": {
+    "heat": 0.87,
+    "motion": 0.171,
+    "force": 0.205,
+    "form": -0.854,
+    "vitality": -0.609,
+    "light": 0.839,
+    "mind": 0.153,
+    "extent": 0.254,
+    "duration": -0.979,
+    "binding": 0.154,
+    "direction": 0.765
+   }
+  },
+  {
+   "id": "FIR-5b",
+   "affinity": "Fire",
+   "name": "Smother",
+   "meaning": "starve a fire, or a foe, of air",
+   "pair_axis": "light",
+   "profile": {
+    "heat": 0.775,
+    "motion": -0.771,
+    "force": 0.76,
+    "form": -0.931,
+    "vitality": -0.895,
+    "light": -0.8,
+    "mind": -0.086,
+    "extent": 0.646,
+    "duration": 0.08,
+    "binding": -0.153,
+    "direction": 0.142
+   }
+  },
+  {
+   "id": "EAR-1a",
+   "affinity": "Earth",
+   "name": "Raise",
+   "meaning": "stone up",
+   "pair_axis": "form",
+   "profile": {
+    "heat": -0.281,
+    "motion": 0.45,
+    "force": 0.041,
+    "form": 0.877,
+    "vitality": 0.533,
+    "light": -0.077,
+    "mind": -0.039,
+    "extent": -0.281,
+    "duration": 0.539,
+    "binding": -0.282,
+    "direction": -0.652
+   }
+  },
+  {
+   "id": "EAR-1b",
+   "affinity": "Earth",
+   "name": "Sink",
+   "meaning": "ground down, pits",
+   "pair_axis": "form",
+   "profile": {
+    "heat": 0.204,
+    "motion": 0.251,
+    "force": 0.213,
+    "form": -0.8,
+    "vitality": -0.488,
+    "light": -0.234,
+    "mind": -0.157,
+    "extent": -0.475,
+    "duration": 0.069,
+    "binding": 0.354,
+    "direction": -0.415
+   }
+  },
+  {
+   "id": "EAR-2a",
+   "affinity": "Earth",
+   "name": "Harden",
+   "meaning": "solidify, armour",
+   "pair_axis": "form",
+   "profile": {
+    "heat": -0.404,
+    "motion": 0.183,
+    "force": -0.375,
+    "form": 0.8,
+    "vitality": 0.13,
+    "light": 0.31,
+    "mind": -0.577,
+    "extent": 0.339,
+    "duration": 0.42,
+    "binding": 0.71,
+    "direction": 0.361
+   }
+  },
+  {
+   "id": "EAR-2b",
+   "affinity": "Earth",
+   "name": "Crumble",
+   "meaning": "break stone and guard",
+   "pair_axis": "form",
+   "profile": {
+    "heat": -0.32,
+    "motion": -0.155,
+    "force": 0.498,
+    "form": -0.888,
+    "vitality": -0.401,
+    "light": -0.086,
+    "mind": -0.016,
+    "extent": 0.164,
+    "duration": 0.291,
+    "binding": -0.115,
+    "direction": -0.41
+   }
+  },
+  {
+   "id": "EAR-3a",
+   "affinity": "Earth",
+   "name": "Root",
+   "meaning": "anchor, stand firm",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": -0.702,
+    "motion": -0.8,
+    "force": -0.111,
+    "form": 0.911,
+    "vitality": 0.245,
+    "light": -0.224,
+    "mind": -0.238,
+    "extent": -0.216,
+    "duration": 0.616,
+    "binding": 0.247,
+    "direction": -0.415
+   }
+  },
+  {
+   "id": "EAR-3b",
+   "affinity": "Earth",
+   "name": "Quake",
+   "meaning": "shake, unbalance",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": 0.359,
+    "motion": 0.8,
+    "force": 0.66,
+    "form": -0.826,
+    "vitality": -0.505,
+    "light": -0.383,
+    "mind": 0.146,
+    "extent": 0.508,
+    "duration": -0.757,
+    "binding": 0.142,
+    "direction": 0.251
+   }
+  },
+  {
+   "id": "EAR-4a",
+   "affinity": "Earth",
+   "name": "Dig",
+   "meaning": "tear into the ground and bring stone up to throw",
+   "pair_axis": "light",
+   "profile": {
+    "heat": 0.001,
+    "motion": -0.098,
+    "force": 0.426,
+    "form": 0.32,
+    "vitality": -0.285,
+    "light": 0.8,
+    "mind": -0.145,
+    "extent": -0.14,
+    "duration": 0.205,
+    "binding": 0.184,
+    "direction": -0.813
+   }
+  },
+  {
+   "id": "EAR-4b",
+   "affinity": "Earth",
+   "name": "Bury",
+   "meaning": "cover over with earth",
+   "pair_axis": "light",
+   "profile": {
+    "heat": 0.174,
+    "motion": -0.294,
+    "force": 0.303,
+    "form": 0.14,
+    "vitality": -0.345,
+    "light": -0.8,
+    "mind": -0.185,
+    "extent": 0.024,
+    "duration": 0.754,
+    "binding": -0.22,
+    "direction": -0.571
+   }
+  },
+  {
+   "id": "EAR-5a",
+   "affinity": "Earth",
+   "name": "Tunnel",
+   "meaning": "pass through the ground",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": 0.278,
+    "motion": 0.24,
+    "force": 0.518,
+    "form": 0.802,
+    "vitality": -0.199,
+    "light": -0.38,
+    "mind": -0.121,
+    "extent": -0.05,
+    "duration": 0.382,
+    "binding": -0.8,
+    "direction": -0.227
+   }
+  },
+  {
+   "id": "EAR-5b",
+   "affinity": "Earth",
+   "name": "Collapse",
+   "meaning": "bring the ground down and close a passage",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.426,
+    "motion": 0.428,
+    "force": 0.658,
+    "form": 0.4,
+    "vitality": 0.17,
+    "light": -0.479,
+    "mind": 0.273,
+    "extent": 0.207,
+    "duration": -0.164,
+    "binding": 0.8,
+    "direction": -0.344
+   }
+  },
+  {
+   "id": "WIN-1a",
+   "affinity": "Wind",
+   "name": "Blow",
+   "meaning": "moving air pushes",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": -0.257,
+    "motion": 0.8,
+    "force": 0.798,
+    "form": 0.031,
+    "vitality": 0.047,
+    "light": 0.111,
+    "mind": -0.05,
+    "extent": -0.408,
+    "duration": -0.448,
+    "binding": -0.11,
+    "direction": 0.051
+   }
+  },
+  {
+   "id": "WIN-1b",
+   "affinity": "Wind",
+   "name": "Lull",
+   "meaning": "dead air; shots drop",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": -0.201,
+    "motion": -0.8,
+    "force": 0.652,
+    "form": -0.579,
+    "vitality": -0.48,
+    "light": -0.445,
+    "mind": 0.219,
+    "extent": -0.104,
+    "duration": -0.443,
+    "binding": -0.414,
+    "direction": -0.093
+   }
+  },
+  {
+   "id": "WIN-2a",
+   "affinity": "Wind",
+   "name": "Lash",
+   "meaning": "air that strikes and cuts",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.067,
+    "motion": 0.334,
+    "force": 0.898,
+    "form": -0.516,
+    "vitality": -0.723,
+    "light": -0.066,
+    "mind": 0.001,
+    "extent": 0.65,
+    "duration": -0.063,
+    "binding": 0.057,
+    "direction": 0.47
+   }
+  },
+  {
+   "id": "WIN-2b",
+   "affinity": "Wind",
+   "name": "Buffer",
+   "meaning": "cushioning air",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.107,
+    "motion": -0.478,
+    "force": -0.8,
+    "form": 0.008,
+    "vitality": 0.101,
+    "light": 0.401,
+    "mind": -0.621,
+    "extent": 0.196,
+    "duration": -0.396,
+    "binding": -0.141,
+    "direction": -0.027
+   }
+  },
+  {
+   "id": "WIN-3a",
+   "affinity": "Wind",
+   "name": "Lift",
+   "meaning": "raise aloft",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.499,
+    "motion": -0.164,
+    "force": -0.8,
+    "form": 0.314,
+    "vitality": 0.379,
+    "light": -0.001,
+    "mind": -0.171,
+    "extent": -0.068,
+    "duration": 0.54,
+    "binding": 0.156,
+    "direction": -0.375
+   }
+  },
+  {
+   "id": "WIN-3b",
+   "affinity": "Wind",
+   "name": "Drop",
+   "meaning": "slam down",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.451,
+    "motion": 0.553,
+    "force": 0.802,
+    "form": -0.074,
+    "vitality": -0.046,
+    "light": -0.103,
+    "mind": 0.049,
+    "extent": -0.631,
+    "duration": -0.465,
+    "binding": -0.199,
+    "direction": -0.37
+   }
+  },
+  {
+   "id": "WIN-4a",
+   "affinity": "Wind",
+   "name": "Carry",
+   "meaning": "be carried along, faster",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": 0.23,
+    "motion": 0.8,
+    "force": 0.407,
+    "form": 0.894,
+    "vitality": 0.048,
+    "light": 0.059,
+    "mind": -0.262,
+    "extent": 0.262,
+    "duration": 0.608,
+    "binding": -0.032,
+    "direction": -0.007
+   }
+  },
+  {
+   "id": "WIN-4b",
+   "affinity": "Wind",
+   "name": "Stall",
+   "meaning": "stalled; slipstream stolen",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": 0.075,
+    "motion": -0.8,
+    "force": 0.621,
+    "form": -0.315,
+    "vitality": -0.45,
+    "light": -0.57,
+    "mind": -0.146,
+    "extent": -0.038,
+    "duration": -0.263,
+    "binding": 0.175,
+    "direction": 0.511
+   }
+  },
+  {
+   "id": "WIN-5a",
+   "affinity": "Wind",
+   "name": "Whirl",
+   "meaning": "spin together",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.051,
+    "motion": 0.391,
+    "force": -0.103,
+    "form": -0.524,
+    "vitality": 0.436,
+    "light": 0.378,
+    "mind": 0.166,
+    "extent": -0.014,
+    "duration": -0.541,
+    "binding": 0.8,
+    "direction": -0.588
+   }
+  },
+  {
+   "id": "WIN-5b",
+   "affinity": "Wind",
+   "name": "Disperse",
+   "meaning": "blow apart",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": 0.565,
+    "motion": -0.262,
+    "force": 0.902,
+    "form": -0.846,
+    "vitality": -0.64,
+    "light": -0.297,
+    "mind": -0.577,
+    "extent": 0.047,
+    "duration": 0.088,
+    "binding": -0.8,
+    "direction": -0.112
+   }
+  },
+  {
+   "id": "LIG-1a",
+   "affinity": "Lightning",
+   "name": "Strike",
+   "meaning": "a bolt that hits one target",
+   "pair_axis": "force",
+   "profile": {
+    "heat": 0.211,
+    "motion": 0.334,
+    "force": 0.983,
+    "form": 0.436,
+    "vitality": -0.625,
+    "light": -0.067,
+    "mind": 0.28,
+    "extent": -0.376,
+    "duration": -0.044,
+    "binding": 0.021,
+    "direction": 0.115
+   }
+  },
+  {
+   "id": "LIG-1b",
+   "affinity": "Lightning",
+   "name": "Ground",
+   "meaning": "earth a charge away; draw strikes to a point",
+   "pair_axis": "force",
+   "profile": {
+    "heat": 0.299,
+    "motion": -0.005,
+    "force": -0.8,
+    "form": 0.669,
+    "vitality": 0.133,
+    "light": -0.09,
+    "mind": -0.171,
+    "extent": -0.51,
+    "duration": 0.07,
+    "binding": 0.164,
+    "direction": -0.706
+   }
+  },
+  {
+   "id": "LIG-2a",
+   "affinity": "Lightning",
+   "name": "Charge",
+   "meaning": "build up marks",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.215,
+    "motion": 0.555,
+    "force": 0.407,
+    "form": 0.946,
+    "vitality": 0.441,
+    "light": 0.063,
+    "mind": -0.177,
+    "extent": -0.44,
+    "duration": 0.425,
+    "binding": -0.434,
+    "direction": -0.8
+   }
+  },
+  {
+   "id": "LIG-2b",
+   "affinity": "Lightning",
+   "name": "Discharge",
+   "meaning": "release them as an overload",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.572,
+    "motion": 0.122,
+    "force": 0.008,
+    "form": -0.351,
+    "vitality": -0.613,
+    "light": 0.516,
+    "mind": -0.704,
+    "extent": -0.501,
+    "duration": -0.857,
+    "binding": -0.815,
+    "direction": 0.894
+   }
+  },
+  {
+   "id": "LIG-3a",
+   "affinity": "Lightning",
+   "name": "Arc",
+   "meaning": "jump between targets",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": 0.581,
+    "motion": 0.589,
+    "force": 0.571,
+    "form": 0.791,
+    "vitality": 0.199,
+    "light": 0.489,
+    "mind": -0.015,
+    "extent": -0.629,
+    "duration": -0.126,
+    "binding": 0.8,
+    "direction": 0.341
+   }
+  },
+  {
+   "id": "LIG-3b",
+   "affinity": "Lightning",
+   "name": "Insulate",
+   "meaning": "block a jump, isolate a target",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.186,
+    "motion": 0.038,
+    "force": 0.508,
+    "form": -0.071,
+    "vitality": 0.131,
+    "light": -0.434,
+    "mind": 0.091,
+    "extent": -0.214,
+    "duration": 0.1,
+    "binding": -0.8,
+    "direction": -0.109
+   }
+  },
+  {
+   "id": "LIG-4a",
+   "affinity": "Lightning",
+   "name": "Quicken",
+   "meaning": "nerves in overdrive",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": -0.366,
+    "motion": 0.8,
+    "force": -0.423,
+    "form": -0.788,
+    "vitality": 0.217,
+    "light": -0.377,
+    "mind": -0.226,
+    "extent": -0.136,
+    "duration": -0.867,
+    "binding": -0.065,
+    "direction": 0.636
+   }
+  },
+  {
+   "id": "LIG-4b",
+   "affinity": "Lightning",
+   "name": "Stun",
+   "meaning": "nerves locked",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": 0.413,
+    "motion": -0.8,
+    "force": 0.548,
+    "form": -0.793,
+    "vitality": -0.406,
+    "light": -0.147,
+    "mind": -0.085,
+    "extent": -0.522,
+    "duration": -0.333,
+    "binding": 0.701,
+    "direction": -0.175
+   }
+  },
+  {
+   "id": "LIG-5a",
+   "affinity": "Lightning",
+   "name": "Thunder",
+   "meaning": "a deafening crack that staggers",
+   "pair_axis": "force",
+   "profile": {
+    "heat": 0.243,
+    "motion": -0.087,
+    "force": 0.8,
+    "form": -0.847,
+    "vitality": -0.7,
+    "light": -0.214,
+    "mind": 0.447,
+    "extent": 0.63,
+    "duration": -0.885,
+    "binding": 0.155,
+    "direction": 0.634
+   }
+  },
+  {
+   "id": "LIG-5b",
+   "affinity": "Lightning",
+   "name": "Silence",
+   "meaning": "dead quiet: casting and calls fail",
+   "pair_axis": "force",
+   "profile": {
+    "heat": 0.027,
+    "motion": -0.812,
+    "force": -0.8,
+    "form": -0.229,
+    "vitality": -0.442,
+    "light": -0.709,
+    "mind": 0.725,
+    "extent": -0.17,
+    "duration": 0.18,
+    "binding": -0.038,
+    "direction": -0.253
+   }
+  },
+  {
+   "id": "ICE-1a",
+   "affinity": "Ice",
+   "name": "Freeze",
+   "meaning": "lock solid",
+   "pair_axis": "heat",
+   "profile": {
+    "heat": -0.969,
+    "motion": -0.056,
+    "force": -0.134,
+    "form": 0.54,
+    "vitality": 0.322,
+    "light": 0.089,
+    "mind": -0.575,
+    "extent": -0.12,
+    "duration": -0.275,
+    "binding": -0.153,
+    "direction": 0.202
+   }
+  },
+  {
+   "id": "ICE-1b",
+   "affinity": "Ice",
+   "name": "Thaw",
+   "meaning": "release, melt free",
+   "pair_axis": "heat",
+   "profile": {
+    "heat": 0.8,
+    "motion": 0.284,
+    "force": -0.402,
+    "form": -0.885,
+    "vitality": -0.172,
+    "light": 0.491,
+    "mind": -0.303,
+    "extent": 0.318,
+    "duration": -0.454,
+    "binding": -0.889,
+    "direction": 0.804
+   }
+  },
+  {
+   "id": "ICE-2a",
+   "affinity": "Ice",
+   "name": "Frost",
+   "meaning": "creeping cold on the ground that grips and slows",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.933,
+    "motion": -0.119,
+    "force": -0.713,
+    "form": -0.814,
+    "vitality": -0.475,
+    "light": -0.307,
+    "mind": 0.355,
+    "extent": 0.478,
+    "duration": -0.273,
+    "binding": 0.8,
+    "direction": -0.176
+   }
+  },
+  {
+   "id": "ICE-2b",
+   "affinity": "Ice",
+   "name": "Glaze",
+   "meaning": "glazed ice: fast and slippery",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.613,
+    "motion": 0.376,
+    "force": -0.924,
+    "form": -0.854,
+    "vitality": -0.529,
+    "light": 0.542,
+    "mind": -0.238,
+    "extent": 0.014,
+    "duration": -0.803,
+    "binding": -0.8,
+    "direction": 0.07
+   }
+  },
+  {
+   "id": "ICE-3a",
+   "affinity": "Ice",
+   "name": "Snow",
+   "meaning": "a fall of snow that blinds and buries",
+   "pair_axis": "heat",
+   "profile": {
+    "heat": -0.8,
+    "motion": -0.095,
+    "force": -0.366,
+    "form": -0.555,
+    "vitality": -0.667,
+    "light": -0.399,
+    "mind": 0.093,
+    "extent": 0.356,
+    "duration": 0.031,
+    "binding": -0.086,
+    "direction": -0.22
+   }
+  },
+  {
+   "id": "ICE-3b",
+   "affinity": "Ice",
+   "name": "Melt",
+   "meaning": "turn ice and snow to water",
+   "pair_axis": "heat",
+   "profile": {
+    "heat": 0.8,
+    "motion": 0.532,
+    "force": -0.678,
+    "form": -0.923,
+    "vitality": -0.371,
+    "light": 0.511,
+    "mind": -0.363,
+    "extent": -0.085,
+    "duration": -0.371,
+    "binding": -0.314,
+    "direction": 0.083
+   }
+  },
+  {
+   "id": "ICE-4a",
+   "affinity": "Ice",
+   "name": "Rime",
+   "meaning": "build ice: walls, armour, spikes",
+   "pair_axis": "form",
+   "profile": {
+    "heat": -0.783,
+    "motion": 0.063,
+    "force": -0.679,
+    "form": 0.8,
+    "vitality": 0.068,
+    "light": 0.507,
+    "mind": -0.493,
+    "extent": 0.115,
+    "duration": -0.598,
+    "binding": 0.239,
+    "direction": 0.152
+   }
+  },
+  {
+   "id": "ICE-4b",
+   "affinity": "Ice",
+   "name": "Shatter",
+   "meaning": "break ice; brittle things burst",
+   "pair_axis": "form",
+   "profile": {
+    "heat": -0.482,
+    "motion": -0.0,
+    "force": 0.417,
+    "form": -0.965,
+    "vitality": 0.092,
+    "light": 0.172,
+    "mind": 0.353,
+    "extent": -0.034,
+    "duration": -0.258,
+    "binding": 0.195,
+    "direction": 0.051
+   }
+  },
+  {
+   "id": "ICE-5a",
+   "affinity": "Ice",
+   "name": "Brittle",
+   "meaning": "make a thing fragile",
+   "pair_axis": "form",
+   "profile": {
+    "heat": -0.313,
+    "motion": -0.16,
+    "force": -0.891,
+    "form": -0.8,
+    "vitality": 0.521,
+    "light": 0.407,
+    "mind": -0.323,
+    "extent": -0.037,
+    "duration": 0.093,
+    "binding": 0.498,
+    "direction": -0.25
+   }
+  },
+  {
+   "id": "ICE-5b",
+   "affinity": "Ice",
+   "name": "Toughen",
+   "meaning": "cold-harden it",
+   "pair_axis": "form",
+   "profile": {
+    "heat": -0.876,
+    "motion": 0.372,
+    "force": -0.641,
+    "form": 0.8,
+    "vitality": -0.187,
+    "light": -0.275,
+    "mind": -0.212,
+    "extent": 0.243,
+    "duration": 0.601,
+    "binding": 0.154,
+    "direction": 0.241
+   }
+  },
+  {
+   "id": "DRK-1a",
+   "affinity": "Dark",
+   "name": "Darken",
+   "meaning": "make it darker",
+   "pair_axis": "light",
+   "profile": {
+    "heat": -0.017,
+    "motion": -0.205,
+    "force": -0.832,
+    "form": -0.709,
+    "vitality": 0.328,
+    "light": -0.8,
+    "mind": 0.414,
+    "extent": 0.192,
+    "duration": 0.423,
+    "binding": 0.026,
+    "direction": 0.322
+   }
+  },
+  {
+   "id": "DRK-1b",
+   "affinity": "Dark",
+   "name": "Lighten",
+   "meaning": "let the light back in",
+   "pair_axis": "light",
+   "profile": {
+    "heat": -0.203,
+    "motion": -0.227,
+    "force": -0.683,
+    "form": -0.422,
+    "vitality": 0.131,
+    "light": 0.8,
+    "mind": 0.593,
+    "extent": -0.585,
+    "duration": 0.04,
+    "binding": -0.073,
+    "direction": -0.539
+   }
+  },
+  {
+   "id": "DRK-2a",
+   "affinity": "Dark",
+   "name": "Obscure",
+   "meaning": "hide a thing in darkness",
+   "pair_axis": "light",
+   "profile": {
+    "heat": -0.268,
+    "motion": -0.718,
+    "force": -0.657,
+    "form": 0.063,
+    "vitality": 0.061,
+    "light": -0.953,
+    "mind": 0.681,
+    "extent": -0.364,
+    "duration": 0.143,
+    "binding": -0.049,
+    "direction": -0.406
+   }
+  },
+  {
+   "id": "DRK-2b",
+   "affinity": "Dark",
+   "name": "Expose",
+   "meaning": "make a hidden target stand out",
+   "pair_axis": "light",
+   "profile": {
+    "heat": -0.268,
+    "motion": -0.082,
+    "force": 0.393,
+    "form": 0.478,
+    "vitality": 0.138,
+    "light": 0.8,
+    "mind": 0.253,
+    "extent": 0.16,
+    "duration": 0.688,
+    "binding": -0.129,
+    "direction": -0.575
+   }
+  },
+  {
+   "id": "DRK-3a",
+   "affinity": "Dark",
+   "name": "Shadowstep",
+   "meaning": "move through shadows",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": -0.2,
+    "motion": 0.8,
+    "force": 0.023,
+    "form": 0.638,
+    "vitality": 0.638,
+    "light": -0.451,
+    "mind": 0.458,
+    "extent": 0.003,
+    "duration": 0.333,
+    "binding": -0.441,
+    "direction": -0.245
+   }
+  },
+  {
+   "id": "DRK-3b",
+   "affinity": "Dark",
+   "name": "Pin",
+   "meaning": "nail a target's shadow, and the target with it",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": 0.171,
+    "motion": -0.8,
+    "force": 0.565,
+    "form": 0.749,
+    "vitality": -0.417,
+    "light": -0.317,
+    "mind": -0.027,
+    "extent": -0.853,
+    "duration": -0.208,
+    "binding": 0.803,
+    "direction": -0.226
+   }
+  },
+  {
+   "id": "DRK-4a",
+   "affinity": "Dark",
+   "name": "Hush",
+   "meaning": "smother sound",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.049,
+    "motion": -0.69,
+    "force": -0.843,
+    "form": -0.716,
+    "vitality": -0.491,
+    "light": -0.452,
+    "mind": 0.413,
+    "extent": 0.084,
+    "duration": -0.817,
+    "binding": -0.226,
+    "direction": 0.414
+   }
+  },
+  {
+   "id": "DRK-4b",
+   "affinity": "Dark",
+   "name": "Resound",
+   "meaning": "sound carries and echoes in the dark",
+   "pair_axis": "force",
+   "profile": {
+    "heat": 0.344,
+    "motion": -0.73,
+    "force": 0.8,
+    "form": -0.126,
+    "vitality": -0.38,
+    "light": 0.023,
+    "mind": 0.547,
+    "extent": 0.694,
+    "duration": 0.166,
+    "binding": 0.399,
+    "direction": 0.756
+   }
+  },
+  {
+   "id": "DRK-5a",
+   "affinity": "Dark",
+   "name": "Devour",
+   "meaning": "swallow light and energy",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.471,
+    "motion": -0.186,
+    "force": -0.649,
+    "form": -0.842,
+    "vitality": -0.241,
+    "light": 0.647,
+    "mind": 0.053,
+    "extent": -0.036,
+    "duration": -0.213,
+    "binding": -0.074,
+    "direction": -0.8
+   }
+  },
+  {
+   "id": "DRK-5b",
+   "affinity": "Dark",
+   "name": "Disgorge",
+   "meaning": "release what was swallowed",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.225,
+    "motion": 0.043,
+    "force": 0.451,
+    "form": -0.869,
+    "vitality": -0.847,
+    "light": -0.191,
+    "mind": -0.24,
+    "extent": 0.378,
+    "duration": -0.869,
+    "binding": -0.645,
+    "direction": 0.8
+   }
+  },
+  {
+   "id": "MET-1a",
+   "affinity": "Metal",
+   "name": "Forge",
+   "meaning": "shape and harden metal",
+   "pair_axis": "form",
+   "profile": {
+    "heat": -0.35,
+    "motion": 0.495,
+    "force": 0.124,
+    "form": 0.99,
+    "vitality": 0.676,
+    "light": -0.07,
+    "mind": -0.29,
+    "extent": -0.335,
+    "duration": 0.629,
+    "binding": 0.842,
+    "direction": -0.157
+   }
+  },
+  {
+   "id": "MET-1b",
+   "affinity": "Metal",
+   "name": "Rust",
+   "meaning": "corrode it",
+   "pair_axis": "form",
+   "profile": {
+    "heat": 0.121,
+    "motion": -0.345,
+    "force": -0.263,
+    "form": -0.935,
+    "vitality": -0.832,
+    "light": 0.321,
+    "mind": -0.52,
+    "extent": 0.724,
+    "duration": -0.306,
+    "binding": 0.509,
+    "direction": 0.709
+   }
+  },
+  {
+   "id": "MET-2a",
+   "affinity": "Metal",
+   "name": "Fuse",
+   "meaning": "join metal into one piece",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": 0.457,
+    "motion": -0.03,
+    "force": 0.505,
+    "form": 0.387,
+    "vitality": -0.204,
+    "light": 0.551,
+    "mind": -0.653,
+    "extent": -0.571,
+    "duration": -0.474,
+    "binding": 0.8,
+    "direction": 0.085
+   }
+  },
+  {
+   "id": "MET-2b",
+   "affinity": "Metal",
+   "name": "Sunder",
+   "meaning": "split it apart",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.298,
+    "motion": 0.089,
+    "force": 0.55,
+    "form": -0.527,
+    "vitality": -0.225,
+    "light": -0.064,
+    "mind": -0.13,
+    "extent": -0.173,
+    "duration": 0.029,
+    "binding": -0.8,
+    "direction": 0.314
+   }
+  },
+  {
+   "id": "MET-3a",
+   "affinity": "Metal",
+   "name": "Seal",
+   "meaning": "close and lock with metal",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.378,
+    "motion": 0.098,
+    "force": 0.433,
+    "form": 0.763,
+    "vitality": -0.13,
+    "light": -0.241,
+    "mind": -0.71,
+    "extent": -0.691,
+    "duration": 0.096,
+    "binding": 0.8,
+    "direction": -0.018
+   }
+  },
+  {
+   "id": "MET-3b",
+   "affinity": "Metal",
+   "name": "Breach",
+   "meaning": "break a seal; punch through plate",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.527,
+    "motion": 0.293,
+    "force": 0.618,
+    "form": 0.211,
+    "vitality": -0.248,
+    "light": -0.366,
+    "mind": -0.683,
+    "extent": 0.046,
+    "duration": -0.103,
+    "binding": -0.8,
+    "direction": 0.242
+   }
+  },
+  {
+   "id": "MET-4a",
+   "affinity": "Metal",
+   "name": "Hone",
+   "meaning": "sharpen",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.093,
+    "motion": 0.4,
+    "force": 0.8,
+    "form": 0.081,
+    "vitality": 0.412,
+    "light": -0.246,
+    "mind": 0.157,
+    "extent": -0.495,
+    "duration": -0.102,
+    "binding": 0.655,
+    "direction": -0.144
+   }
+  },
+  {
+   "id": "MET-4b",
+   "affinity": "Metal",
+   "name": "Dull",
+   "meaning": "blunt edges, theirs included",
+   "pair_axis": "force",
+   "profile": {
+    "heat": 0.008,
+    "motion": 0.091,
+    "force": -0.886,
+    "form": 0.548,
+    "vitality": 0.255,
+    "light": 0.126,
+    "mind": 0.024,
+    "extent": -0.619,
+    "duration": -0.042,
+    "binding": 0.089,
+    "direction": -0.079
+   }
+  },
+  {
+   "id": "MET-5a",
+   "affinity": "Metal",
+   "name": "Plate",
+   "meaning": "armour up",
+   "pair_axis": "form",
+   "profile": {
+    "heat": -0.111,
+    "motion": 0.569,
+    "force": 0.177,
+    "form": 0.8,
+    "vitality": 0.21,
+    "light": 0.447,
+    "mind": -0.757,
+    "extent": -0.406,
+    "duration": -0.63,
+    "binding": 0.527,
+    "direction": -0.54
+   }
+  },
+  {
+   "id": "MET-5b",
+   "affinity": "Metal",
+   "name": "Strip",
+   "meaning": "tear armour off",
+   "pair_axis": "form",
+   "profile": {
+    "heat": 0.446,
+    "motion": 0.025,
+    "force": 0.718,
+    "form": -0.8,
+    "vitality": -0.405,
+    "light": 0.057,
+    "mind": -0.807,
+    "extent": 0.316,
+    "duration": -0.507,
+    "binding": -0.345,
+    "direction": -0.015
+   }
+  },
+  {
+   "id": "BLD-1a",
+   "affinity": "Blood",
+   "name": "Bleed",
+   "meaning": "open wounds",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.709,
+    "motion": -0.356,
+    "force": 0.251,
+    "form": -0.593,
+    "vitality": -0.745,
+    "light": 0.382,
+    "mind": -0.413,
+    "extent": -0.038,
+    "duration": 0.394,
+    "binding": -0.255,
+    "direction": 0.8
+   }
+  },
+  {
+   "id": "BLD-1b",
+   "affinity": "Blood",
+   "name": "Staunch",
+   "meaning": "close them",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": -0.505,
+    "motion": 0.211,
+    "force": 0.041,
+    "form": 0.877,
+    "vitality": 0.428,
+    "light": -0.022,
+    "mind": 0.281,
+    "extent": -0.361,
+    "duration": 0.57,
+    "binding": -0.032,
+    "direction": -0.8
+   }
+  },
+  {
+   "id": "BLD-2a",
+   "affinity": "Blood",
+   "name": "Drink",
+   "meaning": "take blood in",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": -0.345,
+    "motion": 0.247,
+    "force": -0.518,
+    "form": 0.009,
+    "vitality": 0.012,
+    "light": 0.335,
+    "mind": 0.046,
+    "extent": -0.379,
+    "duration": -0.041,
+    "binding": -0.223,
+    "direction": -0.8
+   }
+  },
+  {
+   "id": "BLD-2b",
+   "affinity": "Blood",
+   "name": "Spill",
+   "meaning": "give it out, as a weapon or a gift",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.334,
+    "motion": 0.399,
+    "force": 0.611,
+    "form": 0.616,
+    "vitality": -0.101,
+    "light": -0.273,
+    "mind": 0.147,
+    "extent": 0.038,
+    "duration": -0.173,
+    "binding": -0.276,
+    "direction": 0.8
+   }
+  },
+  {
+   "id": "BLD-3a",
+   "affinity": "Blood",
+   "name": "Clot",
+   "meaning": "blood hardens: armour, blades, a stopped wound",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": 0.131,
+    "motion": -0.04,
+    "force": -0.116,
+    "form": -0.553,
+    "vitality": -0.517,
+    "light": 0.354,
+    "mind": -0.964,
+    "extent": -0.29,
+    "duration": -0.695,
+    "binding": 0.8,
+    "direction": 0.133
+   }
+  },
+  {
+   "id": "BLD-3b",
+   "affinity": "Blood",
+   "name": "Thin",
+   "meaning": "blood runs quick: speed, reach",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.279,
+    "motion": 0.809,
+    "force": -0.757,
+    "form": 0.529,
+    "vitality": 0.569,
+    "light": 0.363,
+    "mind": -0.77,
+    "extent": -0.333,
+    "duration": -0.414,
+    "binding": -0.8,
+    "direction": -0.516
+   }
+  },
+  {
+   "id": "BLD-4a",
+   "affinity": "Blood",
+   "name": "Pulse",
+   "meaning": "the heart pounds",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": 0.189,
+    "motion": 0.8,
+    "force": -0.691,
+    "form": 0.342,
+    "vitality": 0.53,
+    "light": 0.727,
+    "mind": -0.642,
+    "extent": -0.514,
+    "duration": -0.634,
+    "binding": 0.07,
+    "direction": -0.006
+   }
+  },
+  {
+   "id": "BLD-4b",
+   "affinity": "Blood",
+   "name": "Still",
+   "meaning": "the heart slows",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": 0.095,
+    "motion": -0.8,
+    "force": -0.644,
+    "form": 0.64,
+    "vitality": 0.643,
+    "light": 0.174,
+    "mind": -0.003,
+    "extent": -0.337,
+    "duration": 0.755,
+    "binding": -0.109,
+    "direction": -0.078
+   }
+  },
+  {
+   "id": "BLD-5a",
+   "affinity": "Blood",
+   "name": "Choke",
+   "meaning": "cut off breath",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": -0.234,
+    "motion": 0.128,
+    "force": 0.259,
+    "form": -0.523,
+    "vitality": -0.8,
+    "light": 0.167,
+    "mind": -0.1,
+    "extent": -0.328,
+    "duration": -0.513,
+    "binding": -0.202,
+    "direction": -0.438
+   }
+  },
+  {
+   "id": "BLD-5b",
+   "affinity": "Blood",
+   "name": "Breathe",
+   "meaning": "give breath; steady the body",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": 0.133,
+    "motion": -0.411,
+    "force": -0.723,
+    "form": 0.05,
+    "vitality": 0.8,
+    "light": 0.345,
+    "mind": 0.063,
+    "extent": -0.429,
+    "duration": -0.104,
+    "binding": 0.066,
+    "direction": -0.602
+   }
+  },
+  {
+   "id": "LIF-1a",
+   "affinity": "Life",
+   "name": "Heal",
+   "meaning": "restore health and close wounds",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": 0.37,
+    "motion": 0.074,
+    "force": -0.183,
+    "form": 0.374,
+    "vitality": 0.809,
+    "light": 0.025,
+    "mind": -0.56,
+    "extent": 0.321,
+    "duration": 0.855,
+    "binding": -0.232,
+    "direction": 0.026
+   }
+  },
+  {
+   "id": "LIF-1b",
+   "affinity": "Life",
+   "name": "Wither",
+   "meaning": "harm from within",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": 0.116,
+    "motion": -0.308,
+    "force": 0.28,
+    "form": -0.845,
+    "vitality": -0.8,
+    "light": -0.034,
+    "mind": 0.143,
+    "extent": 0.474,
+    "duration": 0.677,
+    "binding": -0.364,
+    "direction": 0.465
+   }
+  },
+  {
+   "id": "LIF-2a",
+   "affinity": "Life",
+   "name": "Renew",
+   "meaning": "restore vigour and stamina",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": -0.119,
+    "motion": 0.8,
+    "force": 0.287,
+    "form": -0.076,
+    "vitality": 0.792,
+    "light": 0.352,
+    "mind": -0.301,
+    "extent": 0.557,
+    "duration": 0.259,
+    "binding": 0.46,
+    "direction": 0.465
+   }
+  },
+  {
+   "id": "LIF-2b",
+   "affinity": "Life",
+   "name": "Exhaust",
+   "meaning": "drain stamina; fatigue",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": 0.55,
+    "motion": -0.8,
+    "force": -0.341,
+    "form": -0.388,
+    "vitality": 0.257,
+    "light": 0.468,
+    "mind": -0.807,
+    "extent": -0.208,
+    "duration": -0.427,
+    "binding": -0.02,
+    "direction": 0.52
+   }
+  },
+  {
+   "id": "LIF-3a",
+   "affinity": "Life",
+   "name": "Strengthen",
+   "meaning": "grow muscle and body",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.455,
+    "motion": 0.417,
+    "force": 0.8,
+    "form": 0.934,
+    "vitality": 0.887,
+    "light": 0.168,
+    "mind": -0.924,
+    "extent": 0.41,
+    "duration": 0.792,
+    "binding": 0.414,
+    "direction": -0.273
+   }
+  },
+  {
+   "id": "LIF-3b",
+   "affinity": "Life",
+   "name": "Weaken",
+   "meaning": "waste the body away",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.281,
+    "motion": 0.104,
+    "force": -0.8,
+    "form": -0.21,
+    "vitality": -0.109,
+    "light": -0.301,
+    "mind": -0.744,
+    "extent": 0.091,
+    "duration": 0.783,
+    "binding": -0.306,
+    "direction": 0.206
+   }
+  },
+  {
+   "id": "LIF-4a",
+   "affinity": "Life",
+   "name": "Cure",
+   "meaning": "end a sickness or a poison",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": -0.185,
+    "motion": -0.239,
+    "force": -0.142,
+    "form": -0.278,
+    "vitality": 0.8,
+    "light": -0.586,
+    "mind": -0.14,
+    "extent": 0.384,
+    "duration": 0.118,
+    "binding": -0.131,
+    "direction": 0.318
+   }
+  },
+  {
+   "id": "LIF-4b",
+   "affinity": "Life",
+   "name": "Sicken",
+   "meaning": "make ill",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": 0.344,
+    "motion": 0.152,
+    "force": -0.139,
+    "form": -0.726,
+    "vitality": -0.8,
+    "light": -0.082,
+    "mind": 0.668,
+    "extent": 0.481,
+    "duration": 0.116,
+    "binding": 0.073,
+    "direction": 0.232
+   }
+  },
+  {
+   "id": "LIF-5a",
+   "affinity": "Life",
+   "name": "Regrow",
+   "meaning": "restore what was lost, limbs included",
+   "pair_axis": "form",
+   "profile": {
+    "heat": 0.238,
+    "motion": -0.287,
+    "force": 0.158,
+    "form": 0.8,
+    "vitality": -0.054,
+    "light": 0.033,
+    "mind": -0.725,
+    "extent": 0.282,
+    "duration": -0.125,
+    "binding": -0.321,
+    "direction": -0.093
+   }
+  },
+  {
+   "id": "LIF-5b",
+   "affinity": "Life",
+   "name": "Arrest",
+   "meaning": "stop healing",
+   "pair_axis": "form",
+   "profile": {
+    "heat": 0.257,
+    "motion": 0.056,
+    "force": 0.632,
+    "form": -0.8,
+    "vitality": -0.063,
+    "light": -0.459,
+    "mind": 0.09,
+    "extent": 0.214,
+    "duration": -0.54,
+    "binding": -0.434,
+    "direction": 0.665
+   }
+  },
+  {
+   "id": "DTH-1a",
+   "affinity": "Death",
+   "name": "Kill",
+   "meaning": "finish the dying",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": 0.569,
+    "motion": 0.055,
+    "force": 0.699,
+    "form": -0.452,
+    "vitality": -0.895,
+    "light": -0.456,
+    "mind": 0.63,
+    "extent": -0.424,
+    "duration": 0.199,
+    "binding": 0.242,
+    "direction": -0.269
+   }
+  },
+  {
+   "id": "DTH-1b",
+   "affinity": "Death",
+   "name": "Spare",
+   "meaning": "hold a life at the edge, for capture or mercy",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": 0.135,
+    "motion": -0.485,
+    "force": -0.087,
+    "form": 0.758,
+    "vitality": 0.8,
+    "light": -0.244,
+    "mind": 0.368,
+    "extent": -0.617,
+    "duration": 0.234,
+    "binding": -0.008,
+    "direction": -0.635
+   }
+  },
+  {
+   "id": "DTH-2a",
+   "affinity": "Death",
+   "name": "Animate",
+   "meaning": "the dead get up",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": 0.027,
+    "motion": 0.8,
+    "force": 0.426,
+    "form": 0.338,
+    "vitality": -0.264,
+    "light": -0.088,
+    "mind": 0.433,
+    "extent": -0.348,
+    "duration": 0.38,
+    "binding": 0.117,
+    "direction": -0.775
+   }
+  },
+  {
+   "id": "DTH-2b",
+   "affinity": "Death",
+   "name": "Lay",
+   "meaning": "put them down for good",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": -0.087,
+    "motion": -0.8,
+    "force": -0.048,
+    "form": 0.81,
+    "vitality": -0.083,
+    "light": 0.015,
+    "mind": 0.043,
+    "extent": -0.362,
+    "duration": 0.598,
+    "binding": -0.004,
+    "direction": -0.837
+   }
+  },
+  {
+   "id": "DTH-3a",
+   "affinity": "Death",
+   "name": "Rot",
+   "meaning": "decay",
+   "pair_axis": "form",
+   "profile": {
+    "heat": 0.586,
+    "motion": -0.563,
+    "force": -0.658,
+    "form": -0.954,
+    "vitality": -0.86,
+    "light": -0.062,
+    "mind": -0.817,
+    "extent": 0.469,
+    "duration": 0.249,
+    "binding": 0.066,
+    "direction": 0.761
+   }
+  },
+  {
+   "id": "DTH-3b",
+   "affinity": "Death",
+   "name": "Preserve",
+   "meaning": "stop decay, the user's own body included",
+   "pair_axis": "form",
+   "profile": {
+    "heat": -0.208,
+    "motion": -0.101,
+    "force": -0.196,
+    "form": 0.927,
+    "vitality": 0.78,
+    "light": -0.183,
+    "mind": -0.429,
+    "extent": -0.205,
+    "duration": 0.533,
+    "binding": -0.366,
+    "direction": -0.274
+   }
+  },
+  {
+   "id": "DTH-4a",
+   "affinity": "Death",
+   "name": "Haunt",
+   "meaning": "what dies lingers as a spirit",
+   "pair_axis": "duration",
+   "profile": {
+    "heat": -0.156,
+    "motion": -0.867,
+    "force": -0.259,
+    "form": -0.801,
+    "vitality": -0.385,
+    "light": -0.647,
+    "mind": 0.897,
+    "extent": 0.322,
+    "duration": 0.857,
+    "binding": 0.559,
+    "direction": 0.186
+   }
+  },
+  {
+   "id": "DTH-4b",
+   "affinity": "Death",
+   "name": "Exorcise",
+   "meaning": "banish spirits and constructs",
+   "pair_axis": "duration",
+   "profile": {
+    "heat": -0.667,
+    "motion": -0.831,
+    "force": -0.529,
+    "form": -0.769,
+    "vitality": -0.155,
+    "light": -0.772,
+    "mind": 0.781,
+    "extent": 0.415,
+    "duration": -0.8,
+    "binding": 0.105,
+    "direction": 0.305
+   }
+  },
+  {
+   "id": "DTH-5a",
+   "affinity": "Death",
+   "name": "Vanish",
+   "meaning": "pass out of sight and reach",
+   "pair_axis": "light",
+   "profile": {
+    "heat": -0.275,
+    "motion": -0.265,
+    "force": 0.401,
+    "form": -0.677,
+    "vitality": -0.151,
+    "light": -0.8,
+    "mind": 0.767,
+    "extent": 0.05,
+    "duration": 0.211,
+    "binding": -0.144,
+    "direction": -0.432
+   }
+  },
+  {
+   "id": "DTH-5b",
+   "affinity": "Death",
+   "name": "Manifest",
+   "meaning": "appear; take form",
+   "pair_axis": "light",
+   "profile": {
+    "heat": -0.038,
+    "motion": -0.177,
+    "force": -0.17,
+    "form": 0.84,
+    "vitality": 0.343,
+    "light": 0.8,
+    "mind": -0.035,
+    "extent": -0.352,
+    "duration": 0.267,
+    "binding": 0.27,
+    "direction": 0.237
+   }
+  },
+  {
+   "id": "NAT-1a",
+   "affinity": "Nature",
+   "name": "Grow",
+   "meaning": "make a thing larger and stronger",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": -0.292,
+    "motion": 0.67,
+    "force": -0.49,
+    "form": 0.875,
+    "vitality": 0.946,
+    "light": 0.152,
+    "mind": 0.503,
+    "extent": 0.8,
+    "duration": 0.803,
+    "binding": 0.135,
+    "direction": -0.572
+   }
+  },
+  {
+   "id": "NAT-1b",
+   "affinity": "Nature",
+   "name": "Shrink",
+   "meaning": "make it smaller",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": -0.512,
+    "motion": 0.575,
+    "force": -0.067,
+    "form": 0.541,
+    "vitality": 0.728,
+    "light": -0.091,
+    "mind": -0.005,
+    "extent": -0.8,
+    "duration": 0.598,
+    "binding": -0.322,
+    "direction": -0.453
+   }
+  },
+  {
+   "id": "NAT-2a",
+   "affinity": "Nature",
+   "name": "Sprout",
+   "meaning": "grow plants from the ground",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": -0.165,
+    "motion": -0.104,
+    "force": -0.63,
+    "form": -0.385,
+    "vitality": 0.8,
+    "light": 0.414,
+    "mind": -0.344,
+    "extent": 0.717,
+    "duration": 0.517,
+    "binding": 0.006,
+    "direction": -0.061
+   }
+  },
+  {
+   "id": "NAT-2b",
+   "affinity": "Nature",
+   "name": "Wilt",
+   "meaning": "kill plants; clear ground",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": 0.458,
+    "motion": -0.266,
+    "force": 0.188,
+    "form": -0.499,
+    "vitality": -0.8,
+    "light": 0.013,
+    "mind": 0.004,
+    "extent": 0.406,
+    "duration": 0.321,
+    "binding": -0.022,
+    "direction": -0.03
+   }
+  },
+  {
+   "id": "NAT-3a",
+   "affinity": "Nature",
+   "name": "Flourish",
+   "meaning": "thrive: strengthen what grows",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": -0.101,
+    "motion": 0.05,
+    "force": -0.594,
+    "form": 0.082,
+    "vitality": 0.818,
+    "light": -0.129,
+    "mind": 0.206,
+    "extent": 0.871,
+    "duration": 0.901,
+    "binding": 0.699,
+    "direction": -0.043
+   }
+  },
+  {
+   "id": "NAT-3b",
+   "affinity": "Nature",
+   "name": "Blight",
+   "meaning": "a sickness of growing things",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": 0.2,
+    "motion": -0.255,
+    "force": -0.632,
+    "form": -0.5,
+    "vitality": -0.8,
+    "light": -0.245,
+    "mind": 0.319,
+    "extent": 0.758,
+    "duration": -0.026,
+    "binding": -0.173,
+    "direction": 0.262
+   }
+  },
+  {
+   "id": "NAT-4a",
+   "affinity": "Nature",
+   "name": "Harvest",
+   "meaning": "take what has grown, and its yield",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": -0.607,
+    "motion": 0.617,
+    "force": -0.526,
+    "form": 0.43,
+    "vitality": 0.734,
+    "light": 0.072,
+    "mind": 0.069,
+    "extent": -0.201,
+    "duration": 0.683,
+    "binding": -0.283,
+    "direction": -0.8
+   }
+  },
+  {
+   "id": "NAT-4b",
+   "affinity": "Nature",
+   "name": "Sow",
+   "meaning": "plant it to act later",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": -0.05,
+    "motion": 0.107,
+    "force": 0.473,
+    "form": 0.428,
+    "vitality": -0.356,
+    "light": -0.345,
+    "mind": -0.066,
+    "extent": 0.24,
+    "duration": 0.423,
+    "binding": -0.376,
+    "direction": 0.8
+   }
+  },
+  {
+   "id": "NAT-5a",
+   "affinity": "Nature",
+   "name": "Tangle",
+   "meaning": "vines bind",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": 0.06,
+    "motion": -0.371,
+    "force": -0.436,
+    "form": -0.503,
+    "vitality": -0.495,
+    "light": -0.522,
+    "mind": -0.749,
+    "extent": 0.39,
+    "duration": 0.705,
+    "binding": 0.8,
+    "direction": 0.103
+   }
+  },
+  {
+   "id": "NAT-5b",
+   "affinity": "Nature",
+   "name": "Unravel",
+   "meaning": "free what is bound",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.481,
+    "motion": -0.081,
+    "force": 0.506,
+    "form": -0.503,
+    "vitality": 0.016,
+    "light": -0.619,
+    "mind": 0.1,
+    "extent": 0.363,
+    "duration": 0.778,
+    "binding": -0.8,
+    "direction": -0.139
+   }
+  },
+  {
+   "id": "LGT-1a",
+   "affinity": "Light",
+   "name": "Shine",
+   "meaning": "illuminate",
+   "pair_axis": "light",
+   "profile": {
+    "heat": 0.725,
+    "motion": -0.383,
+    "force": -0.862,
+    "form": -0.736,
+    "vitality": 0.273,
+    "light": 0.891,
+    "mind": 0.634,
+    "extent": -0.324,
+    "duration": -0.486,
+    "binding": 0.498,
+    "direction": -0.094
+   }
+  },
+  {
+   "id": "LGT-1b",
+   "affinity": "Light",
+   "name": "Dim",
+   "meaning": "dull the light",
+   "pair_axis": "light",
+   "profile": {
+    "heat": 0.191,
+    "motion": -0.44,
+    "force": -0.985,
+    "form": -0.29,
+    "vitality": 0.338,
+    "light": -0.8,
+    "mind": 0.59,
+    "extent": -0.349,
+    "duration": -0.455,
+    "binding": 0.132,
+    "direction": 0.166
+   }
+  },
+  {
+   "id": "LGT-2a",
+   "affinity": "Light",
+   "name": "Flash",
+   "meaning": "a sudden burst of light",
+   "pair_axis": "duration",
+   "profile": {
+    "heat": 0.479,
+    "motion": 0.57,
+    "force": 0.055,
+    "form": -0.646,
+    "vitality": -0.504,
+    "light": 0.826,
+    "mind": 0.454,
+    "extent": 0.167,
+    "duration": -0.997,
+    "binding": -0.423,
+    "direction": 0.56
+   }
+  },
+  {
+   "id": "LGT-2b",
+   "affinity": "Light",
+   "name": "Glow",
+   "meaning": "a steady soft light",
+   "pair_axis": "duration",
+   "profile": {
+    "heat": 0.271,
+    "motion": -0.296,
+    "force": -0.989,
+    "form": -0.199,
+    "vitality": 0.58,
+    "light": 0.954,
+    "mind": -0.023,
+    "extent": -0.268,
+    "duration": 0.8,
+    "binding": -0.056,
+    "direction": 0.351
+   }
+  },
+  {
+   "id": "LGT-3a",
+   "affinity": "Light",
+   "name": "Radiate",
+   "meaning": "send light and heat outward",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.798,
+    "motion": -0.142,
+    "force": -0.767,
+    "form": -0.652,
+    "vitality": 0.027,
+    "light": 0.889,
+    "mind": -0.594,
+    "extent": 0.241,
+    "duration": -0.251,
+    "binding": 0.013,
+    "direction": 0.923
+   }
+  },
+  {
+   "id": "LGT-3b",
+   "affinity": "Light",
+   "name": "Absorb",
+   "meaning": "draw light and heat in",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.725,
+    "motion": 0.209,
+    "force": -0.786,
+    "form": -0.337,
+    "vitality": 0.447,
+    "light": 0.856,
+    "mind": -0.318,
+    "extent": -0.334,
+    "duration": 0.019,
+    "binding": -0.058,
+    "direction": -0.8
+   }
+  },
+  {
+   "id": "LGT-4a",
+   "affinity": "Light",
+   "name": "Glare",
+   "meaning": "a blinding glare",
+   "pair_axis": "mind",
+   "profile": {
+    "heat": 0.418,
+    "motion": -0.649,
+    "force": -0.662,
+    "form": -0.905,
+    "vitality": -0.513,
+    "light": 0.714,
+    "mind": -0.8,
+    "extent": 0.487,
+    "duration": -0.91,
+    "binding": 0.021,
+    "direction": 0.656
+   }
+  },
+  {
+   "id": "LGT-4b",
+   "affinity": "Light",
+   "name": "Clarity",
+   "meaning": "restore and sharpen sight",
+   "pair_axis": "mind",
+   "profile": {
+    "heat": -0.57,
+    "motion": -0.164,
+    "force": -0.775,
+    "form": 0.51,
+    "vitality": 0.741,
+    "light": 0.218,
+    "mind": 0.8,
+    "extent": -0.454,
+    "duration": -0.671,
+    "binding": 0.215,
+    "direction": 0.06
+   }
+  },
+  {
+   "id": "LGT-5a",
+   "affinity": "Light",
+   "name": "Reflect",
+   "meaning": "turn light, and shots, back",
+   "pair_axis": "form",
+   "profile": {
+    "heat": 0.024,
+    "motion": 0.513,
+    "force": -0.803,
+    "form": 0.8,
+    "vitality": 0.818,
+    "light": 0.615,
+    "mind": 0.621,
+    "extent": -0.523,
+    "duration": -0.049,
+    "binding": -0.16,
+    "direction": -0.206
+   }
+  },
+  {
+   "id": "LGT-5b",
+   "affinity": "Light",
+   "name": "Bend",
+   "meaning": "bend light: false images, or nothing",
+   "pair_axis": "form",
+   "profile": {
+    "heat": 0.139,
+    "motion": 0.222,
+    "force": -0.681,
+    "form": -0.8,
+    "vitality": 0.048,
+    "light": 0.19,
+    "mind": 0.324,
+    "extent": -0.512,
+    "duration": -0.356,
+    "binding": 0.056,
+    "direction": 0.065
+   }
+  },
+  {
+   "id": "DRM-1a",
+   "affinity": "Dream",
+   "name": "Sleep",
+   "meaning": "put to sleep",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": -0.266,
+    "motion": -0.8,
+    "force": -0.471,
+    "form": 0.029,
+    "vitality": 0.166,
+    "light": -0.069,
+    "mind": 0.672,
+    "extent": -0.383,
+    "duration": 0.168,
+    "binding": -0.132,
+    "direction": -0.556
+   }
+  },
+  {
+   "id": "DRM-1b",
+   "affinity": "Dream",
+   "name": "Wake",
+   "meaning": "rouse; break a trance",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": -0.47,
+    "motion": 0.8,
+    "force": 0.704,
+    "form": -0.637,
+    "vitality": 0.008,
+    "light": -0.752,
+    "mind": 0.806,
+    "extent": -0.034,
+    "duration": -0.416,
+    "binding": -0.11,
+    "direction": -0.328
+   }
+  },
+  {
+   "id": "DRM-2a",
+   "affinity": "Dream",
+   "name": "Conjure",
+   "meaning": "an illusion",
+   "pair_axis": "form",
+   "profile": {
+    "heat": -0.449,
+    "motion": -0.723,
+    "force": -0.649,
+    "form": 0.8,
+    "vitality": 0.457,
+    "light": -0.403,
+    "mind": 0.944,
+    "extent": 0.284,
+    "duration": -0.715,
+    "binding": 0.602,
+    "direction": -0.348
+   }
+  },
+  {
+   "id": "DRM-2b",
+   "affinity": "Dream",
+   "name": "Dispel",
+   "meaning": "break illusions",
+   "pair_axis": "form",
+   "profile": {
+    "heat": -0.352,
+    "motion": -0.539,
+    "force": 0.128,
+    "form": -0.8,
+    "vitality": 0.651,
+    "light": -0.79,
+    "mind": 0.803,
+    "extent": 0.346,
+    "duration": 0.512,
+    "binding": 0.107,
+    "direction": -0.142
+   }
+  },
+  {
+   "id": "DRM-3a",
+   "affinity": "Dream",
+   "name": "Dread",
+   "meaning": "terror",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.467,
+    "motion": -0.643,
+    "force": 0.8,
+    "form": -0.288,
+    "vitality": -0.515,
+    "light": -0.909,
+    "mind": 0.804,
+    "extent": 0.685,
+    "duration": 0.161,
+    "binding": 0.516,
+    "direction": 0.434
+   }
+  },
+  {
+   "id": "DRM-3b",
+   "affinity": "Dream",
+   "name": "Soothe",
+   "meaning": "calm, bliss",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.479,
+    "motion": -0.765,
+    "force": -0.901,
+    "form": -0.51,
+    "vitality": 0.589,
+    "light": -0.368,
+    "mind": 0.586,
+    "extent": 0.29,
+    "duration": -0.081,
+    "binding": -0.06,
+    "direction": 0.474
+   }
+  },
+  {
+   "id": "DRM-4a",
+   "affinity": "Dream",
+   "name": "Mimic",
+   "meaning": "take another's look or voice",
+   "pair_axis": "light",
+   "profile": {
+    "heat": -0.252,
+    "motion": 0.518,
+    "force": -0.487,
+    "form": 0.821,
+    "vitality": 0.525,
+    "light": -0.8,
+    "mind": 0.545,
+    "extent": -0.169,
+    "duration": -0.612,
+    "binding": 0.126,
+    "direction": -0.416
+   }
+  },
+  {
+   "id": "DRM-4b",
+   "affinity": "Dream",
+   "name": "Unmask",
+   "meaning": "reveal a disguise",
+   "pair_axis": "light",
+   "profile": {
+    "heat": -0.526,
+    "motion": -0.364,
+    "force": -0.118,
+    "form": -0.677,
+    "vitality": -0.448,
+    "light": 0.8,
+    "mind": -0.098,
+    "extent": 0.191,
+    "duration": -0.187,
+    "binding": 0.321,
+    "direction": -0.305
+   }
+  },
+  {
+   "id": "DRM-5a",
+   "affinity": "Dream",
+   "name": "Whisper",
+   "meaning": "plant a command",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.39,
+    "motion": -0.479,
+    "force": -0.259,
+    "form": 0.242,
+    "vitality": -0.376,
+    "light": -0.051,
+    "mind": 0.108,
+    "extent": -0.315,
+    "duration": -0.35,
+    "binding": 0.077,
+    "direction": 0.8
+   }
+  },
+  {
+   "id": "DRM-5b",
+   "affinity": "Dream",
+   "name": "Shut",
+   "meaning": "close the mind to others",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": -0.367,
+    "motion": -0.232,
+    "force": 0.696,
+    "form": 0.686,
+    "vitality": 0.096,
+    "light": -0.251,
+    "mind": 0.776,
+    "extent": -0.415,
+    "duration": 0.435,
+    "binding": -0.495,
+    "direction": -0.8
+   }
+  },
+  {
+   "id": "POI-1a",
+   "affinity": "Poison",
+   "name": "Poison",
+   "meaning": "dose a target",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": 0.033,
+    "motion": 0.414,
+    "force": 0.085,
+    "form": 0.134,
+    "vitality": -0.8,
+    "light": -0.135,
+    "mind": -0.238,
+    "extent": -0.33,
+    "duration": -0.149,
+    "binding": 0.016,
+    "direction": 0.166
+   }
+  },
+  {
+   "id": "POI-1b",
+   "affinity": "Poison",
+   "name": "Purge",
+   "meaning": "clear doses",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": -0.208,
+    "motion": -0.167,
+    "force": -0.035,
+    "form": 0.103,
+    "vitality": 0.8,
+    "light": -0.051,
+    "mind": -0.149,
+    "extent": 0.351,
+    "duration": -0.078,
+    "binding": -0.555,
+    "direction": 0.235
+   }
+  },
+  {
+   "id": "POI-2a",
+   "affinity": "Poison",
+   "name": "Contaminate",
+   "meaning": "foul an area or a thing",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": 0.417,
+    "motion": -0.314,
+    "force": 0.172,
+    "form": -0.569,
+    "vitality": -0.8,
+    "light": -0.262,
+    "mind": 0.231,
+    "extent": 0.521,
+    "duration": 0.363,
+    "binding": -0.121,
+    "direction": 0.27
+   }
+  },
+  {
+   "id": "POI-2b",
+   "affinity": "Poison",
+   "name": "Cleanse",
+   "meaning": "make it clean again",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": 0.019,
+    "motion": 0.232,
+    "force": 0.113,
+    "form": 0.1,
+    "vitality": 0.8,
+    "light": 0.088,
+    "mind": 0.259,
+    "extent": -0.175,
+    "duration": 0.602,
+    "binding": -0.431,
+    "direction": -0.147
+   }
+  },
+  {
+   "id": "POI-3a",
+   "affinity": "Poison",
+   "name": "Corrode",
+   "meaning": "acid that eats armour and metal",
+   "pair_axis": "form",
+   "profile": {
+    "heat": 0.244,
+    "motion": -0.115,
+    "force": -0.215,
+    "form": -0.818,
+    "vitality": -0.801,
+    "light": 0.228,
+    "mind": -0.863,
+    "extent": 0.417,
+    "duration": -0.431,
+    "binding": 0.436,
+    "direction": 0.543
+   }
+  },
+  {
+   "id": "POI-3b",
+   "affinity": "Poison",
+   "name": "Neutralise",
+   "meaning": "render a poison or acid harmless",
+   "pair_axis": "form",
+   "profile": {
+    "heat": 0.167,
+    "motion": -0.703,
+    "force": -0.063,
+    "form": 0.8,
+    "vitality": -0.831,
+    "light": -0.323,
+    "mind": -0.551,
+    "extent": 0.191,
+    "duration": -0.265,
+    "binding": 0.194,
+    "direction": 0.382
+   }
+  },
+  {
+   "id": "POI-4a",
+   "affinity": "Poison",
+   "name": "Linger",
+   "meaning": "leave residue that stays",
+   "pair_axis": "duration",
+   "profile": {
+    "heat": -0.333,
+    "motion": -0.896,
+    "force": -0.757,
+    "form": -0.784,
+    "vitality": -0.108,
+    "light": -0.301,
+    "mind": 0.369,
+    "extent": -0.167,
+    "duration": 0.982,
+    "binding": 0.16,
+    "direction": -0.037
+   }
+  },
+  {
+   "id": "POI-4b",
+   "affinity": "Poison",
+   "name": "Flush",
+   "meaning": "clean an area out",
+   "pair_axis": "duration",
+   "profile": {
+    "heat": 0.36,
+    "motion": 0.211,
+    "force": 0.514,
+    "form": 0.676,
+    "vitality": 0.173,
+    "light": -0.059,
+    "mind": 0.001,
+    "extent": 0.253,
+    "duration": -0.8,
+    "binding": -0.235,
+    "direction": -0.183
+   }
+  },
+  {
+   "id": "POI-5a",
+   "affinity": "Poison",
+   "name": "Sap",
+   "meaning": "weaken",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.602,
+    "motion": 0.459,
+    "force": -0.8,
+    "form": -0.664,
+    "vitality": -0.174,
+    "light": -0.044,
+    "mind": -0.278,
+    "extent": 0.433,
+    "duration": 0.42,
+    "binding": -0.001,
+    "direction": 0.474
+   }
+  },
+  {
+   "id": "POI-5b",
+   "affinity": "Poison",
+   "name": "Stimulate",
+   "meaning": "strengthen (poison as a drug)",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.466,
+    "motion": 0.576,
+    "force": 0.8,
+    "form": 0.568,
+    "vitality": 0.628,
+    "light": -0.007,
+    "mind": -0.594,
+    "extent": 0.506,
+    "duration": 0.308,
+    "binding": -0.142,
+    "direction": 0.19
+   }
+  },
+  {
+   "id": "DIS-1a",
+   "affinity": "Disease",
+   "name": "Infect",
+   "meaning": "give a disease",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": 0.158,
+    "motion": -0.011,
+    "force": -0.324,
+    "form": -0.007,
+    "vitality": -0.8,
+    "light": -0.175,
+    "mind": -0.251,
+    "extent": 0.631,
+    "duration": 0.531,
+    "binding": -0.0,
+    "direction": -0.11
+   }
+  },
+  {
+   "id": "DIS-1b",
+   "affinity": "Disease",
+   "name": "Disinfect",
+   "meaning": "kill it",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": 0.702,
+    "motion": -0.522,
+    "force": 0.709,
+    "form": -0.886,
+    "vitality": 0.8,
+    "light": -0.257,
+    "mind": -0.037,
+    "extent": 0.292,
+    "duration": -0.275,
+    "binding": 0.066,
+    "direction": 0.547
+   }
+  },
+  {
+   "id": "DIS-2a",
+   "affinity": "Disease",
+   "name": "Spread",
+   "meaning": "it jumps body to body",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": 0.247,
+    "motion": 0.078,
+    "force": -0.014,
+    "form": 0.538,
+    "vitality": -0.11,
+    "light": -0.248,
+    "mind": -0.922,
+    "extent": 0.872,
+    "duration": -0.179,
+    "binding": -0.451,
+    "direction": 0.194
+   }
+  },
+  {
+   "id": "DIS-2b",
+   "affinity": "Disease",
+   "name": "Contain",
+   "meaning": "it stays in one body",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": -0.067,
+    "motion": -0.59,
+    "force": -0.446,
+    "form": 0.785,
+    "vitality": 0.389,
+    "light": 0.128,
+    "mind": -0.925,
+    "extent": -0.8,
+    "duration": 0.626,
+    "binding": -0.205,
+    "direction": 0.191
+   }
+  },
+  {
+   "id": "DIS-3a",
+   "affinity": "Disease",
+   "name": "Fester",
+   "meaning": "wounds rot",
+   "pair_axis": "duration",
+   "profile": {
+    "heat": 0.821,
+    "motion": -0.824,
+    "force": -0.202,
+    "form": -0.964,
+    "vitality": -0.891,
+    "light": -0.63,
+    "mind": -0.744,
+    "extent": 0.633,
+    "duration": 0.906,
+    "binding": 0.146,
+    "direction": 0.655
+   }
+  },
+  {
+   "id": "DIS-3b",
+   "affinity": "Disease",
+   "name": "Lance",
+   "meaning": "open and drain a festering wound",
+   "pair_axis": "duration",
+   "profile": {
+    "heat": 0.291,
+    "motion": 0.134,
+    "force": 0.38,
+    "form": 0.006,
+    "vitality": -0.281,
+    "light": 0.046,
+    "mind": -0.708,
+    "extent": -0.211,
+    "duration": -0.8,
+    "binding": -0.093,
+    "direction": 0.097
+   }
+  },
+  {
+   "id": "DIS-4a",
+   "affinity": "Disease",
+   "name": "Billow",
+   "meaning": "spread the cloud",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": 0.504,
+    "motion": -0.346,
+    "force": 0.072,
+    "form": -0.719,
+    "vitality": -0.512,
+    "light": -0.541,
+    "mind": -0.217,
+    "extent": 0.967,
+    "duration": 0.106,
+    "binding": -0.16,
+    "direction": 0.662
+   }
+  },
+  {
+   "id": "DIS-4b",
+   "affinity": "Disease",
+   "name": "Clear",
+   "meaning": "disperse it",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": 0.546,
+    "motion": -0.204,
+    "force": 0.562,
+    "form": -0.154,
+    "vitality": -0.515,
+    "light": -0.023,
+    "mind": -0.272,
+    "extent": -0.8,
+    "duration": -0.11,
+    "binding": -0.33,
+    "direction": 0.311
+   }
+  },
+  {
+   "id": "DIS-5a",
+   "affinity": "Disease",
+   "name": "Overrun",
+   "meaning": "overwhelm the body's defences",
+   "pair_axis": "force",
+   "profile": {
+    "heat": 0.295,
+    "motion": -0.354,
+    "force": 0.823,
+    "form": -0.193,
+    "vitality": -0.566,
+    "light": -0.43,
+    "mind": -0.288,
+    "extent": 0.359,
+    "duration": -0.019,
+    "binding": -0.432,
+    "direction": -0.091
+   }
+  },
+  {
+   "id": "DIS-5b",
+   "affinity": "Disease",
+   "name": "Immunise",
+   "meaning": "build resistance",
+   "pair_axis": "force",
+   "profile": {
+    "heat": 0.493,
+    "motion": 0.151,
+    "force": -0.8,
+    "form": 0.689,
+    "vitality": 0.082,
+    "light": -0.258,
+    "mind": 0.102,
+    "extent": 0.685,
+    "duration": 0.395,
+    "binding": 0.403,
+    "direction": 0.045
+   }
+  },
+  {
+   "id": "UNI-01a",
+   "affinity": "Universal",
+   "name": "Motion",
+   "meaning": "it travels, or moves what it touches",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": -0.325,
+    "motion": 0.8,
+    "force": -0.402,
+    "form": 0.622,
+    "vitality": 0.523,
+    "light": 0.489,
+    "mind": -0.301,
+    "extent": -0.243,
+    "duration": -0.902,
+    "binding": 0.029,
+    "direction": 0.442
+   }
+  },
+  {
+   "id": "UNI-01b",
+   "affinity": "Universal",
+   "name": "Stillness",
+   "meaning": "it is held in place; what it touches is held",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": -0.345,
+    "motion": -0.941,
+    "force": -0.701,
+    "form": -0.137,
+    "vitality": 0.258,
+    "light": -0.153,
+    "mind": 0.337,
+    "extent": -0.236,
+    "duration": -0.007,
+    "binding": 0.59,
+    "direction": -0.008
+   }
+  },
+  {
+   "id": "UNI-02a",
+   "affinity": "Universal",
+   "name": "Haste",
+   "meaning": "sooner and faster",
+   "pair_axis": "duration",
+   "profile": {
+    "heat": 0.019,
+    "motion": 0.759,
+    "force": -0.076,
+    "form": -0.502,
+    "vitality": 0.052,
+    "light": 0.052,
+    "mind": 0.535,
+    "extent": -0.045,
+    "duration": -0.8,
+    "binding": -0.184,
+    "direction": 0.334
+   }
+  },
+  {
+   "id": "UNI-02b",
+   "affinity": "Universal",
+   "name": "Delay",
+   "meaning": "later: delayed, built up",
+   "pair_axis": "duration",
+   "profile": {
+    "heat": -0.523,
+    "motion": 0.661,
+    "force": 0.453,
+    "form": 0.825,
+    "vitality": 0.203,
+    "light": -0.43,
+    "mind": 0.271,
+    "extent": -0.526,
+    "duration": 0.8,
+    "binding": -0.668,
+    "direction": 0.218
+   }
+  },
+  {
+   "id": "UNI-03a",
+   "affinity": "Universal",
+   "name": "Curve",
+   "meaning": "it bends and seeks",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": -0.523,
+    "motion": 0.63,
+    "force": -0.636,
+    "form": 0.655,
+    "vitality": 0.269,
+    "light": 0.332,
+    "mind": -0.47,
+    "extent": 0.8,
+    "duration": -0.698,
+    "binding": 0.185,
+    "direction": 0.709
+   }
+  },
+  {
+   "id": "UNI-03b",
+   "affinity": "Universal",
+   "name": "Straight",
+   "meaning": "a true line that cannot be turned aside",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": -0.281,
+    "motion": 0.535,
+    "force": 0.191,
+    "form": 0.827,
+    "vitality": 0.598,
+    "light": -0.272,
+    "mind": 0.549,
+    "extent": -0.8,
+    "duration": 0.319,
+    "binding": 0.007,
+    "direction": -0.678
+   }
+  },
+  {
+   "id": "UNI-04a",
+   "affinity": "Universal",
+   "name": "Rise",
+   "meaning": "lifts",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.614,
+    "motion": 0.584,
+    "force": -0.8,
+    "form": 0.09,
+    "vitality": 0.458,
+    "light": 0.031,
+    "mind": -0.128,
+    "extent": 0.5,
+    "duration": -0.335,
+    "binding": -0.394,
+    "direction": 0.2
+   }
+  },
+  {
+   "id": "UNI-04b",
+   "affinity": "Universal",
+   "name": "Fall",
+   "meaning": "brings down, knocks flat",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.485,
+    "motion": 0.381,
+    "force": 0.8,
+    "form": 0.095,
+    "vitality": 0.076,
+    "light": 0.251,
+    "mind": 0.132,
+    "extent": -0.327,
+    "duration": -0.406,
+    "binding": -0.189,
+    "direction": -0.666
+   }
+  },
+  {
+   "id": "UNI-05a",
+   "affinity": "Universal",
+   "name": "Expand",
+   "meaning": "grows outward, bigger",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": -0.295,
+    "motion": 0.712,
+    "force": 0.036,
+    "form": 0.896,
+    "vitality": 0.931,
+    "light": 0.13,
+    "mind": -0.177,
+    "extent": 0.8,
+    "duration": 0.505,
+    "binding": 0.139,
+    "direction": 0.331
+   }
+  },
+  {
+   "id": "UNI-05b",
+   "affinity": "Universal",
+   "name": "Contract",
+   "meaning": "draws inward, smaller and denser",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": 0.129,
+    "motion": 0.391,
+    "force": -0.131,
+    "form": 0.904,
+    "vitality": 0.51,
+    "light": 0.62,
+    "mind": -0.474,
+    "extent": -0.8,
+    "duration": 0.252,
+    "binding": 0.164,
+    "direction": -0.042
+   }
+  },
+  {
+   "id": "UNI-06a",
+   "affinity": "Universal",
+   "name": "Near",
+   "meaning": "close, and stronger close",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": 0.065,
+    "motion": 0.249,
+    "force": 0.59,
+    "form": 0.942,
+    "vitality": 0.469,
+    "light": 0.07,
+    "mind": 0.156,
+    "extent": -0.8,
+    "duration": 0.663,
+    "binding": 0.235,
+    "direction": -0.203
+   }
+  },
+  {
+   "id": "UNI-06b",
+   "affinity": "Universal",
+   "name": "Far",
+   "meaning": "at a distance, with reach",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": 0.243,
+    "motion": 0.652,
+    "force": 0.485,
+    "form": 0.899,
+    "vitality": 0.796,
+    "light": 0.028,
+    "mind": 0.515,
+    "extent": 0.8,
+    "duration": 0.77,
+    "binding": -0.08,
+    "direction": -0.135
+   }
+  },
+  {
+   "id": "UNI-07a",
+   "affinity": "Universal",
+   "name": "Focus",
+   "meaning": "concentrated on a point or an edge",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": -0.008,
+    "motion": 0.411,
+    "force": -0.111,
+    "form": 0.949,
+    "vitality": 0.868,
+    "light": 0.388,
+    "mind": 0.308,
+    "extent": -0.894,
+    "duration": 0.339,
+    "binding": 0.036,
+    "direction": -0.493
+   }
+  },
+  {
+   "id": "UNI-07b",
+   "affinity": "Universal",
+   "name": "Scatter",
+   "meaning": "spread wide",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": 0.48,
+    "motion": 0.031,
+    "force": 0.241,
+    "form": -0.896,
+    "vitality": -0.509,
+    "light": -0.234,
+    "mind": -0.606,
+    "extent": 0.952,
+    "duration": -0.215,
+    "binding": -0.057,
+    "direction": 0.223
+   }
+  },
+  {
+   "id": "UNI-08a",
+   "affinity": "Universal",
+   "name": "One",
+   "meaning": "a single target takes all of it",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": -0.027,
+    "motion": 0.342,
+    "force": 0.551,
+    "form": 0.912,
+    "vitality": 0.414,
+    "light": 0.06,
+    "mind": 0.263,
+    "extent": -0.855,
+    "duration": 0.244,
+    "binding": -0.081,
+    "direction": -0.543
+   }
+  },
+  {
+   "id": "UNI-08b",
+   "affinity": "Universal",
+   "name": "Many",
+   "meaning": "many targets, or many copies",
+   "pair_axis": "extent",
+   "profile": {
+    "heat": -0.006,
+    "motion": 0.139,
+    "force": 0.217,
+    "form": 0.771,
+    "vitality": 0.493,
+    "light": -0.283,
+    "mind": 0.62,
+    "extent": 0.8,
+    "duration": 0.768,
+    "binding": -0.377,
+    "direction": -0.352
+   }
+  },
+  {
+   "id": "UNI-09a",
+   "affinity": "Universal",
+   "name": "Within",
+   "meaning": "inside the target, past armour",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.138,
+    "motion": 0.084,
+    "force": 0.643,
+    "form": 0.916,
+    "vitality": 0.555,
+    "light": -0.331,
+    "mind": -0.333,
+    "extent": -0.199,
+    "duration": 0.72,
+    "binding": -0.175,
+    "direction": -0.8
+   }
+  },
+  {
+   "id": "UNI-09b",
+   "affinity": "Universal",
+   "name": "Without",
+   "meaning": "outside, around: a shell",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.258,
+    "motion": -0.3,
+    "force": 0.348,
+    "form": 0.865,
+    "vitality": 0.432,
+    "light": -0.038,
+    "mind": -0.059,
+    "extent": -0.108,
+    "duration": 0.526,
+    "binding": -0.571,
+    "direction": 0.8
+   }
+  },
+  {
+   "id": "UNI-10a",
+   "affinity": "Universal",
+   "name": "Here",
+   "meaning": "at the spot",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": 0.418,
+    "motion": -0.8,
+    "force": 0.209,
+    "form": 0.899,
+    "vitality": 0.313,
+    "light": 0.047,
+    "mind": 0.584,
+    "extent": -0.672,
+    "duration": 0.21,
+    "binding": 0.604,
+    "direction": -0.727
+   }
+  },
+  {
+   "id": "UNI-10b",
+   "affinity": "Universal",
+   "name": "Elsewhere",
+   "meaning": "displaced: it lands, or moves you, somewhere else",
+   "pair_axis": "motion",
+   "profile": {
+    "heat": -0.026,
+    "motion": 0.8,
+    "force": 0.482,
+    "form": 0.75,
+    "vitality": 0.55,
+    "light": -0.36,
+    "mind": 0.741,
+    "extent": 0.533,
+    "duration": 0.661,
+    "binding": 0.011,
+    "direction": -0.444
+   }
+  },
+  {
+   "id": "UNI-11a",
+   "affinity": "Universal",
+   "name": "Persist",
+   "meaning": "lasts",
+   "pair_axis": "duration",
+   "profile": {
+    "heat": -0.425,
+    "motion": -0.847,
+    "force": -0.687,
+    "form": -0.843,
+    "vitality": 0.376,
+    "light": -0.118,
+    "mind": 0.181,
+    "extent": 0.588,
+    "duration": 0.99,
+    "binding": -0.14,
+    "direction": 0.658
+   }
+  },
+  {
+   "id": "UNI-11b",
+   "affinity": "Universal",
+   "name": "Fade",
+   "meaning": "short, ends early, stronger while it lasts",
+   "pair_axis": "duration",
+   "profile": {
+    "heat": 0.057,
+    "motion": 0.294,
+    "force": -0.419,
+    "form": -0.246,
+    "vitality": 0.544,
+    "light": 0.422,
+    "mind": 0.525,
+    "extent": -0.444,
+    "duration": -0.8,
+    "binding": -0.084,
+    "direction": -0.156
+   }
+  },
+  {
+   "id": "UNI-12a",
+   "affinity": "Universal",
+   "name": "Hold",
+   "meaning": "charged by holding it",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.111,
+    "motion": -0.316,
+    "force": 0.522,
+    "form": 0.813,
+    "vitality": 0.003,
+    "light": -0.064,
+    "mind": -0.001,
+    "extent": -0.409,
+    "duration": 0.779,
+    "binding": 0.8,
+    "direction": -0.17
+   }
+  },
+  {
+   "id": "UNI-12b",
+   "affinity": "Universal",
+   "name": "Loose",
+   "meaning": "let go at once",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.356,
+    "motion": 0.151,
+    "force": 0.262,
+    "form": 0.198,
+    "vitality": -0.059,
+    "light": -0.392,
+    "mind": 0.4,
+    "extent": -0.481,
+    "duration": 0.323,
+    "binding": -0.8,
+    "direction": -0.711
+   }
+  },
+  {
+   "id": "UNI-13a",
+   "affinity": "Universal",
+   "name": "Repeat",
+   "meaning": "happens again",
+   "pair_axis": "duration",
+   "profile": {
+    "heat": -0.279,
+    "motion": 0.248,
+    "force": 0.596,
+    "form": -0.33,
+    "vitality": 0.116,
+    "light": 0.038,
+    "mind": 0.845,
+    "extent": -0.579,
+    "duration": 0.8,
+    "binding": 0.398,
+    "direction": -0.644
+   }
+  },
+  {
+   "id": "UNI-13b",
+   "affinity": "Universal",
+   "name": "Once",
+   "meaning": "one time, all of it at once",
+   "pair_axis": "duration",
+   "profile": {
+    "heat": -0.299,
+    "motion": 0.042,
+    "force": 0.205,
+    "form": 0.769,
+    "vitality": 0.666,
+    "light": -0.052,
+    "mind": 0.647,
+    "extent": -0.43,
+    "duration": -0.8,
+    "binding": -0.224,
+    "direction": -0.606
+   }
+  },
+  {
+   "id": "UNI-14a",
+   "affinity": "Universal",
+   "name": "Before",
+   "meaning": "acts on what was: undo, rewind",
+   "pair_axis": "mind",
+   "profile": {
+    "heat": -0.347,
+    "motion": 0.155,
+    "force": 0.851,
+    "form": -0.341,
+    "vitality": -0.133,
+    "light": -0.306,
+    "mind": 0.8,
+    "extent": -0.316,
+    "duration": -0.385,
+    "binding": -0.468,
+    "direction": 0.104
+   }
+  },
+  {
+   "id": "UNI-14b",
+   "affinity": "Universal",
+   "name": "After",
+   "meaning": "acts on what comes: foresight, the next hit",
+   "pair_axis": "mind",
+   "profile": {
+    "heat": -0.145,
+    "motion": 0.486,
+    "force": 0.78,
+    "form": 0.741,
+    "vitality": 0.32,
+    "light": -0.045,
+    "mind": -0.8,
+    "extent": -0.596,
+    "duration": -0.299,
+    "binding": -0.387,
+    "direction": -0.268
+   }
+  },
+  {
+   "id": "UNI-15a",
+   "affinity": "Universal",
+   "name": "Bind",
+   "meaning": "joins, holds, tethers",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.299,
+    "motion": -0.291,
+    "force": 0.335,
+    "form": 0.152,
+    "vitality": -0.2,
+    "light": 0.128,
+    "mind": -0.582,
+    "extent": -0.133,
+    "duration": 0.691,
+    "binding": 0.963,
+    "direction": 0.015
+   }
+  },
+  {
+   "id": "UNI-15b",
+   "affinity": "Universal",
+   "name": "Sever",
+   "meaning": "cuts, separates",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.714,
+    "motion": 0.177,
+    "force": -0.115,
+    "form": -0.038,
+    "vitality": 0.043,
+    "light": 0.123,
+    "mind": -0.645,
+    "extent": 0.447,
+    "duration": 0.353,
+    "binding": -0.8,
+    "direction": 0.349
+   }
+  },
+  {
+   "id": "UNI-16a",
+   "affinity": "Universal",
+   "name": "Attract",
+   "meaning": "pulls toward",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.2,
+    "motion": 0.748,
+    "force": 0.333,
+    "form": 0.678,
+    "vitality": 0.626,
+    "light": 0.401,
+    "mind": 0.374,
+    "extent": 0.144,
+    "duration": -0.285,
+    "binding": 0.428,
+    "direction": -0.8
+   }
+  },
+  {
+   "id": "UNI-16b",
+   "affinity": "Universal",
+   "name": "Repel",
+   "meaning": "pushes away",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.214,
+    "motion": 0.328,
+    "force": 0.878,
+    "form": -0.786,
+    "vitality": -0.311,
+    "light": 0.074,
+    "mind": 0.07,
+    "extent": -0.009,
+    "duration": -0.654,
+    "binding": 0.07,
+    "direction": 0.8
+   }
+  },
+  {
+   "id": "UNI-17a",
+   "affinity": "Universal",
+   "name": "Give",
+   "meaning": "grants to the target",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": -0.033,
+    "motion": 0.598,
+    "force": 0.45,
+    "form": 0.913,
+    "vitality": 0.625,
+    "light": 0.293,
+    "mind": 0.379,
+    "extent": -0.402,
+    "duration": 0.028,
+    "binding": -0.222,
+    "direction": 0.8
+   }
+  },
+  {
+   "id": "UNI-17b",
+   "affinity": "Universal",
+   "name": "Take",
+   "meaning": "takes from the target, to you",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": -0.159,
+    "motion": 0.506,
+    "force": 0.354,
+    "form": 0.798,
+    "vitality": 0.41,
+    "light": 0.047,
+    "mind": 0.738,
+    "extent": -0.801,
+    "duration": 0.182,
+    "binding": 0.205,
+    "direction": -0.886
+   }
+  },
+  {
+   "id": "UNI-18a",
+   "affinity": "Universal",
+   "name": "Self",
+   "meaning": "acts on the caster",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.162,
+    "motion": -0.1,
+    "force": -0.036,
+    "form": 0.454,
+    "vitality": 0.269,
+    "light": -0.01,
+    "mind": -0.128,
+    "extent": -0.045,
+    "duration": -0.278,
+    "binding": -0.139,
+    "direction": -0.8
+   }
+  },
+  {
+   "id": "UNI-18b",
+   "affinity": "Universal",
+   "name": "Other",
+   "meaning": "acts on others",
+   "pair_axis": "direction",
+   "profile": {
+    "heat": 0.221,
+    "motion": -0.041,
+    "force": 0.489,
+    "form": 0.624,
+    "vitality": -0.48,
+    "light": -0.296,
+    "mind": 0.278,
+    "extent": 0.393,
+    "duration": 0.531,
+    "binding": -0.375,
+    "direction": 0.8
+   }
+  },
+  {
+   "id": "UNI-19a",
+   "affinity": "Universal",
+   "name": "Order",
+   "meaning": "makes form and structure",
+   "pair_axis": "form",
+   "profile": {
+    "heat": -0.575,
+    "motion": 0.264,
+    "force": -0.235,
+    "form": 0.967,
+    "vitality": 0.686,
+    "light": -0.078,
+    "mind": -0.507,
+    "extent": -0.499,
+    "duration": -0.065,
+    "binding": -0.174,
+    "direction": -0.244
+   }
+  },
+  {
+   "id": "UNI-19b",
+   "affinity": "Universal",
+   "name": "Entropy",
+   "meaning": "unmakes it",
+   "pair_axis": "form",
+   "profile": {
+    "heat": -0.292,
+    "motion": -0.17,
+    "force": -0.156,
+    "form": -0.8,
+    "vitality": -0.568,
+    "light": 0.121,
+    "mind": -0.2,
+    "extent": -0.199,
+    "duration": -0.817,
+    "binding": 0.187,
+    "direction": 0.753
+   }
+  },
+  {
+   "id": "UNI-20a",
+   "affinity": "Universal",
+   "name": "Pure",
+   "meaning": "cleanses",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": -0.262,
+    "motion": 0.208,
+    "force": -0.532,
+    "form": -0.49,
+    "vitality": 0.8,
+    "light": 0.223,
+    "mind": -0.137,
+    "extent": -0.223,
+    "duration": -0.819,
+    "binding": -0.141,
+    "direction": 0.686
+   }
+  },
+  {
+   "id": "UNI-20b",
+   "affinity": "Universal",
+   "name": "Tainted",
+   "meaning": "corrupts, sickens",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": -0.44,
+    "motion": -0.382,
+    "force": -0.111,
+    "form": -0.862,
+    "vitality": -0.815,
+    "light": -0.046,
+    "mind": -0.091,
+    "extent": 0.814,
+    "duration": -0.274,
+    "binding": 0.164,
+    "direction": 0.774
+   }
+  },
+  {
+   "id": "UNI-21a",
+   "affinity": "Universal",
+   "name": "Reveal",
+   "meaning": "shows",
+   "pair_axis": "light",
+   "profile": {
+    "heat": -0.392,
+    "motion": 0.096,
+    "force": -0.35,
+    "form": 0.694,
+    "vitality": 0.538,
+    "light": 0.8,
+    "mind": -0.498,
+    "extent": -0.155,
+    "duration": -0.246,
+    "binding": -0.173,
+    "direction": 0.001
+   }
+  },
+  {
+   "id": "UNI-21b",
+   "affinity": "Universal",
+   "name": "Veil",
+   "meaning": "hides",
+   "pair_axis": "light",
+   "profile": {
+    "heat": -0.653,
+    "motion": -0.905,
+    "force": -0.826,
+    "form": -0.608,
+    "vitality": -0.267,
+    "light": -0.865,
+    "mind": -0.69,
+    "extent": 0.552,
+    "duration": 0.319,
+    "binding": 0.005,
+    "direction": -0.084
+   }
+  },
+  {
+   "id": "UNI-22a",
+   "affinity": "Universal",
+   "name": "Calm",
+   "meaning": "soothes, steadies",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.347,
+    "motion": -0.933,
+    "force": -0.891,
+    "form": -0.865,
+    "vitality": 0.177,
+    "light": -0.129,
+    "mind": 0.415,
+    "extent": 0.21,
+    "duration": -0.167,
+    "binding": 0.351,
+    "direction": 0.73
+   }
+  },
+  {
+   "id": "UNI-22b",
+   "affinity": "Universal",
+   "name": "Fury",
+   "meaning": "enrages, frenzies",
+   "pair_axis": "force",
+   "profile": {
+    "heat": 0.048,
+    "motion": -0.431,
+    "force": 0.8,
+    "form": -0.899,
+    "vitality": -0.82,
+    "light": -0.513,
+    "mind": 0.572,
+    "extent": 0.645,
+    "duration": -0.94,
+    "binding": 0.13,
+    "direction": 0.754
+   }
+  },
+  {
+   "id": "UNI-23a",
+   "affinity": "Universal",
+   "name": "Will",
+   "meaning": "commands",
+   "pair_axis": "force",
+   "profile": {
+    "heat": 0.156,
+    "motion": 0.233,
+    "force": 0.8,
+    "form": 0.833,
+    "vitality": 0.306,
+    "light": 0.496,
+    "mind": 0.445,
+    "extent": 0.022,
+    "duration": 0.48,
+    "binding": 0.079,
+    "direction": 0.02
+   }
+  },
+  {
+   "id": "UNI-23b",
+   "affinity": "Universal",
+   "name": "Yield",
+   "meaning": "gives way: softens, absorbs, submits",
+   "pair_axis": "force",
+   "profile": {
+    "heat": -0.382,
+    "motion": 0.474,
+    "force": -0.8,
+    "form": 0.254,
+    "vitality": 0.539,
+    "light": 0.647,
+    "mind": -0.503,
+    "extent": -0.55,
+    "duration": -0.412,
+    "binding": -0.12,
+    "direction": 0.316
+   }
+  },
+  {
+   "id": "UNI-24a",
+   "affinity": "Universal",
+   "name": "Remember",
+   "meaning": "marks and effects stick",
+   "pair_axis": "mind",
+   "profile": {
+    "heat": -0.033,
+    "motion": -0.08,
+    "force": -0.366,
+    "form": 0.331,
+    "vitality": 0.36,
+    "light": 0.273,
+    "mind": 0.906,
+    "extent": -0.692,
+    "duration": -0.074,
+    "binding": 0.437,
+    "direction": -0.696
+   }
+  },
+  {
+   "id": "UNI-24b",
+   "affinity": "Universal",
+   "name": "Forget",
+   "meaning": "loses track, lets go",
+   "pair_axis": "mind",
+   "profile": {
+    "heat": -0.28,
+    "motion": 0.127,
+    "force": 0.266,
+    "form": -0.099,
+    "vitality": 0.101,
+    "light": -0.229,
+    "mind": -0.8,
+    "extent": -0.72,
+    "duration": 0.031,
+    "binding": 0.465,
+    "direction": -0.862
+   }
+  },
+  {
+   "id": "UNI-25a",
+   "affinity": "Universal",
+   "name": "Essence",
+   "meaning": "carried by clean essence",
+   "pair_axis": "heat",
+   "profile": {
+    "heat": -0.8,
+    "motion": 0.122,
+    "force": -0.634,
+    "form": 0.798,
+    "vitality": 0.606,
+    "light": 0.099,
+    "mind": 0.18,
+    "extent": -0.199,
+    "duration": -0.094,
+    "binding": -0.466,
+    "direction": 0.137
+   }
+  },
+  {
+   "id": "UNI-25b",
+   "affinity": "Universal",
+   "name": "Reflux",
+   "meaning": "carried by spent heat",
+   "pair_axis": "heat",
+   "profile": {
+    "heat": 0.8,
+    "motion": 0.013,
+    "force": -0.31,
+    "form": -0.211,
+    "vitality": -0.237,
+    "light": 0.29,
+    "mind": -0.598,
+    "extent": -0.179,
+    "duration": 0.359,
+    "binding": -0.034,
+    "direction": 0.463
+   }
+  },
+  {
+   "id": "UNI-26a",
+   "affinity": "Universal",
+   "name": "Life",
+   "meaning": "carried by vitality",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": -0.034,
+    "motion": 0.061,
+    "force": -0.477,
+    "form": 0.795,
+    "vitality": 0.899,
+    "light": 0.327,
+    "mind": 0.183,
+    "extent": 0.148,
+    "duration": 0.532,
+    "binding": -0.203,
+    "direction": -0.08
+   }
+  },
+  {
+   "id": "UNI-26b",
+   "affinity": "Universal",
+   "name": "Death",
+   "meaning": "carried by ending",
+   "pair_axis": "vitality",
+   "profile": {
+    "heat": 0.189,
+    "motion": 0.021,
+    "force": 0.754,
+    "form": 0.691,
+    "vitality": -0.8,
+    "light": -0.496,
+    "mind": -0.157,
+    "extent": 0.026,
+    "duration": 0.254,
+    "binding": -0.351,
+    "direction": 0.271
+   }
+  },
+  {
+   "id": "UNI-27a",
+   "affinity": "Universal",
+   "name": "Soul",
+   "meaning": "strikes the soul",
+   "pair_axis": "mind",
+   "profile": {
+    "heat": -0.209,
+    "motion": -0.055,
+    "force": -0.027,
+    "form": 0.397,
+    "vitality": -0.077,
+    "light": -0.303,
+    "mind": 0.8,
+    "extent": 0.028,
+    "duration": -0.424,
+    "binding": -0.103,
+    "direction": 0.25
+   }
+  },
+  {
+   "id": "UNI-27b",
+   "affinity": "Universal",
+   "name": "Body",
+   "meaning": "strikes the flesh",
+   "pair_axis": "mind",
+   "profile": {
+    "heat": -0.002,
+    "motion": -0.557,
+    "force": 0.113,
+    "form": 0.49,
+    "vitality": -0.528,
+    "light": 0.229,
+    "mind": -0.973,
+    "extent": 0.264,
+    "duration": 0.156,
+    "binding": -0.387,
+    "direction": -0.105
+   }
+  },
+  {
+   "id": "UNI-28a",
+   "affinity": "Universal",
+   "name": "Fate",
+   "meaning": "certain",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.344,
+    "motion": -0.201,
+    "force": -0.534,
+    "form": 0.562,
+    "vitality": 0.338,
+    "light": -0.654,
+    "mind": 0.519,
+    "extent": -0.494,
+    "duration": 0.442,
+    "binding": 0.8,
+    "direction": -0.081
+   }
+  },
+  {
+   "id": "UNI-28b",
+   "affinity": "Universal",
+   "name": "Chance",
+   "meaning": "random",
+   "pair_axis": "binding",
+   "profile": {
+    "heat": -0.018,
+    "motion": 0.37,
+    "force": 0.512,
+    "form": 0.345,
+    "vitality": -0.177,
+    "light": 0.134,
+    "mind": 0.754,
+    "extent": -0.367,
+    "duration": -0.499,
+    "binding": -0.8,
+    "direction": -0.75
+   }
+  }
+ ]
+}
