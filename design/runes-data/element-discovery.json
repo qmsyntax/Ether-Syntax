@@ -1,0 +1,3180 @@
+{
+ "vocabulary": 434,
+ "grid": [
+  {
+   "alpha": 0.3,
+   "knn": 10,
+   "k": 12,
+   "k_by_eigengap": false,
+   "purity": 0.671,
+   "distinct": 0.714,
+   "score": 0.48,
+   "groups": {
+    "fire": {
+     "cluster": 5,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 10,
+     "purity": 0.5,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 0,
+     "purity": 0.6,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 7,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 4,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 3,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 7,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.5,
+   "knn": 15,
+   "k": 20,
+   "k_by_eigengap": false,
+   "purity": 0.654,
+   "distinct": 0.714,
+   "score": 0.467,
+   "groups": {
+    "fire": {
+     "cluster": 11,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 2,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 14,
+     "purity": 0.6,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 17,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 11,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 3,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 13,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.3,
+   "knn": 10,
+   "k": 14,
+   "k_by_eigengap": false,
+   "purity": 0.625,
+   "distinct": 0.714,
+   "score": 0.446,
+   "groups": {
+    "fire": {
+     "cluster": 2,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 1,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 0,
+     "purity": 0.6,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 3,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 13,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 10,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 3,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.3,
+   "knn": 15,
+   "k": 10,
+   "k_by_eigengap": false,
+   "purity": 0.746,
+   "distinct": 0.571,
+   "score": 0.427,
+   "groups": {
+    "fire": {
+     "cluster": 0,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 5,
+     "purity": 0.62,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 1,
+     "purity": 0.5,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 2,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 2,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 9,
+     "purity": 1.0,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 2,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.7,
+   "knn": 10,
+   "k": 12,
+   "k_by_eigengap": false,
+   "purity": 0.739,
+   "distinct": 0.571,
+   "score": 0.422,
+   "groups": {
+    "fire": {
+     "cluster": 2,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 9,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 0,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 10,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 10,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 4,
+     "purity": 1.0,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 10,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.7,
+   "knn": 15,
+   "k": 14,
+   "k_by_eigengap": false,
+   "purity": 0.725,
+   "distinct": 0.571,
+   "score": 0.414,
+   "groups": {
+    "fire": {
+     "cluster": 2,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 7,
+     "purity": 0.62,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 9,
+     "purity": 0.6,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 8,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 8,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 10,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 8,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.5,
+   "knn": 10,
+   "k": 12,
+   "k_by_eigengap": false,
+   "purity": 0.721,
+   "distinct": 0.571,
+   "score": 0.412,
+   "groups": {
+    "fire": {
+     "cluster": 3,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 6,
+     "purity": 0.5,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 11,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 10,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 10,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 9,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 10,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.7,
+   "knn": 10,
+   "k": 14,
+   "k_by_eigengap": false,
+   "purity": 0.704,
+   "distinct": 0.571,
+   "score": 0.402,
+   "groups": {
+    "fire": {
+     "cluster": 1,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 10,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 2,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 6,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 6,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 11,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 6,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.7,
+   "knn": 15,
+   "k": 10,
+   "k_by_eigengap": false,
+   "purity": 0.689,
+   "distinct": 0.571,
+   "score": 0.394,
+   "groups": {
+    "fire": {
+     "cluster": 8,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 2,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 0,
+     "purity": 0.4,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 3,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 3,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 5,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 3,
+     "purity": 1.0,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.7,
+   "knn": 15,
+   "k": 12,
+   "k_by_eigengap": false,
+   "purity": 0.682,
+   "distinct": 0.571,
+   "score": 0.39,
+   "groups": {
+    "fire": {
+     "cluster": 3,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 10,
+     "purity": 0.62,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 11,
+     "purity": 0.5,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 3,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 3,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 7,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 1,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.5,
+   "knn": 10,
+   "k": 14,
+   "k_by_eigengap": false,
+   "purity": 0.675,
+   "distinct": 0.571,
+   "score": 0.386,
+   "groups": {
+    "fire": {
+     "cluster": 7,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 0,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 2,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 7,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 7,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 13,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 4,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.5,
+   "knn": 15,
+   "k": 10,
+   "k_by_eigengap": false,
+   "purity": 0.675,
+   "distinct": 0.571,
+   "score": 0.386,
+   "groups": {
+    "fire": {
+     "cluster": 4,
+     "purity": 0.4,
+     "n": 5
+    },
+    "water": {
+     "cluster": 8,
+     "purity": 0.62,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 9,
+     "purity": 0.6,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 0,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 0,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 3,
+     "purity": 1.0,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 0,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.3,
+   "knn": 15,
+   "k": 12,
+   "k_by_eigengap": false,
+   "purity": 0.675,
+   "distinct": 0.571,
+   "score": 0.386,
+   "groups": {
+    "fire": {
+     "cluster": 3,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 2,
+     "purity": 0.62,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 10,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 6,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 6,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 7,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 6,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.3,
+   "knn": 15,
+   "k": 14,
+   "k_by_eigengap": false,
+   "purity": 0.668,
+   "distinct": 0.571,
+   "score": 0.382,
+   "groups": {
+    "fire": {
+     "cluster": 0,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 3,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 6,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 9,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 9,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 1,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 9,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.3,
+   "knn": 15,
+   "k": 16,
+   "k_by_eigengap": false,
+   "purity": 0.668,
+   "distinct": 0.571,
+   "score": 0.382,
+   "groups": {
+    "fire": {
+     "cluster": 9,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 13,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 2,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 14,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 14,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 0,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 14,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.7,
+   "knn": 15,
+   "k": 20,
+   "k_by_eigengap": false,
+   "purity": 0.661,
+   "distinct": 0.571,
+   "score": 0.378,
+   "groups": {
+    "fire": {
+     "cluster": 12,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 4,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 2,
+     "purity": 0.6,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 16,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 12,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 12,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 0,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.7,
+   "knn": 15,
+   "k": 6,
+   "k_by_eigengap": true,
+   "purity": 0.875,
+   "distinct": 0.429,
+   "score": 0.375,
+   "groups": {
+    "fire": {
+     "cluster": 4,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 1,
+     "purity": 0.62,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 3,
+     "purity": 0.5,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 4,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 4,
+     "purity": 1.0,
+     "n": 3
+    },
+    "light": {
+     "cluster": 2,
+     "purity": 1.0,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 4,
+     "purity": 1.0,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.5,
+   "knn": 15,
+   "k": 12,
+   "k_by_eigengap": false,
+   "purity": 0.646,
+   "distinct": 0.571,
+   "score": 0.369,
+   "groups": {
+    "fire": {
+     "cluster": 7,
+     "purity": 0.6,
+     "n": 5
+    },
+    "water": {
+     "cluster": 6,
+     "purity": 0.62,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 10,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 1,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 1,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 0,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 1,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.5,
+   "knn": 15,
+   "k": 14,
+   "k_by_eigengap": false,
+   "purity": 0.639,
+   "distinct": 0.571,
+   "score": 0.365,
+   "groups": {
+    "fire": {
+     "cluster": 6,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 13,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 5,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 4,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 4,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 1,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 4,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.5,
+   "knn": 10,
+   "k": 8,
+   "k_by_eigengap": false,
+   "purity": 0.835,
+   "distinct": 0.429,
+   "score": 0.358,
+   "groups": {
+    "fire": {
+     "cluster": 1,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 0,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 3,
+     "purity": 0.8,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 1,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 1,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 6,
+     "purity": 1.0,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 1,
+     "purity": 1.0,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 1.0,
+   "knn": 15,
+   "k": 11,
+   "k_by_eigengap": true,
+   "purity": 0.623,
+   "distinct": 0.571,
+   "score": 0.356,
+   "groups": {
+    "fire": {
+     "cluster": 6,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 7,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 8,
+     "purity": 0.5,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 6,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 1,
+     "purity": 0.33,
+     "n": 3
+    },
+    "light": {
+     "cluster": 4,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 6,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.7,
+   "knn": 10,
+   "k": 8,
+   "k_by_eigengap": true,
+   "purity": 0.825,
+   "distinct": 0.429,
+   "score": 0.354,
+   "groups": {
+    "fire": {
+     "cluster": 7,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 1,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 5,
+     "purity": 0.6,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 7,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 7,
+     "purity": 1.0,
+     "n": 3
+    },
+    "light": {
+     "cluster": 6,
+     "purity": 1.0,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 7,
+     "purity": 1.0,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 1.0,
+   "knn": 10,
+   "k": 14,
+   "k_by_eigengap": false,
+   "purity": 0.613,
+   "distinct": 0.571,
+   "score": 0.35,
+   "groups": {
+    "fire": {
+     "cluster": 12,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 6,
+     "purity": 0.62,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 4,
+     "purity": 0.6,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 5,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 5,
+     "purity": 0.33,
+     "n": 3
+    },
+    "light": {
+     "cluster": 7,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 5,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.7,
+   "knn": 15,
+   "k": 8,
+   "k_by_eigengap": false,
+   "purity": 0.792,
+   "distinct": 0.429,
+   "score": 0.339,
+   "groups": {
+    "fire": {
+     "cluster": 2,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 0,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 1,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 2,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 2,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 6,
+     "purity": 1.0,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 2,
+     "purity": 1.0,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 1.0,
+   "knn": 15,
+   "k": 16,
+   "k_by_eigengap": false,
+   "purity": 0.592,
+   "distinct": 0.571,
+   "score": 0.338,
+   "groups": {
+    "fire": {
+     "cluster": 7,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 3,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 14,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 5,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 5,
+     "purity": 0.33,
+     "n": 3
+    },
+    "light": {
+     "cluster": 0,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 5,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.5,
+   "knn": 10,
+   "k": 10,
+   "k_by_eigengap": false,
+   "purity": 0.75,
+   "distinct": 0.429,
+   "score": 0.321,
+   "groups": {
+    "fire": {
+     "cluster": 5,
+     "purity": 0.6,
+     "n": 5
+    },
+    "water": {
+     "cluster": 4,
+     "purity": 0.5,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 3,
+     "purity": 0.4,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 9,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 6,
+     "purity": 1.0,
+     "n": 3
+    },
+    "light": {
+     "cluster": 6,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 9,
+     "purity": 1.0,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 1.0,
+   "knn": 15,
+   "k": 12,
+   "k_by_eigengap": false,
+   "purity": 0.544,
+   "distinct": 0.571,
+   "score": 0.311,
+   "groups": {
+    "fire": {
+     "cluster": 11,
+     "purity": 0.6,
+     "n": 5
+    },
+    "water": {
+     "cluster": 7,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 10,
+     "purity": 0.4,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 11,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 3,
+     "purity": 0.33,
+     "n": 3
+    },
+    "light": {
+     "cluster": 5,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 11,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.5,
+   "knn": 10,
+   "k": 16,
+   "k_by_eigengap": false,
+   "purity": 0.704,
+   "distinct": 0.429,
+   "score": 0.302,
+   "groups": {
+    "fire": {
+     "cluster": 12,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 1,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 7,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 0,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 12,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 3,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 0,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.5,
+   "knn": 10,
+   "k": 20,
+   "k_by_eigengap": false,
+   "purity": 0.704,
+   "distinct": 0.429,
+   "score": 0.302,
+   "groups": {
+    "fire": {
+     "cluster": 17,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 0,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 11,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 8,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 17,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 14,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 8,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.7,
+   "knn": 10,
+   "k": 10,
+   "k_by_eigengap": false,
+   "purity": 0.682,
+   "distinct": 0.429,
+   "score": 0.292,
+   "groups": {
+    "fire": {
+     "cluster": 5,
+     "purity": 0.6,
+     "n": 5
+    },
+    "water": {
+     "cluster": 0,
+     "purity": 0.62,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 4,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 5,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 5,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 8,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 5,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.3,
+   "knn": 10,
+   "k": 20,
+   "k_by_eigengap": false,
+   "purity": 0.68,
+   "distinct": 0.429,
+   "score": 0.291,
+   "groups": {
+    "fire": {
+     "cluster": 8,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 3,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 0,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 14,
+     "purity": 0.67,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 8,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 7,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 14,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.5,
+   "knn": 15,
+   "k": 16,
+   "k_by_eigengap": false,
+   "purity": 0.668,
+   "distinct": 0.429,
+   "score": 0.286,
+   "groups": {
+    "fire": {
+     "cluster": 1,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 4,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 5,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 10,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 1,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 7,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 10,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.7,
+   "knn": 15,
+   "k": 16,
+   "k_by_eigengap": false,
+   "purity": 0.661,
+   "distinct": 0.429,
+   "score": 0.283,
+   "groups": {
+    "fire": {
+     "cluster": 3,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 10,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 4,
+     "purity": 0.6,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 3,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 3,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 15,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 3,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.3,
+   "knn": 15,
+   "k": 20,
+   "k_by_eigengap": false,
+   "purity": 0.654,
+   "distinct": 0.429,
+   "score": 0.28,
+   "groups": {
+    "fire": {
+     "cluster": 8,
+     "purity": 1.0,
+     "n": 5
+    },
+    "water": {
+     "cluster": 9,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 16,
+     "purity": 0.6,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 14,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 8,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 0,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 14,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.7,
+   "knn": 10,
+   "k": 16,
+   "k_by_eigengap": false,
+   "purity": 0.639,
+   "distinct": 0.429,
+   "score": 0.274,
+   "groups": {
+    "fire": {
+     "cluster": 11,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 10,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 15,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 3,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 11,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 6,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 3,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.7,
+   "knn": 10,
+   "k": 20,
+   "k_by_eigengap": false,
+   "purity": 0.639,
+   "distinct": 0.429,
+   "score": 0.274,
+   "groups": {
+    "fire": {
+     "cluster": 7,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 6,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 8,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 13,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 7,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 4,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 13,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 1.0,
+   "knn": 15,
+   "k": 14,
+   "k_by_eigengap": false,
+   "purity": 0.635,
+   "distinct": 0.429,
+   "score": 0.272,
+   "groups": {
+    "fire": {
+     "cluster": 10,
+     "purity": 0.6,
+     "n": 5
+    },
+    "water": {
+     "cluster": 11,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 1,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 10,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 10,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 5,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 10,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.3,
+   "knn": 10,
+   "k": 16,
+   "k_by_eigengap": false,
+   "purity": 0.625,
+   "distinct": 0.429,
+   "score": 0.268,
+   "groups": {
+    "fire": {
+     "cluster": 12,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 13,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 5,
+     "purity": 0.6,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 9,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 12,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 1,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 9,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.5,
+   "knn": 10,
+   "k": 11,
+   "k_by_eigengap": true,
+   "purity": 0.621,
+   "distinct": 0.429,
+   "score": 0.266,
+   "groups": {
+    "fire": {
+     "cluster": 5,
+     "purity": 0.6,
+     "n": 5
+    },
+    "water": {
+     "cluster": 0,
+     "purity": 0.5,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 6,
+     "purity": 0.4,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 5,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 5,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 8,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 5,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 1.0,
+   "knn": 10,
+   "k": 11,
+   "k_by_eigengap": true,
+   "purity": 0.601,
+   "distinct": 0.429,
+   "score": 0.258,
+   "groups": {
+    "fire": {
+     "cluster": 7,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 6,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 3,
+     "purity": 0.6,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 7,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 7,
+     "purity": 0.33,
+     "n": 3
+    },
+    "light": {
+     "cluster": 2,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 7,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 1.0,
+   "knn": 10,
+   "k": 12,
+   "k_by_eigengap": false,
+   "purity": 0.592,
+   "distinct": 0.429,
+   "score": 0.254,
+   "groups": {
+    "fire": {
+     "cluster": 9,
+     "purity": 0.6,
+     "n": 5
+    },
+    "water": {
+     "cluster": 7,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 2,
+     "purity": 0.4,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 9,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 9,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 1,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 9,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 1.0,
+   "knn": 10,
+   "k": 16,
+   "k_by_eigengap": false,
+   "purity": 0.592,
+   "distinct": 0.429,
+   "score": 0.254,
+   "groups": {
+    "fire": {
+     "cluster": 6,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 12,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 1,
+     "purity": 0.5,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 8,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 5,
+     "purity": 0.33,
+     "n": 3
+    },
+    "light": {
+     "cluster": 6,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 8,
+     "purity": 0.8,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.3,
+   "knn": 10,
+   "k": 7,
+   "k_by_eigengap": true,
+   "purity": 0.832,
+   "distinct": 0.286,
+   "score": 0.238,
+   "groups": {
+    "fire": {
+     "cluster": 1,
+     "purity": 0.4,
+     "n": 5
+    },
+    "water": {
+     "cluster": 2,
+     "purity": 0.62,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 6,
+     "purity": 0.8,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 1,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 5,
+     "purity": 1.0,
+     "n": 3
+    },
+    "light": {
+     "cluster": 5,
+     "purity": 1.0,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 1,
+     "purity": 1.0,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 1.0,
+   "knn": 10,
+   "k": 10,
+   "k_by_eigengap": false,
+   "purity": 0.549,
+   "distinct": 0.429,
+   "score": 0.235,
+   "groups": {
+    "fire": {
+     "cluster": 2,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 5,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 4,
+     "purity": 0.4,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 2,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 2,
+     "purity": 0.33,
+     "n": 3
+    },
+    "light": {
+     "cluster": 1,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 2,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 1.0,
+   "knn": 10,
+   "k": 20,
+   "k_by_eigengap": false,
+   "purity": 0.542,
+   "distinct": 0.429,
+   "score": 0.232,
+   "groups": {
+    "fire": {
+     "cluster": 17,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 1,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 0,
+     "purity": 0.3,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 14,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 2,
+     "purity": 0.33,
+     "n": 3
+    },
+    "light": {
+     "cluster": 17,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 14,
+     "purity": 0.4,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.3,
+   "knn": 10,
+   "k": 8,
+   "k_by_eigengap": false,
+   "purity": 0.796,
+   "distinct": 0.286,
+   "score": 0.228,
+   "groups": {
+    "fire": {
+     "cluster": 4,
+     "purity": 0.4,
+     "n": 5
+    },
+    "water": {
+     "cluster": 2,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 5,
+     "purity": 0.8,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 6,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 4,
+     "purity": 1.0,
+     "n": 3
+    },
+    "light": {
+     "cluster": 4,
+     "purity": 1.0,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 6,
+     "purity": 1.0,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.5,
+   "knn": 15,
+   "k": 8,
+   "k_by_eigengap": true,
+   "purity": 0.752,
+   "distinct": 0.286,
+   "score": 0.215,
+   "groups": {
+    "fire": {
+     "cluster": 0,
+     "purity": 0.4,
+     "n": 5
+    },
+    "water": {
+     "cluster": 6,
+     "purity": 0.5,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 1,
+     "purity": 0.7,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 3,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 0,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 0,
+     "purity": 1.0,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 3,
+     "purity": 1.0,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.3,
+   "knn": 10,
+   "k": 10,
+   "k_by_eigengap": false,
+   "purity": 0.744,
+   "distinct": 0.286,
+   "score": 0.213,
+   "groups": {
+    "fire": {
+     "cluster": 8,
+     "purity": 0.6,
+     "n": 5
+    },
+    "water": {
+     "cluster": 0,
+     "purity": 0.62,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 7,
+     "purity": 0.8,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 5,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 8,
+     "purity": 1.0,
+     "n": 3
+    },
+    "light": {
+     "cluster": 8,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 5,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 0.3,
+   "knn": 15,
+   "k": 8,
+   "k_by_eigengap": true,
+   "purity": 0.745,
+   "distinct": 0.286,
+   "score": 0.213,
+   "groups": {
+    "fire": {
+     "cluster": 5,
+     "purity": 0.4,
+     "n": 5
+    },
+    "water": {
+     "cluster": 3,
+     "purity": 0.75,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 0,
+     "purity": 0.6,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 5,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 7,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 7,
+     "purity": 1.0,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 5,
+     "purity": 0.8,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 1.0,
+   "knn": 15,
+   "k": 20,
+   "k_by_eigengap": false,
+   "purity": 0.577,
+   "distinct": 0.286,
+   "score": 0.165,
+   "groups": {
+    "fire": {
+     "cluster": 2,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 13,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 14,
+     "purity": 0.4,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 0,
+     "purity": 0.83,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 0,
+     "purity": 0.33,
+     "n": 3
+    },
+    "light": {
+     "cluster": 2,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 0,
+     "purity": 0.8,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 1.0,
+   "knn": 15,
+   "k": 10,
+   "k_by_eigengap": false,
+   "purity": 0.573,
+   "distinct": 0.286,
+   "score": 0.164,
+   "groups": {
+    "fire": {
+     "cluster": 9,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 2,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 2,
+     "purity": 0.4,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 9,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 3,
+     "purity": 0.33,
+     "n": 3
+    },
+    "light": {
+     "cluster": 4,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 9,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 1.0,
+   "knn": 15,
+   "k": 8,
+   "k_by_eigengap": false,
+   "purity": 0.685,
+   "distinct": 0.143,
+   "score": 0.098,
+   "groups": {
+    "fire": {
+     "cluster": 5,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 4,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 4,
+     "purity": 0.6,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 5,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 5,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 2,
+     "purity": 0.75,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 5,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  },
+  {
+   "alpha": 1.0,
+   "knn": 10,
+   "k": 8,
+   "k_by_eigengap": false,
+   "purity": 0.649,
+   "distinct": 0.143,
+   "score": 0.093,
+   "groups": {
+    "fire": {
+     "cluster": 5,
+     "purity": 0.8,
+     "n": 5
+    },
+    "water": {
+     "cluster": 4,
+     "purity": 0.38,
+     "n": 8
+    },
+    "earth": {
+     "cluster": 4,
+     "purity": 0.6,
+     "n": 10
+    },
+    "wind": {
+     "cluster": 5,
+     "purity": 1.0,
+     "n": 6
+    },
+    "lightning": {
+     "cluster": 5,
+     "purity": 0.67,
+     "n": 3
+    },
+    "light": {
+     "cluster": 0,
+     "purity": 0.5,
+     "n": 4
+    },
+    "ice": {
+     "cluster": 5,
+     "purity": 0.6,
+     "n": 5
+    }
+   }
+  }
+ ],
+ "best": {
+  "alpha": 0.3,
+  "knn": 10,
+  "k": 12,
+  "k_by_eigengap": false,
+  "purity": 0.671,
+  "distinct": 0.714,
+  "score": 0.48,
+  "groups": {
+   "fire": {
+    "cluster": 5,
+    "purity": 1.0,
+    "n": 5
+   },
+   "water": {
+    "cluster": 10,
+    "purity": 0.5,
+    "n": 8
+   },
+   "earth": {
+    "cluster": 0,
+    "purity": 0.6,
+    "n": 10
+   },
+   "wind": {
+    "cluster": 7,
+    "purity": 0.83,
+    "n": 6
+   },
+   "lightning": {
+    "cluster": 4,
+    "purity": 0.67,
+    "n": 3
+   },
+   "light": {
+    "cluster": 3,
+    "purity": 0.5,
+    "n": 4
+   },
+   "ice": {
+    "cluster": 7,
+    "purity": 0.6,
+    "n": 5
+   }
+  }
+ },
+ "best_clusters": [
+  {
+   "cluster": 6,
+   "size": 71,
+   "probe_groups": [],
+   "central": [
+    "hydrocarbon",
+    "mineral",
+    "chemical",
+    "acid",
+    "alkali",
+    "protein",
+    "steroid",
+    "salt",
+    "synthesis",
+    "nitrogen",
+    "hydrogen",
+    "carbon",
+    "as",
+    "solution",
+    "synthetic",
+    "chloride",
+    "enzyme",
+    "helium",
+    "atom",
+    "mixture",
+    "fraction",
+    "charcoal",
+    "molecule",
+    "reagent"
+   ],
+   "common": [
+    "as",
+    "material",
+    "bond",
+    "solution",
+    "chemical",
+    "salt",
+    "solid",
+    "radical",
+    "stuff",
+    "fat",
+    "carbon",
+    "protein",
+    "o",
+    "volatile",
+    "acid",
+    "mixture",
+    "crystal",
+    "organic",
+    "oxygen",
+    "concentrate",
+    "mineral",
+    "cholesterol",
+    "hydrogen",
+    "fraction"
+   ]
+  },
+  {
+   "cluster": 0,
+   "size": 51,
+   "probe_groups": [
+    "earth"
+   ],
+   "central": [
+    "concrete",
+    "sand",
+    "wood",
+    "paper",
+    "clay",
+    "plastic",
+    "glass",
+    "dirt",
+    "timber",
+    "sponge",
+    "plaster",
+    "fiber",
+    "cement",
+    "flimsy",
+    "render",
+    "adhesive",
+    "stone",
+    "marble",
+    "lumber",
+    "pad",
+    "rock",
+    "rubber",
+    "sheet",
+    "stucco"
+   ],
+   "common": [
+    "rock",
+    "web",
+    "paper",
+    "thus",
+    "stone",
+    "wood",
+    "glass",
+    "concrete",
+    "plastic",
+    "chip",
+    "clay",
+    "sand",
+    "rubber",
+    "powder",
+    "grain",
+    "sheet",
+    "cement",
+    "shake",
+    "filling",
+    "dirt",
+    "straw",
+    "fiber",
+    "deposit",
+    "timber"
+   ]
+  },
+  {
+   "cluster": 10,
+   "size": 45,
+   "probe_groups": [
+    "water"
+   ],
+   "central": [
+    "sea",
+    "gulf",
+    "island",
+    "cape",
+    "lake",
+    "shore",
+    "inlet",
+    "lagoon",
+    "ocean",
+    "beach",
+    "strait",
+    "plain",
+    "bay",
+    "mainland",
+    "ground",
+    "main",
+    "trough",
+    "spit",
+    "stream",
+    "strip",
+    "mere",
+    "cave",
+    "rapid",
+    "narrow"
+   ],
+   "common": [
+    "main",
+    "europe",
+    "island",
+    "africa",
+    "ground",
+    "opening",
+    "sea",
+    "coast",
+    "track",
+    "lake",
+    "pacific",
+    "bay",
+    "beach",
+    "gulf",
+    "strip",
+    "atlantic",
+    "mainland",
+    "ocean",
+    "hole",
+    "flat",
+    "rapid",
+    "trail",
+    "cape",
+    "narrow"
+   ]
+  },
+  {
+   "cluster": 5,
+   "size": 42,
+   "probe_groups": [
+    "fire"
+   ],
+   "central": [
+    "debris",
+    "dust",
+    "fumes",
+    "slack",
+    "particulate",
+    "exhaust",
+    "cloud",
+    "waste",
+    "junk",
+    "wastewater",
+    "flaming",
+    "manure",
+    "combustion",
+    "flame",
+    "fallout",
+    "garbage",
+    "sewage",
+    "aerosol",
+    "fuel",
+    "ash",
+    "refuse",
+    "residue",
+    "compost",
+    "smoke"
+   ],
+   "common": [
+    "oil",
+    "fuel",
+    "crude",
+    "coal",
+    "waste",
+    "smoke",
+    "debris",
+    "dust",
+    "cloud",
+    "refuse",
+    "mud",
+    "spill",
+    "blaze",
+    "ash",
+    "leak",
+    "garbage",
+    "scrap",
+    "flame",
+    "dump",
+    "fallout",
+    "junk",
+    "sewage",
+    "exhaust",
+    "grinding"
+   ]
+  },
+  {
+   "cluster": 2,
+   "size": 38,
+   "probe_groups": [],
+   "central": [
+    "result",
+    "response",
+    "effect",
+    "feedback",
+    "decay",
+    "mechanism",
+    "consequence",
+    "diffusion",
+    "reaction",
+    "exchange",
+    "processing",
+    "intermediate",
+    "wallop",
+    "functioning",
+    "must",
+    "interrupt",
+    "developing",
+    "necessary",
+    "drag",
+    "essential",
+    "wake",
+    "agent",
+    "builder",
+    "accumulation"
+   ],
+   "common": [
+    "must",
+    "exchange",
+    "result",
+    "response",
+    "effect",
+    "necessary",
+    "active",
+    "developing",
+    "decline",
+    "agent",
+    "reaction",
+    "wake",
+    "essential",
+    "processing",
+    "mechanism",
+    "fortune",
+    "strain",
+    "slump",
+    "drag",
+    "intermediate",
+    "consequence",
+    "functioning",
+    "healing",
+    "variable"
+   ]
+  },
+  {
+   "cluster": 1,
+   "size": 33,
+   "probe_groups": [],
+   "central": [
+    "boiling",
+    "coolant",
+    "liquid",
+    "water",
+    "melting",
+    "melt",
+    "soaking",
+    "soak",
+    "cooling",
+    "air",
+    "heating",
+    "refrigeration",
+    "steam",
+    "fluid",
+    "thaw",
+    "rinse",
+    "vapor",
+    "absorption",
+    "freezing",
+    "chilling",
+    "extract",
+    "thermal",
+    "freeze",
+    "evaporation"
+   ],
+   "common": [
+    "air",
+    "water",
+    "pressure",
+    "ice",
+    "suspension",
+    "freeze",
+    "steam",
+    "heating",
+    "liquid",
+    "fluid",
+    "bubble",
+    "freezing",
+    "cooling",
+    "thermal",
+    "extract",
+    "foam",
+    "melting",
+    "chilling",
+    "boiling",
+    "melt",
+    "absorption",
+    "thaw",
+    "vapor",
+    "soak"
+   ]
+  },
+  {
+   "cluster": 7,
+   "size": 30,
+   "probe_groups": [
+    "wind",
+    "ice"
+   ],
+   "central": [
+    "wind",
+    "rain",
+    "weather",
+    "hail",
+    "gust",
+    "storm",
+    "fog",
+    "snow",
+    "monsoon",
+    "chop",
+    "hurricane",
+    "dew",
+    "haze",
+    "breeze",
+    "mist",
+    "westerly",
+    "drizzle",
+    "downpour",
+    "drift",
+    "puff",
+    "impetus",
+    "blowing",
+    "torrent",
+    "shear"
+   ],
+   "common": [
+    "weather",
+    "storm",
+    "rain",
+    "wind",
+    "snow",
+    "hurricane",
+    "flood",
+    "attraction",
+    "blowing",
+    "fog",
+    "thrust",
+    "frost",
+    "bolt",
+    "hail",
+    "swamp",
+    "drift",
+    "monsoon",
+    "breeze",
+    "impetus",
+    "haze",
+    "chop",
+    "shear",
+    "mist",
+    "drizzle"
+   ]
+  },
+  {
+   "cluster": 8,
+   "size": 27,
+   "probe_groups": [],
+   "central": [
+    "iron",
+    "chromium",
+    "aluminum",
+    "potassium",
+    "nickel",
+    "copper",
+    "metal",
+    "zinc",
+    "cr",
+    "steel",
+    "be",
+    "tungsten",
+    "silver",
+    "platinum",
+    "calcium",
+    "bronze",
+    "brass",
+    "tin",
+    "ore",
+    "mercury",
+    "chrome",
+    "rust",
+    "adamant",
+    "jade"
+   ],
+   "common": [
+    "be",
+    "silver",
+    "steel",
+    "metal",
+    "iron",
+    "bronze",
+    "copper",
+    "mercury",
+    "ore",
+    "platinum",
+    "aluminum",
+    "tin",
+    "brass",
+    "nickel",
+    "zinc",
+    "calcium",
+    "jade",
+    "cr",
+    "adamant",
+    "rust",
+    "splinter",
+    "potassium",
+    "chrome",
+    "chromium"
+   ]
+  },
+  {
+   "cluster": 9,
+   "size": 27,
+   "probe_groups": [],
+   "central": [
+    "waterfall",
+    "bluff",
+    "canyon",
+    "bank",
+    "river",
+    "creek",
+    "hillside",
+    "brook",
+    "valley",
+    "ridge",
+    "hill",
+    "mountain",
+    "mountainside",
+    "slope",
+    "cliff",
+    "incline",
+    "headland",
+    "steep",
+    "climb",
+    "forth",
+    "mississippi",
+    "upgrade",
+    "mobile",
+    "hudson"
+   ],
+   "common": [
+    "bank",
+    "river",
+    "hill",
+    "valley",
+    "mountain",
+    "draw",
+    "mobile",
+    "creek",
+    "mississippi",
+    "ridge",
+    "climb",
+    "hudson",
+    "forth",
+    "arroyo",
+    "steep",
+    "upgrade",
+    "canyon",
+    "cliff",
+    "slope",
+    "brook",
+    "hillside",
+    "bluff",
+    "waterfall",
+    "mountainside"
+   ]
+  },
+  {
+   "cluster": 4,
+   "size": 26,
+   "probe_groups": [
+    "lightning"
+   ],
+   "central": [
+    "light",
+    "radiation",
+    "resonance",
+    "glowing",
+    "arc",
+    "conduction",
+    "fluorescence",
+    "conductivity",
+    "electricity",
+    "convection",
+    "lightning",
+    "voltage",
+    "microwave",
+    "heat",
+    "radiate",
+    "spectrum",
+    "ultraviolet",
+    "current",
+    "polarization",
+    "energy",
+    "ray",
+    "ion",
+    "electron",
+    "ignite"
+   ],
+   "common": [
+    "current",
+    "energy",
+    "light",
+    "heat",
+    "electricity",
+    "ray",
+    "lightning",
+    "radiation",
+    "spectrum",
+    "arc",
+    "ion",
+    "voltage",
+    "electron",
+    "microwave",
+    "resonance",
+    "glowing",
+    "blistering",
+    "ignite",
+    "ultraviolet",
+    "polarization",
+    "moonlight",
+    "convection",
+    "conductivity",
+    "conduction"
+   ]
+  },
+  {
+   "cluster": 11,
+   "size": 24,
+   "probe_groups": [],
+   "central": [
+    "growing",
+    "growth",
+    "hide",
+    "fell",
+    "leather",
+    "nest",
+    "maturation",
+    "laying",
+    "brooding",
+    "rooting",
+    "flowering",
+    "evolution",
+    "stalk",
+    "blooming",
+    "bloom",
+    "cotton",
+    "hatching",
+    "crush",
+    "hatch",
+    "proliferation",
+    "fur",
+    "ivory",
+    "pelt",
+    "alligator"
+   ],
+   "common": [
+    "fell",
+    "growth",
+    "growing",
+    "ivory",
+    "cotton",
+    "hide",
+    "evolution",
+    "proliferation",
+    "leather",
+    "laying",
+    "crush",
+    "fur",
+    "nest",
+    "hatch",
+    "bloom",
+    "flowering",
+    "rooting",
+    "alligator",
+    "blooming",
+    "stalk",
+    "brooding",
+    "hatching",
+    "pelt",
+    "maturation"
+   ]
+  },
+  {
+   "cluster": 3,
+   "size": 20,
+   "probe_groups": [
+    "light"
+   ],
+   "central": [
+    "planet",
+    "sky",
+    "mars",
+    "earth",
+    "sun",
+    "globe",
+    "moon",
+    "meteor",
+    "jupiter",
+    "venus",
+    "universe",
+    "star",
+    "world",
+    "cosmos",
+    "saturn",
+    "rainbow",
+    "gravity",
+    "meteorite",
+    "sunlight",
+    "asia"
+   ],
+   "common": [
+    "world",
+    "star",
+    "asia",
+    "sun",
+    "earth",
+    "moon",
+    "sky",
+    "globe",
+    "planet",
+    "universe",
+    "mars",
+    "venus",
+    "gravity",
+    "rainbow",
+    "jupiter",
+    "saturn",
+    "sunlight",
+    "cosmos",
+    "meteor",
+    "meteorite"
+   ]
+  }
+ ]
+}
