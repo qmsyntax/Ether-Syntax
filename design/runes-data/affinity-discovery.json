@@ -1,0 +1,3069 @@
+{
+ "method": {
+  "freq_cut": 40000,
+  "knn": 12,
+  "level1_k": 11,
+  "lexnames": [
+   "noun.animal",
+   "noun.body",
+   "noun.feeling",
+   "noun.phenomenon",
+   "noun.plant",
+   "noun.process",
+   "noun.state",
+   "noun.substance"
+  ],
+  "candidates": 715,
+  "level1_eigenvalues": [
+   -0.0,
+   0.0574,
+   0.1074,
+   0.119,
+   0.162,
+   0.2042,
+   0.2085,
+   0.2227,
+   0.2516,
+   0.2711,
+   0.289,
+   0.3357,
+   0.3446,
+   0.3511,
+   0.3695,
+   0.3853,
+   0.4041,
+   0.4081,
+   0.4216,
+   0.4353,
+   0.4435,
+   0.4567,
+   0.4634,
+   0.4766,
+   0.4812,
+   0.4898,
+   0.4944,
+   0.4994,
+   0.5071,
+   0.5123
+  ]
+ },
+ "level1": [
+  {
+   "size": 92,
+   "central": [
+    "anger",
+    "frustration",
+    "anguish",
+    "despair",
+    "sadness",
+    "anxiety",
+    "dismay",
+    "bitterness",
+    "resentment",
+    "sorrow",
+    "consternation",
+    "indignation",
+    "disappointment",
+    "grief",
+    "exasperation",
+    "revulsion",
+    "dissatisfaction",
+    "discontent",
+    "feelings",
+    "annoyance"
+   ],
+   "by_frequency": [
+    "reaction",
+    "anger",
+    "shock",
+    "tension",
+    "sentiment",
+    "mood",
+    "feelings",
+    "chaos",
+    "turmoil",
+    "horror",
+    "confusion",
+    "panic",
+    "frustration",
+    "disappointment",
+    "alarm",
+    "anxiety",
+    "isolation",
+    "shame",
+    "hatred",
+    "rage"
+   ],
+   "categories": {
+    "noun.feeling": 54,
+    "noun.state": 36,
+    "noun.process": 1,
+    "noun.substance": 1
+   },
+   "id": "L1-2",
+   "sub": [
+    {
+     "size": 37,
+     "central": [
+      "anger",
+      "dismay",
+      "frustration",
+      "displeasure",
+      "resentment",
+      "exasperation",
+      "indignation",
+      "consternation",
+      "impatience",
+      "dissatisfaction",
+      "distaste",
+      "annoyance",
+      "bitterness",
+      "astonishment",
+      "revulsion",
+      "disappointment",
+      "irritation",
+      "discontent",
+      "disapproval",
+      "discomfort"
+     ],
+     "by_frequency": [
+      "anger",
+      "frustration",
+      "disappointment",
+      "hatred",
+      "disagreement",
+      "embarrassment",
+      "contempt",
+      "friction",
+      "fury",
+      "resentment",
+      "discontent",
+      "temper",
+      "dismay",
+      "dissatisfaction",
+      "wrath",
+      "bitterness",
+      "discomfort",
+      "complicity",
+      "indifference",
+      "disapproval"
+     ],
+     "categories": {
+      "noun.feeling": 30,
+      "noun.state": 7
+     },
+     "id": "L1-2.2"
+    },
+    {
+     "size": 29,
+     "central": [
+      "despair",
+      "anguish",
+      "loneliness",
+      "sadness",
+      "grief",
+      "sorrow",
+      "shame",
+      "misery",
+      "agony",
+      "humiliation",
+      "alienation",
+      "angst",
+      "boredom",
+      "torment",
+      "desperation",
+      "feelings",
+      "jealousy",
+      "guilt",
+      "melancholy",
+      "disgrace"
+     ],
+     "by_frequency": [
+      "shock",
+      "feelings",
+      "horror",
+      "isolation",
+      "shame",
+      "guilt",
+      "grief",
+      "plight",
+      "misery",
+      "despair",
+      "madness",
+      "sadness",
+      "sorrow",
+      "humiliation",
+      "desperation",
+      "disgrace",
+      "anguish",
+      "agony",
+      "angst",
+      "melancholy"
+     ],
+     "categories": {
+      "noun.feeling": 17,
+      "noun.state": 12
+     },
+     "id": "L1-2.1"
+    },
+    {
+     "size": 26,
+     "central": [
+      "turmoil",
+      "panic",
+      "anxiety",
+      "chaos",
+      "tumult",
+      "confusion",
+      "upheaval",
+      "tension",
+      "hysteria",
+      "gloom",
+      "malaise",
+      "uproar",
+      "frenzy",
+      "rage",
+      "alarm",
+      "anarchy",
+      "fallout",
+      "distress",
+      "commotion",
+      "mood"
+     ],
+     "by_frequency": [
+      "reaction",
+      "tension",
+      "sentiment",
+      "mood",
+      "chaos",
+      "turmoil",
+      "confusion",
+      "panic",
+      "alarm",
+      "anxiety",
+      "rage",
+      "fallout",
+      "distress",
+      "frenzy",
+      "uproar",
+      "upheaval",
+      "anarchy",
+      "gloom",
+      "hysteria",
+      "disintegration"
+     ],
+     "categories": {
+      "noun.state": 17,
+      "noun.feeling": 7,
+      "noun.process": 1,
+      "noun.substance": 1
+     },
+     "id": "L1-2.0"
+    }
+   ]
+  },
+  {
+   "size": 92,
+   "central": [
+    "result",
+    "threat",
+    "situation",
+    "problem",
+    "crisis",
+    "danger",
+    "fear",
+    "lack",
+    "consequence",
+    "extent",
+    "effect",
+    "terms",
+    "security",
+    "current",
+    "circumstances",
+    "opportunity",
+    "absence",
+    "environment",
+    "balance",
+    "life"
+   ],
+   "by_frequency": [
+    "being",
+    "security",
+    "life",
+    "bush",
+    "peace",
+    "health",
+    "rose",
+    "current",
+    "growth",
+    "face",
+    "exchange",
+    "result",
+    "crisis",
+    "problem",
+    "situation",
+    "pressure",
+    "chance",
+    "terms",
+    "safety",
+    "turkey"
+   ],
+   "categories": {
+    "noun.state": 68,
+    "noun.phenomenon": 7,
+    "noun.process": 4,
+    "noun.feeling": 4,
+    "noun.animal": 3,
+    "noun.substance": 3,
+    "noun.plant": 2,
+    "noun.body": 1
+   },
+   "id": "L1-7",
+   "sub": [
+    {
+     "size": 29,
+     "central": [
+      "result",
+      "current",
+      "terms",
+      "effect",
+      "growth",
+      "life",
+      "absence",
+      "status",
+      "health",
+      "balance",
+      "environment",
+      "opportunity",
+      "unemployment",
+      "exchange",
+      "condition",
+      "retirement",
+      "poverty",
+      "marriage",
+      "bond",
+      "weakness"
+     ],
+     "by_frequency": [
+      "life",
+      "health",
+      "rose",
+      "current",
+      "growth",
+      "exchange",
+      "result",
+      "terms",
+      "web",
+      "condition",
+      "effect",
+      "status",
+      "opportunity",
+      "environment",
+      "bond",
+      "marriage",
+      "poverty",
+      "unemployment",
+      "retirement",
+      "balance"
+     ],
+     "categories": {
+      "noun.state": 21,
+      "noun.phenomenon": 5,
+      "noun.plant": 1,
+      "noun.process": 1,
+      "noun.animal": 1
+     },
+     "id": "L1-7.2"
+    },
+    {
+     "size": 25,
+     "central": [
+      "necessity",
+      "consequence",
+      "extent",
+      "lack",
+      "emphasis",
+      "circumstances",
+      "existence",
+      "urgency",
+      "seriousness",
+      "vulnerability",
+      "dependence",
+      "survival",
+      "continuity",
+      "priority",
+      "circumstance",
+      "readiness",
+      "cohesion",
+      "evolution",
+      "realm",
+      "dependency"
+     ],
+     "by_frequency": [
+      "lack",
+      "priority",
+      "circumstances",
+      "existence",
+      "extent",
+      "survival",
+      "emphasis",
+      "evolution",
+      "slavery",
+      "consequence",
+      "urgency",
+      "readiness",
+      "necessity",
+      "realm",
+      "captivity",
+      "dependence",
+      "continuity",
+      "vulnerability",
+      "surroundings",
+      "seriousness"
+     ],
+     "categories": {
+      "noun.state": 22,
+      "noun.process": 1,
+      "noun.phenomenon": 1,
+      "noun.feeling": 1
+     },
+     "id": "L1-7.0"
+    },
+    {
+     "size": 24,
+     "central": [
+      "threat",
+      "danger",
+      "fear",
+      "problem",
+      "harm",
+      "security",
+      "face",
+      "terror",
+      "being",
+      "presence",
+      "pressure",
+      "chance",
+      "safety",
+      "prospect",
+      "bush",
+      "proliferation",
+      "hazard",
+      "jeopardy",
+      "menace",
+      "turkey"
+     ],
+     "by_frequency": [
+      "being",
+      "security",
+      "bush",
+      "face",
+      "problem",
+      "pressure",
+      "chance",
+      "safety",
+      "turkey",
+      "threat",
+      "fear",
+      "presence",
+      "terror",
+      "danger",
+      "prospect",
+      "harm",
+      "proliferation",
+      "seizure",
+      "ruin",
+      "hazard"
+     ],
+     "categories": {
+      "noun.state": 16,
+      "noun.animal": 2,
+      "noun.feeling": 2,
+      "noun.plant": 1,
+      "noun.body": 1,
+      "noun.phenomenon": 1,
+      "noun.process": 1
+     },
+     "id": "L1-7.3"
+    },
+    {
+     "size": 14,
+     "central": [
+      "crisis",
+      "solution",
+      "impasse",
+      "deadlock",
+      "peace",
+      "situation",
+      "consensus",
+      "unity",
+      "mechanism",
+      "climate",
+      "optimism",
+      "ivory",
+      "buffer",
+      "mess"
+     ],
+     "by_frequency": [
+      "peace",
+      "crisis",
+      "situation",
+      "climate",
+      "solution",
+      "unity",
+      "consensus",
+      "ivory",
+      "mechanism",
+      "optimism",
+      "mess",
+      "deadlock",
+      "impasse",
+      "buffer"
+     ],
+     "categories": {
+      "noun.state": 9,
+      "noun.substance": 3,
+      "noun.process": 1,
+      "noun.feeling": 1
+     },
+     "id": "L1-7.1"
+    }
+   ]
+  },
+  {
+   "size": 82,
+   "central": [
+    "hydrogen",
+    "nitrogen",
+    "acid",
+    "oxygen",
+    "molecule",
+    "potassium",
+    "calcium",
+    "vapor",
+    "plasma",
+    "chloride",
+    "protein",
+    "absorption",
+    "chlorine",
+    "oxidation",
+    "carbon",
+    "enzyme",
+    "synthesis",
+    "substrate",
+    "fluoride",
+    "helium"
+   ],
+   "by_frequency": [
+    "energy",
+    "gas",
+    "fuel",
+    "carbon",
+    "protein",
+    "powder",
+    "acid",
+    "heating",
+    "mixture",
+    "domain",
+    "radiation",
+    "oxygen",
+    "mercury",
+    "spectrum",
+    "fluid",
+    "cholesterol",
+    "gravity",
+    "hydrogen",
+    "cooling",
+    "vacuum"
+   ],
+   "categories": {
+    "noun.substance": 45,
+    "noun.process": 15,
+    "noun.phenomenon": 10,
+    "noun.body": 7,
+    "noun.state": 5
+   },
+   "id": "L1-6",
+   "sub": [
+    {
+     "size": 46,
+     "central": [
+      "hydrogen",
+      "vapor",
+      "nitrogen",
+      "oxygen",
+      "helium",
+      "combustion",
+      "plasma",
+      "carbon",
+      "absorption",
+      "cooling",
+      "fluid",
+      "radiation",
+      "evaporation",
+      "particle",
+      "vacuum",
+      "chlorine",
+      "diffusion",
+      "fuel",
+      "ultraviolet",
+      "gas"
+     ],
+     "by_frequency": [
+      "energy",
+      "gas",
+      "fuel",
+      "carbon",
+      "heating",
+      "mixture",
+      "radiation",
+      "oxygen",
+      "mercury",
+      "spectrum",
+      "fluid",
+      "gravity",
+      "hydrogen",
+      "cooling",
+      "vacuum",
+      "fraction",
+      "contamination",
+      "valve",
+      "voltage",
+      "particle"
+     ],
+     "categories": {
+      "noun.substance": 20,
+      "noun.process": 11,
+      "noun.phenomenon": 10,
+      "noun.state": 3,
+      "noun.body": 2
+     },
+     "id": "L1-6.1"
+    },
+    {
+     "size": 36,
+     "central": [
+      "acid",
+      "calcium",
+      "protein",
+      "enzyme",
+      "potassium",
+      "molecule",
+      "chloride",
+      "insulin",
+      "vitamin",
+      "synthesis",
+      "substrate",
+      "phosphate",
+      "fluoride",
+      "oxidation",
+      "pathway",
+      "antibody",
+      "hormone",
+      "iodine",
+      "serum",
+      "pigment"
+     ],
+     "by_frequency": [
+      "protein",
+      "powder",
+      "acid",
+      "domain",
+      "cholesterol",
+      "poison",
+      "enzyme",
+      "hormone",
+      "vitamin",
+      "synthesis",
+      "calcium",
+      "nucleus",
+      "molecule",
+      "pathway",
+      "insulin",
+      "cr",
+      "potassium",
+      "residue",
+      "chloride",
+      "phosphate"
+     ],
+     "categories": {
+      "noun.substance": 25,
+      "noun.body": 5,
+      "noun.process": 4,
+      "noun.state": 2
+     },
+     "id": "L1-6.0"
+    }
+   ]
+  },
+  {
+   "size": 79,
+   "central": [
+    "dog",
+    "cat",
+    "goat",
+    "elephant",
+    "rabbit",
+    "deer",
+    "monkey",
+    "pig",
+    "sheep",
+    "squirrel",
+    "snake",
+    "rat",
+    "horse",
+    "cow",
+    "lion",
+    "frog",
+    "pet",
+    "alligator",
+    "owl",
+    "bird"
+   ],
+   "by_frequency": [
+    "female",
+    "queen",
+    "fox",
+    "fish",
+    "male",
+    "bird",
+    "horse",
+    "dog",
+    "adult",
+    "tiger",
+    "beef",
+    "buffalo",
+    "cattle",
+    "cat",
+    "bull",
+    "cow",
+    "egg",
+    "lion",
+    "pet",
+    "poultry"
+   ],
+   "categories": {
+    "noun.animal": 73,
+    "noun.body": 3,
+    "noun.substance": 2,
+    "noun.plant": 1
+   },
+   "id": "L1-10",
+   "sub": [
+    {
+     "size": 48,
+     "central": [
+      "cat",
+      "monkey",
+      "squirrel",
+      "frog",
+      "rabbit",
+      "snake",
+      "dog",
+      "rat",
+      "owl",
+      "lion",
+      "alligator",
+      "toad",
+      "puppy",
+      "rooster",
+      "mouse",
+      "hound",
+      "ant",
+      "pigeon",
+      "kitten",
+      "claw"
+     ],
+     "by_frequency": [
+      "queen",
+      "fox",
+      "dog",
+      "tiger",
+      "cat",
+      "lion",
+      "mouse",
+      "bee",
+      "snake",
+      "hawk",
+      "rat",
+      "monkey",
+      "snail",
+      "frog",
+      "rabbit",
+      "colt",
+      "dove",
+      "falcon",
+      "panther",
+      "chick"
+     ],
+     "categories": {
+      "noun.animal": 44,
+      "noun.body": 3,
+      "noun.plant": 1
+     },
+     "id": "L1-10.0"
+    },
+    {
+     "size": 31,
+     "central": [
+      "sheep",
+      "goat",
+      "cow",
+      "cows",
+      "cattle",
+      "pig",
+      "deer",
+      "horse",
+      "elephant",
+      "livestock",
+      "poultry",
+      "fish",
+      "beef",
+      "carcass",
+      "bird",
+      "pet",
+      "bull",
+      "goose",
+      "antelope",
+      "lamb"
+     ],
+     "by_frequency": [
+      "female",
+      "fish",
+      "male",
+      "bird",
+      "horse",
+      "adult",
+      "beef",
+      "buffalo",
+      "cattle",
+      "bull",
+      "cow",
+      "egg",
+      "pet",
+      "poultry",
+      "sheep",
+      "livestock",
+      "deer",
+      "elephant",
+      "pig",
+      "fur"
+     ],
+     "categories": {
+      "noun.animal": 29,
+      "noun.substance": 2
+     },
+     "id": "L1-10.1"
+    }
+   ]
+  },
+  {
+   "size": 77,
+   "central": [
+    "affection",
+    "passion",
+    "desire",
+    "happiness",
+    "admiration",
+    "enjoyment",
+    "devotion",
+    "pleasure",
+    "excitement",
+    "longing",
+    "ambition",
+    "pride",
+    "joy",
+    "fascination",
+    "compassion",
+    "glory",
+    "nostalgia",
+    "fondness",
+    "satisfaction",
+    "gratitude"
+   ],
+   "by_frequency": [
+    "championship",
+    "independence",
+    "freedom",
+    "reputation",
+    "fame",
+    "recognition",
+    "desire",
+    "wealth",
+    "friendship",
+    "pride",
+    "liberty",
+    "fortune",
+    "integrity",
+    "luck",
+    "passion",
+    "joy",
+    "comfort",
+    "prosperity",
+    "glory",
+    "romance"
+   ],
+   "categories": {
+    "noun.feeling": 37,
+    "noun.state": 34,
+    "noun.phenomenon": 4,
+    "noun.substance": 1,
+    "noun.process": 1
+   },
+   "id": "L1-1",
+   "sub": [
+    {
+     "size": 46,
+     "central": [
+      "affection",
+      "passion",
+      "pleasure",
+      "longing",
+      "admiration",
+      "desire",
+      "enjoyment",
+      "happiness",
+      "excitement",
+      "joy",
+      "delight",
+      "fascination",
+      "fondness",
+      "devotion",
+      "emotion",
+      "nostalgia",
+      "pity",
+      "gratitude",
+      "compassion",
+      "yearning"
+     ],
+     "by_frequency": [
+      "desire",
+      "friendship",
+      "passion",
+      "joy",
+      "comfort",
+      "romance",
+      "attraction",
+      "pleasure",
+      "emotion",
+      "satisfaction",
+      "excitement",
+      "convenience",
+      "happiness",
+      "appetite",
+      "delight",
+      "compassion",
+      "affection",
+      "devotion",
+      "amusement",
+      "ego"
+     ],
+     "categories": {
+      "noun.feeling": 34,
+      "noun.state": 10,
+      "noun.phenomenon": 1,
+      "noun.process": 1
+     },
+     "id": "L1-1.0"
+    },
+    {
+     "size": 31,
+     "central": [
+      "prosperity",
+      "glory",
+      "reputation",
+      "freedom",
+      "stature",
+      "ambition",
+      "prominence",
+      "fame",
+      "wealth",
+      "pride",
+      "prestige",
+      "integrity",
+      "recognition",
+      "independence",
+      "esteem",
+      "liberty",
+      "perfection",
+      "affluence",
+      "supremacy",
+      "purity"
+     ],
+     "by_frequency": [
+      "championship",
+      "independence",
+      "freedom",
+      "reputation",
+      "fame",
+      "recognition",
+      "wealth",
+      "pride",
+      "liberty",
+      "fortune",
+      "integrity",
+      "luck",
+      "prosperity",
+      "glory",
+      "showcase",
+      "brotherhood",
+      "pbs",
+      "ambition",
+      "prominence",
+      "prestige"
+     ],
+     "categories": {
+      "noun.state": 24,
+      "noun.feeling": 3,
+      "noun.phenomenon": 3,
+      "noun.substance": 1
+     },
+     "id": "L1-1.1"
+    }
+   ]
+  },
+  {
+   "size": 65,
+   "central": [
+    "rain",
+    "dust",
+    "water",
+    "fog",
+    "wind",
+    "sunlight",
+    "snow",
+    "mist",
+    "smoke",
+    "debris",
+    "moisture",
+    "sand",
+    "heat",
+    "weather",
+    "mud",
+    "cloud",
+    "storm",
+    "ash",
+    "darkness",
+    "light"
+   ],
+   "by_frequency": [
+    "air",
+    "water",
+    "light",
+    "weather",
+    "ice",
+    "relief",
+    "storm",
+    "heat",
+    "rain",
+    "wind",
+    "electricity",
+    "snow",
+    "hurricane",
+    "salt",
+    "flood",
+    "soil",
+    "smoke",
+    "sand",
+    "drought",
+    "shadow"
+   ],
+   "categories": {
+    "noun.phenomenon": 26,
+    "noun.substance": 23,
+    "noun.state": 11,
+    "noun.process": 4,
+    "noun.feeling": 1
+   },
+   "id": "L1-3",
+   "sub": [
+    {
+     "size": 23,
+     "central": [
+      "rain",
+      "storm",
+      "wind",
+      "weather",
+      "hurricane",
+      "snow",
+      "monsoon",
+      "downpour",
+      "moisture",
+      "flood",
+      "blowing",
+      "drought",
+      "lightning",
+      "shear",
+      "gust",
+      "breeze",
+      "frost",
+      "ice",
+      "air",
+      "convection"
+     ],
+     "by_frequency": [
+      "air",
+      "weather",
+      "ice",
+      "relief",
+      "storm",
+      "rain",
+      "wind",
+      "snow",
+      "hurricane",
+      "flood",
+      "drought",
+      "lightning",
+      "blowing",
+      "frost",
+      "packing",
+      "moisture",
+      "monsoon",
+      "breeze",
+      "blackout",
+      "shear"
+     ],
+     "categories": {
+      "noun.phenomenon": 14,
+      "noun.substance": 3,
+      "noun.state": 3,
+      "noun.process": 2,
+      "noun.feeling": 1
+     },
+     "id": "L1-3.1"
+    },
+    {
+     "size": 21,
+     "central": [
+      "sewage",
+      "water",
+      "mud",
+      "garbage",
+      "dust",
+      "sand",
+      "dirt",
+      "debris",
+      "sludge",
+      "manure",
+      "soil",
+      "gravel",
+      "ash",
+      "compost",
+      "wastewater",
+      "fumes",
+      "salt",
+      "filling",
+      "grease",
+      "electricity"
+     ],
+     "by_frequency": [
+      "water",
+      "electricity",
+      "salt",
+      "soil",
+      "sand",
+      "debris",
+      "dust",
+      "mud",
+      "filling",
+      "dirt",
+      "ash",
+      "garbage",
+      "sewage",
+      "congestion",
+      "gravel",
+      "fumes",
+      "grease",
+      "wastewater",
+      "sludge",
+      "manure"
+     ],
+     "categories": {
+      "noun.substance": 18,
+      "noun.state": 2,
+      "noun.phenomenon": 1
+     },
+     "id": "L1-3.0"
+    },
+    {
+     "size": 21,
+     "central": [
+      "mist",
+      "fog",
+      "darkness",
+      "sunlight",
+      "smoke",
+      "light",
+      "cloud",
+      "flame",
+      "haze",
+      "drizzle",
+      "lighting",
+      "shadow",
+      "heat",
+      "twilight",
+      "illumination",
+      "moonlight",
+      "overcast",
+      "spray",
+      "arc",
+      "blaze"
+     ],
+     "by_frequency": [
+      "light",
+      "heat",
+      "smoke",
+      "shadow",
+      "cloud",
+      "lighting",
+      "blaze",
+      "darkness",
+      "arc",
+      "flame",
+      "fog",
+      "spray",
+      "sunlight",
+      "twilight",
+      "haze",
+      "mist",
+      "drizzle",
+      "moonlight",
+      "dew",
+      "overcast"
+     ],
+     "categories": {
+      "noun.phenomenon": 11,
+      "noun.state": 6,
+      "noun.process": 2,
+      "noun.substance": 2
+     },
+     "id": "L1-3.2"
+    }
+   ]
+  },
+  {
+   "size": 63,
+   "central": [
+    "infection",
+    "disease",
+    "liver",
+    "illness",
+    "cancer",
+    "brain",
+    "kidney",
+    "lung",
+    "tumor",
+    "ailment",
+    "diarrhea",
+    "stomach",
+    "tuberculosis",
+    "anemia",
+    "arthritis",
+    "tissue",
+    "pain",
+    "disorder",
+    "nausea",
+    "suffering"
+   ],
+   "by_frequency": [
+    "disease",
+    "blood",
+    "cancer",
+    "suffering",
+    "flu",
+    "virus",
+    "pain",
+    "brain",
+    "illness",
+    "depression",
+    "bone",
+    "strain",
+    "breast",
+    "infection",
+    "hunger",
+    "fever",
+    "organ",
+    "disorder",
+    "lung",
+    "tissue"
+   ],
+   "categories": {
+    "noun.state": 33,
+    "noun.body": 22,
+    "noun.animal": 5,
+    "noun.phenomenon": 1,
+    "noun.feeling": 1,
+    "noun.substance": 1
+   },
+   "id": "L1-8",
+   "sub": [
+    {
+     "size": 35,
+     "central": [
+      "disease",
+      "infection",
+      "illness",
+      "diarrhea",
+      "malaria",
+      "tuberculosis",
+      "sickness",
+      "fever",
+      "suffering",
+      "nausea",
+      "ailment",
+      "fatigue",
+      "virus",
+      "disorder",
+      "symptom",
+      "pain",
+      "anemia",
+      "arthritis",
+      "flu",
+      "deficiency"
+     ],
+     "by_frequency": [
+      "disease",
+      "suffering",
+      "flu",
+      "virus",
+      "pain",
+      "illness",
+      "depression",
+      "strain",
+      "infection",
+      "hunger",
+      "fever",
+      "disorder",
+      "bacteria",
+      "malaria",
+      "disability",
+      "fatigue",
+      "tuberculosis",
+      "steroid",
+      "starvation",
+      "swelling"
+     ],
+     "categories": {
+      "noun.state": 27,
+      "noun.animal": 5,
+      "noun.phenomenon": 1,
+      "noun.feeling": 1,
+      "noun.substance": 1
+     },
+     "id": "L1-8.1"
+    },
+    {
+     "size": 28,
+     "central": [
+      "liver",
+      "tumor",
+      "tissue",
+      "brain",
+      "kidney",
+      "lung",
+      "cancer",
+      "marrow",
+      "bone",
+      "gland",
+      "thyroid",
+      "spleen",
+      "stomach",
+      "breast",
+      "blood",
+      "colon",
+      "lesion",
+      "bloodstream",
+      "nerve",
+      "artery"
+     ],
+     "by_frequency": [
+      "blood",
+      "cancer",
+      "brain",
+      "bone",
+      "breast",
+      "organ",
+      "lung",
+      "tissue",
+      "nerve",
+      "stomach",
+      "liver",
+      "kidney",
+      "tumor",
+      "nerves",
+      "colon",
+      "tract",
+      "artery",
+      "gut",
+      "marrow",
+      "cortex"
+     ],
+     "categories": {
+      "noun.body": 22,
+      "noun.state": 6
+     },
+     "id": "L1-8.0"
+    }
+   ]
+  },
+  {
+   "size": 49,
+   "central": [
+    "copper",
+    "aluminum",
+    "metal",
+    "steel",
+    "iron",
+    "wood",
+    "glass",
+    "zinc",
+    "plastic",
+    "plaster",
+    "nickel",
+    "marble",
+    "cement",
+    "tin",
+    "ore",
+    "concrete",
+    "rubber",
+    "chrome",
+    "leather",
+    "coal"
+   ],
+   "by_frequency": [
+    "oil",
+    "material",
+    "giant",
+    "steel",
+    "metal",
+    "wood",
+    "glass",
+    "iron",
+    "bronze",
+    "coal",
+    "concrete",
+    "plastic",
+    "processing",
+    "clay",
+    "copper",
+    "rubber",
+    "crystal",
+    "cement",
+    "rod",
+    "leather"
+   ],
+   "categories": {
+    "noun.substance": 40,
+    "noun.animal": 3,
+    "noun.process": 2,
+    "noun.body": 2,
+    "noun.state": 1,
+    "noun.plant": 1
+   },
+   "id": "L1-0",
+   "sub": [
+    {
+     "size": 26,
+     "central": [
+      "plaster",
+      "wood",
+      "glass",
+      "marble",
+      "plastic",
+      "concrete",
+      "stucco",
+      "leather",
+      "wax",
+      "cement",
+      "rubber",
+      "brass",
+      "mahogany",
+      "charcoal",
+      "bronze",
+      "plaque",
+      "clay",
+      "wallpaper",
+      "adhesive",
+      "jade"
+     ],
+     "by_frequency": [
+      "wood",
+      "glass",
+      "bronze",
+      "concrete",
+      "plastic",
+      "clay",
+      "rubber",
+      "crystal",
+      "cement",
+      "rod",
+      "leather",
+      "laying",
+      "marble",
+      "brass",
+      "builder",
+      "plaque",
+      "lid",
+      "wax",
+      "jade",
+      "plaster"
+     ],
+     "categories": {
+      "noun.substance": 21,
+      "noun.body": 2,
+      "noun.animal": 1,
+      "noun.process": 1,
+      "noun.plant": 1
+     },
+     "id": "L1-0.1"
+    },
+    {
+     "size": 23,
+     "central": [
+      "copper",
+      "zinc",
+      "aluminum",
+      "iron",
+      "nickel",
+      "ore",
+      "steel",
+      "metal",
+      "coal",
+      "mineral",
+      "tin",
+      "chromium",
+      "chrome",
+      "platinum",
+      "graphite",
+      "lumber",
+      "oil",
+      "fiber",
+      "processing",
+      "material"
+     ],
+     "by_frequency": [
+      "oil",
+      "material",
+      "giant",
+      "steel",
+      "metal",
+      "iron",
+      "coal",
+      "processing",
+      "copper",
+      "fiber",
+      "mineral",
+      "ore",
+      "platinum",
+      "aluminum",
+      "tin",
+      "nickel",
+      "lumber",
+      "zinc",
+      "dominion",
+      "chrome"
+     ],
+     "categories": {
+      "noun.substance": 19,
+      "noun.animal": 2,
+      "noun.process": 1,
+      "noun.state": 1
+     },
+     "id": "L1-0.0"
+    }
+   ]
+  },
+  {
+   "size": 47,
+   "central": [
+    "forehead",
+    "nose",
+    "neck",
+    "jaw",
+    "chest",
+    "throat",
+    "skin",
+    "cheek",
+    "ear",
+    "abdomen",
+    "skull",
+    "hair",
+    "torso",
+    "tongue",
+    "lip",
+    "mouth",
+    "spine",
+    "scar",
+    "belly",
+    "tail"
+   ],
+   "by_frequency": [
+    "body",
+    "eye",
+    "ray",
+    "hair",
+    "skin",
+    "mouth",
+    "neck",
+    "chest",
+    "nose",
+    "finger",
+    "tail",
+    "ear",
+    "throat",
+    "tongue",
+    "skull",
+    "flesh",
+    "ink",
+    "chin",
+    "blade",
+    "beard"
+   ],
+   "categories": {
+    "noun.body": 39,
+    "noun.animal": 3,
+    "noun.plant": 2,
+    "noun.phenomenon": 1,
+    "noun.substance": 1,
+    "noun.state": 1
+   },
+   "id": "L1-5",
+   "sub": [
+    {
+     "size": 24,
+     "central": [
+      "abdomen",
+      "neck",
+      "torso",
+      "chest",
+      "spine",
+      "skull",
+      "jaw",
+      "throat",
+      "skin",
+      "tail",
+      "scar",
+      "belly",
+      "beak",
+      "flesh",
+      "body",
+      "limb",
+      "blade",
+      "vein",
+      "duct",
+      "corpse"
+     ],
+     "by_frequency": [
+      "body",
+      "skin",
+      "neck",
+      "chest",
+      "tail",
+      "throat",
+      "skull",
+      "flesh",
+      "blade",
+      "belly",
+      "jaw",
+      "corpse",
+      "vein",
+      "spine",
+      "lat",
+      "abdomen",
+      "limb",
+      "scar",
+      "duct",
+      "torso"
+     ],
+     "categories": {
+      "noun.body": 19,
+      "noun.animal": 3,
+      "noun.plant": 1,
+      "noun.state": 1
+     },
+     "id": "L1-5.0"
+    },
+    {
+     "size": 23,
+     "central": [
+      "forehead",
+      "nose",
+      "cheek",
+      "lip",
+      "hair",
+      "ear",
+      "tongue",
+      "finger",
+      "mouth",
+      "eye",
+      "brow",
+      "eyebrow",
+      "mustache",
+      "chin",
+      "tooth",
+      "beard",
+      "sweat",
+      "fist",
+      "haircut",
+      "stump"
+     ],
+     "by_frequency": [
+      "eye",
+      "ray",
+      "hair",
+      "mouth",
+      "nose",
+      "finger",
+      "ear",
+      "tongue",
+      "ink",
+      "chin",
+      "beard",
+      "sweat",
+      "fist",
+      "lip",
+      "tooth",
+      "stump",
+      "cheek",
+      "forehead",
+      "mustache",
+      "haircut"
+     ],
+     "categories": {
+      "noun.body": 20,
+      "noun.phenomenon": 1,
+      "noun.substance": 1,
+      "noun.plant": 1
+     },
+     "id": "L1-5.1"
+    }
+   ]
+  },
+  {
+   "size": 44,
+   "central": [
+    "tree",
+    "fruit",
+    "leaf",
+    "flowering",
+    "pine",
+    "bark",
+    "foliage",
+    "flower",
+    "vine",
+    "shade",
+    "shrub",
+    "grass",
+    "oak",
+    "pollen",
+    "blooming",
+    "maple",
+    "nut",
+    "poppy",
+    "corn",
+    "insect"
+   ],
+   "by_frequency": [
+    "tree",
+    "palm",
+    "seed",
+    "fruit",
+    "grass",
+    "corn",
+    "cotton",
+    "crop",
+    "root",
+    "flower",
+    "oak",
+    "pine",
+    "straw",
+    "leaf",
+    "moth",
+    "log",
+    "maple",
+    "bud",
+    "shade",
+    "flowering"
+   ],
+   "categories": {
+    "noun.plant": 25,
+    "noun.substance": 6,
+    "noun.animal": 6,
+    "noun.process": 4,
+    "noun.body": 2,
+    "noun.state": 1
+   },
+   "id": "L1-9",
+   "sub": [
+    {
+     "size": 19,
+     "central": [
+      "pine",
+      "tree",
+      "oak",
+      "maple",
+      "beech",
+      "willow",
+      "bark",
+      "leaf",
+      "vine",
+      "shade",
+      "nut",
+      "gum",
+      "blossom",
+      "locust",
+      "palm",
+      "log",
+      "wicker",
+      "bud",
+      "burr"
+     ],
+     "by_frequency": [
+      "tree",
+      "palm",
+      "oak",
+      "pine",
+      "leaf",
+      "log",
+      "maple",
+      "bud",
+      "shade",
+      "gum",
+      "bark",
+      "nut",
+      "vine",
+      "willow",
+      "blossom",
+      "burr",
+      "beech",
+      "locust",
+      "wicker"
+     ],
+     "categories": {
+      "noun.plant": 13,
+      "noun.body": 2,
+      "noun.substance": 2,
+      "noun.state": 1,
+      "noun.animal": 1
+     },
+     "id": "L1-9.2"
+    },
+    {
+     "size": 14,
+     "central": [
+      "corn",
+      "crop",
+      "fruit",
+      "poppy",
+      "cotton",
+      "grass",
+      "flower",
+      "seed",
+      "weed",
+      "root",
+      "paste",
+      "straw",
+      "maturing",
+      "clam"
+     ],
+     "by_frequency": [
+      "seed",
+      "fruit",
+      "grass",
+      "corn",
+      "cotton",
+      "crop",
+      "root",
+      "flower",
+      "straw",
+      "poppy",
+      "weed",
+      "paste",
+      "maturing",
+      "clam"
+     ],
+     "categories": {
+      "noun.plant": 9,
+      "noun.substance": 3,
+      "noun.process": 1,
+      "noun.animal": 1
+     },
+     "id": "L1-9.0"
+    },
+    {
+     "size": 11,
+     "central": [
+      "flowering",
+      "foliage",
+      "pollen",
+      "insect",
+      "larva",
+      "algae",
+      "nectar",
+      "moth",
+      "blooming",
+      "shrub",
+      "hatching"
+     ],
+     "by_frequency": [
+      "moth",
+      "flowering",
+      "insect",
+      "algae",
+      "foliage",
+      "shrub",
+      "pollen",
+      "blooming",
+      "nectar",
+      "hatching",
+      "larva"
+     ],
+     "categories": {
+      "noun.animal": 4,
+      "noun.process": 3,
+      "noun.plant": 3,
+      "noun.substance": 1
+     },
+     "id": "L1-9.1"
+    }
+   ]
+  },
+  {
+   "size": 25,
+   "central": [
+    "knee",
+    "ankle",
+    "shoulder",
+    "wrist",
+    "thigh",
+    "elbow",
+    "injury",
+    "leg",
+    "tendon",
+    "calf",
+    "arm",
+    "foot",
+    "toe",
+    "thumb",
+    "muscle",
+    "hand",
+    "biceps",
+    "hip",
+    "wound",
+    "waist"
+   ],
+   "by_frequency": [
+    "head",
+    "hand",
+    "injury",
+    "standing",
+    "foot",
+    "leg",
+    "arm",
+    "knee",
+    "shoulder",
+    "suspension",
+    "hip",
+    "lap",
+    "muscle",
+    "wound",
+    "ankle",
+    "wrist",
+    "elbow",
+    "shin",
+    "toe",
+    "thumb"
+   ],
+   "categories": {
+    "noun.body": 20,
+    "noun.state": 3,
+    "noun.substance": 1,
+    "noun.animal": 1
+   },
+   "id": "L1-4",
+   "sub": [
+    {
+     "size": 13,
+     "central": [
+      "knee",
+      "ankle",
+      "thigh",
+      "elbow",
+      "wrist",
+      "tendon",
+      "injury",
+      "calf",
+      "biceps",
+      "muscle",
+      "thumb",
+      "hip",
+      "shin"
+     ],
+     "by_frequency": [
+      "injury",
+      "knee",
+      "hip",
+      "muscle",
+      "ankle",
+      "wrist",
+      "elbow",
+      "shin",
+      "thumb",
+      "thigh",
+      "calf",
+      "tendon",
+      "biceps"
+     ],
+     "categories": {
+      "noun.body": 11,
+      "noun.state": 1,
+      "noun.animal": 1
+     },
+     "id": "L1-4.1"
+    },
+    {
+     "size": 12,
+     "central": [
+      "shoulder",
+      "leg",
+      "hand",
+      "arm",
+      "foot",
+      "wound",
+      "head",
+      "toe",
+      "standing",
+      "waist",
+      "lap",
+      "suspension"
+     ],
+     "by_frequency": [
+      "head",
+      "hand",
+      "standing",
+      "foot",
+      "leg",
+      "arm",
+      "shoulder",
+      "suspension",
+      "lap",
+      "wound",
+      "toe",
+      "waist"
+     ],
+     "categories": {
+      "noun.body": 9,
+      "noun.state": 2,
+      "noun.substance": 1
+     },
+     "id": "L1-4.0"
+    }
+   ]
+  }
+ ],
+ "ours": {
+  "water": {
+   "candidate": true,
+   "nearest_level1": [
+    [
+     0.654,
+     "L1-3"
+    ],
+    [
+     0.412,
+     "L1-6"
+    ],
+    [
+     0.373,
+     "L1-0"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.678,
+     "L1-3.0"
+    ],
+    [
+     0.516,
+     "L1-3.1"
+    ],
+    [
+     0.476,
+     "L1-6.1"
+    ]
+   ]
+  },
+  "fire": {
+   "candidate": false,
+   "nearest_level1": [
+    [
+     0.434,
+     "L1-3"
+    ],
+    [
+     0.353,
+     "L1-7"
+    ],
+    [
+     0.193,
+     "L1-0"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.438,
+     "L1-3.2"
+    ],
+    [
+     0.396,
+     "L1-7.3"
+    ],
+    [
+     0.34,
+     "L1-3.1"
+    ]
+   ]
+  },
+  "earth": {
+   "candidate": false,
+   "nearest_level1": [
+    [
+     0.434,
+     "L1-3"
+    ],
+    [
+     0.335,
+     "L1-7"
+    ],
+    [
+     0.27,
+     "L1-6"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.373,
+     "L1-3.2"
+    ],
+    [
+     0.372,
+     "L1-6.1"
+    ],
+    [
+     0.355,
+     "L1-3.0"
+    ]
+   ]
+  },
+  "wind": {
+   "candidate": true,
+   "nearest_level1": [
+    [
+     0.633,
+     "L1-3"
+    ],
+    [
+     0.245,
+     "L1-9"
+    ],
+    [
+     0.219,
+     "L1-7"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.741,
+     "L1-3.1"
+    ],
+    [
+     0.462,
+     "L1-3.2"
+    ],
+    [
+     0.349,
+     "L1-3.0"
+    ]
+   ]
+  },
+  "lightning": {
+   "candidate": true,
+   "nearest_level1": [
+    [
+     0.41,
+     "L1-3"
+    ],
+    [
+     0.147,
+     "L1-9"
+    ],
+    [
+     0.145,
+     "L1-4"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.493,
+     "L1-3.1"
+    ],
+    [
+     0.362,
+     "L1-3.2"
+    ],
+    [
+     0.213,
+     "L1-7.3"
+    ]
+   ]
+  },
+  "ice": {
+   "candidate": true,
+   "nearest_level1": [
+    [
+     0.444,
+     "L1-3"
+    ],
+    [
+     0.294,
+     "L1-0"
+    ],
+    [
+     0.226,
+     "L1-4"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.439,
+     "L1-3.1"
+    ],
+    [
+     0.345,
+     "L1-3.0"
+    ],
+    [
+     0.306,
+     "L1-3.2"
+    ]
+   ]
+  },
+  "dark": {
+   "candidate": false,
+   "nearest_level1": [
+    [
+     0.456,
+     "L1-3"
+    ],
+    [
+     0.407,
+     "L1-5"
+    ],
+    [
+     0.327,
+     "L1-9"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.56,
+     "L1-3.2"
+    ],
+    [
+     0.393,
+     "L1-5.1"
+    ],
+    [
+     0.365,
+     "L1-5.0"
+    ]
+   ]
+  },
+  "metal": {
+   "candidate": true,
+   "nearest_level1": [
+    [
+     0.712,
+     "L1-0"
+    ],
+    [
+     0.357,
+     "L1-3"
+    ],
+    [
+     0.319,
+     "L1-6"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.681,
+     "L1-0.0"
+    ],
+    [
+     0.587,
+     "L1-0.1"
+    ],
+    [
+     0.365,
+     "L1-3.0"
+    ]
+   ]
+  },
+  "blood": {
+   "candidate": true,
+   "nearest_level1": [
+    [
+     0.568,
+     "L1-8"
+    ],
+    [
+     0.407,
+     "L1-5"
+    ],
+    [
+     0.405,
+     "L1-6"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.608,
+     "L1-8.0"
+    ],
+    [
+     0.437,
+     "L1-8.1"
+    ],
+    [
+     0.403,
+     "L1-5.0"
+    ]
+   ]
+  },
+  "life": {
+   "candidate": true,
+   "nearest_level1": [
+    [
+     0.548,
+     "L1-7"
+    ],
+    [
+     0.442,
+     "L1-1"
+    ],
+    [
+     0.238,
+     "L1-2"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.577,
+     "L1-7.2"
+    ],
+    [
+     0.491,
+     "L1-7.0"
+    ],
+    [
+     0.444,
+     "L1-1.1"
+    ]
+   ]
+  },
+  "death": {
+   "candidate": false,
+   "nearest_level1": [
+    [
+     0.384,
+     "L1-7"
+    ],
+    [
+     0.307,
+     "L1-8"
+    ],
+    [
+     0.255,
+     "L1-2"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.403,
+     "L1-7.3"
+    ],
+    [
+     0.389,
+     "L1-7.2"
+    ],
+    [
+     0.333,
+     "L1-8.1"
+    ]
+   ]
+  },
+  "nature": {
+   "candidate": false,
+   "nearest_level1": [
+    [
+     0.523,
+     "L1-7"
+    ],
+    [
+     0.371,
+     "L1-1"
+    ],
+    [
+     0.203,
+     "L1-3"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.549,
+     "L1-7.0"
+    ],
+    [
+     0.454,
+     "L1-7.2"
+    ],
+    [
+     0.405,
+     "L1-7.3"
+    ]
+   ]
+  },
+  "light": {
+   "candidate": true,
+   "nearest_level1": [
+    [
+     0.523,
+     "L1-3"
+    ],
+    [
+     0.339,
+     "L1-7"
+    ],
+    [
+     0.33,
+     "L1-0"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.623,
+     "L1-3.2"
+    ],
+    [
+     0.372,
+     "L1-3.1"
+    ],
+    [
+     0.366,
+     "L1-7.2"
+    ]
+   ]
+  },
+  "dream": {
+   "candidate": false,
+   "nearest_level1": [
+    [
+     0.425,
+     "L1-1"
+    ],
+    [
+     0.295,
+     "L1-7"
+    ],
+    [
+     0.151,
+     "L1-10"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.433,
+     "L1-1.1"
+    ],
+    [
+     0.355,
+     "L1-1.0"
+    ],
+    [
+     0.288,
+     "L1-7.3"
+    ]
+   ]
+  },
+  "poison": {
+   "candidate": true,
+   "nearest_level1": [
+    [
+     0.293,
+     "L1-6"
+    ],
+    [
+     0.289,
+     "L1-8"
+    ],
+    [
+     0.288,
+     "L1-9"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.304,
+     "L1-6.0"
+    ],
+    [
+     0.294,
+     "L1-3.0"
+    ],
+    [
+     0.269,
+     "L1-8.0"
+    ]
+   ]
+  },
+  "disease": {
+   "candidate": true,
+   "nearest_level1": [
+    [
+     0.757,
+     "L1-8"
+    ],
+    [
+     0.382,
+     "L1-7"
+    ],
+    [
+     0.239,
+     "L1-6"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.789,
+     "L1-8.1"
+    ],
+    [
+     0.565,
+     "L1-8.0"
+    ],
+    [
+     0.384,
+     "L1-10.1"
+    ]
+   ]
+  },
+  "sound": {
+   "candidate": false,
+   "nearest_level1": [
+    [
+     0.31,
+     "L1-7"
+    ],
+    [
+     0.297,
+     "L1-3"
+    ],
+    [
+     0.23,
+     "L1-5"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.303,
+     "L1-7.2"
+    ],
+    [
+     0.287,
+     "L1-3.2"
+    ],
+    [
+     0.258,
+     "L1-3.1"
+    ]
+   ]
+  },
+  "gravity": {
+   "candidate": true,
+   "nearest_level1": [
+    [
+     0.373,
+     "L1-6"
+    ],
+    [
+     0.345,
+     "L1-3"
+    ],
+    [
+     0.31,
+     "L1-7"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.475,
+     "L1-6.1"
+    ],
+    [
+     0.361,
+     "L1-7.0"
+    ],
+    [
+     0.29,
+     "L1-3.2"
+    ]
+   ]
+  },
+  "space": {
+   "candidate": false,
+   "nearest_level1": [
+    [
+     0.332,
+     "L1-7"
+    ],
+    [
+     0.236,
+     "L1-3"
+    ],
+    [
+     0.194,
+     "L1-1"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.342,
+     "L1-7.2"
+    ],
+    [
+     0.318,
+     "L1-7.3"
+    ],
+    [
+     0.286,
+     "L1-6.1"
+    ]
+   ]
+  },
+  "time": {
+   "candidate": false,
+   "nearest_level1": [
+    [
+     0.563,
+     "L1-7"
+    ],
+    [
+     0.309,
+     "L1-1"
+    ],
+    [
+     0.297,
+     "L1-4"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.609,
+     "L1-7.2"
+    ],
+    [
+     0.485,
+     "L1-7.3"
+    ],
+    [
+     0.405,
+     "L1-4.0"
+    ]
+   ]
+  },
+  "mind": {
+   "candidate": false,
+   "nearest_level1": [
+    [
+     0.494,
+     "L1-7"
+    ],
+    [
+     0.487,
+     "L1-1"
+    ],
+    [
+     0.298,
+     "L1-5"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.466,
+     "L1-1.0"
+    ],
+    [
+     0.452,
+     "L1-7.3"
+    ],
+    [
+     0.436,
+     "L1-7.0"
+    ]
+   ]
+  },
+  "beast": {
+   "candidate": false,
+   "nearest_level1": [
+    [
+     0.484,
+     "L1-10"
+    ],
+    [
+     0.276,
+     "L1-5"
+    ],
+    [
+     0.199,
+     "L1-1"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.49,
+     "L1-10.0"
+    ],
+    [
+     0.368,
+     "L1-10.1"
+    ],
+    [
+     0.286,
+     "L1-5.0"
+    ]
+   ]
+  },
+  "spirit": {
+   "candidate": false,
+   "nearest_level1": [
+    [
+     0.536,
+     "L1-1"
+    ],
+    [
+     0.349,
+     "L1-7"
+    ],
+    [
+     0.222,
+     "L1-2"
+    ]
+   ],
+   "nearest_level2": [
+    [
+     0.508,
+     "L1-1.1"
+    ],
+    [
+     0.469,
+     "L1-1.0"
+    ],
+    [
+     0.339,
+     "L1-7.0"
+    ]
+   ]
+  }
+ },
+ "name_similarity": {
+  "water": {
+   "water": 1.0,
+   "fire": 0.382,
+   "earth": 0.348,
+   "wind": 0.418,
+   "lightning": 0.163,
+   "ice": 0.402,
+   "dark": 0.262,
+   "metal": 0.236,
+   "blood": 0.373,
+   "life": 0.296,
+   "death": 0.136,
+   "nature": 0.296,
+   "light": 0.388,
+   "dream": 0.117,
+   "poison": 0.28,
+   "disease": 0.209
+  },
+  "fire": {
+   "water": 0.382,
+   "fire": 1.0,
+   "earth": 0.266,
+   "wind": 0.247,
+   "lightning": 0.362,
+   "ice": 0.163,
+   "dark": 0.194,
+   "metal": 0.264,
+   "blood": 0.186,
+   "life": 0.251,
+   "death": 0.348,
+   "nature": 0.239,
+   "light": 0.385,
+   "dream": 0.11,
+   "poison": 0.18,
+   "disease": 0.158
+  },
+  "earth": {
+   "water": 0.348,
+   "fire": 0.266,
+   "earth": 1.0,
+   "wind": 0.35,
+   "lightning": 0.176,
+   "ice": 0.281,
+   "dark": 0.407,
+   "metal": 0.27,
+   "blood": 0.188,
+   "life": 0.373,
+   "death": 0.173,
+   "nature": 0.375,
+   "light": 0.335,
+   "dream": 0.25,
+   "poison": 0.132,
+   "disease": 0.185
+  },
+  "wind": {
+   "water": 0.418,
+   "fire": 0.247,
+   "earth": 0.35,
+   "wind": 1.0,
+   "lightning": 0.388,
+   "ice": 0.285,
+   "dark": 0.253,
+   "metal": 0.231,
+   "blood": 0.122,
+   "life": 0.157,
+   "death": 0.132,
+   "nature": 0.187,
+   "light": 0.359,
+   "dream": 0.158,
+   "poison": 0.069,
+   "disease": 0.124
+  },
+  "lightning": {
+   "water": 0.163,
+   "fire": 0.362,
+   "earth": 0.176,
+   "wind": 0.388,
+   "lightning": 1.0,
+   "ice": 0.259,
+   "dark": 0.218,
+   "metal": 0.171,
+   "blood": 0.045,
+   "life": 0.071,
+   "death": 0.151,
+   "nature": 0.094,
+   "light": 0.28,
+   "dream": 0.113,
+   "poison": 0.116,
+   "disease": 0.101
+  },
+  "ice": {
+   "water": 0.402,
+   "fire": 0.163,
+   "earth": 0.281,
+   "wind": 0.285,
+   "lightning": 0.259,
+   "ice": 1.0,
+   "dark": 0.264,
+   "metal": 0.235,
+   "blood": 0.202,
+   "life": 0.202,
+   "death": 0.119,
+   "nature": 0.176,
+   "light": 0.244,
+   "dream": 0.185,
+   "poison": 0.146,
+   "disease": 0.073
+  },
+  "dark": {
+   "water": 0.262,
+   "fire": 0.194,
+   "earth": 0.407,
+   "wind": 0.253,
+   "lightning": 0.218,
+   "ice": 0.264,
+   "dark": 1.0,
+   "metal": 0.326,
+   "blood": 0.293,
+   "life": 0.331,
+   "death": 0.208,
+   "nature": 0.284,
+   "light": 0.53,
+   "dream": 0.267,
+   "poison": 0.19,
+   "disease": 0.141
+  },
+  "metal": {
+   "water": 0.236,
+   "fire": 0.264,
+   "earth": 0.27,
+   "wind": 0.231,
+   "lightning": 0.171,
+   "ice": 0.235,
+   "dark": 0.326,
+   "metal": 1.0,
+   "blood": 0.185,
+   "life": 0.131,
+   "death": 0.19,
+   "nature": 0.166,
+   "light": 0.292,
+   "dream": 0.141,
+   "poison": 0.173,
+   "disease": 0.058
+  },
+  "blood": {
+   "water": 0.373,
+   "fire": 0.186,
+   "earth": 0.188,
+   "wind": 0.122,
+   "lightning": 0.045,
+   "ice": 0.202,
+   "dark": 0.293,
+   "metal": 0.185,
+   "blood": 1.0,
+   "life": 0.319,
+   "death": 0.344,
+   "nature": 0.129,
+   "light": 0.208,
+   "dream": 0.16,
+   "poison": 0.297,
+   "disease": 0.439
+  },
+  "life": {
+   "water": 0.296,
+   "fire": 0.251,
+   "earth": 0.373,
+   "wind": 0.157,
+   "lightning": 0.071,
+   "ice": 0.202,
+   "dark": 0.331,
+   "metal": 0.131,
+   "blood": 0.319,
+   "life": 1.0,
+   "death": 0.523,
+   "nature": 0.456,
+   "light": 0.337,
+   "dream": 0.424,
+   "poison": 0.11,
+   "disease": 0.279
+  },
+  "death": {
+   "water": 0.136,
+   "fire": 0.348,
+   "earth": 0.173,
+   "wind": 0.132,
+   "lightning": 0.151,
+   "ice": 0.119,
+   "dark": 0.208,
+   "metal": 0.19,
+   "blood": 0.344,
+   "life": 0.523,
+   "death": 1.0,
+   "nature": 0.272,
+   "light": 0.224,
+   "dream": 0.187,
+   "poison": 0.25,
+   "disease": 0.375
+  },
+  "nature": {
+   "water": 0.296,
+   "fire": 0.239,
+   "earth": 0.375,
+   "wind": 0.187,
+   "lightning": 0.094,
+   "ice": 0.176,
+   "dark": 0.284,
+   "metal": 0.166,
+   "blood": 0.129,
+   "life": 0.456,
+   "death": 0.272,
+   "nature": 1.0,
+   "light": 0.288,
+   "dream": 0.185,
+   "poison": 0.093,
+   "disease": 0.253
+  },
+  "light": {
+   "water": 0.388,
+   "fire": 0.385,
+   "earth": 0.335,
+   "wind": 0.359,
+   "lightning": 0.28,
+   "ice": 0.244,
+   "dark": 0.53,
+   "metal": 0.292,
+   "blood": 0.208,
+   "life": 0.337,
+   "death": 0.224,
+   "nature": 0.288,
+   "light": 1.0,
+   "dream": 0.19,
+   "poison": 0.069,
+   "disease": 0.12
+  },
+  "dream": {
+   "water": 0.117,
+   "fire": 0.11,
+   "earth": 0.25,
+   "wind": 0.158,
+   "lightning": 0.113,
+   "ice": 0.185,
+   "dark": 0.267,
+   "metal": 0.141,
+   "blood": 0.16,
+   "life": 0.424,
+   "death": 0.187,
+   "nature": 0.185,
+   "light": 0.19,
+   "dream": 1.0,
+   "poison": 0.098,
+   "disease": 0.073
+  },
+  "poison": {
+   "water": 0.28,
+   "fire": 0.18,
+   "earth": 0.132,
+   "wind": 0.069,
+   "lightning": 0.116,
+   "ice": 0.146,
+   "dark": 0.19,
+   "metal": 0.173,
+   "blood": 0.297,
+   "life": 0.11,
+   "death": 0.25,
+   "nature": 0.093,
+   "light": 0.069,
+   "dream": 0.098,
+   "poison": 1.0,
+   "disease": 0.267
+  },
+  "disease": {
+   "water": 0.209,
+   "fire": 0.158,
+   "earth": 0.185,
+   "wind": 0.124,
+   "lightning": 0.101,
+   "ice": 0.073,
+   "dark": 0.141,
+   "metal": 0.058,
+   "blood": 0.439,
+   "life": 0.279,
+   "death": 0.375,
+   "nature": 0.253,
+   "light": 0.12,
+   "dream": 0.073,
+   "poison": 0.267,
+   "disease": 1.0
+  }
+ }
+}
