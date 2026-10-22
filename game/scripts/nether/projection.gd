@@ -43,7 +43,7 @@ func strike_damage() -> float:
 	return float(_cfg["strike_damage"]) + float(_cfg["strike_damage_per_star"]) * float(stars - 1)
 
 
-func take_hit(amount: float, _heavy: bool, _source: Node) -> float:
+func take_hit(amount: float, _heavy: bool, _source: Node, _tags: Array = []) -> float:
 	if hp <= 0.0:
 		return 0.0
 	var applied: float = minf(amount, hp)

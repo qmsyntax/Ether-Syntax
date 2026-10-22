@@ -137,6 +137,21 @@ func fill_sinks(points: float, natural_only: bool = false) -> Dictionary:
 	return {"used": maxf(0.0, points) - left, "closed": closed}
 
 
+## Fill one wound's sink by id (Regrowth mends a lost arm at its own rate). {used, closed}.
+func fill_one(id: String, points: float) -> Dictionary:
+	var closed: Array[String] = []
+	for w: Dictionary in wounds:
+		if str(w["id"]) != id:
+			continue
+		var into: float = minf(maxf(0.0, points), float(w["sink"]))
+		w["sink"] = float(w["sink"]) - into
+		if float(w["sink"]) <= 0.0001:
+			closed.append(id)
+			wounds.erase(w)
+		return {"used": into, "closed": closed}
+	return {"used": 0.0, "closed": closed}
+
+
 ## How far along a wound is, in words - the sink itself is never shown as a number.
 static func wound_state(w: Dictionary) -> String:
 	var frac: float = float(w["sink"]) / maxf(0.001, float(w["sink_max"]))

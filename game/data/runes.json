@@ -114,7 +114,20 @@
 							"pip_damage",
 							"per_stack_burst",
 							"damage_from_heat",
-							"retaliate"
+							"retaliate",
+							"on_pass.damage",
+							"on_arrive.damage",
+							"on_stop.damage",
+							"on_hit.consume.per_stack_damage",
+							"per_target_damage",
+							"ray_damage",
+							"corpse_burst.damage",
+							"on_break.damage",
+							"damage_full",
+							"damage_min",
+							"damage_mult_min",
+							"zone.on_enter.damage",
+							"thrall.damage"
 						],
 						"reach": [
 							"range",
@@ -134,7 +147,15 @@
 							"zone.radius",
 							"zone.length",
 							"zone.width",
-							"trail.width"
+							"trail.width",
+							"leave_zone.radius",
+							"light_radius",
+							"gather_radius",
+							"reveal_radius",
+							"leave_decoy.lure_radius",
+							"corpse_range",
+							"drag_radius",
+							"trigger_radius"
 						],
 						"speed": [
 							"speed",
@@ -157,13 +178,23 @@
 							"life@prop|rod",
 							"zone.life",
 							"trail.life",
-							"leave_prop.life"
+							"leave_prop.life",
+							"on_hit.status_s",
+							"on_pass.status_s",
+							"leave_zone.life",
+							"leave_decoy.life",
+							"burst_zone.life",
+							"thrall.life"
 						],
 						"poise": [
 							"on_hit.poise",
 							"heavy_poise",
 							"on_stop.poise",
-							"zone.payload.poise"
+							"zone.payload.poise",
+							"on_rise.poise",
+							"on_arrive.poise",
+							"on_pass.poise",
+							"per_stack_poise"
 						]
 					},
 					"payload_parts": [
@@ -260,7 +291,7 @@
 						"zone.payload.poise": "Poise damage per tick"
 					},
 					"anchor_rule": "The skill's own rune: its Effect names what the skill already does (Surge: the shove). Its bond factors scale that part of the skill, averaged over its bonds: bonded ionically to a stronger rune, Water Bolt loses its shove.",
-					"syntax": "Effect syntax (one op per \";\"): <group> x<m> multiplies every field of a stat group the skill has: power (damage), reach (range, radius, arc, width), speed, cost, reflux, windup (wind-up and recovery), duration, poise. Also: status <id> [n], shove +<m>, pull +<m>, marks +<n>, jumps +<n>, pierce +<n>, interrupts, braced, bonus <status> +<fraction>. Strength scales each: a multiplier m becomes 1 + (m - 1) x strength; an amount is multiplied by strength. A skill without a group's fields takes a quarter of the change as power instead, so no rune does nothing."
+					"syntax": "Effect syntax (one op per \";\"): <group> x<m> multiplies every field of a stat group the skill has: power (damage), reach (range, radius, arc, width), speed, cost, reflux, windup (wind-up and recovery), duration, poise. Also: status <id> [n], shove +<m>, pull +<m>, marks +<n>, jumps +<n>, pierce +<n>, interrupts, braced, bonus <status> +<fraction>. Strength scales each: a multiplier m becomes 1 + (m - 1) x strength; an amount is multiplied by strength. A skill without a group's fields takes a quarter of the change as power instead, so no rune does nothing. New (2026-10-22): through - the hit ignores front block and shields. Planned rules for the build: a status a skill already applies adds stacks; jumps arc any hit on; braced works on any skill; poise on any hit adds stagger damage; duration also lengthens the statuses a skill applies; every skill's recovery counts as wind-up."
 				}
 			},
 			"notes": [
@@ -427,16 +458,15 @@
 			"valence": 2,
 			"electronegativity": 3.1,
 			"meaning": "empty the water from an area or a target, and draw it in",
-			"effect": "bonus soaked +0.25; cost x0.9",
+			"effect": "pull +1; reflux x0.9",
 			"ops": [
 				{
-					"op": "bonus",
-					"status": "soaked",
-					"value": 0.25
+					"op": "pull",
+					"value": 1
 				},
 				{
 					"op": "mul",
-					"group": "cost",
+					"group": "reflux",
 					"value": 0.9
 				}
 			],
@@ -530,12 +560,16 @@
 			"valence": 2,
 			"electronegativity": 2,
 			"meaning": "buoyancy: lift, lighten, walk on water",
-			"effect": "status aloft",
+			"effect": "shove +1; poise x0.8",
 			"ops": [
 				{
-					"op": "status",
-					"id": "aloft",
-					"stacks": 1
+					"op": "shove",
+					"value": 1
+				},
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 0.8
 				}
 			],
 			"as_means": "lifts: lightens, slows falls"
@@ -688,11 +722,10 @@
 			"valence": 2,
 			"electronegativity": 2.9,
 			"meaning": "soak in slowly, getting behind shields and armour",
-			"effect": "pierce +1",
+			"effect": "through",
 			"ops": [
 				{
-					"op": "pierce",
-					"value": 1
+					"op": "through"
 				}
 			],
 			"as_means": "passes through one more"
@@ -752,12 +785,12 @@
 			"valence": 2,
 			"electronegativity": 2,
 			"meaning": "set a target burning (Alight)",
-			"effect": "status alight",
+			"effect": "status alight 2",
 			"ops": [
 				{
 					"op": "status",
 					"id": "alight",
-					"stacks": 1
+					"stacks": 2
 				}
 			],
 			"as_means": "applies Alight"
@@ -1067,10 +1100,15 @@
 			"valence": 4,
 			"electronegativity": 2.74,
 			"meaning": "anchor, stand firm",
-			"effect": "braced",
+			"effect": "braced; poise x1.2",
 			"ops": [
 				{
 					"op": "braced"
+				},
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.2
 				}
 			],
 			"as_means": "you are Braced while casting"
@@ -1155,11 +1193,15 @@
 			"valence": 2,
 			"electronegativity": 2.2,
 			"meaning": "pass through the ground",
-			"effect": "pierce +1",
+			"effect": "through; reach x1.1",
 			"ops": [
 				{
-					"op": "pierce",
-					"value": 1
+					"op": "through"
+				},
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.1
 				}
 			],
 			"as_means": "passes through one more"
@@ -1174,17 +1216,17 @@
 			"valence": 1,
 			"electronegativity": 3.4,
 			"meaning": "bring the ground down and close a passage",
-			"effect": "status stunned; cost x1.2",
+			"effect": "status pinned; poise x1.3",
 			"ops": [
 				{
 					"op": "status",
-					"id": "stunned",
+					"id": "pinned",
 					"stacks": 1
 				},
 				{
 					"op": "mul",
-					"group": "cost",
-					"value": 1.2
+					"group": "poise",
+					"value": 1.3
 				}
 			],
 			"as_means": "applies Stunned; essence cost +20%"
@@ -1218,12 +1260,15 @@
 			"valence": 1,
 			"electronegativity": 3.25,
 			"meaning": "dead air; shots drop",
-			"effect": "reflux x0.8",
+			"effect": "interrupts; speed x0.85",
 			"ops": [
 				{
+					"op": "interrupts"
+				},
+				{
 					"op": "mul",
-					"group": "reflux",
-					"value": 0.8
+					"group": "speed",
+					"value": 0.85
 				}
 			],
 			"as_means": "reflux left -20%"
@@ -1263,11 +1308,16 @@
 			"valence": 4,
 			"electronegativity": 2.42,
 			"meaning": "cushioning air",
-			"effect": "windup x0.85",
+			"effect": "duration x1.2; reflux x0.85",
 			"ops": [
 				{
 					"op": "mul",
-					"group": "windup",
+					"group": "duration",
+					"value": 1.2
+				},
+				{
+					"op": "mul",
+					"group": "reflux",
 					"value": 0.85
 				}
 			],
@@ -1303,12 +1353,15 @@
 			"valence": 2,
 			"electronegativity": 3,
 			"meaning": "slam down",
-			"effect": "poise x1.4",
+			"effect": "poise x1.4; interrupts",
 			"ops": [
 				{
 					"op": "mul",
 					"group": "poise",
 					"value": 1.4
+				},
+				{
+					"op": "interrupts"
 				}
 			],
 			"as_means": "poise damage +40%"
@@ -1627,7 +1680,15 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.7,
-			"meaning": "lock solid"
+			"meaning": "lock solid",
+			"effect": "status chilled 2",
+			"ops": [
+				{
+					"op": "status",
+					"id": "chilled",
+					"stacks": 2
+				}
+			]
 		},
 		"ICE-1b": {
 			"id": "ICE-1b",
@@ -1638,7 +1699,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 1.9,
-			"meaning": "release, melt free"
+			"meaning": "release, melt free",
+			"effect": "reach x1.2; windup x0.85",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.2
+				},
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.85
+				}
+			]
 		},
 		"ICE-2a": {
 			"id": "ICE-2a",
@@ -1649,7 +1723,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.9,
-			"meaning": "creeping cold on the ground that grips and slows"
+			"meaning": "creeping cold on the ground that grips and slows",
+			"effect": "status chilled; duration x1.2",
+			"ops": [
+				{
+					"op": "status",
+					"id": "chilled",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.2
+				}
+			]
 		},
 		"ICE-2b": {
 			"id": "ICE-2b",
@@ -1660,7 +1747,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2,
-			"meaning": "glazed ice: fast and slippery"
+			"meaning": "glazed ice: fast and slippery",
+			"effect": "speed x1.3; windup x0.9",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "speed",
+					"value": 1.3
+				},
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.9
+				}
+			]
 		},
 		"ICE-3a": {
 			"id": "ICE-3a",
@@ -1671,7 +1771,20 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.15,
-			"meaning": "a fall of snow that blinds and buries"
+			"meaning": "a fall of snow that blinds and buries",
+			"effect": "reach x1.2; status blinded",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.2
+				},
+				{
+					"op": "status",
+					"id": "blinded",
+					"stacks": 1
+				}
+			]
 		},
 		"ICE-3b": {
 			"id": "ICE-3b",
@@ -1682,7 +1795,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.9,
-			"meaning": "turn ice and snow to water"
+			"meaning": "turn ice and snow to water",
+			"effect": "bonus chilled +0.3; status soaked",
+			"ops": [
+				{
+					"op": "bonus",
+					"status": "chilled",
+					"value": 0.3
+				},
+				{
+					"op": "status",
+					"id": "soaked",
+					"stacks": 1
+				}
+			]
 		},
 		"ICE-4a": {
 			"id": "ICE-4a",
@@ -1693,7 +1819,20 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.62,
-			"meaning": "build ice: walls, armour, spikes"
+			"meaning": "build ice: walls, armour, spikes",
+			"effect": "power x1.15; poise x1.2",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.15
+				},
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.2
+				}
+			]
 		},
 		"ICE-4b": {
 			"id": "ICE-4b",
@@ -1704,7 +1843,20 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 1.87,
-			"meaning": "break ice; brittle things burst"
+			"meaning": "break ice; brittle things burst",
+			"effect": "bonus frozen +0.5; poise x1.25",
+			"ops": [
+				{
+					"op": "bonus",
+					"status": "frozen",
+					"value": 0.5
+				},
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.25
+				}
+			]
 		},
 		"ICE-5a": {
 			"id": "ICE-5a",
@@ -1715,7 +1867,15 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.2,
-			"meaning": "make a thing fragile"
+			"meaning": "make a thing fragile",
+			"effect": "status brittle",
+			"ops": [
+				{
+					"op": "status",
+					"id": "brittle",
+					"stacks": 1
+				}
+			]
 		},
 		"ICE-5b": {
 			"id": "ICE-5b",
@@ -1726,7 +1886,20 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.62,
-			"meaning": "cold-harden it"
+			"meaning": "cold-harden it",
+			"effect": "duration x1.4; speed x0.9",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.4
+				},
+				{
+					"op": "mul",
+					"group": "speed",
+					"value": 0.9
+				}
+			]
 		},
 		"DRK-1a": {
 			"id": "DRK-1a",
@@ -1737,7 +1910,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 3,
-			"meaning": "make it darker"
+			"meaning": "make it darker",
+			"effect": "power x1.15; duration x1.2",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.15
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.2
+				}
+			]
 		},
 		"DRK-1b": {
 			"id": "DRK-1b",
@@ -1748,7 +1934,20 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.08,
-			"meaning": "let the light back in"
+			"meaning": "let the light back in",
+			"effect": "status dazed; windup x0.85",
+			"ops": [
+				{
+					"op": "status",
+					"id": "dazed",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.85
+				}
+			]
 		},
 		"DRK-2a": {
 			"id": "DRK-2a",
@@ -1759,7 +1958,20 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.62,
-			"meaning": "hide a thing in darkness"
+			"meaning": "hide a thing in darkness",
+			"effect": "status blinded; duration x1.2",
+			"ops": [
+				{
+					"op": "status",
+					"id": "blinded",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.2
+				}
+			]
 		},
 		"DRK-2b": {
 			"id": "DRK-2b",
@@ -1770,7 +1982,15 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 1.9,
-			"meaning": "make a hidden target stand out"
+			"meaning": "make a hidden target stand out",
+			"effect": "status exposed",
+			"ops": [
+				{
+					"op": "status",
+					"id": "exposed",
+					"stacks": 1
+				}
+			]
 		},
 		"DRK-3a": {
 			"id": "DRK-3a",
@@ -1781,7 +2001,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.2,
-			"meaning": "move through shadows"
+			"meaning": "move through shadows",
+			"effect": "reach x1.35; windup x0.9",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.35
+				},
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.9
+				}
+			]
 		},
 		"DRK-3b": {
 			"id": "DRK-3b",
@@ -1792,7 +2025,15 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.85,
-			"meaning": "nail a target's shadow, and the target with it"
+			"meaning": "nail a target's shadow, and the target with it",
+			"effect": "status shadowbound",
+			"ops": [
+				{
+					"op": "status",
+					"id": "shadowbound",
+					"stacks": 1
+				}
+			]
 		},
 		"DRK-4a": {
 			"id": "DRK-4a",
@@ -1803,7 +2044,20 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.1,
-			"meaning": "smother sound"
+			"meaning": "smother sound",
+			"effect": "windup x0.8; duration x1.2",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.8
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.2
+				}
+			]
 		},
 		"DRK-4b": {
 			"id": "DRK-4b",
@@ -1814,7 +2068,20 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.15,
-			"meaning": "sound carries and echoes in the dark"
+			"meaning": "sound carries and echoes in the dark",
+			"effect": "reach x1.2; poise x1.2",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.2
+				},
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.2
+				}
+			]
 		},
 		"DRK-5a": {
 			"id": "DRK-5a",
@@ -1825,7 +2092,20 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 4,
-			"meaning": "swallow light and energy"
+			"meaning": "swallow light and energy",
+			"effect": "cost x0.85; reflux x0.85",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "cost",
+					"value": 0.85
+				},
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 0.85
+				}
+			]
 		},
 		"DRK-5b": {
 			"id": "DRK-5b",
@@ -1836,7 +2116,20 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 1.8,
-			"meaning": "release what was swallowed"
+			"meaning": "release what was swallowed",
+			"effect": "power x1.25; reflux x1.15",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.25
+				},
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 1.15
+				}
+			]
 		},
 		"MET-1a": {
 			"id": "MET-1a",
@@ -1847,7 +2140,20 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.58,
-			"meaning": "shape and harden metal"
+			"meaning": "shape and harden metal",
+			"effect": "power x1.2; windup x1.1",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.2
+				},
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 1.1
+				}
+			]
 		},
 		"MET-1b": {
 			"id": "MET-1b",
@@ -1858,7 +2164,15 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2,
-			"meaning": "corrode it"
+			"meaning": "corrode it",
+			"effect": "status rusting",
+			"ops": [
+				{
+					"op": "status",
+					"id": "rusting",
+					"stacks": 1
+				}
+			]
 		},
 		"MET-2a": {
 			"id": "MET-2a",
@@ -1869,7 +2183,15 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.7,
-			"meaning": "join metal into one piece"
+			"meaning": "join metal into one piece",
+			"effect": "status fused",
+			"ops": [
+				{
+					"op": "status",
+					"id": "fused",
+					"stacks": 1
+				}
+			]
 		},
 		"MET-2b": {
 			"id": "MET-2b",
@@ -1880,7 +2202,20 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.01,
-			"meaning": "split it apart"
+			"meaning": "split it apart",
+			"effect": "poise x1.3; reach x1.1",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.3
+				},
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.1
+				}
+			]
 		},
 		"MET-3a": {
 			"id": "MET-3a",
@@ -1891,7 +2226,15 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.4,
-			"meaning": "close and lock with metal"
+			"meaning": "close and lock with metal",
+			"effect": "status shackled",
+			"ops": [
+				{
+					"op": "status",
+					"id": "shackled",
+					"stacks": 1
+				}
+			]
 		},
 		"MET-3b": {
 			"id": "MET-3b",
@@ -1902,7 +2245,19 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 1.9,
-			"meaning": "break a seal; punch through plate"
+			"meaning": "break a seal; punch through plate",
+			"effect": "pierce +1; poise x1.25",
+			"ops": [
+				{
+					"op": "pierce",
+					"value": 1
+				},
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.25
+				}
+			]
 		},
 		"MET-4a": {
 			"id": "MET-4a",
@@ -1913,7 +2268,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 3,
-			"meaning": "sharpen"
+			"meaning": "sharpen",
+			"effect": "power x1.2; poise x0.85",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.2
+				},
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 0.85
+				}
+			]
 		},
 		"MET-4b": {
 			"id": "MET-4b",
@@ -1924,7 +2292,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.1,
-			"meaning": "blunt edges, theirs included"
+			"meaning": "blunt edges, theirs included",
+			"effect": "status dulled; poise x1.2",
+			"ops": [
+				{
+					"op": "status",
+					"id": "dulled",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.2
+				}
+			]
 		},
 		"MET-5a": {
 			"id": "MET-5a",
@@ -1935,7 +2316,18 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.42,
-			"meaning": "armour up"
+			"meaning": "armour up",
+			"effect": "braced; duration x1.25",
+			"ops": [
+				{
+					"op": "braced"
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.25
+				}
+			]
 		},
 		"MET-5b": {
 			"id": "MET-5b",
@@ -1946,7 +2338,15 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.4,
-			"meaning": "tear armour off"
+			"meaning": "tear armour off",
+			"effect": "status stripped",
+			"ops": [
+				{
+					"op": "status",
+					"id": "stripped",
+					"stacks": 1
+				}
+			]
 		},
 		"BLD-1a": {
 			"id": "BLD-1a",
@@ -1957,7 +2357,15 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 1.9,
-			"meaning": "open wounds"
+			"meaning": "open wounds",
+			"effect": "status bleeding 1",
+			"ops": [
+				{
+					"op": "status",
+					"id": "bleeding",
+					"stacks": 1
+				}
+			]
 		},
 		"BLD-1b": {
 			"id": "BLD-1b",
@@ -1968,7 +2376,20 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.25,
-			"meaning": "close them"
+			"meaning": "close them",
+			"effect": "duration x1.3; reflux x0.9",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.3
+				},
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 0.9
+				}
+			]
 		},
 		"BLD-2a": {
 			"id": "BLD-2a",
@@ -1979,7 +2400,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 3.5,
-			"meaning": "take blood in"
+			"meaning": "take blood in",
+			"effect": "reach x1.15; bonus bleeding +0.25",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.15
+				},
+				{
+					"op": "bonus",
+					"status": "bleeding",
+					"value": 0.25
+				}
+			]
 		},
 		"BLD-2b": {
 			"id": "BLD-2b",
@@ -1990,7 +2424,20 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 1.94,
-			"meaning": "give it out, as a weapon or a gift"
+			"meaning": "give it out, as a weapon or a gift",
+			"effect": "reach x1.25; cost x1.1",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.25
+				},
+				{
+					"op": "mul",
+					"group": "cost",
+					"value": 1.1
+				}
+			]
 		},
 		"BLD-3a": {
 			"id": "BLD-3a",
@@ -2001,7 +2448,23 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.66,
-			"meaning": "blood hardens: armour, blades, a stopped wound"
+			"meaning": "blood hardens: armour, blades, a stopped wound",
+			"effect": "power x1.1; poise x1.2; braced",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.1
+				},
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.2
+				},
+				{
+					"op": "braced"
+				}
+			]
 		},
 		"BLD-3b": {
 			"id": "BLD-3b",
@@ -2012,7 +2475,25 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.1,
-			"meaning": "blood runs quick: speed, reach"
+			"meaning": "blood runs quick: speed, reach",
+			"effect": "speed x1.25; reach x1.1; power x0.9",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "speed",
+					"value": 1.25
+				},
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.1
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 0.9
+				}
+			]
 		},
 		"BLD-4a": {
 			"id": "BLD-4a",
@@ -2023,7 +2504,25 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.2,
-			"meaning": "the heart pounds"
+			"meaning": "the heart pounds",
+			"effect": "windup x0.8; power x1.1; reflux x1.1",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.8
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.1
+				},
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 1.1
+				}
+			]
 		},
 		"BLD-4b": {
 			"id": "BLD-4b",
@@ -2034,7 +2533,15 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.1,
-			"meaning": "the heart slows"
+			"meaning": "the heart slows",
+			"effect": "status sluggish",
+			"ops": [
+				{
+					"op": "status",
+					"id": "sluggish",
+					"stacks": 1
+				}
+			]
 		},
 		"BLD-5a": {
 			"id": "BLD-5a",
@@ -2045,7 +2552,18 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.85,
-			"meaning": "cut off breath"
+			"meaning": "cut off breath",
+			"effect": "interrupts; status choked",
+			"ops": [
+				{
+					"op": "interrupts"
+				},
+				{
+					"op": "status",
+					"id": "choked",
+					"stacks": 1
+				}
+			]
 		},
 		"BLD-5b": {
 			"id": "BLD-5b",
@@ -2056,7 +2574,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 1.9,
-			"meaning": "give breath; steady the body"
+			"meaning": "give breath; steady the body",
+			"effect": "reflux x0.8; windup x0.9",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 0.8
+				},
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.9
+				}
+			]
 		},
 		"LIF-1a": {
 			"id": "LIF-1a",
@@ -2067,7 +2598,20 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.38,
-			"meaning": "restore health and close wounds"
+			"meaning": "restore health and close wounds",
+			"effect": "reflux x0.75; duration x1.1",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 0.75
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.1
+				}
+			]
 		},
 		"LIF-1b": {
 			"id": "LIF-1b",
@@ -2078,7 +2622,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 3.1,
-			"meaning": "harm from within"
+			"meaning": "harm from within",
+			"effect": "status withering; power x1.1",
+			"ops": [
+				{
+					"op": "status",
+					"id": "withering",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.1
+				}
+			]
 		},
 		"LIF-2a": {
 			"id": "LIF-2a",
@@ -2089,7 +2646,20 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.15,
-			"meaning": "restore vigour and stamina"
+			"meaning": "restore vigour and stamina",
+			"effect": "speed x1.15; cost x0.9",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "speed",
+					"value": 1.15
+				},
+				{
+					"op": "mul",
+					"group": "cost",
+					"value": 0.9
+				}
+			]
 		},
 		"LIF-2b": {
 			"id": "LIF-2b",
@@ -2100,7 +2670,15 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 3.1,
-			"meaning": "drain stamina; fatigue"
+			"meaning": "drain stamina; fatigue",
+			"effect": "status spent",
+			"ops": [
+				{
+					"op": "status",
+					"id": "spent",
+					"stacks": 1
+				}
+			]
 		},
 		"LIF-3a": {
 			"id": "LIF-3a",
@@ -2111,7 +2689,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.1,
-			"meaning": "grow muscle and body"
+			"meaning": "grow muscle and body",
+			"effect": "power x1.2; poise x1.25",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.2
+				},
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.25
+				}
+			]
 		},
 		"LIF-3b": {
 			"id": "LIF-3b",
@@ -2122,7 +2713,15 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 3,
-			"meaning": "waste the body away"
+			"meaning": "waste the body away",
+			"effect": "status wasted",
+			"ops": [
+				{
+					"op": "status",
+					"id": "wasted",
+					"stacks": 1
+				}
+			]
 		},
 		"LIF-4a": {
 			"id": "LIF-4a",
@@ -2133,7 +2732,20 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.25,
-			"meaning": "end a sickness or a poison"
+			"meaning": "end a sickness or a poison",
+			"effect": "cost x0.85; reflux x0.9",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "cost",
+					"value": 0.85
+				},
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 0.9
+				}
+			]
 		},
 		"LIF-4b": {
 			"id": "LIF-4b",
@@ -2144,7 +2756,15 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2,
-			"meaning": "make ill"
+			"meaning": "make ill",
+			"effect": "status sick",
+			"ops": [
+				{
+					"op": "status",
+					"id": "sick",
+					"stacks": 1
+				}
+			]
 		},
 		"LIF-5a": {
 			"id": "LIF-5a",
@@ -2155,7 +2775,15 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.42,
-			"meaning": "restore what was lost, limbs included"
+			"meaning": "restore what was lost, limbs included",
+			"effect": "duration x1.4",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.4
+				}
+			]
 		},
 		"LIF-5b": {
 			"id": "LIF-5b",
@@ -2166,7 +2794,15 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.55,
-			"meaning": "stop healing"
+			"meaning": "stop healing",
+			"effect": "status arrested",
+			"ops": [
+				{
+					"op": "status",
+					"id": "arrested",
+					"stacks": 1
+				}
+			]
 		},
 		"DTH-1a": {
 			"id": "DTH-1a",
@@ -2177,7 +2813,15 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 4,
-			"meaning": "finish the dying"
+			"meaning": "finish the dying",
+			"effect": "bonus dying +0.4",
+			"ops": [
+				{
+					"op": "bonus",
+					"status": "dying",
+					"value": 0.4
+				}
+			]
 		},
 		"DTH-1b": {
 			"id": "DTH-1b",
@@ -2188,7 +2832,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2,
-			"meaning": "hold a life at the edge, for capture or mercy"
+			"meaning": "hold a life at the edge, for capture or mercy",
+			"effect": "status spared; power x0.85",
+			"ops": [
+				{
+					"op": "status",
+					"id": "spared",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 0.85
+				}
+			]
 		},
 		"DTH-2a": {
 			"id": "DTH-2a",
@@ -2199,7 +2856,20 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.34,
-			"meaning": "the dead get up"
+			"meaning": "the dead get up",
+			"effect": "duration x1.3; speed x1.15",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.3
+				},
+				{
+					"op": "mul",
+					"group": "speed",
+					"value": 1.15
+				}
+			]
 		},
 		"DTH-2b": {
 			"id": "DTH-2b",
@@ -2210,7 +2880,18 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.4,
-			"meaning": "put them down for good"
+			"meaning": "put them down for good",
+			"effect": "poise x1.3; interrupts",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.3
+				},
+				{
+					"op": "interrupts"
+				}
+			]
 		},
 		"DTH-3a": {
 			"id": "DTH-3a",
@@ -2221,7 +2902,15 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.22,
-			"meaning": "decay"
+			"meaning": "decay",
+			"effect": "status rotting",
+			"ops": [
+				{
+					"op": "status",
+					"id": "rotting",
+					"stacks": 1
+				}
+			]
 		},
 		"DTH-3b": {
 			"id": "DTH-3b",
@@ -2232,7 +2921,20 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.66,
-			"meaning": "stop decay, the user's own body included"
+			"meaning": "stop decay, the user's own body included",
+			"effect": "duration x1.4; reflux x0.9",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.4
+				},
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 0.9
+				}
+			]
 		},
 		"DTH-4a": {
 			"id": "DTH-4a",
@@ -2243,7 +2945,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.8,
-			"meaning": "what dies lingers as a spirit"
+			"meaning": "what dies lingers as a spirit",
+			"effect": "status dread; duration x1.15",
+			"ops": [
+				{
+					"op": "status",
+					"id": "dread",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.15
+				}
+			]
 		},
 		"DTH-4b": {
 			"id": "DTH-4b",
@@ -2254,7 +2969,18 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 1.45,
-			"meaning": "banish spirits and constructs"
+			"meaning": "banish spirits and constructs",
+			"effect": "interrupts; power x1.1",
+			"ops": [
+				{
+					"op": "interrupts"
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.1
+				}
+			]
 		},
 		"DTH-5a": {
 			"id": "DTH-5a",
@@ -2265,7 +2991,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.9,
-			"meaning": "pass out of sight and reach"
+			"meaning": "pass out of sight and reach",
+			"effect": "reach x1.2; windup x0.85",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.2
+				},
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.85
+				}
+			]
 		},
 		"DTH-5b": {
 			"id": "DTH-5b",
@@ -2276,7 +3015,20 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.15,
-			"meaning": "appear; take form"
+			"meaning": "appear; take form",
+			"effect": "power x1.1; poise x1.2",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.1
+				},
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.2
+				}
+			]
 		},
 		"NAT-1a": {
 			"id": "NAT-1a",
@@ -2287,7 +3039,25 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.15,
-			"meaning": "make a thing larger and stronger"
+			"meaning": "make a thing larger and stronger",
+			"effect": "reach x1.2; power x1.1; cost x1.1",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.2
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.1
+				},
+				{
+					"op": "mul",
+					"group": "cost",
+					"value": 1.1
+				}
+			]
 		},
 		"NAT-1b": {
 			"id": "NAT-1b",
@@ -2298,7 +3068,15 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 3,
-			"meaning": "make it smaller"
+			"meaning": "make it smaller",
+			"effect": "status dwindled",
+			"ops": [
+				{
+					"op": "status",
+					"id": "dwindled",
+					"stacks": 1
+				}
+			]
 		},
 		"NAT-2a": {
 			"id": "NAT-2a",
@@ -2309,7 +3087,20 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.08,
-			"meaning": "grow plants from the ground"
+			"meaning": "grow plants from the ground",
+			"effect": "status slowed; duration x1.3",
+			"ops": [
+				{
+					"op": "status",
+					"id": "slowed",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.3
+				}
+			]
 		},
 		"NAT-2b": {
 			"id": "NAT-2b",
@@ -2320,7 +3111,20 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.25,
-			"meaning": "kill plants; clear ground"
+			"meaning": "kill plants; clear ground",
+			"effect": "power x1.15; duration x0.7",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.15
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 0.7
+				}
+			]
 		},
 		"NAT-3a": {
 			"id": "NAT-3a",
@@ -2331,7 +3135,20 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.01,
-			"meaning": "thrive: strengthen what grows"
+			"meaning": "thrive: strengthen what grows",
+			"effect": "power x1.1; duration x1.3",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.1
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.3
+				}
+			]
 		},
 		"NAT-3b": {
 			"id": "NAT-3b",
@@ -2342,7 +3159,15 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.9,
-			"meaning": "a sickness of growing things"
+			"meaning": "a sickness of growing things",
+			"effect": "status blighted",
+			"ops": [
+				{
+					"op": "status",
+					"id": "blighted",
+					"stacks": 1
+				}
+			]
 		},
 		"NAT-4a": {
 			"id": "NAT-4a",
@@ -2353,7 +3178,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 3.2,
-			"meaning": "take what has grown, and its yield"
+			"meaning": "take what has grown, and its yield",
+			"effect": "power x1.1; cost x0.85",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.1
+				},
+				{
+					"op": "mul",
+					"group": "cost",
+					"value": 0.85
+				}
+			]
 		},
 		"NAT-4b": {
 			"id": "NAT-4b",
@@ -2364,7 +3202,25 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.1,
-			"meaning": "plant it to act later"
+			"meaning": "plant it to act later",
+			"effect": "windup x1.3; power x1.25; duration x1.2",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 1.3
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.25
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.2
+				}
+			]
 		},
 		"NAT-5a": {
 			"id": "NAT-5a",
@@ -2375,7 +3231,15 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.74,
-			"meaning": "vines bind"
+			"meaning": "vines bind",
+			"effect": "status rooted",
+			"ops": [
+				{
+					"op": "status",
+					"id": "rooted",
+					"stacks": 1
+				}
+			]
 		},
 		"NAT-5b": {
 			"id": "NAT-5b",
@@ -2386,7 +3250,19 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.08,
-			"meaning": "free what is bound"
+			"meaning": "free what is bound",
+			"effect": "shove +1; windup x0.9",
+			"ops": [
+				{
+					"op": "shove",
+					"value": 1
+				},
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.9
+				}
+			]
 		},
 		"LGT-1a": {
 			"id": "LGT-1a",
@@ -2397,7 +3273,15 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.08,
-			"meaning": "illuminate"
+			"meaning": "illuminate",
+			"effect": "status lit",
+			"ops": [
+				{
+					"op": "status",
+					"id": "lit",
+					"stacks": 1
+				}
+			]
 		},
 		"LGT-1b": {
 			"id": "LGT-1b",
@@ -2408,7 +3292,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.9,
-			"meaning": "dull the light"
+			"meaning": "dull the light",
+			"effect": "power x0.9; reflux x0.7",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 0.9
+				},
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 0.7
+				}
+			]
 		},
 		"LGT-2a": {
 			"id": "LGT-2a",
@@ -2419,7 +3316,20 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 1.3,
-			"meaning": "a sudden burst of light"
+			"meaning": "a sudden burst of light",
+			"effect": "windup x0.75; status dazed",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.75
+				},
+				{
+					"op": "status",
+					"id": "dazed",
+					"stacks": 1
+				}
+			]
 		},
 		"LGT-2b": {
 			"id": "LGT-2b",
@@ -2430,7 +3340,20 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.38,
-			"meaning": "a steady soft light"
+			"meaning": "a steady soft light",
+			"effect": "duration x1.5; reflux x0.85",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.5
+				},
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 0.85
+				}
+			]
 		},
 		"LGT-3a": {
 			"id": "LGT-3a",
@@ -2441,7 +3364,20 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 1.87,
-			"meaning": "send light and heat outward"
+			"meaning": "send light and heat outward",
+			"effect": "reach x1.3; cost x1.1",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.3
+				},
+				{
+					"op": "mul",
+					"group": "cost",
+					"value": 1.1
+				}
+			]
 		},
 		"LGT-3b": {
 			"id": "LGT-3b",
@@ -2452,7 +3388,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 3.4,
-			"meaning": "draw light and heat in"
+			"meaning": "draw light and heat in",
+			"effect": "bonus lit +0.3; reflux x0.85",
+			"ops": [
+				{
+					"op": "bonus",
+					"status": "lit",
+					"value": 0.3
+				},
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 0.85
+				}
+			]
 		},
 		"LGT-4a": {
 			"id": "LGT-4a",
@@ -2463,7 +3412,15 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.01,
-			"meaning": "a blinding glare"
+			"meaning": "a blinding glare",
+			"effect": "status blinded",
+			"ops": [
+				{
+					"op": "status",
+					"id": "blinded",
+					"stacks": 1
+				}
+			]
 		},
 		"LGT-4b": {
 			"id": "LGT-4b",
@@ -2474,7 +3431,20 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.62,
-			"meaning": "restore and sharpen sight"
+			"meaning": "restore and sharpen sight",
+			"effect": "power x1.1; reach x1.15",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.1
+				},
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.15
+				}
+			]
 		},
 		"LGT-5a": {
 			"id": "LGT-5a",
@@ -2485,7 +3455,14 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.3,
-			"meaning": "turn light, and shots, back"
+			"meaning": "turn light, and shots, back",
+			"effect": "jumps +1",
+			"ops": [
+				{
+					"op": "jumps",
+					"value": 1
+				}
+			]
 		},
 		"LGT-5b": {
 			"id": "LGT-5b",
@@ -2496,7 +3473,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.8,
-			"meaning": "bend light: false images, or nothing"
+			"meaning": "bend light: false images, or nothing",
+			"effect": "windup x0.8; reach x1.15",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.8
+				},
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.15
+				}
+			]
 		},
 		"DRM-1a": {
 			"id": "DRM-1a",
@@ -2507,7 +3497,15 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.4,
-			"meaning": "put to sleep"
+			"meaning": "put to sleep",
+			"effect": "status asleep",
+			"ops": [
+				{
+					"op": "status",
+					"id": "asleep",
+					"stacks": 1
+				}
+			]
 		},
 		"DRM-1b": {
 			"id": "DRM-1b",
@@ -2518,7 +3516,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2,
-			"meaning": "rouse; break a trance"
+			"meaning": "rouse; break a trance",
+			"effect": "bonus asleep +0.5; poise x1.2",
+			"ops": [
+				{
+					"op": "bonus",
+					"status": "asleep",
+					"value": 0.5
+				},
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.2
+				}
+			]
 		},
 		"DRM-2a": {
 			"id": "DRM-2a",
@@ -2529,7 +3540,19 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.15,
-			"meaning": "an illusion"
+			"meaning": "an illusion",
+			"effect": "jumps +1; cost x0.9",
+			"ops": [
+				{
+					"op": "jumps",
+					"value": 1
+				},
+				{
+					"op": "mul",
+					"group": "cost",
+					"value": 0.9
+				}
+			]
 		},
 		"DRM-2b": {
 			"id": "DRM-2b",
@@ -2540,7 +3563,18 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.25,
-			"meaning": "break illusions"
+			"meaning": "break illusions",
+			"effect": "interrupts; bonus dazed +0.2",
+			"ops": [
+				{
+					"op": "interrupts"
+				},
+				{
+					"op": "bonus",
+					"status": "dazed",
+					"value": 0.2
+				}
+			]
 		},
 		"DRM-3a": {
 			"id": "DRM-3a",
@@ -2551,7 +3585,15 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 3,
-			"meaning": "terror"
+			"meaning": "terror",
+			"effect": "status terrified",
+			"ops": [
+				{
+					"op": "status",
+					"id": "terrified",
+					"stacks": 1
+				}
+			]
 		},
 		"DRM-3b": {
 			"id": "DRM-3b",
@@ -2562,7 +3604,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2,
-			"meaning": "calm, bliss"
+			"meaning": "calm, bliss",
+			"effect": "status soothed; reflux x0.85",
+			"ops": [
+				{
+					"op": "status",
+					"id": "soothed",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 0.85
+				}
+			]
 		},
 		"DRM-4a": {
 			"id": "DRM-4a",
@@ -2573,7 +3628,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.9,
-			"meaning": "take another's look or voice"
+			"meaning": "take another's look or voice",
+			"effect": "status masked; cost x1.15",
+			"ops": [
+				{
+					"op": "status",
+					"id": "masked",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "cost",
+					"value": 1.15
+				}
+			]
 		},
 		"DRM-4b": {
 			"id": "DRM-4b",
@@ -2584,7 +3652,15 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 1.9,
-			"meaning": "reveal a disguise"
+			"meaning": "reveal a disguise",
+			"effect": "status read",
+			"ops": [
+				{
+					"op": "status",
+					"id": "read",
+					"stacks": 1
+				}
+			]
 		},
 		"DRM-5a": {
 			"id": "DRM-5a",
@@ -2595,7 +3671,17 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 1.9,
-			"meaning": "plant a command"
+			"meaning": "plant a command",
+			"effect": "pull +2; interrupts",
+			"ops": [
+				{
+					"op": "pull",
+					"value": 2
+				},
+				{
+					"op": "interrupts"
+				}
+			]
 		},
 		"DRM-5b": {
 			"id": "DRM-5b",
@@ -2606,7 +3692,15 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.55,
-			"meaning": "close the mind to others"
+			"meaning": "close the mind to others",
+			"effect": "status shut",
+			"ops": [
+				{
+					"op": "status",
+					"id": "shut",
+					"stacks": 1
+				}
+			]
 		},
 		"POI-1a": {
 			"id": "POI-1a",
@@ -2617,7 +3711,15 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 1.9,
-			"meaning": "dose a target"
+			"meaning": "dose a target",
+			"effect": "status dosed 2",
+			"ops": [
+				{
+					"op": "status",
+					"id": "dosed",
+					"stacks": 2
+				}
+			]
 		},
 		"POI-1b": {
 			"id": "POI-1b",
@@ -2628,7 +3730,15 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.4,
-			"meaning": "clear doses"
+			"meaning": "clear doses",
+			"effect": "bonus dosed +0.4",
+			"ops": [
+				{
+					"op": "bonus",
+					"status": "dosed",
+					"value": 0.4
+				}
+			]
 		},
 		"POI-2a": {
 			"id": "POI-2a",
@@ -2639,7 +3749,20 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.01,
-			"meaning": "foul an area or a thing"
+			"meaning": "foul an area or a thing",
+			"effect": "status dosed; duration x1.3",
+			"ops": [
+				{
+					"op": "status",
+					"id": "dosed",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.3
+				}
+			]
 		},
 		"POI-2b": {
 			"id": "POI-2b",
@@ -2650,7 +3773,15 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.78,
-			"meaning": "make it clean again"
+			"meaning": "make it clean again",
+			"effect": "reflux x0.7",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 0.7
+				}
+			]
 		},
 		"POI-3a": {
 			"id": "POI-3a",
@@ -2661,7 +3792,15 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 3,
-			"meaning": "acid that eats armour and metal"
+			"meaning": "acid that eats armour and metal",
+			"effect": "status corroded",
+			"ops": [
+				{
+					"op": "status",
+					"id": "corroded",
+					"stacks": 1
+				}
+			]
 		},
 		"POI-3b": {
 			"id": "POI-3b",
@@ -2672,7 +3811,18 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.62,
-			"meaning": "render a poison or acid harmless"
+			"meaning": "render a poison or acid harmless",
+			"effect": "interrupts; power x0.9",
+			"ops": [
+				{
+					"op": "interrupts"
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 0.9
+				}
+			]
 		},
 		"POI-4a": {
 			"id": "POI-4a",
@@ -2683,7 +3833,20 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.62,
-			"meaning": "leave residue that stays"
+			"meaning": "leave residue that stays",
+			"effect": "duration x1.6; status dosed",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.6
+				},
+				{
+					"op": "status",
+					"id": "dosed",
+					"stacks": 1
+				}
+			]
 		},
 		"POI-4b": {
 			"id": "POI-4b",
@@ -2694,7 +3857,19 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.08,
-			"meaning": "clean an area out"
+			"meaning": "clean an area out",
+			"effect": "reach x1.2; shove +1",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.2
+				},
+				{
+					"op": "shove",
+					"value": 1
+				}
+			]
 		},
 		"POI-5a": {
 			"id": "POI-5a",
@@ -2705,7 +3880,15 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 3.1,
-			"meaning": "weaken"
+			"meaning": "weaken",
+			"effect": "status sapped",
+			"ops": [
+				{
+					"op": "status",
+					"id": "sapped",
+					"stacks": 1
+				}
+			]
 		},
 		"POI-5b": {
 			"id": "POI-5b",
@@ -2716,7 +3899,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 1.9,
-			"meaning": "strengthen (poison as a drug)"
+			"meaning": "strengthen (poison as a drug)",
+			"effect": "windup x0.75; reflux x1.15",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.75
+				},
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 1.15
+				}
+			]
 		},
 		"DIS-1a": {
 			"id": "DIS-1a",
@@ -2727,7 +3923,15 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 1.9,
-			"meaning": "give a disease"
+			"meaning": "give a disease",
+			"effect": "status infected 2",
+			"ops": [
+				{
+					"op": "status",
+					"id": "infected",
+					"stacks": 2
+				}
+			]
 		},
 		"DIS-1b": {
 			"id": "DIS-1b",
@@ -2738,7 +3942,15 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.4,
-			"meaning": "kill it"
+			"meaning": "kill it",
+			"effect": "bonus infected +0.4",
+			"ops": [
+				{
+					"op": "bonus",
+					"status": "infected",
+					"value": 0.4
+				}
+			]
 		},
 		"DIS-2a": {
 			"id": "DIS-2a",
@@ -2749,7 +3961,19 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.01,
-			"meaning": "it jumps body to body"
+			"meaning": "it jumps body to body",
+			"effect": "jumps +1; status infected",
+			"ops": [
+				{
+					"op": "jumps",
+					"value": 1
+				},
+				{
+					"op": "status",
+					"id": "infected",
+					"stacks": 1
+				}
+			]
 		},
 		"DIS-2b": {
 			"id": "DIS-2b",
@@ -2760,7 +3984,20 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.4,
-			"meaning": "it stays in one body"
+			"meaning": "it stays in one body",
+			"effect": "reach x0.75; power x1.3",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 0.75
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.3
+				}
+			]
 		},
 		"DIS-3a": {
 			"id": "DIS-3a",
@@ -2771,7 +4008,20 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.8,
-			"meaning": "wounds rot"
+			"meaning": "wounds rot",
+			"effect": "status infected; duration x1.3",
+			"ops": [
+				{
+					"op": "status",
+					"id": "infected",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.3
+				}
+			]
 		},
 		"DIS-3b": {
 			"id": "DIS-3b",
@@ -2782,7 +4032,19 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 1.6,
-			"meaning": "open and drain a festering wound"
+			"meaning": "open and drain a festering wound",
+			"effect": "pierce +1; power x1.1",
+			"ops": [
+				{
+					"op": "pierce",
+					"value": 1
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.1
+				}
+			]
 		},
 		"DIS-4a": {
 			"id": "DIS-4a",
@@ -2793,7 +4055,20 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 1.94,
-			"meaning": "spread the cloud"
+			"meaning": "spread the cloud",
+			"effect": "reach x1.35; power x0.9",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.35
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 0.9
+				}
+			]
 		},
 		"DIS-4b": {
 			"id": "DIS-4b",
@@ -2804,7 +4079,19 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.25,
-			"meaning": "disperse it"
+			"meaning": "disperse it",
+			"effect": "shove +1; reach x1.15",
+			"ops": [
+				{
+					"op": "shove",
+					"value": 1
+				},
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.15
+				}
+			]
 		},
 		"DIS-5a": {
 			"id": "DIS-5a",
@@ -2815,7 +4102,18 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 3,
-			"meaning": "overwhelm the body's defences"
+			"meaning": "overwhelm the body's defences",
+			"effect": "poise x1.4; through",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.4
+				},
+				{
+					"op": "through"
+				}
+			]
 		},
 		"DIS-5b": {
 			"id": "DIS-5b",
@@ -2826,7 +4124,18 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.66,
-			"meaning": "build resistance"
+			"meaning": "build resistance",
+			"effect": "braced; cost x1.1",
+			"ops": [
+				{
+					"op": "braced"
+				},
+				{
+					"op": "mul",
+					"group": "cost",
+					"value": 1.1
+				}
+			]
 		}
 	},
 	"universal_runes": {
@@ -3965,46 +5274,183 @@
 		"water_bolt": "WAT-2a",
 		"tsunami_strike": "WAT-2a",
 		"hydraulic_flex": "WAT-6a",
-		"cinder_spit": "FIR-2a",
-		"kiln_fist": "FIR-1a",
-		"flashover": "FIR-2a",
-		"slingstone": "EAR-4a",
-		"landslide_blow": "EAR-2b",
-		"bedrock_shove": "EAR-3a",
-		"cutting_gust": "WIN-2a",
-		"downdraft": "WIN-3b",
-		"tailwind": "WIN-4a",
-		"arc_lash": "LIG-3a",
-		"thunderclap_palm": "LIG-5a",
-		"stepped_leader": "LIG-4a",
-		"crosscut": "WIN-2a",
-		"raise_slab": "EAR-1a",
 		"undertow": "WAT-2b",
 		"riptide_lash": "WAT-2b",
-		"backdraft": "FIR-3b",
-		"pyre_call": "FIR-3a",
-		"pillar": "EAR-1a",
-		"tremor": "EAR-3b",
-		"updraft": "WIN-3a",
-		"forked_path": "LIG-3a",
-		"dead_short": "LIG-2b",
 		"standing_pool": "WAT-1a",
 		"backwash": "WAT-7a",
+		"pressure_jet": "WAT-5a",
+		"drawdown": "WAT-1b",
+		"drench": "WAT-3a",
+		"wringing_grip": "WAT-3b",
+		"upwelling": "WAT-4a",
+		"drowning_hold": "WAT-4b",
+		"steady_drip": "WAT-5b",
+		"siltfall": "WAT-6b",
+		"seepage": "WAT-7b",
+		"tidal_bore": "WAT-8a",
+		"slack_water": "WAT-8b",
+		"kiln_fist": "FIR-1a",
+		"cinder_spit": "FIR-2a",
+		"flashover": "FIR-2a",
+		"pyre_call": "FIR-3a",
+		"backdraft": "FIR-3b",
+		"bellows_breath": "FIR-4a",
+		"stoke": "FIR-4a",
 		"slag_pool": "FIR-4b",
-		"stoke": "FIR-4b",
+		"hiss": "FIR-1b",
+		"wickpinch": "FIR-2b",
+		"flashpan": "FIR-5a",
+		"smokepall": "FIR-5b",
+		"slingstone": "EAR-4a",
+		"landslide_blow": "EAR-2b",
+		"raise_slab": "EAR-1a",
+		"pillar": "EAR-1a",
 		"stonehide": "EAR-2a",
+		"bedrock_shove": "EAR-3a",
+		"tremor": "EAR-3b",
+		"quarry_throw": "EAR-4a",
+		"sinkhole": "EAR-1b",
+		"cairn": "EAR-4b",
+		"burrow": "EAR-5a",
+		"cave_in": "EAR-5b",
+		"cutting_gust": "WIN-2a",
+		"crosscut": "WIN-2a",
+		"tailwind": "WIN-4a",
+		"downdraft": "WIN-3b",
+		"updraft": "WIN-3a",
 		"veil": "WIN-2b",
 		"gale_lane": "WIN-1a",
+		"spindrift": "WIN-1a",
+		"dead_air": "WIN-1b",
+		"headwind": "WIN-4b",
+		"dust_devil": "WIN-5a",
+		"blowout": "WIN-5b",
+		"plumb_bolt": "LIG-1a",
+		"ground_rod": "LIG-1b",
 		"static_coat": "LIG-2a",
-		"ground_rod": "LIG-1b"
+		"stored_bolt": "LIG-2a",
+		"dead_short": "LIG-2b",
+		"arc_lash": "LIG-3a",
+		"forked_path": "LIG-3a",
+		"bell_jar": "LIG-3b",
+		"stepped_leader": "LIG-4a",
+		"seize_up": "LIG-4b",
+		"thunderclap_palm": "LIG-5a",
+		"dead_line": "LIG-5b",
+		"set_solid": "ICE-1a",
+		"false_spring": "ICE-1b",
+		"hoarline": "ICE-2a",
+		"black_ice": "ICE-2b",
+		"whiteout": "ICE-3a",
+		"runoff": "ICE-3b",
+		"icicle": "ICE-4a",
+		"fracture": "ICE-4b",
+		"craze": "ICE-5a",
+		"ice_shell": "ICE-5b",
+		"blot": "DRK-1a",
+		"daybreak": "DRK-1b",
+		"pall": "DRK-2a",
+		"silhouette": "DRK-2b",
+		"shadow_slip": "DRK-3a",
+		"shadownail": "DRK-3b",
+		"muffle": "DRK-4a",
+		"knell": "DRK-4b",
+		"hungry_dark": "DRK-5a",
+		"night_spill": "DRK-5b",
+		"iron_slug": "MET-1a",
+		"rust_bloom": "MET-1b",
+		"spot_weld": "MET-2a",
+		"splitting_blow": "MET-2b",
+		"iron_clasp": "MET-3a",
+		"breakthrough": "MET-3b",
+		"whetted_cut": "MET-4a",
+		"turn_the_edge": "MET-4b",
+		"plating": "MET-5a",
+		"wrench": "MET-5b",
+		"red_lancet": "BLD-1a",
+		"tourniquet": "BLD-1b",
+		"deep_draught": "BLD-2a",
+		"outpour": "BLD-2b",
+		"clotblade": "BLD-3a",
+		"thinblood_rush": "BLD-3b",
+		"hammering_heart": "BLD-4a",
+		"heavy_heart": "BLD-4b",
+		"gullet_knot": "BLD-5a",
+		"long_breath": "BLD-5b",
+		"knit": "LIF-1a",
+		"withering_needle": "LIF-1b",
+		"fresh_stride": "LIF-2a",
+		"wearying_sweep": "LIF-2b",
+		"corded_muscle": "LIF-3a",
+		"wasting_grip": "LIF-3b",
+		"fever_break": "LIF-4a",
+		"turn_the_stomach": "LIF-4b",
+		"regrowth": "LIF-5a",
+		"unmending": "LIF-5b",
+		"endstroke": "DTH-1a",
+		"last_mercy": "DTH-1b",
+		"rise_again": "DTH-2a",
+		"lay_to_rest": "DTH-2b",
+		"rotting_bolt": "DTH-3a",
+		"embalm": "DTH-3b",
+		"lingering_shade": "DTH-4a",
+		"banishing_line": "DTH-4b",
+		"gravestep": "DTH-5a",
+		"death_mask": "DTH-5b",
+		"heartwood": "NAT-1a",
+		"dwindling_gall": "NAT-1b",
+		"thornburst": "NAT-2a",
+		"sere_ground": "NAT-2b",
+		"greening": "NAT-3a",
+		"heartrot": "NAT-3b",
+		"reaping_sweep": "NAT-4a",
+		"scatter_seed": "NAT-4b",
+		"vine_reach": "NAT-5a",
+		"unwinding": "NAT-5b",
+		"dayline": "LGT-1a",
+		"dusk_well": "LGT-1b",
+		"glint": "LGT-2a",
+		"still_lamp": "LGT-2b",
+		"noonburst": "LGT-3a",
+		"gathered_light": "LGT-3b",
+		"hard_glare": "LGT-4a",
+		"clear_eye": "LGT-4b",
+		"glancing_ray": "LGT-5a",
+		"bent_light": "LGT-5b",
+		"dozing_mote": "DRM-1a",
+		"rousing_blow": "DRM-1b",
+		"doubling_step": "DRM-2a",
+		"shattered_dream": "DRM-2b",
+		"night_terror": "DRM-3a",
+		"quiet_hour": "DRM-3b",
+		"changeling_mask": "DRM-4a",
+		"read_the_tell": "DRM-4b",
+		"errand": "DRM-5a",
+		"shutter": "DRM-5b",
+		"sting_dart": "POI-1a",
+		"black_purge": "POI-1b",
+		"fouling_slide": "POI-2a",
+		"clean_air": "POI-2b",
+		"caustic_spew": "POI-3a",
+		"counterdose": "POI-3b",
+		"residue": "POI-4a",
+		"funnel": "POI-4b",
+		"sapping_tether": "POI-5a",
+		"bitter_tonic": "POI-5b",
+		"fever_flask": "DIS-1a",
+		"crisis": "DIS-1b",
+		"contagion": "DIS-2a",
+		"sealing_clot": "DIS-2b",
+		"festering_hands": "DIS-3a",
+		"lancing_cut": "DIS-3b",
+		"plaguebloom": "DIS-4a",
+		"dispersal": "DIS-4b",
+		"teeming_fog": "DIS-5a",
+		"inured_blood": "DIS-5b"
 	},
 	"unmatched": {
 		"sheet_skills_without_ability": [
-			"Pressure Jet (WAT-5a, Gush)",
-			"Bellows Breath (FIR-4a, Blaze)",
-			"Quarry Throw (EAR-4a, Dig)",
-			"Spindrift (WIN-1a, Blow)",
-			"Stored Bolt (LIG-2a, Charge)"
+			"Fever Break (DIS-1b, Disinfect)"
 		],
 		"abilities_without_rune": [],
 		"conflicts": []

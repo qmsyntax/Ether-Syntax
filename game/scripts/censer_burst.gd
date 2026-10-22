@@ -59,6 +59,7 @@ func tick(delta: float) -> void:
 		if to.length() > radius + float(e.get("radius")):
 			continue
 		var b: Body = e.get("body")
-		b.heal(b.total_max() * heal_frac)
+		if not (e.has_method("blocks_heal") and bool(e.call("blocks_heal"))):
+			b.heal(b.total_max() * heal_frac)
 		e.call("add_status", status)
 	queue_free()

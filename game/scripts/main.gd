@@ -966,6 +966,12 @@ func save_now() -> void:
 	save_to_slot(0)
 
 
+## The level's own light (Light.base reads it): balance.json "light", by game state.
+func light_base() -> String:
+	var cfg: Dictionary = GameData.balance.get("light", {})
+	return str((cfg.get("by_state", {}) as Dictionary).get(state, cfg.get("default", "dim")))
+
+
 ## Write the character as it stands to a slot (0 = autosave). Only meaningful in town.
 func save_to_slot(slot: int) -> bool:
 	if str(player.get("talent_id")) == "":

@@ -46,7 +46,7 @@ func is_dead() -> bool:
 	return body.is_dead()
 
 
-func take_hit(amount: float, _heavy: bool, _source: Node) -> float:
+func take_hit(amount: float, _heavy: bool, _source: Node, _tags: Array = []) -> float:
 	var applied: float = body.apply_damage(amount)
 	var frac: float = body.total() / body.total_max()
 	_model.scale = Vector3.ONE * maxf(0.3, frac)

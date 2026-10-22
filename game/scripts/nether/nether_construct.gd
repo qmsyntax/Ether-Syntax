@@ -71,7 +71,7 @@ func set_highlight(level: int) -> void:
 	highlight = level
 
 
-func take_hit(amount: float, _heavy: bool, _source: Node) -> float:
+func take_hit(amount: float, _heavy: bool, _source: Node, _tags: Array = []) -> float:
 	var applied: float = body.apply_damage(amount)
 	hostile = true                      # nothing stays docile once struck
 	NetherArt.look(_model, "flash", 0.12)

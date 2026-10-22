@@ -18,6 +18,15 @@ extends RuneInteraction
 ##
 ## The result is a PATCH - field operations on the ability dictionary - that Player.ability_stats
 ## applies to a locked word's skill, plus the words and the per-rune breakdown the screen shows.
+##
+## Rule changes of 2026-10-22 (the build brief): a status op on a skill that already applies that
+## status adds stacks; `jumps +n` arcs any hit on to n more enemies (a chain or a jumping beam gets
+## more jumps); `braced` works on any skill (Braced for the cast and recovery); `through` makes a
+## hit ignore front block and shields; every skill has a recovery (its own or the default), so the
+## windup group always acts; a self buff's or channel's main magnitude (its `magnitude` paths, an
+## amount or a multiplier's gap from 1) counts as power; poise on any damaging hit adds stagger
+## damage (the default skill poise where the hit names none); duration also lengthens the statuses
+## a skill applies (its status_s, or a status_time_mult on the payload).
 
 var _cache_key := ""
 var _cache: Dictionary = {}
@@ -123,7 +132,7 @@ func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
 	if absf(fallback_mult - 1.0) > 0.000001:
 		var landed := false
 		for g: Variant in params.get("fallback_groups", ["power"]):
-			if _group_fields(ab, str(g)).is_empty():
+			if not _group_acts(ab, str(g)):
 				continue
 			var m: float = fallback_mult
 			if (params.get("lower_is_better", []) as Array).has(str(g)):
@@ -146,6 +155,7 @@ func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
 			patch.append({"op": "mul", "path": path, "value": m2})
 			if caps.has(path):
 				patch.append({"op": "min", "path": path, "value": float(caps[path])})
+		_extra_group_patch(ab, g, m2, patch)
 	out["patch"] = patch
 	out["lines"] = lines
 	out["fields"] = _fields_shown(ab)
@@ -275,6 +285,49 @@ func _anchor_kinds(word: Dictionary) -> Array:
 
 # --- ability fields --------------------------------------------------------------------
 
+## What a group's multiplier also reaches beyond the skill's own fields (2026-10-22): the default
+## recovery, a self buff's magnitude, the default poise of a damaging hit, the statuses it applies.
+func _extra_group_patch(ab: Dictionary, g: String, m: float, patch: Array) -> void:
+	match g:
+		"windup":
+			if not ab.has("recovery"):
+				patch.append({"op": "set", "path": "recovery", "value": GameData.num("abilities", "cast_recovery") * m})
+		"power":
+			for mag: Variant in ab.get("magnitude", []):
+				var path: String = str((mag as Dictionary)["path"])
+				patch.append({"op": "mul_gap" if str((mag as Dictionary).get("as", "amount")) == "mult" else "mul", "path": path, "value": m})
+		"poise":
+			for part: String in _payload_parts(ab):
+				if _part_deals_damage(ab, part) and not (get_path_value(ab, part) as Dictionary).has("poise"):
+					patch.append({"op": "set", "path": part + ".poise", "value": GameData.num("combat", "skill_poise") * m})
+		"duration":
+			for part2: String in _payload_parts(ab):
+				var p: Dictionary = get_path_value(ab, part2)
+				if (p.has("status") or p.has("statuses")) and not p.has("status_s"):
+					patch.append({"op": "set", "path": part2 + ".status_time_mult", "value": m})
+
+
+## True if the group reaches something in this skill once the 2026-10-22 rules are counted.
+func _group_acts(ab: Dictionary, g: String) -> bool:
+	if not _group_fields(ab, g).is_empty():
+		return true
+	match g:
+		"windup":
+			return true                           # every skill has a recovery
+		"power":
+			return not (ab.get("magnitude", []) as Array).is_empty()
+		"poise":
+			for part: String in _payload_parts(ab):
+				if _part_deals_damage(ab, part):
+					return true
+		"duration":
+			for part2: String in _payload_parts(ab):
+				var p: Dictionary = get_path_value(ab, part2)
+				if p.has("status") or p.has("statuses"):
+					return true
+	return false
+
+
 ## The fields of a stat group this skill has: paths whose value is a non-zero number.
 func _group_fields(ab: Dictionary, group: String) -> Array[String]:
 	var out: Array[String] = []
@@ -333,7 +386,7 @@ func _apply_op(ab: Dictionary, op: Dictionary, s: float, threshold: float, group
 		"mul":
 			var g: String = str(op["group"])
 			var m: float = 1.0 + (float(op["value"]) - 1.0) * s
-			if _group_fields(ab, g).is_empty():
+			if not _group_acts(ab, g):
 				var c: float = m - 1.0
 				if (params.get("lower_is_better", []) as Array).has(g):
 					c = -c
@@ -347,10 +400,16 @@ func _apply_op(ab: Dictionary, op: Dictionary, s: float, threshold: float, group
 				return {"used": false, "change": grant_change, "why": "nothing it hits"}
 			if s < threshold:
 				return {"used": false, "change": grant_change, "why": "too faint to take hold"}
-			if _has_status(ab, part, id):
-				return {"used": false, "change": grant_change, "why": "already applies it"}
-			patch.append({"op": "append", "path": part + ".statuses", "value": {"id": id, "stacks": int(op.get("stacks", 1))}})
 			var label: String = _status_label(id)
+			if _has_status(ab, part, id):
+				# the skill already applies it: more stacks of it (2026-10-22)
+				var p: Dictionary = get_path_value(ab, part)
+				if str(p.get("status", "")) == id:
+					patch.append({"op": "set", "path": part + ".stacks", "value": int(p.get("stacks", 1)) + int(op.get("stacks", 1))})
+				else:
+					patch.append({"op": "append", "path": part + ".statuses", "value": {"id": id, "stacks": int(op.get("stacks", 1))}})
+				return {"used": true, "text": "+%d %s" % [int(op.get("stacks", 1)), label], "line": "+%d stack%s of %s" % [int(op.get("stacks", 1)), "" if int(op.get("stacks", 1)) == 1 else "s", label]}
+			patch.append({"op": "append", "path": part + ".statuses", "value": {"id": id, "stacks": int(op.get("stacks", 1))}})
 			return {"used": true, "text": "applies %s" % label, "line": "applies %s" % label}
 		"shove", "pull":
 			var part2: String = _payload_part(ab)
@@ -368,11 +427,16 @@ func _apply_op(ab: Dictionary, op: Dictionary, s: float, threshold: float, group
 			patch.append({"op": "add", "path": part3 + ".marks", "value": marks})
 			return {"used": true, "text": "+%d Live mark%s" % [marks, "" if marks == 1 else "s"], "line": "+%d Live mark%s" % [marks, "" if marks == 1 else "s"]}
 		"jumps":
+			# 2026-10-22: any hit arcs on (a chain, or a beam that already jumps, gets more jumps)
 			var jumps: int = int(round(float(op["value"]) * s))
-			if str(ab.get("kind", "")) != "chain" or jumps < 1:
-				return {"used": false, "change": grant_change, "why": "it does not jump" if str(ab.get("kind", "")) != "chain" else "too faint for a whole jump"}
-			patch.append({"op": "add", "path": "jumps", "value": jumps})
-			return {"used": true, "text": "+%d jump%s" % [jumps, "" if jumps == 1 else "s"], "line": "jumps to %d more" % jumps}
+			var part6: String = _payload_part(ab)
+			if jumps < 1 or (part6 == "" and not ab.has("jumps")):
+				return {"used": false, "change": grant_change, "why": "too faint for a whole jump" if jumps < 1 else "nothing it hits"}
+			if str(ab.get("kind", "")) == "chain" or ab.has("jumps"):
+				patch.append({"op": "add", "path": "jumps", "value": jumps})
+			else:
+				patch.append({"op": "add", "path": part6 + ".jumps", "value": jumps})
+			return {"used": true, "text": "+%d jump%s" % [jumps, "" if jumps == 1 else "s"], "line": "arcs on to %d more" % jumps}
 		"pierce":
 			if str(ab.get("kind", "")) != "projectile" or bool(ab.get("pierce", false)) or int(round(float(op["value"]) * s)) < 1:
 				return {"used": false, "change": grant_change, "why": "it already pierces" if bool(ab.get("pierce", false)) else "it is not a shot" if str(ab.get("kind", "")) != "projectile" else "too faint to pierce"}
@@ -385,11 +449,17 @@ func _apply_op(ab: Dictionary, op: Dictionary, s: float, threshold: float, group
 			patch.append({"op": "set", "path": part4 + ".interrupts", "value": true})
 			return {"used": true, "text": "interrupts", "line": "interrupts what it hits"}
 		"braced":
-			var can_brace: bool = float(ab.get("windup", 0.0)) > 0.0 or str(ab.get("kind", "")) == "dash"
-			if not can_brace or s < threshold or bool(ab.get("braced", false)):
-				return {"used": false, "change": grant_change, "why": "no wind-up to brace" if not can_brace else "too faint" if s < threshold else "already braced"}
+			# 2026-10-22: any skill - braced for its wind-up, its cast and its recovery
+			if s < threshold or bool(ab.get("braced", false)):
+				return {"used": false, "change": grant_change, "why": "too faint" if s < threshold else "already braced"}
 			patch.append({"op": "set", "path": "braced", "value": true})
-			return {"used": true, "text": "braces you", "line": "you are braced while it winds up"}
+			return {"used": true, "text": "braces you", "line": "you are braced while you cast it"}
+		"through":
+			var part7: String = _payload_part(ab)
+			if part7 == "" or s < threshold or bool((get_path_value(ab, part7) as Dictionary).get("through", false)):
+				return {"used": false, "change": grant_change, "why": "nothing it hits" if part7 == "" else "too faint" if s < threshold else "already goes through"}
+			patch.append({"op": "set", "path": part7 + ".through", "value": true})
+			return {"used": true, "text": "goes through guards", "line": "ignores front block and shields"}
 		"bonus":
 			var part5: String = _payload_part(ab)
 			if part5 == "" or not _part_deals_damage(ab, part5):
@@ -506,6 +576,8 @@ func op_words(op: Dictionary, s: float) -> String:
 			return "interrupts"
 		"braced":
 			return "braces you"
+		"through":
+			return "goes through guards"
 		"bonus":
 			return "+%d%% damage to %s" % [int(round(float(op["value"]) * s * 100.0)), _status_label(str(op["status"]))]
 	return str(op["op"])

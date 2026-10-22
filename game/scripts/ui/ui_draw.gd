@@ -257,8 +257,33 @@ static func sweep(ci: CanvasItem, rect: Rect2, left: float, color: Color = Color
 	ci.draw_colored_polygon(pts, color)
 
 
+## A rune's mark under a skill's glyph: as many pips as the rune's pair number (ICE-2a: two), filled
+## for the first of the pair ("a"), rings for the second ("b"), in a short row along the bottom.
+static func _rune_mark(ci: CanvasItem, rune_id: String, c: Vector2, s: float, color: Color) -> void:
+	var tail: String = rune_id.get_slice("-", 1)
+	var n: int = clampi(int(tail.left(tail.length() - 1)), 1, 9)
+	var filled: bool = tail.ends_with("a")
+	var r: float = s * 0.055
+	var gap: float = r * 2.6
+	var y: float = c.y + s * 0.46
+	var x0: float = c.x - gap * float(n - 1) * 0.5
+	for i: int in n:
+		var p := Vector2(x0 + gap * float(i), y)
+		ci.draw_circle(p, r + 1.0, Color(0, 0, 0, 0.55))
+		if filled:
+			ci.draw_circle(p, r, color.lightened(0.25))
+		else:
+			ci.draw_arc(p, r, 0.0, TAU, 12, color.lightened(0.25), 1.4, true)
+
+
 ## Small procedural glyphs so abilities and items read at a glance without art assets.
+## "glyph:RUNE-ID" (the drafted skills, 2026-10-22) is a kind's glyph marked with its rune.
 static func icon(ci: CanvasItem, kind: String, c: Vector2, s: float, color: Color) -> void:
+	if kind.contains(":"):
+		var parts: PackedStringArray = kind.split(":")
+		icon(ci, parts[0], c + Vector2(-s * 0.06, -s * 0.06), s * 0.86, color)
+		_rune_mark(ci, parts[1], c, s, color)
+		return
 	match kind:
 		"drop":      # water bolt: a droplet with a trail
 			var pts := PackedVector2Array()

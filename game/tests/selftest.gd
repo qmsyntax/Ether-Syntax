@@ -3114,11 +3114,15 @@ func _test_water_and_lightning() -> void:
 	var t1 := _foe(l, Vector3(0, 0, -3.0))
 	var t2 := _foe(l, Vector3(4.0, 0, -3.0))
 	var far := _foe(l, Vector3(0, 0, -5.0))
-	# Arc Lash: instant, first enemy on the line, one mark
+	# Arc Lash: instant, first enemy on the line, one mark - then (approved 2026-10-22) it arcs on to
+	# the nearest other enemy within 4 m: `far`, 2 m behind t1, not t2, 4 m to the side
 	l.call("cast_slot", 0)
-	_check("arc lash lands at once on the first enemy in line", _near(_lost(t1), 85.0) and _near(_lost(far), 0.0) and _near(_lost(t2), 0.0),
+	_check("arc lash lands at once on the first enemy in line", _near(_lost(t1), 85.0) and _near(_lost(t2), 0.0),
 		"t1 %f far %f t2 %f" % [_lost(t1), _lost(far), _lost(t2)])
+	_check("and arcs on to the nearest other enemy within 4 m, for the same", _near(_lost(far), 85.0) and int(far.call("status_stacks", "live")) == 1,
+		"far %f" % _lost(far))
 	_check("and leaves one Live mark", int(t1.call("status_stacks", "live")) == 1)
+	var far_before: float = _lost(far)
 	var out_of_range := _foe(l, Vector3(-6.0, 0, -9.6))
 	l.set("_facing", (out_of_range.global_position - l.global_position).normalized())
 	_rested(l)
@@ -3142,10 +3146,15 @@ func _test_water_and_lightning() -> void:
 	_rested(l)
 	l.call("cast_slot", 1)
 	var palm: float = strike * 2.2
-	_check("the third mark is an Overload: the palm, then the big hit", _near(_lost(t1) - t1_before, palm + float(live["overload_damage"])), "lost %f want %f" % [_lost(t1) - t1_before, palm + float(live["overload_damage"])])
+	# the palm Dazes its target (approved 2026-10-22) before the marks go off, so the big hit lands on a Dazed body
+	var dazed_mult: float = float(GameData.status("dazed")["damage_taken_mult"])
+	var want_t1: float = palm + float(live["overload_damage"]) * dazed_mult
+	_check("the third mark is an Overload: the palm, then the big hit", _near(_lost(t1) - t1_before, want_t1), "lost %f want %f" % [_lost(t1) - t1_before, want_t1])
 	_check("the overloaded target is stunned and its marks are gone", bool(t1.call("has_status", "stunned")) and int(t1.call("status_stacks", "live")) == 0)
-	_check("the arc reaches every other marked enemy", _near(_lost(t2), float(live["arc_damage"])) and _near(_lost(far), float(live["arc_damage"])), "t2 %f far %f" % [_lost(t2), _lost(far)])
-	_check("and they keep their marks", int(t2.call("status_stacks", "live")) == 1 and int(far.call("status_stacks", "live")) == 1)
+	_check("the arc reaches every other marked enemy", _near(_lost(t2), float(live["arc_damage"])) and _near(_lost(far) - far_before, float(live["arc_damage"])), "t2 %f far %f" % [_lost(t2), _lost(far) - far_before])
+	_check("and they keep their marks", int(t2.call("status_stacks", "live")) == 1 and int(far.call("status_stacks", "live")) == 2)
+	_check("the crack Dazes and staggers everyone within 2.5 m of the target, the target too", bool(t1.call("has_status", "dazed")) and bool(far.call("has_status", "dazed"))
+		and bool(far.call("has_status", "staggered")) and not bool(t2.call("has_status", "dazed")))
 	var unmarked := _foe(l, Vector3(-2.0, 0, -3.0))
 	t1.call("add_status", "live", 2)
 	l.call("_add_marks", t1, 1, true)
@@ -3187,6 +3196,8 @@ func _test_water_and_lightning() -> void:
 	near_landing.queue_free()
 
 	# ---------- running hot no longer hurts; it slows you
+	_check("stepped leader leaves you Quickened (approved 2026-10-22)", (l.get("buffs") as Dictionary).has("quickened"))
+	(l.get("buffs") as Dictionary).clear()                           # Quickened would shorten the recovery measured below
 	(l.get("reflux_by") as Dictionary)["lightning"] = 85.0
 	var hurt_before: float = (l.get("body") as Body).missing()
 	l.set("_facing", Vector3(1, 0, 0))
@@ -3227,7 +3238,9 @@ func _test_water_and_lightning() -> void:
 func _test_affinities() -> void:
 	print("affinities:")
 	var ids: Array = GameData.affinity_ids()
-	_check("five affinities are defined", ids.size() == 5 and ids.has("water") and ids.has("fire") and ids.has("earth") and ids.has("wind") and ids.has("lightning"))
+	# Brent 2026-10-22: all sixteen are in the game
+	var sixteen: Array = ["water", "fire", "earth", "wind", "lightning", "ice", "dark", "metal", "blood", "life", "death", "nature", "light", "dream", "poison", "disease"]
+	_check("sixteen affinities are defined", ids.size() == 16 and sixteen.all(func(a: String) -> bool: return ids.has(a)), str(ids))
 	for a: String in ids:
 		var kit: Array = GameData.affinity(a).get("kit", [])
 		var kinds: Array = []
@@ -3237,8 +3250,10 @@ func _test_affinities() -> void:
 			kinds.append(str(ab.get("kind", "")))
 			own = own and str(ab.get("affinity", "")) == a
 		# earth is the exception, on purpose: its third skill raises a wall and it has no way to move fast
+		# a ranged attack may be a lobbed blast (nature, disease); movement may be a grapple or a streak (nature, light)
 		_check("%s has a ranged attack, a strike and a movement skill of its own (earth: a wall instead)" % a,
-			kit.size() == 3 and own and ["projectile", "beam"].has(kinds[0]) and ["melee_burst", "targeted_strike"].has(kinds[1]) and (["dash", "blink"].has(kinds[2]) or (a == "earth" and kinds[2] == "prop")), str(kinds))
+			kit.size() == 3 and own and ["projectile", "beam", "delayed_blast"].has(kinds[0]) and ["melee_burst", "targeted_strike"].has(kinds[1])
+			and (["dash", "blink", "grapple", "streak"].has(kinds[2]) or (a == "earth" and kinds[2] == "prop")), str(kinds))
 
 	# the roll at character creation: talent and affinities are unrelated, slots are 1 / 2 / 3
 	var rng := RandomNumberGenerator.new()
@@ -4890,13 +4905,23 @@ func _test_rune_effects() -> void:
 	var small: Dictionary = _raw_word([anchor, shrink_r, shrink_r, shrink_r, shrink_r, shrink_r], [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5]])
 	_check("and cannot fall below %.1f" % float(fxp["mult_min"]), _near(float((bond.effects(small, ctx)["groups"] as Dictionary)["reach"]), float(fxp["mult_min"])))
 
-	# fallback: a group Water Bolt has no fields for, and a grant it cannot use
+	# 2026-10-22: duration also lengthens the statuses a skill applies - Water Bolt's Soaked
 	var dur_r: String = _rune_where(uni, func(r: Dictionary) -> bool: return (r["ops"] as Array).size() == 1 and str((r["ops"] as Array)[0]["op"]) == "mul" and str((r["ops"] as Array)[0]["group"]) == "duration" and float((r["ops"] as Array)[0]["value"]) > 1.0)
 	var fx_d: Dictionary = bond.effects(_raw_word([anchor, dur_r], [[0, 1]]), ctx)
 	var s_d: float = float(_row(fx_d, 1)["strength"])
 	var dur_m: float = 1.0 + (float(((GameData.rune(dur_r)["ops"] as Array)[0] as Dictionary)["value"]) - 1.0) * s_d
-	_check("a duration rune on a skill with no duration gives a quarter of its change as damage",
-		_near(float((fx_d["groups"] as Dictionary).get("power", 1.0)), 1.0 + (dur_m - 1.0) * float(fxp["fallback_fraction"]), 0.001) and not (fx_d["groups"] as Dictionary).has("duration"), str(fx_d["groups"]))
+	_check("a duration rune on a skill that applies a status lengthens the status",
+		_near(float((fx_d["groups"] as Dictionary).get("duration", 1.0)), dur_m, 0.001) and (fx_d["patch"] as Array).any(func(o: Dictionary) -> bool:
+			return str(o["path"]) == "on_hit.status_time_mult" and _near(float(o["value"]), dur_m, 0.001)), str(fx_d["patch"]))
+	# fallback: a group a skill has nothing for gives a quarter of its change as damage (Breaker applies no status and lasts no time)
+	var gust_ctx: RuneContext = _rctx("tsunami_strike", 3)
+	var gust_anchor: String = GameData.skill_anchor("tsunami_strike")
+	var fx_g: Dictionary = bond.effects(_raw_word([gust_anchor, dur_r], [[0, 1]]), gust_ctx)
+	var s_g: float = float(_row(fx_g, 1)["strength"])
+	var dur_g: float = 1.0 + (float(((GameData.rune(dur_r)["ops"] as Array)[0] as Dictionary)["value"]) - 1.0) * s_g
+	_check("a duration rune on a skill with no duration and no status gives a quarter of its change as damage",
+		_near(float((fx_g["groups"] as Dictionary).get("power", 1.0)), 1.0 + (dur_g - 1.0) * float(fxp["fallback_fraction"]), 0.001) and not (fx_g["groups"] as Dictionary).has("duration"), str(fx_g["groups"]))
+	# 2026-10-22: a jump on any hit arcs it on to more enemies
 	var jump_r: String = _rune_where(uni, func(r: Dictionary) -> bool: return _has_op(r, "jumps"))
 	var fx_j: Dictionary = bond.effects(_raw_word([anchor, jump_r], [[0, 1]]), ctx)
 	var s_j: float = float(_row(fx_j, 1)["strength"])
@@ -4904,16 +4929,22 @@ func _test_rune_effects() -> void:
 	for o: Dictionary in GameData.rune(jump_r)["ops"]:
 		if str(o["op"]) == "mul" and str(o["group"]) == "power":
 			own_power *= 1.0 + (float(o["value"]) - 1.0) * s_j
-	_check("a jump on a skill that does not jump becomes damage instead",
-		_near(float((fx_j["groups"] as Dictionary)["power"]), own_power * (1.0 + float(fxp["grant_as_change"]) * s_j * float(fxp["fallback_fraction"])), 0.001)
-		and not (fx_j["patch"] as Array).any(func(o: Dictionary) -> bool: return str(o["path"]) == "jumps"), str(fx_j["groups"]))
+	_check("a jump on a bolt that does not jump makes its hit arc on",
+		_near(float((fx_j["groups"] as Dictionary)["power"]), own_power, 0.001)
+		and (fx_j["patch"] as Array).any(func(o: Dictionary) -> bool: return str(o["path"]) == "on_hit.jumps" and int(o["value"]) >= 1), str(fx_j["patch"]))
+	# and on a skill that hits nothing it falls back to damage, or here (no damage) to a cheaper cast
+	var hide_ctx: RuneContext = _rctx("veil", 3)
+	var fx_v: Dictionary = bond.effects(_raw_word([GameData.skill_anchor("veil"), jump_r], [[0, 1]]), hide_ctx)
+	_check("a jump on a skill that hits nothing falls back", not (fx_v["patch"] as Array).any(func(o: Dictionary) -> bool: return str(o["path"]).ends_with("jumps"))
+		and ((fx_v["groups"] as Dictionary).has("power") or (fx_v["groups"] as Dictionary).has("cost")), str(fx_v["groups"]))
 
-	# a status needs strength >= the threshold
-	var status_r: String = _rune_where(water + uni, func(r: Dictionary) -> bool: return _has_op(r, "status") and (r["ops"] as Array).size() == 1 and str((r["ops"] as Array)[0]["id"]) != "soaked" and absf(float(r["electronegativity"]) - en_a) < 0.39)
+	# a status needs strength >= the threshold (picked from every base rune: since 2026-10-22 no water rune near Surge grants one alone)
+	var every: Array = (GameData.runes["base_runes"] as Dictionary).keys().filter(func(id: String) -> bool: return id != anchor) + uni
+	var status_r: String = _rune_where(every, func(r: Dictionary) -> bool: return _has_op(r, "status") and (r["ops"] as Array).size() == 1 and str((r["ops"] as Array)[0]["id"]) != "soaked" and absf(float(r["electronegativity"]) - en_a) < 0.39)
 	var sid: String = str(((GameData.rune(status_r)["ops"] as Array)[0] as Dictionary)["id"])
 	var appends := func(fx: Dictionary) -> bool: return (fx["patch"] as Array).any(func(o: Dictionary) -> bool: return str(o["op"]) == "append" and str((o["value"] as Dictionary).get("id", "")) == sid)
 	var near_fx: Dictionary = bond.effects(_raw_word([anchor, status_r], [[0, 1]]), ctx)
-	var mid: String = _rune_where(water + uni, func(r: Dictionary) -> bool: return absf(float(r["electronegativity"]) - en_a) < 0.39 and absf(float(r["electronegativity"]) - BondRules.electronegativity(status_r)) < 0.39 and str(r["id"]) != status_r)
+	var mid: String = _rune_where(every, func(r: Dictionary) -> bool: return absf(float(r["electronegativity"]) - en_a) < 0.39 and absf(float(r["electronegativity"]) - BondRules.electronegativity(status_r)) < 0.39 and str(r["id"]) != status_r)
 	var far_fx: Dictionary = bond.effects(_raw_word([anchor, mid, status_r], [[0, 1], [1, 2]]), ctx)
 	_check("a status rune one even bond out (strength %.2f) applies %s" % [float(_row(near_fx, 1)["strength"]), sid], bool(appends.call(near_fx)))
 	_check("two even bonds out (strength %.2f, under %.2f) it does not" % [float(_row(far_fx, 2)["strength"]), float(fxp["status_threshold"])], not bool(appends.call(far_fx)) and float(_row(far_fx, 2)["strength"]) < float(fxp["status_threshold"]))

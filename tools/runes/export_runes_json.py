@@ -20,9 +20,11 @@ What it writes:
   electronegativity centre and bond-kind thresholds ("Bond Rules"), and the word rules from Brent's
   2026-10-22 rulings (WORD_RULES below - these are not in the workbook). A new rule set gets an
   entry here and a script in game/scripts/runes/;
-- skill_anchor: ability id (game/data/abilities.json) -> the base rune it is built on, from the
-  affinity sheets' "Skills on it" names matched exactly to abilities' display names. Nothing is
-  guessed: names that do not match are listed under "unmatched" and printed.
+- skill_anchor: ability id (game/data/abilities.json) -> the base rune it is built on: each ability's
+  "base_rune" (written by tools/skills/emit_abilities.py from the skill drafts, build brief
+  2026-10-22). The affinity sheets' "Skills on it" names are still read, as a cross-check only:
+  names with no ability, and sheet runes that disagree with an ability's base_rune, are listed under
+  "unmatched" and printed.
 """
 import json
 import re
@@ -85,16 +87,23 @@ EFFECTS_V1 = OrderedDict([
     # counts for skills of those kinds. Built from what abilities.json really has (2026-10-22).
     ("stat_groups", OrderedDict([
         ("power", ["damage", "damage_mult", "on_hit.damage", "on_rise.damage", "relay_hit.damage", "zone.payload.damage",
-                   "per_stack_damage", "bonus_damage", "pip_damage", "per_stack_burst", "damage_from_heat", "retaliate"]),
+                   "per_stack_damage", "bonus_damage", "pip_damage", "per_stack_burst", "damage_from_heat", "retaliate",
+                   "on_pass.damage", "on_arrive.damage", "on_stop.damage", "on_hit.consume.per_stack_damage", "per_target_damage",
+                   "ray_damage", "corpse_burst.damage", "on_break.damage", "damage_full", "damage_min", "damage_mult_min",
+                   "zone.on_enter.damage", "thrall.damage"]),
         ("reach", ["range", "life@projectile", "reach_bonus", "range_bonus", "radius", "burst_radius", "arc_deg", "width@beam|prop",
                    "jump_radius", "pass_radius", "relay_radius", "relay_range", "arrive_radius", "through_dist",
-                   "zone.radius", "zone.length", "zone.width", "trail.width"]),
+                   "zone.radius", "zone.length", "zone.width", "trail.width", "leave_zone.radius", "light_radius", "gather_radius",
+                   "reveal_radius", "leave_decoy.lure_radius", "corpse_range", "drag_radius", "trigger_radius"]),
         ("speed", ["speed", "dash_speed"]),
         ("cost", ["cost"]),
         ("reflux", ["reflux_per_cost"]),
         ("windup", ["windup", "recovery", "delay", "rise_time"]),
-        ("duration", ["duration", "life@prop|rod", "zone.life", "trail.life", "leave_prop.life"]),
-        ("poise", ["on_hit.poise", "heavy_poise", "on_stop.poise", "zone.payload.poise"]),
+        ("duration", ["duration", "life@prop|rod", "zone.life", "trail.life", "leave_prop.life", "on_hit.status_s", "on_pass.status_s",
+                      "leave_zone.life", "leave_decoy.life", "burst_zone.life", "thrall.life"]),
+        # 2026-10-22: poise on a rise or an arrival counts too
+        ("poise", ["on_hit.poise", "heavy_poise", "on_stop.poise", "zone.payload.poise", "on_rise.poise", "on_arrive.poise",
+                   "on_pass.poise", "per_stack_poise"]),
     ])),
     # where a grant goes: the first of these hit payloads the skill has
     ("payload_parts", ["on_hit", "on_arrive", "on_pass", "on_stop", "on_rise", "relay_hit", "zone.payload", "trail.payload"]),
@@ -149,7 +158,8 @@ def parse_effect(text_in, rid, statuses):
         if m:
             ops.append(OrderedDict([("op", m.group(1)), ("value", clean(float(m.group(2))))]))
             continue
-        if part in ("interrupts", "braced"):
+        # through (2026-10-22): the hit ignores front block and shields
+        if part in ("interrupts", "braced", "through"):
             ops.append(OrderedDict([("op", part)]))
             continue
         m = re.fullmatch(r"bonus (\w+) \+([\d.]+)", part)
@@ -311,9 +321,18 @@ def main():
                     conflicts.append("%s on both %s and %s" % (ids[0], anchor[ids[0]], rid))
                     continue
                 anchor[ids[0]] = rid
+    # the anchor is the ability's own base_rune (build brief 2026-10-22); the sheet is only a cross-check
+    sheet = anchor
+    anchor = OrderedDict()
+    for aid, a in abilities.items():
+        rid = str(a.get("base_rune", ""))
+        if rid in base:
+            anchor[aid] = rid
+            if aid in sheet and sheet[aid] != rid:
+                conflicts.append("%s: base_rune %s, but the %s sheet puts it on %s" % (aid, rid, a.get("affinity", "?").capitalize(), sheet[aid]))
+        elif aid in sheet:
+            anchor[aid] = sheet[aid]
     no_rune = [aid for aid in abilities if aid not in anchor]
-    # abilities.json order, so the map reads like the ability list
-    anchor = OrderedDict((aid, anchor[aid]) for aid in abilities if aid in anchor)
 
     out = OrderedDict([
         ("_note", "GENERATED by tools/runes/export_runes_json.py from design/runes-workbook.xlsx - do not hand-edit. "
