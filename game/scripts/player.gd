@@ -2500,6 +2500,66 @@ func bind_first_ready() -> void:
 	note("No ability is full and waiting for what you carry.")
 
 
+# --- rune words (design/14 section 7) ----------------------------------------------------
+# A skill's word is saved on its ability state as "word" (RuneWord: nodes + links, no rules in it).
+# Whether a change is allowed, and what the word is, is asked of the rule set in force
+# (Runes.active()). Runes change no skill's numbers yet.
+
+## What the rule set may know about ability `index`.
+func rune_context(index: int) -> RuneContext:
+	return RuneContext.of(abilities[index] if index >= 0 and index < abilities.size() else {}, affinities)
+
+
+## The word built in ability `index` (a word holding just the skill's anchor if none is built).
+func ability_word(index: int) -> Dictionary:
+	if index < 0 or index >= abilities.size():
+		return RuneWord.make("")
+	var st: Dictionary = abilities[index]
+	if st.has("word"):
+		return st["word"]
+	return RuneWord.make(GameData.skill_anchor(str(st["id"])), Runes.active().id)
+
+
+func _stored_word(index: int) -> Dictionary:
+	var st: Dictionary = abilities[index]
+	if not st.has("word"):
+		st["word"] = RuneWord.make(GameData.skill_anchor(str(st["id"])), Runes.active().id)
+	return st["word"]
+
+
+## Set a rune into ability `index`'s word, joined to node `to_node` when that is >= 0.
+## Returns the rules' check: {ok, reason, text}.
+func word_add(index: int, rune_id: String, to_node: int = -1) -> Dictionary:
+	if index < 0 or index >= abilities.size():
+		return RuneRules.no("no_skill", "No such skill.")
+	return Runes.active().add(_stored_word(index), rune_id, rune_context(index), to_node)
+
+
+## Join two runes of the word, or part them if they are joined.
+func word_toggle_link(index: int, a: int, b: int) -> Dictionary:
+	if index < 0 or index >= abilities.size():
+		return RuneRules.no("no_skill", "No such skill.")
+	return Runes.active().toggle_link(_stored_word(index), a, b, rune_context(index))
+
+
+## Take a rune (not the anchor) out of the word.
+func word_remove(index: int, node: int) -> Dictionary:
+	if index < 0 or index >= abilities.size():
+		return RuneRules.no("no_skill", "No such skill.")
+	return Runes.active().remove(_stored_word(index), node, rune_context(index))
+
+
+## Clear the word back to the skill's anchor alone.
+func word_clear(index: int) -> void:
+	if index >= 0 and index < abilities.size():
+		(abilities[index] as Dictionary).erase("word")
+
+
+## The runes this character may set. TEST LOADOUT until rune acquisition is designed.
+func rune_palette() -> Array[String]:
+	return Runes.test_palette(affinities)
+
+
 ## PLACEHOLDER source of constructs until the Netherecho exists: some enemies leave one behind.
 func _roll_drops(target: Node) -> void:
 	var kind_v: Variant = target.get("kind")
@@ -2662,6 +2722,9 @@ func from_save(d: Dictionary) -> void:
 		for a: Dictionary in saved_abilities:
 			a["stage"] = int(a.get("stage", 0))
 			a["progress"] = float(a.get("progress", 0.0))
+			if a.has("word"):
+				# rule-free data: read back as it was; the rules in force report what no longer fits
+				a["word"] = RuneWord.normalize(a["word"], GameData.skill_anchor(str(a.get("id", ""))))
 			abilities.append(a)
 	var saved_hotbar: Array = d.get("hotbar", [])
 	for i: int in mini(saved_hotbar.size(), hotbar.size()):

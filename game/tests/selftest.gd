@@ -6,6 +6,7 @@ extends Node
 ## proves nothing about feel or balance.
 
 const PlayerScript := preload("res://scripts/player.gd")
+const FreeRules := preload("res://tests/free_rules.gd")
 
 var _failed := 0
 var _passed := 0
@@ -53,6 +54,7 @@ func _ready() -> void:
 	await _test_town()
 	_test_crafting()
 	await _test_crafting_town()
+	await _test_runes()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
 	_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
@@ -4496,3 +4498,272 @@ func _test_crafting_town() -> void:
 	get_tree().paused = false
 	main.queue_free()
 	await get_tree().process_frame
+
+
+func _rctx(ability_id: String, stage: int) -> RuneContext:
+	return RuneContext.of({"id": ability_id, "stage": stage})
+
+
+## Base runes of one affinity in workbook order, optionally only those of one valence.
+func _runes_of(aff: String, valence: int = -1, except: Array = []) -> Array[String]:
+	var out: Array[String] = []
+	var base: Dictionary = GameData.runes.get("base_runes", {})
+	for id: String in base:
+		if str((base[id] as Dictionary)["affinity"]) == aff and (valence < 0 or int((base[id] as Dictionary)["valence"]) == valence) and not except.has(id):
+			out.append(id)
+	return out
+
+
+## The first pair of runes (base or universal) whose electronegativities differ by at least `lo`
+## and less than `hi`; [] if the data has none.
+func _pair_with_difference(lo: float, hi: float) -> Array:
+	var ids: Array = (GameData.runes["base_runes"] as Dictionary).keys() + (GameData.runes["universal_runes"] as Dictionary).keys()
+	for i: int in ids.size():
+		for j: int in range(i + 1, ids.size()):
+			var d: float = absf(BondRules.electronegativity(str(ids[i])) - BondRules.electronegativity(str(ids[j])))
+			if d >= lo and d < hi:
+				return [str(ids[i]), str(ids[j])]
+	return []
+
+
+## The smallest skill level whose word holds at least `runes` runes under these rules.
+func _stage_for(rules: RuneRules, ability_id: String, runes: int) -> int:
+	var s := 0
+	while rules.capacity(_rctx(ability_id, s)) < runes and s < 20:
+		s += 1
+	return s
+
+
+## Rune words (design/14 section 7, Brent 2026-10-22): the rules of bond_v1 on the workbook's real
+## numbers, the save round trip, and a second rule set swapped in under the same player methods,
+## save and screen. Runes are picked from the data by what they are (affinity, valence,
+## electronegativity), never by name, so a revised workbook does not break the checks.
+## Proves the rules compute as ruled; says nothing about whether words are fun.
+func _test_runes() -> void:
+	print("runes (design/14 section 7):")
+	var base: Dictionary = GameData.runes.get("base_runes", {})
+	var uni: Dictionary = GameData.runes.get("universal_runes", {})
+	_check("runes.json names bond_v1, and it is the rule set in force", str(GameData.runes.get("rule_set", "")) == "bond_v1" and Runes.active() is BondRules)
+	_check("all 166 base runes and 56 universal runes are loaded", base.size() == 166 and uni.size() == 56, "%d / %d" % [base.size(), uni.size()])
+	var anchored := true
+	for id: String in GameData.abilities:
+		var anchor_def: Dictionary = GameData.rune(GameData.skill_anchor(id))
+		if anchor_def.is_empty() or str(anchor_def.get("affinity", "")) != str(GameData.ability(id).get("affinity", "")):
+			anchored = false
+			print("    not anchored: %s" % id)
+	_check("every skill is built on a base rune of its own affinity", anchored)
+	_check("universal runes carry placeholder numbers, flagged", uni.values().all(func(r: Dictionary) -> bool: return bool(r.get("placeholder", false))))
+
+	var bond: RuneRules = Runes.make("bond_v1")
+	var bk: BondRules = bond as BondRules
+	# capacity by level [B]: level 0 holds 4, level 1 holds 6, two more a level
+	_check("a skill of level 0 holds 4 runes, level 1 holds 6, level 2 holds 8",
+		bond.capacity(_rctx("water_bolt", 0)) == 4 and bond.capacity(_rctx("water_bolt", 1)) == 6 and bond.capacity(_rctx("water_bolt", 2)) == 8)
+
+	# valence: the anchor takes exactly its valence in bonds
+	var anchor: String = GameData.skill_anchor("water_bolt")
+	var aname: String = str(GameData.rune(anchor)["name"])
+	var va: int = BondRules.valence(anchor)
+	var water: Array[String] = _runes_of("water", -1, [anchor])
+	var stage_v: int = _stage_for(bond, "water_bolt", va + 2)
+	var ctxv: RuneContext = _rctx("water_bolt", stage_v)
+	var w: Dictionary = RuneWord.make(anchor)
+	_check("a word starts as the skill's anchor alone", RuneWord.nodes(w) == [anchor])
+	var took := 0
+	for k: int in va:
+		if bool(bond.add(w, water[k], ctxv, 0)["ok"]):
+			took += 1
+	var over: Dictionary = bond.add(w, water[va], ctxv, 0)
+	_check("the anchor (%s, valence %d) takes %d bonds and refuses one more" % [aname, va, va],
+		took == va and str(over["reason"]) == "valence_full" and RuneWord.size(w) == va + 1, str(over))
+	_check("a refusal says why", str(over["text"]).contains(aname) and str(over["text"]).contains("valence %d" % va))
+	_check("a rune may be set without joining it", bool(bond.add(w, water[va], ctxv)["ok"]) and RuneWord.size(w) == va + 2)
+	_check("a rune cannot join itself", str(bond.can_link(w, 1, 1, ctxv)["reason"]) == "self")
+	_check("two runes join once: bonds are single", str(bond.can_link(w, 0, 1, ctxv)["reason"]) == "already_linked")
+	_check("a full rune refuses another bond", str(bond.can_link(w, va + 1, 0, ctxv)["reason"]) == "valence_full")
+	var nd: Dictionary = bond.describe_node(w, 1, ctxv)
+	_check("a rune shows its sockets: its valence, one taken", int(nd["sockets"]) == BondRules.valence(water[0]) and int(nd["used"]) == 1)
+	_check("the anchor cannot be taken out", str(bond.remove(w, 0, ctxv)["reason"]) == "anchor")
+	var links_before: int = RuneWord.links(w).size()
+	_check("taking a rune out takes its bonds with it", bool(bond.remove(w, 1, ctxv)["ok"]) and RuneWord.size(w) == va + 1 and RuneWord.links(w).size() == links_before - 1)
+	# capacity: at level 0, loose runes go in until the word holds 4, anchor counted
+	var wcap: Dictionary = RuneWord.make(anchor)
+	var ctx0: RuneContext = _rctx("water_bolt", 0)
+	var k2 := 0
+	while k2 < water.size() and bool(bond.add(wcap, water[k2], ctx0)["ok"]):
+		k2 += 1
+	_check("level 0 is full at four runes, the anchor counted", RuneWord.size(wcap) == 4 and str(bond.add(wcap, water[k2], ctx0)["reason"]) == "capacity")
+
+	# alignment on the workbook's positions
+	var game_affs: Array[String] = ["water", "fire", "earth", "wind", "lightning"]
+	var refusing: Array[String] = []
+	var weakened: Array[String] = []
+	for i: int in game_affs.size():
+		for j: int in range(i + 1, game_affs.size()):
+			var c: float = BondRules.affinity_alignment(game_affs[i], game_affs[j])
+			if c < float(bond.params["refuse_below"]):
+				refusing.append("%s-%s %.2f" % [game_affs[i], game_affs[j], c])
+			elif c < float(bond.params["weaken_below"]):
+				weakened.append("%s-%s %.2f" % [game_affs[i], game_affs[j], c])
+	print("    the five game affinities: refuse [%s]; weakened [%s]" % [", ".join(refusing), ", ".join(weakened)])
+	_check("on the workbook's numbers none of the five game affinities refuse each other", refusing.is_empty())
+	_check("the alignment is the workbook's cosine (water-fire -0.097, fire-ice -0.768)",
+		_near(BondRules.affinity_alignment("water", "fire"), -0.0968, 0.001) and _near(BondRules.affinity_alignment("fire", "ice"), -0.7678, 0.001))
+	var fire_anchor: String = GameData.skill_anchor("cinder_spit")
+	var ice: String = _runes_of("ice")[0]
+	var ctxf: RuneContext = _rctx("cinder_spit", 0)
+	var wf: Dictionary = RuneWord.make(fire_anchor)
+	var rf: Dictionary = bond.add(wf, ice, ctxf, 0)
+	_check("fire and ice refuse: an ice rune cannot be set joined to a fire skill's anchor", str(rf["reason"]) == "refused" and RuneWord.size(wf) == 1, str(rf))
+	_check("set loose, it still cannot be joined to it", bool(bond.add(wf, ice, ctxf)["ok"]) and str(bond.link(wf, 0, 1, ctxf)["reason"]) == "refused")
+	var expand: String = str(uni.keys()[0])
+	_check("a universal rune joins anything: onto the ice rune, then onto the fire anchor",
+		bool(bond.add(wf, expand, ctxf, 1)["ok"]) and bool(bond.link(wf, 2, 0, ctxf)["ok"]))
+	var ww: Dictionary = RuneWord.make(anchor)
+	bond.add(ww, _runes_of("fire")[0], ctx0, 0)
+	_check("water and fire lean apart: their bond is shown weakened", (bond.describe_link(ww, 0, 1, ctx0)["flags"] as Array).has("weakened"))
+	var kind_ww: String = bk.bond_kind(anchor, _runes_of("fire")[0])
+	_check("a link's description carries its kind as its colour key", str(bond.describe_link(ww, 0, 1, ctx0)["kind"]) == kind_ww and str(bond.describe_link(ww, 0, 1, ctx0)["colour"]) == kind_ww)
+
+	# bond kinds from the electronegativity difference (workbook: even below 0.4, polar to 1.7, ionic from 1.7)
+	var even_pair: Array = _pair_with_difference(0.0, 0.39)
+	var polar_pair: Array = _pair_with_difference(0.41, 1.69)
+	var ionic_pair: Array = _pair_with_difference(1.71, 10.0)
+	_check("a difference under 0.4 is an even bond", not even_pair.is_empty() and bk.bond_kind(str(even_pair[0]), str(even_pair[1])) == "even", str(even_pair))
+	_check("between 0.4 and 1.7 it is polar", not polar_pair.is_empty() and bk.bond_kind(str(polar_pair[0]), str(polar_pair[1])) == "polar", str(polar_pair))
+	_check("above 1.7 it is ionic", not ionic_pair.is_empty() and bk.bond_kind(str(ionic_pair[0]), str(ionic_pair[1])) == "ionic", str(ionic_pair))
+	var at_04: Array = _pair_with_difference(0.4 - 0.0000001, 0.4 + 0.0000001)
+	var at_17: Array = _pair_with_difference(1.7 - 0.0000001, 1.7 + 0.0000001)
+	print("    pairs exactly on the thresholds: 0.4 %s, 1.7 %s" % [str(at_04), str(at_17)])
+	_check("a difference of exactly 0.4 is polar and exactly 1.7 is ionic (where the data has such a pair)",
+		(at_04.is_empty() or bk.bond_kind(str(at_04[0]), str(at_04[1])) == "polar") and (at_17.is_empty() or bk.bond_kind(str(at_17[0]), str(at_17[1])) == "ionic"))
+
+	# closure: the anchor with a cap (valence 1) on every bond
+	var caps: Array[String] = _runes_of("water", 1, [anchor])
+	var stage_c: int = _stage_for(bond, "water_bolt", va + 3)
+	var ctxc: RuneContext = _rctx("water_bolt", stage_c)
+	var wc: Dictionary = RuneWord.make(anchor)
+	for k: int in va - 1:
+		bond.add(wc, caps[k % caps.size()], ctxc, 0)
+	_check("one bond short, the word is open", not bool(bond.word_state(wc, ctxc)["closed"]) and str(bond.word_state(wc, ctxc)["lines"]).contains("1 open bond"))
+	bond.add(wc, caps[0], ctxc, 0)
+	_check("every valence filled: closed", bool(bond.word_state(wc, ctxc)["closed"]) and str(bond.word_state(wc, ctxc)["label"]).begins_with("closed"))
+	bond.add(wc, caps[0], ctxc)
+	bond.add(wc, caps[0], ctxc)
+	bond.link(wc, va + 1, va + 2, ctxc)
+	var st_split: Dictionary = bond.word_state(wc, ctxc)
+	_check("every valence filled but in two pieces: not closed, and the screen is told why",
+		not bool(st_split["closed"]) and not RuneWord.is_joined(wc) and str(st_split["lines"]).contains("joined"))
+	_check("runes change no skill's numbers yet: a word's effects are empty", bond.effects(wc, ctxc).is_empty())
+
+	# the save round trip, through JSON like a real save
+	var hub: String = water[0]                # the roomiest water rune: it takes the most bonds
+	for id: String in water:
+		if BondRules.valence(id) > BondRules.valence(hub):
+			hub = id
+	var p: Node = _new_player()
+	p.call("set_affinities", ["water", "fire"])
+	((p.get("abilities") as Array)[0] as Dictionary)["stage"] = 2          # room for eight
+	var adds: Array = [p.call("word_add", 0, hub, 0), p.call("word_add", 0, _runes_of("fire")[0], 1),
+		p.call("word_add", 0, expand, 1), p.call("word_add", 0, caps[0])]
+	_check("a word is built through the player: four runes set", adds.all(func(r: Dictionary) -> bool: return bool(r["ok"])), str(adds))
+	if BondRules.valence(hub) >= 4:
+		p.call("word_toggle_link", 0, 1, 4)
+	var saved: Dictionary = p.call("ability_word", 0)
+	var save_text: String = JSON.stringify(p.call("to_save"))
+	var q: Node = _new_player()
+	q.call("from_save", JSON.parse_string(save_text))
+	var loaded: Dictionary = q.call("ability_word", 0)
+	_check("a word survives save and load: the same runes and the same links",
+		RuneWord.nodes(loaded) == RuneWord.nodes(saved) and RuneWord.links(loaded) == RuneWord.links(saved) and RuneWord.size(loaded) == 5, "%s vs %s" % [str(loaded), str(saved)])
+	_check("its links come back as whole numbers", typeof((RuneWord.links(loaded)[0] as Dictionary)["a"]) == TYPE_INT)
+	_check("and the rules read it the same", str(bond.word_state(loaded, q.call("rune_context", 0))) == str(bond.word_state(saved, p.call("rune_context", 0))))
+	q.call("word_clear", 0)
+	_check("a word can be cleared back to its anchor", RuneWord.nodes(q.call("ability_word", 0)) == [anchor])
+
+	# another rule set in force: the same player methods and save path
+	var free: RuneRules = FreeRules.new()
+	Runes.use(free)
+	var f: Node = _new_player()
+	f.call("set_affinities", ["water"])
+	var fa: Array = [f.call("word_add", 0, water[0], 0), f.call("word_add", 0, water[1], 0)]
+	var f3: Dictionary = f.call("word_add", 0, water[2], 0)
+	_check("with the test rules in force the player's word follows them: three runes at most",
+		bool(fa[0]["ok"]) and bool(fa[1]["ok"]) and str(f3["reason"]) == "capacity")
+	_check("under them a rune joins anything", bool((f.call("word_toggle_link", 0, 1, 2) as Dictionary)["ok"]) and RuneWord.degree(f.call("ability_word", 0), 1) == 2)
+	var fw: Dictionary = f.call("ability_word", 0)
+	var fdata: Dictionary = JSON.parse_string(JSON.stringify(f.call("to_save")))
+	Runes.use(null)
+	_check("back to the data's rule set", Runes.active() is BondRules)
+	# a word bond_v1 would never allow: the anchor with one bond more than its valence
+	var crowd: Array = [anchor]
+	var crowd_links: Array = []
+	for k: int in va + 1:
+		crowd.append(water[k])
+		crowd_links.append({"a": 0, "b": k + 1})
+	((fdata["abilities"] as Array)[0] as Dictionary)["word"] = {"nodes": crowd, "links": crowd_links, "made_under": "free_test"}
+	var g: Node = _new_player()
+	g.call("from_save", fdata)
+	var gw: Dictionary = g.call("ability_word", 0)
+	var gs: Dictionary = Runes.active().word_state(gw, g.call("rune_context", 0))
+	_check("a word made under other rules loads under bond_v1 as it was", RuneWord.size(gw) == va + 2 and RuneWord.links(gw).size() == va + 1 and str(gw.get("made_under", "")) == "free_test")
+	_check("and bond_v1 reports what breaks its rules instead of failing",
+		not bool(gs["closed"]) and str(gs["problems"]).contains("%s has %d bonds" % [aname, va + 1]), str(gs))
+	_check("the over-full rune is badged for the screen", (Runes.active().describe_node(gw, 0, g.call("rune_context", 0))["badges"] as Array).has("over"))
+	Runes.use(free)
+	var h: Node = _new_player()
+	h.call("from_save", JSON.parse_string(save_text))          # a fresh read: loading keeps the save's dictionaries
+	var hs: Dictionary = free.word_state(h.call("ability_word", 0), h.call("rune_context", 0))
+	_check("a bond_v1 word with five runes loads under the three-rune rules, reported as over capacity",
+		RuneWord.size(h.call("ability_word", 0)) == 5 and str(hs["problems"]).contains("room for 3"), str(hs))
+	Runes.use(null)
+	_check("the test rules' word was untouched by the swap", RuneWord.size(fw) == 3 and RuneWord.links(fw).size() == 3)
+	for n: Node in [p, q, f, g, h]:
+		n.queue_free()
+
+	# the screen, with each rule set in force
+	var errors_before: int = _errors.count()
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	main.set("_test_mode", true)
+	add_child(main)
+	await get_tree().process_frame
+	main.call("start_new_character", 0)
+	main.call("open_ethercosm")
+	var s: Node = main.get("screen")
+	s.call("open_runes")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check("Set runes opens the rune view on the selected skill", bool(s.get("rune_mode")) and s.find_children("RuneBoard", "Control", true, false).size() == 1)
+	var mp: Node = main.get("player")
+	var spare: Array[String] = _runes_of("water", -1, [GameData.skill_anchor(str(((mp.get("abilities") as Array)[0] as Dictionary)["id"]))])
+	s.call("add_rune", spare[0])
+	s.call("pick_node", 0)
+	s.call("pick_node", 1)
+	_check("the view sets a rune and joins it to the anchor", RuneWord.linked(mp.call("ability_word", 0), 0, 1))
+	Runes.use(free)
+	s.call("rebuild")
+	await get_tree().process_frame
+	s.call("pick_node", 0)
+	s.call("add_rune", spare[1])
+	s.call("add_rune", spare[2])
+	_check("with the test rules in force the same view follows them: the fourth rune is refused, and it says why",
+		RuneWord.size(mp.call("ability_word", 0)) == 3 and str(s.get("_rune_msg")).contains("full"), str(s.get("_rune_msg")))
+	await get_tree().process_frame
+	Runes.use(null)
+	s.call("rebuild")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check("the rune view draws under either rule set without a script error", _errors.count() == errors_before, _errors.first())
+	main.call("close_screen")
+	main.queue_free()
+	await get_tree().process_frame
+
+	# glyphs: which characters no interface font can draw (those are drawn with the procedural mark)
+	var missing: Array[String] = []
+	for dict: Dictionary in [base, uni]:
+		for id: String in dict:
+			var ch: String = str((dict[id] as Dictionary).get("character", ""))
+			if not UiDraw.has_glyph(ch):
+				missing.append("%s U+%X" % [id, ch.unicode_at(0) if ch != "" else 0])
+	print("    runes with no glyph in the interface fonts (%d): %s" % [missing.size(), ", ".join(missing)])
+	_check("every rune has a character in the data", (base.values() + uni.values()).all(func(r: Dictionary) -> bool: return str(r.get("character", "")) != ""))

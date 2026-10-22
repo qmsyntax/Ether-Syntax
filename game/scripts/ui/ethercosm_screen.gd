@@ -9,13 +9,28 @@ extends UiScreen
 ##   below       - the three sockets for spirit abilities (not obtainable yet).
 ## Click an ability to see it, bind a construct into it, or assign it to a skill slot.
 ##
-## The rune glyphs are original marks generated per ability - they are not the books' alphabet.
+## The ring glyphs are original marks generated per ability - they are not the books' alphabet.
+##
+## "Set runes" opens the rune-setting view of the selected skill (design/14 section 7): the word
+## built in it, drawn by RuneBoard, beside the runes the character may set. Everything the view
+## shows about a word - what may be added or joined and why not, sockets, link kinds, whether the
+## word is closed - comes from the rule set in force (Runes.active()); the view draws it.
 
 const RUNES_PER_STAGE := 16
 
 var selected := 0
+## The rune-setting view is open on the selected skill.
+var rune_mode := false
+## The rune picked on the board (-1 = none): the next rune set is joined to it, and clicking a
+## second rune joins or parts the two.
+var picked := -1
 var _cosmos: Cosmos
 var _detail: VBoxContainer
+var _board: RuneBoard
+var _rune_status: VBoxContainer
+var _chips: Array[Control] = []
+var _rune_msg := ""
+var _rune_msg_bad := false
 
 
 func backdrop() -> float:
@@ -33,6 +48,9 @@ func hud_hides() -> Array[String]:
 func build(root: Control) -> void:
 	var abilities: Array = player.get("abilities")
 	selected = clampi(selected, 0, maxi(0, abilities.size() - 1))
+	if rune_mode and not abilities.is_empty():
+		_build_runes(root)
+		return
 
 	_cosmos = Cosmos.new(self)
 	_cosmos.anchor_left = 0.02
@@ -55,6 +73,227 @@ func select(index: int) -> void:
 	for c: Node in _detail.get_children():
 		c.queue_free()
 	_build_detail()
+
+
+# --- the rune-setting view ----------------------------------------------------------------
+
+func open_runes() -> void:
+	rune_mode = true
+	picked = -1
+	_rune_msg = ""
+	rebuild()
+
+
+func close_runes() -> void:
+	rune_mode = false
+	picked = -1
+	rebuild()
+
+
+## The word being set, and what the rules may know about its skill (read by the board).
+func current_word() -> Dictionary:
+	return player.call("ability_word", selected)
+
+
+func current_context() -> RuneContext:
+	return player.call("rune_context", selected)
+
+
+## A click on the board: pick a rune, drop the pick (-1), or - with one picked - join or part the two.
+func pick_node(i: int) -> void:
+	if i < 0 or i == picked:
+		picked = -1
+	elif picked < 0:
+		picked = i
+	else:
+		var a: int = picked
+		var before: Dictionary = current_word()
+		var names: Array = [RuneRules.rune_name(before, a), RuneRules.rune_name(before, i)]
+		var r: Dictionary = player.call("word_toggle_link", selected, a, i)
+		picked = -1
+		if not bool(r["ok"]):
+			_say("%s and %s cannot be joined: %s" % [names[0], names[1], str(r["text"])], true)
+		else:
+			var word: Dictionary = current_word()
+			if RuneWord.linked(word, a, i):
+				_say("Joined: %s." % str(Runes.active().describe_link(word, a, i, current_context()).get("text", "")), false)
+			else:
+				_say("Parted %s and %s." % [RuneRules.rune_name(word, a), RuneRules.rune_name(word, i)], false)
+			game.call("save_now")
+	_refresh_runes()
+
+
+## A click on a rune in the palette: set it, joined to the picked rune if there is one.
+func add_rune(rune_id: String) -> void:
+	var host: int = picked
+	var r: Dictionary = player.call("word_add", selected, rune_id, host)
+	var nm: String = str(GameData.rune(rune_id).get("name", rune_id))
+	if bool(r["ok"]):
+		_say(("Set %s, joined to %s." % [nm, RuneRules.rune_name(current_word(), host)]) if host >= 0 else ("Set %s. Pick it and another rune to join them." % nm), false)
+		game.call("save_now")
+	else:
+		_say("%s cannot be set: %s" % [nm, str(r["text"])], true)
+	_refresh_runes()
+
+
+## Take rune i out of the word.
+func remove_node(i: int) -> void:
+	var word: Dictionary = current_word()
+	var nm: String = RuneRules.rune_name(word, i)
+	var r: Dictionary = player.call("word_remove", selected, i)
+	if bool(r["ok"]):
+		picked = -1 if picked == i else (picked - 1 if picked > i else picked)
+		_say("Took %s out." % nm, false)
+		game.call("save_now")
+	else:
+		_say(str(r["text"]), true)
+	_refresh_runes()
+
+
+func clear_word() -> void:
+	player.call("word_clear", selected)
+	picked = -1
+	_say("The word is cleared back to its anchor.", false)
+	game.call("save_now")
+	_refresh_runes()
+
+
+## For a palette chip: whether the rules would take that rune now, and its sockets.
+func chip_state(rune_id: String) -> Dictionary:
+	var ctx: RuneContext = current_context()
+	var rules: RuneRules = Runes.active()
+	var r: Dictionary = rules.can_add(current_word(), rune_id, ctx, picked)
+	return {"ok": bool(r["ok"]), "text": str(r["text"]), "sockets": int(rules.describe_rune(rune_id, ctx).get("sockets", -1))}
+
+
+func _say(text: String, bad: bool) -> void:
+	_rune_msg = text
+	_rune_msg_bad = bad
+
+
+func _build_runes(root: Control) -> void:
+	var rules: RuneRules = Runes.active()
+	var ctx: RuneContext = current_context()
+	var st: Dictionary = (player.get("abilities") as Array)[selected]
+	var ab: Dictionary = GameData.ability(str(st["id"]))
+
+	_board = RuneBoard.new(self)
+	_board.anchor_left = 0.02
+	_board.anchor_top = 0.03
+	_board.anchor_right = 0.62
+	_board.anchor_bottom = 0.97
+	root.add_child(_board)
+
+	var box: VBoxContainer = framed(root, 0.63, 0.03, 0.98, 0.97)
+	box.add_theme_constant_override("separation", 6)
+	var head := HBoxContainer.new()
+	box.add_child(head)
+	var title := UiTheme.heading("Runes", 28)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	var back: Button = UiWidgets.small_button("Back to the ethercosm", close_runes)
+	back.name = "RunesBackButton"
+	head.add_child(back)
+	head.add_child(UiWidgets.small_button("Close  (%s)" % Keybinds.binding_text("ethercosm"), func() -> void: game.call("close_screen")))
+
+	var name_row := HBoxContainer.new()
+	name_row.add_theme_constant_override("separation", 12)
+	box.add_child(name_row)
+	name_row.add_child(UiWidgets.Icon.new(str(ab.get("icon", "drop")), GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3), 44.0))
+	var name_col := VBoxContainer.new()
+	name_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_col.add_theme_constant_override("separation", 1)
+	name_row.add_child(name_col)
+	name_col.add_child(UiTheme.heading("%s   level %d" % [str(ab.get("name", "?")), ctx.stage], 20))
+	var anchor: Dictionary = GameData.rune(ctx.anchor)
+	name_col.add_child(UiTheme.body(("Built on %s: %s." % [str(anchor.get("name", "?")), str(anchor.get("meaning", ""))]) if not anchor.is_empty()
+		else "This skill has no anchor rune in the data yet.", 13, UiTheme.STAR))
+	box.add_child(UiTheme.body("Rules: %s" % rules.title(), 12, UiTheme.TEXT_FAINT))
+
+	_rune_status = VBoxContainer.new()
+	_rune_status.add_theme_constant_override("separation", 4)
+	box.add_child(_rune_status)
+
+	box.add_child(UiTheme.section("Runes you can set  -  test loadout"))
+	box.add_child(UiTheme.body("Until rune acquisition is designed: every base rune of the affinities you hold, and every universal rune.", 12, UiTheme.TEXT_FAINT))
+	var list: VBoxContainer = scroller(box)
+	_chips.clear()
+	var palette: Array[String] = player.call("rune_palette")
+	var group := ""
+	var flow: HFlowContainer = null
+	for rid: String in palette:
+		var aff: String = str(GameData.rune(rid).get("affinity", ""))
+		var g: String = aff.capitalize() if aff != "" else "Universal"
+		if g != group:
+			group = g
+			list.add_child(UiTheme.body(g, 13, GameData.affinity_color(aff).lightened(0.3) if aff != "" else UiTheme.STAR))
+			flow = HFlowContainer.new()
+			flow.add_theme_constant_override("h_separation", 4)
+			flow.add_theme_constant_override("v_separation", 4)
+			list.add_child(flow)
+		var chip := RuneBoard.Chip.new(self, rid)
+		var lines: Array = rules.describe_rune(rid, ctx).get("lines", [])
+		chip.tooltip_text = "%s %s\n%s%s" % [str(GameData.rune(rid).get("name", rid)), str(GameData.rune(rid).get("character", "")),
+			str(GameData.rune(rid).get("meaning", "")), ("\n" + "\n".join(PackedStringArray(lines))) if not lines.is_empty() else ""]
+		flow.add_child(chip)
+		_chips.append(chip)
+	for n: String in rules.notes():
+		box.add_child(UiTheme.body(n, 12, UiTheme.TEXT_FAINT))
+	_refresh_runes()
+
+
+## Redraw what changes when the word does: the status block and the palette's dimming.
+func _refresh_runes() -> void:
+	if _rune_status == null or not is_instance_valid(_rune_status):
+		return
+	for c: Node in _rune_status.get_children():
+		_rune_status.remove_child(c)          # out at once, so the new rows keep their names
+		c.queue_free()
+	var rules: RuneRules = Runes.active()
+	var ctx: RuneContext = current_context()
+	var word: Dictionary = current_word()
+	var cap: int = rules.capacity(ctx)
+	var used_n: int = rules.used(word, ctx)
+	var cap_bar := UiWidgets.Bar.new(float(used_n) / float(cap) if cap > 0 else 0.0, UiTheme.STAR.darkened(0.55),
+		("%d of %d runes   -   level %d holds %d" % [used_n, cap, ctx.stage, cap]) if cap >= 0 else "%d runes   -   no limit under these rules" % used_n, 22.0)
+	cap_bar.name = "RuneCapacity"
+	_rune_status.add_child(cap_bar)
+	var ws: Dictionary = rules.word_state(word, ctx)
+	var state_line := UiTheme.body(str(ws.get("label", "")), 16, UiTheme.GOOD if bool(ws.get("closed", false)) else UiTheme.GOLD)
+	state_line.name = "WordState"
+	_rune_status.add_child(state_line)
+	for p: Variant in ws.get("problems", []):
+		_rune_status.add_child(UiTheme.body(str(p), 13, UiTheme.BAD))
+	for l: Variant in ws.get("lines", []):
+		_rune_status.add_child(UiTheme.body(str(l), 13, UiTheme.TEXT_DIM))
+	if _rune_msg != "":
+		var msg := UiTheme.body(_rune_msg, 14, UiTheme.BAD if _rune_msg_bad else UiTheme.TEXT)
+		msg.name = "RuneMessage"
+		_rune_status.add_child(msg)
+	var row := HBoxContainer.new()
+	_rune_status.add_child(row)
+	if picked >= 0 and picked < RuneWord.size(word):
+		var rid: String = RuneWord.node_id(word, picked)
+		var d: Dictionary = rules.describe_node(word, picked, ctx)
+		var sockets: int = int(d.get("sockets", -1))
+		var pl := UiTheme.body("Picked: %s%s" % [RuneRules.rune_name(word, picked),
+			("   (%d of %d joined)" % [int(d.get("used", 0)), sockets]) if sockets >= 0 else ""], 14, UiTheme.GOLD)
+		pl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(pl)
+		if picked > 0:
+			var rm: Button = UiWidgets.small_button("Take it out", func() -> void: remove_node.call_deferred(picked))
+			rm.name = "RemoveRuneButton"
+			row.add_child(rm)
+		_rune_status.add_child(UiTheme.body(str(GameData.rune(rid).get("meaning", "")), 13, UiTheme.TEXT_DIM))
+	else:
+		var hint := UiTheme.body("Nothing picked.", 14, UiTheme.TEXT_FAINT)
+		hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(hint)
+	var clear: Button = UiWidgets.small_button("Clear the word", func() -> void: clear_word.call_deferred(), RuneWord.size(word) > 1)
+	clear.name = "ClearWordButton"
+	row.add_child(clear)
+	for chip: Control in _chips:
+		chip.queue_redraw()
 
 
 # --- right-hand panel --------------------------------------------------------------------
@@ -130,6 +369,22 @@ func _build_detail() -> void:
 				box.add_child(_bind_preview(st, str(held[ci]["concept"])))
 		if not any:
 			box.add_child(UiTheme.body("You carry no %s to bind." % need, 13, UiTheme.BAD))
+
+	# the word built in it
+	box.add_child(UiTheme.rule())
+	var word: Dictionary = player.call("ability_word", selected)
+	var ctx: RuneContext = player.call("rune_context", selected)
+	var rules: RuneRules = Runes.active()
+	var cap: int = rules.capacity(ctx)
+	var runes_row := HBoxContainer.new()
+	box.add_child(runes_row)
+	var runes_line := UiTheme.body("Runes  %d%s   -   %s" % [rules.used(word, ctx), (" of %d" % cap) if cap >= 0 else "",
+		str(rules.word_state(word, ctx).get("label", ""))], 14, UiTheme.STAR)
+	runes_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	runes_row.add_child(runes_line)
+	var rb: Button = UiWidgets.small_button("Set runes", open_runes)
+	rb.name = "RunesButton"
+	runes_row.add_child(rb)
 
 	# hotbar assignment
 	box.add_child(UiTheme.rule())
@@ -241,17 +496,7 @@ class Cosmos extends Control:
 		UiDraw.text(self, Vector2(14.0, 24.0), "Click an ability to inspect it.", 13, UiTheme.TEXT_FAINT)
 
 	func _draw_void(c: Vector2) -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), Color("070608"))
-		draw_rect(Rect2(Vector2.ZERO, size), UiTheme.BRONZE_DIM, false, 1.0)
-		# faint dust, fixed per position so it does not swim
-		var rng := RandomNumberGenerator.new()
-		rng.seed = 9173
-		for i: int in 110:
-			var p := Vector2(rng.randf() * size.x, rng.randf() * size.y)
-			var tw: float = 0.25 + 0.2 * sin(_time * (0.5 + rng.randf()) + rng.randf() * TAU)
-			draw_circle(p, 0.6 + rng.randf() * 1.1, Color(0.8, 0.8, 1.0, tw * 0.5))
-		for k: int in 5:
-			draw_circle(c, 240.0 - k * 40.0, Color(0.25, 0.28, 0.5, 0.025))
+		UiDraw.void_field(self, size, c, _time)
 
 	func _draw_stars(player: Node, c: Vector2) -> void:
 		var pcts: Array = player.get("star_pct")
@@ -337,16 +582,7 @@ class Cosmos extends Control:
 
 	## One original glyph: a few strokes between points of a 3x3 grid, rotated to face outward.
 	func _draw_rune(at: Vector2, angle: float, rng: RandomNumberGenerator, col: Color, lit: bool) -> void:
-		draw_set_transform(at, angle, Vector2.ONE)
-		var cell := 3.6
-		var last := Vector2i(rng.randi_range(0, 2), rng.randi_range(0, 2))
-		for k: int in rng.randi_range(2, 4):
-			var nxt := Vector2i(rng.randi_range(0, 2), rng.randi_range(0, 2))
-			if nxt == last:
-				nxt = Vector2i((last.x + 1) % 3, (last.y + 2) % 3)
-			draw_line(Vector2(last.x - 1, last.y - 1) * cell, Vector2(nxt.x - 1, nxt.y - 1) * cell, col, 1.6 if lit else 1.0, true)
-			last = nxt
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		UiDraw.rune_strokes(self, at, angle, rng, col, lit)
 
 	func _draw_spirit_sockets(at: Vector2) -> void:
 		for i: int in 3:

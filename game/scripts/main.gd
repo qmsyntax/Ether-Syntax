@@ -2073,6 +2073,26 @@ func _setup_ui_shot(which: String) -> void:
 				player.call("assign_slot", 3, 2)
 			_enter_town()
 			open_ethercosm()
+		"runes":
+			# a water + fire character's Water Bolt at level 2 (room for eight runes), its word part-built:
+			# even, polar, ionic and weakened bonds, one rune loose, and the last move refused.
+			# Rune ids are the 2026-10-22 workbook's; if it is revised a set may be refused and the
+			# picture changes, nothing breaks.
+			player.call("set_affinities", ["water", "fire"])
+			var own: Array = player.get("abilities")
+			own[0]["stage"] = 2
+			player.call("word_add", 0, "WAT-6b", 0)       # Settle (frame) on Surge, the anchor
+			player.call("word_add", 0, "WAT-3b", 1)       # Dry on Settle
+			player.call("word_add", 0, "FIR-2a", 1)       # Ignite on Settle (water and fire lean apart)
+			player.call("word_add", 0, "WAT-4b", 0)       # Drown on Surge
+			player.call("word_add", 0, "UNI-05a", 1)      # Expand on Settle
+			player.call("word_add", 0, "UNI-13a")         # Repeat, loose
+			_enter_town()
+			open_ethercosm()
+			screen.call("open_runes")
+			screen.call("pick_node", 3)
+			screen.call("pick_node", 0)                    # Surge is full: refused, and the screen says why
+			screen.call("pick_node", 3)
 		"nether":
 			_show_screen(null, false)
 			_enter_dungeon()

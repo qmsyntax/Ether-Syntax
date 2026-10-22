@@ -26,6 +26,9 @@ var skill_tree: Dictionary = {}
 var town: Dictionary = {}
 ## Crafting step 1: data/crafting.json, generated from the drafts (design/12, scripts/crafting.gd).
 var crafting: Dictionary = {}
+## Runes and the rules of rune words: data/runes.json, generated from design/runes-workbook.xlsx
+## by tools/runes/export_runes_json.py (design/14 section 7; rules in scripts/runes.gd).
+var runes: Dictionary = {}
 
 
 ## Loaded in the constructor: the singleton name resolves before the node enters the tree,
@@ -59,6 +62,7 @@ func _ensure() -> void:
 	skill_tree = _load("res://data/skill_tree.json")
 	town = _load("res://data/town.json")
 	crafting = _load("res://data/crafting.json")
+	runes = _load("res://data/runes.json")
 	# its materials, tools and kits join the item list; a live id in items.json always wins
 	var craft_items: Dictionary = crafting.get("items", {})
 	for id: String in craft_items:
@@ -137,6 +141,22 @@ func town_folk(role: String) -> Dictionary:
 		if str(f.get("role", "")) == role:
 			return f
 	return {}
+
+
+## A rune by id, base or universal: {id, name, character, valence, electronegativity, meaning, ...}
+## (base runes also carry affinity, role and opposite). {} if the id is unknown.
+func rune(id: String) -> Dictionary:
+	_ensure()
+	var base: Dictionary = runes.get("base_runes", {})
+	if base.has(id):
+		return base[id]
+	return (runes.get("universal_runes", {}) as Dictionary).get(id, {})
+
+
+## The base rune a skill is built on (its anchor), or "" if the data has none for it.
+func skill_anchor(ability_id: String) -> String:
+	_ensure()
+	return str((runes.get("skill_anchor", {}) as Dictionary).get(ability_id, ""))
 
 
 ## An item definition, or {} if the id is unknown.

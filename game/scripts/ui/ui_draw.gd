@@ -6,6 +6,74 @@ const STAR_TINT := Color("cdbcf2")
 ## Every function draws onto the CanvasItem passed in, from inside its _draw().
 
 
+static var _glyph_ok: Dictionary = {}
+
+
+## The ethercosm's void: near-black, a bronze edge, faint dust fixed per position (so it does not
+## swim) and soft rings round `c`.
+static func void_field(ci: CanvasItem, size: Vector2, c: Vector2, time: float) -> void:
+	ci.draw_rect(Rect2(Vector2.ZERO, size), Color("070608"))
+	ci.draw_rect(Rect2(Vector2.ZERO, size), UiTheme.BRONZE_DIM, false, 1.0)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9173
+	for i: int in 110:
+		var p := Vector2(rng.randf() * size.x, rng.randf() * size.y)
+		var tw: float = 0.25 + 0.2 * sin(time * (0.5 + rng.randf()) + rng.randf() * TAU)
+		ci.draw_circle(p, 0.6 + rng.randf() * 1.1, Color(0.8, 0.8, 1.0, tw * 0.5))
+	for k: int in 5:
+		ci.draw_circle(c, 240.0 - k * 40.0, Color(0.25, 0.28, 0.5, 0.025))
+
+
+## One original procedural rune mark: a few strokes between points of a 3x3 grid of `cell`,
+## rotated by `angle`. The strokes come from `rng`, so a fixed seed always draws the same mark.
+static func rune_strokes(ci: CanvasItem, at: Vector2, angle: float, rng: RandomNumberGenerator, col: Color, lit: bool, cell: float = 3.6) -> void:
+	ci.draw_set_transform(at, angle, Vector2.ONE)
+	var last := Vector2i(rng.randi_range(0, 2), rng.randi_range(0, 2))
+	for k: int in rng.randi_range(2, 4):
+		var nxt := Vector2i(rng.randi_range(0, 2), rng.randi_range(0, 2))
+		if nxt == last:
+			nxt = Vector2i((last.x + 1) % 3, (last.y + 2) % 3)
+		ci.draw_line(Vector2(last.x - 1, last.y - 1) * cell, Vector2(nxt.x - 1, nxt.y - 1) * cell, col, (1.6 if lit else 1.0) * cell / 3.6, true)
+		last = nxt
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## Whether the interface font (with the system's fallback fonts) can draw `ch` as a plain glyph.
+## Checked by shaping it: a character no font can draw comes back with no font. A character only
+## a colour emoji font has counts as missing too - it would ignore the tint and break the look.
+## Cached.
+static func has_glyph(ch: String) -> bool:
+	if ch == "":
+		return false
+	if _glyph_ok.has(ch):
+		return bool(_glyph_ok[ch])
+	var ts: TextServer = TextServerManager.get_primary_interface()
+	var line := TextLine.new()
+	line.add_string(ch, UiTheme.font(), 24)
+	var ok := true
+	for g: Dictionary in ts.shaped_text_get_glyphs(line.get_rid()):
+		var rid: RID = g.get("font_rid", RID())
+		if not rid.is_valid() or int(g.get("index", 0)) == 0 or ts.font_get_name(rid).to_lower().contains("emoji"):
+			ok = false
+	_glyph_ok[ch] = ok
+	return ok
+
+
+## A rune drawn centred on `c`: its Unicode character from the data, or - when no font can draw
+## it - the procedural mark seeded by its id.
+static func rune_glyph(ci: CanvasItem, c: Vector2, rune_id: String, ch: String, size: int, col: Color) -> void:
+	if has_glyph(ch):
+		var f: Font = UiTheme.font()
+		var w: float = f.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		var asc: float = f.get_ascent(size)
+		var h: float = asc + f.get_descent(size)
+		ci.draw_string(f, Vector2(c.x - w * 0.5, c.y - h * 0.5 + asc), ch, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
+	else:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = hash(rune_id)
+		rune_strokes(ci, c, 0.0, rng, col, true, float(size) * 0.22)
+
+
 ## Points of the part of a circle that lies below the horizontal line at `level_y` (screen y is
 ## down), with a gently waving top edge. Used as the liquid in an orb.
 static func liquid_points(c: Vector2, r: float, level_y: float, time: float, wave: float) -> PackedVector2Array:

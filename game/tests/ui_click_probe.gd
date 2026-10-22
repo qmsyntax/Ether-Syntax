@@ -21,6 +21,12 @@ var _binds_backup: Variant = null      # user://keybinds.cfg as it was, or null 
 var _step := ""
 var _step_ms := 0
 var _trainer_from := 0                 # the frame the trainer part began, 0 until then
+var _runes_from := 0                   # the frame the rune-setting part began, 0 until then
+var _anchor := ""                      # the first skill's anchor rune
+var _spare: Array[String] = []         # three runes of its affinity to set, picked from the data
+var _held := 0                         # runes in the word when the rule sets are swapped
+
+const FreeRules := preload("res://tests/free_rules.gd")
 
 
 func _ready() -> void:
@@ -241,6 +247,98 @@ func _process(_delta: float) -> void:
 		_settings_steps()
 	if _trainer_from > 0:
 		_trainer_steps(frames - _trainer_from)
+	if _runes_from > 0:
+		_rune_steps(frames - _runes_from)
+
+
+## The rune-setting view in the ethercosm (design/14 section 7), by clicking: open it from the
+## selected skill, set a rune from the palette, join it to the anchor by clicking both, set a
+## second rune onto the picked anchor, and a third (refused and explained when the anchor's two
+## bonds are taken); then with a second rule set in force (tests/free_rules.gd) the same view
+## follows those rules: their three-rune limit, explained, and a join by clicking. Last, Clear the
+## word. Runes are chosen from the data by affinity, not by name.
+func _rune_steps(at: int) -> void:
+	var player: Node = main.get("player")
+	var s: Node = main.get("screen")
+	match at:
+		1:
+			for i: int in 4:
+				if main.get("screen") != null:
+					main.call("close_screen")
+			main.call("open_ethercosm")
+		10:
+			_expect("the ethercosm is open", s is UiScreen and s.has_method("open_runes"))
+			var b: Control = _find(main, "RunesButton")
+			_expect("the selected skill offers Set runes", b != null)
+			if b != null:
+				_click_at(_centre(b))
+		20:
+			_expect("Set runes opens the rune view", s != null and bool(s.get("rune_mode")) and _find(main, "RuneBoard") != null)
+			# three water runes other than the skill's anchor, taken from the data (not by name)
+			_anchor = GameData.skill_anchor(str(((player.get("abilities") as Array)[0] as Dictionary)["id"]))
+			_spare.clear()
+			for id: String in (player.call("rune_palette") as Array):
+				if str(GameData.rune(id).get("affinity", "")) == "water" and id != _anchor and _spare.size() < 3:
+					_spare.append(id)
+			var chip: Control = _find(main, "Rune_" + _spare[0])
+			_expect("the palette offers the skill's affinity's runes", chip != null)
+			if chip != null:
+				_click_at(_centre(chip))
+		30:
+			var w: Dictionary = player.call("ability_word", 0)
+			_expect("clicking a palette rune sets it into the word", RuneWord.size(w) == 2 and RuneWord.node_id(w, 1) == _spare[0])
+			_click_at((_find(main, "RuneBoard") as RuneBoard).node_global(0))
+		35:
+			_expect("clicking the anchor picks it", int(s.get("picked")) == 0)
+			_click_at((_find(main, "RuneBoard") as RuneBoard).node_global(1))
+		45:
+			_expect("clicking a second rune joins the two", RuneWord.linked(player.call("ability_word", 0), 0, 1))
+			_click_at((_find(main, "RuneBoard") as RuneBoard).node_global(0))
+		50:
+			var chip: Control = _find(main, "Rune_" + _spare[1])
+			if chip != null:
+				_click_at(_centre(chip))
+		60:
+			_expect("with the anchor picked, a palette rune is set joined to it", RuneWord.linked(player.call("ability_word", 0), 0, 2))
+			var chip: Control = _find(main, "Rune_" + _spare[2])
+			if chip != null:
+				_click_at(_centre(chip))
+		70:
+			var msg: Control = _find(main, "RuneMessage")
+			if BondRules.valence(_anchor) <= 2:
+				_expect("a third rune on the full anchor is refused, and the screen says why",
+					RuneWord.size(player.call("ability_word", 0)) == 3 and msg != null and (msg as Label).text.contains("full"))
+			else:
+				_expect("a third rune on the anchor, which has room, is set", RuneWord.linked(player.call("ability_word", 0), 0, 3))
+			_held = RuneWord.size(player.call("ability_word", 0))
+			Runes.use(FreeRules.new())
+			s.set("picked", -1)
+			s.call("rebuild")
+		80:
+			var chip: Control = _find(main, "Rune_" + _spare[2])
+			if chip != null:
+				_click_at(_centre(chip))
+		90:
+			var msg: Control = _find(main, "RuneMessage")
+			_expect("under the test rules the same view refuses a rune past their three, and says so",
+				RuneWord.size(player.call("ability_word", 0)) == _held and msg != null and (msg as Label).text.contains("holds 3"))
+			_click_at((_find(main, "RuneBoard") as RuneBoard).node_global(1))
+		95:
+			_click_at((_find(main, "RuneBoard") as RuneBoard).node_global(2))
+		105:
+			_expect("and joins two runes by clicking", RuneWord.linked(player.call("ability_word", 0), 1, 2))
+			Runes.use(null)
+			s.call("rebuild")
+		115:
+			var clear: Control = _find(main, "ClearWordButton")
+			_expect("the view offers Clear the word", clear != null and not (clear as Button).disabled)
+			if clear != null:
+				_click_at(_centre(clear))
+		125:
+			_expect("Clear the word leaves the anchor alone", RuneWord.size(player.call("ability_word", 0)) == 1)
+			main.call("close_screen")
+			_runes_from = 0
+			_finish()
 
 
 ## The skill trainer in the street, counted in frames from the moment the controls menu closed.
@@ -321,7 +419,7 @@ func _trainer_steps(at: int) -> void:
 			_expect("clicking Combine makes two billets from the scrap", (player.get("inventory") as Inventory).bag.count("steel_billet") == 2
 				and not (player.get("inventory") as Inventory).bag.has("scrap_iron"))
 			_trainer_from = 0
-			_finish()
+			_runes_from = frames
 
 
 ## The controls menu ignores input for 200 ms after a capture starts, so these steps go by the clock.
@@ -357,7 +455,7 @@ func _settings_steps() -> void:
 				_expect("the Close button shuts the controls menu", main.get("settings_menu") == null)
 				_step = ""
 				if OS.get_cmdline_user_args().has("--field"):
-					_finish()
+					_runes_from = frames
 				else:
 					_trainer_from = frames
 
