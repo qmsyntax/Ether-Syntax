@@ -107,7 +107,7 @@ func _detail(box: VBoxContainer) -> void:
 	name_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_row.add_child(name_col)
 	name_col.add_child(UiTheme.heading(str(ab.get("name", selected)), 22))
-	name_col.add_child(UiTheme.body("\"%s\"" % str(ab.get("verse", "")), 13, UiTheme.STAR))
+	name_col.add_child(UiTheme.body(UiTheme.verse_of(ab), 13, UiTheme.STAR))
 	if str(ab.get("summary", "")) != "":
 		box.add_child(UiTheme.body(str(ab["summary"]), 14))
 	box.add_child(UiTheme.rule())
@@ -187,19 +187,42 @@ class TreeView extends Control:
 		_style()
 		_layout()
 
+	## How many tiers and columns the tree spans (at least three of each): trees grew past three
+	## tiers and three columns on 2026-10-22.
+	func _span() -> Vector2:
+		var tiers := 3
+		var widest := 3
+		var per: Dictionary = {}
+		for id: String in tree:
+			var t: int = int((tree[id] as Dictionary).get("tier", 1))
+			tiers = maxi(tiers, t)
+			per[t] = int(per.get(t, 0)) + 1
+			widest = maxi(widest, int(ceil(float((tree[id] as Dictionary).get("col", 0.0)) + 0.5)))
+		for t2: Variant in per:
+			widest = maxi(widest, int(per[t2]))
+		return Vector2(widest, tiers)
+
+	## A node's size: the full size while it fits, smaller when the tree is wide or deep.
+	func node_size() -> Vector2:
+		var span: Vector2 = _span()
+		var cell := Vector2(size.x / span.x, size.y / span.y)
+		return Vector2(minf(SkillTreeScreen.NODE_SIZE.x, cell.x - 8.0), minf(SkillTreeScreen.NODE_SIZE.y, cell.y - 14.0))
+
 	func _centre_of(id: String) -> Vector2:
 		var node: Dictionary = tree[id]
-		var tiers: float = 3.0
+		var span: Vector2 = _span()
 		var col: float = float(node.get("col", 0.0))
-		var x: float = size.x * (col + 0.5) / 3.0
-		var y: float = size.y * (float(int(node.get("tier", 1))) - 0.5) / tiers
+		var x: float = size.x * (col + 0.5) / span.x
+		var y: float = size.y * (float(int(node.get("tier", 1))) - 0.5) / span.y
 		return Vector2(x, y)
 
 	func _layout() -> void:
+		var ns: Vector2 = node_size()
 		for id: String in buttons:
 			var b: Button = buttons[id]
-			b.position = _centre_of(id) - SkillTreeScreen.NODE_SIZE * 0.5
-			b.size = SkillTreeScreen.NODE_SIZE
+			b.custom_minimum_size = ns
+			b.position = _centre_of(id) - ns * 0.5
+			b.size = ns
 		queue_redraw()
 
 	func _style() -> void:
@@ -219,7 +242,7 @@ class TreeView extends Control:
 				b.add_theme_stylebox_override(s, UiTheme.box(bg.lightened(0.06) if s == "hover" else bg, border, width, 6, 8))
 			b.add_theme_color_override("font_color", UiTheme.GOLD if state == "learned" else (UiTheme.TEXT if state != "locked" else UiTheme.TEXT_FAINT))
 			b.add_theme_color_override("font_hover_color", UiTheme.TEXT)
-			b.add_theme_font_size_override("font_size", 15)
+			b.add_theme_font_size_override("font_size", 15 if _span().x <= 3.0 and _span().y <= 3.0 else 12)
 
 	func _draw() -> void:
 		var player: Node = screen.get("player")
@@ -227,7 +250,7 @@ class TreeView extends Control:
 			for need: Variant in (tree[id] as Dictionary).get("requires", []):
 				if not tree.has(str(need)):
 					continue
-				var from: Vector2 = _centre_of(str(need)) + Vector2(0, SkillTreeScreen.NODE_SIZE.y * 0.5)
-				var to: Vector2 = _centre_of(id) - Vector2(0, SkillTreeScreen.NODE_SIZE.y * 0.5)
+				var from: Vector2 = _centre_of(str(need)) + Vector2(0, node_size().y * 0.5)
+				var to: Vector2 = _centre_of(id) - Vector2(0, node_size().y * 0.5)
 				var lit: bool = bool(player.call("knows", str(need)))
 				draw_line(from, to, UiTheme.GOLD if lit else UiTheme.BRONZE_DIM, 3.0 if lit else 2.0, true)

@@ -213,6 +213,14 @@ static func rule() -> ColorRect:
 	return r
 
 
+## A skill's line under its name: its verse in quotes, or - for a drafted skill that has none yet -
+## the rune it is built on.
+static func verse_of(ab: Dictionary) -> String:
+	if str(ab.get("verse", "")) != "":
+		return "\"%s\"" % str(ab["verse"])
+	return "Built on the rune %s" % str(ab.get("rune", "?")) if ab.has("rune") else ""
+
+
 static func money_text(amount: int) -> String:
 	return ("debt  $%s" % _commas(-amount)) if amount < 0 else ("$%s" % _commas(amount))
 

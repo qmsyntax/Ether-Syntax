@@ -192,6 +192,11 @@ var _dash_ab: Dictionary = {}
 var _dash_stage_mult := 1.0
 ## The hotbar action a skill was cast from while it is still held down (a held skill reads it).
 var _cast_action := ""
+## A test character (the title screen's "Test characters"): every skill of one affinity, stages
+## high enough for big rune words. Never saved over the real save; marked in a save as such.
+var test_character := false
+## Test characters only: which six of the learned skills the bar shows (next page).
+var hotbar_page := 0
 
 # Tuning (GameData).
 var _p: Dictionary
@@ -2986,6 +2991,19 @@ func cast_slot(slot: int) -> void:
 	_cast_action = ""
 
 
+## Test characters only: show the next six learned skills on the bar (a test-only "next page").
+func next_hotbar_page() -> void:
+	if not test_character or abilities.is_empty():
+		return
+	var per: int = hotbar.size()
+	var pages: int = int(ceil(float(abilities.size()) / float(per)))
+	hotbar_page = (hotbar_page + 1) % maxi(1, pages)
+	for i: int in per:
+		var idx: int = hotbar_page * per + i
+		hotbar[i] = idx if idx < abilities.size() else -1
+	note("Skill bar: page %d of %d." % [hotbar_page + 1, pages])
+
+
 func cast_ability(index: int) -> void:
 	if not active or dead or meditating or index < 0 or index >= abilities.size():
 		return
@@ -3750,8 +3768,41 @@ func take_pickup(drop: Node3D) -> bool:
 
 
 ## Everything that must survive between sessions.
+## A test character (title screen "Test characters"): this one affinity, and every skill of it
+## learned in tree order (any not on the tree after), each at balance.skills.test_stage. TEST
+## OVERRIDE: the stage cap is stars + 1, so it is given balance.skills.test_stars full stars - a
+## full tank. The first six skills are on the bar; the hotbar_page key shows the next six.
+func make_test_character(aff: String) -> void:
+	set_affinities([aff])
+	test_character = true
+	hotbar_page = 0
+	var n: int = GameData.inum("skills", "test_stars")
+	stars = n
+	star_pct.clear()
+	for i: int in n:
+		star_pct.append(GameData.num("stars", "max_pct"))
+	_recompute_essence_max()
+	essence = essence_max
+	var ids: Array[String] = []
+	for id: String in GameData.skill_tree_of(aff):
+		ids.append(id)
+	for id: String in GameData.abilities:
+		if str(GameData.ability(id).get("affinity", "")) == aff and not ids.has(id):
+			ids.append(id)
+	abilities.clear()
+	for i: int in hotbar.size():
+		hotbar[i] = -1
+	var stage: int = mini(GameData.inum("skills", "test_stage"), stars + 1)
+	for id: String in ids:
+		abilities.append({"id": id, "stage": stage, "progress": 0.0})
+	for i: int in mini(hotbar.size(), abilities.size()):
+		hotbar[i] = i
+	note("TEST CHARACTER: every %s skill, stage %d. %s turns the skill bar to the next six." % [str(GameData.affinity(aff).get("label", aff)).to_lower(), stage, Keybinds.binding_text("hotbar_page")])
+
+
 func to_save() -> Dictionary:
 	return {
+		"test_character": test_character,
 		"name": char_name, "identity": identity, "look": look.duplicate(), "affinities": affinities.duplicate(),
 		"tempering": tempering.duplicate(true),
 		"talent_id": talent_id, "stars": stars, "star_pct": star_pct.duplicate(), "money": money,
@@ -3769,6 +3820,7 @@ func to_save() -> Dictionary:
 
 func from_save(d: Dictionary) -> void:
 	set_talent(str(d.get("talent_id", "")))
+	test_character = bool(d.get("test_character", false))
 	char_name = str(d.get("name", ""))
 	identity = str(d.get("identity", ""))
 	# a save keeps the affinities it was made with; saves from before affinities were all water

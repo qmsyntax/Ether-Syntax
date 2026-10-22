@@ -521,7 +521,7 @@ func _build_detail() -> void:
 	name_col.add_theme_constant_override("separation", 1)
 	name_row.add_child(name_col)
 	name_col.add_child(UiTheme.heading(str(ab.get("name", "?")), 22))
-	name_col.add_child(UiTheme.body("\"%s\"" % str(ab.get("verse", "")), 14, UiTheme.STAR))
+	name_col.add_child(UiTheme.body(UiTheme.verse_of(ab), 14, UiTheme.STAR))
 	if str(ab.get("summary", "")) != "":
 		box.add_child(UiTheme.body(str(ab["summary"]), 14, UiTheme.TEXT))
 
@@ -630,6 +630,7 @@ func _bind_preview(st: Dictionary, concept: String) -> Control:
 class Cosmos extends Control:
 	var screen: Control
 	var _time := 0.0
+	var _k := 1.0                    # how big each ability is drawn (smaller when there are many)
 	var _nodes: Array = []          # [{pos, r, index}] for click testing
 	var _hover := -1
 
@@ -660,11 +661,20 @@ class Cosmos extends Control:
 
 		var abilities: Array = player.get("abilities")
 		var orbit: float = minf(size.x, size.y) * 0.34
+		# many abilities (a test character knows a whole affinity): a wider oval and smaller nodes
+		var rx: float = orbit
+		var ry: float = orbit
+		_k = 1.0
+		if abilities.size() > 8:
+			rx = size.x * 0.41
+			ry = size.y * 0.35
+			var spacing: float = PI * (rx + ry) / float(abilities.size())
+			_k = clampf(spacing / 182.0, 0.42, 1.0)
+		var spots: Array[Vector2] = _oval_spots(c, rx, ry, abilities.size())
 		_nodes.clear()
 		# channels first, so nodes sit on top of them
 		for i: int in abilities.size():
-			var a: float = -PI / 2.0 + TAU * float(i) / float(maxi(1, abilities.size()))
-			var p: Vector2 = c + Vector2(cos(a), sin(a)) * orbit
+			var p: Vector2 = spots[i]
 			draw_line(c, p, Color(UiTheme.ESSENCE, 0.18), 2.0, true)
 			var t: float = fmod(_time * 0.35 + float(i) * 0.37, 1.0)
 			draw_circle(c.lerp(p, t), 2.5, Color(UiTheme.ESSENCE.lightened(0.4), 0.7 * sin(t * PI)))
@@ -673,13 +683,35 @@ class Cosmos extends Control:
 		_draw_satellite(player, c)
 
 		for i: int in abilities.size():
-			var a2: float = -PI / 2.0 + TAU * float(i) / float(maxi(1, abilities.size()))
-			var p2: Vector2 = c + Vector2(cos(a2), sin(a2)) * orbit
+			var p2: Vector2 = spots[i]
 			_draw_ability(player, abilities[i], i, p2)
-			_nodes.append({"pos": p2, "r": 66.0, "index": i})
+			_nodes.append({"pos": p2, "r": 66.0 * _k, "index": i})
 
 		_draw_spirit_sockets(Vector2(c.x, size.y - 46.0))
 		UiDraw.text(self, Vector2(14.0, 24.0), "Click an ability to inspect it.", 13, UiTheme.TEXT_FAINT)
+
+	## `n` points round an oval, evenly spaced along it (not by angle, which would crowd the ends),
+	## the first at the top.
+	func _oval_spots(c: Vector2, rx: float, ry: float, n: int) -> Array[Vector2]:
+		var out: Array[Vector2] = []
+		if n <= 0:
+			return out
+		var samples := 360
+		var pts: Array[Vector2] = []
+		var cum: Array[float] = [0.0]
+		for s: int in samples + 1:
+			var a: float = -PI / 2.0 + TAU * float(s) / float(samples)
+			pts.append(c + Vector2(cos(a) * rx, sin(a) * ry))
+			if s > 0:
+				cum.append(cum[s - 1] + pts[s].distance_to(pts[s - 1]))
+		var total: float = cum[samples]
+		var j := 0
+		for i: int in n:
+			var want: float = total * float(i) / float(n)
+			while j < samples and cum[j + 1] < want:
+				j += 1
+			out.append(pts[j])
+		return out
 
 	func _draw_void(c: Vector2) -> void:
 		UiDraw.void_field(self, size, c, _time)
@@ -726,19 +758,20 @@ class Cosmos extends Control:
 		var need: String = str(player.call("pending_tier", st))
 		var stage: int = int(st["stage"])
 		var lit: int = int(float(st["progress"]) / 100.0 * RUNES_PER_STAGE)
-		var ring_r := 52.0
+		var k: float = _k
+		var ring_r: float = 52.0 * k
 
 		# completed stages: solid rings, each with its bound construct set in as a gem
 		var bound: Array = st.get("bound", [])
 		for s: int in stage:
-			var rr: float = ring_r + 12.0 + s * 9.0
+			var rr: float = ring_r + (12.0 + s * 9.0) * k
 			draw_arc(p, rr, 0, TAU, 64, UiTheme.GOLD.darkened(0.25), 2.0, true)
 			if s < bound.size():
 				var ga: float = -PI / 2.0 + s * 0.5
-				UiDraw.icon(self, "gem", p + Vector2(cos(ga), sin(ga)) * rr, 13.0, UiTheme.STAR if str(bound[s]["tier"]) != "vestige" else UiTheme.GOLD)
+				UiDraw.icon(self, "gem", p + Vector2(cos(ga), sin(ga)) * rr, 13.0 * k, UiTheme.STAR if str(bound[s]["tier"]) != "vestige" else UiTheme.GOLD)
 
 		# the current runechain - or, with a locked rune word, that word repeated round the ring
-		draw_arc(p, ring_r, 0, TAU, 64, Color(1, 1, 1, 0.06), 12.0, true)
+		draw_arc(p, ring_r, 0, TAU, 64, Color(1, 1, 1, 0.06), 12.0 * k, true)
 		var word: Dictionary = player.call("ability_word", index)
 		if RuneWord.is_locked(word) and RuneWord.size(word) > 1:
 			_draw_word_chain(p, ring_r, word, GameData.affinity_color(str(ab.get("affinity", ""))))
@@ -750,21 +783,26 @@ class Cosmos extends Control:
 			if need != "":
 				col = col.lerp(Color(1, 1, 1), 0.25 + 0.25 * sin(_time * 4.0 + float(i) * 0.4))
 			rng.seed = hash(str(st["id"])) + stage * 977 + i * 31
-			_draw_rune(p + Vector2(cos(a), sin(a)) * ring_r, a + PI / 2.0, rng, col, on)
+			if k >= 0.8:
+				_draw_rune(p + Vector2(cos(a), sin(a)) * ring_r, a + PI / 2.0, rng, col, on)
+			else:
+				draw_circle(p + Vector2(cos(a), sin(a)) * ring_r, 2.2, col)       # too small for glyphs: a bead each
 
 		# the ability itself
-		draw_circle(p, 36.0, Color(0, 0, 0, 0.7))
-		draw_circle(p, 33.0, UiTheme.PANEL_HI if not is_selected else Color("3a3024"))
-		draw_arc(p, 33.0, 0, TAU, 48, UiTheme.GOLD if (is_selected or _hover == index) else UiTheme.BRONZE, 2.0 if is_selected else 1.5, true)
-		UiDraw.icon(self, str(ab.get("icon", "drop")), p, 34.0, GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3))
-		UiDraw.text(self, Vector2(p.x - 110.0, p.y + ring_r + 30.0 + stage * 9.0), str(ab.get("name", "?")), 15, UiTheme.TEXT if not is_selected else UiTheme.GOLD, HORIZONTAL_ALIGNMENT_CENTER, 220.0)
+		draw_circle(p, 36.0 * k, Color(0, 0, 0, 0.7))
+		draw_circle(p, 33.0 * k, UiTheme.PANEL_HI if not is_selected else Color("3a3024"))
+		draw_arc(p, 33.0 * k, 0, TAU, 48, UiTheme.GOLD if (is_selected or _hover == index) else UiTheme.BRONZE, 2.0 if is_selected else 1.5, true)
+		UiDraw.icon(self, str(ab.get("icon", "drop")), p, 34.0 * k, GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3))
+		var below: float = ring_r + (30.0 + stage * 9.0) * k
+		UiDraw.text(self, Vector2(p.x - 110.0, p.y + below), str(ab.get("name", "?")), 15 if k >= 0.8 else 13, UiTheme.TEXT if not is_selected else UiTheme.GOLD, HORIZONTAL_ALIGNMENT_CENTER, 220.0)
 		var sub: String = ("needs a %s" % need) if need != "" else "stage %d" % stage
-		UiDraw.text(self, Vector2(p.x - 110.0, p.y + ring_r + 47.0 + stage * 9.0), sub, 12, UiTheme.GOLD if need != "" else UiTheme.TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER, 220.0)
+		if k >= 0.8 or need != "":
+			UiDraw.text(self, Vector2(p.x - 110.0, p.y + below + 17.0), sub, 12, UiTheme.GOLD if need != "" else UiTheme.TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER, 220.0)
 		# which skill slot it sits in
 		var hotbar: Array = player.get("hotbar")
 		var slot: int = hotbar.find(index)
 		if slot >= 0:
-			var kp := p + Vector2(26.0, -26.0)
+			var kp := p + Vector2(26.0, -26.0) * k
 			draw_circle(kp, 11.0, UiTheme.INSET)
 			draw_arc(kp, 11.0, 0, TAU, 20, UiTheme.GOLD, 1.5, true)
 			UiDraw.text(self, Vector2(kp.x - 11.0, kp.y + 5.0), Keybinds.binding_text("ability_%d" % (slot + 1)), 13, UiTheme.GOLD, HORIZONTAL_ALIGNMENT_CENTER, 22.0)

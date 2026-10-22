@@ -368,7 +368,45 @@ func _draw_above_dock(cx: float) -> void:
 				draw_rect(block, Color(earth_col, 0.45), false, 1.5)
 		UiDraw.outlined(self, Vector2(x1 + float(s_total) * 18.0 + 4.0, strip_y), label2, UiTheme.FS_CAPTION, Color(earth_col, 1.0 if set_now else 0.8))
 		strip_y -= 26.0
+	# Blood's held blood: a row of beads (it is never health)
+	var blood_max: int = int(player.call("held_blood_max"))
+	if blood_max > 0:
+		var b_have: int = int(player.get("held_blood"))
+		var red: Color = GameData.affinity_color("blood").lightened(0.1)
+		var label3: String = "HELD BLOOD  %d" % b_have
+		var w3: float = float(blood_max) * 13.0 + 8.0 + UiDraw.text_width(label3, UiTheme.FS_CAPTION)
+		var x3: float = cx - w3 * 0.5
+		_chip_back(Rect2(x3 - 10.0, strip_y - 16.0, w3 + 20.0, 22.0))
+		for i: int in blood_max:
+			var bc := Vector2(x3 + 5.0 + float(i) * 13.0, strip_y - 5.0)
+			if i < b_have:
+				draw_circle(bc, 4.5, red)
+			else:
+				draw_arc(bc, 4.0, 0.0, TAU, 14, Color(red, 0.4), 1.5, true)
+		UiDraw.outlined(self, Vector2(x3 + float(blood_max) * 13.0 + 4.0, strip_y), label3, UiTheme.FS_CAPTION, red)
+		strip_y -= 26.0
+	# Dark's swallowed light, while there is any
+	var stores: Dictionary = player.get("stores")
+	if stores.has("swallowed") and int((stores["swallowed"] as Dictionary).get("n", 0)) > 0:
+		var dark_col: Color = GameData.affinity_color("dark").lightened(0.2)
+		var label4: String = "SWALLOWED LIGHT  %d" % int(stores["swallowed"]["n"])
+		var w4: float = UiDraw.text_width(label4, UiTheme.FS_CAPTION)
+		_chip_back(Rect2(cx - w4 * 0.5 - 10.0, strip_y - 16.0, w4 + 20.0, 22.0))
+		UiDraw.outlined(self, Vector2(cx - w4 * 0.5, strip_y), label4, UiTheme.FS_CAPTION, dark_col)
+		strip_y -= 26.0
+	# a test character's bar can turn to the next six skills
+	if bool(player.get("test_character")):
+		var per: int = (player.get("hotbar") as Array).size()
+		var pages: int = int(ceil(float((player.get("abilities") as Array).size()) / float(maxi(1, per))))
+		if pages > 1:
+			var label5: String = "TEST CHARACTER  ·  SKILL PAGE %d / %d  ·  %s NEXT" % [int(player.get("hotbar_page")) + 1, pages, Keybinds.binding_text("hotbar_page").to_upper()]
+			var w5: float = UiDraw.text_width(label5, UiTheme.FS_CAPTION)
+			_chip_back(Rect2(cx - w5 * 0.5 - 10.0, strip_y - 16.0, w5 + 20.0, 22.0))
+			UiDraw.outlined(self, Vector2(cx - w5 * 0.5, strip_y), label5, UiTheme.FS_CAPTION, UiTheme.STAR)
+			strip_y -= 26.0
 	var wind_up: float = float(player.call("windup_frac"))
+	if wind_up < 0.0:
+		wind_up = float(player.call("held_frac"))         # a held skill: how far through its hold (or charge)
 	if wind_up >= 0.0:
 		var wr := Rect2(cx - 90.0, strip_y - 8.0, 180.0, 6.0)
 		draw_rect(wr.grow(2.0), Color(0, 0, 0, 0.7))
@@ -882,6 +920,29 @@ func _draw_statuses(e: Node3D, at: Vector2) -> void:
 		for k: int in 3:
 			var a: float = _time * 6.0 + float(k) * TAU / 3.0
 			draw_circle(Vector2(at.x, at.y - 16.0) + Vector2(cos(a) * 9.0, sin(a) * 3.5), 2.4, col2)
+	# every other status (2026-10-22: the status engine's many): a small chip of its colour with the
+	# first letters of its name and its stacks, in a row above the marks
+	var drawn: Array = ["live", "alight", "soaked", "aloft", "frenzied", "roused", "staggered", "stunned"]
+	var chips: Array = []
+	for id: String in have:
+		var def: Dictionary = GameData.status(id)
+		if drawn.has(id) or bool(def.get("hidden", false)):
+			continue
+		var n: int = int((have[id] as Dictionary).get("stacks", 1))
+		chips.append([str(def.get("label", id)).left(4).to_upper() + (" %d" % n if n > 1 else ""), Color(str(def.get("color", "ffffff")))])
+	if chips.is_empty():
+		return
+	var cw: Array = chips.map(func(c: Array) -> float: return UiDraw.text_width(str(c[0]), 11) + 8.0)
+	var total_w: float = 0.0
+	for wv: Variant in cw:
+		total_w += float(wv) + 3.0
+	var cxp: float = at.x - total_w * 0.5
+	for i: int in chips.size():
+		var r := Rect2(cxp, at.y - 31.0, float(cw[i]), 14.0)
+		draw_rect(r, Color(0.05, 0.04, 0.03, 0.8))
+		draw_rect(r, Color(chips[i][1] as Color, 0.95), false, 1.0)
+		UiDraw.outlined(self, Vector2(r.position.x + 4.0, r.end.y - 3.0), str(chips[i][0]), 11, (chips[i][1] as Color).lightened(0.25))
+		cxp += float(cw[i]) + 3.0
 
 
 ## Wisps close to the projection say what they are, and whether they will come to you.
@@ -1164,7 +1225,7 @@ func _draw_tooltip(vs: Vector2) -> void:
 			var st: Dictionary = abilities[idx]
 			var ab: Dictionary = player.call("ability_stats", st)
 			lines.append([str(ab.get("name", "?")), 19, UiTheme.GOLD])
-			lines.append(["\"%s\"" % str(ab.get("verse", "")), body_px - 1, UiTheme.STAR])
+			lines.append([UiTheme.verse_of(ab), body_px - 1, UiTheme.STAR])
 			if str(ab.get("summary", "")) != "":
 				lines.append([str(ab["summary"]), body_px, UiTheme.TEXT])
 			lines.append(["%s affinity" % str(GameData.affinity(str(ab.get("affinity", ""))).get("label", "?")), body_px, GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3)])

@@ -302,6 +302,7 @@ func _build_left() -> void:
 	var gap := Control.new()
 	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_left.add_child(gap)
+	_build_test_characters()
 	_left.add_child(UiTheme.rule())
 	var save: Dictionary = SaveGame.read()
 	if not save.is_empty() and str(save.get("talent_id", "")) != "":
@@ -311,6 +312,38 @@ func _build_left() -> void:
 			_left.add_child(UiWidgets.small_button("Load a saved character", func() -> void: game.call("open_saves")))
 			break
 	_left.add_child(UiWidgets.small_button("Controls", func() -> void: game.call("open_settings")))
+
+
+## Test characters (Brent 2026-10-22): one button per affinity; each starts a character with that
+## one affinity and every one of its skills learned (main.start_test_character). For trying skills,
+## not for play: it is never autosaved over the real save.
+func _build_test_characters() -> void:
+	_left.add_child(UiTheme.rule())
+	var head := UiTheme.heading("Test characters", 17)
+	_left.add_child(head)
+	_left.add_child(UiTheme.body("Every skill of one affinity, ready to try. Not saved over your character.", 12, UiTheme.TEXT_FAINT))
+	var grid := GridContainer.new()
+	grid.name = "TestCharacters"
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
+	_left.add_child(grid)
+	for aff: Variant in GameData.affinity_ids():
+		var col: Color = GameData.affinity_color(str(aff))
+		var b := Button.new()
+		b.name = "Test_" + str(aff)
+		b.text = str(GameData.affinity(str(aff)).get("label", aff))
+		b.focus_mode = Control.FOCUS_NONE
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, 28)
+		b.add_theme_font_size_override("font_size", 13)
+		b.add_theme_color_override("font_color", col.lightened(0.35))
+		b.add_theme_color_override("font_hover_color", col.lightened(0.45))
+		for s: String in ["normal", "hover", "pressed"]:
+			b.add_theme_stylebox_override(s, UiTheme.box(Color("2a241d").lightened(0.06 if s == "hover" else 0.0), col.darkened(0.35), 1, 4, 4))
+		b.tooltip_text = "%s: %s" % [b.text, str(GameData.affinity(str(aff)).get("rule", ""))]
+		b.pressed.connect(func() -> void: game.call("start_test_character", str(aff)))
+		grid.add_child(b)
 
 
 func _build_nav() -> void:

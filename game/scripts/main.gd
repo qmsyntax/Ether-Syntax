@@ -274,8 +274,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	match state:
 		"town":
-			# no skills in town: nothing here to use them on
-			if event.is_action_pressed("interact"):
+			# no skills in town: nothing here to use them on (a test character may still turn its bar)
+			if event.is_action_pressed("hotbar_page") and bool(player.get("test_character")):
+				player.call("next_hotbar_page")
+			elif event.is_action_pressed("interact"):
 				_town_interact()
 			elif event.is_action_pressed("strike"):
 				_town_click((event as InputEventMouseButton).position if event is InputEventMouseButton else get_viewport().get_mouse_position())
@@ -330,8 +332,12 @@ func _unhandled_input(event: InputEvent) -> void:
 					player.call("note", "Stand on a glowing exit to leave.")
 
 
-## Hotbar slots are the actions ability_1..N. Returns true if the event cast something.
+## Hotbar slots are the actions ability_1..N. Returns true if the event cast something. A test
+## character also turns the bar to its next six skills (hotbar_page).
 func _cast_from_hotbar(event: InputEvent) -> bool:
+	if event.is_action_pressed("hotbar_page") and bool(player.get("test_character")):
+		player.call("next_hotbar_page")
+		return true
 	for i: int in (player.get("hotbar") as Array).size():
 		if event.is_action_pressed("ability_%d" % (i + 1)):
 			player.call("cast_slot", i)
@@ -961,8 +967,8 @@ func grant_exit_rewards(walls_cleared: int, full_clear: bool) -> Array[String]:
 
 ## The autosave.
 func save_now() -> void:
-	if _bot_mode or _shot_mode or _test_mode:
-		return
+	if _bot_mode or _shot_mode or _test_mode or bool(player.get("test_character")):
+		return                            # a test character never writes over the real autosave
 	save_to_slot(0)
 
 
@@ -970,6 +976,20 @@ func save_now() -> void:
 func light_base() -> String:
 	var cfg: Dictionary = GameData.balance.get("light", {})
 	return str((cfg.get("by_state", {}) as Dictionary).get(state, cfg.get("default", "dim")))
+
+
+## The title screen's "Test characters" (Brent 2026-10-22): one character with this one affinity
+## and every skill of it learned, at a stage high enough for big rune words, a full tank and the
+## test rune palette, starting in town (the arena gate is a short walk). Marked as a test
+## character: never autosaved over the real save, and only it can turn the bar to the next page.
+func start_test_character(aff: String) -> void:
+	player.call("set_talent", TALENT_CHOICES[0])
+	player.call("make_test_character", aff)
+	player.set("char_name", "Test: %s" % str(GameData.affinity(aff).get("label", aff)))
+	player.set("identity", str((GameData.creation.get("identities", [{}]) as Array)[0].get("id", "")) if not (GameData.creation.get("identities", []) as Array).is_empty() else "")
+	player.call("set_look", {})
+	player.set("money", GameData.inum("town", "starting_money"))
+	_enter_town()
 
 
 ## Write the character as it stands to a slot (0 = autosave). Only meaningful in town.
@@ -1726,6 +1746,9 @@ func _setup_ui_shot(which: String) -> void:
 			e.set_physics_process(false)
 		player.set_physics_process(false)
 		return
+	if which.begins_with("test-"):
+		_setup_test_shot(which.trim_prefix("test-"))
+		return
 	if which == "icons":
 		# every skill's glyph in a slot, by affinity, with its name
 		var sheet := Control.new()
@@ -2196,6 +2219,85 @@ func _setup_ui_shot(which: String) -> void:
 
 ## For screenshots: a closed four-rune word on the first skill (Water Bolt), locked. Rune ids are
 ## the 2026-10-22 workbook's.
+## Test-character shots (2026-10-22 build): "ethercosm" (a water test character's soul: eighteen
+## skills), "runes" (an ice skill's word), "statuses" (enemies carrying the new statuses, the HUD over
+## them), or an affinity id: that test character fighting in the arena, casting its skills.
+func _setup_test_shot(what: String) -> void:
+	forced_biome = "scrubland"
+	match what:
+		"ethercosm":
+			start_test_character("water")
+			open_ethercosm()
+			return
+		"skilltree":
+			# a new water character a few skills in: the eighteen-skill tree, four tiers deep
+			_select_talent(0)
+			player.call("set_affinities", ["water"])
+			for id: String in ["water_bolt", "undertow", "steady_drip", "drench"]:
+				player.call("learn", id)
+			player.set("skill_points", 2)
+			_enter_town()
+			open_skill_tree(false)
+			return
+		"runes":
+			start_test_character("ice")
+			player.call("word_add", 0, "ICE-5a", 0)       # Brittle on Frost (Hoarline)
+			player.call("word_add", 0, "UNI-11a", 0)      # Persist
+			player.call("word_add", 0, "UNI-03b", 1)      # Straight on Brittle
+			open_ethercosm()
+			screen.call("open_runes")
+			screen.call("pick_node", 1)
+			return
+		"statuses":
+			start_test_character("ice")
+			_show_screen(null, false)
+			enter_arena()
+			rest_timer = 9999.0
+			var put: Array = [[Vector3(-2.2, 0, -2.6), "grunt", [["chilled", 3], ["bleeding", 2]]],
+				[Vector3(1.0, 0, -3.4), "brute", [["dosed", 4], ["lit", 1], ["rusting", 1]]],
+				[Vector3(3.6, 0, -1.4), "grunt", [["infected", 3], ["sick", 1], ["exposed", 1]]],
+				[Vector3(-4.4, 0, -0.6), "archer", [["blinded", 1], ["shackled", 1]]],
+				[Vector3(-0.6, 0, -5.6), "pavise", [["frozen", 1], ["corroded", 2]]]]
+			for row: Array in put:
+				_spawn_enemy(str(row[1]), row[0], 1.0)
+			var all: Array = get_tree().get_nodes_in_group("enemies")
+			for i: int in mini(all.size(), put.size()):
+				for st: Array in put[i][2]:
+					all[i].call("add_status", str(st[0]), int(st[1]), player)
+				(all[i].get("body") as Body).apply_damage(20.0 * float(i + 1))
+			state = "arena_fight"                          # no rest prompt over the picture
+			for e: Node in all:
+				e.set_physics_process(false)
+			player.set_physics_process(false)
+			return
+	# an affinity: its test character in the arena, three skills in the air
+	start_test_character(what)
+	_show_screen(null, false)
+	enter_arena()
+	rest_timer = 9999.0
+	for at: Vector3 in [Vector3(-1.5, 0, -4.0), Vector3(1.2, 0, -4.8), Vector3(3.0, 0, -2.5), Vector3(-3.5, 0, -6.0)]:
+		_spawn_enemy("grunt", at, 1.0)
+	_spawn_enemy("brute", Vector3(0.5, 0, -7.0), 1.0)
+	player.call("start_fight")
+	state = "arena_fight"
+	var first: Node3D = get_tree().get_nodes_in_group("enemies")[0]
+	player.set("cursor_fixed", first.global_position)
+	player.set("hovered", first)
+	player.set("_facing", (first.global_position - player.global_position).normalized())
+	_shot_countdown = 75
+	var order: Array = [0, 1, 3, 4, 2]
+	for k: int in order.size():
+		var slot: int = int(order[k])
+		SkillTimer.after(level, 0.05 + 0.32 * float(k), func(_i: int) -> void:
+			player.set("_recover_t", 0.0)
+			player.set("_held", {})
+			var live: Array = get_tree().get_nodes_in_group("enemies")
+			if not live.is_empty():
+				player.set("cursor_fixed", (live[k % live.size()] as Node3D).global_position)
+				player.set("hovered", live[k % live.size()])
+			player.call("cast_slot", slot))
+
+
 func _shot_lock_word() -> void:
 	player.call("word_add", 0, "WAT-5a", 0)       # Gush on Surge
 	player.call("word_add", 0, "WAT-4b", 0)       # Drown on Surge
