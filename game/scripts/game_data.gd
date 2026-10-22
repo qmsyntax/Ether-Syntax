@@ -38,6 +38,7 @@ var rune_rules_override: RefCounted = null
 ## Loaded in the constructor: the singleton name resolves before the node enters the tree,
 ## and the main scene's member initialisers may read from it that early.
 func _init() -> void:
+	UserDirMigration.run()
 	_ensure()
 
 

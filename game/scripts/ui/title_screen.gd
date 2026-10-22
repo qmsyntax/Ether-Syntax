@@ -12,7 +12,7 @@ func build(root: Control) -> void:
 	var box: VBoxContainer = framed(root, 0.08, 0.05, 0.92, 0.95)
 	box.add_theme_constant_override("separation", 10)
 
-	var title := UiTheme.heading("PASSAGE", 44)
+	var title := UiTheme.heading("ETHER SYNTAX", 44)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 	var sub := UiTheme.body("A prime vestige waits. Ask it what power it holds - you may only ever hold one.", 17, UiTheme.TEXT_DIM)

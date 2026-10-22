@@ -1,4 +1,4 @@
-# Passage (working title) — an action RPG inspired by the "1% Lifesteal" universe
+# Ether Syntax (working title; was "Passage") — an action RPG inspired by the "1% Lifesteal" universe
 
 Brent's own game, inspired by how the 1% Lifesteal world works and its power system, with the author's informal
 blessing (see rule 1). Not a licensed or official adaptation. Process framework: Claude Code Game Studios
@@ -9,7 +9,7 @@ template (MIT, see `.claude/LICENSE-ccgs`), adapted. Owner / product lead / lore
 1. **What we may use.** The series belongs to Robert Blaise (publisher: Aethon Books). Brent asked him, and on
    2026-10-22 he answered (`production/outreach/2026-10-19-robert-blaise/reply-2026-10-22.md`): a game *inspired by*
    the 1% Lifesteal universe is fine, using **how the world works and the power system**; **not** the story or the
-   characters. It is not a licence: any official adaptation begins on his side, so never present Passage as the official
+   characters. It is not a licence: any official adaptation begins on his side, so never present Ether Syntax as the official
    1% Lifesteal game.
    - Use freely: the world's workings and the power system (stars, essence and reflux, talents and primes, the
      ethercosm and Netherecho, constructs, passages and realms, runes). Lean into setting-faithful tone and mechanics.
@@ -28,7 +28,7 @@ template (MIT, see `.claude/LICENSE-ccgs`), adapted. Owner / product lead / lore
 - **Engine**: Godot 4.7.2 (standard build, installed via winget — no `godot` alias on PATH; use `open-editor.cmd`, or the console exe under `%LOCALAPPDATA%\Microsoft\WinGet\Packages\GodotEngine.GodotEngine_*\`)
 - **Language**: GDScript, statically typed
 - **Godot project root**: `game/` (this is `res://`). The template's `src/` and `assets/` conventions map to `game/scripts/` and `game/data/` until `/adopt` decides otherwise.
-- **Version Control**: Git, trunk-based on `main`, local only (no remote). See "Version Control" below.
+- **Version Control**: Git, trunk-based on `main`, pushed to the private GitHub repo `qmsyntax/Ether-Syntax` (remote `origin`, SSH). See "Version Control" below.
 - **Smoke check**: `--headless --path game --import`, then `--headless --path game --quit-after 400 -- --shot` must produce no `ERROR` / `SCRIPT ERROR` lines.
 - **Tuning numbers live in `game/data/*.json`** (`balance.json`, `enemies.json`, `abilities.json`, `talents.json`) and are read through the `GameData` autoload. No numeric gameplay constants in scripts — structural constants (layer names, colours, panel sizes) are the only exception.
 - **Damage goes through the hook pipeline.** `Player.deal_damage()` and `take_hit()` build a `HitContext` and run it through every `TalentEffect` in `player.effects` (`on_outgoing`, `on_dealt`, `on_incoming`, `on_reflux_cap`, `on_tick`, `on_ascend`, `status_lines`). A talent is `game/scripts/talents/<id>.gd` extending `TalentEffect`, loaded by id. Items, summons and tempering techniques will be effects too. Never branch on `talent_id` in gameplay code.
@@ -90,7 +90,8 @@ Standing instruction from Brent (2026-09-19): **keep good version control** — 
 - **Conventional Commits**: `feat:`, `fix:`, `docs:`, `chore:`, `test:`, `refactor:`, with a scope where it helps (`feat(game):`, `docs(design):`, `docs(research):`, `chore(process):`). Reference the story/task ID or design doc in the body.
 - **Never commit a broken build.** Game changes must pass the headless smoke check first; if something is knowingly incomplete, say so in the commit body.
 - **Tags**: annotated tags at every playable build handed to Brent (`vX.Y.Z-<label>`) and at every phase gate passed (`gate/<stage>`).
-- **Still ask first**: adding a remote, pushing anywhere, rewriting history (amend/rebase/reset of committed work), deleting branches or tags. Any remote must be **private** unless Brent decides otherwise.
+- **Push**: after each merge to `main`, push `main` and its tags to `origin` (Brent 2026-10-22). Never push worktree or agent branches.
+- **Still ask first**: adding another remote, force-pushing, rewriting history (amend/rebase/reset of committed work), deleting branches or tags. Any remote must be **private** unless Brent decides otherwise.
 - **Never commit**: book text, anything under `game/.godot/`, credentials.
 - Line endings are governed by `.gitattributes` (bash hooks must stay LF).
 

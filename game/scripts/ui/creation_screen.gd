@@ -270,7 +270,7 @@ func _go(to: int) -> void:
 
 
 func _build_left() -> void:
-	var title := UiTheme.heading("PASSAGE", 40)
+	var title := UiTheme.heading("ETHER SYNTAX", 40)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_left.add_child(title)
 	var sub := UiTheme.body("Who goes in?", 15, UiTheme.TEXT_DIM)
