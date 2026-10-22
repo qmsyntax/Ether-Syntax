@@ -277,3 +277,11 @@ base runes. 25 of the first five's runes already carry a design/05 skill.
 2. Lightning's Positive ↔ Negative and Sense ↔ Jam: does that fit how lightning reads in the books?
 3. (Settled: blood does not pay in health [B 2026-10-21].)
 4. The rules for the nine new affinities are [MODEL]; the books may say more about each.
+
+## 7. Rulings on words (Brent, 2026-10-22)
+
+- **Words are built in the skill, and the skill's level decides how much it can hold** [B]: not the stars. Level 0
+  holds 4 runes, level 1 holds 6, and so on; each level allows more runes and more complex combinations.
+  (Whether the skill's own base rune counts in the 4 is open.)
+- **Combinations should be non-linear, with emergent results, and some must not work at all** [B]. The working
+  proposal (bonds, shapes, thresholds, failure modes, bond strength against load) is being discussed; not yet ruled.
