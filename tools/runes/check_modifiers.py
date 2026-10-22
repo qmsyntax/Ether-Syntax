@@ -19,6 +19,15 @@ import glob
 import json
 import os
 import re
+import sys
+
+# --planned: class runes under the rule changes going to the build (2026-10-22), not today's effects_v1:
+#   a status the skill already applies adds stacks; jumps arc any hit on to more enemies; braced works on any
+#   skill; `through` (ignore front block and shields) works on any hit; every skill has a recovery, so windup
+#   always acts; a self buff's or channel's main number counts as its power; poise on any hit adds stagger damage;
+#   duration also lengthens the statuses a skill applies.
+PLANNED = '--planned' in sys.argv
+MAGNITUDE_KINDS = ('self_buff', 'channel')
 
 ROOT = 'E:/Code/lifesteal-crawler'
 RUNES = json.load(open(f'{ROOT}/game/data/runes.json', encoding='utf-8'))
@@ -37,7 +46,7 @@ def parse_ops(text):
             ops.append({'op': 'status', 'id': w[1]})
         elif w[0] in ('shove', 'pull', 'marks', 'jumps', 'pierce'):
             ops.append({'op': w[0]})
-        elif w[0] in ('interrupts', 'braced'):
+        elif w[0] in ('interrupts', 'braced', 'through'):
             ops.append({'op': w[0]})
         elif w[0] == 'bonus':
             ops.append({'op': 'bonus', 'id': w[1]})
@@ -74,6 +83,25 @@ def classify(skill, op):
     kind = skill.get('kind', '')
     payload = [p for p in PARTS if any(k == p or k.startswith(p + '.') for k in fields)]
     o = op['op']
+    if PLANNED:
+        if o == 'mul':
+            if op['group'] == 'windup':
+                return True
+            if op['group'] == 'poise' and (bool(payload) or any(k in fields for k in ('on_rise.poise', 'on_arrive.poise'))):
+                return True     # poise on any hit adds stagger damage
+            if op['group'] == 'duration' and any(k.endswith('status') or 'statuses' in k for k in fields):
+                return True     # duration also lengthens the statuses the skill applies
+            if op['group'] == 'power' and kind in MAGNITUDE_KINDS and any(
+                    isinstance(v, (int, float)) and k not in ('cost', 'reflux_per_cost', 'duration')
+                    for k, v in fields.items()):
+                return True
+            return has_group(fields, kind, op['group'])
+        if o in ('status', 'jumps', 'through', 'shove', 'pull', 'marks', 'bonus', 'interrupts'):
+            return bool(payload)
+        if o == 'braced':
+            return True
+        if o == 'pierce':
+            return kind == 'projectile' or bool(payload)
     if o == 'mul':
         return has_group(fields, kind, op['group'])
     if o == 'status':
@@ -159,8 +187,12 @@ def main():
             lines += ['Listed as bad modifiers, but the maths lets them act fully (check the "why"):', '']
             lines += [f'- {a} + {b}: {w}' for a, b, w in contra_bad] + ['']
     os.makedirs(f'{ROOT}/design/runes-data', exist_ok=True)
-    open(f'{ROOT}/design/runes-data/modifier-check.md', 'w', encoding='utf-8').write('\n'.join(lines) + '\n')
-    json.dump(report, open(f'{ROOT}/design/runes-data/modifier-check.json', 'w', encoding='utf-8'), indent=1)
+    tag = '-planned' if PLANNED else ''
+    if PLANNED:
+        lines.insert(2, '**Planned rules** (`--planned`): classed under the rule changes going to the build, not '
+                        "today's effects_v1. See the module docstring.")
+    open(f'{ROOT}/design/runes-data/modifier-check{tag}.md', 'w', encoding='utf-8').write('\n'.join(lines) + '\n')
+    json.dump(report, open(f'{ROOT}/design/runes-data/modifier-check{tag}.json', 'w', encoding='utf-8'), indent=1)
     print('\n'.join(lines[:12]))
     print('affinities checked:', list(drafts))
 
