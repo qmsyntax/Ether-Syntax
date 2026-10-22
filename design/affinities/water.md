@@ -64,7 +64,7 @@ the books' "grows near water, earns in deserts", turned into play.
 - **Waterlogged** [MODEL]: Soaked three times over. Heavy: the target counts as one weight class lighter for shoves,
   because it is carrying the water.
 
-## 4. Base runes: eight pairs
+## 4. Base runes: eight pairs (superseded 2026-10-22 by the revised set in design/runes-workbook.xlsx)
 
 Each rune has two uses:
 - **As a skill**: the verb a water skill is built on.

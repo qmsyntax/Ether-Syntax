@@ -304,3 +304,7 @@ base runes. 25 of the first five's runes already carry a design/05 skill.
     most easily; carbon, with four, bonds with anything.
   - Opposite runes usually have opposite draws, so a rune bonded to its own opposite makes a strong, ionic bond.
   - First pass in the workbook (Base Runes K-N, Bond Rules): 65 Links, 35 Caps, 34 Branches, 32 Frames.
+- **The base runes were replaced by the revised set** [B 2026-10-22: "I like them"]. The data-backed proposal is in
+  `design/runes-data/revised-rune-set.md` and is now in the workbook. IDs, characters and opposite pairs are
+  unchanged. Section 3's first-pass tables and the water deep dive's §4 are history; the workbook is the source of
+  truth for rune names, meanings, roles and draws.
