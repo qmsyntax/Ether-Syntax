@@ -64,10 +64,246 @@ func _ready() -> void:
 	await _test_crafting_town()
 	await _test_runes()
 	await _test_rune_effects()
+	await _test_build_1022()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
 	_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
+
+
+## Every affinity's skills (build brief 2026-10-22): the status engine, the rune-engine rule changes
+## in play, each new affinity's rule, and a test character. Numbers come from the data.
+func _test_build_1022() -> void:
+	print("every affinity's skills (build brief 2026-10-22):")
+	var p := _new_player()
+	p.global_position = Vector3(900, 0, 0)
+	var world := _test_floor(p.global_position)
+	await get_tree().physics_frame
+	_bare(p)
+	p.set("effects", [] as Array[TalentEffect])
+
+	# ---- status stacking: Chill builds to Frozen, which counts as Brittle; a hard hit Shatters it
+	p.call("set_affinities", ["ice"])
+	var e := _foe(p, Vector3(0, 0, -2.0))
+	var cap: int = int(GameData.status("chilled")["stacks"])
+	e.call("add_status", "chilled", cap - 2, p)
+	_check("Chill stacks on a body", int(e.call("status_stacks", "chilled")) == cap - 2)
+	e.call("add_status", "chilled", 2, p)
+	_check("at %d Chill it freezes solid and the Chill clears" % cap, bool(e.call("has_status", "frozen")) and not bool(e.call("has_status", "chilled")))
+	_check("a Frozen body counts as Brittle", bool(e.call("has_status", "brittle")))
+	var shatter: Dictionary = GameData.status("brittle")["shatter"]
+	var lost0: float = _lost(e)
+	p.call("apply_hit", e, {"damage": 10.0, "poise": float(shatter["hard_poise"])}, ["ability", "ice"])
+	_check("a hard hit Shatters it: the shatter's damage, not halved, and it is free", _lost(e) - lost0 >= float(shatter["damage"]) and not bool(e.call("has_status", "frozen")),
+		"lost %f" % (_lost(e) - lost0))
+	# a rune's status op on a skill that already applies that status adds stacks
+	var bond: RuneRules = Runes.make("bond_v1")
+	var fxp: Dictionary = (bond.params["interaction_params"] as Dictionary)["effects_v1"]
+	var stacked := false
+	for pair: Array in [["set_solid", "ICE-2a"], ["hoarline", "ICE-1a"]]:
+		var fx: Dictionary = bond.effects(_raw_word([GameData.skill_anchor(str(pair[0])), str(pair[1])], [[0, 1]]), _rctx(str(pair[0]), 3))
+		var want: int = int((GameData.ability(str(pair[0]))["on_hit"] as Dictionary).get("stacks", 1))
+		if float(_row(fx, 1)["strength"]) >= float(fxp["status_threshold"]):
+			stacked = stacked or (fx["patch"] as Array).any(func(o: Dictionary) -> bool: return str(o["path"]) == "on_hit.stacks" and int(o["value"]) > want)
+	_check("an ice rune's Chill on an ice skill that already chills adds stacks", stacked)
+	e.queue_free()
+	await get_tree().process_frame                  # gone before the next bodies stand where it stood
+
+	# ---- jumps on a hit that is not a chain
+	p.call("set_affinities", ["water"])
+	var j1 := _foe(p, Vector3(0, 0, -2.0))
+	var j2 := _foe(p, Vector3(2.0, 0, -2.5))
+	var j3 := _foe(p, Vector3(0, 0, -12.0))
+	p.call("apply_hit", j1, {"damage": 100.0, "jumps": 1}, ["ability", "water"])
+	_check("a hit with a jump arcs on to the nearest other enemy for less", _near(_lost(j1), 100.0) and _near(_lost(j2), 100.0 * GameData.num("skills", "jump_damage_mult")) and _near(_lost(j3), 0.0),
+		"%f %f %f" % [_lost(j1), _lost(j2), _lost(j3)])
+	for n: Node in [j1, j2, j3]:
+		n.queue_free()
+	await get_tree().process_frame
+
+	# ---- through: past the front guard
+	var brute := _foe(p, Vector3(0, 0, -2.0), "brute")
+	var front: float = float(GameData.enemy("brute")["front_armour"])
+	p.call("apply_hit", brute, {"damage": 100.0, "poise": 0.0}, ["ability", "water"])
+	var guarded: float = _lost(brute)
+	p.call("apply_hit", brute, {"damage": 100.0, "poise": 0.0, "through": true}, ["ability", "water"])
+	_check("a hit that goes through ignores the front guard (%.0f%% otherwise)" % (front * 100.0), _near(guarded, 100.0 * (1.0 - front)) and _near(_lost(brute) - guarded, 100.0),
+		"%f %f" % [guarded, _lost(brute) - guarded])
+
+	# ---- light: Lit halves the front guard
+	brute.call("add_status", "lit", 1, p)
+	_check("a Lit body's front guard counts half", _near(float(brute.call("front_armour")), front * float(GameData.status("lit")["armour_mult"])))
+	brute.call("clear_status", "lit")
+
+	# ---- the ticking-payload rule: a hold lands at most once per target per cast
+	var z_foe := _foe(p, Vector3(0, 0, -3.0))
+	var zone := GroundZone.new()
+	zone.shape = "circle"
+	zone.radius = 2.0
+	zone.life = 10.0
+	zone.tick_s = 0.5
+	zone.payload = {"statuses": [{"id": "pinned", "stacks": 1}, {"id": "soaked", "stacks": 1}]}
+	zone.caster = p
+	zone.from = z_foe.global_position
+	zone.to = zone.from
+	add_child(zone)
+	zone.tick(0.6)
+	_check("a zone's hold lands on the first tick", bool(z_foe.call("has_status", "pinned")) and bool(z_foe.call("has_status", "soaked")))
+	z_foe.call("clear_status", "pinned")
+	z_foe.call("clear_status", "soaked")
+	zone.tick(0.6)
+	_check("but not again on the same target for the same cast; a plain status does", not bool(z_foe.call("has_status", "pinned")) and bool(z_foe.call("has_status", "soaked")))
+	zone.queue_free()
+	z_foe.queue_free()
+
+	# ---- poison: the dose clock
+	p.call("set_affinities", ["poison"])
+	var d := _foe(p, Vector3(0, 0, -2.0))
+	var dosed: Dictionary = GameData.status("dosed")
+	d.call("add_status", "dosed", 2, p)
+	_run(d, 2.0)
+	var t_left: float = float((d.get("statuses") as Dictionary)["dosed"]["t"])
+	d.call("add_status", "dosed", 3, p)
+	_check("more doses add to the bill but not the clock", int(d.call("status_stacks", "dosed")) == 5 and _near(float((d.get("statuses") as Dictionary)["dosed"]["t"]), t_left))
+	var before_bill: float = _lost(d)
+	_run(d, float(dosed["lasts"]))
+	_check("when the clock runs out every dose is paid at once", not bool(d.call("has_status", "dosed")) and _near(_lost(d) - before_bill, 5.0 * float(dosed["on_expire"]["damage_per_stack"])),
+		"paid %f" % (_lost(d) - before_bill))
+	d.queue_free()
+
+	# ---- disease: times flesh, through the shield; a cloud where an Infected body falls
+	p.call("set_affinities", ["disease"])
+	brute.set("_flash", 0.0)
+	var b_lost: float = _lost(brute)
+	p.call("deal_damage", brute, 100.0, ["ability", "disease"])
+	_check("a Disease hit is times the target's flesh, round its guard", _near(_lost(brute) - b_lost, 100.0 * float(GameData.enemy("brute")["flesh"])), "%f" % (_lost(brute) - b_lost))
+	var sick := _fighter(p, Vector3(3.0, 0, -2.0))
+	sick.set("target", null)
+	sick.call("add_status", "infected", 1, p)
+	var clouds_before: int = get_tree().get_nodes_in_group("ground_zones").size()
+	p.call("deal_damage", sick, 10000.0, ["ability"])
+	_check("an Infected body that dies leaves a sick cloud", get_tree().get_nodes_in_group("ground_zones").size() > clouds_before)
+
+	# ---- death: corpses lie longer, the Dying take more
+	p.call("set_affinities", ["death"])
+	_check("a Death fighter's corpses lie %d s" % int(GameData.affinity("death")["corpse_lie_s"]), _near(float(p.call("corpse_lie_s")), float(GameData.affinity("death")["corpse_lie_s"])))
+	var dy := _foe(p, Vector3(-3.0, 0, -2.0))
+	(dy.get("body") as Body).hp = (dy.get("body") as Body).max_hp * 0.4
+	var dy_before: float = _lost(dy)
+	p.call("deal_damage", dy, 100.0, ["ability", "death"])
+	_check("below half health it is Dying: a Death hit does more", bool(dy.call("has_status", "dying")) and _near(_lost(dy) - dy_before, 100.0 * float(GameData.affinity("death")["dying_mult"])))
+	var killed := _fighter(p, Vector3(-3.0, 0, 2.0))
+	killed.set("target", null)
+	p.call("deal_damage", killed, 10000.0, ["ability"])
+	var fallen: Fallen = Fallen.nearest(get_tree(), p.global_position + Vector3(-3.0, 0, 2.0), 1.0)
+	_check("where it fell lies a body for Death's skills, for as long", fallen != null and _near(fallen.life, float(GameData.affinity("death")["corpse_lie_s"]), 0.1))
+	dy.queue_free()
+
+	# ---- life: inside the body, harder on the hale, nothing to the unliving
+	p.call("set_affinities", ["life"])
+	var hale := _foe(p, Vector3(0, 0, -2.5), "brute")
+	p.call("deal_damage", hale, 100.0, ["ability", "life"])
+	_check("Life goes past the guard and does more to the hale", _near(_lost(hale), 100.0 * float(GameData.affinity("life")["hale_mult"])), "%f" % _lost(hale))
+	hale.set("is_living", false)
+	var h_before: float = _lost(hale)
+	p.call("apply_hit", hale, {"damage": 100.0, "status": "withering"}, ["ability", "life"])
+	_check("and nothing at all to the unliving", _near(_lost(hale), h_before) and not bool(hale.call("has_status", "withering")))
+	hale.queue_free()
+
+	# ---- blood: Bleeding drips pools; a bleeding kill is held blood; never health
+	p.call("set_affinities", ["blood"])
+	var bl := _foe(p, Vector3(0, 0, -2.0))
+	bl.call("add_status", "bleeding", 2, p)
+	var hp_me: float = (p.get("body") as Body).hp
+	_run(bl, float(GameData.status("bleeding")["drips_pool_s"]) + 0.1)
+	_check("Bleeding burns and drips a pool of blood", _lost(bl) > 0.0 and not get_tree().get_nodes_in_group("blood_pools").is_empty())
+	p.call("deal_damage", bl, 10000.0, ["ability"])
+	_check("a body that dies Bleeding by your hand is held blood", int(p.get("held_blood")) == int(GameData.status("bleeding")["on_death"]["held_blood"]))
+	_check("blood never costs you health", _near((p.get("body") as Body).hp, hp_me))
+
+	# ---- dark: Lit, Dim, Dark
+	p.call("set_affinities", ["dark"])
+	var dk := _foe(p, Vector3(0, 0, -3.0))
+	var base_level: String = Light.level_at(get_tree(), dk.global_position)
+	var dark := GroundZone.new()
+	dark.shape = "circle"
+	dark.radius = 1.5
+	dark.life = 10.0
+	dark.dark = true
+	dark.caster = p
+	dark.from = dk.global_position
+	dark.to = dark.from
+	add_child(dark)
+	_check("dark ground is Dark (the level here is %s)" % base_level, Light.level_at(get_tree(), dk.global_position) == "dark")
+	var dk_before: float = _lost(dk)
+	p.call("deal_damage", dk, 100.0, ["ability", "dark"])
+	_check("a Dark hit on a body standing in the Dark does more", _near(_lost(dk) - dk_before, 100.0 * float(GameData.affinity("dark")["light_mult"]["dark"])))
+	dk.call("add_status", "alight", 1, p)
+	_check("a burning body lights its ground, and light wins", Light.level_at(get_tree(), dk.global_position) == "lit")
+	dk_before = _lost(dk)
+	p.call("deal_damage", dk, 100.0, ["ability", "dark"])
+	_check("a Dark hit in the light does less", _near(_lost(dk) - dk_before, 100.0 * float(GameData.affinity("dark")["light_mult"]["lit"])))
+	dk.call("clear_status", "alight")
+	dark.from = p.global_position
+	dark.to = dark.from
+	p.set("_unseen_reveal_t", 0.0)                  # your last hit showed you for a moment
+	_check("standing in the Dark you are unseen from far off, but not up close",
+		bool(p.call("unseen_from", p.global_position + Vector3(0, 0, -10.0))) and not bool(p.call("unseen_from", p.global_position + Vector3(0, 0, -2.0))))
+	dark.queue_free()
+	dk.queue_free()
+
+	# ---- metal: plate is its target
+	p.call("set_affinities", ["metal"])
+	var plated := _foe(p, Vector3(0, 0, -2.5), "commander")
+	p.call("deal_damage", plated, 100.0, ["ability", "metal"])
+	var cls: int = int(GameData.enemy("commander")["metal"])
+	_check("a Metal hit ignores the guard and does more per metal class worn (%d)" % cls, _near(_lost(plated), 100.0 * (1.0 + float(GameData.affinity("metal")["per_metal_class"]) * float(cls))), "%f" % _lost(plated))
+	plated.call("add_status", "stripped", 1, p)
+	_check("Stripped, it counts as bare", int(plated.call("metal_class")) == 0)
+	plated.queue_free()
+
+	# ---- nature: growth that ages
+	p.call("set_affinities", ["nature"])
+	var patch: GrowthPatch = p.call("plant_growth", p.global_position + Vector3(0, 0, -4.0), {"kind": "bramble"})
+	var ages: Array = GameData.affinity("nature")["growth"]["ages"]
+	_check("a new patch is a sprout", patch != null and patch.age() == 0)
+	patch.tick(float(ages[0]) + 0.1)
+	_check("it grows: grown works harder", patch.age() == 1 and _near(patch.mult(), float(GameData.affinity("nature")["growth"]["age_mult"][1])))
+	patch.wilt()
+
+	# ---- dream: a mind that sees you, and sleep
+	p.call("set_affinities", ["dream"])
+	var mind := _foe(p, Vector3(0, 0, -3.0))
+	mind.set("facing", Vector3(0, 0, -1))           # its back to you
+	p.call("apply_hit", mind, {"damage": 50.0, "status": "terrified"}, ["ability", "dream"])
+	_check("a Dream hit does nothing to a mind that cannot see you", _near(_lost(mind), 0.0) and not bool(mind.call("has_status", "terrified")))
+	mind.set("facing", Vector3(0, 0, 1))
+	p.call("apply_hit", mind, {"status": "asleep"}, ["ability", "dream"])
+	_check("facing you, a first sleep only Dazes it", bool(mind.call("has_status", "dazed")) and not bool(mind.call("has_status", "asleep")))
+	p.call("apply_hit", mind, {"status": "asleep"}, ["ability", "dream"])
+	_check("a second puts it to sleep", bool(mind.call("has_status", "asleep")))
+	mind.set("facing", Vector3(0, 0, -1))
+	p.call("apply_hit", mind, {"damage": 20.0}, ["ability", "dream"])
+	_check("asleep, it needs no sight; the hit wakes it, Wakeful", _lost(mind) > 0.0 and not bool(mind.call("has_status", "asleep")) and bool(mind.call("has_status", "wakeful")))
+	mind.queue_free()
+	brute.queue_free()
+
+	# ---- a test character has every skill of its affinity
+	for aff: String in ["dream", "water"]:
+		var tc := _new_player()
+		tc.call("make_test_character", aff)
+		var want_ids: Array = GameData.abilities.keys().filter(func(id: String) -> bool: return str(GameData.ability(id)["affinity"]) == aff)
+		var have: Array = (tc.get("abilities") as Array).map(func(s: Dictionary) -> String: return str(s["id"]))
+		var stage_ok: bool = (tc.get("abilities") as Array).all(func(s: Dictionary) -> bool: return int(s["stage"]) == GameData.inum("skills", "test_stage"))
+		_check("a %s test character knows every %s skill (%d), at stage %d, with a full tank" % [aff, aff, want_ids.size(), GameData.inum("skills", "test_stage")],
+			have.size() == want_ids.size() and want_ids.all(func(id: String) -> bool: return have.has(id)) and stage_ok and _near(float(tc.get("essence")), float(tc.get("essence_max")))
+			and bool(tc.get("test_character")), "%d of %d" % [have.size(), want_ids.size()])
+		tc.call("next_hotbar_page")
+		_check("its bar turns to the next six", int((tc.get("hotbar") as Array)[0]) == 6)
+		tc.queue_free()
+	p.queue_free()
+	world.queue_free()
+	await get_tree().process_frame
 
 
 func _check(label: String, ok: bool, detail: String = "") -> void:
