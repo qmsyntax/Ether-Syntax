@@ -1,0 +1,237 @@
+{
+  "affinity": "metal",
+  "reflux_tier": "high",
+  "reflux_tier_why": "High (x1.4), with cheap-to-mid essence. Worked metal runs hot (forging, friction, ringing), and metal is the affinity that leans hardest on its own weapon, so it is the one best placed to work reflux off with bare strikes (design/05 6.3): skill, strike, strike, skill. A high tier makes that rhythm the way metal is played.",
+  "rule": "Metal works the metal that is already there: your weapon is its material, so its blows scale with your strike, and an enemy's armour is its target: metal hits ignore front armour and do +25% per metal class the target wears (mailed +25%, plated +50%).",
+  "rule_refined_from": "design/14 first pass: 'worn and carried metal is its material; armoured enemies are a liability: their own gear can be pulled, rung or stripped'.",
+  "rule_why": "The revised rune set dropped Draw/Spurn (magnetism) and Ring, so 'pulled' and 'rung' had to go; 'stripped' stays (Strip). What was missing was a number the game can read: enemies.json has front_armour but nothing that says how much metal a body wears (the Hide-Bound Brute is armoured in hide). So: a metal class per enemy kind (0 bare, 1 mailed, 2 plated), a bonus per class, and front armour ignored. That makes 'armoured enemies are a liability' true on every hit, and gives metal a room to read, as water reads walls. 'Carried' becomes the weapon: metal's blows are strikes made with your own weapon (damage_mult), while its thrown and placed skills use flat damage like everyone else's. Strip takes an enemy's class to 0, so tearing armour off helps everyone except metal: a real choice. Kept apart from earth: metal has no standing stone and no Braced wind-ups, and its control is about weapons and armour (Shackled, Dulled, Fused), not footing.",
+  "_note": "DRAFT 2026-10-22 [MODEL]. Metal is not in the game. One skill per base rune (runes.json MET-1a..5b), three starters, an effect for each rune. Field names follow abilities.json; new keys are named in new_mechanics. Proposed metal classes for enemies.json (a new key 'metal'): grunt 1 (mask and blade), brute 0 (hide), commander 2, archer 0, harrier 0, pavise 2, censer 1 (an iron censer), drummer 0. Iron Clasp uses kind 'smite', defined in lightning.json (Plumb Bolt).",
+  "skills": [
+    {
+      "id": "iron_slug", "name": "Iron Slug", "affinity": "metal", "base_rune": "MET-1a", "rune": "Forge",
+      "status": "new", "starter": true,
+      "kind": "projectile", "targeting": "aimed",
+      "summary": "You hammer a slug out of the iron you carry and hurl it: 70 damage and 35 poise. Like every metal hit it ignores a raised shield and hits plate hardest: 105 on a plated enemy.",
+      "verb_fit": "Forge is 'shape and harden metal'. The slug is shaped and hardened in the hand in a heartbeat, from metal you were already carrying, then thrown.",
+      "numbers": {"cost": 7, "reflux_per_cost": 1.4, "damage": 70, "speed": 22, "life": 1.2, "on_hit": {"poise": 35}},
+      "signature": ["damage"],
+      "new_mechanics": [
+        {"name": "metal class", "kind": "field", "definition": "enemies.json key 'metal': 0 bare, 1 mailed, 2 plated. Every hit tagged metal does +25% per class and ignores front_armour and blocks_shots."}
+      ],
+      "good_modifiers": [
+        {"rune": "Hone", "word": "An edged slug: 20% harder, knocks a little less."},
+        {"rune": "Within", "word": "Goes in and through: passes the first body and hits the one behind."},
+        {"rune": "Far", "word": "A longer throw, a little lighter."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Haste", "why": "No wind-up to shorten; it leaves the hand at once. Falls back."},
+        {"rune": "Persist", "why": "A thrown slug has no duration. Falls back."}
+      ]
+    },
+    {
+      "id": "rust_bloom", "name": "Rust Bloom", "affinity": "metal", "base_rune": "MET-1b", "rune": "Rust",
+      "status": "new", "starter": false,
+      "kind": "ground_zone", "targeting": "point",
+      "summary": "Point, 9 m: rust blooms over a circle 3.5 m across for 7 s. Anything inside that wears metal is Rusting: 6 damage a second per metal class, and its front armour is halved. Bare skin does not care.",
+      "verb_fit": "Rust is 'corrode it'. The bloom corrodes only metal, so it is strongest on the best-armoured, which is metal's rule in its plainest form.",
+      "numbers": {"cost": 12, "reflux_per_cost": 1.4, "range": 9, "zone": {"shape": "circle", "radius": 3.5, "life": 7.0, "tick_s": 1.0, "payload": {"status": "rusting"}}},
+      "signature": ["zone.payload.status"],
+      "new_mechanics": [
+        {"name": "rusting", "kind": "status", "definition": "1 stack, 5 s, refreshed: 6 damage a second per metal class (none on bare enemies), dealt through whoever applied it; front_armour halved while it lasts."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "The rust keeps blooming: 10.5 s."},
+        {"rune": "Elsewhere", "word": "Bloom it farther off, and wider."},
+        {"rune": "Essence", "word": "15% cheaper."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Forge", "why": "Forge is Rust's opposite and pulls harder: forging and rusting in one bloom. The bloom has no damage or wind-up for Forge's ops; falls back."},
+        {"rune": "Within", "why": "Not a shot. Falls back."},
+        {"rune": "Motion", "why": "The bloom stays where it grew. Falls back."}
+      ]
+    },
+    {
+      "id": "spot_weld", "name": "Spot Weld", "affinity": "metal", "base_rune": "MET-2a", "rune": "Fuse",
+      "status": "new", "starter": false,
+      "kind": "chain", "targeting": "target",
+      "summary": "One enemy within 9 m and the nearest other within 4 m of it are welded together for 5 s: 45 damage each, neither can move more than 4 m from the other, and both are 40% slower. A lone one is welded to the floor instead. Each metal class adds 1 s.",
+      "verb_fit": "Fuse is 'join metal into one piece'. Two armoured bodies become one awkward one, and the better armoured they are, the longer the weld holds.",
+      "numbers": {"cost": 12, "reflux_per_cost": 1.4, "range": 9, "jumps": 1, "jump_radius": 4, "duration": 5, "duration_per_class": 1.0, "on_hit": {"damage": 45, "status": "fused"}},
+      "signature": ["on_hit.status", "jumps"],
+      "new_mechanics": [
+        {"name": "fused", "kind": "status", "definition": "1 stack, the skill's duration: tethered to its partner (the other body the same cast fused): neither can move more than 4 m from the other, both 40% slower. With no partner, welded to the floor: Pinned for the duration."}
+      ],
+      "good_modifiers": [
+        {"rune": "Many", "word": "A third body on the same seam, each hit a little lighter."},
+        {"rune": "Far", "word": "Reach the first body from farther, and the next one too."},
+        {"rune": "Persist", "word": "The weld holds 7.5 s."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Sunder", "why": "Sunder is Fuse's opposite: splitting the seam you weld. Fuse keeps the pull; there is no poise for Sunder to add."},
+        {"rune": "Sever", "why": "Sever cuts and separates: the opposite of a weld. No poise field; falls back."},
+        {"rune": "Within", "why": "Not a shot. Falls back."}
+      ]
+    },
+    {
+      "id": "splitting_blow", "name": "Splitting Blow", "affinity": "metal", "base_rune": "MET-2b", "rune": "Sunder",
+      "status": "new", "starter": true,
+      "kind": "melee_burst", "targeting": "aimed",
+      "summary": "A cleaving blow across 120 degrees: 1.8x strike damage and 50 poise. Every armoured enemy it hits has its metal split open, and the pieces fly on behind it: 30 per metal class to everyone within 2.5 m.",
+      "verb_fit": "Sunder is 'split it apart'. The blow splits armour, and the split armour becomes the next weapon: a packed line of plated enemies is the best thing a metal fighter can meet.",
+      "numbers": {"cost": 12, "reflux_per_cost": 1.4, "damage_mult": 1.8, "reach_bonus": 0.8, "arc_deg": 120, "on_hit": {"poise": 50}, "spall": {"radius": 2.5, "damage_per_class": 30}},
+      "signature": ["on_hit.poise", "spall"],
+      "new_mechanics": [
+        {"name": "spall", "kind": "behaviour", "definition": "'spall': each enemy hit that wears metal throws pieces in a 60-degree fan away from you: spall.damage_per_class x its metal class to every other enemy within spall.radius of it. Bare enemies throw nothing."}
+      ],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "A wider cleave: 30% more reach and arc, a little less damage."},
+        {"rune": "Hone", "word": "A keen cleave: cuts 20% deeper, knocks a little less."},
+        {"rune": "Fall", "word": "A cleave that brings them down: 30% more poise damage."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Fuse", "why": "Fuse is Sunder's opposite and pulls harder (2.7 vs 2.01): welding what you split. The weld would land, and Sunder's own share of the poise is halved."},
+        {"rune": "Plate", "why": "Armouring up mid-swing: there is no wind-up to brace and no duration to lengthen. Falls back."},
+        {"rune": "Within", "why": "Not a shot. Falls back."}
+      ]
+    },
+    {
+      "id": "iron_clasp", "name": "Iron Clasp", "affinity": "metal", "base_rune": "MET-3a", "rune": "Seal",
+      "status": "new", "starter": false,
+      "kind": "new:smite", "targeting": "target",
+      "summary": "One enemy within 9 m: a band of iron snaps shut round its arms. 25 damage, interrupted, and Shackled for 2.5 s: it can still walk, but cannot attack. Each metal class it wears adds 1 s.",
+      "verb_fit": "Seal is 'close and lock with metal'. The band closes and locks; and an armoured enemy is carrying the extra iron it is locked with.",
+      "numbers": {"cost": 12, "reflux_per_cost": 1.4, "range": 9, "damage": 25, "duration": 2.5, "duration_per_class": 1.0, "on_hit": {"status": "shackled", "interrupts": true}},
+      "signature": ["on_hit.status", "duration"],
+      "new_mechanics": [
+        {"name": "shackled", "kind": "status", "definition": "1 stack, the skill's duration: cannot start an attack (a wind-up in progress is interrupted); can still move, turn and keep its slot."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "The band holds 3.75 s (plus its metal)."},
+        {"rune": "Far", "word": "Clasp something 12.6 m away."},
+        {"rune": "Rust", "word": "Rusted shut: the clasped one is Rusting too."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Breach", "why": "Breach is Seal's opposite: breaking the seal you close. Seal keeps the pull; Breach's pierce needs a shot and there is no poise; falls back."},
+        {"rune": "Within", "why": "Not a shot. Falls back."},
+        {"rune": "Motion", "why": "The band snaps shut where it is. No speed field; falls back."}
+      ]
+    },
+    {
+      "id": "breakthrough", "name": "Breakthrough", "affinity": "metal", "base_rune": "MET-3b", "rune": "Breach",
+      "status": "new", "starter": true,
+      "kind": "dash", "targeting": "aimed",
+      "summary": "Drive forward 5 m, point first. A bare enemy in the way stops you and is knocked back 1.5 m. One that wears metal is punched through: 40 damage, you carry on past it, and it is Stripped for 4 s.",
+      "verb_fit": "Breach is 'break a seal; punch through plate'. Plate is exactly what this goes through; it is bare flesh that stops it.",
+      "numbers": {"cost": 8, "reflux_per_cost": 1.4, "dash_speed": 20, "dash_time": 0.25, "stops_at_bodies": true, "pass_armoured": true, "recovery": 0.25, "on_stop": {"shove": 1.5, "poise": 40}, "on_pass": {"damage": 40, "status": "stripped"}, "stripped_s": 4},
+      "signature": ["on_stop.poise", "pass_armoured"],
+      "new_mechanics": [
+        {"name": "pass armoured", "kind": "behaviour", "definition": "A dash with 'pass_armoured' passes through enemies of metal class 1+ (applying on_pass) and stops at bare ones (applying on_stop)."},
+        {"name": "stripped", "kind": "status", "definition": "1 stack, the skill's duration (default 8 s): no front armour, takes 20% more from everything, and counts as metal class 0, so metal's own bonus is lost on it."}
+      ],
+      "good_modifiers": [
+        {"rune": "Motion", "word": "A faster drive."},
+        {"rune": "Fall", "word": "Whatever stops you is knocked harder: 30% more poise damage."},
+        {"rune": "Haste", "word": "Out of the drive sooner: recovery a quarter shorter."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Seal", "why": "Seal is Breach's opposite and pulls harder (3.4 vs 1.9): sealing as you break through. The maths would Shackle what you pass, and Breach's own hold on the drive is halved."},
+        {"rune": "Persist", "why": "A drive has no duration. Falls back."},
+        {"rune": "Elsewhere", "why": "A ram goes where it is aimed, not elsewhere: the dash has no range or area field. Falls back."}
+      ]
+    },
+    {
+      "id": "whetted_cut", "name": "Whetted Cut", "affinity": "metal", "base_rune": "MET-4a", "rune": "Hone",
+      "status": "new", "starter": false,
+      "kind": "charge_release", "targeting": "aimed",
+      "summary": "Hold to draw your weapon's edge keen, up to 1.5 s, walking at 45%. Let go for one cut across 60 degrees and 3.3 m: 1.6x strike damage at a tap, up to 3.2x at a full hold.",
+      "verb_fit": "Hone is 'sharpen'. The hold is the whetstone: the longer you draw it, the sharper the cut.",
+      "numbers": {"cost": 12, "reflux_per_cost": 1.4, "charge_max": 1.5, "move_factor": 0.45, "arc_deg": 60, "reach_bonus": 1.0, "damage_mult": 3.2, "damage_mult_min": 1.6, "on_hit": {"poise": 20}},
+      "signature": ["damage_mult", "damage_mult_min"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Focus", "word": "A narrower, deadlier cut: 30% harder, 20% less reach."},
+        {"rune": "Expand", "word": "A wide, sweeping cut, a little lighter."},
+        {"rune": "Strip", "word": "A keen edge slices the straps: what it cuts is Stripped."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Dull", "why": "Dull is Hone's opposite: sharpening a blunt edge. Hone keeps the pull; the maths would still Dull the target and add poise, but the cut is no longer a cut."},
+        {"rune": "Persist", "why": "A cut has no duration. Falls back."},
+        {"rune": "Within", "why": "Not a shot. Falls back."}
+      ]
+    },
+    {
+      "id": "turn_the_edge", "name": "Turn the Edge", "affinity": "metal", "base_rune": "MET-4b", "rune": "Dull",
+      "status": "new", "starter": false,
+      "kind": "melee_burst", "targeting": "self",
+      "summary": "A ringing sweep that blunts every edge near you: everything within 3.5 m takes 1.6x strike damage and 40 poise, and is Dulled for 6 s: its blows do 35% less and cannot stagger you.",
+      "verb_fit": "Dull is 'blunt edges, theirs included'. Theirs first: it is a defensive blow, made with the flat of your own.",
+      "numbers": {"cost": 14, "reflux_per_cost": 1.4, "damage_mult": 1.6, "arc_deg": 360, "reach_bonus": 1.2, "on_hit": {"status": "dulled", "poise": 40}},
+      "signature": ["on_hit.status", "on_hit.poise"],
+      "new_mechanics": [
+        {"name": "dulled", "kind": "status", "definition": "1 stack, 6 s: its blows do 35% less damage and remove no poise from the player (they cannot stagger you)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "A wider sweep, a little lighter."},
+        {"rune": "Fall", "word": "Knocks them down harder: 30% more poise damage."},
+        {"rune": "Rust", "word": "Rust in the dents: they are Rusting as well as Dulled."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Hone", "why": "Hone is Dull's opposite and pulls harder (3.0 vs 2.1): sharpening the blow that blunts. It adds damage and takes poise away, the reverse of the skill."},
+        {"rune": "Within", "why": "Not a shot. Falls back."},
+        {"rune": "Motion", "why": "The sweep is around you; nothing travels. Falls back."}
+      ]
+    },
+    {
+      "id": "plating", "name": "Plating", "affinity": "metal", "base_rune": "MET-5a", "rune": "Plate",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "For 8 s the metal you wear thickens: every blow on you does 25% less, and a blade that lands on you is Dulled for 3 s. You move 10% slower.",
+      "verb_fit": "Plate is 'armour up'. It thickens the metal you already wear, and a blade that meets it comes away blunted.",
+      "numbers": {"cost": 12, "reflux_per_cost": 1.4, "duration": 8, "incoming_mult": 0.75, "attacker_status": "dulled", "attacker_status_s": 3, "move_speed_mult": 0.9},
+      "signature": ["duration", "incoming_mult"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "Plated for 12 s."},
+        {"rune": "Self", "word": "Worn closer, lasts 30% longer."},
+        {"rune": "Essence", "word": "15% cheaper."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Strip", "why": "Strip is Plate's opposite and pulls harder (3.4 vs 2.42): tearing off the plate you put on. The buff has no hit to carry the status, and the plating's own duration share is halved."},
+        {"rune": "Far", "why": "Armour is worn, not thrown. Falls back."},
+        {"rune": "Within", "why": "Nothing it shoots. Falls back."}
+      ]
+    },
+    {
+      "id": "wrench", "name": "Wrench", "affinity": "metal", "base_rune": "MET-5b", "rune": "Strip",
+      "status": "new", "starter": false,
+      "kind": "targeted_strike", "targeting": "target",
+      "summary": "One enemy in reach: you get a grip on its armour and wrench it off. 1.6x strike damage, interrupted, and Stripped for 8 s: no front armour, and it takes 20% more from everything. It no longer counts as armoured, so metal loses its own bonus on it.",
+      "verb_fit": "Strip is 'tear armour off'. It is the one metal skill that turns the rule off on purpose: the armour is gone, so it stops being metal's target and becomes everyone's.",
+      "numbers": {"cost": 10, "reflux_per_cost": 1.4, "damage_mult": 1.6, "range_bonus": 1.0, "duration": 8, "on_hit": {"status": "stripped", "interrupts": true, "poise": 30}},
+      "signature": ["on_hit.status", "duration"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Near", "word": "A closer, harder wrench."},
+        {"rune": "Persist", "word": "It stays stripped 12 s."},
+        {"rune": "Sunder", "word": "Tears it off in pieces: 30% more poise damage, a little more reach."}
+      ],
+      "bad_modifiers": [
+        {"rune": "Plate", "why": "Plate is Strip's opposite: armouring the thing you strip. Strip keeps the pull; there is no wind-up to brace, and only the Stripped time grows."},
+        {"rune": "Within", "why": "Not a shot. Falls back."},
+        {"rune": "Haste", "why": "No wind-up to shorten. Falls back."}
+      ]
+    }
+  ],
+  "effects": {
+    "Forge": "power x1.2; windup x1.1",
+    "Rust": "status rusting",
+    "Fuse": "status fused",
+    "Sunder": "poise x1.3; reach x1.1",
+    "Seal": "status shackled",
+    "Breach": "pierce +1; poise x1.25",
+    "Hone": "power x1.2; poise x0.85",
+    "Dull": "status dulled; poise x1.2",
+    "Plate": "braced; duration x1.25",
+    "Strip": "status stripped"
+  }
+}
