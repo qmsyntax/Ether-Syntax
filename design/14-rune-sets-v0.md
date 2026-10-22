@@ -57,10 +57,18 @@ What each does when added to a skill as a means.
 
 ## 3. The affinities and their base runes
 
-The roster is every affinity the reading notes name [C: research/book5-mechanics-notes.md §5, intro notes §5]: blood,
-water, life, dream, light, wind, metal, fire, earth, lightning, miasma, poison, nature and death. Hybrids such as
-perished water [C] and the unique "fusion" [C] are in section 4. The game builds five today; the other nine are
-designed here so the rune set is whole.
+**[B 2026-10-21] The roster was too short, and every affinity gets a deep dive.** Each deep dive lives in
+`design/affinities/<name>.md` and **replaces** that affinity's first-pass entry below. Done so far: **water**.
+
+| Status | Affinities |
+|---|---|
+| Named in the reading notes [C] | fire, water, earth, wind, lightning, metal, light, blood, life, death [F], nature, dream, poison, disease (the notes' "miasma", renamed [B]) |
+| Added by Brent [B] | **dark**, **ice** (ice takes water's Freeze) |
+| Proposed, for Brent's yes or no [MODEL] | **sound** (vibration, sonic force, silence), **gravity** (weight, orbits, crushing), **space** (distance, folding, portals), **time** (haste, delay, rewind), **mind** (telekinesis, thought; dream keeps sleep and illusion), **beast** (claws, senses, the animal within), **spirit** (ghosts, constructs, the Netherecho itself: touches canon soul mechanics, so the riskiest) |
+| Hybrids, not base affinities | perished water [C], life flame [F]; natural ones: steam (fire + water), magma (fire + earth), storm (wind + lightning), sand (earth + wind), mud (water + earth), ash (fire + death), crystal (earth + light) |
+| Unique | fusion [C] |
+
+The first-pass entries below are the original fourteen; dark and ice get theirs in their deep dives.
 
 Each affinity has **one rule nobody else has** (design/05 §1 for the first five; [MODEL] for the rest) and **five
 pairs** of base runes. "Skills" lists design/05's 40 skills on each rune; a dash means no skill yet, which is where
@@ -127,9 +135,9 @@ Armoured enemies are a liability against metal: their own gear can be pulled, ru
 | **Plate**: armour up | **Strip**: tear armour off |
 | **Ring**: metal resonates; the ringing stuns | **Deaden**: silence and damp it |
 
-### Blood — pays in blood, its own and others' [C: blood storage and blood-to-metal techniques exist; MODEL: the rule]
-Blood skills can be paid in health as well as essence, and bleeding enemies feed it. This is the one deliberate
-exception to "no skill hurts its caster" [B 2026-10-11], and it needs Brent's yes.
+### Blood — works the blood that is already out [C: blood storage and blood-to-metal techniques exist; MODEL: the rule]
+**[B 2026-10-21] Blood does not pay in health.** First-pass rule, to be settled in its deep dive: the wounds you open
+spill blood, and blood skills work that spilled and stored blood, like water working the water that is there.
 
 | Rune | Opposite |
 |---|---|
@@ -203,7 +211,7 @@ It needs the target to see it or to sleep, and it grows stronger on the dazed an
 | **Spread**: pass it on to others | **Inure**: build tolerance |
 | **Linger**: leave residue that stays | **Flush**: clean an area out |
 
-### Miasma — a cloud that only harms flesh [C: miasma is flesh-only and armour counters it; MODEL: the rest]
+### Disease — a cloud that only harms flesh [B 2026-10-21: renamed from Miasma; C: miasma is flesh-only and armour counters it; MODEL: the rest]
 Armour, stone and constructs ignore it; it lingers and drifts.
 
 | Rune | Opposite |
@@ -229,14 +237,14 @@ Armour, stone and constructs ignore it; it lingers and drifts.
 
 - Several universal runes sit close to an affinity's ground:
   - Life ↔ Death sits near the Life and Death affinities.
-  - Pure ↔ Tainted sits near Poison and Miasma.
+  - Pure ↔ Tainted sits near Poison and Disease.
   - Reveal ↔ Veil sits near Light.
   - Remember ↔ Forget, Will ↔ Yield and Calm ↔ Fury sit near Dream.
 
   The rule in section 1 settles it: the base rune is the strong, specific version.
 - Some names clash across affinities:
   - Raise is used twice: Earth (stone) and Death (the dead).
-  - Clear (Miasma), Clarity (Light) and Clarify (Dream) are too alike.
+  - Clear (Disease), Clarity (Light) and Clarify (Dream) are too alike.
 
   Rename before any of this reaches the game, so every rune name is unique.
 
@@ -244,5 +252,5 @@ Armour, stone and constructs ignore it; it lingers and drifts.
 
 1. Five pairs per affinity, or deeper?
 2. Lightning's Positive ↔ Negative and Sense ↔ Jam: does that fit how lightning reads in the books?
-3. Blood paying in health: the one exception to "no skill hurts its caster"?
+3. (Settled: blood does not pay in health [B 2026-10-21].)
 4. The rules for the nine new affinities are [MODEL]; the books may say more about each.
