@@ -29,6 +29,10 @@ var crafting: Dictionary = {}
 ## Runes and the rules of rune words: data/runes.json, generated from design/runes-workbook.xlsx
 ## by tools/runes/export_runes_json.py (design/14 section 7; rules in scripts/runes.gd).
 var runes: Dictionary = {}
+## The rune rule set in force and a test override (see Runes.active). Held here, on the autoload,
+## rather than in static variables, so they are let go when the game closes.
+var rune_rules: RefCounted = null
+var rune_rules_override: RefCounted = null
 
 
 ## Loaded in the constructor: the singleton name resolves before the node enters the tree,

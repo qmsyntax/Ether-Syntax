@@ -1799,20 +1799,31 @@ func apply_hit(target: Node, payload: Dictionary, tags: Array = [], stage_mult: 
 	var ctx: HitContext = null
 	if not is_instance_valid(target) or bool(target.call("is_dead")):
 		return ctx
+	# bonus_vs {status: fraction}: more damage to a target that already carries that status
+	var bonus := 1.0
+	if payload.has("bonus_vs") and target.has_method("has_status"):
+		for st: String in (payload["bonus_vs"] as Dictionary):
+			if bool(target.call("has_status", st)):
+				bonus += float((payload["bonus_vs"] as Dictionary)[st])
 	if payload.has("damage"):
-		ctx = deal_damage(target, float(payload["damage"]) * stage_mult, tags)
+		ctx = deal_damage(target, float(payload["damage"]) * stage_mult * bonus, tags)
 	elif payload.has("damage_mult"):
-		ctx = deal_damage(target, strike_damage() * float(payload["damage_mult"]) * stage_mult, tags)
+		ctx = deal_damage(target, strike_damage() * float(payload["damage_mult"]) * stage_mult * bonus, tags)
 	if not is_instance_valid(target) or bool(target.call("is_dead")) or not target.has_method("add_status"):
 		return ctx
 	if payload.has("status"):
 		target.call("add_status", str(payload["status"]), int(payload.get("stacks", 1)), self)
+	# further statuses, as a list [{id, stacks}] (rune words add them here)
+	for extra: Variant in payload.get("statuses", []):
+		target.call("add_status", str((extra as Dictionary).get("id", "")), int((extra as Dictionary).get("stacks", 1)), self)
 	if target.has_method("take_poise") and (payload.has("damage") or payload.has("damage_mult") or payload.has("poise")):
 		target.call("take_poise", float(payload.get("poise", GameData.num("combat", "skill_poise"))))
 	if bool(payload.get("interrupts", false)):
 		if bool(target.call("interrupt_attack")):
 			FloatText.spawn(get_parent(), (target as Node3D).global_position + Vector3.UP * 0.5, "INTERRUPTED", Color(1, 1, 1))
-	if float(payload.get("shove", 0.0)) > 0.0:
+	# a shove pushes away; a pull is a shove toward you. Both on one hit: the difference wins.
+	var push: float = float(payload.get("shove", 0.0)) - float(payload.get("pull", 0.0))
+	if push > 0.0:
 		var away: Vector3 = dir
 		if away.length() < 0.001:
 			away = (target as Node3D).global_position - global_position
@@ -1820,7 +1831,9 @@ func apply_hit(target: Node, payload: Dictionary, tags: Array = [], stage_mult: 
 		if away.length() < 0.001:
 			away = _facing
 		target.set("shover", self)
-		target.call("shove", away, float(payload["shove"]))
+		target.call("shove", away, push)
+	elif push < 0.0 and target.has_method("pull_toward"):
+		target.call("pull_toward", global_position, -push)
 	if int(payload.get("marks", 0)) > 0:
 		_add_marks(target, int(payload["marks"]), true)
 	return ctx
@@ -2398,8 +2411,57 @@ func ability_stats(state: Dictionary) -> Dictionary:
 		if not applied:
 			damage_all *= float((c.get("fallback", {}) as Dictionary).get("damage_all", 1.0))
 	ab["damage_all"] = damage_all
+	# a locked rune word reshapes the skill (design/14 section 7; the rule set's effects patch)
+	if state.has("word"):
+		apply_rune_patch(ab, Runes.active().locked_effects(state["word"], RuneContext.of(state, affinities)).get("patch", []))
 	ab["cost"] = float(ab["cost"]) * inventory.stat("cost_mult", true)
 	return ab
+
+
+## Apply a rune effects patch to an ability dictionary, op by op: {op, path ("a.b" for nested), value}.
+## mul / mul_round / min only touch numbers that are there; add, set and append create what they
+## need. The patch format is the rule sets' (RuneInteraction.on_effects); nothing here knows runes.
+static func apply_rune_patch(ab: Dictionary, patch: Array) -> void:
+	for p: Dictionary in patch:
+		var keys: PackedStringArray = str(p.get("path", "")).split(".")
+		var last: String = keys[keys.size() - 1]
+		var holder: Dictionary = ab
+		var make: bool = str(p["op"]) in ["add", "set", "append"]
+		var ok := true
+		for k: int in keys.size() - 1:
+			if not holder.has(keys[k]) or typeof(holder[keys[k]]) != TYPE_DICTIONARY:
+				if not make:
+					ok = false
+					break
+				holder[keys[k]] = {}
+			holder = holder[keys[k]]
+		if not ok:
+			continue
+		var cur: Variant = holder.get(last)
+		var is_num: bool = typeof(cur) == TYPE_FLOAT or typeof(cur) == TYPE_INT
+		match str(p["op"]):
+			"mul":
+				if is_num:
+					holder[last] = float(cur) * float(p["value"])
+			"mul_round":
+				if is_num:
+					holder[last] = int(round(float(cur) * float(p["value"])))
+			"min":
+				if is_num:
+					holder[last] = minf(float(cur), float(p["value"]))
+			"add":
+				if typeof(p["value"]) == TYPE_INT and (cur == null or typeof(cur) == TYPE_INT):
+					holder[last] = (int(cur) if cur != null else 0) + int(p["value"])
+				else:
+					holder[last] = (float(cur) if is_num else 0.0) + float(p["value"])
+			"set":
+				holder[last] = p["value"]
+			"erase":
+				holder.erase(last)
+			"append":
+				if typeof(cur) != TYPE_ARRAY:
+					holder[last] = []
+				(holder[last] as Array).append(p["value"])
 
 
 ## What binding a construct of `concept` into this ability would change, for showing before the
@@ -2549,7 +2611,78 @@ func word_remove(index: int, node: int) -> Dictionary:
 	return Runes.active().remove(_stored_word(index), node, rune_context(index))
 
 
-## Clear the word back to the skill's anchor alone.
+## Lock the word: from now on its skill uses it (only a closed word, if the rules say so).
+func word_lock(index: int) -> Dictionary:
+	if index < 0 or index >= abilities.size():
+		return RuneRules.no("no_skill", "No such skill.")
+	return Runes.active().lock(_stored_word(index), rune_context(index))
+
+
+## Unlock the word: its skill goes back to its own numbers and the word can be changed again.
+func word_unlock(index: int) -> Dictionary:
+	if index < 0 or index >= abilities.size():
+		return RuneRules.no("no_skill", "No such skill.")
+	return Runes.active().unlock(_stored_word(index), rune_context(index))
+
+
+func word_locked(index: int) -> bool:
+	return index >= 0 and index < abilities.size() and RuneWord.is_locked(ability_word(index))
+
+
+## What the word in ability `index` does - or would do once locked - to its skill:
+## {rows: [{label, before, after, better}], lines: [...], runes: [...], anchor: {...}, groups: {...}}.
+## `before` is the skill without the word, `after` with it locked. Numbers are already formatted.
+func rune_preview(index: int) -> Dictionary:
+	if index < 0 or index >= abilities.size():
+		return {}
+	var state: Dictionary = abilities[index]
+	var bare: Dictionary = state.duplicate(true)
+	bare.erase("word")
+	var before: Dictionary = ability_stats(bare)
+	var word: Dictionary = ability_word(index).duplicate(true)
+	var fx: Dictionary = Runes.active().effects(word, rune_context(index))
+	var after: Dictionary = before.duplicate(true)
+	apply_rune_patch(after, fx.get("patch", []))
+	# the rule set names the fields worth showing: [{path, group, label, lower_is_better, unit}]
+	var rows: Array[Dictionary] = []
+	var stage_mult: float = ability_damage_mult(int(state["stage"])) * float(before.get("damage_all", 1.0))
+	for f: Dictionary in fx.get("fields", []):
+		var path: String = str(f["path"])
+		var b: Variant = _path_value(before, path)
+		var a: Variant = _path_value(after, path)
+		if not (typeof(b) == TYPE_FLOAT or typeof(b) == TYPE_INT) or not (typeof(a) == TYPE_FLOAT or typeof(a) == TYPE_INT):
+			continue
+		var scale: float = stage_mult if bool(f.get("scaled_by_stage", false)) else 1.0
+		var shown_b: float = float(b) * scale
+		var shown_a: float = float(a) * scale
+		var whole: bool = absf(shown_b) >= 10.0
+		var unit: String = str(f.get("unit", ""))
+		rows.append({"label": str(f["label"]), "group": str(f["group"]),
+			"before": (("%d" % int(round(shown_b))) if whole else ("%.2f" % shown_b).rstrip("0").rstrip(".")) + unit,
+			"after": (("%d" % int(round(shown_a))) if whole else ("%.2f" % shown_a).rstrip("0").rstrip(".")) + unit,
+			"changed": absf(shown_a - shown_b) > 0.0001, "better": (shown_a < shown_b) == bool(f.get("lower_is_better", false))})
+	return {"rows": rows, "lines": fx.get("lines", []), "runes": fx.get("runes", []), "anchor": fx.get("anchor", {}),
+		"groups": fx.get("groups", {}), "before": before, "after": after}
+
+
+## Short lines on what a LOCKED word does to ability `index` ([] if its word is not locked), for
+## tooltips and the ethercosm.
+func rune_summary(index: int) -> Array:
+	if not word_locked(index):
+		return []
+	return Runes.active().locked_effects(ability_word(index), rune_context(index)).get("summary", [])
+
+
+static func _path_value(d: Dictionary, path: String) -> Variant:
+	var cur: Variant = d
+	for key: String in path.split("."):
+		if typeof(cur) != TYPE_DICTIONARY or not (cur as Dictionary).has(key):
+			return null
+		cur = (cur as Dictionary)[key]
+	return cur
+
+
+## Clear the word back to the skill's anchor alone (and unlock it).
 func word_clear(index: int) -> void:
 	if index >= 0 and index < abilities.size():
 		(abilities[index] as Dictionary).erase("word")

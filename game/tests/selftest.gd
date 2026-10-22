@@ -15,6 +15,14 @@ var _errors: ErrorCatcher
 
 func _ready() -> void:
 	_errors = ErrorCatcher.install()
+	# `-- --only=runes` runs just the rune checks (quicker while working on runes)
+	if OS.get_cmdline_user_args().has("--only=runes"):
+		await _test_runes()
+		await _test_rune_effects()
+		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
+		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
+		get_tree().quit(1 if _failed > 0 else 0)
+		return
 	_test_body()
 	_test_natural_healing()
 	_test_arm_loss_and_regrowth()
@@ -55,6 +63,7 @@ func _ready() -> void:
 	_test_crafting()
 	await _test_crafting_town()
 	await _test_runes()
+	await _test_rune_effects()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
 	_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
@@ -4654,7 +4663,7 @@ func _test_runes() -> void:
 	var st_split: Dictionary = bond.word_state(wc, ctxc)
 	_check("every valence filled but in two pieces: not closed, and the screen is told why",
 		not bool(st_split["closed"]) and not RuneWord.is_joined(wc) and str(st_split["lines"]).contains("joined"))
-	_check("runes change no skill's numbers yet: a word's effects are empty", bond.effects(wc, ctxc).is_empty())
+	_check("a word that is not locked does nothing to its skill", bond.locked_effects(wc, ctxc).is_empty() and not bond.effects(wc, ctxc).is_empty())
 
 	# the save round trip, through JSON like a real save
 	var hub: String = water[0]                # the roomiest water rune: it takes the most bonds
@@ -4767,3 +4776,203 @@ func _test_runes() -> void:
 				missing.append("%s U+%X" % [id, ch.unicode_at(0) if ch != "" else 0])
 	print("    runes with no glyph in the interface fonts (%d): %s" % [missing.size(), ", ".join(missing)])
 	_check("every rune has a character in the data", (base.values() + uni.values()).all(func(r: Dictionary) -> bool: return str(r.get("character", "")) != ""))
+
+
+## The first rune (water, fire... or universal) whose ops satisfy `pred`, from the data.
+func _rune_where(pool: Array, pred: Callable) -> String:
+	for id: Variant in pool:
+		if pred.call(GameData.rune(str(id))):
+			return str(id)
+	return ""
+
+
+func _has_op(r: Dictionary, op: String, group: String = "") -> bool:
+	for o: Dictionary in r.get("ops", []):
+		if str(o["op"]) == op and (group == "" or str(o.get("group", "")) == group):
+			return true
+	return false
+
+
+## A word built straight from a list of runes and links, with no rules asked (effects are worked
+## out for any shape; whether it may be built or locked is the rule set's other business).
+func _raw_word(ids: Array, links: Array) -> Dictionary:
+	var w: Dictionary = RuneWord.make(str(ids[0]))
+	for k: int in range(1, ids.size()):
+		RuneWord.add_node(w, str(ids[k]))
+	for l: Array in links:
+		RuneWord.add_link(w, int(l[0]), int(l[1]))
+	return w
+
+
+func _row(fx: Dictionary, node: int) -> Dictionary:
+	for r: Dictionary in fx.get("runes", []):
+		if int(r["node"]) == node:
+			return r
+	return {}
+
+
+## Rune effects, layers 1-3 (Brent 2026-10-22; workbook Bond Rules rows 19-40), on Water Bolt.
+## Runes are picked from the data by what they do and how hard they pull, not by name.
+func _test_rune_effects() -> void:
+	print("rune effects, layers 1-3:")
+	var bond: RuneRules = Runes.make("bond_v1")
+	var bk: BondRules = bond as BondRules
+	var fxp: Dictionary = (bond.params["interaction_params"] as Dictionary)["effects_v1"]
+	var kf: Dictionary = fxp["kind_factors"]
+	var anchor: String = GameData.skill_anchor("water_bolt")
+	var en_a: float = BondRules.electronegativity(anchor)
+	var base: Dictionary = GameData.ability("water_bolt")
+	var ctx: RuneContext = _rctx("water_bolt", 3)
+	var water: Array = (GameData.runes["base_runes"] as Dictionary).keys().filter(func(id: String) -> bool: return str(GameData.rune(id)["affinity"]) == "water" and id != anchor)
+	var uni: Array = (GameData.runes["universal_runes"] as Dictionary).keys()
+	_check("effects_v1 is the interaction bond_v1 runs", bond.interactions.size() == 1 and bond.interactions[0].id == "effects_v1")
+	_check("Brent's numbers came through: fade 1 / 0.6 / 0.35 / 0.2, threshold 0.5, caps 0.4 and 2.5",
+		(fxp["fade"] as Array).map(func(f: Dictionary) -> float: return float(f["strength"])) == [1.0, 0.6, 0.35, 0.2]
+		and _near(float(fxp["status_threshold"]), 0.5) and _near(float(fxp["mult_min"]), 0.4) and _near(float(fxp["mult_max"]), 2.5))
+
+	# strength fades with each bond: a chain of runes even-bonded to each other
+	var evens: Array = [anchor]
+	for id: String in water:
+		if absf(BondRules.electronegativity(id) - BondRules.electronegativity(str(evens[evens.size() - 1]))) < 0.4 and BondRules.valence(id) >= 2 and evens.size() < 6:
+			evens.append(id)
+	if evens.size() < 6:
+		for id: String in uni:
+			if evens.size() < 6 and absf(BondRules.electronegativity(id) - BondRules.electronegativity(str(evens[evens.size() - 1]))) < 0.4:
+				evens.append(id)
+	var chain: Dictionary = _raw_word(evens, [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]])
+	var fx_chain: Dictionary = bond.effects(chain, ctx)
+	var even_f: float = float((kf["even"] as Dictionary)["more_pull"])
+	var got: Array = []
+	for k: int in range(1, 6):
+		got.append(snappedf(float(_row(fx_chain, k)["strength"]), 0.0001))
+	_check("strength = fade x the even factor: 1, 0.6, 0.35, 0.2, and 0.2 again at five bonds",
+		got == [snappedf(1.0 * even_f, 0.0001), snappedf(0.6 * even_f, 0.0001), snappedf(0.35 * even_f, 0.0001), snappedf(0.2 * even_f, 0.0001), snappedf(0.2 * even_f, 0.0001)], str(got))
+
+	# kind factors, read from the rune's side
+	var even_r: String = _rune_where(water + uni, func(r: Dictionary) -> bool: return absf(float(r["electronegativity"]) - en_a) < 0.39)
+	var polar_r: String = _rune_where(water + uni, func(r: Dictionary) -> bool: return float(r["electronegativity"]) - en_a >= 0.41 and float(r["electronegativity"]) - en_a < 1.69)
+	var ionic_r: String = _rune_where(water + uni, func(r: Dictionary) -> bool: return float(r["electronegativity"]) - en_a > 1.71)
+	var kinds: Dictionary = _raw_word([anchor, even_r, polar_r, ionic_r], [[0, 1], [0, 2], [0, 3]])
+	var fx_k: Dictionary = bond.effects(kinds, ctx)
+	_check("one bond out, an even rune keeps %.2f, a polar one with more pull %.2f, an ionic one with more pull %.2f" % [float((kf["even"] as Dictionary)["more_pull"]), float((kf["polar"] as Dictionary)["more_pull"]), float((kf["ionic"] as Dictionary)["more_pull"])],
+		_near(float(_row(fx_k, 1)["strength"]), float((kf["even"] as Dictionary)["more_pull"])) and str(_row(fx_k, 1)["kind"]) == "even"
+		and _near(float(_row(fx_k, 2)["strength"]), float((kf["polar"] as Dictionary)["more_pull"])) and str(_row(fx_k, 2)["kind"]) == "polar"
+		and _near(float(_row(fx_k, 3)["strength"]), float((kf["ionic"] as Dictionary)["more_pull"])) and str(_row(fx_k, 3)["kind"]) == "ionic", str(fx_k["runes"]))
+	# the dominant side is named and marked (Brent: "the polar needs to show which side is dominant")
+	var an: String = str(GameData.rune(anchor)["name"])
+	var dl_p: Dictionary = bond.describe_link(kinds, 0, 2, ctx)
+	var dl_i: Dictionary = bond.describe_link(kinds, 0, 3, ctx)
+	var dl_e: Dictionary = bond.describe_link(kinds, 0, 1, ctx)
+	_check("a polar bond names and points at the rune with more pull: \"%s\"" % str(dl_p["label"]),
+		str(dl_p["label"]) == "polar: %s dominates %s" % [str(GameData.rune(polar_r)["name"]), an] and int(dl_p["dominant"]) == 2 and int(dl_p["flow"]) == 1)
+	_check("an ionic one reads as a hand-over: \"%s\"" % str(dl_i["label"]),
+		str(dl_i["label"]) == "ionic: %s takes %s's effect" % [str(GameData.rune(ionic_r)["name"]), an] and int(dl_i["dominant"]) == 3)
+	_check("an even one has no dominant side", int(dl_e["dominant"]) == -1 and int(dl_e["flow"]) == 0 and str(dl_e["label"]).begins_with("even"))
+	_check("the rune-by-rune breakdown names the side too", str(_row(fx_k, 3).get("relation", "")) == str(dl_i["label"]))
+	var anchor_f: float = (float((kf["even"] as Dictionary)["less_pull"]) + float((kf["polar"] as Dictionary)["less_pull"]) + float((kf["ionic"] as Dictionary)["less_pull"])) / 3.0
+	_check("the anchor's own factor is its side of each bond, averaged", _near(float((fx_k["anchor"] as Dictionary)["factor"]), anchor_f))
+	# the ionic anchor loses its signature: Water Bolt joined only to a rune that pulls far harder
+	var p: Node = _new_player()
+	p.call("set_affinities", ["water"])
+	((p.get("abilities") as Array)[0] as Dictionary)["stage"] = 3
+	var lone: Dictionary = p.call("word_add", 0, ionic_r, 0)
+	var pv: Dictionary = p.call("rune_preview", 0)
+	_check("bonded ionically to a rune with more pull, Water Bolt loses its shove (%s)" % str(GameData.rune(ionic_r)["name"]),
+		bool(lone["ok"]) and _near(float(((pv["before"] as Dictionary)["on_hit"] as Dictionary)["shove"]), float((base["on_hit"] as Dictionary)["shove"]))
+		and _near(float(((pv["after"] as Dictionary)["on_hit"] as Dictionary).get("shove", 0.0)), 0.0), str((pv["after"] as Dictionary)["on_hit"]))
+
+	# caps
+	var power_r: String = _rune_where(uni, func(r: Dictionary) -> bool: return (r["ops"] as Array).size() == 1 and _has_op(r, "mul", "power") and float((r["ops"] as Array)[0].get("value", 1.0)) > 1.2 and float(r["electronegativity"]) > en_a + 0.4)
+	var five: Dictionary = _raw_word([anchor, power_r, power_r, power_r, power_r, power_r], [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5]])
+	_check("five power runes would pass the cap; the group stops at %.1f" % float(fxp["mult_max"]), _near(float((bond.effects(five, ctx)["groups"] as Dictionary)["power"]), float(fxp["mult_max"])),
+		"%s: %s" % [power_r, str(bond.effects(five, ctx)["groups"])])
+	var shrink_r: String = _rune_where(uni, func(r: Dictionary) -> bool: return (r["ops"] as Array).size() > 0 and str((r["ops"] as Array)[0]["op"]) == "mul" and str((r["ops"] as Array)[0]["group"]) == "reach" and float((r["ops"] as Array)[0]["value"]) < 0.85)
+	var small: Dictionary = _raw_word([anchor, shrink_r, shrink_r, shrink_r, shrink_r, shrink_r], [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5]])
+	_check("and cannot fall below %.1f" % float(fxp["mult_min"]), _near(float((bond.effects(small, ctx)["groups"] as Dictionary)["reach"]), float(fxp["mult_min"])))
+
+	# fallback: a group Water Bolt has no fields for, and a grant it cannot use
+	var dur_r: String = _rune_where(uni, func(r: Dictionary) -> bool: return (r["ops"] as Array).size() == 1 and str((r["ops"] as Array)[0]["op"]) == "mul" and str((r["ops"] as Array)[0]["group"]) == "duration" and float((r["ops"] as Array)[0]["value"]) > 1.0)
+	var fx_d: Dictionary = bond.effects(_raw_word([anchor, dur_r], [[0, 1]]), ctx)
+	var s_d: float = float(_row(fx_d, 1)["strength"])
+	var dur_m: float = 1.0 + (float(((GameData.rune(dur_r)["ops"] as Array)[0] as Dictionary)["value"]) - 1.0) * s_d
+	_check("a duration rune on a skill with no duration gives a quarter of its change as damage",
+		_near(float((fx_d["groups"] as Dictionary).get("power", 1.0)), 1.0 + (dur_m - 1.0) * float(fxp["fallback_fraction"]), 0.001) and not (fx_d["groups"] as Dictionary).has("duration"), str(fx_d["groups"]))
+	var jump_r: String = _rune_where(uni, func(r: Dictionary) -> bool: return _has_op(r, "jumps"))
+	var fx_j: Dictionary = bond.effects(_raw_word([anchor, jump_r], [[0, 1]]), ctx)
+	var s_j: float = float(_row(fx_j, 1)["strength"])
+	var own_power := 1.0
+	for o: Dictionary in GameData.rune(jump_r)["ops"]:
+		if str(o["op"]) == "mul" and str(o["group"]) == "power":
+			own_power *= 1.0 + (float(o["value"]) - 1.0) * s_j
+	_check("a jump on a skill that does not jump becomes damage instead",
+		_near(float((fx_j["groups"] as Dictionary)["power"]), own_power * (1.0 + float(fxp["grant_as_change"]) * s_j * float(fxp["fallback_fraction"])), 0.001)
+		and not (fx_j["patch"] as Array).any(func(o: Dictionary) -> bool: return str(o["path"]) == "jumps"), str(fx_j["groups"]))
+
+	# a status needs strength >= the threshold
+	var status_r: String = _rune_where(water + uni, func(r: Dictionary) -> bool: return _has_op(r, "status") and (r["ops"] as Array).size() == 1 and str((r["ops"] as Array)[0]["id"]) != "soaked" and absf(float(r["electronegativity"]) - en_a) < 0.39)
+	var sid: String = str(((GameData.rune(status_r)["ops"] as Array)[0] as Dictionary)["id"])
+	var appends := func(fx: Dictionary) -> bool: return (fx["patch"] as Array).any(func(o: Dictionary) -> bool: return str(o["op"]) == "append" and str((o["value"] as Dictionary).get("id", "")) == sid)
+	var near_fx: Dictionary = bond.effects(_raw_word([anchor, status_r], [[0, 1]]), ctx)
+	var mid: String = _rune_where(water + uni, func(r: Dictionary) -> bool: return absf(float(r["electronegativity"]) - en_a) < 0.39 and absf(float(r["electronegativity"]) - BondRules.electronegativity(status_r)) < 0.39 and str(r["id"]) != status_r)
+	var far_fx: Dictionary = bond.effects(_raw_word([anchor, mid, status_r], [[0, 1], [1, 2]]), ctx)
+	_check("a status rune one even bond out (strength %.2f) applies %s" % [float(_row(near_fx, 1)["strength"]), sid], bool(appends.call(near_fx)))
+	_check("two even bonds out (strength %.2f, under %.2f) it does not" % [float(_row(far_fx, 2)["strength"]), float(fxp["status_threshold"])], not bool(appends.call(far_fx)) and float(_row(far_fx, 2)["strength"]) < float(fxp["status_threshold"]))
+
+	# the test word: faster, and a status Water Bolt does not have
+	var fast_r: String = _rune_where(water, func(r: Dictionary) -> bool: return _has_op(r, "mul", "speed") and int(r["valence"]) == 2 and absf(float(r["electronegativity"]) - en_a) < 0.39)
+	var cap_status: String = _rune_where(water, func(r: Dictionary) -> bool: return int(r["valence"]) == 1 and _has_op(r, "status") and float(r["electronegativity"]) - en_a > 1.71)
+	var cap_any: String = _rune_where(water, func(r: Dictionary) -> bool: return int(r["valence"]) == 1 and r["id"] != cap_status)
+	print("    the test word: %s + %s, %s; %s on %s" % [str(GameData.rune(anchor)["name"]), str(GameData.rune(fast_r)["name"]), str(GameData.rune(cap_status)["name"]), str(GameData.rune(cap_any)["name"]), str(GameData.rune(fast_r)["name"])])
+	var q: Node = _new_player()
+	q.call("set_affinities", ["water"])
+	var speed0: float = float(q.call("ability_stats", (q.get("abilities") as Array)[0])["speed"])
+	q.call("word_add", 0, fast_r, 0)
+	_check("an open word cannot be locked", str((q.call("word_lock", 0) as Dictionary)["reason"]) == "not_closed")
+	q.call("word_add", 0, cap_status, 0)
+	q.call("word_add", 0, cap_any, 1)
+	var st0: Dictionary = (q.get("abilities") as Array)[0]
+	_check("the word is closed", bool(bond.word_state(q.call("ability_word", 0), q.call("rune_context", 0))["closed"]))
+	_check("an unlocked word does not touch the skill", _near(float(q.call("ability_stats", st0)["speed"]), speed0))
+	var lk: Dictionary = q.call("word_lock", 0)
+	var locked_ab: Dictionary = q.call("ability_stats", st0)
+	var fast_s: float = float(_row(Runes.active().effects(q.call("ability_word", 0), q.call("rune_context", 0)), 1)["strength"])
+	var speed_m: float = 1.0
+	for o: Dictionary in GameData.rune(fast_r)["ops"]:
+		if str(o["op"]) == "mul" and str(o["group"]) == "speed":
+			speed_m = 1.0 + (float(o["value"]) - 1.0) * fast_s
+	var cap_sid: String = ""
+	for o: Dictionary in GameData.rune(cap_status)["ops"]:
+		if str(o["op"]) == "status":
+			cap_sid = str(o["id"])
+	_check("a closed word locks, and the locked word reshapes the skill: speed x%.3f, and it applies %s" % [speed_m, cap_sid],
+		bool(lk["ok"]) and _near(float(locked_ab["speed"]), speed0 * speed_m, 0.001)
+		and ((locked_ab["on_hit"] as Dictionary).get("statuses", []) as Array).any(func(s: Dictionary) -> bool: return str(s["id"]) == cap_sid), str(locked_ab["on_hit"]))
+	_check("a locked word cannot be changed", str((q.call("word_add", 0, cap_any, -1) as Dictionary)["reason"]) == "locked")
+	_check("the tooltip summary names what it does", (q.call("rune_summary", 0) as Array).size() > 0, str(q.call("rune_summary", 0)))
+	var qtext: String = JSON.stringify(q.call("to_save"))
+	var r2: Node = _new_player()
+	r2.call("from_save", JSON.parse_string(qtext))
+	_check("a locked word survives save and load, still locked and still shaping the skill",
+		bool(r2.call("word_locked", 0)) and _near(float(r2.call("ability_stats", (r2.get("abilities") as Array)[0])["speed"]), speed0 * speed_m, 0.001))
+	_check("unlocking gives the skill its own numbers back", bool((q.call("word_unlock", 0) as Dictionary)["ok"]) and _near(float(q.call("ability_stats", st0)["speed"]), speed0))
+	q.call("word_lock", 0)
+
+	# a real cast: the locked Water Bolt flies faster and leaves its new status on what it hits
+	var here := Vector3(-300, 0, 0)
+	q.global_position = here
+	var world := _test_floor(here)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var foe := _foe(q, Vector3(0, 0, -6.0))
+	q.set("cursor_fixed", here + Vector3(0, 0, -6.0))
+	q.set("_facing", Vector3(0, 0, -1))
+	q.set("essence", 99.0)
+	_cast(q, "water_bolt")
+	var shot: Node3D = _bolt_of(q)
+	_check("the cast bolt flies at the locked word's speed (%.1f, not %.1f)" % [speed0 * speed_m, speed0], shot != null and _near(float(shot.get("speed")), speed0 * speed_m, 0.01), str(shot.get("speed") if shot != null else "no bolt"))
+	if shot != null:
+		_fly(shot)
+	_check("and the target is %s" % cap_sid, int(foe.call("status_stacks", cap_sid)) > 0, str(foe.get("statuses")))
+	for n: Node in [p, q, r2, foe, world]:
+		n.queue_free()
+	await get_tree().process_frame

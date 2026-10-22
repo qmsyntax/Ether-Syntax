@@ -20,6 +20,8 @@ extends RefCounted
 ## word_state    -> {"closed": bool, "label", "problems": [...], "lines": [...]}
 ## effects       -> {} for now: what the word does to its skill.
 
+const LOCKED := {"ok": false, "reason": "locked", "text": "The word is locked. Unlock it to change it."}
+
 var id := ""
 var params: Dictionary = {}
 var interactions: Array[RuneInteraction] = []
@@ -75,6 +77,8 @@ func can_add(word: Dictionary, rune_id: String, ctx: RuneContext, to_node: int =
 	var r: Dictionary
 	if RuneWord.size(word) == 0:
 		r = no("no_anchor", "This skill has no anchor rune in the data yet.")
+	elif RuneWord.is_locked(word):
+		r = LOCKED.duplicate()
 	elif GameData.rune(rune_id).is_empty():
 		r = no("unknown_rune", "There is no rune '%s'." % rune_id)
 	elif to_node >= 0 and not RuneWord.has_node(word, to_node):
@@ -90,7 +94,9 @@ func can_add(word: Dictionary, rune_id: String, ctx: RuneContext, to_node: int =
 
 func can_link(word: Dictionary, a: int, b: int, ctx: RuneContext) -> Dictionary:
 	var r: Dictionary
-	if not RuneWord.has_node(word, a) or not RuneWord.has_node(word, b):
+	if RuneWord.is_locked(word):
+		r = LOCKED.duplicate()
+	elif not RuneWord.has_node(word, a) or not RuneWord.has_node(word, b):
 		r = no("no_node", "There is no such rune in the word.")
 	elif a == b:
 		r = no("self", "A rune cannot be joined to itself.")
@@ -104,10 +110,14 @@ func can_link(word: Dictionary, a: int, b: int, ctx: RuneContext) -> Dictionary:
 
 
 func can_unlink(word: Dictionary, a: int, b: int, _ctx: RuneContext) -> Dictionary:
+	if RuneWord.is_locked(word):
+		return LOCKED.duplicate()
 	return ok() if RuneWord.linked(word, a, b) else no("not_linked", "Those two runes are not joined.")
 
 
 func can_remove(word: Dictionary, i: int, _ctx: RuneContext) -> Dictionary:
+	if RuneWord.is_locked(word):
+		return LOCKED.duplicate()
 	if i == 0:
 		return no("anchor", "The skill is built on this rune; it cannot be taken out.")
 	return ok() if RuneWord.has_node(word, i) else no("no_node", "There is no such rune in the word.")
@@ -151,6 +161,51 @@ func remove(word: Dictionary, i: int, ctx: RuneContext) -> Dictionary:
 	return r
 
 
+# --- locking -----------------------------------------------------------------------------
+# A locked word is the one its skill uses: only a locked word's effects reach the skill (and,
+# when the rule set says so, only a closed word can be locked). A locked word cannot be changed.
+
+func can_lock(word: Dictionary, ctx: RuneContext) -> Dictionary:
+	if RuneWord.size(word) < 2:
+		return no("empty", "Set runes into the word before locking it.")
+	if RuneWord.is_locked(word):
+		return no("locked", "The word is already locked.")
+	var st: Dictionary = word_state(word, ctx)
+	if not (st.get("problems", []) as Array).is_empty():
+		return no("problems", "The word breaks these rules: %s" % str((st["problems"] as Array)[0]))
+	if bool(params.get("lock_needs_closed", true)) and not bool(st.get("closed", false)):
+		return no("not_closed", "Only a closed word can be locked; this one is %s." % str(st.get("label", "open")))
+	return ok()
+
+
+func lock(word: Dictionary, ctx: RuneContext) -> Dictionary:
+	var r: Dictionary = can_lock(word, ctx)
+	if bool(r["ok"]):
+		word["locked"] = true
+	return r
+
+
+## Unlocking is free for now (Brent has not ruled on a cost).
+func unlock(word: Dictionary, _ctx: RuneContext) -> Dictionary:
+	if not RuneWord.is_locked(word):
+		return no("not_locked", "The word is not locked.")
+	word.erase("locked")
+	return ok()
+
+
+## What a word does to its skill now: its effects if it is locked and still fits the rules in
+## force (a word made under other rules that no longer does fit does nothing), else {}.
+func locked_effects(word: Dictionary, ctx: RuneContext) -> Dictionary:
+	if not RuneWord.is_locked(word):
+		return {}
+	var st: Dictionary = word_state(word, ctx)
+	if not (st.get("problems", []) as Array).is_empty():
+		return {}
+	if bool(params.get("lock_needs_closed", true)) and not bool(st.get("closed", false)):
+		return {}
+	return effects(word, ctx)
+
+
 # --- descriptions (the rule set's answer, then interactions) -------------------------------
 
 func link_data(word: Dictionary, a: int, b: int, ctx: RuneContext) -> Dictionary:
@@ -181,6 +236,8 @@ func describe_node(word: Dictionary, i: int, ctx: RuneContext) -> Dictionary:
 func describe_rune(rune_id: String, ctx: RuneContext) -> Dictionary:
 	var d: Dictionary = {"sockets": -1, "lines": []}
 	d.merge(_describe_rune(rune_id, ctx), true)
+	for it: RuneInteraction in interactions:
+		it.on_describe_rune(rune_id, ctx, d)
 	return d
 
 

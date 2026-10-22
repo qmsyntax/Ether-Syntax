@@ -28,6 +28,14 @@ var _cosmos: Cosmos
 var _detail: VBoxContainer
 var _board: RuneBoard
 var _rune_status: VBoxContainer
+var _rune_info: VBoxContainer
+var _lock_button: Button
+var _lock_note: Label
+var _clear_button: Button
+var _palette_tabs: HBoxContainer
+var _palette_flow: HFlowContainer
+## Which group of the palette is shown: an affinity id, or "universal".
+var _palette_tab := ""
 var _chips: Array[Control] = []
 var _rune_msg := ""
 var _rune_msg_bad := false
@@ -81,6 +89,7 @@ func open_runes() -> void:
 	rune_mode = true
 	picked = -1
 	_rune_msg = ""
+	_palette_tab = ""
 	rebuild()
 
 
@@ -153,7 +162,26 @@ func remove_node(i: int) -> void:
 func clear_word() -> void:
 	player.call("word_clear", selected)
 	picked = -1
-	_say("The word is cleared back to its anchor.", false)
+	_say("The word is cleared back to its own rune.", false)
+	game.call("save_now")
+	_refresh_runes()
+
+
+## Lock the word (its skill uses it from now on), or unlock it.
+func toggle_lock() -> void:
+	var skill: String = str(GameData.ability(str(((player.get("abilities") as Array)[selected] as Dictionary)["id"])).get("name", "?"))
+	if bool(player.call("word_locked", selected)):
+		var r: Dictionary = player.call("word_unlock", selected)
+		_say("Unlocked. %s is back to its own numbers." % skill if bool(r["ok"]) else str(r["text"]), not bool(r["ok"]))
+	else:
+		var r2: Dictionary = player.call("word_lock", selected)
+		if bool(r2["ok"]):
+			_say("Locked. %s now works through this word." % skill, false)
+			picked = -1
+			if _board != null and is_instance_valid(_board):
+				_board.play_lock()
+		else:
+			_say(str(r2["text"]), true)
 	game.call("save_now")
 	_refresh_runes()
 
@@ -164,6 +192,12 @@ func chip_state(rune_id: String) -> Dictionary:
 	var rules: RuneRules = Runes.active()
 	var r: Dictionary = rules.can_add(current_word(), rune_id, ctx, picked)
 	return {"ok": bool(r["ok"]), "text": str(r["text"]), "sockets": int(rules.describe_rune(rune_id, ctx).get("sockets", -1))}
+
+
+## Show one group of the palette: an affinity, or "universal".
+func set_palette_tab(tab: String) -> void:
+	_palette_tab = tab
+	_fill_palette()
 
 
 func _say(text: String, bad: bool) -> void:
@@ -178,17 +212,17 @@ func _build_runes(root: Control) -> void:
 	var ab: Dictionary = GameData.ability(str(st["id"]))
 
 	_board = RuneBoard.new(self)
-	_board.anchor_left = 0.02
+	_board.anchor_left = 0.015
 	_board.anchor_top = 0.03
-	_board.anchor_right = 0.62
+	_board.anchor_right = 0.585
 	_board.anchor_bottom = 0.97
 	root.add_child(_board)
 
-	var box: VBoxContainer = framed(root, 0.63, 0.03, 0.98, 0.97)
-	box.add_theme_constant_override("separation", 6)
+	var box: VBoxContainer = framed(root, 0.595, 0.03, 0.985, 0.97)
+	box.add_theme_constant_override("separation", 5)
 	var head := HBoxContainer.new()
 	box.add_child(head)
-	var title := UiTheme.heading("Runes", 28)
+	var title := UiTheme.heading("Runes", 26)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
 	var back: Button = UiWidgets.small_button("Back to the ethercosm", close_runes)
@@ -199,99 +233,248 @@ func _build_runes(root: Control) -> void:
 	var name_row := HBoxContainer.new()
 	name_row.add_theme_constant_override("separation", 12)
 	box.add_child(name_row)
-	name_row.add_child(UiWidgets.Icon.new(str(ab.get("icon", "drop")), GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3), 44.0))
+	name_row.add_child(UiWidgets.Icon.new(str(ab.get("icon", "drop")), GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3), 42.0))
 	var name_col := VBoxContainer.new()
 	name_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_col.add_theme_constant_override("separation", 1)
+	name_col.add_theme_constant_override("separation", 0)
 	name_row.add_child(name_col)
-	name_col.add_child(UiTheme.heading("%s   level %d" % [str(ab.get("name", "?")), ctx.stage], 20))
+	name_col.add_child(UiTheme.heading("%s     level %d" % [str(ab.get("name", "?")), ctx.stage], 20))
 	var anchor: Dictionary = GameData.rune(ctx.anchor)
-	name_col.add_child(UiTheme.body(("Built on %s: %s." % [str(anchor.get("name", "?")), str(anchor.get("meaning", ""))]) if not anchor.is_empty()
-		else "This skill has no anchor rune in the data yet.", 13, UiTheme.STAR))
-	box.add_child(UiTheme.body("Rules: %s" % rules.title(), 12, UiTheme.TEXT_FAINT))
+	name_col.add_child(UiTheme.body(("Built on %s: %s.   Rules: %s" % [str(anchor.get("name", "?")), str(anchor.get("meaning", "")), rules.title()]) if not anchor.is_empty()
+		else "This skill has no rune of its own in the data yet.", 12, UiTheme.STAR))
 
 	_rune_status = VBoxContainer.new()
-	_rune_status.add_theme_constant_override("separation", 4)
+	_rune_status.add_theme_constant_override("separation", 3)
 	box.add_child(_rune_status)
 
-	box.add_child(UiTheme.section("Runes you can set  -  test loadout"))
-	box.add_child(UiTheme.body("Until rune acquisition is designed: every base rune of the affinities you hold, and every universal rune.", 12, UiTheme.TEXT_FAINT))
-	var list: VBoxContainer = scroller(box)
-	_chips.clear()
-	var palette: Array[String] = player.call("rune_palette")
-	var group := ""
-	var flow: HFlowContainer = null
-	for rid: String in palette:
-		var aff: String = str(GameData.rune(rid).get("affinity", ""))
-		var g: String = aff.capitalize() if aff != "" else "Universal"
-		if g != group:
-			group = g
-			list.add_child(UiTheme.body(g, 13, GameData.affinity_color(aff).lightened(0.3) if aff != "" else UiTheme.STAR))
-			flow = HFlowContainer.new()
-			flow.add_theme_constant_override("h_separation", 4)
-			flow.add_theme_constant_override("v_separation", 4)
-			list.add_child(flow)
-		var chip := RuneBoard.Chip.new(self, rid)
-		var lines: Array = rules.describe_rune(rid, ctx).get("lines", [])
-		chip.tooltip_text = "%s %s\n%s%s" % [str(GameData.rune(rid).get("name", rid)), str(GameData.rune(rid).get("character", "")),
-			str(GameData.rune(rid).get("meaning", "")), ("\n" + "\n".join(PackedStringArray(lines))) if not lines.is_empty() else ""]
-		flow.add_child(chip)
-		_chips.append(chip)
-	for n: String in rules.notes():
-		box.add_child(UiTheme.body(n, 12, UiTheme.TEXT_FAINT))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(scroll)
+	_rune_info = VBoxContainer.new()
+	_rune_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_rune_info.add_theme_constant_override("separation", 3)
+	scroll.add_child(_rune_info)
+
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 8)
+	box.add_child(actions)
+	_lock_button = UiWidgets.small_button("Lock the word", func() -> void: toggle_lock.call_deferred())
+	_lock_button.name = "LockButton"
+	_lock_button.custom_minimum_size = Vector2(180, 40)
+	actions.add_child(_lock_button)
+	_lock_note = UiTheme.body("", 12, UiTheme.TEXT_FAINT)
+	_lock_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actions.add_child(_lock_note)
+	_clear_button = UiWidgets.small_button("Clear the word", func() -> void: clear_word.call_deferred())
+	_clear_button.name = "ClearWordButton"
+	actions.add_child(_clear_button)
+
+	var pal_head := HBoxContainer.new()
+	pal_head.add_theme_constant_override("separation", 4)
+	box.add_child(pal_head)
+	var pal_title := UiTheme.body("RUNES YOU CAN SET  -  test loadout", 12, UiTheme.GOLD.darkened(0.15))
+	pal_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pal_title.tooltip_text = "Until rune acquisition is designed: every base rune of the affinities you hold, and every universal rune."
+	pal_title.mouse_filter = Control.MOUSE_FILTER_PASS
+	pal_head.add_child(pal_title)
+	_palette_tabs = HBoxContainer.new()
+	_palette_tabs.add_theme_constant_override("separation", 3)
+	pal_head.add_child(_palette_tabs)
+	var pal_scroll := ScrollContainer.new()
+	pal_scroll.custom_minimum_size = Vector2(0, 134)
+	pal_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(pal_scroll)
+	_palette_flow = HFlowContainer.new()
+	_palette_flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_palette_flow.add_theme_constant_override("h_separation", 4)
+	_palette_flow.add_theme_constant_override("v_separation", 4)
+	pal_scroll.add_child(_palette_flow)
+	if _palette_tab == "":
+		_palette_tab = str(ab.get("affinity", ""))
+	_fill_palette()
 	_refresh_runes()
 
 
-## Redraw what changes when the word does: the status block and the palette's dimming.
+## The palette's tabs and the chips of the tab shown.
+func _palette_groups() -> Array[String]:
+	var out: Array[String] = []
+	for rid: String in (player.call("rune_palette") as Array):
+		var aff: String = str(GameData.rune(rid).get("affinity", ""))
+		var g: String = aff if aff != "" else "universal"
+		if not out.has(g):
+			out.append(g)
+	return out
+
+
+func _fill_palette() -> void:
+	if _palette_flow == null or not is_instance_valid(_palette_flow):
+		return
+	var groups: Array[String] = _palette_groups()
+	if not groups.has(_palette_tab) and not groups.is_empty():
+		_palette_tab = groups[0]
+	for c: Node in _palette_tabs.get_children():
+		_palette_tabs.remove_child(c)
+		c.queue_free()
+	for g: String in groups:
+		var b: Button = UiWidgets.small_button(g.capitalize(), func() -> void: set_palette_tab.call_deferred(g))
+		b.name = "Tab_%s" % g
+		b.add_theme_font_size_override("font_size", 13)
+		b.custom_minimum_size = Vector2(0, 30)
+		if g == _palette_tab:
+			b.add_theme_stylebox_override("normal", UiTheme.box(Color("3a3024"), UiTheme.GOLD, 1, 3, 8))
+			b.add_theme_color_override("font_color", UiTheme.GOLD)
+		elif g != "universal":
+			b.add_theme_color_override("font_color", GameData.affinity_color(g).lightened(0.35))
+		_palette_tabs.add_child(b)
+	for c2: Node in _palette_flow.get_children():
+		_palette_flow.remove_child(c2)
+		c2.queue_free()
+	_chips.clear()
+	var rules: RuneRules = Runes.active()
+	var ctx: RuneContext = current_context()
+	for rid: String in (player.call("rune_palette") as Array):
+		var aff: String = str(GameData.rune(rid).get("affinity", ""))
+		if (aff if aff != "" else "universal") != _palette_tab:
+			continue
+		var chip := RuneBoard.Chip.new(self, rid)
+		var rune: Dictionary = GameData.rune(rid)
+		var lines: Array = rules.describe_rune(rid, ctx).get("lines", [])
+		chip.tooltip_text = "%s  %s\n%s%s" % [str(rune.get("name", rid)), str(rune.get("character", "")),
+			str(rune.get("meaning", "")), ("\n" + "\n".join(PackedStringArray(lines))) if not lines.is_empty() else ""]
+		_palette_flow.add_child(chip)
+		_chips.append(chip)
+
+
+## Redraw what changes when the word does: the status, the effects preview, the lock row and the
+## palette's dimming.
 func _refresh_runes() -> void:
 	if _rune_status == null or not is_instance_valid(_rune_status):
 		return
-	for c: Node in _rune_status.get_children():
-		_rune_status.remove_child(c)          # out at once, so the new rows keep their names
-		c.queue_free()
+	for holder: Control in [_rune_status, _rune_info]:
+		for c: Node in holder.get_children():
+			holder.remove_child(c)          # out at once, so the new rows keep their names
+			c.queue_free()
 	var rules: RuneRules = Runes.active()
 	var ctx: RuneContext = current_context()
 	var word: Dictionary = current_word()
+	var locked: bool = RuneWord.is_locked(word)
 	var cap: int = rules.capacity(ctx)
 	var used_n: int = rules.used(word, ctx)
+
+	# status: room, state, the last thing said
 	var cap_bar := UiWidgets.Bar.new(float(used_n) / float(cap) if cap > 0 else 0.0, UiTheme.STAR.darkened(0.55),
-		("%d of %d runes   -   level %d holds %d" % [used_n, cap, ctx.stage, cap]) if cap >= 0 else "%d runes   -   no limit under these rules" % used_n, 22.0)
+		("%d of %d runes   -   level %d holds %d" % [used_n, cap, ctx.stage, cap]) if cap >= 0 else "%d runes   -   no limit under these rules" % used_n, 20.0)
 	cap_bar.name = "RuneCapacity"
 	_rune_status.add_child(cap_bar)
 	var ws: Dictionary = rules.word_state(word, ctx)
-	var state_line := UiTheme.body(str(ws.get("label", "")), 16, UiTheme.GOOD if bool(ws.get("closed", false)) else UiTheme.GOLD)
+	var state_text: String = "LOCKED  -  the skill works through this word" if locked else str(ws.get("label", ""))
+	var state_line := UiTheme.body(state_text, 15, UiTheme.GOLD if locked else (UiTheme.GOOD if bool(ws.get("closed", false)) else UiTheme.TEXT_DIM))
 	state_line.name = "WordState"
 	_rune_status.add_child(state_line)
 	for p: Variant in ws.get("problems", []):
 		_rune_status.add_child(UiTheme.body(str(p), 13, UiTheme.BAD))
-	for l: Variant in ws.get("lines", []):
-		_rune_status.add_child(UiTheme.body(str(l), 13, UiTheme.TEXT_DIM))
+	if not locked:
+		var l_text: String = "   ".join(PackedStringArray((ws.get("lines", []) as Array).map(func(v: Variant) -> String: return str(v))))
+		if l_text != "":
+			_rune_status.add_child(UiTheme.body(l_text, 12, UiTheme.TEXT_FAINT))
 	if _rune_msg != "":
-		var msg := UiTheme.body(_rune_msg, 14, UiTheme.BAD if _rune_msg_bad else UiTheme.TEXT)
+		var msg := UiTheme.body(_rune_msg, 13, UiTheme.BAD if _rune_msg_bad else UiTheme.TEXT)
 		msg.name = "RuneMessage"
 		_rune_status.add_child(msg)
-	var row := HBoxContainer.new()
-	_rune_status.add_child(row)
+
+	# the picked rune first (filled below), then the effects preview
+	var picked_box := VBoxContainer.new()
+	picked_box.add_theme_constant_override("separation", 2)
+	_rune_info.add_child(picked_box)
+	var pv: Dictionary = player.call("rune_preview", selected)
+	var head_text: String = "WHAT THE WORD DOES" if locked else ("WHAT IT WILL DO ONCE LOCKED" if bool(ws.get("closed", false)) else "WHAT IT WOULD DO, CLOSED AND LOCKED")
+	_rune_info.add_child(UiTheme.section(head_text))
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 1)
+	_rune_info.add_child(grid)
+	for row: Dictionary in pv.get("rows", []):
+		var changed: bool = bool(row["changed"])
+		var lab := UiTheme.body(str(row["label"]), 13, UiTheme.TEXT if changed else UiTheme.TEXT_FAINT)
+		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lab.autowrap_mode = TextServer.AUTOWRAP_OFF
+		grid.add_child(lab)
+		var val := UiTheme.body(("%s   ->   %s" % [str(row["before"]), str(row["after"])]) if changed else str(row["before"]), 13,
+			(UiTheme.GOOD if bool(row["better"]) else UiTheme.BAD) if changed else UiTheme.TEXT_FAINT)
+		val.autowrap_mode = TextServer.AUTOWRAP_OFF
+		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		grid.add_child(val)
+	var extra: Array = pv.get("lines", [])
+	var anchor_info: Dictionary = pv.get("anchor", {})
+	for t: Variant in (anchor_info.get("lines", []) as Array) + extra:
+		_rune_info.add_child(UiTheme.body("  +  %s" % str(t), 13, UiTheme.STAR))
+	if not anchor_info.is_empty() and RuneWord.degree(word, 0) > 0:
+		_rune_info.add_child(UiTheme.body("The skill's own rune keeps x%.2f of what it does (%s)." % [float(anchor_info.get("factor", 1.0)),
+			", ".join(PackedStringArray((anchor_info.get("kinds", []) as Array).map(func(v: Variant) -> String: return str(v))))], 12, UiTheme.TEXT_FAINT))
+
+	# rune by rune
+	var rows: Array = pv.get("runes", [])
+	if not rows.is_empty():
+		_rune_info.add_child(UiTheme.section("Rune by rune"))
+		for r: Dictionary in rows:
+			var line := HBoxContainer.new()
+			line.add_theme_constant_override("separation", 8)
+			_rune_info.add_child(line)
+			var rune: Dictionary = GameData.rune(str(r["id"]))
+			var aff: String = str(rune.get("affinity", ""))
+			var nm := UiTheme.body("%s %s" % [str(rune.get("character", "")), str(r["name"])], 14, GameData.affinity_color(aff).lightened(0.35) if aff != "" else UiTheme.STAR)
+			nm.autowrap_mode = TextServer.AUTOWRAP_OFF
+			nm.custom_minimum_size = Vector2(118, 0)
+			line.add_child(nm)
+			var how: String = "not joined to the skill" if int(r["bonds"]) < 0 else "%d bond%s out  -  %s" % [int(r["bonds"]), "" if int(r["bonds"]) == 1 else "s", str(r.get("relation", r["kind"]))]
+			var hl := UiTheme.body(how, 12, UiTheme.TEXT_DIM)
+			hl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			hl.autowrap_mode = TextServer.AUTOWRAP_OFF
+			line.add_child(hl)
+			var sl := UiTheme.body("x%.2f" % float(r["strength"]), 13, UiTheme.GOLD)
+			sl.autowrap_mode = TextServer.AUTOWRAP_OFF
+			line.add_child(sl)
+			var gives: Array = (r.get("used", []) as Array) + (r.get("fallback", []) as Array)
+			if not gives.is_empty():
+				_rune_info.add_child(UiTheme.body("      " + ";  ".join(PackedStringArray(gives.map(func(v: Variant) -> String: return str(v)))), 12, UiTheme.TEXT_FAINT))
+
+	# the picked rune
 	if picked >= 0 and picked < RuneWord.size(word):
 		var rid: String = RuneWord.node_id(word, picked)
 		var d: Dictionary = rules.describe_node(word, picked, ctx)
 		var sockets: int = int(d.get("sockets", -1))
-		var pl := UiTheme.body("Picked: %s%s" % [RuneRules.rune_name(word, picked),
-			("   (%d of %d joined)" % [int(d.get("used", 0)), sockets]) if sockets >= 0 else ""], 14, UiTheme.GOLD)
+		picked_box.add_child(UiTheme.section("Picked"))
+		var prow := HBoxContainer.new()
+		picked_box.add_child(prow)
+		var pl := UiTheme.body("%s%s:  %s" % [RuneRules.rune_name(word, picked), ("   (%d of %d joined)" % [int(d.get("used", 0)), sockets]) if sockets >= 0 else "",
+			str(GameData.rune(rid).get("meaning", ""))], 13, UiTheme.GOLD)
 		pl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(pl)
-		if picked > 0:
+		prow.add_child(pl)
+		if picked > 0 and not locked:
 			var rm: Button = UiWidgets.small_button("Take it out", func() -> void: remove_node.call_deferred(picked))
 			rm.name = "RemoveRuneButton"
-			row.add_child(rm)
-		_rune_status.add_child(UiTheme.body(str(GameData.rune(rid).get("meaning", "")), 13, UiTheme.TEXT_DIM))
+			prow.add_child(rm)
+		for k: int in RuneWord.neighbours(word, picked):
+			var dl: Dictionary = rules.describe_link(word, picked, k, ctx)
+			var flags: Array = dl.get("flags", [])
+			picked_box.add_child(UiTheme.body("      %s%s" % [str(dl.get("label", "")), ("   (%s)" % ", ".join(PackedStringArray(flags.map(func(v: Variant) -> String: return str(v))))) if not flags.is_empty() else ""],
+				13, (RuneBoard.LINK_COLOURS.get(str(dl.get("colour", "plain")), UiTheme.TEXT_DIM) as Color).lightened(0.2)))
+	for n2: String in rules.notes():
+		_rune_info.add_child(UiTheme.body(n2, 12, UiTheme.TEXT_FAINT))
+
+	# the lock row
+	var can: Dictionary = rules.can_lock(word, ctx)
+	_lock_button.text = "Unlock the word" if locked else "Lock the word"
+	_lock_button.disabled = not locked and not bool(can["ok"])
+	_lock_button.tooltip_text = "" if (locked or bool(can["ok"])) else str(can["text"])
+	if locked:
+		_lock_button.add_theme_color_override("font_color", UiTheme.GOLD)
 	else:
-		var hint := UiTheme.body("Nothing picked.", 14, UiTheme.TEXT_FAINT)
-		hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(hint)
-	var clear: Button = UiWidgets.small_button("Clear the word", func() -> void: clear_word.call_deferred(), RuneWord.size(word) > 1)
-	clear.name = "ClearWordButton"
-	row.add_child(clear)
+		_lock_button.remove_theme_color_override("font_color")
+	_lock_note.text = "Unlocking is free for now." if locked else (str(can["text"]) if not bool(can["ok"]) else "Ready: lock it and the skill changes.")
+	_clear_button.disabled = RuneWord.size(word) <= 1
 	for chip: Control in _chips:
 		chip.queue_redraw()
 
@@ -379,12 +562,15 @@ func _build_detail() -> void:
 	var runes_row := HBoxContainer.new()
 	box.add_child(runes_row)
 	var runes_line := UiTheme.body("Runes  %d%s   -   %s" % [rules.used(word, ctx), (" of %d" % cap) if cap >= 0 else "",
-		str(rules.word_state(word, ctx).get("label", ""))], 14, UiTheme.STAR)
+		"locked" if RuneWord.is_locked(word) else str(rules.word_state(word, ctx).get("label", ""))], 14, UiTheme.GOLD if RuneWord.is_locked(word) else UiTheme.STAR)
 	runes_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	runes_row.add_child(runes_line)
 	var rb: Button = UiWidgets.small_button("Set runes", open_runes)
 	rb.name = "RunesButton"
 	runes_row.add_child(rb)
+	var fx_lines: Array = player.call("rune_summary", selected)
+	if not fx_lines.is_empty():
+		box.add_child(UiTheme.body("Word locked:  " + ",  ".join(PackedStringArray(fx_lines.map(func(v: Variant) -> String: return str(v)))), 13, UiTheme.GOLD))
 
 	# hotbar assignment
 	box.add_child(UiTheme.rule())
@@ -551,10 +737,13 @@ class Cosmos extends Control:
 				var ga: float = -PI / 2.0 + s * 0.5
 				UiDraw.icon(self, "gem", p + Vector2(cos(ga), sin(ga)) * rr, 13.0, UiTheme.STAR if str(bound[s]["tier"]) != "vestige" else UiTheme.GOLD)
 
-		# the current runechain
+		# the current runechain - or, with a locked rune word, that word repeated round the ring
 		draw_arc(p, ring_r, 0, TAU, 64, Color(1, 1, 1, 0.06), 12.0, true)
+		var word: Dictionary = player.call("ability_word", index)
+		if RuneWord.is_locked(word) and RuneWord.size(word) > 1:
+			_draw_word_chain(p, ring_r, word, GameData.affinity_color(str(ab.get("affinity", ""))))
 		var rng := RandomNumberGenerator.new()
-		for i: int in RUNES_PER_STAGE:
+		for i: int in (0 if RuneWord.is_locked(word) else RUNES_PER_STAGE):
 			var a: float = -PI / 2.0 + TAU * float(i) / float(RUNES_PER_STAGE)
 			var on: bool = i < lit
 			var col: Color = (UiTheme.GOLD if need != "" else UiTheme.ESSENCE.lightened(0.45)) if on else Color(0.32, 0.3, 0.3)
@@ -579,6 +768,27 @@ class Cosmos extends Control:
 			draw_circle(kp, 11.0, UiTheme.INSET)
 			draw_arc(kp, 11.0, 0, TAU, 20, UiTheme.GOLD, 1.5, true)
 			UiDraw.text(self, Vector2(kp.x - 11.0, kp.y + 5.0), Keybinds.binding_text("ability_%d" % (slot + 1)), 13, UiTheme.GOLD, HORIZONTAL_ALIGNMENT_CENTER, 22.0)
+
+	## A locked word as a chain: its real glyphs, copy after copy round the ring, each linked to
+	## the next, turning slowly, with a soft glow of the skill's colour under it.
+	func _draw_word_chain(p: Vector2, r: float, word: Dictionary, col: Color) -> void:
+		var seq: Array = RuneWord.nodes(word)
+		var n: int = seq.size()
+		var total: int = maxi(1, int(TAU * r / 21.0) / n) * n
+		var rot: float = _time * 0.08
+		draw_arc(p, r, 0, TAU, 64, Color(col, 0.16), 14.0, true)
+		draw_arc(p, r - 9.0, 0, TAU, 64, Color(UiTheme.GOLD, 0.22), 1.0, true)
+		draw_arc(p, r + 9.0, 0, TAU, 64, Color(UiTheme.GOLD, 0.22), 1.0, true)
+		var gap: float = 7.0 / r
+		for j: int in total:
+			var a: float = -PI / 2.0 + rot + TAU * float(j) / float(total)
+			var nxt: float = -PI / 2.0 + rot + TAU * float(j + 1) / float(total)
+			var rid: String = str(seq[j % n])
+			var rune: Dictionary = GameData.rune(rid)
+			var aff: String = str(rune.get("affinity", ""))
+			var gc: Color = GameData.affinity_color(aff).lightened(0.45) if aff != "" else UiTheme.STAR
+			UiDraw.rune_glyph(self, p + Vector2(cos(a), sin(a)) * r, rid, str(rune.get("character", "")), 12, gc)
+			draw_arc(p, r, a + gap, nxt - gap, 4, Color(UiTheme.GOLD, 0.6) if j % n == n - 1 else Color(gc, 0.35), 1.1, true)
 
 	## One original glyph: a few strokes between points of a 3x3 grid, rotated to face outward.
 	func _draw_rune(at: Vector2, angle: float, rng: RandomNumberGenerator, col: Color, lit: bool) -> void:

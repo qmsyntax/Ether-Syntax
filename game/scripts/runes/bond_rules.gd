@@ -16,7 +16,8 @@ extends RuneRules
 func legend() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for k: Dictionary in params.get("bond_kinds", []):
-		out.append({"colour": str(k["kind"]), "label": "%s bond" % str(k["kind"])})
+		var kk: String = str(k["kind"])
+		out.append({"colour": kk, "label": {"even": "even bond: both blend", "polar": "polar bond: the arrowed rune dominates", "ionic": "ionic bond: the arrowed rune takes it all"}.get(kk, "%s bond" % kk)})
 	out.append({"colour": "weakened", "label": "weakened: the affinities lean apart"})
 	return out
 
@@ -128,7 +129,16 @@ func _describe_link(word: Dictionary, a: int, b: int, _ctx: RuneContext) -> Dict
 	var rb: String = RuneWord.node_id(word, b)
 	var kind: String = bond_kind(ra, rb)
 	var align: String = alignment_state(ra, rb)
-	var d: Dictionary = {"kind": kind, "label": "%s bond" % kind, "colour": kind, "flags": [], "text": "%s - %s: %s bond" % [rune_name(word, a), rune_name(word, b), kind]}
+	# energy flows from the rune with less pull to the one with more; an even bond shimmers both ways
+	var ea: float = electronegativity(ra)
+	var eb: float = electronegativity(rb)
+	var flow: int = 0 if kind == "even" else (1 if eb > ea else -1)
+	# the dominant side: the rune with more pull (Brent 2026-10-22: show which side is dominant)
+	var dom: int = -1 if flow == 0 else (b if flow > 0 else a)
+	var sub: int = -1 if flow == 0 else (a if flow > 0 else b)
+	var label: String = relation(kind, rune_name(word, dom) if dom >= 0 else rune_name(word, a), rune_name(word, sub) if sub >= 0 else rune_name(word, b))
+	var d: Dictionary = {"kind": kind, "label": label, "colour": kind, "flags": [], "flow": flow, "dominant": dom,
+		"text": "%s - %s: %s" % [rune_name(word, a), rune_name(word, b), label]}
 	if align == "weakened":
 		(d["flags"] as Array).append("weakened")
 		d["text"] = str(d["text"]) + ", weakened (their affinities lean apart)"
@@ -138,6 +148,17 @@ func _describe_link(word: Dictionary, a: int, b: int, _ctx: RuneContext) -> Dict
 		d["colour"] = "problem"
 		d["text"] = str(d["text"]) + " - but these affinities refuse each other"
 	return d
+
+
+## A bond in words, naming the dominant side: "polar: Gush dominates Surge", "ionic: Drown takes
+## Surge's effect", "even: Surge and Gush blend". `more` is the rune with more pull.
+static func relation(kind: String, more: String, less: String) -> String:
+	match kind:
+		"polar":
+			return "polar: %s dominates %s" % [more, less]
+		"ionic":
+			return "ionic: %s takes %s's effect" % [more, less]
+	return "%s: %s and %s blend" % [kind, more, less]
 
 
 func _describe_node(word: Dictionary, i: int, _ctx: RuneContext) -> Dictionary:

@@ -1184,6 +1184,9 @@ func _draw_tooltip(vs: Vector2) -> void:
 					set_text = "   -   Braced: %d%% less damage, and nothing staggers you" % int(round((1.0 - GameData.num("braced", "damage_taken_mult")) * 100.0))
 				lines.append(["%.2f s wind-up, rooted%s" % [float(ab["windup"]), set_text], body_px, UiTheme.TEXT_DIM])
 			lines.append(["Stage %d   -   %d%% toward the next" % [int(st["stage"]), int(float(st["progress"]))], body_px, UiTheme.TEXT_DIM])
+			var rune_fx: Array = player.call("rune_summary", idx)
+			if not rune_fx.is_empty():
+				lines.append(["Rune word locked: " + ", ".join(PackedStringArray(rune_fx.map(func(v: Variant) -> String: return str(v)))), body_px, UiTheme.GOLD])
 			var need: String = str(player.call("pending_tier", st))
 			if need != "":
 				lines.append(["Full. Bind a %s to advance (%s, or the inventory to choose)." % [need, Keybinds.binding_text("bind")], body_px, UiTheme.GOLD])

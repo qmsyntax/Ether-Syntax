@@ -607,6 +607,9 @@ func _build_soul(box: VBoxContainer) -> void:
 			for up: Dictionary in bound:
 				names.append("%s of %s" % [str(up["tier"]), str(GameData.concept(str(up["concept"])).get("label", up["concept"]))])
 			col.add_child(UiTheme.body("Bound: " + ", ".join(names), 12, UiTheme.STAR))
+		var rune_fx: Array = player.call("rune_summary", ai)
+		if not rune_fx.is_empty():
+			col.add_child(UiTheme.body("Rune word locked: " + ", ".join(PackedStringArray(rune_fx.map(func(v: Variant) -> String: return str(v)))), 12, UiTheme.GOLD))
 		if need != "":
 			for ci: int in held.size():
 				if str(held[ci]["tier"]) == need:

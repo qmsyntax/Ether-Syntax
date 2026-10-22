@@ -4,7 +4,8 @@ extends RefCounted
 ##
 ##   {"nodes": ["WAT-1a", "UNI-05a", ...],                 # rune ids; nodes[0] is the skill's anchor
 ##    "links": [{"a": 0, "b": 1}, {"a": 1, "b": 2, "data": {...}}],
-##    "made_under": "bond_v1"}                             # the rule set it was built under (for reports)
+##    "made_under": "bond_v1",                             # the rule set it was built under (for reports)
+##    "locked": true}                                      # only while locked: its skill uses it
 ##
 ## A link joins two node indices (a < b), at most one per pair; its optional "data" is whatever the
 ## rule set that made it chose to keep (nothing, for bond_v1). This is what is saved on an ability
@@ -31,6 +32,11 @@ static func size(word: Dictionary) -> int:
 static func node_id(word: Dictionary, i: int) -> String:
 	var ns: Array = nodes(word)
 	return str(ns[i]) if i >= 0 and i < ns.size() else ""
+
+
+## A locked word is the one its skill uses (RuneRules.lock); it cannot be changed until unlocked.
+static func is_locked(word: Dictionary) -> bool:
+	return bool(word.get("locked", false))
 
 
 static func anchor(word: Dictionary) -> String:
@@ -167,4 +173,6 @@ static func normalize(saved: Variant, anchor_id: String) -> Dictionary:
 			continue
 		var data: Variant = (l as Dictionary).get("data", {})
 		add_link(out, a, b, data if typeof(data) == TYPE_DICTIONARY else {})
+	if bool(src.get("locked", false)):
+		out["locked"] = true
 	return out

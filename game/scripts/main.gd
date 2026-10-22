@@ -2055,6 +2055,7 @@ func _setup_ui_shot(which: String) -> void:
 			open_inventory()
 			screen.call("show_item", "hobnailed_boots", "")     # the description has its own panel; it covers nothing
 			if which == "inventory-abilities":
+				_shot_lock_word()                          # its locked word shows on Water Bolt's row
 				screen.set("_tab", "soul")
 				screen.call("rebuild")
 		"ethercosm", "ethercosm-2":
@@ -2071,8 +2072,29 @@ func _setup_ui_shot(which: String) -> void:
 				inv.equip("paired_mote")
 				player.call("refresh_gear")
 				player.call("assign_slot", 3, 2)
+			_shot_lock_word()                              # Water Bolt's ring becomes its word's chain
 			_enter_town()
 			open_ethercosm()
+		"runes-locked", "runes-locking":
+			# a closed seven-rune word on Water Bolt at level 2, locked: the chain, and the effects panel
+			# (runes-locking: locked through the screen, caught mid-animation)
+			player.call("set_affinities", ["water", "fire"])
+			var mine: Array = player.get("abilities")
+			mine[0]["stage"] = 2
+			player.call("word_add", 0, "WAT-6b", 0)       # Settle on Surge
+			player.call("word_add", 0, "WAT-4b", 0)       # Drown on Surge
+			player.call("word_add", 0, "WAT-3b", 1)       # Dry on Settle
+			player.call("word_add", 0, "WAT-5a", 1)       # Gush on Settle
+			player.call("word_add", 0, "WAT-8b", 1)       # Slack on Settle
+			player.call("word_add", 0, "FIR-1b", 4)       # Quench on Gush (water and fire lean apart)
+			if which == "runes-locked":
+				player.call("word_lock", 0)
+			_enter_town()
+			open_ethercosm()
+			screen.call("open_runes")
+			if which == "runes-locking":
+				screen.call("toggle_lock")
+				_shot_countdown = 38
 		"runes":
 			# a water + fire character's Water Bolt at level 2 (room for eight runes), its word part-built:
 			# even, polar, ionic and weakened bonds, one rune loose, and the last move refused.
@@ -2092,7 +2114,7 @@ func _setup_ui_shot(which: String) -> void:
 			screen.call("open_runes")
 			screen.call("pick_node", 3)
 			screen.call("pick_node", 0)                    # Surge is full: refused, and the screen says why
-			screen.call("pick_node", 3)
+			screen.call("pick_node", 1)                    # Settle picked: its bonds name their dominant side
 		"nether":
 			_show_screen(null, false)
 			_enter_dungeon()
@@ -2156,12 +2178,23 @@ func _setup_ui_shot(which: String) -> void:
 				player.set("reflux_locked", true)
 				player.set("arm_right_lost", true)
 				player.set("essence", 6.0)
+			if which == "hud":
+				_shot_lock_word()                          # the slot tooltip names what the locked word does
 			hud.set("debug_tip", "slot:0" if which == "hud" else "health")
 			# freeze the fight so the picture is stable
 			for e: Node in get_tree().get_nodes_in_group("enemies"):
 				e.set_physics_process(false)
 			player.set_physics_process(false)
 			player.call("_refresh_highlights")
+
+
+## For screenshots: a closed four-rune word on the first skill (Water Bolt), locked. Rune ids are
+## the 2026-10-22 workbook's.
+func _shot_lock_word() -> void:
+	player.call("word_add", 0, "WAT-5a", 0)       # Gush on Surge
+	player.call("word_add", 0, "WAT-4b", 0)       # Drown on Surge
+	player.call("word_add", 0, "WAT-3b", 1)       # Dry on Gush
+	player.call("word_lock", 0)
 
 
 func _tick_bot_report() -> void:

@@ -25,6 +25,8 @@ var _runes_from := 0                   # the frame the rune-setting part began, 
 var _anchor := ""                      # the first skill's anchor rune
 var _spare: Array[String] = []         # three runes of its affinity to set, picked from the data
 var _held := 0                         # runes in the word when the rule sets are swapped
+var _caps: Array[String] = []          # one-bond runes to close the word with
+var _stats_before := ""                # the skill's numbers before the word is locked
 
 const FreeRules := preload("res://tests/free_rules.gd")
 
@@ -256,7 +258,8 @@ func _process(_delta: float) -> void:
 ## second rune onto the picked anchor, and a third (refused and explained when the anchor's two
 ## bonds are taken); then with a second rule set in force (tests/free_rules.gd) the same view
 ## follows those rules: their three-rune limit, explained, and a join by clicking. Last, Clear the
-## word. Runes are chosen from the data by affinity, not by name.
+## word; then close a word by clicking (the anchor's bonds filled with caps), Lock it - the skill's
+## numbers change - and Unlock it. Runes are chosen from the data by affinity and valence, not by name.
 func _rune_steps(at: int) -> void:
 	var player: Node = main.get("player")
 	var s: Node = main.get("screen")
@@ -336,6 +339,38 @@ func _rune_steps(at: int) -> void:
 				_click_at(_centre(clear))
 		125:
 			_expect("Clear the word leaves the anchor alone", RuneWord.size(player.call("ability_word", 0)) == 1)
+			# the lock: fill every one of the anchor's bonds with a cap (one bond each), by clicking
+			_caps.clear()
+			for id: String in (player.call("rune_palette") as Array):
+				if str(GameData.rune(id).get("affinity", "")) == "water" and BondRules.valence(id) == 1 and _caps.size() < BondRules.valence(_anchor):
+					_caps.append(id)
+			_stats_before = str(player.call("ability_stats", (player.get("abilities") as Array)[0]))
+			var lock0: Control = _find(main, "LockButton")
+			_expect("Lock is offered but not live while the word is open", lock0 != null and (lock0 as Button).disabled)
+			_click_at((_find(main, "RuneBoard") as RuneBoard).node_global(0))
+		130, 140, 150:
+			var k: int = int(float(at - 130) / 10.0)
+			if k < _caps.size():
+				var chip: Control = _find(main, "Rune_" + _caps[k])
+				if chip != null:
+					_click_at(_centre(chip))
+		160:
+			var w: Dictionary = player.call("ability_word", 0)
+			_expect("the anchor's bonds filled with caps by clicking: the word is closed",
+				RuneWord.size(w) == _caps.size() + 1 and bool(Runes.active().word_state(w, player.call("rune_context", 0))["closed"]))
+			var lock: Control = _find(main, "LockButton")
+			_expect("and Lock is live", lock != null and not (lock as Button).disabled)
+			if lock != null:
+				_click_at(_centre(lock))
+		175:
+			_expect("clicking Lock locks the word", bool(player.call("word_locked", 0)))
+			_expect("and the skill's numbers change with it", str(player.call("ability_stats", (player.get("abilities") as Array)[0])) != _stats_before
+				and not (player.call("rune_summary", 0) as Array).is_empty())
+			_expect("the button now offers Unlock", (_find(main, "LockButton") as Button).text.begins_with("Unlock"))
+			_click_at(_centre(_find(main, "LockButton")))
+		190:
+			_expect("clicking Unlock gives the skill its own numbers back", not bool(player.call("word_locked", 0))
+				and str(player.call("ability_stats", (player.get("abilities") as Array)[0])) == _stats_before)
 			main.call("close_screen")
 			_runes_from = 0
 			_finish()

@@ -6,17 +6,14 @@ extends RefCounted
 ## "rule_sets": {id: {"script": "res://scripts/runes/<file>.gd", ...its params}}. The script extends
 ## RuneRules. Everything that shows or changes a word goes through Runes.active().
 
-static var _active: RuneRules
-static var _override: RuneRules
-
-
-## The rule set in force: a test override if one is set, else the one runes.json names.
+## The rule set in force: a test override if one is set, else the one runes.json names (built once
+## and kept on GameData).
 static func active() -> RuneRules:
-	if _override != null:
-		return _override
-	if _active == null:
-		_active = make(str(GameData.runes.get("rule_set", "")))
-	return _active
+	if GameData.rune_rules_override != null:
+		return GameData.rune_rules_override as RuneRules
+	if GameData.rune_rules == null:
+		GameData.rune_rules = make(str(GameData.runes.get("rule_set", "")))
+	return GameData.rune_rules as RuneRules
 
 
 ## A rule set by id, built from its entry in runes.json; the permissive base rules if the id or
@@ -36,7 +33,7 @@ static func make(rule_id: String) -> RuneRules:
 
 ## Put a rule set in force regardless of the data (tests); null goes back to the data's choice.
 static func use(rules: RuneRules) -> void:
-	_override = rules
+	GameData.rune_rules_override = rules
 
 
 ## TEST LOADOUT until rune acquisition is designed: the base runes of the affinities the character

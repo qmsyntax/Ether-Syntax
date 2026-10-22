@@ -10,12 +10,17 @@ extends RefCounted
 ## interaction rewrites the dictionary it is handed. Override only the hooks you need.
 
 var id := ""
-var rules: RuneRules          # the rule set it belongs to
 var params: Dictionary = {}   # its own entry in the rule set's "interaction_params", if any
+## The rule set it belongs to. Held weakly: the rule set holds its interactions, and a strong
+## reference back would make a cycle that is never freed.
+var rules: RuneRules:
+	get:
+		return (_rules_ref.get_ref() as RuneRules) if _rules_ref != null else null
+var _rules_ref: WeakRef
 
 
 func setup(owner_rules: RuneRules, interaction_id: String, p: Dictionary) -> void:
-	rules = owner_rules
+	_rules_ref = weakref(owner_rules)
 	id = interaction_id
 	params = p
 
@@ -45,12 +50,19 @@ func on_describe_node(_word: Dictionary, _i: int, _ctx: RuneContext, _desc: Dict
 	pass
 
 
+## Add lines about a rune before it is set (the palette's tooltip): what it would do.
+func on_describe_rune(_rune_id: String, _ctx: RuneContext, _desc: Dictionary) -> void:
+	pass
+
+
 ## Add traits, problems or summary lines for the whole word (a shape that means something).
 func on_word_state(_word: Dictionary, _ctx: RuneContext, _state: Dictionary) -> void:
 	pass
 
 
-## What the word does to its skill: stat multipliers, added payload, tags. Empty until Brent rules
-## on rune effects; when he does, Player.ability_stats will read RuneRules.effects() here.
+## What the word does to its skill. The shape Player.ability_stats reads (RuneRules.effects): a
+## "patch" - a list of {op: mul | mul_round | add | set | min | erase | append, path: "a.b", value}
+## applied to the ability dictionary in order - plus anything the screen shows ("lines", "groups",
+## "runes", "anchor"). effects_v1 (layers 1-3) is the first.
 func on_effects(_word: Dictionary, _ctx: RuneContext, _effects: Dictionary) -> void:
 	pass
