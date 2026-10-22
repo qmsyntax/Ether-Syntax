@@ -294,3 +294,13 @@ base runes. 25 of the first five's runes already carry a design/05 skill.
   have no position and bond with anything; hybrids sit between their parents. First values in the workbook's
   sliders; they refuse Fire–Ice, Light–Dark, Life–Death, Death–Nature, Nature–Disease, Metal–Dream, Earth–Dream.
 - **"Unstable" is reopened** [B: does not like the strain-on-cast version]; to be redesigned.
+- **Valence and electronegativity come from what a rune is, not from dice** [B: logical, not random; MODEL: the
+  rule]. Each rune has a **role** and a **draw**:
+  - The role sets valence: **Cap** 1 (ends a structure), **Link** 2 (takes in and passes on), **Branch** 3 (spreads
+    or splits), **Frame** 4 (holds a structure together).
+  - The draw runs from −1 (gives or releases outward) to +1 (takes or holds inward).
+  - Electronegativity = 2.5 + draw × the role's spread (Cap 1.5, Link 1.0, Branch 0.7, Frame 0.4). So Caps sit at
+    the extremes (1.0 to 4.0) and Frames near the middle, as in chemistry: few-bond elements pull hardest or give
+    most easily; carbon, with four, bonds with anything.
+  - Opposite runes usually have opposite draws, so a rune bonded to its own opposite makes a strong, ionic bond.
+  - First pass in the workbook (Base Runes K-N, Bond Rules): 65 Links, 35 Caps, 34 Branches, 32 Frames.
