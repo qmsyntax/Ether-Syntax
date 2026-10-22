@@ -68,7 +68,7 @@ What each does when added to a skill as a means.
 | Hybrids, not base affinities | perished water [C], life flame [F]; natural ones: steam (fire + water), magma (fire + earth), storm (wind + lightning), sand (earth + wind), mud (water + earth), ash (fire + death), crystal (earth + light) |
 | Unique | fusion [C] |
 
-The first-pass entries below are the original fourteen; dark and ice get theirs in their deep dives.
+The first-pass entries below are the original fourteen plus first passes for ice and dark (2026-10-22). Water's has been replaced by its deep dive. The rune workbook `design/runes-workbook.xlsx` holds every base rune with a character assigned, one sheet per affinity.
 
 Each affinity has **one rule nobody else has** (design/05 §1 for the first five; [MODEL] for the rest) and **five
 pairs** of base runes. "Skills" lists design/05's 40 skills on each rune; a dash means no skill yet, which is where
@@ -222,7 +222,30 @@ Armour, stone and constructs ignore it; it lingers and drifts.
 | **Cling**: it sticks to flesh and follows | **Lift**: it rises away |
 | **Plague**: it jumps body to body | **Quarantine**: it stays in one |
 
-**Totals**: 14 affinities, 70 pairs, 140 base runes; 25 of the first five's 50 already carry a design/05 skill.
+### Ice — what it freezes stays frozen [B 2026-10-21: ice is its own affinity, taking water's Freeze; MODEL: the rule]
+Cold builds up on a target until it locks solid; frozen things turn brittle and break.
+
+| Rune | Opposite |
+|---|---|
+| **Freeze**: lock solid | **Thaw**: release, melt free |
+| **Rime**: build ice (walls, armour, spikes) | **Shatter**: break ice; brittle things burst |
+| **Frost**: creeping cold on the ground that grips and slows | **Slick**: glazed ice that slides; fast and slippery |
+| **Brittle**: make a thing fragile | **Toughen**: cold-harden it |
+| **Stasis**: deep cold that halts everything | **Frostbite**: cold that burns |
+
+### Dark — strongest where the light is weakest [B 2026-10-21: dark is an affinity; MODEL: the rule]
+Shadows are places it can use: it hides in them, moves through them and feeds on light.
+
+| Rune | Opposite |
+|---|---|
+| **Deepen**: make it darker | **Dawn**: let the light back in |
+| **Cloak**: hide in the dark | **Silhouette**: make a target stand out against it |
+| **Shadowstep**: move through shadows | **Pin**: nail a target's shadow, and the target with it |
+| **Devour**: swallow light and energy | **Disgorge**: release what was swallowed |
+| **Dread**: fear of the dark | **Hush**: the dark as rest and quiet |
+
+**Totals**: 16 affinities. Water has 8 pairs (its deep dive); the other 15 have 5 pairs each, so 83 pairs and 166
+base runes. 25 of the first five's runes already carry a design/05 skill.
 
 ## 4. Hybrids and uniques
 
