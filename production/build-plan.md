@@ -105,7 +105,7 @@ code and data exist and the automated tests pass.
 
 **Phase 9 — Ship-ready** (L).
 - Localisation (string keys, extraction), controller support (an aim and soft-target design), accessibility, onboarding, the full
-  settings menu, crash logging, a minimum-spec performance pass, a build pipeline. Rights and outreach stay parked until Brent says.
+  settings menu, crash logging, a minimum-spec performance pass, a build pipeline. The author has OK'd an inspired game (2026-10-22, not a licence); naming and anything public stay Brent's call.
 
 ## Order at a glance
 

@@ -1,18 +1,26 @@
-# Passage (working title) — dungeon crawler in the "1% Lifesteal" universe
+# Passage (working title) — an action RPG inspired by the "1% Lifesteal" universe
 
-Exploratory, **unlicensed** game design + prototype. Process framework: Claude Code Game Studios
+Brent's own game, inspired by how the 1% Lifesteal world works and its power system, with the author's informal
+blessing (see rule 1). Not a licensed or official adaptation. Process framework: Claude Code Game Studios
 template (MIT, see `.claude/LICENSE-ccgs`), adapted. Owner / product lead / lore authority / playtester: Brent.
 
 ## Project rules (these override anything in the template)
 
-1. **IP hygiene.** The setting belongs to Robert Blaise (publisher: Aethon Books). No licence exists.
-   - Never store, paste or reproduce book text. No bulk downloads, no DRM stripping, no piracy sites.
-   - Work only from paraphrased mechanics notes with chapter citations (`research/`), fan sources, and Brent's recollection.
-   - Do not port canon characters into the game. Player characters, talents' wording, names and art are original.
-   - Nothing is published, distributed or pitched, and nobody (author, publisher) is contacted, unless Brent explicitly asks.
+1. **What we may use.** The series belongs to Robert Blaise (publisher: Aethon Books). Brent asked him, and on
+   2026-10-22 he answered (`production/outreach/2026-10-19-robert-blaise/reply-2026-10-22.md`): a game *inspired by*
+   the 1% Lifesteal universe is fine, using **how the world works and the power system**; **not** the story or the
+   characters. It is not a licence: any official adaptation begins on his side, so never present Passage as the official
+   1% Lifesteal game.
+   - Use freely: the world's workings and the power system (stars, essence and reflux, talents and primes, the
+     ethercosm and Netherecho, constructs, passages and realms, runes). Lean into setting-faithful tone and mechanics.
+   - Never: the story, plot events or canon characters. Player characters, NPCs, talents' wording, names and art are original.
+   - Never store, paste or reproduce book text. No bulk downloads, no DRM stripping, no piracy sites. Work from
+     paraphrased mechanics notes with chapter citations (`research/`), fan sources, and Brent's recollection.
+   - Nothing is published or distributed, and nobody is contacted, unless Brent explicitly asks. Whether the books'
+     coined terms keep their names in a public release is decided then.
 2. **Provenance tags are mandatory** in design docs: `[C]`/`[CANON]` read directly, `[F]` fan source, `[B]` Brent's ruling, `[MODEL]` our invention, `[?]` unknown. Brent's rulings override fan sources. See `design/01-systems-bible-v0.md`.
 3. **Say what was and wasn't tested.** A headless run proves scripts load; it does not prove a mechanic works or feels right. Anything that needs hands on the controls is reported as "untested — needs Brent". Never claim a feature works on the strength of it compiling.
-4. **The first real gate is fun, not paperwork.** The core-loop questions in `design/03-core-mechanics-spec-v0.1.md` §8 are answered by Brent playing the build. Rights/outreach stay parked until then.
+4. **The first real gate is fun, not paperwork.** The core-loop questions in `design/03-core-mechanics-spec-v0.1.md` §8 are answered by Brent playing the build. The author would like to see it; the vertical slice is the natural thing to show him, when Brent says.
 5. **Talents are data** (`game/data/talents.json`), many and varied — 1% Lifesteal is one entry, not the premise.
 
 ## Technology Stack
@@ -82,7 +90,7 @@ Standing instruction from Brent (2026-09-19): **keep good version control** — 
 - **Conventional Commits**: `feat:`, `fix:`, `docs:`, `chore:`, `test:`, `refactor:`, with a scope where it helps (`feat(game):`, `docs(design):`, `docs(research):`, `chore(process):`). Reference the story/task ID or design doc in the body.
 - **Never commit a broken build.** Game changes must pass the headless smoke check first; if something is knowingly incomplete, say so in the commit body.
 - **Tags**: annotated tags at every playable build handed to Brent (`vX.Y.Z-<label>`) and at every phase gate passed (`gate/<stage>`).
-- **Still ask first**: adding a remote, pushing anywhere, rewriting history (amend/rebase/reset of committed work), deleting branches or tags. This repo contains unlicensed third-party-setting work — any remote must be **private**.
+- **Still ask first**: adding a remote, pushing anywhere, rewriting history (amend/rebase/reset of committed work), deleting branches or tags. Any remote must be **private** unless Brent decides otherwise.
 - **Never commit**: book text, anything under `game/.godot/`, credentials.
 - Line endings are governed by `.gitattributes` (bash hooks must stay LF).
 

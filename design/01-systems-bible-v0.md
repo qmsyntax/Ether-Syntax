@@ -241,4 +241,4 @@ These override fan sources where they conflict.
 - [B] Gear matters but **less than the body**. It is crafted, quested for, awarded, and dropped by monsters.
 - [B] Drugs have ordinary downsides; archhumans are so healthy they can abuse far more than mortals.
 
-**Parked:** Freddy's specific spirit abilities (not porting the character), early-game price points, rights/outreach (revisit only if the game proves worth pitching).
+**Parked:** Freddy's specific spirit abilities (not porting the character), early-game price points, rights/outreach (settled 2026-10-22: the author is fine with an inspired game using the world's workings and power system, not the story or characters; see CLAUDE.md rule 1).
