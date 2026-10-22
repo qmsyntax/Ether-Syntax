@@ -285,3 +285,12 @@ base runes. 25 of the first five's runes already carry a design/05 skill.
   (Whether the skill's own base rune counts in the 4 is open.)
 - **Combinations should be non-linear, with emergent results, and some must not work at all** [B]. The working
   proposal (bonds, shapes, thresholds, failure modes, bond strength against load) is being discussed; not yet ruled.
+- **Bonds use chemistry** [B]: each rune gets a **valence** (1-4 bonds) and an **electronegativity**; single bonds
+  only, no chirality. The electronegativity difference sets the bond's kind (even, polar, ionic) and Pauling's
+  formula its strength; a word forms when every valence is filled.
+- **Affinities have positions on five axes** [B: add mind/matter; MODEL: the axes and values]: Heat (cold to hot),
+  Substance (fluid or free to solid), Vitality (death to life), Light (conceals to reveals), Mind/Matter. Two runes'
+  affinities bond only if their positions line up: the cosine below −0.7 refuses, below 0 weakens. Universal runes
+  have no position and bond with anything; hybrids sit between their parents. First values in the workbook's
+  sliders; they refuse Fire–Ice, Light–Dark, Life–Death, Death–Nature, Nature–Disease, Metal–Dream, Earth–Dream.
+- **"Unstable" is reopened** [B: does not like the strain-on-cast version]; to be redesigned.

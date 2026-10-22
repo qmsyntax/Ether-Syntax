@@ -8,6 +8,11 @@ from openpyxl.worksheet.datavalidation import DataValidation
 ROOT = 'E:/Code/lifesteal-crawler/'
 OUT = ROOT + 'design/runes-workbook.xlsx'
 
+import os, sys
+if os.path.exists(OUT) and '--force' not in sys.argv:
+    sys.exit('design/runes-workbook.xlsx exists and is now edited in Excel (it has slider controls this script '
+             'cannot make). Pass --force only to rebuild it from the design docs and lose those edits.')
+
 ORDER = [  # name, code, tab colour
     ('Water', 'WAT', '3A7BD5'), ('Fire', 'FIR', 'D9534F'), ('Earth', 'EAR', '8B6B3E'), ('Wind', 'WIN', '7FB8A4'),
     ('Lightning', 'LIG', 'E8C547'), ('Ice', 'ICE', 'A8D8EA'), ('Dark', 'DRK', '3B3355'), ('Metal', 'MET', '8C9399'),
