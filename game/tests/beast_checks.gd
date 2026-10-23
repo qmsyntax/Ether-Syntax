@@ -291,7 +291,7 @@ func _herd() -> void:
 	check.call("a Thornback herd is neutral: it grazes while you walk among it", fc.state_of("herd") == "calm" and herd.all(func(e: Node) -> bool: return bool(e.call("is_calm"))))
 	p.call("deal_damage", herd[0], 10.0, ["melee"])
 	check.call("hit one and the whole herd turns on you", fc.state_of("herd") == "awake" and herd.all(func(e: Node) -> bool: return not bool(e.call("is_calm"))))
-	p.global_position = lvl.to_global(zb.to_local(60.0, 80.0))
+	p.global_position = lvl.to_global(zb.to_local(60.0, 72.0))
 	var before: float = _hp(p)
 	var charged := false
 	for i: int in 400:

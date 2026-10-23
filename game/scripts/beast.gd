@@ -373,7 +373,10 @@ func _think_charging(delta: float, dir: Vector3, dist: float) -> void:
 	var cfg: Dictionary = _def.get("charge", {})
 	if _charge_left > 0.0:
 		var was_hit: bool = _charge_hit
+		collision_mask = 1                       # a charging beast runs through its own herd, not into it
 		_tick_charge(delta)
+		if _charge_left <= 0.0:
+			collision_mask = 1 | 4
 		if not was_hit and _charge_hit and is_instance_valid(target) and target.has_method("shove"):
 			target.call("shove", _charge_dir, float(cfg.get("shove", 0.0)))
 		if _charge_left <= 0.0 and _charge_hit:
@@ -397,6 +400,16 @@ func _think_charging(delta: float, dir: Vector3, dist: float) -> void:
 		_special_cd["charge"] = float(cfg.get("cooldown", 6.0))
 		_charge_dir = dir
 		facing = dir
+		return
+	if behaviour == "grazer" and _windup < 0.0 and dist < float(cfg.get("min_dist", 5.0)) + 1.0 and float(_special_cd["charge"]) > 1.0:
+		# a herd beast is no brawler: after a charge it wheels away to run at you again, goring
+		# only whoever crowds it as it turns
+		if dist <= _reach + radius and _attack_cd <= 0.0 and not _no_attack():
+			_think_melee(delta, dir, dist)
+			return
+		_release_slot()
+		_turn_toward(-dir, delta)
+		velocity = -dir * speed * 0.8
 		return
 	_think_melee(delta, dir, dist)
 
