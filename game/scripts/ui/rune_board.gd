@@ -64,7 +64,7 @@ const SHORT_REASON := {
 	"valence_full": "full", "rings_apart": "not an adjacent ring", "refused": "alignment refuses",
 	"already_linked": "already bonded", "ring_full": "ring full", "ring": "ring not open", "capacity": "word full",
 	"no_rings": "no ring yet", "unknown": "not discovered", "not_yours": "not your affinity", "locked": "sealed",
-	"repeat": "already in the word",
+	"repeat": "already in the word", "ring_unformed": "inner ring not formed",
 }
 
 var screen: Control
@@ -429,6 +429,11 @@ func _slot_check(rid: String, k: int) -> Dictionary:
 	return _slot_checks[ck]
 
 
+## The rules in force as ring rules (null under rules without rings).
+func rules_ring() -> RingRules:
+	return Runes.active() as RingRules
+
+
 func _word() -> Dictionary:
 	return screen.call("current_word")
 
@@ -566,9 +571,10 @@ func _draw() -> void:
 	var pulse: float = 0.75 + 0.25 * sin(_time * 2.0)
 	var ty := 96.0
 	if mode == "bind":
-		UiDraw.outlined(self, Vector2(16.0, ty), "F O R M I N G   R I N G   %d" % ctx.forming, 18, Color(UiTheme.STAR.lightened(0.2), pulse), HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
-	elif mode == "test":
-		UiDraw.outlined(self, Vector2(16.0, ty), "FREE EDIT  -  TEST CHARACTER", 16, Color(UiTheme.BAD.lightened(0.25), pulse), HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
+		var first_new: int = int(screen.call("sealed_rings")) + 1
+		var forming_t: String = ("F O R M I N G   R I N G   %d" % ctx.forming) if first_new >= ctx.forming else "F O R M I N G   R I N G S   %d - %d" % [first_new, ctx.forming]
+		UiDraw.outlined(self, Vector2(16.0, ty), "L E V E L   %d   L O C K   -   %s" % [ctx.stage + 1, forming_t], 18,
+			Color(UiTheme.STAR.lightened(0.2), pulse), HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
 	elif sealed:
 		UiDraw.outlined(self, Vector2(16.0, ty), "S E A L E D", 18, Color(UiTheme.GOLD, pulse), HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
 	else:
@@ -615,14 +621,17 @@ func _draw_nebula(c: Vector2, col: Color) -> void:
 
 ## The rings, stacking outward: sealed rings glow as gold bands; the ring being formed shimmers,
 ## dashed and turning; a ring open but not yet sealed is a faint dotted line. Each is labelled.
-func _draw_rings(c: Vector2, _word_d: Dictionary, ctx: RuneContext, col: Color) -> void:
+func _draw_rings(c: Vector2, word_d: Dictionary, ctx: RuneContext, col: Color) -> void:
 	var sealed_n: int = int(screen.call("sealed_rings"))
 	var mode: String = _mode()
 	_ring_labels.clear()
 	for k: int in range(1, _ring_r.size()):
 		var r: float = _ring_r[k]
 		var is_sealed: bool = k <= sealed_n
-		var forming: bool = mode == "bind" and k == ctx.forming
+		# the ring this lock forms - and, for an old save bound before rings locked with each level, the
+		# inner rings it must form first (design/14 section 11)
+		var forming: bool = mode == "bind" and k > sealed_n and k <= ctx.forming
+		var waits: int = (rules_ring().unformed_below(word_d, k) if rules_ring() != null else 0) if forming else 0
 		var label := "ring %d" % k
 		if forming:
 			var shim: float = 0.55 + 0.45 * sin(_time * 3.0)
@@ -639,7 +648,7 @@ func _draw_rings(c: Vector2, _word_d: Dictionary, ctx: RuneContext, col: Color) 
 				var am: float = TAU * float(m) / 10.0 + _time * 0.1
 				var rr: float = lerpf(r + 40.0, r, u)
 				draw_circle(c + Vector2(cos(am), sin(am)) * rr, 2.0, Color(UiTheme.STAR.lightened(0.4), 0.7 * sin(PI * u)))
-			label = "ring %d  -  forming" % k
+			label = ("ring %d  -  forming" % k) if waits == 0 else "ring %d  -  waits for ring %d" % [k, waits]
 		elif is_sealed:
 			var gold: Color = UiTheme.GOLD.lerp(col.lightened(0.3), 0.25)
 			var dim: float = 0.7 if mode == "bind" else 1.0
@@ -657,8 +666,6 @@ func _draw_rings(c: Vector2, _word_d: Dictionary, ctx: RuneContext, col: Color) 
 				if s2 % 3 == 0:
 					var a1: float = TAU * float(s2) / float(segs2) + _time * 0.01
 					draw_arc(c, r, a1, a1 + TAU / float(segs2), 3, Color(UiTheme.STAR, 0.16), 1.0, true)
-			if mode == "test":
-				label = "ring %d  -  open" % k
 		# the ring's number where no place sits (between the places at the left), and its line top-left
 		var tag_col: Color = UiTheme.STAR if forming else (UiTheme.GOLD if is_sealed else UiTheme.TEXT_FAINT)
 		var tp: Vector2 = c + Vector2.from_angle(_tag_angle(k)) * r
@@ -719,7 +726,7 @@ func _draw_slots(ctx: RuneContext) -> void:
 				draw_line(p + Vector2(-d, -d), p + Vector2(d, d), Color(UiTheme.BAD, 0.6), 1.3, true)
 				draw_line(p + Vector2(-d, d), p + Vector2(d, -d), Color(UiTheme.BAD, 0.6), 1.3, true)
 			continue
-		var hot: bool = mode == "bind" and k == ctx.forming
+		var hot: bool = mode == "bind" and k == ctx.forming and (rules_ring() == null or rules_ring().unformed_below(_word(), k) == 0)
 		var a: float = 0.55 if hot else 0.25
 		if mode == "view":
 			a = 0.14

@@ -179,14 +179,15 @@
     "cast_recovery": 0.12
   },
   "skills": {
-    "_note": "Rules shared by the 2026-10-22 skills (build brief; every number ours [MODEL]). jump_radius / jump_damage_mult: a hit payload with 'jumps' (the rune Many, Reflect, Spread, Conjure) arcs on to that many more enemies, each the nearest not yet struck within jump_radius of the last, for jump_damage_mult of the damage. channel_max_s: how long a held skill (channel) runs when it was not started from a held key (a test, the bot) and has no duration of its own. charge_tap_s: a charge_release let go sooner than this counts as a tap (its least). test_stage: the stage every skill of a test character is set to - a TEST OVERRIDE (stage cap is stars + 1, so the test character is given test_stars stars): a level-3 word holds 10 runes. test_constructs_each: a test character carries this many constructs of every tier and concept, to bind with (Brent 2026-10-23), and starts every skill's bar full. smite_needs_line: a smite (hex, seize, gaze) is blocked by walls and stone unless its payload goes through.",
+    "_note": "Rules shared by the 2026-10-22 skills (build brief; every number ours [MODEL]). jump_radius / jump_damage_mult: a hit payload with 'jumps' (the rune Many, Reflect, Spread, Conjure) arcs on to that many more enemies, each the nearest not yet struck within jump_radius of the last, for jump_damage_mult of the damage. channel_max_s: how long a held skill (channel) runs when it was not started from a held key (a test, the bot) and has no duration of its own. charge_tap_s: a charge_release let go sooner than this counts as a tap (its least). test_stage: the stage every skill of a test character starts at - 0 since Brent 2026-10-23 (\"you should not be able to build level 2 until level 1 is fully formed with construct\"): a test character walks through every level lock in order, vestige to asura, like anyone else. test_stars: its stars - a TEST OVERRIDE; the stage cap is stars + 1, so 4 stars make the asura lock (stage 4 -> 5) reachable. test_constructs_each: a test character carries this many constructs of every tier and concept, to bind with (Brent 2026-10-23), and starts every skill's bar full. test_refill_after_bind: a TEST OVERRIDE - after a test character's bind takes, the skill's bar is filled again so its next level lock is open at once (a real character grows it by use). Binds otherwise follow the normal rules: they can fail and the construct is used up. smite_needs_line: a smite (hex, seize, gaze) is blocked by walls and stone unless its payload goes through.",
     "jump_radius": 4.0,
     "jump_damage_mult": 0.6,
     "channel_max_s": 4.0,
     "charge_tap_s": 0.1,
-    "test_stage": 3,
-    "test_stars": 3,
+    "test_stage": 0,
+    "test_stars": 4,
     "test_constructs_each": 3,
+    "test_refill_after_bind": true,
     "smite_needs_line": true
   },
   "light": {

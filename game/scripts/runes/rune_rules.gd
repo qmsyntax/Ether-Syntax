@@ -214,14 +214,14 @@ func unlock(word: Dictionary, _ctx: RuneContext) -> Dictionary:
 
 ## What a word does to its skill now: its effects if it is sealed (or locked, from before seals)
 ## and still fits the rules in force (a word made under other rules that no longer does fit does
-## nothing), else {}. A test character's free-edit seal need not be closed.
+## nothing), else {}. A seal made by a test hook with closure waived need not be closed.
 func locked_effects(word: Dictionary, ctx: RuneContext) -> Dictionary:
 	if not RuneWord.is_locked(word):
 		return {}
 	var st: Dictionary = word_state(word, ctx)
 	if not (st.get("problems", []) as Array).is_empty():
 		return {}
-	if _needs_closed() and not bool(st.get("closed", false)) and not bool(word.get("free_edit", false)):
+	if _needs_closed() and not bool(st.get("closed", false)) and not bool(word.get("closure_waived", false)):
 		return {}
 	return effects(word, ctx)
 
@@ -233,9 +233,9 @@ func _needs_closed() -> bool:
 # --- seals (design/14 section 8) -----------------------------------------------------------
 # A seal is formed when a construct is bound into the skill (Player.bind_seal): the draft the player
 # built (a copy of the sealed word, reworked, with the new ring added) becomes the skill's word.
-# A test character's free edit seals at any time and need not be closed.
+# Test hooks (ctx.closure_waived) may seal a word that is not closed; no screen reaches them.
 
-## May this draft be sealed? Closed and free of problems (a free edit: free of problems).
+## May this draft be sealed? Closed and free of problems (closure waived: free of problems).
 func can_seal(word: Dictionary, ctx: RuneContext) -> Dictionary:
 	if RuneWord.size(word) == 0:
 		return no("no_anchor", "This skill has no anchor rune in the data yet.")
@@ -244,7 +244,7 @@ func can_seal(word: Dictionary, ctx: RuneContext) -> Dictionary:
 		return no("problems", "The seal breaks these rules: %s" % str((st["problems"] as Array)[0]))
 	if RuneWord.size(word) < 2:
 		return no("empty", "Set runes into the seal first.")
-	if _needs_closed() and not ctx.free_edit and not bool(st.get("closed", false)):
+	if _needs_closed() and not ctx.closure_waived and not bool(st.get("closed", false)):
 		return no("not_closed", "Only a closed word can be sealed; this one is %s." % str(st.get("label", "open")))
 	return ok()
 
@@ -255,10 +255,11 @@ func seal(word: Dictionary, ctx: RuneContext, rings: int) -> Dictionary:
 	if bool(r["ok"]):
 		word["sealed"] = maxi(1, rings)
 		word.erase("locked")
-		if ctx.free_edit:
-			word["free_edit"] = true
+		if ctx.closure_waived:
+			word["closure_waived"] = true
 		else:
-			word.erase("free_edit")
+			word.erase("closure_waived")
+		word.erase("free_edit")
 	return r
 
 

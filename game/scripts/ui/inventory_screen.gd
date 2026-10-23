@@ -2,8 +2,9 @@ extends UiScreen
 ## Inventory and character sheet in one, laid out as a paper doll: who you are and what your
 ## gear adds up to on the left, the figure in the middle with a slot for every piece down either
 ## side of it, and the pack as a grid on the right. The right panel's second tab holds your
-## abilities and the constructs waiting to be bound into them - this is also where you choose
-## WHICH ability a construct goes into (the Bind key only takes the first match).
+## abilities and the constructs carried; a skill ready for its level lock has a button that opens
+## its seal screen, where the ring is built and the construct chosen and bound (Brent 2026-10-23:
+## no binding anywhere else).
 
 const SLOT_LABELS := {"weapon": "Main hand", "offhand": "Off hand", "ranged": "Ranged", "head": "Head", "body": "Body", "hands": "Hands",
 	"feet": "Feet", "back": "Back", "belt": "Belt", "satellite": "Satellite", "trinket": "Trinket", "trinket2": "Trinket"}
@@ -323,7 +324,7 @@ func _build_tabs(box: VBoxContainer) -> void:
 	row.add_theme_constant_override("separation", 6)
 	box.add_child(row)
 	var ready: int = _bindable_count()
-	for tab: Array in [["pack", "Pack"], ["soul", "Abilities" + (("  -  %d to bind" % ready) if ready > 0 else "")]]:
+	for tab: Array in [["pack", "Pack"], ["soul", "Abilities" + (("  -  %d ready to lock" % ready) if ready > 0 else "")]]:
 		var id: String = str(tab[0])
 		var b: Button = UiWidgets.small_button(str(tab[1]), func() -> void:
 			_tab = id
@@ -619,12 +620,13 @@ func _build_soul(box: VBoxContainer) -> void:
 		if not rune_fx.is_empty():
 			col.add_child(UiTheme.body("Sealed word: " + ", ".join(PackedStringArray(rune_fx.map(func(v: Variant) -> String: return str(v)))), 12, UiTheme.GOLD))
 		if need != "":
-			for g: Dictionary in player.call("construct_groups", need):       # one button per concept carried
-				var ci: int = int(g["index"])
-				var bind_b: Button = UiWidgets.small_button("Bind the %s - form the seal" % str(g["text"]), func() -> void:
-					game.call("open_seal", ai, ci))
-				bind_b.add_theme_font_size_override("font_size", UiTheme.FS_SMALL + 1)
-				col.add_child(bind_b)
+			# no binding here (Brent 2026-10-23: "only with the runes"): the level lock is formed on the
+			# skill's seal screen, where the ring is built and the construct chosen
+			var open_b: Button = UiWidgets.small_button("Open the seal  -  level %d lock" % (int(st["stage"]) + 1), func() -> void:
+				game.call("open_seal", ai))
+			open_b.name = "OpenSealButton_%d" % ai
+			open_b.add_theme_font_size_override("font_size", UiTheme.FS_SMALL + 1)
+			col.add_child(open_b)
 		list.add_child(UiTheme.rule())
 
 	box.add_child(UiTheme.heading("Constructs carried", 18))

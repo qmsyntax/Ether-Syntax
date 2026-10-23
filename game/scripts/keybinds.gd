@@ -25,7 +25,7 @@ const ACTIONS: Array = [
 	["hotbar_page", "Next skill page (test characters)", "key", KEY_TAB],
 	["meditate", "Meditate (hold)", "key", KEY_M],
 	["ascend", "Ascend", "key", KEY_T],
-	["bind", "Bind a construct", "key", KEY_B],
+	["bind", "Open the seal (level lock)", "key", KEY_B],
 	["inventory", "Inventory", "key", KEY_I],
 	["ethercosm", "Ethercosm (soul)", "key", KEY_K],
 	["skills", "Skill tree", "key", KEY_L],

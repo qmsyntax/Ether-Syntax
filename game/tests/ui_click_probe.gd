@@ -35,6 +35,9 @@ var _drag_from := Vector2.ZERO          # where a palette drag started
 var _drop_to := Vector2.ZERO            # the empty place it is dropped on
 var _drop_place := -1                   # that place's index on its ring
 var _kept := ""                         # the draft as it was, to see that undo puts it back exactly
+var _link2 := ""                        # a two-bond rune to carry ring 2 out from ring 1
+var _queue: Array[Callable] = []        # the second level lock's clicks and drags, one every few frames
+var _queue_at := 0
 
 const FreeRules := preload("res://tests/free_rules.gd")
 
@@ -261,9 +264,11 @@ func _process(_delta: float) -> void:
 		_rune_steps(frames - _runes_from)
 
 
-## The seal screen (design/14 sections 7-8; the building controls Brent asked for on 2026-10-23), by
-## real mouse and keyboard events: a skill whose bar is full and a vestige carried; Bind the vestige -
-## form the seal opens the seal screen, forming ring 1. A palette rune is DRAGGED onto an empty place
+## The seal screen (design/14 sections 7-8 and 11; the building controls Brent asked for on 2026-10-23,
+## and his ruling that rings and constructs lock together, only on the seal screen), by real mouse and
+## keyboard events: a skill whose bar is full and a vestige carried; the skill clicked on the main
+## page shows "Ready for its level 1 lock" and one Open the seal button - no bind button - which opens
+## the seal screen forming ring 1, with the vestige to choose. A palette rune is DRAGGED onto an empty place
 ## (press, motion, release - Godot's own drag and drop) and lands on that place; a second is clicked
 ## in the palette and then on a place, and is set alone, unbonded. Bonds are made by dragging from the
 ## skill's core to a rune and from a rune to the core (live motion between press and release); a drag
@@ -271,10 +276,13 @@ func _process(_delta: float) -> void:
 ## clicking its curve and deleted with its x; Ctrl+Z brings it back. A rune right-clicked is taken out
 ## with its bonds; Ctrl+Z / Ctrl+Y step back and forth exactly. With a second rule set in force
 ## (tests/free_rules.gd) the same view follows those rules (their three-rune limit, explained). An
-## undiscovered rune ("?") is refused and explained. Then Clear, close a word by drags (caps on the
-## skill's rune), Bind and seal - the skill's numbers change and the word is sealed. Then the next
-## binding, from the ethercosm by clicks: a failed bind (forced) forms no seal and the word stays. The
-## bind's roll is forced through balance "binding" success_chance (1, then 0) so the probe is not
+## undiscovered rune ("?") is refused and explained. Then Clear (the lock cannot bind with ring 1
+## empty), close a word by drags (caps on the skill's rune), choose the vestige and Bind and lock - the
+## skill's numbers change and ring 1 is sealed with the vestige. Then the level 2 lock, from the main
+## page by clicks: a remnant chosen, ring 1 reworked (a cap out, a two-bond rune in) and ring 2 built
+## out from it by clicks and drags; a failed bind (forced) forms no seal and the word stays; built
+## again and bound (sure): ring 1 and ring 2 sealed with the remnant. The
+## bind's roll is forced through balance "binding" success_chance (1, then 0, then 1) so the probe is not
 ## left to chance; it is put back after. Runes are chosen from the data by affinity and valence, not
 ## by name; the probe discovers them first (data, not clicks).
 func _rune_steps(at: int) -> void:
@@ -297,7 +305,9 @@ func _rune_steps(at: int) -> void:
 					_caps.append(id)
 				elif _spare.size() < 3 and BondRules.valence(id) > 1:
 					_spare.append(id)
-			for id2: String in _spare + _caps:
+				if _link2 == "" and BondRules.valence(id) == 2 and (Runes.active() as BondRules).alignment_state(_anchor, id) == "ok":
+					_link2 = id
+			for id2: String in _spare + _caps + [_link2]:
 				player.call("discover_rune", id2, "")
 			for id3: String in (player.call("rune_palette") as Array):
 				if str(GameData.rune(id3).get("affinity", "")) == "water" and not bool(player.call("knows_rune", id3)) and _unknown == "":
@@ -306,15 +316,31 @@ func _rune_steps(at: int) -> void:
 			(player.get("constructs") as Array).append({"tier": "vestige", "concept": "tension"})
 			_chance = GameData.num("binding", "success_chance")
 			main.call("open_ethercosm")
+		6:
+			# click the skill on the main page (the ethercosm's drawn soul)
+			var es: Node = main.get("screen")
+			es.call("select", 1)                     # something else first, so the click is what selects it
+			var cosmos: Control = es.get("_cosmos")
+			for n: Dictionary in (cosmos.get("_nodes") as Array):
+				if int(n["index"]) == 0:
+					_click_at(cosmos.get_global_rect().position + (n["pos"] as Vector2))
 		10:
-			_expect("the ethercosm is open", main.get("screen") is UiScreen and main.get("screen").has_method("open_seal"))
-			var b: Control = _find(main, "FormSealButton_0")
-			_expect("a full skill with a vestige carried offers to bind it and form the seal", b != null)
+			_expect("the ethercosm is open, and clicking the skill selects it", main.get("screen") is UiScreen and main.get("screen").has_method("open_seal")
+				and int(main.get("screen").get("selected")) == 0)
+			var binds: Array = main.get("screen").find_children("*", "Button", true, false).filter(func(bb: Node) -> bool: return (bb as Button).text.to_lower().contains("bind"))
+			var ready_l: Control = _find(main, "LockReady")
+			_expect("the main page binds nothing: no bind button, no bind preview (Brent 2026-10-23)", binds.is_empty() and _find(main, "BindPreview") == null,
+				str(binds.map(func(bb: Node) -> String: return (bb as Button).text)))
+			_expect("it shows the full skill ready for its level 1 lock, needing a vestige", ready_l != null and (ready_l as Label).text.begins_with("Ready for its level 1 lock: needs a vestige"))
+			var b: Control = _find(main, "OpenSealButton")
+			_expect("and one button that opens its seal", b != null)
 			if b != null:
 				_click_at(_centre(b))
 		20:
-			_expect("the bind step opens the seal screen, forming ring 1", s != null and bool(s.get("rune_mode")) and board != null
+			_expect("it opens the seal screen at the level 1 lock, forming ring 1", s != null and bool(s.get("rune_mode")) and board != null
 				and str(s.call("seal_view")) == "bind" and (player.call("rune_context", 0) as RuneContext).forming == 1)
+			_expect("the vestige carried is offered on the seal screen, chosen, with what it does bound", _find(main, "LockConstruct_tension") != null
+				and _find(main, "ChosenConstruct") != null and int(player.call("seal_construct")) >= 0)
 			var chip: Control = _find(main, "Rune_" + _spare[0])
 			_expect("the palette offers the runes it knows", chip != null)
 			# drag the palette rune onto the second empty place of ring 1: press on the chip...
@@ -430,8 +456,9 @@ func _rune_steps(at: int) -> void:
 			_expect("Clear leaves the skill's own rune alone", RuneWord.size(player.call("ability_word", 0)) == 1)
 			_stats_before = str(player.call("ability_stats", (player.get("abilities") as Array)[0]))
 			var seal0: Control = _find(main, "SealBindButton")
-			_expect("with only the skill's own rune the draft is unchanged: binding would leave it without a word, and the screen says so",
-				seal0 != null and not (seal0 as Button).disabled and str(main.get("screen").get("_lock_note").text).begins_with("Nothing set"))
+			_expect("with ring 1 empty the lock cannot bind - ring and construct lock together - and the screen says so",
+				seal0 != null and (seal0 as Button).disabled and str(main.get("screen").get("_lock_note").text).begins_with("Ring 1 is the ring this level lock forms"),
+				str(main.get("screen").get("_lock_note").text))
 		120, 140:
 			# each cap: picked in the palette, set on a place, dragged to the core
 			var k: int = 0 if at == 120 else 1
@@ -452,14 +479,16 @@ func _rune_steps(at: int) -> void:
 			_expect("the skill's own rune's bonds filled with caps, by drags: the word is closed",
 				RuneWord.size(w) == _caps.size() + 1 and bool(Runes.active().word_state(w, player.call("rune_context", 0))["closed"]), str(w))
 			var sb: Control = _find(main, "SealBindButton")
-			_expect("and Bind and seal is live", sb != null and not (sb as Button).disabled)
+			_expect("and Bind and lock is live", sb != null and not (sb as Button).disabled)
 			(GameData.balance["binding"] as Dictionary)["success_chance"] = 1.0
 			if sb != null:
 				_click_at(_centre(sb))
 		175:
 			(GameData.balance["binding"] as Dictionary)["success_chance"] = _chance
-			_expect("clicking it binds the vestige and seals the word: stage 1, one ring sealed",
-				bool(player.call("word_locked", 0)) and int(((player.get("abilities") as Array)[0] as Dictionary)["stage"]) == 1 and RuneWord.sealed(player.call("ability_word", 0)) == 1)
+			var bound1: Array = ((player.get("abilities") as Array)[0] as Dictionary).get("bound", [])
+			_expect("clicking it binds the vestige and seals ring 1 with it: stage 1, one ring sealed, the vestige of Tension bound",
+				bool(player.call("word_locked", 0)) and int(((player.get("abilities") as Array)[0] as Dictionary)["stage"]) == 1 and RuneWord.sealed(player.call("ability_word", 0)) == 1
+				and bound1.size() == 1 and str((bound1[0] as Dictionary)["concept"]) == "tension")
 			_expect("and the skill's numbers change with it", str(player.call("ability_stats", (player.get("abilities") as Array)[0])) != _stats_before
 				and not (player.call("rune_summary", 0) as Array).is_empty())
 			_expect("the screen now shows the seal, read-only", str(main.get("screen").call("seal_view")) == "view" and _find(main, "SealBindButton") == null)
@@ -471,28 +500,78 @@ func _rune_steps(at: int) -> void:
 			if back != null:
 				_click_at(_centre(back))
 		185:
-			var b2: Control = _find(main, "FormSealButton_0")
-			_expect("back in the ethercosm, the next binding is offered", b2 != null)
+			var b2: Control = _find(main, "OpenSealButton")
+			_expect("back on the main page, the level 2 lock is offered: one Open the seal button", b2 != null and _find(main, "LockReady") != null
+				and (_find(main, "LockReady") as Label).text.begins_with("Ready for its level 2 lock: needs a remnant"))
 			if b2 != null:
 				_click_at(_centre(b2))
 		195:
-			_expect("it opens the seal forming ring 2, the sealed ring 1 in the draft", str(main.get("screen").call("seal_view")) == "bind"
-				and (player.call("rune_context", 0) as RuneContext).forming == 2 and RuneWord.shape_key(player.call("ability_word", 0)) == _sealed_key)
+			_expect("it opens the seal at the level 2 lock: ring 1 sealed in the draft, ring 2 forming, the remnant to choose",
+				str(main.get("screen").call("seal_view")) == "bind" and (player.call("rune_context", 0) as RuneContext).forming == 2
+				and RuneWord.shape_key(player.call("ability_word", 0)) == _sealed_key and _find(main, "LockConstruct_reach") != null)
 			var sb2: Control = _find(main, "SealBindButton")
-			_expect("an untouched draft may be bound as it is", sb2 != null and not (sb2 as Button).disabled)
-			(GameData.balance["binding"] as Dictionary)["success_chance"] = 0.0
-			if sb2 != null:
-				_click_at(_centre(sb2))
-		210:
-			(GameData.balance["binding"] as Dictionary)["success_chance"] = _chance
-			var msg4: Control = _find(main, "RuneMessage")
-			_expect("a failed bind forms no seal: the word stays as it was, the remnant is gone",
-				RuneWord.shape_key(player.call("ability_word", 0)) == _sealed_key and RuneWord.sealed(player.call("ability_word", 0)) == 1
-				and int(((player.get("abilities") as Array)[0] as Dictionary)["stage"]) == 1 and (player.get("constructs") as Array).is_empty()
-				and msg4 != null and (msg4 as Label).text.contains("fails"))
-			main.call("close_screen")
-			_runes_from = 0
-			_finish()
+			_expect("with ring 2 empty it cannot bind", sb2 != null and (sb2 as Button).disabled)
+			_queue_ring2()
+			_queue.append(func() -> void:
+				var sb3: Control = _find(main, "SealBindButton")
+				_expect("ring 2 built out from the reworked ring 1, by clicks and drags: the word is closed and Bind and lock is live",
+					sb3 != null and not (sb3 as Button).disabled and RuneWord.ring_nodes(player.call("ability_word", 0), 2).size() == 1, str(main.get("screen").get("_lock_note").text))
+				(GameData.balance["binding"] as Dictionary)["success_chance"] = 0.0
+				if sb3 != null:
+					_click_at(_centre(sb3)))
+			_queue.append(func() -> void:
+				(GameData.balance["binding"] as Dictionary)["success_chance"] = _chance
+				var msg4: Control = _find(main, "RuneMessage")
+				_expect("a failed bind forms no seal: the word stays as it was, the remnant is gone",
+					RuneWord.shape_key(((player.get("abilities") as Array)[0] as Dictionary).get("word", {})) == _sealed_key and RuneWord.sealed(((player.get("abilities") as Array)[0] as Dictionary).get("word", {})) == 1
+					and int(((player.get("abilities") as Array)[0] as Dictionary)["stage"]) == 1 and (player.get("constructs") as Array).is_empty()
+					and msg4 != null and (msg4 as Label).text.contains("fails"))
+				_expect("the lock is still open (the bar is still full), with no remnant to bind it now", str(main.get("screen").call("seal_view")) == "bind"
+					and _find(main, "NoConstruct") != null and (_find(main, "SealBindButton") as Button).disabled)
+				(player.get("constructs") as Array).append({"tier": "remnant", "concept": "reach"})
+				main.get("screen").call("open_seal", -1))
+			_queue_ring2()
+			_queue.append(func() -> void:
+				(GameData.balance["binding"] as Dictionary)["success_chance"] = 1.0
+				_click_at(_centre(_find(main, "SealBindButton"))))
+			_queue.append(func() -> void:
+				(GameData.balance["binding"] as Dictionary)["success_chance"] = _chance
+				var st: Dictionary = (player.get("abilities") as Array)[0]
+				var bound2: Array = st.get("bound", [])
+				_expect("built again and bound: stage 2, ring 1 and ring 2 sealed, the remnant of Reach bound with them",
+					int(st["stage"]) == 2 and RuneWord.sealed(st.get("word", {})) == 2 and RuneWord.ring_nodes(st.get("word", {}), 2).size() == 1
+					and bound2.size() == 2 and str((bound2[1] as Dictionary)["tier"]) == "remnant" and str((bound2[1] as Dictionary)["concept"]) == "reach", str(st))
+				main.call("close_screen")
+				_runes_from = 0
+				_finish())
+			_queue_at = frames + 4
+	if not _queue.is_empty() and _queue_at > 0 and frames >= _queue_at:
+		var step: Callable = _queue.pop_front()
+		step.call()
+		_queue_at = frames + 4
+
+
+## The level 2 lock's ring, queued as real clicks and drags: the last cap on ring 1 right-clicked out,
+## a two-bond rune set in its place and dragged to from the core, a cap set on ring 2 and bonded to it.
+func _queue_ring2() -> void:
+	var player: Node = main.get("player")
+	var bd := func() -> RuneBoard: return _find(main, "RuneBoard") as RuneBoard
+	var last := func() -> int: return RuneWord.size(player.call("ability_word", 0)) - 1
+	_queue.append(func() -> void:
+		var at: Vector2 = (bd.call() as RuneBoard).node_global(int(last.call()))
+		_move(at, false)
+		_mouse(at, MOUSE_BUTTON_RIGHT, true)
+		_mouse(at, MOUSE_BUTTON_RIGHT, false))
+	_queue.append(func() -> void: _click_at(_centre(_find(main, "Rune_" + _link2))))
+	_queue.append(func() -> void: _click_at((bd.call() as RuneBoard).empty_slot_global(1, 0)))
+	_queue.append(func() -> void: _drag_start((bd.call() as RuneBoard).node_global(0)))
+	_queue.append(func() -> void: _move((bd.call() as RuneBoard).node_global(0).lerp((bd.call() as RuneBoard).node_global(int(last.call())), 0.5), true))
+	_queue.append(func() -> void: _drag_end((bd.call() as RuneBoard).node_global(int(last.call()))))
+	_queue.append(func() -> void: _click_at(_centre(_find(main, "Rune_" + _caps[0]))))
+	_queue.append(func() -> void: _click_at((bd.call() as RuneBoard).empty_slot_global(2, 0)))
+	_queue.append(func() -> void: _drag_start((bd.call() as RuneBoard).node_global(int(last.call()) - 1)))
+	_queue.append(func() -> void: _move((bd.call() as RuneBoard).node_global(int(last.call()) - 1).lerp((bd.call() as RuneBoard).node_global(int(last.call())), 0.5), true))
+	_queue.append(func() -> void: _drag_end((bd.call() as RuneBoard).node_global(int(last.call()))))
 
 
 ## A press on the board, the start of a drag (the moves and the release come on later frames).

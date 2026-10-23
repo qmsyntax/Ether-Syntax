@@ -65,8 +65,8 @@ var read_inscriptions: Array[String] = []
 ## The last rune discovered, {id, source}, for the HUD's card.
 var last_rune: Dictionary = {}
 ## The seal being drafted while the seal screen is open (not saved): {index, word, construct, mode}
-## - mode "bind" (a construct is being bound and the next ring formed) or "test" (a test
-## character's free edit).
+## - mode "bind": the skill's next level lock, its ring built and a construct chosen on the seal
+## screen (construct -1: none chosen yet). There is no other mode since Brent 2026-10-23.
 var seal_draft: Dictionary = {}
 var log_lines: Array[String] = []
 ## Counts every note() ever written, so the HUD can tell which lines are new.
@@ -3587,7 +3587,10 @@ func construct_groups(tier: String = "") -> Array[Dictionary]:
 
 ## Bind a carried construct into an ability. Irreversible; can fail, and failure hurts
 ## (Brent 2026-09-23). `roll` < 0 means roll randomly (tests pass a fixed roll).
-func bind_construct(ability_index: int, construct_index: int, roll: float = -1.0) -> String:
+## The bind's own arithmetic, with no seal: only bind_seal calls it in the game (Brent 2026-10-23:
+## "No binding the constructs on the main page, only with the runes"); the self-test calls it to
+## check the roll, the wound and the concept. The leading underscore says: not an entry point.
+func _bind_construct(ability_index: int, construct_index: int, roll: float = -1.0) -> String:
 	if ability_index < 0 or ability_index >= abilities.size() or construct_index < 0 or construct_index >= constructs.size():
 		return "nothing to bind"
 	var state: Dictionary = abilities[ability_index]
@@ -3617,27 +3620,23 @@ func bind_construct(ability_index: int, construct_index: int, roll: float = -1.0
 	return "bound"
 
 
-## Placeholder binding flow until the ethercosm screen exists: bind the first carried construct
-## into the first ability that is full and waiting for that tier.
-func bind_first_ready() -> void:
-	if constructs.is_empty():
-		note("You carry no constructs.")
-		return
-	for ci: int in constructs.size():
-		for ai: int in abilities.size():
-			if pending_tier(abilities[ai]) == str(constructs[ci]["tier"]):
-				bind_construct(ai, ci)
-				return
-	note("No ability is full and waiting for what you carry.")
-
-
-# --- rune words and seals (design/14 sections 7-8) -------------------------------------------
+# --- rune words and seals (design/14 sections 7-8, 11) ---------------------------------------
 # A skill's word is saved on its ability state as "word" (RuneWord: nodes on rings + links, no rules
 # in it). Brent 2026-10-23: a skill just levels until its bar is full; binding a construct into it
 # is when its runes are SEALED, one ring per level. Before the first binding a skill has no word.
-# The seal is drafted on a copy (seal_draft) while the seal screen is open - inner rings may be
-# reworked and the new ring added - and becomes the skill's word only if the bind takes; a failed
-# bind forms no seal. A test character has a free edit instead: any rune, any time.
+# Brent 2026-10-23 (later): "the binding of the constructs should come with each level lock ...
+# The levels all LOCK together. No binding the constructs on the main page, only with the runes."
+# A level lock is one act on the seal screen: the forming ring is built, the construct of the right
+# tier is chosen there, and the bind locks ring and construct together. The draft (seal_draft) is a
+# copy of the sealed word - inner rings may be reworked - and becomes the skill's word only if the
+# bind takes; a failed bind forms no seal. Rings are built from the skill outward (RingRules
+# .ring_formed): never a rune on ring k while ring k-1 is unformed, and the lock needs every ring up
+# to the new one formed. Test characters follow the same rule (no free edit any more).
+#
+# OLD SAVES (binds made under the earlier flow, which let a skill bind with its draft untouched): a
+# skill may be at stage N with no word, or with fewer sealed rings than N. Its next level lock opens
+# rings 1..N+1 as usual, but they are still built inside out: it forms every missing inner ring, in
+# order, plus the new one, and the bind needs all of them formed. Nothing is taken from the skill.
 # Whether a change is allowed, and what the word is, is asked of the rule set in force
 # (Runes.active()).
 
@@ -3646,11 +3645,7 @@ func rune_context(index: int) -> RuneContext:
 	if index < 0 or index >= abilities.size():
 		return RuneContext.of({}, affinities)
 	var drafting: bool = sealing_index() == index
-	var c: RuneContext = RuneContext.of(abilities[index], affinities, drafting and seal_mode() == "bind")
-	if drafting and seal_mode() == "test":
-		c.free_edit = true
-		c.rings = maxi(1, c.stage)
-	return c
+	return RuneContext.of(abilities[index], affinities, drafting and seal_mode() == "bind")
 
 
 ## The word of ability `index`: the draft while it is being sealed, else its sealed word, else a word
@@ -3676,12 +3671,12 @@ func sealing_index() -> int:
 	return int(seal_draft.get("index", -1)) if not seal_draft.is_empty() else -1
 
 
-## "bind", "test", or "" when no seal is being drafted.
+## "bind" while a level lock is being drafted, else "".
 func seal_mode() -> String:
 	return str(seal_draft.get("mode", ""))
 
 
-## The construct a "bind" draft will bind (-1: none).
+## The construct the level lock will bind (-1: none chosen - none of the tier is carried).
 func seal_construct() -> int:
 	return int(seal_draft.get("construct", -1))
 
@@ -3690,7 +3685,7 @@ func seal_construct() -> int:
 ## rune given its place on its ring (so nothing moves when bonds change).
 func _draft_from(index: int) -> Dictionary:
 	var w: Dictionary = _sealed_word(index).duplicate(true)
-	for key: String in ["sealed", "locked", "free_edit"]:
+	for key: String in ["sealed", "locked", "free_edit", "closure_waived"]:
 		w.erase(key)
 	w["rings"] = RuneWord.rings(w)
 	w["made_under"] = Runes.active().id
@@ -3706,7 +3701,7 @@ static func _pin_places(word: Dictionary, ctx: RuneContext) -> void:
 # --- the draft's history (Ctrl+Z / Ctrl+Y on the seal screen) ---------------------------------
 # Every change to the draft that the rules allow is a step; undo puts the draft back as it was before
 # the last step, redo puts the step back. The history lives with the draft and goes when it closes:
-# nothing is committed until the bind (or a test character's "Seal now").
+# nothing is committed until the bind.
 
 const DRAFT_HISTORY_MAX := 200
 
@@ -3756,29 +3751,37 @@ func draft_redo() -> bool:
 	return true
 
 
-## Open the seal of ability `index` for binding construct `construct_index` into it: the draft starts
-## as the sealed word, with room for one more ring. Returns {ok, reason, text}.
-func open_seal(index: int, construct_index: int) -> Dictionary:
+## Open the next level lock of ability `index` (its bar full): the draft starts as the sealed word,
+## with room for the next ring. The construct is chosen on the seal screen (choose_seal_construct);
+## `construct_index` < 0 picks the first carried one of the tier needed, if any - with none the ring
+## can still be laid out, but not bound. Returns {ok, reason, text}.
+func open_seal(index: int, construct_index: int = -1) -> Dictionary:
 	if index < 0 or index >= abilities.size():
 		return RuneRules.no("no_skill", "No such skill.")
 	var need: String = pending_tier(abilities[index])
 	if need == "":
-		return RuneRules.no("not_ready", "%s is not ready for a binding: its bar is not full." % str(GameData.ability(str(abilities[index]["id"])).get("name", "?")))
-	if construct_index < 0 or construct_index >= constructs.size():
-		return RuneRules.no("no_construct", "You carry no such construct.")
-	if str(constructs[construct_index]["tier"]) != need:
+		return RuneRules.no("not_ready", "%s is not ready for its level lock: its bar is not full." % str(GameData.ability(str(abilities[index]["id"])).get("name", "?")))
+	var ci: int = construct_index
+	if ci >= 0 and (ci >= constructs.size() or str(constructs[ci]["tier"]) != need):
 		return RuneRules.no("wrong_tier", "It needs a %s." % need)
-	seal_draft = {"index": index, "construct": construct_index, "mode": "bind", "word": _draft_from(index)}
+	if ci < 0:
+		var groups: Array[Dictionary] = construct_groups(need)
+		ci = int(groups[0]["index"]) if not groups.is_empty() else -1
+	seal_draft = {"index": index, "construct": ci, "mode": "bind", "word": _draft_from(index)}
 	return RuneRules.ok()
 
 
-## A test character's free edit of ability `index`: every rune, any time, sealed when it says so.
-func open_free_edit(index: int) -> Dictionary:
-	if index < 0 or index >= abilities.size():
-		return RuneRules.no("no_skill", "No such skill.")
-	if not test_character:
-		return RuneRules.no("not_test", "Only a test character can edit a word freely; runes are sealed at a binding.")
-	seal_draft = {"index": index, "construct": -1, "mode": "test", "word": _draft_from(index)}
+## Choose, on the seal screen, which carried construct this level lock binds: one of the tier the
+## skill needs. Returns {ok, reason, text}.
+func choose_seal_construct(construct_index: int) -> Dictionary:
+	if seal_mode() != "bind":
+		return RuneRules.no("not_sealing", "No level lock is being formed.")
+	var need: String = pending_tier(abilities[sealing_index()])
+	if construct_index < 0 or construct_index >= constructs.size():
+		return RuneRules.no("no_construct", "You carry no such construct.")
+	if str(constructs[construct_index]["tier"]) != need:
+		return RuneRules.no("wrong_tier", "This level lock needs a %s." % need)
+	seal_draft["construct"] = construct_index
 	return RuneRules.ok()
 
 
@@ -3801,59 +3804,72 @@ func draft_changed() -> bool:
 	return RuneWord.shape_key(seal_draft["word"]) != RuneWord.shape_key(_draft_from(sealing_index()))
 
 
-## May the open draft be bound? Unchanged (the word stays as it is) or a seal the rules accept.
-## {ok, reason, text, unchanged}.
+## May the level lock be bound? A construct of the right tier chosen, and the draft a seal the rules
+## accept - closed, and every ring up to the new one formed from the skill outward (the forming ring
+## cannot be left empty: ring and construct lock together). {ok, reason, text}.
 func can_bind_seal() -> Dictionary:
 	if seal_mode() != "bind":
-		return RuneRules.no("not_sealing", "No binding is being prepared.")
+		return RuneRules.no("not_sealing", "No level lock is being formed.")
+	return _can_bind(rune_context(sealing_index()))
+
+
+func _can_bind(ctx: RuneContext) -> Dictionary:
+	var need: String = pending_tier(abilities[sealing_index()])
 	var c: int = seal_construct()
-	if c < 0 or c >= constructs.size() or pending_tier(abilities[sealing_index()]) != str(constructs[c]["tier"]):
-		return RuneRules.no("no_construct", "The construct is no longer here to bind.")
-	if not draft_changed():
-		var r: Dictionary = RuneRules.ok()
-		r["unchanged"] = true
-		return r
-	return Runes.active().can_seal(seal_draft["word"], rune_context(sealing_index()))
+	if c < 0 or c >= constructs.size() or need != str(constructs[c]["tier"]):
+		if construct_groups(need).is_empty():
+			return RuneRules.no("no_construct", "You carry no %s: the ring can be laid out, but it cannot lock until you carry one (they are subdued in the Netherecho)." % need)
+		return RuneRules.no("no_construct", "Choose the %s to bind." % need)
+	return Runes.active().can_seal(seal_draft["word"], ctx)
 
 
-## Bind the draft's construct and, if the bind takes, seal the draft as the skill's word (one ring per
-## level). A failed bind (the existing roll) forms no seal: the word stays as it was. Returns what
-## bind_construct returns ("bound", "failed", ...) or why it could not be tried.
+## Bind the chosen construct and, if the bind takes, seal the draft as the skill's word: one ring per
+## level, locked together (the only bind in the game). A failed bind (the existing roll) forms no
+## seal: the word stays as it was and the construct is gone. Returns what _bind_construct returns
+## ("bound", "failed", ...) or why it could not be tried.
 func bind_seal(roll: float = -1.0) -> String:
-	var check: Dictionary = can_bind_seal()
+	return _bind_seal(roll, false)
+
+
+## TEST HOOK, code only (cast_every_skill and the self-test build big words with it; no screen and
+## no key reaches it): bind_seal for a test character with the closed-word rule waived. Everything
+## else is the real level lock - a construct of the tier, the roll, rings built inside out, one ring
+## per lock.
+func test_bind_unclosed(roll: float = 0.0) -> String:
+	if not test_character:
+		return "only a test character may seal an open word"
+	return _bind_seal(roll, true)
+
+
+func _bind_seal(roll: float, waive_closure: bool) -> String:
+	if seal_mode() != "bind":
+		return "No level lock is being formed."
+	var index: int = sealing_index()
+	var ctx: RuneContext = rune_context(index)
+	ctx.closure_waived = waive_closure
+	var check: Dictionary = _can_bind(ctx)
 	if not bool(check["ok"]):
 		return str(check["text"])
-	var index: int = sealing_index()
 	var draft: Dictionary = (seal_draft["word"] as Dictionary).duplicate(true)
-	var changed: bool = not bool(check.get("unchanged", false))
-	var result: String = bind_construct(index, seal_construct(), roll)
+	var result: String = _bind_construct(index, seal_construct(), roll)
 	close_seal()
 	var st: Dictionary = abilities[index]
 	var skill: String = str(GameData.ability(str(st["id"])).get("name", "?"))
-	if result == "bound" and changed:
+	if result == "bound":
 		var after: RuneContext = RuneContext.of(st, affinities)
+		after.closure_waived = waive_closure
 		var r: Dictionary = Runes.active().seal(draft, after, int(st["stage"]))
 		if bool(r["ok"]):
 			st["word"] = draft
-			note("The seal forms: %s now holds %d ring%s." % [skill, int(st["stage"]), "" if int(st["stage"]) == 1 else "s"])
-	elif result == "bound":
-		note("%s binds. The word stays as it was%s." % [skill, "" if st.has("word") else " - it has no word yet"])
+			note("The level lock holds: %s is sealed through %d ring%s." % [skill, int(st["stage"]), "" if int(st["stage"]) == 1 else "s"])
+		else:
+			push_error("bind_seal: the bind took but the seal was refused: %s" % str(r["text"]))
+		# TEST OVERRIDE (balance.json skills.test_refill_after_bind): a test character's next lock is open at once
+		if test_character and bool((GameData.balance["skills"] as Dictionary).get("test_refill_after_bind", false)):
+			st["progress"] = 100.0
 	elif result == "failed":
 		note("No seal forms. The word of %s stays as it was." % skill)
 	return result
-
-
-## A test character's free edit: seal the draft now (it need not be closed). The draft stays open.
-func seal_now() -> Dictionary:
-	if seal_mode() != "test":
-		return RuneRules.no("not_test", "Only a test character's free edit seals without a binding.")
-	var index: int = sealing_index()
-	var ctx: RuneContext = rune_context(index)
-	var w: Dictionary = (seal_draft["word"] as Dictionary).duplicate(true)
-	var r: Dictionary = Runes.active().seal(w, ctx, ctx.rings)
-	if bool(r["ok"]):
-		(abilities[index] as Dictionary)["word"] = w
-	return r
 
 
 ## The draft of ability `index` if it is being sealed, else {}.
@@ -3862,12 +3878,10 @@ func _draft_for(index: int) -> Dictionary:
 
 
 func _not_sealing(index: int) -> Dictionary:
-	if test_character:
-		return RuneRules.no("not_sealing", "Open the free edit to change the word.")
 	var st: Dictionary = abilities[index] if index >= 0 and index < abilities.size() else {}
 	var need: String = pending_tier(st) if not st.is_empty() else ""
-	return RuneRules.no("not_sealing", ("Runes are sealed when a construct is bound: bind a %s into it to form the seal." % need) if need != ""
-		else "Runes are sealed when a construct is bound into the skill: fill its bar first.")
+	return RuneRules.no("not_sealing", ("Runes are set at a level lock: open the seal of this skill, build its ring and bind a %s there." % need) if need != ""
+		else "Runes are set at a level lock, when the skill's bar is full: fill it first.")
 
 
 ## Set a rune into the draft of ability `index`, joined to node `to_node` when that is >= 0, on ring
@@ -4357,9 +4371,13 @@ func take_pickup(drop: Node3D) -> bool:
 
 ## Everything that must survive between sessions.
 ## A test character (title screen "Test characters"): this one affinity, and every skill of it
-## learned in tree order (any not on the tree after), each at balance.skills.test_stage. TEST
-## OVERRIDE: the stage cap is stars + 1, so it is given balance.skills.test_stars full stars - a
-## full tank. The first six skills are on the bar; the hotbar_page key shows the next six.
+## learned in tree order (any not on the tree after), each at balance.skills.test_stage (0: Brent
+## 2026-10-23 - a test character walks through every level lock in order, vestige to asura, on the
+## seal screen like anyone else) with its bar full. TEST OVERRIDES: the stage cap is stars + 1, so it
+## is given balance.skills.test_stars full stars (4: the asura lock is reachable) - a full tank; it
+## carries test_constructs_each of every construct; and after each bind that takes, its bar is filled
+## again (test_refill_after_bind, in _bind_seal). The first six skills are on the bar; the
+## hotbar_page key shows the next six.
 func make_test_character(aff: String) -> void:
 	set_affinities([aff])
 	test_character = true
@@ -4382,7 +4400,7 @@ func make_test_character(aff: String) -> void:
 		hotbar[i] = -1
 	var stage: int = mini(GameData.inum("skills", "test_stage"), stars + 1)
 	for id: String in ids:
-		abilities.append({"id": id, "stage": stage, "progress": 100.0})       # full bars: ready to bind
+		abilities.append({"id": id, "stage": stage, "progress": 100.0})       # full bars: ready for the first lock
 	for i: int in mini(hotbar.size(), abilities.size()):
 		hotbar[i] = i
 	# every construct tier of every concept, test_constructs_each of each, to bind with (Brent 2026-10-23)
@@ -4391,7 +4409,8 @@ func make_test_character(aff: String) -> void:
 		for concept: Variant in GameData.concept_ids():
 			for k: int in GameData.inum("skills", "test_constructs_each"):
 				constructs.append({"tier": str(tier), "concept": concept})
-	note("TEST CHARACTER: every %s skill, stage %d. %s turns the skill bar to the next six." % [str(GameData.affinity(aff).get("label", aff)).to_lower(), stage, Keybinds.binding_text("hotbar_page")])
+	note("TEST CHARACTER: every %s skill, stage %d, each ready for its level lock (the ethercosm). %s turns the skill bar to the next six." % [
+		str(GameData.affinity(aff).get("label", aff)).to_lower(), stage, Keybinds.binding_text("hotbar_page")])
 
 
 func to_save() -> Dictionary:

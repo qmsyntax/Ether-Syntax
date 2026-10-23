@@ -602,7 +602,7 @@ func _draw_plate() -> void:
 		for c: Dictionary in held.slice(0, 8):                 # at most 8 gems; the count says the rest
 			UiDraw.icon(self, "gem", Vector2(gx, gy - 5.0), 14.0, UiTheme.GOLD if str(c["tier"]) == "vestige" else UiTheme.STAR)
 			gx += 17.0
-		UiDraw.rich(self, Vector2(gx + 4.0, gy), "%d to bind  [%s]" % [held.size(), Keybinds.binding_text("bind")], UiTheme.FS_CAPTION + 1, UiTheme.TEXT_DIM, -1.0, false)
+		UiDraw.rich(self, Vector2(gx + 4.0, gy), "%d carried  [%s the seal]" % [held.size(), Keybinds.binding_text("bind")], UiTheme.FS_CAPTION + 1, UiTheme.TEXT_DIM, -1.0, false)
 
 
 # --- top centre: target frame, prompt, title ---------------------------------------------
@@ -1350,7 +1350,7 @@ func _draw_tooltip(vs: Vector2) -> void:
 				lines.append(["Sealed word: " + ", ".join(PackedStringArray(rune_fx.map(func(v: Variant) -> String: return str(v)))), body_px, UiTheme.GOLD])
 			var need: String = str(player.call("pending_tier", st))
 			if need != "":
-				lines.append(["Full. Bind a %s to advance (%s, or the inventory to choose)." % [need, Keybinds.binding_text("bind")], body_px, UiTheme.GOLD])
+				lines.append(["Full. Ready for its level %d lock: needs a %s, bound on its seal (%s)." % [int(st["stage"]) + 1, need, Keybinds.binding_text("bind")], body_px, UiTheme.GOLD])
 			for up: Dictionary in st.get("bound", []):
 				lines.append(["Bound: %s of %s" % [str(up["tier"]), str(GameData.concept(str(up["concept"])).get("label", up["concept"]))], body_px, UiTheme.STAR])
 	elif what == "strike":

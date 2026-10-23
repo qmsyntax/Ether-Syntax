@@ -412,6 +412,6 @@ static func normalize(saved: Variant, anchor_id: String) -> Dictionary:
 		out["sealed"] = int(src["sealed"])
 	elif bool(src.get("locked", false)):
 		out["sealed"] = maxi(1, outer_ring(out))
-	if bool(src.get("free_edit", false)):
-		out["free_edit"] = true
+	if bool(src.get("closure_waived", src.get("free_edit", false))):      # "free_edit": its name before 2026-10-23
+		out["closure_waived"] = true
 	return out
