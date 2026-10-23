@@ -710,3 +710,18 @@ every grunt has the same face behind the mask; frame rate with a full wall of re
 Verified: self-test 861/861 (new: each kind's body, height, costume, attack on wind-up); bots (scrubland, city, gate, death);
 zone; Netherecho death; click; creation; contact sheets; arena screenshot.
 Not verified: by hand.
+
+
+## Part AI — running arms, properly (Brent 2026-10-22: "The arm positions when running are still bad")
+
+| # | Story | Evidence | Status |
+|---|-------|----------|--------|
+| S06-176 | The cause: Mixamo downloads without skin carry Mixamo's T-pose as their rest, our rigged body keeps its A-pose, and the clips' channels were copied across unchanged, so every arm swung ~60 degrees further down and in (upper arms in the chest, hands across the body) in every clip but idle. `blender_character.py` `retarget` re-expresses each clip on the body's own rest | `shots/char-before-arms-bare.png` vs `shots/char-after1-arms-bare.png` | Done |
+| S06-177 | Loops: run_armed (Sword And Shield Run) while a weapon is in hand; sprint = the Standard Sprint's legs with the arms of "Running" (Mixamo's sprints pump the hands across the chest); sprint_armed = the same with run_armed's sword arm (`compose`, strides lined up). The player at 6.5 m/s now sprints at 1.2x instead of running at 1.57x. `wardrobe.json` "armed_loops", re-measured speeds | `shots/char-after-run-*.png`, `shots/char-after-sprint-*.png` | Done |
+| S06-178 | Self-test: elbows stay at least 0.10 m out on their own side and hands do not cross the middle in every moving loop (the old bodies fail it); armed and plain loops chosen by speed and weapon | self-test | Done |
+
+Not done / rough: with the big cleaver the armed loops hold the blade up in front of the face when seen from the front (fine
+from the game camera); with the right arm lost the plain loops play; the bodies themselves still read soft (source-model
+research for Brent, 2026-10-22).
+Verified: self-test 1015/0 (three runs); bots (gate, full, death); zone; Netherecho death (both); click (town, field);
+creation; contact sheets of every loop and the actions; in-game shots. Not verified: by hand, in motion on screen.

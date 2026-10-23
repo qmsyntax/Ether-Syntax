@@ -13,7 +13,7 @@ extends ModelRig
 
 const DIR := "res://assets/characters/"
 const TEX := "res://assets/characters/textures/"
-const LOOPS: Array[String] = ["idle", "walk", "run", "sprint", "meditate"]
+const LOOPS: Array[String] = ["idle", "walk", "run", "run_armed", "sprint", "sprint_armed", "meditate"]
 ## Regions hidden by a lost right forearm: forearm, hand and the elbow half of the upper arm.
 const LOST_ARM_MASK := (1 << 7) | (1 << 9) | (1 << 17)
 
@@ -51,6 +51,7 @@ var _hanging: Array[Node3D] = []           # props that hang straight down from 
 var _barefoot := false                     # no foot wraps under an empty feet slot
 var _walk_speed := 1.35
 var _run_speed := 3.7
+var _run_armed_speed := 3.6
 var _sprint_speed := 6.0
 var _one_shot := ""                        # an action playing to its end; the loops wait for it
 var _activity := ""
@@ -103,6 +104,7 @@ func _build(packed: PackedScene) -> void:
 	var body_cfg: Dictionary = (_wardrobe().get("bodies", {}) as Dictionary).get(_body_id, {})
 	_walk_speed = float(body_cfg.get("walk_speed", _walk_speed))
 	_run_speed = float(body_cfg.get("run_speed", _run_speed))
+	_run_armed_speed = float(body_cfg.get("run_armed_speed", _run_armed_speed))
 	_sprint_speed = float(body_cfg.get("sprint_speed", _sprint_speed))
 	height = float(body_cfg.get("height", 1.72))
 	radius = 0.35
@@ -707,15 +709,26 @@ func animate(_delta: float, speed: float, attacking: bool) -> void:
 		return
 	var want := _idle_clip
 	var rate := 1.0
-	if speed > 0.5 * (_run_speed + _sprint_speed) and _player.has_animation("sprint"):
-		want = "sprint"
+	var run_clip: String = _loop_for("run")
+	var run_speed: float = _run_armed_speed if run_clip != "run" else _run_speed
+	if speed > 0.5 * (run_speed + _sprint_speed) and _player.has_animation("sprint"):
+		want = _loop_for("sprint")
 		rate = speed / _sprint_speed
-	elif speed > 0.5 * (_walk_speed + _run_speed):
-		want = "run"
-		rate = speed / _run_speed
+	elif speed > 0.5 * (_walk_speed + run_speed):
+		want = run_clip
+		rate = speed / run_speed
 	elif speed > 0.25:
 		want = "walk"
 		rate = speed / _walk_speed
 	if _player.current_animation != want:
 		_player.play(want, 0.2)
 	_player.speed_scale = clampf(rate, 0.6, 1.8) if want != _idle_clip else 1.0
+
+
+## The loop to play for "run" or "sprint": with a weapon in hand and both arms, the armed one named in
+## data/wardrobe.json "armed_loops" (the weapon carried at the ready), if this body has it.
+func _loop_for(base: String) -> String:
+	if _weapon == null or not is_instance_valid(_weapon) or _arm_lost:
+		return base
+	var armed: String = str((_wardrobe().get("armed_loops", {}) as Dictionary).get(base, base))
+	return armed if _player.has_animation(armed) else base

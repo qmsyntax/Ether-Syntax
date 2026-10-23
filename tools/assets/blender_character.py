@@ -5,8 +5,11 @@
 - <prepared body.blend> comes from tools/assets/blender_body_prep.py: the Mixamo-rigged body (rest
   pose, idle action, shape keys, UV2 region ids) and its eyes;
 - every <name>.fbx in <animation dir> other than idle.fbx is a Mixamo download WITHOUT skin on the
-  same rig: its action is kept under <name>, its armature thrown away; each action gets its own NLA
-  track so the glTF exporter writes one animation per track and Godot imports them by name;
+  same rig: its action is retargeted from the download's own rest pose (Mixamo's T-pose) onto the
+  body's (the A-pose it was rigged in; see retarget), kept under <name>, and its armature thrown
+  away; each action gets its own NLA track so the glTF exporter writes one animation per track and
+  Godot imports them by name. Loops (LOOPS): idle, walk, run, run_armed (sword-and-shield run),
+  sprint, meditate, plus sprint_armed made here (the sprint with run_armed's sword arm, compose);
 - clothes, hair and beards are made here from the body itself: a garment is the body's own faces for
   the parts it covers, pushed out along the normals, so it keeps the body's skinning, region ids and
   build shape keys. Loose parts (coat skirts, collars, belts, packs, the topknot's bun, the braid)
@@ -25,7 +28,7 @@ import sys
 import bmesh
 import bpy
 import numpy as np
-from mathutils import Matrix, Vector
+from mathutils import Euler, Matrix, Quaternion, Vector
 from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 
@@ -1112,6 +1115,11 @@ def action_fcurves(act):
 ## Clips that run on past what the game needs: last frame kept (30 fps).
 TRIM = {"pickup": 165}
 
+## Loops: played over and over while the game moves the body. Downloaded in place, except the sprint,
+## which carries root motion and is measured, then pinned. run_armed (the sword-and-shield run) is the
+## run while a weapon is in hand.
+LOOPS = ("idle", "walk", "run", "run_armed", "sprint", "sprint_armed", "meditate")
+
 
 def trim(act, last):
     for fc in action_fcurves(act):
@@ -1123,6 +1131,165 @@ def trim(act, last):
     if hasattr(act, "use_frame_range"):
         act.use_frame_range = True
         act.frame_end = last
+
+
+def bone_order(arm):
+    """The armature's bone names, every parent before its children."""
+    out, todo = [], [b for b in arm.data.bones if b.parent is None]
+    while todo:
+        b = todo.pop(0)
+        out.append(b.name)
+        todo.extend(b.children)
+    return out
+
+
+def retarget(act, src_arm, dst_arm):
+    """Re-express a clip made on another rest pose on the body's own rest pose; returns the new action.
+
+    Mixamo's downloads WITHOUT skin carry Mixamo's T-pose as the skeleton's rest, while the rigged
+    body (idle.fbx, WITH skin) keeps the A-pose it was bound in. Pose channels are relative to the
+    rest, so the same channels on the A-pose rest swing every arm a further ~60 degrees down and
+    in: the upper arms sink into the chest and the hands cross the body (Brent 2026-10-22: "the arm
+    positions when running are still bad"). Here each bone takes, frame by frame, the orientation it
+    has on the clip's own skeleton (armature space), and the hips their position; the bones' lengths
+    are the same on both, so the pose is the clip's as it was made."""
+    names = [n for n in bone_order(dst_arm) if n in src_arm.data.bones]
+    rest_s = {n: src_arm.data.bones[n].matrix_local for n in names}
+    rest_d = {n: dst_arm.data.bones[n].matrix_local for n in names}
+    parent = {n: (dst_arm.data.bones[n].parent.name if dst_arm.data.bones[n].parent else None) for n in names}
+    curves = {}
+    for fc in action_fcurves(act):
+        if fc.data_path.startswith('pose.bones["'):
+            n = fc.data_path.split('"')[1]
+            curves[(n, fc.data_path.rsplit(".", 1)[1], fc.array_index)] = fc
+
+    def channel(n, kind, size, default):
+        return [curves[(n, kind, i)] if (n, kind, i) in curves else None for i in range(size)], default
+
+    def value(chans, f):
+        cs, d = chans
+        return [c.evaluate(f) if c is not None else d[i] for i, c in enumerate(cs)]
+
+    rot, loc = {}, {}
+    for n in names:
+        if any((n, "rotation_quaternion", i) in curves for i in range(4)):
+            rot[n] = ("q", channel(n, "rotation_quaternion", 4, [1.0, 0.0, 0.0, 0.0]))
+        else:
+            rot[n] = ("e", channel(n, "rotation_euler", 3, [0.0, 0.0, 0.0]))
+        loc[n] = channel(n, "location", 3, [0.0, 0.0, 0.0])
+    f0, f1 = int(round(act.frame_range[0])), int(round(act.frame_range[1]))
+    frames = list(range(f0, f1 + 1))
+    keys = {n: {"q": [], "l": []} for n in names}
+    worst = 0.0
+    for n in names:
+        q = rest_s[n].to_quaternion().rotation_difference(rest_d[n].to_quaternion())
+        worst = max(worst, math.degrees(q.angle if q.angle <= math.pi else 2 * math.pi - q.angle))
+    for f in frames:
+        src_q, dst_q = {}, {}
+        for n in names:
+            kind, ch = rot[n]
+            v = value(ch, f)
+            lq = Quaternion(v).normalized() if kind == "q" else Euler(v).to_quaternion()
+            p = parent[n]
+            rel_s = (rest_s[p].inverted() @ rest_s[n]).to_quaternion() if p else rest_s[n].to_quaternion()
+            src_q[n] = (src_q[p] @ rel_s @ lq) if p else (rel_s @ lq)          # armature-space orientation
+            rel_d = (rest_d[p].inverted() @ rest_d[n]).to_quaternion() if p else rest_d[n].to_quaternion()
+            base = (dst_q[p] @ rel_d) if p else rel_d
+            local = base.inverted() @ src_q[n]
+            dst_q[n] = base @ local
+            if keys[n]["q"] and keys[n]["q"][-1].dot(local) < 0.0:            # no flips between keys
+                local.negate()
+            keys[n]["q"].append(local)
+            if p is None:                                                      # the hips: same place
+                head = rest_s[n] @ Vector(value(loc[n], f))
+                keys[n]["l"].append(rest_d[n].to_quaternion().inverted() @ (head - rest_d[n].translation))
+    out = bpy.data.actions.new(act.name + "_rt")
+    ad = dst_arm.animation_data or dst_arm.animation_data_create()
+    was = ad.action
+    ad.action = out                                    # a layered action makes its slot for the body
+    for n in names:
+        paths = [("rotation_quaternion", 4, [tuple(q) for q in keys[n]["q"]])]
+        if keys[n]["l"]:
+            paths.append(("location", 3, [tuple(v) for v in keys[n]["l"]]))
+        for kind, size, vals in paths:
+            for i in range(size):
+                path = 'pose.bones["%s"].%s' % (n, kind)
+                fc = (out.fcurve_ensure_for_datablock(dst_arm, path, index=i, group_name=n)
+                      if hasattr(out, "fcurve_ensure_for_datablock") else out.fcurves.new(path, index=i, action_group=n))
+                fc.keyframe_points.add(len(frames))
+                co = [c for f, v in zip(frames, vals) for c in (float(f), v[i])]
+                fc.keyframe_points.foreach_set("co", co)
+                for k in fc.keyframe_points:
+                    k.interpolation = "LINEAR"
+                fc.update()
+    ad.action = was
+    modes = {pb.rotation_mode for pb in dst_arm.pose.bones}
+    assert modes == {"QUATERNION"}, "retarget writes quaternions; the body's bones are %s" % modes
+    print("RETARGET %s frames %d-%d, rest differed by up to %.0f deg" % (act.name, f0, f1, worst))
+    return out
+
+
+def arm_chain(name, side="Right"):
+    """True for the bones of one arm: shoulder, upper arm, forearm, hand and fingers."""
+    return name.startswith("mixamorig:" + side) and any(k in name for k in ("Shoulder", "Arm", "Hand"))
+
+
+def stride_phase(act, axis=None):
+    """Where in its cycle (0..1) a loop swings the left thigh furthest one way, and the axis it swings
+    along (the thigh's direction in its rest frame; pass the base clip's axis to measure another clip
+    the same way - every clip is on the body's own rest pose after retarget)."""
+    chans = {fc.array_index: fc for fc in action_fcurves(act) if fc.data_path == 'pose.bones["mixamorig:LeftUpLeg"].rotation_quaternion'}
+    f0, f1 = act.frame_range
+    frames = np.linspace(f0, f1, 61)[:-1]
+    dirs = np.array([Quaternion([chans[i].evaluate(f) if i in chans else (1.0 if i == 0 else 0.0) for i in range(4)]).normalized()
+                     @ Vector((0.0, 1.0, 0.0)) for f in frames])
+    if axis is None:
+        centred = dirs - dirs.mean(axis=0)
+        axis = np.linalg.svd(centred, full_matrices=False)[2][0]
+    return float(np.argmax(dirs @ axis)) / len(frames), axis
+
+
+def compose(base, layers, arm, name):
+    """A loop that is `base` everywhere except the arms named in `layers` [(clip, "Left"|"Right")],
+    each arm playing its clip stretched to base's cycle and shifted so the strides line up (the arm
+    swings against the same leg it did in its own clip). sprint = the sprint's legs and body with the
+    arms of "Running" (Mixamo's sprints pump the hands across the chest); sprint_armed = the same with
+    the sword arm of the sword-and-shield run, so a weapon is carried at the ready."""
+    b0, b1 = base.frame_range
+    frames = list(range(int(round(b0)), int(round(b1)) + 1))
+    phase_b, axis = stride_phase(base)
+    sources = [(base, None, 0.0)]
+    for over, side in layers:
+        sources.append((over, side, stride_phase(over, axis)[0] - phase_b))
+    out = bpy.data.actions.new(name)
+    ad = arm.animation_data or arm.animation_data_create()
+    was = ad.action
+    ad.action = out
+    for src, side, shift in sources:
+        o0, o1 = src.frame_range
+        for fc in action_fcurves(src):
+            if not fc.data_path.startswith('pose.bones["'):
+                continue
+            bone = fc.data_path.split('"')[1]
+            owner = next((sd for o, sd in layers if arm_chain(bone, sd)), None)
+            if owner != side:
+                continue
+            g = fc.group.name if fc.group else bone
+            new = (out.fcurve_ensure_for_datablock(arm, fc.data_path, index=fc.array_index, group_name=g)
+                   if hasattr(out, "fcurve_ensure_for_datablock") else out.fcurves.new(fc.data_path, index=fc.array_index, action_group=g))
+            new.keyframe_points.add(len(frames))
+            if side is None:
+                at = frames
+            else:
+                at = [o0 + (((f - b0) / max(1e-6, b1 - b0) + shift) % 1.0) * (o1 - o0) for f in frames]
+            new.keyframe_points.foreach_set("co", [c for f, t in zip(frames, at) for c in (float(f), fc.evaluate(t))])
+            for k in new.keyframe_points:
+                k.interpolation = "LINEAR"
+            new.update()
+    ad.action = was
+    print("COMPOSED %s: %s with %s" % (name, base.name, ", ".join("the %s arm of %s (stride shift %.2f)" % (sd.lower(), o.name, sh)
+                                                                for (o, sd, sh) in sources[1:])))
+    return out
 
 
 def pin_root(act, arm):
@@ -1212,9 +1379,12 @@ def main():
         before, acts = set(bpy.data.objects), set(bpy.data.actions)
         bpy.ops.import_scene.fbx(filepath=os.path.join(anim_dir, fn), automatic_bone_orientation=False)
         new_acts = [a for a in bpy.data.actions if a not in acts]
+        clip_arm = next(o for o in bpy.data.objects if o not in before and o.type == "ARMATURE")
+        act = retarget(new_acts[0], clip_arm, arm)           # the clip's T-pose rest -> the body's own
         for o in [o for o in bpy.data.objects if o not in before]:
             bpy.data.objects.remove(o, do_unlink=True)
-        tracks.append((fn[:-4], new_acts[0]))
+        bpy.data.actions.remove(new_acts[0])
+        tracks.append((fn[:-4], act))
     sc = bpy.context.scene
     sc.render.fps = 30
     for name, act in tracks:
@@ -1222,14 +1392,21 @@ def main():
         if name == "sprint":                          # Mixamo leaves this one moving: measure it, then pin it
             print("SPEED sprint %.3f" % travel_speed(arm, act))
             print("PINNED sprint drift %.1f" % pin_root(act, arm))
-        if name not in ("idle", "walk", "run", "sprint", "meditate"):
+        if name not in LOOPS:
             print("PINNED %s drift %.1f" % (name, pin_root(act, arm)))
         if name in TRIM:
             trim(act, TRIM[name])
     by = dict(tracks)
-    for name in ("walk", "run"):
+    for name in ("walk", "run", "run_armed"):
         if name in by:
             print("SPEED %s %.3f" % (name, native_speed(arm, by[name])))
+    if "sprint" in by and "run" in by:                    # the sprint's legs, the run's arms (see compose)
+        sprint = by["sprint"]
+        sprint.name = "sprint_mixamo"
+        both = compose(sprint, [(by["run"], "Left"), (by["run"], "Right")], arm, "sprint")
+        if "run_armed" in by:
+            tracks.append(("sprint_armed", compose(sprint, [(by["run"], "Left"), (by["run_armed"], "Right")], arm, "sprint_armed")))
+        tracks[[n for n, _ in tracks].index("sprint")] = ("sprint", both)
     ad = arm.animation_data or arm.animation_data_create()
     ad.action = None
     for name, act in tracks:
