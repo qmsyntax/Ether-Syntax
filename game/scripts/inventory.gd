@@ -139,7 +139,7 @@ func unequip(slot: String) -> String:
 ## crafting tool, kit or material you may be keeping for a combine (those sell one at a time).
 static func is_loot(id: String) -> bool:
 	var def: Dictionary = GameData.item(id)
-	return str(def.get("slot", "")) == "" and not ["scroll", "tool", "kit", "material"].has(str(def.get("kind", "")))
+	return str(def.get("slot", "")) == "" and not ["scroll", "tool", "kit", "material", "consumable"].has(str(def.get("kind", "")))
 
 
 func loot_value() -> int:

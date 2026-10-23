@@ -615,6 +615,7 @@ func enter_zone(id: String, arrive: String) -> void:
 	zone_id = id
 	_zone = ZoneBuilder.new(self, def)
 	_zone.build()
+	_build_field_life()
 	var spot: Array = (def.get("arrive", {}) as Dictionary).get(arrive, [_zone.size.x * 0.5, _zone.size.y * 0.5])
 	player.global_position = level.to_global(_zone.to_local(float(spot[0]), float(spot[1])))
 	player.set("active", true)
@@ -626,6 +627,7 @@ func enter_zone(id: String, arrive: String) -> void:
 	state = "field"
 	_reveal()
 	player.call("note", "You walk out into %s." % str(def.get("name", id)))
+	save_now()
 
 
 ## Each frame in a zone: the lines you are standing at, and what the door ahead says.
@@ -646,6 +648,7 @@ func _tick_field(_delta: float) -> void:
 	if _cut_door_in_reach():
 		_prompt = "%s the door into Tenwall Cut - an owned passage: ticket $%d, and a meter while you are inside." % [_k("interact"), ticket_price]
 	_stone_prompt()
+	_entrance_prompt()
 
 
 ## Clear the fog round where you stand, and keep what you have seen with the character.
@@ -675,7 +678,8 @@ func minimap_info() -> Dictionary:
 			var pos: Array = c.get("pos", [0.0, 0.0, 0.0])
 			lying.append(Vector2(float(pos[0]) + _zone.size.x * 0.5, float(pos[2]) + _zone.size.y * 0.5))
 	return {"def": _zone.def, "size": _zone.size, "fog": fog, "at": zone_point(player.global_position),
-		"facing": Vector2(facing.x, facing.z), "corpses": lying}
+		"facing": Vector2(facing.x, facing.z), "corpses": lying,
+		"camps": field_camps.minimap_marks() if field_camps != null and is_instance_valid(field_camps) else []}
 
 
 func _cut_door_in_reach() -> bool:
@@ -699,7 +703,325 @@ func _field_interact() -> void:
 		if state == "dungeon":
 			_return_to = {"zone": from_zone, "at": "cut_house_door"}
 		return
+	if _use_entrance():
+		return
 	player.call("note", "Nothing here to use.")
+
+
+# --- the living field: camps, entrances, your place in the save (2026-10-23, the Stubble) ---------
+
+## The zone's camps, herds, roamers and lurker patches (FieldCamps), while in a zone.
+var field_camps: FieldCamps
+var _field_save_t := 0.0
+
+
+## Put the zone's living things in it (zones.json "camps", "lurker_patches").
+func _build_field_life() -> void:
+	field_camps = FieldCamps.new()
+	field_camps.setup(self, _zone)
+	level.add_child(field_camps)
+	field_camps.build(OS.get_cmdline_user_args().has("--all-camps"))
+	_field_save_t = 0.0
+
+
+## The dungeon mouth you are standing at (FieldEntrance), or null. Name plates show near them.
+func _entrance_in_reach() -> FieldEntrance:
+	var best: FieldEntrance = null
+	var best_d := INF
+	for n: Node in get_tree().get_nodes_in_group("field_entrances"):
+		var e := n as FieldEntrance
+		if e == null or not e.is_inside_tree():
+			continue
+		var d: float = _flat_dist(e.global_position, player.global_position)
+		e.set_near(d <= e.reach * 3.0)
+		if d <= e.reach and d < best_d:
+			best = e
+			best_d = d
+	return best
+
+
+func _entrance_prompt() -> void:
+	var e: FieldEntrance = _entrance_in_reach()
+	if e != null:
+		_prompt = "%s %s - %s" % [_k("interact"), e.entrance_name, e.flavour]
+	_field_save_t += get_process_delta_time()
+	if _field_save_t >= float((GameData.balance.get("camps", {}) as Dictionary).get("field_autosave_s", 30.0)):
+		_field_save_t = 0.0
+		save_now()                              # the save keeps your place out here
+
+
+## Use the entrance you are at: it says what it is and that it is not open yet (stubbed).
+func _use_entrance() -> bool:
+	var e: FieldEntrance = _entrance_in_reach()
+	if e == null:
+		return false
+	player.call("note", e.use_text())
+	hud.call("announce", e.entrance_name.to_upper())
+	return true
+
+
+## Screenshot setups for the populated Stubble (windowed): --shot-ui=stubble-<what>. Each waits for
+## the moment it exists to show (a wind-up, a charge, a rise) and then saves shots/shot.png.
+##   overview, map, nether, swallow, cellar, herd, lurker, gleaner, scald, and fight-<kind>.
+func _setup_stubble_shot(which: String) -> bool:
+	var what: String = which.trim_prefix("stubble-")
+	_select_talent(0)
+	player.set("look", CharacterLook.default_look())
+	walk_out()
+	player.set("bot", true)                         # it is not the subject: nothing it takes counts
+	player.set_physics_process(false)
+	var stand := func(x: float, y: float) -> void:
+		player.global_position = level.to_global(_zone.to_local(x, y))
+		_reveal()
+	var near_kind := func(kind: String) -> Node:
+		for n: Node in get_tree().get_nodes_in_group("enemies"):
+			if str(n.get("kind")) == kind:
+				return n
+		return null
+	_cam_zoom_target = 0.55
+	cam_zoom = 0.55
+	var until: Callable = func() -> bool: return false
+	var go: Callable = func() -> void: pass         # what starts the moment, once the shaders have settled
+	match what:
+		"overview":
+			# straight down on the whole zone, north up: the layout, not the look
+			stand.call(120.0, 80.0)
+			camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+			camera.size = 168.0
+			camera.far = 2000.0
+			_cam_debug = true
+			player.visible = false
+			hud.visible = false
+			var north: Vector3 = level.global_transform.basis * Vector3(0, 0, -1)
+			var mid: Vector3 = level.to_global(_zone.to_local(120.0, 80.0))
+			cam_shot = Transform3D.IDENTITY.looking_at(Vector3.DOWN, north).translated(mid + Vector3.UP * 150.0)
+			_env.fog_enabled = false                  # from this high the fog would hide everything
+			# labels over the layout: camps (red), herds (green), lurker patches (brown), mouths and landmarks
+			var tags: Array = []
+			for c: Dictionary in _zone.def.get("camps", []):
+				tags.append([c["at"], str(c.get("name", "")), Color(0.55, 1.0, 0.5) if bool(c.get("herd", false)) else Color(1.0, 0.45, 0.35)])
+			for p2: Dictionary in _zone.def.get("lurker_patches", []):
+				tags.append([p2["at"], "lurker", Color(0.85, 0.65, 0.4)])
+			for e3: Dictionary in _zone.def.get("entrances", []):
+				tags.append([e3["at"], str(e3.get("name", "")), Color(1.0, 0.85, 0.4)])
+			for m: Dictionary in _zone.def.get("landmarks", []):
+				tags.append([m["at"], str(m.get("name", "")), Color(0.9, 0.9, 1.0)])
+			tags.append([[222, 112], "The Cut House", Color(1.0, 0.85, 0.4)])
+			var labels := ShotLabels.new()
+			for t: Array in tags:
+				labels.items.append([level.to_global(_zone.to_local(float(t[0][0]), float(t[0][1]))), t[1], t[2]])
+			labels.camera = camera
+			var lay := CanvasLayer.new()
+			lay.layer = 90
+			add_child(lay)
+			lay.add_child(labels)
+		"map":
+			# a walk's worth of the zone seen: the road, the well, the herd, the tree, the Cut track
+			for p: Array in [[40, 6], [70, 14], [100, 18], [130, 24], [160, 30], [188, 44], [200, 80], [212, 108], [98, 70], [120, 110], [150, 96], [170, 130], [72, 130], [52, 96]]:
+				stand.call(float(p[0]), float(p[1]))
+			stand.call(150.0, 96.0)
+			field_camps.wake_camp("tree_camp")
+			field_camps.tick(0.016)
+		"nether":
+			stand.call(96.0, 74.0)
+			player.set("bot", false)
+			player.set_physics_process(true)
+			nether.enter()
+			nether.projection.global_position = level.to_global(_zone.to_local(99.0, 68.0))
+			_cam_zoom_target = 0.25
+			cam_zoom = 0.25
+		"lineup":
+			# every beast in a row beside you, standing still, at the game's camera
+			stand.call(140.0, 50.0)
+			var i: int = 0
+			for kind: String in ["chaff_wren", "kettle_beetle", "gleaner", "ditch_hound", "sod_lurker", "burr_hog", "wirehorn", "thornback"]:
+				var e: Node3D = _spawn_shot_beast(kind, Vector3(-7.0 + 2.1 * float(i), 0, -3.0 - 0.6 * float(i)))
+				e.set("target", null)
+				e.set("calm", false)
+				e.set("buried", false)
+				if kind == "sod_lurker":
+					e.call("rise")
+					e.set("_rise_t", -1.0)
+					((e.get("_rig")) as Node3D).position.y = 0.0
+				i += 1
+			_cam_zoom_target = 0.35
+			cam_zoom = 0.35
+		"swallow":
+			stand.call(166.0, 134.0)
+		"cellar":
+			stand.call(70.0, 131.0)
+		"herd":
+			stand.call(126.0, 106.0)
+			player.set("_facing", Vector3(0, 0, 1))
+			go = func() -> void: field_camps.wake_camp("the_herd")
+			_cam_zoom_target = 0.2
+			cam_zoom = 0.2
+			until = func() -> bool:
+				for n: Node in field_camps.members_of("the_herd"):
+					if str(n.get("_special")) == "charge" and float(n.get("_windup")) < 0.5:
+						return true
+				return false
+		"lurker":
+			stand.call(128.6, 72.0)
+			player.set("bot", false)
+			go = func() -> void:
+				stand.call(128.8, 79.2)
+				player.set_physics_process(true)
+			until = func() -> bool:
+				for p: Dictionary in field_camps.patches:
+					var l: Node = p["lurker"]
+					if l != null and is_instance_valid(l) and bool(l.call("is_rising")) and float(l.get("_rise_t")) < 0.3:
+						return true
+				return false
+		"gleaner":
+			stand.call(112.0, 36.0)
+			go = func() -> void:
+				stand.call(112.0, 48.0)
+				field_camps.tick(0.016)
+			_cam_zoom_target = 0.15
+			cam_zoom = 0.15
+			until = func() -> bool:
+				var g: Node = near_kind.call("gleaner")
+				return g != null and bool(g.call("is_running")) and (g as Node3D).global_position.distance_to(player.global_position) > 12.0
+		"scald":
+			stand.call(140.0, 50.0)
+			var at: Array = [0]
+			go = func() -> void:
+				var b: Node3D = _spawn_shot_beast("kettle_beetle", Vector3(1.5, 0, -1.0))
+				b.call("take_hit", 99999.0, false, null)
+			until = func() -> bool:
+				at[0] = int(at[0]) + 1
+				return int(at[0]) > 25
+		_:
+			if not what.begins_with("fight-"):
+				return false
+			var kind: String = what.trim_prefix("fight-")
+			stand.call(140.0, 50.0)
+			player.set("_facing", Vector3(0, 0, -1))
+			var offs: Array = [Vector3(0, 0, -5)]
+			if kind == "chaff_wren":
+				offs = [Vector3(-2, 0, -5), Vector3(2, 0, -5), Vector3(0, 0, -6), Vector3(3, 0, -3)]
+			elif kind == "ditch_hound":
+				offs = [Vector3(-3, 0, -4), Vector3(3, 0, -4)]
+			elif kind == "burr_hog" or kind == "thornback":
+				offs = [Vector3(0, 0, -9)]
+			elif kind == "wirehorn":
+				offs = [Vector3(0, 0, -1.9)]
+			var made: Array = []
+			go = func() -> void:
+				for o: Vector3 in offs:
+					var e: Node3D = _spawn_shot_beast(kind, o)
+					made.append(e)
+					if e.has_method("provoke"):
+						e.call("provoke", player)
+					if kind == "wirehorn":
+						e.set("facing", Vector3(0, 0, -1))   # its back to you: the kick
+			until = func() -> bool:
+				for e2: Node in made:
+					if not is_instance_valid(e2):
+						continue
+					if kind == "burr_hog" or kind == "thornback":
+						if str(e2.get("_special")) == "charge" and float(e2.get("_windup")) < 0.6:
+							return true
+					elif kind == "ditch_hound":
+						if float(e2.get("_windup")) >= 0.0 and bool(e2.call("is_at_targets_back")):
+							return true
+					elif kind == "wirehorn":
+						if bool(e2.get("_kick")) and float(e2.get("_windup")) >= 0.0 and float(e2.get("_windup")) < 0.2:
+							return true
+					elif float(e2.get("_windup")) >= 0.0 and float(e2.get("_windup")) < 0.25:
+						return true
+				return false
+	var watch := ShotWatch.new()
+	watch.main_node = self
+	watch.until = until
+	watch.go = go
+	watch.cam = cam_shot
+	watch.settle = 420 if OS.get_cmdline_user_args().has("--settle") else 90
+	add_child(watch)
+	return true
+
+
+## A camera a shot holds fixed (the overview), or null.
+var cam_shot: Variant = null
+
+
+## A beast for a screenshot, `offset` metres from the player (level frame), awake.
+func _spawn_shot_beast(kind: String, offset: Vector3) -> Node3D:
+	var e: CharacterBody3D = Beast.new()
+	e.call("setup", kind, player, 0.8)
+	e.position = level.to_local(player.global_position) + offset
+	level.add_child(e)
+	return e
+
+
+## Text pinned to world points, for the overview shot.
+class ShotLabels extends Control:
+	var items: Array = []
+	var camera: Camera3D
+
+	func _ready() -> void:
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _process(_delta: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		for it: Array in items:
+			var p: Vector2 = camera.unproject_position(it[0])
+			draw_circle(p, 5.0, Color(0, 0, 0, 0.8))
+			draw_circle(p, 3.5, it[2])
+			UiDraw.outlined(self, p + Vector2(8, 5), str(it[1]), 15, it[2])
+
+
+## Waits (in frames) for a screenshot's moment, then takes it. At most `left` frames.
+class ShotWatch extends Node:
+	var main_node: Node
+	var until: Callable
+	var go: Callable
+	var cam: Variant = null
+	var settle := 90
+	var left := 1500
+	var _armed := -1
+
+	func _process(_delta: float) -> void:
+		if cam is Transform3D:
+			(main_node.get("camera") as Camera3D).global_transform = cam
+		settle -= 1
+		left -= 1
+		if settle == 0 and go.is_valid():
+			go.call()
+			return
+		if _armed > 0:
+			_armed -= 1
+			if _armed == 0:
+				main_node.call("_save_shot")
+			return
+		if settle <= 0 and (left <= 0 or bool(until.call())):
+			_armed = 2
+
+
+## Where the character is, for the save: the zone and the spot, or {} (town).
+func _place_for_save() -> Dictionary:
+	if state != "field" or _zone == null:
+		return {}
+	var at: Vector2 = zone_point(player.global_position)
+	return {"zone": zone_id, "at": [snappedf(at.x, 0.1), snappedf(at.y, 0.1)]}
+
+
+## Load into the zone and spot a save was made in. False if it was made in town (or the zone is gone).
+func _resume_place(place: Variant) -> bool:
+	if not (place is Dictionary) or str((place as Dictionary).get("zone", "")) == "" or GameData.zone(str(place["zone"])).is_empty():
+		return false
+	var where: Dictionary = place
+	enter_zone(str(where["zone"]), "")
+	var at: Array = where.get("at", [])
+	if at.size() == 2 and _zone != null:
+		player.global_position = level.to_global(_zone.to_local(float(at[0]), float(at[1])))
+		_reveal()
+		save_now()
+	return state == "field"
 
 
 # --- the Netherecho ------------------------------------------------------------------------
@@ -1007,6 +1329,7 @@ func save_to_slot(slot: int) -> bool:
 	data["day"] = day
 	data["delves"] = delves
 	data["hardcore"] = hardcore
+	data["place"] = _place_for_save()
 	var ok: bool = SaveGame.write(data, SaveGame.slot_path(slot))
 	if slot > 0:
 		player.call("note", "Saved to slot %d." % slot if ok else "Could not write slot %d." % slot)
@@ -1027,7 +1350,8 @@ func load_slot(slot: int) -> bool:
 	day = int(data.get("day", 1))
 	delves = int(data.get("delves", 0))
 	hardcore = bool(data.get("hardcore", false))
-	_enter_town()
+	if not _resume_place(data.get("place", {})):
+		_enter_town()
 	return true
 
 
@@ -1891,6 +2215,8 @@ func _setup_ui_shot(which: String) -> void:
 		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 		_cam_debug = true
 		player.set_physics_process(false)
+		return
+	if which.begins_with("stubble-") and _setup_stubble_shot(which):
 		return
 	if which == "stubble" or which == "stubble-cut":
 		# out of the Dross Gate, a little way down the road: the tip, the wall behind, the field ahead

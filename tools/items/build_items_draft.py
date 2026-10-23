@@ -605,7 +605,8 @@ def build_band1():
     ids = list(v2i.keys()) + [k for k in livei if k not in v2i]
     remains_ids = set()
     for e in json.loads((ROOT / "game/data/enemies.json").read_text(encoding="utf-8"))["enemies"].values():
-        remains_ids.add(e.get("remains", ""))
+        r = e.get("remains", "")
+        remains_ids.update(r if isinstance(r, list) else [r])     # a beast may leave several (2026-10-23)
     for iid in ids:
         src = dict(v2i.get(iid, {}))
         if iid in livei:
@@ -614,7 +615,7 @@ def build_band1():
                 if k in lv and not (iid in retuned and k == "desc"):
                     src[k] = lv[k]
             if "kind" in lv:
-                src["kind"] = lv["kind"]
+                src["kind"] = "trade" if lv["kind"] == "curio" else lv["kind"]     # a curio is a trade good to the catalogue
             if "teaches" in lv:
                 src["teaches"] = lv["teaches"]
             if "stats" in lv and iid not in retuned and "stats" not in src:
@@ -673,6 +674,8 @@ def wardrobe_looks():
 # ---------- band-1 additions the new systems need ----------
 def build_band1_additions():
     def a(iid, name, kind, cat, w, v, desc, **extra):
+        if iid in ITEMS:
+            return                      # live now (game/data/items.json): the live entry wins
         add(iid, base_item(name, "", kind, cat, 1, w, v, desc, extra.pop("stack", stack_for_weight(w)), **extra))
     a("flax_bundle", "Flax Bundle", "material", "raw", 1.0, 25, "Retted flax off the Stubble's one wet corner. Spun, it is linen.", source=["gather", "shop"])
     a("linen_bolt", "Linen Bolt", "material", "material", 1.0, 40, "A bolt of plain linen. Padding, dressings, the inside of everything.", line="mat_cloth", source=["craft", "shop"])
@@ -767,6 +770,58 @@ def build_materials(b):
                                               0.2, nice(150 * v),
                                               f"{AFF_LABEL[aff]} ether that pooled and set in rich ground, {info['grade_word'].lower()} all the way through. Charms, talismans and charges are made of it.",
                                               20, affinity=aff, source=["gather"], line=f"settled_{aff}"))
+
+
+# ---------- the Stubble's beasts (2026-10-23): their remains into Rendering and Leatherwork ----------
+# The unstarred beasts of the Stubble (game/data/enemies.json, design/07 5.4) leave hides, bone, meat
+# and fat. Their remains are live items (game/data/items.json); here they become the raw stock of
+# band-1 Rendering (scraped hide + tallow, bone meal + marrow, tallow from fat and meat) and, through
+# a field-hide scraping, of Leatherwork's cured hide. These are ALTERNATIVE recipes ("alt": true) for
+# outputs that already have their own; the one new material is the Scraped Field Hide. [MODEL]
+SCRAPED_FIELD_HIDE = ("scraped_field_hide", "Scraped Field Hide", 2.0, 90,
+                      "A beast hide of the Stubble flensed clean. Two of them tan into a side of cured hide.")
+# (recipe id suffix, station, inputs, outputs {id: n}, byproducts {id: n})
+BEAST_RECIPES = [
+    ("hound_pelt", "flensing_yard", {"hound_pelt": 1}, {"scraped_field_hide": 1}, {"barrow_tallow": 1}),
+    ("hog_hide", "flensing_yard", {"hog_hide": 1}, {"scraped_field_hide": 2}, {"barrow_tallow": 2}),
+    ("wirehorn_hide", "flensing_yard", {"wirehorn_hide": 1}, {"scraped_field_hide": 2}, {"barrow_tallow": 1}),
+    ("thornback_hide", "flensing_yard", {"thornback_hide": 1}, {"scraped_field_hide": 6}, {"barrow_tallow": 4}),
+    ("hound_fang", "flensing_yard", {"hound_fang": 4}, {"barrow_bone_meal": 1}, None),
+    ("hog_tusk", "flensing_yard", {"hog_tusk": 1}, {"barrow_bone_meal": 1}, {"barrow_marrow": 1}),
+    ("wirehorn_antler", "flensing_yard", {"wirehorn_antler": 1}, {"barrow_bone_meal": 2}, None),
+    ("lurker_jaw", "flensing_yard", {"lurker_jaw": 1}, {"barrow_bone_meal": 2}, {"barrow_marrow": 1}),
+    ("thornback_horn", "flensing_yard", {"thornback_horn": 1}, {"barrow_bone_meal": 4}, {"barrow_marrow": 2}),
+    ("kettle_shell", "flensing_yard", {"kettle_shell": 2}, {"barrow_bone_meal": 1}, None),
+    ("game_haunch", "flensing_yard", {"game_haunch": 1}, {"barrow_tallow": 2}, None),
+    ("hog_fatback", "flensing_yard", {"hog_fatback": 1}, {"barrow_tallow": 4}, None),
+    ("lurker_blubber", "flensing_yard", {"lurker_blubber": 1}, {"barrow_tallow": 3}, None),
+    ("thornback_suet", "flensing_yard", {"thornback_suet": 1}, {"barrow_tallow": 6}, None),
+    ("field", "leatherworks", {"scraped_field_hide": 2, "heartwood_tanning_liquor": 1}, {"cured_hide": 1}, None),
+]
+
+
+def build_beast_materials():
+    iid, name, w, v, desc = SCRAPED_FIELD_HIDE
+    add(iid, base_item(name, "", "material", "material", 1, w, v, desc, stack_for_weight(w), line="mat_scraped", source=["craft"]))
+
+
+def beast_recipes():
+    """The alternative band-1 recipes for the Stubble's beast remains (BEAST_RECIPES), in the recipes view's shape."""
+    out = []
+    for suffix, station, inputs, makes, byp in BEAST_RECIPES:
+        (output, n), = makes.items()
+        iv = inputs_value(inputs)
+        r = recipe(station, 1, inputs, 0.1 * iv, n, stars=1)
+        if byp:
+            r["byproducts"] = OrderedDict(byp)
+        skill = STATION_SKILL[station]
+        level = "sub" if station == "leatherworks" else "refine"
+        trivial = TRIVIAL_OFFSET[level]
+        head = OrderedDict([("id", f"r_{output}__{suffix}"), ("output", output), ("band", 1), ("alt", True),
+                            ("skill", skill), ("trivial", trivial), ("min_skill", max(0, trivial - ATTEMPT_WINDOW)),
+                            ("tool", OrderedDict([("kind", SKILLS[skill][3]), ("tier", 1)]))])
+        out.append(OrderedDict(list(head.items()) + list(r.items())))
+    return out
 
 
 def band1_recipes():
@@ -1612,6 +1667,7 @@ def main():
     v2, live = build_band1()
     pieces = wardrobe_looks()
     build_band1_additions()
+    build_beast_materials()
     m1 = mat_ids(1)
     build_raws(1)
     build_chain(1)
@@ -1675,6 +1731,7 @@ def main():
             r = OrderedDict([("id", f"r_{iid}"), ("output", iid), ("band", it["band"])])
             r.update(it["recipe"])
             recipes.append(r)
+    recipes.extend(beast_recipes())
     station_order = ["camp", "flensing_yard", "kiln", "still", "forge", "leatherworks", "bowyer", "loom", "workbench",
                      "settling_vat", "alchemist", "hearth", "runesetter"]
     recipes.sort(key=lambda r: (station_order.index(r["station"]), r["band"], r["output"]))

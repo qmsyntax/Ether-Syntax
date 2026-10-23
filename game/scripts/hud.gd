@@ -1099,6 +1099,7 @@ func _draw_minimap(vs: Vector2) -> void:
 	for i: int in pts.size() - 1:
 		draw_line(to_map.call(float(pts[i][0]), float(pts[i][1])), to_map.call(float(pts[i + 1][0]), float(pts[i + 1][1])),
 			Color(0.6, 0.51, 0.36), maxf(2.0, float(road.get("width", 8.0)) * k), true)
+	_draw_minimap_country(def, to_map, k)
 	# the Cut House and its door
 	var ch: Dictionary = def.get("cut_house", {})
 	if not ch.is_empty():
@@ -1146,6 +1147,7 @@ func _draw_minimap(vs: Vector2) -> void:
 		var door2: Array = ch["door"]
 		if fog.is_seen(float(door2[0]) - 1.0, float(door2[1])):
 			UiDraw.outlined(self, to_map.call(float(door2[0]), float(door2[1])) + Vector2(-70.0, -8.0), str(ch.get("name", "")), UiTheme.FS_CAPTION - 1, Color(0.97, 0.78, 0.4))
+	_draw_minimap_life(def, fog, to_map)
 	# your corpses
 	for c: Vector2 in minimap.get("corpses", []):
 		var cp: Vector2 = to_map.call(c.x, c.y)
@@ -1166,6 +1168,53 @@ func _draw_minimap(vs: Vector2) -> void:
 	UiDraw.outlined(self, Vector2(r.position.x + 6.0, r.position.y + 15.0), "N", UiTheme.FS_CAPTION, UiTheme.GOLD, HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
 	UiDraw.text(self, Vector2(r.position.x + 12.0, r.end.y + 22.0), str(def.get("name", "")), UiTheme.FS_SMALL, UiTheme.TEXT)
 	UiDraw.text(self, Vector2(r.position.x, r.end.y + 22.0), "%d%% explored" % int(round(fog.explored() * 100.0)), UiTheme.FS_CAPTION, UiTheme.TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 12.0)
+
+
+## Under the fog: the zone's tracks and its power line (the road is drawn by _draw_minimap).
+func _draw_minimap_country(def: Dictionary, to_map: Callable, k: float) -> void:
+	for track: Dictionary in def.get("tracks", []):
+		var tp: Array = track.get("points", [])
+		for i: int in tp.size() - 1:
+			draw_line(to_map.call(float(tp[i][0]), float(tp[i][1])), to_map.call(float(tp[i + 1][0]), float(tp[i + 1][1])),
+				Color(0.55, 0.46, 0.33), maxf(1.5, float(track.get("width", 4.0)) * k), true)
+	var poles: Array = (def.get("power_line", {}) as Dictionary).get("poles", [])
+	for i: int in poles.size():
+		var p: Vector2 = to_map.call(float(poles[i][0]), float(poles[i][1]))
+		draw_circle(p, 1.6, Color(0.25, 0.2, 0.16))
+		if i + 1 < poles.size() and (poles[i] as Array).size() < 3 and (poles[i + 1] as Array).size() < 3:
+			draw_line(p, to_map.call(float(poles[i + 1][0]), float(poles[i + 1][1])), Color(0.22, 0.2, 0.18, 0.7), 1.0, true)
+
+
+## Over the fog, where seen: the dungeon mouths (a ring, named) and the camps - dull red asleep,
+## bright red awake, green for a herd left alone, a grey cross once cleared.
+func _draw_minimap_life(def: Dictionary, fog: FogMap, to_map: Callable) -> void:
+	for e: Dictionary in def.get("entrances", []):
+		var at: Array = e["at"]
+		if not fog.is_seen(float(at[0]), float(at[1])):
+			continue
+		var p: Vector2 = to_map.call(float(at[0]), float(at[1]))
+		draw_arc(p, 5.0, 0.0, TAU, 14, Color(0, 0, 0, 0.7), 3.5, true)
+		draw_arc(p, 5.0, 0.0, TAU, 14, Color(0.95, 0.75, 0.35), 2.0, true)
+		draw_circle(p, 2.0, Color(0.05, 0.04, 0.04))
+		UiDraw.outlined(self, p + Vector2(7.0, 4.0), str(e.get("name", "")), UiTheme.FS_CAPTION - 1, Color(0.97, 0.78, 0.4))
+	for c: Dictionary in minimap.get("camps", []):
+		var at2: Vector2 = c["at"]
+		if not fog.is_seen(clampf(at2.x, 0.0, (minimap["size"] as Vector2).x - 0.1), clampf(at2.y, 0.0, (minimap["size"] as Vector2).y - 0.1)):
+			continue
+		var cp: Vector2 = to_map.call(at2.x, at2.y)
+		match str(c.get("state", "")):
+			"cleared":
+				draw_line(cp + Vector2(-3, -3), cp + Vector2(3, 3), Color(0.6, 0.6, 0.6), 2.0, true)
+				draw_line(cp + Vector2(-3, 3), cp + Vector2(3, -3), Color(0.6, 0.6, 0.6), 2.0, true)
+			"calm":
+				draw_circle(cp, 4.0, Color(0, 0, 0, 0.6))
+				draw_circle(cp, 3.0, Color(0.55, 0.8, 0.45))
+			"awake", "returning":
+				draw_circle(cp, 4.5, Color(0, 0, 0, 0.6))
+				draw_circle(cp, 3.5, Color(1.0, 0.3, 0.2))
+			_:
+				draw_circle(cp, 4.0, Color(0, 0, 0, 0.6))
+				draw_circle(cp, 3.0, Color(0.7, 0.3, 0.22))
 
 
 ## The fog map's texture is black where unseen; the minimap wants it sepia. A tinted copy is kept

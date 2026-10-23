@@ -5850,7 +5850,7 @@
     "shop",
     "craft"
    ],
-   "desc": "Clean linen and a pin. Out of a fight: stops bleeding and returns 15 health over 8 seconds. Ordinary first aid; the star does not mind."
+   "desc": "A pad and a bandage. Click it in your pack to bind a cut: 15 health, but only out of a fight."
   },
   "cooling_paste": {
    "name": "Cooling Paste",
@@ -6923,6 +6923,300 @@
    ],
    "desc": "Passage spoils: scrap worth having. It sells."
   },
+  "wren_down": {
+   "name": "Wren Down",
+   "slot": "",
+   "kind": "remains",
+   "category": "remains",
+   "band": 1,
+   "weight": 0.1,
+   "value": 12,
+   "stack": 20,
+   "source": [
+    "drop"
+   ],
+   "desc": "A twist of soft breast feathers. Stuffers and fletchers buy it by the handful."
+  },
+  "kettle_shell": {
+   "name": "Kettle-Beetle Shell",
+   "slot": "",
+   "kind": "remains",
+   "category": "remains",
+   "band": 1,
+   "weight": 1.5,
+   "value": 60,
+   "stack": 5,
+   "source": [
+    "drop"
+   ],
+   "desc": "A dented coppery dome. Ground down it is bone meal; whole, children use them as helmets."
+  },
+  "hound_pelt": {
+   "name": "Ditch-Hound Pelt",
+   "slot": "",
+   "kind": "remains",
+   "category": "remains",
+   "band": 1,
+   "weight": 2.5,
+   "value": 110,
+   "stack": 5,
+   "source": [
+    "drop"
+   ],
+   "desc": "A patchy dun pelt. Scraped and tanned it makes a serviceable leather."
+  },
+  "game_haunch": {
+   "name": "Haunch of Game",
+   "slot": "",
+   "kind": "remains",
+   "category": "remains",
+   "band": 1,
+   "weight": 3.0,
+   "value": 40,
+   "stack": 1,
+   "source": [
+    "drop"
+   ],
+   "desc": "Rangy meat off a beast of the Stubble. Rendered down, the fat makes tallow."
+  },
+  "hound_fang": {
+   "name": "Hound Fang",
+   "slot": "",
+   "kind": "trade",
+   "category": "trade",
+   "band": 1,
+   "weight": 0.2,
+   "value": 25,
+   "stack": 20,
+   "source": [
+    "drop"
+   ],
+   "desc": "A long yellow canine. Four of them grind to a measure of bone meal."
+  },
+  "hog_hide": {
+   "name": "Burr-Hog Hide",
+   "slot": "",
+   "kind": "remains",
+   "category": "remains",
+   "band": 1,
+   "weight": 6.0,
+   "value": 260,
+   "stack": 1,
+   "source": [
+    "drop"
+   ],
+   "desc": "Thick hide with the burrs still matted into the bristles. Worth the scraping."
+  },
+  "hog_fatback": {
+   "name": "Hog Fatback",
+   "slot": "",
+   "kind": "remains",
+   "category": "remains",
+   "band": 1,
+   "weight": 3.0,
+   "value": 45,
+   "stack": 1,
+   "source": [
+    "drop"
+   ],
+   "desc": "A slab of back fat. Rendered, it is tallow by the bucket."
+  },
+  "hog_tusk": {
+   "name": "Burr-Hog Tusk",
+   "slot": "",
+   "kind": "trade",
+   "category": "trade",
+   "band": 1,
+   "weight": 1.0,
+   "value": 70,
+   "stack": 5,
+   "source": [
+    "drop"
+   ],
+   "desc": "A short, upcurved tusk, worn sharp on the inside edge."
+  },
+  "wirehorn_hide": {
+   "name": "Wirehorn Hide",
+   "slot": "",
+   "kind": "remains",
+   "category": "remains",
+   "band": 1,
+   "weight": 4.0,
+   "value": 180,
+   "stack": 1,
+   "source": [
+    "drop"
+   ],
+   "desc": "A long, thin-haired hide from a beast of the power-line verge."
+  },
+  "wirehorn_antler": {
+   "name": "Wirehorn Antler",
+   "slot": "",
+   "kind": "trade",
+   "category": "trade",
+   "band": 1,
+   "weight": 2.0,
+   "value": 90,
+   "stack": 5,
+   "source": [
+    "drop"
+   ],
+   "desc": "A branching antler, scored where wire was wound round it."
+  },
+  "gleaner_hoard": {
+   "name": "Gleaner's Hoard",
+   "slot": "",
+   "kind": "remains",
+   "category": "remains",
+   "band": 1,
+   "weight": 1.5,
+   "value": 180,
+   "stack": 5,
+   "source": [
+    "drop"
+   ],
+   "desc": "Whatever a Gleaner had picked up: buttons, nails, a tooth. Sold by the bag."
+  },
+  "lurker_jaw": {
+   "name": "Sod-Lurker Jaw",
+   "slot": "",
+   "kind": "remains",
+   "category": "remains",
+   "band": 1,
+   "weight": 3.0,
+   "value": 320,
+   "stack": 1,
+   "source": [
+    "drop"
+   ],
+   "desc": "A jaw built to close upward. Bonesetters use the teeth as pegs."
+  },
+  "lurker_blubber": {
+   "name": "Lurker Blubber",
+   "slot": "",
+   "kind": "remains",
+   "category": "remains",
+   "band": 1,
+   "weight": 2.0,
+   "value": 40,
+   "stack": 5,
+   "source": [
+    "drop"
+   ],
+   "desc": "Pale fat from under a Sod-Lurker's crust. It renders down clean."
+  },
+  "thornback_hide": {
+   "name": "Thornback Hide",
+   "slot": "",
+   "kind": "remains",
+   "category": "remains",
+   "band": 1,
+   "weight": 25.0,
+   "value": 900,
+   "stack": 1,
+   "source": [
+    "drop"
+   ],
+   "desc": "Most of a Thornback's back, spines and all. More than a starting pack holds."
+  },
+  "thornback_horn": {
+   "name": "Thornback Horn",
+   "slot": "",
+   "kind": "remains",
+   "category": "remains",
+   "band": 1,
+   "weight": 8.0,
+   "value": 420,
+   "stack": 1,
+   "source": [
+    "drop"
+   ],
+   "desc": "A grazer's horn, worn smooth on one side from rubbing on stones."
+  },
+  "thornback_suet": {
+   "name": "Thornback Suet",
+   "slot": "",
+   "kind": "remains",
+   "category": "remains",
+   "band": 1,
+   "weight": 4.0,
+   "value": 60,
+   "stack": 1,
+   "source": [
+    "drop"
+   ],
+   "desc": "Hard white fat from round the kidneys. Rendered, a great deal of tallow."
+  },
+  "wren_glint": {
+   "name": "Wren's Glint",
+   "slot": "",
+   "kind": "trade",
+   "category": "trade",
+   "band": 1,
+   "weight": 0.05,
+   "value": 180,
+   "stack": 20,
+   "source": [
+    "drop"
+   ],
+   "desc": "A bright thing a wren had hidden: a ring-pull, a lens, once a tooth with a gold cap. A curio; collectors pay."
+  },
+  "scald_gland": {
+   "name": "Scald Gland",
+   "slot": "",
+   "kind": "trade",
+   "category": "trade",
+   "band": 1,
+   "weight": 0.3,
+   "value": 45,
+   "stack": 20,
+   "source": [
+    "drop"
+   ],
+   "desc": "The sac a Kettle Beetle boils its water in. Apothecaries argue over what it is good for."
+  },
+  "copper_tangle": {
+   "name": "Tangle of Copper Wire",
+   "slot": "",
+   "kind": "trade",
+   "category": "trade",
+   "band": 1,
+   "weight": 0.5,
+   "value": 60,
+   "stack": 20,
+   "source": [
+    "drop"
+   ],
+   "desc": "Old wire off a Wirehorn's antlers, green with age. Someone strung it once between the poles."
+  },
+  "lurker_pearl": {
+   "name": "Lurker Pearl",
+   "slot": "",
+   "kind": "trade",
+   "category": "trade",
+   "band": 1,
+   "weight": 0.1,
+   "value": 400,
+   "stack": 20,
+   "source": [
+    "drop"
+   ],
+   "desc": "A stone polished round and dark in a Sod-Lurker's gut. A curio; it fetches a good price."
+  },
+  "thornback_heartstone": {
+   "name": "Thornback Heartstone",
+   "slot": "",
+   "kind": "trade",
+   "category": "trade",
+   "band": 1,
+   "weight": 0.4,
+   "value": 650,
+   "stack": 20,
+   "source": [
+    "drop"
+   ],
+   "desc": "A smooth, banded stone from a Thornback's stomach. Rare; collectors and charm-makers both bid."
+  },
   "flax_bundle": {
    "name": "Flax Bundle",
    "slot": "",
@@ -7027,62 +7321,6 @@
     }
    },
    "desc": "A sour sloe that grows only on passage mounds. The first fruit elixir makers learn on."
-  },
-  "gleaner_hoard": {
-   "name": "Gleaner's Hoard",
-   "slot": "",
-   "kind": "remains",
-   "category": "remains",
-   "band": 1,
-   "weight": 1.5,
-   "value": 180,
-   "stack": 5,
-   "source": [
-    "drop"
-   ],
-   "desc": "Whatever a Gleaner had picked up: buttons, nails, a tooth. Sold by the bag."
-  },
-  "lurker_jaw": {
-   "name": "Sod-Lurker Jaw",
-   "slot": "",
-   "kind": "remains",
-   "category": "remains",
-   "band": 1,
-   "weight": 3.0,
-   "value": 320,
-   "stack": 1,
-   "source": [
-    "drop"
-   ],
-   "desc": "A jaw built to close upward. Bonesetters use the teeth as pegs."
-  },
-  "thornback_hide": {
-   "name": "Thornback Hide",
-   "slot": "",
-   "kind": "remains",
-   "category": "remains",
-   "band": 1,
-   "weight": 25.0,
-   "value": 900,
-   "stack": 1,
-   "source": [
-    "drop"
-   ],
-   "desc": "Most of a Thornback's back, spines and all. More than a starting pack holds."
-  },
-  "thornback_horn": {
-   "name": "Thornback Horn",
-   "slot": "",
-   "kind": "remains",
-   "category": "remains",
-   "band": 1,
-   "weight": 8.0,
-   "value": 420,
-   "stack": 1,
-   "source": [
-    "drop"
-   ],
-   "desc": "A grazer's horn, worn smooth on one side from rubbing on stones."
   },
   "flecked_brinepearl": {
    "name": "Flecked Brinepearl",
@@ -7607,6 +7845,21 @@
     "quest"
    ],
    "desc": "A letter you were paid to carry and not to open. Placeholder for courier work."
+  },
+  "scraped_field_hide": {
+   "name": "Scraped Field Hide",
+   "slot": "",
+   "kind": "material",
+   "category": "material",
+   "band": 1,
+   "weight": 2.0,
+   "value": 90,
+   "stack": 5,
+   "line": "mat_scraped",
+   "source": [
+    "craft"
+   ],
+   "desc": "A beast hide of the Stubble flensed clean. Two of them tan into a side of cured hide."
   },
   "barrow_clay": {
    "name": "Barrow Clay",

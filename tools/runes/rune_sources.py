@@ -60,7 +60,30 @@ KIND_PROFILES = {
     "pavise": {"form": 0.9, "binding": 0.6, "motion": -0.6, "direction": -0.3},
     "censer": {"vitality": -0.6, "extent": 0.7, "duration": 0.5, "light": -0.4},
     "drummer": {"duration": 0.6, "mind": 0.4, "force": 0.3, "direction": 0.5},
+    # the Stubble's unstarred beasts (2026-10-23)
+    "chaff_wren": {"motion": 0.9, "extent": 0.6, "vitality": 0.3, "duration": -0.5},
+    "kettle_beetle": {"heat": 0.9, "form": 0.6, "force": 0.4, "duration": -0.4, "vitality": -0.2},
+    "ditch_hound": {"motion": 0.7, "direction": 0.6, "vitality": 0.5, "mind": 0.2},
+    "burr_hog": {"force": 1.0, "motion": 0.6, "form": 0.5, "direction": 0.7},
+    "wirehorn": {"motion": 0.6, "light": 0.5, "extent": 0.4, "vitality": 0.4},
+    "gleaner": {"motion": 0.7, "binding": 0.5, "mind": 0.4, "direction": -0.3},
+    "sod_lurker": {"form": 0.7, "binding": 0.6, "motion": -0.6, "extent": -0.4, "vitality": 0.4},
+    "thornback": {"vitality": 0.9, "form": 0.6, "force": 0.6, "duration": 0.5},
 }
+# A beast's themes (Brent 2026-10-23: nature-, earth- and water-themed creatures reveal fitting runes): a
+# kill's pool holds THEMED_PER_AFFINITY runes for these affinities instead of KIND_PER_AFFINITY - more of
+# what fits the creature, still picked by the creature's nature. [MODEL]
+KIND_THEMES = {
+    "chaff_wren": ["wind", "nature"],
+    "kettle_beetle": ["fire", "water"],
+    "ditch_hound": ["nature", "blood"],
+    "burr_hog": ["earth", "nature"],
+    "wirehorn": ["lightning", "nature"],
+    "gleaner": ["wind", "death"],
+    "sod_lurker": ["earth", "water"],
+    "thornback": ["nature", "earth"],
+}
+THEMED_PER_AFFINITY = 4
 # What a subdued construct reveals, by tier: how many runes, and the chance one of them is universal
 # (universal runes come from deeper sources). [MODEL]
 BY_TIER = OrderedDict([
@@ -72,7 +95,10 @@ BY_TIER = OrderedDict([
 ])
 KILLS = OrderedDict([
     ("chance", 0.04),                 # per kill, any kind not listed under chance_by_kind
-    ("chance_by_kind", OrderedDict([("brute", 0.08), ("commander", 0.25), ("drummer", 0.08)])),
+    ("chance_by_kind", OrderedDict([("brute", 0.08), ("commander", 0.25), ("drummer", 0.08),
+                                    # the Stubble's beasts: the common small ones seldom, the big ones more
+                                    ("chaff_wren", 0.02), ("kettle_beetle", 0.04), ("ditch_hound", 0.04), ("gleaner", 0.05),
+                                    ("burr_hog", 0.06), ("wirehorn", 0.06), ("sod_lurker", 0.07), ("thornback", 0.1)])),
     ("universal_chance", 0.1),        # of a kill's reveal, the share that is universal (rarer)
 ])
 PASSAGE_INSCRIPTIONS = [
@@ -122,10 +148,13 @@ def main():
         if k not in KIND_PROFILES:
             raise SystemExit("rune_sources: enemy kind '%s' has no profile in KIND_PROFILES" % k)
 
-    def pools(profile, per_aff, n_uni):
+    def pools(profile, per_aff, n_uni, themes=()):
         t = vec(profile)
-        return OrderedDict([("base", OrderedDict([(a, nearest(t, by_aff[a], per_aff)) for a in affinities])),
-                            ("universal", nearest(t, universal, n_uni))])
+        out = OrderedDict([("base", OrderedDict([(a, nearest(t, by_aff[a], THEMED_PER_AFFINITY if a in themes else per_aff)) for a in affinities])),
+                           ("universal", nearest(t, universal, n_uni))])
+        if themes:
+            out["themes"] = list(themes)
+        return out
 
     # starting knowledge: per affinity, its first Cap and first Link (workbook order) that no starter
     # (root) skill is built on
@@ -165,7 +194,7 @@ def main():
         ])),
         ("kills", OrderedDict(list(KILLS.items()) + [
             ("profiles", OrderedDict((k, KIND_PROFILES[k]) for k in kinds)),
-            ("by_kind", OrderedDict((k, pools(KIND_PROFILES[k], KIND_PER_AFFINITY, UNIVERSAL)) for k in kinds)),
+            ("by_kind", OrderedDict((k, pools(KIND_PROFILES[k], KIND_PER_AFFINITY, UNIVERSAL, KIND_THEMES.get(k, ()))) for k in kinds)),
         ])),
         ("inscriptions", OrderedDict(list(INSCRIPTION_RULES.items()) + [("passage", PASSAGE_INSCRIPTIONS)])),
     ])

@@ -14,6 +14,8 @@ signal killed(enemy: Node)
 signal crushed(enemy: Node, metres_left: float, hit: Node)
 ## It called for help: whoever owns the level should bring these kinds in beside it.
 signal reinforcements(enemy: Node, kinds: Array)
+## It took damage (from `source`, which may be null): its camp wakes, a herd answers (FieldCamps).
+signal hurt(enemy: Node, source: Node)
 
 const ShotScript := preload("res://scripts/enemy_shot.gd")
 const FloatText := preload("res://scripts/float_text.gd")
@@ -100,6 +102,8 @@ var _strike_t := 0.0
 var _shown_highlight := 0
 var _shown_windup := false
 var _shown_down := false
+## The spawn's strength factor (hp and damage were scaled by it); a beast's other blows use it too.
+var _strength := 1.0
 
 
 ## `strength` scales health and damage - dungeon stages past the midpoint hit harder.
@@ -116,6 +120,7 @@ func setup(enemy_kind: String, player: Node3D, strength: float = 1.0) -> void:
 	radius = float(d.get("radius", 0.5))
 	speed = float(d.get("speed", 3.4))
 	damage = float(d.get("damage", 10.0)) * strength
+	_strength = strength
 	heavy = bool(d.get("heavy", false))
 	aura_value = float(d.get("aura_value", 4.0))
 	bounty = int(d.get("bounty", 150))
@@ -256,13 +261,17 @@ func take_hit(amount: float, _heavy: bool, source: Node, tags: Array = []) -> fl
 	if _rig != null:
 		_rig.flash(0.12)
 	_refresh_label()
+	if applied > 0.0:
+		hurt.emit(self, source)                 # its camp wakes; a herd answers (FieldCamps)
 	if applied > 0.0 and not body.is_dead():
 		_after_hurt(applied, winding)
 	if body.is_dead():
 		_release_slot()
 		telegraph = {}
 		var quiet: bool = _st_any("no_death_effects")
-		if _def.has("death_burst") and is_inside_tree() and not quelled and not quiet and not _in_zone_flag("no_heal"):
+		if _def.has("death_burst") and str((_def["death_burst"] as Dictionary).get("kind", "")) == "scald" and is_inside_tree() and not quiet:
+			ScaldBurst.leave(get_parent(), global_position, _def["death_burst"], _strength, _player)
+		elif _def.has("death_burst") and is_inside_tree() and not quelled and not quiet and not _in_zone_flag("no_heal"):
 			var cfg: Dictionary = _def["death_burst"]
 			var burst := CenserBurst.new()
 			burst.radius = float(cfg.get("radius", 4.0))
@@ -972,6 +981,8 @@ func _physics_process(delta: float) -> void:
 	poise = minf(poise, top)
 	if poise < top and _poise_idle >= float(_cfg["poise_regen_delay_s"]) and not _st_any("poise_regen_off"):
 		poise = minf(top, poise + float(_cfg["poise_regen_per_s"]) * delta)
+	if _field_tick(delta, pace):
+		return                                  # asleep in its camp, walking home, or a beast's own state
 	_pick_target()
 	if not is_instance_valid(target):
 		return
@@ -1003,7 +1014,7 @@ func _physics_process(delta: float) -> void:
 			"commander":
 				_think_commander(delta, dir, dist)
 			_:
-				_think_melee(delta, dir, dist)
+				_think_behaviour(delta, dir, dist)
 
 	velocity *= pace
 	if _leap_left <= 0.0 and _charge_left <= 0.0:
@@ -1763,3 +1774,99 @@ func _look(delta: float) -> void:
 
 func _refresh_label() -> void:
 	_label.text = "%d" % int(ceil(body.total()))
+
+
+# --- the field: camps, sleep, leash, walk home (design/07 3.5) --------------------------------------
+
+## The camp it belongs to out in a zone (FieldCamps), or "".
+var camp := ""
+## Where it stands while its camp sleeps (world space).
+var home := Vector3.ZERO
+## A sleeping camp member: it stands about at home and ignores you until the camp wakes.
+var asleep := false
+var _going_home := false
+
+
+## Sleep at `spot` (world): standing about, ignoring you. The camp wakes it.
+func sleep_at(spot: Vector3) -> void:
+	home = spot
+	asleep = true
+	_going_home = false
+	telegraph = {}
+	interrupt()
+	_release_slot()
+
+
+## The camp is awake: go for `who`.
+func wake(who: Node3D) -> void:
+	asleep = false
+	_going_home = false
+	target = who
+	_player = who
+
+
+## Past the leash: give up, walk home and mend there (then sleep).
+func go_home() -> void:
+	if body.is_dead():
+		return
+	_going_home = true
+	asleep = false
+	interrupt()
+	_release_slot()
+	telegraph = {}
+
+
+func is_going_home() -> bool:
+	return _going_home
+
+
+## One frame of the field's own states. Returns true when it used the frame (asleep, walking home,
+## or a beast's state of its own - see Beast), so the fighting logic is skipped.
+func _field_tick(delta: float, pace: float) -> bool:
+	if _going_home:
+		_walk_home(delta, pace)
+		return true
+	if asleep:
+		velocity = Vector3.ZERO
+		telegraph = {}
+		_look(delta)
+		return true
+	return false
+
+
+## Walk the path home; there it mends to full and sleeps.
+func _walk_home(delta: float, pace: float) -> void:
+	telegraph = {}
+	var to: Vector3 = home - global_position
+	to.y = 0.0
+	if to.length() <= float((GameData.balance.get("camps", {}) as Dictionary).get("home_reached", 1.5)):
+		_going_home = false
+		body.heal(body.total_max())
+		poise = poise_max
+		statuses.clear()
+		_refresh_label()
+		_arrived_home()
+		velocity = Vector3.ZERO
+		_look(delta)
+		return
+	var way: Vector3 = to.normalized()
+	var nav: LevelNav = _level_nav()
+	if nav != null:
+		var stepped: Vector3 = _errand.steer(nav, global_position, home, radius, delta)
+		if stepped != Vector3.ZERO:
+			way = stepped
+	_turn_toward(way, delta)
+	velocity = way * speed * pace
+	move_and_slide()
+	_look(delta)
+
+
+## Home again after walking back: sleep (a beast may do something else).
+func _arrived_home() -> void:
+	asleep = true
+
+
+## What it does in a fight, by behaviour: the base kinds are handled in _physics_process; anything
+## else fights as melee here. Beast overrides this for the beasts' own behaviours.
+func _think_behaviour(delta: float, dir: Vector3, dist: float) -> void:
+	_think_melee(delta, dir, dist)

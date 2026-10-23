@@ -42,6 +42,7 @@ func build() -> void:
 	var bcfg: Dictionary = GameData.balance["biomes"]
 	main.call("_biome_floor", Vector3.ZERO, size)
 	_road(level)
+	_tracks(level)
 	var heights: Dictionary = {"north": float(bcfg["wall_height_far"]), "south": float(bcfg["wall_height_near"]),
 		"east": float(bcfg["wall_height_side"]), "west": float(bcfg["wall_height_side"])}
 	for edge: String in ["north", "south", "east", "west"]:
@@ -49,6 +50,11 @@ func build() -> void:
 	_cut_house(level)
 	var keep_clear: Array = _landmarks(level)
 	keep_clear.append_array(_inscriptions(level))
+	keep_clear.append_array(_features(level))
+	keep_clear.append_array(_power_line(level))
+	keep_clear.append_array(_entrances(level))
+	keep_clear.append_array(_camp_grounds())
+	_nether()
 	_scatter(level, keep_clear)
 	_decor(level, keep_clear)
 
@@ -117,9 +123,11 @@ func _road(level: Node3D) -> void:
 	var road: Dictionary = def.get("road", {})
 	var pts: Array = road.get("points", [])
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.0, 0.0, 0.0, 0.22)
+	var rc: Array = road.get("color", [0.0, 0.0, 0.0, 0.22])           # a zone may give its road a colour of its own
+	mat.albedo_color = Color(float(rc[0]), float(rc[1]), float(rc[2]), float(rc[3]))
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED if road.get("color") == null else BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	mat.roughness = 1.0
 	for i: int in pts.size() - 1:
 		var a: Vector3 = to_local(float(pts[i][0]), float(pts[i][1]))
 		var b: Vector3 = to_local(float(pts[i + 1][0]), float(pts[i + 1][1]))
@@ -133,16 +141,18 @@ func _road(level: Node3D) -> void:
 		strip.look_at(level.to_global(b) + Vector3.UP * 0.015, Vector3.UP)
 
 
-## True if a map-frame point is on the road (with `margin` to spare).
+## True if a level-frame point is on the road or a track (with `margin` to spare).
 func on_road(local: Vector3, margin: float) -> bool:
-	var road: Dictionary = def.get("road", {})
-	var pts: Array = road.get("points", [])
+	var ways: Array = [def.get("road", {})]
+	ways.append_array(def.get("tracks", []))
 	var p := Vector2(local.x, local.z)
-	for i: int in pts.size() - 1:
-		var a: Vector3 = to_local(float(pts[i][0]), float(pts[i][1]))
-		var b: Vector3 = to_local(float(pts[i + 1][0]), float(pts[i + 1][1]))
-		if Geometry2D.get_closest_point_to_segment(p, Vector2(a.x, a.z), Vector2(b.x, b.z)).distance_to(p) <= float(road.get("width", 8.0)) * 0.5 + margin:
-			return true
+	for road: Dictionary in ways:
+		var pts: Array = road.get("points", [])
+		for i: int in pts.size() - 1:
+			var a: Vector3 = to_local(float(pts[i][0]), float(pts[i][1]))
+			var b: Vector3 = to_local(float(pts[i + 1][0]), float(pts[i + 1][1]))
+			if Geometry2D.get_closest_point_to_segment(p, Vector2(a.x, a.z), Vector2(b.x, b.z)).distance_to(p) <= float(road.get("width", 8.0)) * 0.5 + margin:
+				return true
 	return false
 
 
@@ -210,8 +220,8 @@ func _landmarks(level: Node3D) -> Array:
 			sb.add_child(col)
 			sb.position = centre + Vector3.UP
 			level.add_child(sb)
-		if bool(mark.get("site", false)) and nether != null:
-			nether.call("populate_site", centre, Vector2(4.0, 4.0))
+		if bool(mark.get("site", false)) and nether != null and not def.has("nether"):
+			nether.call("populate_site", centre, Vector2(4.0, 4.0))     # a zone without its own echo data: rolled sites
 		clear.append([centre, 5.0])
 	var ch: Dictionary = def.get("cut_house", {})
 	if not ch.is_empty():
@@ -350,3 +360,161 @@ func _free_spot(rng: RandomNumberGenerator, keep_clear: Array, radius: float, at
 		if ok:
 			return pos
 	return Vector3.INF
+
+
+# --- New Earth's countryside: tracks, the power line, ruins, dungeon mouths (Brent 2026-10-23) ----
+
+## Tracks: narrower, fainter ways than the road (the Cut track from the waystone to the Cut House).
+func _tracks(level: Node3D) -> void:
+	for track: Dictionary in def.get("tracks", []):
+		var pts: Array = track.get("points", [])
+		var mat := StandardMaterial3D.new()
+		var tc: Array = track.get("color", [0.0, 0.0, 0.0, float(track.get("shade", 0.14))])
+		mat.albedo_color = Color(float(tc[0]), float(tc[1]), float(tc[2]), float(tc[3]))
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.roughness = 1.0
+		var w: float = float(track.get("width", 4.0))
+		for i: int in pts.size() - 1:
+			var a: Vector3 = to_local(float(pts[i][0]), float(pts[i][1]))
+			var b: Vector3 = to_local(float(pts[i + 1][0]), float(pts[i + 1][1]))
+			var strip := MeshInstance3D.new()
+			var box := BoxMesh.new()
+			box.size = Vector3(w, 0.02, a.distance_to(b) + w * 0.5)
+			strip.mesh = box
+			strip.material_override = mat
+			level.add_child(strip)
+			strip.position = (a + b) * 0.5 + Vector3.UP * 0.012
+			strip.look_at(level.to_global(b) + Vector3.UP * 0.012, Vector3.UP)
+
+
+## Single props from the field kit (FieldProps) or a biome kit: ["field" | kit, kind, x, y, yaw, size].
+## Blocking ones get a collider (a box along a wall, a cylinder otherwise). Returns keep-clear spots.
+func _features(level: Node3D) -> Array:
+	var clear: Array = []
+	for f: Array in def.get("features", []):
+		var kit: String = str(f[0])
+		var kind: String = str(f[1])
+		var at: Vector3 = to_local(float(f[2]), float(f[3]))
+		var yaw: float = float(f[4]) if f.size() > 4 else 0.0
+		var sz: float = float(f[5]) if f.size() > 5 else 0.0
+		var node: Node3D = FieldProps.prop(kind, sz) if kit == "field" else Biomes.prop(kit, kind)
+		node.position = at
+		node.rotation.y = deg_to_rad(yaw)
+		level.add_child(node)
+		var r: float = float(node.get_meta("radius", 1.0))
+		if bool(node.get_meta("blocks", false)):
+			var sb := StaticBody3D.new()
+			var col := CollisionShape3D.new()
+			if kind == "ruin_wall":
+				var box := BoxShape3D.new()
+				box.size = Vector3(r * 2.0, 2.0, 0.5)
+				col.shape = box
+			elif kind == "car_hulk":
+				var box2 := BoxShape3D.new()
+				box2.size = Vector3(1.8, 2.0, 4.6)
+				col.shape = box2
+			else:
+				var cyl := CylinderShape3D.new()
+				cyl.radius = minf(r, 1.6)
+				cyl.height = 2.0
+				col.shape = cyl
+			sb.add_child(col)
+			sb.position = at + Vector3.UP
+			sb.rotation.y = deg_to_rad(yaw)
+			level.add_child(sb)
+		clear.append([at, r + 1.0])
+	return clear
+
+
+## The power line along the road: poles at the listed points, three wires sagging from crossarm to
+## crossarm. A pole marked "down" lies in the scrub and the wires stop either side of it.
+func _power_line(level: Node3D) -> Array:
+	var clear: Array = []
+	var line: Dictionary = def.get("power_line", {})
+	var poles: Array = line.get("poles", [])
+	var tops: Array = []
+	var dir := Vector3.FORWARD
+	if poles.size() >= 2:
+		var p0: Vector3 = to_local(float(poles[0][0]), float(poles[0][1]))
+		var p1: Vector3 = to_local(float(poles[poles.size() - 1][0]), float(poles[poles.size() - 1][1]))
+		dir = (p1 - p0).normalized()
+	var yaw: float = atan2(dir.x, dir.z)                         # turns the crossarm (local X) across the line
+	for p: Array in poles:
+		var at: Vector3 = to_local(float(p[0]), float(p[1]))
+		var down: bool = p.size() > 2 and str(p[2]) == "down"
+		var pole: Node3D = FieldProps.prop("power_pole")
+		pole.position = at
+		pole.rotation.y = yaw
+		if down:
+			pole.rotation = Vector3(0.0, yaw, deg_to_rad(84.0))      # fell across the scrub
+		level.add_child(pole)
+		clear.append([at, 1.2])
+		if down:
+			tops.append(null)
+			continue
+		var sb := StaticBody3D.new()
+		var col := CollisionShape3D.new()
+		var cyl := CylinderShape3D.new()
+		cyl.radius = 0.25
+		cyl.height = 2.0
+		col.shape = cyl
+		sb.add_child(col)
+		sb.position = at + Vector3.UP
+		level.add_child(sb)
+		tops.append(at)
+	var across: Vector3 = Vector3(cos(yaw), 0.0, -sin(yaw))
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.06, 0.06, 0.06)
+	mat.roughness = 0.6
+	for i: int in tops.size() - 1:
+		if tops[i] == null or tops[i + 1] == null:
+			continue
+		for k: int in [-1, 0, 1]:
+			var a: Vector3 = (tops[i] as Vector3) + across * FieldProps.POLE_ARM * float(k) + Vector3.UP * (FieldProps.POLE_TOP - 0.12)
+			var b: Vector3 = (tops[i + 1] as Vector3) + across * FieldProps.POLE_ARM * float(k) + Vector3.UP * (FieldProps.POLE_TOP - 0.12)
+			var pts := PackedVector3Array()
+			var radii := PackedFloat32Array()
+			for j: int in 13:
+				var t: float = float(j) / 12.0
+				pts.append(a.lerp(b, t) - Vector3.UP * float(line.get("sag", 1.1)) * 4.0 * t * (1.0 - t))
+				radii.append(0.018)
+			var wire := MeshInstance3D.new()
+			wire.mesh = MeshKit.tube(pts, radii, 3)
+			wire.material_override = mat
+			wire.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			level.add_child(wire)
+	return clear
+
+
+## Dungeon mouths that are not open yet (FieldEntrance): a name, a line, sealed for now.
+func _entrances(level: Node3D) -> Array:
+	var clear: Array = []
+	for e: Dictionary in def.get("entrances", []):
+		var at: Array = e["at"]
+		var node := FieldEntrance.new()
+		node.setup(e)
+		node.position = to_local(float(at[0]), float(at[1]))
+		node.rotation.y = deg_to_rad(float(e.get("yaw", 0.0)))
+		level.add_child(node)
+		clear.append([node.position, float(e.get("clear", 4.0))])
+	return clear
+
+
+## The ground round each camp is kept clear of blocking clutter, so a fight there has room.
+func _camp_grounds() -> Array:
+	var clear: Array = []
+	for c: Dictionary in def.get("camps", []):
+		var at: Array = c["at"]
+		clear.append([to_local(float(at[0]), float(at[1])), float(c.get("clear", 5.0))])
+	for p: Dictionary in def.get("lurker_patches", []):
+		var at2: Array = p["at"]
+		clear.append([to_local(float(at2[0]), float(at2[1])), float(p.get("radius", 2.2)) + 0.5])
+	return clear
+
+
+## The zone's own Netherecho (zones.json "nether"): echoes of its landmarks, and its sites.
+func _nether() -> void:
+	var nether: Node = main.get("nether")
+	if nether == null or not def.has("nether"):
+		return
+	nether.call("populate_zone", def["nether"], to_local)

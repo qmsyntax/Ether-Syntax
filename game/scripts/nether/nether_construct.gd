@@ -58,6 +58,13 @@ func setup(construct_tier: String, construct_concept: String, is_docile: bool) -
 	add_to_group("nether_enemies")
 
 
+## Made weaker (or stronger) than its tier's wild numbers: a zone for new characters scales its
+## constructs to a new character's projection (zones.json "nether").
+func scale_for(hp_mult: float, damage_mult: float) -> void:
+	body = Body.new(body.total_max() * hp_mult)
+	_damage *= damage_mult
+
+
 func _ready() -> void:
 	_home = position
 	_wander = _home
