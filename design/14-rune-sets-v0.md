@@ -368,3 +368,60 @@ What the game does now, and the calls made where Brent has not ruled. Rule set `
 
 Not built: rune acquisition by trade or teaching, hybrid affinities' runes, reactions between opposites, "unstable",
 any cost to rework a ring, and a sound or animation for discovery beyond the HUD card.
+
+
+## 10. Built (2026-10-23, second pass): building the seal, strength on on/off effects, ionic conversion
+
+Brent's two requests of 2026-10-23: "Redo the interface. Make the bonds selectable for deletion and allow click and
+drag to create the bonds. As it is currently it's buggy when trying to build the structure." [B] and "do both fixes"
+(Bond Rules rows 62-74) [B].
+
+**The old board's building bugs**, reproduced by scripted clicks before the rebuild (each now has a self-test check):
+
+1. A palette click joined the new rune to whatever rune had last been clicked, even only to read it, and sent it a
+   ring further out.
+2. That pick stayed after the placement, so the next "click A, click B" joined the stale pick to A instead.
+3. Clicking two bonded runes, one after the other (to read the second), parted their bond.
+4. Clicking an empty place only aimed at its ring: the rune was set at another place on that ring (280 px away in
+   the probe), and the aimed ring stayed aimed.
+5. Runes jumped when bonded (the layout re-placed every rune by its partners each frame), so the next click landed on
+   a different rune or on empty space.
+6. A bond between two runes of one ring that were not neighbours was drawn along the ring, through the rune between
+   them, so it looked bonded to that rune.
+7. With a full rune picked, a palette rune was refused outright ("X is full") although the ring had room.
+8. Right-click removed a rune and all its bonds at once, with no way back.
+9. Dragging from the palette did nothing.
+10. A click picked the first rune by index whose circle held the point, not the nearest.
+11. Esc closed the screen, and the draft with it (it still does when nothing is in progress).
+
+**The controls** [B request, MODEL detail]: drag a palette rune onto an empty place, or click it and then the place
+(places that take it glow; the others are marked and say why when pointed at); a rune is set alone, never bonded by
+a placement. Press on a rune or the core and drag to another: a live line follows; over a rune that takes it, the
+bond is drawn as it would be, with its kind and dominant side in words; runes that would take it glow in the colour
+of that bond, the others dim with the reason ("full", "not an adjacent ring", "alignment refuses", "already
+bonded"); let go on one to bond, anywhere else (or Esc) to cancel. Click a rune or a bond (hit along its curve) to
+select it; the panel shows a bond's kind, dominance, transmission, the runes whose strongest way in runs through it,
+and any hand-over and conversion. Delete or Backspace, its x, or right-click deletes a selected bond; Delete,
+Backspace or right-click takes a rune out with its bonds. Empty space deselects; hover lights what is under the
+cursor. Ctrl+Z / Ctrl+Y step through the draft's history (Undo / Redo buttons too); nothing is committed until the
+bind. The keys are InputMap actions (seal_delete, seal_delete_alt, seal_undo, seal_redo). A rune keeps the place it
+was set in (the word's "places", layout only).
+
+**On/off effects grow with strength** [B rows 66-70; MODEL detail]: a status a rune adds lasts base x (1 + (strength -
+1) x 1.0), at most x2.5; each full 1.0 of strength above 1 adds a stack where the status stacks; an interrupt above
+strength 1 also applies the new status Silenced (cannot start an attack, no calls for help) for 1.5 s per strength
+above 1. A status the skill already applies is only ever lengthened by a rune, never cut short [MODEL]. A status a
+rune adds at a strength below 1 lasts less than its base (the rule as written) [MODEL, OPEN]. The skill's own rune's
+signature does not grow (only what a word adds) [MODEL, OPEN].
+
+**Ionic conversion** [B rows 71-72; MODEL detail]: the rune that ends up holding a weaker rune's effect gains its
+strength x rate (1.0), up to 3.0. For an outer rune that is its strength - the stronger of its own way in and the way
+in through the rune it hands to, as if that bond passed it on whole (otherwise a ring-2 rune handing inward over its
+only bond would give nothing) [MODEL]. For the skill's own rune it is the share of its signature that bond takes:
+its factor's shortfall from 1, split over its bonds by what each takes - all of it when it is taken whole [MODEL].
+The skill's own rune on the strong side converts nothing [MODEL, OPEN]. Worked example (self-test): Drown takes Wave
+on Tidal Bore - 1.5 + 1.0 = 2.5, "converted from Wave's reach, stagger and carry"; a 2.25 s silence; Dazed x2.5
+(7.5 s on a real hit). Drown off Flood on Pressure Jet: 0.675 + 0.75 = 1.425.
+
+Not built: moving a placed rune to another place (take it out and set it again), dragging a bond's end to re-route
+it, touch or gamepad controls for the board, and a sound for any of it. Feel is untested - needs Brent.
