@@ -10,7 +10,11 @@ extends BondRules
 ##   - a word is closed when every rune's valence is filled - the skill's own rune counting as filled
 ##     once it holds as many bonds as ring 1 has places (params.anchor_fills_by_ring);
 ##   - shape traits (closed ring, great ring, spoke, branch, balanced) are found here, structurally;
-##     what they do is the effects interaction's (effects_v2).
+##     what they do is the effects interaction's (effects_v2);
+##   - the seal is built from the skill outward (Brent 2026-10-23: "You should not be able to build
+##     level 2 until level 1 is fully formed with construct"): no rune is set on ring k until every
+##     ring inside it is formed (ring_formed), and a seal is refused while any ring up to the one
+##     being formed is not.
 ## No numbers here: they are this rule set's params in runes.json.
 
 
@@ -72,10 +76,80 @@ func place_ring(word: Dictionary, ctx: RuneContext, to_node: int, ring: int) -> 
 			tries.append(ctx.forming)
 		for k: int in range(1, ctx.rings + 1):
 			tries.append(k)
+	# a ring with room whose inner rings are formed first (the seal is built from the skill outward)
+	for k: int in tries:
+		if k >= 1 and k <= ctx.rings and _room(word, k) and unformed_below(word, k) == 0:
+			return k
 	for k: int in tries:
 		if k >= 1 and k <= ctx.rings and _room(word, k):
 			return k
 	return tries[0] if not tries.is_empty() else 1
+
+
+# --- building out from the skill (Brent 2026-10-23) ---------------------------------------------
+# One level, one ring, one construct, locked together: ring N+1 is never built before ring N is
+# formed. Inside a draft a ring counts as formed when at least one rune on it is joined to the skill
+# through runes no further out than that ring - the ring reaches the skill from inside. (A seal must
+# also be closed, so every rune of a sealed word is joined; this only fixes the order.) A sealed
+# ring that a rework leaves unjoined is unformed again until it is joined back.
+
+## Ring k holds a rune joined to the skill through rings 1..k (the skill's own ring 0 always is).
+func ring_formed(word: Dictionary, k: int) -> bool:
+	if k <= 0:
+		return true
+	var on: Array[int] = RuneWord.ring_nodes(word, k)
+	if on.is_empty():
+		return false
+	var rs: Array[int] = RuneWord.rings(word)
+	var seen: Dictionary = {0: true}
+	var todo: Array[int] = [0]
+	while not todo.is_empty():
+		var at: int = todo.pop_back()
+		for n: int in RuneWord.neighbours(word, at):
+			if rs[n] <= k and not seen.has(n):
+				seen[n] = true
+				todo.append(n)
+	for i: int in on:
+		if seen.has(i):
+			return true
+	return false
+
+
+## The innermost ring inside ring k that is not formed (0: every ring inside k is formed).
+func unformed_below(word: Dictionary, k: int) -> int:
+	for j: int in range(1, k):
+		if not ring_formed(word, j):
+			return j
+	return 0
+
+
+## The innermost ring up to `upto` that is not formed (0: all are).
+func first_unformed(word: Dictionary, upto: int) -> int:
+	for j: int in range(1, upto + 1):
+		if not ring_formed(word, j):
+			return j
+	return 0
+
+
+## Why nothing can be set on ring k while ring `gap` (inside it) is not formed.
+func unformed_text(gap: int, k: int) -> String:
+	return "ring %d is not formed yet. A seal is built from the skill outward: set a rune on ring %d and join it to the skill before anything goes on ring %d." % [gap, gap, k]
+
+
+## May this draft be sealed? Everything the rule set asks, and every ring up to the one this level
+## lock forms (and any ring the word holds) formed, from the skill outward.
+func can_seal(word: Dictionary, ctx: RuneContext) -> Dictionary:
+	var r: Dictionary = super.can_seal(word, ctx)
+	# what breaks the rules is said first; then the order of the rings, before "set runes" or "close it"
+	if RuneWord.size(word) == 0 or str(r.get("reason", "")) == "problems":
+		return r
+	var upto: int = maxi(ctx.forming, RuneWord.outer_ring(word))
+	var gap: int = first_unformed(word, upto)
+	if gap > 0:
+		if gap == ctx.forming and RuneWord.ring_nodes(word, gap).is_empty():
+			return no("ring_unformed", "Ring %d is the ring this level lock forms: set its runes and join them to the skill, then bind." % gap)
+		return no("ring_unformed", "Ring %d is not formed: every ring up to ring %d must hold a rune joined to the skill from inside before the seal can lock." % [gap, upto])
+	return r
 
 
 ## Two rings a bond may span: the same, or next to each other.
@@ -105,6 +179,9 @@ func _can_add(word: Dictionary, rune_id: String, ctx: RuneContext, to_node: int,
 		return no("ring_full", "Ring %d is full: it holds %d rune%s." % [ring, ring_capacity(ring), "" if ring_capacity(ring) == 1 else "s"])
 	if to_node >= 0 and not rings_meet(RuneWord.ring(word, to_node), ring):
 		return no("rings_apart", "%s is %s; ring %d is too far out to bond to it." % [rune_name(word, to_node), _ring_words(RuneWord.ring(word, to_node)), ring])
+	var gap: int = unformed_below(word, ring)
+	if gap > 0:
+		return no("ring_unformed", unformed_text(gap, ring))
 	return super._can_add(word, rune_id, ctx, to_node, ring)
 
 
@@ -165,6 +242,10 @@ func _word_state(word: Dictionary, ctx: RuneContext) -> Dictionary:
 		lines.append("%d open bond%s to fill." % [open, "" if open == 1 else "s"])
 	if not joined:
 		lines.append("Not every rune is joined to the skill%s." % (" - a closed word is one piece" if needs_joined else ""))
+	var gap: int = first_unformed(word, maxi(ctx.forming, RuneWord.outer_ring(word)))
+	if gap > 0:
+		lines.append("Ring %d is not formed yet: it needs a rune joined to the skill from inside%s." % [gap,
+			" before the rings outside it can hold runes" if gap < maxi(ctx.forming, RuneWord.outer_ring(word)) else ""])
 	var traits: Array = []
 	for t: Dictionary in shape_traits(word):
 		traits.append(str(t["text"]))

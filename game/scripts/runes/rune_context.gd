@@ -13,8 +13,10 @@ var state: Dictionary = {}               # the ability state itself (read only)
 var rings := 0
 ## The ring being formed at a binding (0: no seal is being formed).
 var forming := 0
-## A test character's free edit: any rune it knows, any time (the seal need not be closed).
-var free_edit := false
+## TEST HOOK (Player.test_bind_unclosed, the screenshots): the seal need not be a closed word. Rings
+## are still built from the skill outward (RingRules.ring_formed). No screen reaches it: since Brent's
+## ruling of 2026-10-23 a test character has no free edit and binds ring by ring like anyone else.
+var closure_waived := false
 
 
 static func of(ability_state: Dictionary, held: Array = [], forming_seal: bool = false) -> RuneContext:

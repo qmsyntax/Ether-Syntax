@@ -6,9 +6,10 @@ extends Node
 ##      it spends set out first (statuses on the dummies, a corpse, a patch of growth, a blood pool,
 ##      held blood, pips, heat);
 ##   3. a few seconds of game time ticked (physics frames at the fixed physics rate);
-## then all of it again with a SEALED word, made in the test character's free edit (design/14 section 8):
-## three good modifiers from the skill's own draft on ring 1, and - where the runes allow - a great ring
-## of five round ring 2, so the rune engine (effects_v2) and the great ring's repeat run on every skill. It fails on any script error (ErrorCatcher) and on
+## then all of it again with a SEALED word, made through two level locks (design/14 sections 8 and 11):
+## three good modifiers from the skill's own draft on ring 1 at the first lock, and - where the runes
+## allow - a great ring of five round ring 2 at the second, so the rune engine (effects_v2) and the
+## great ring's repeat run on every skill. It fails on any script error (ErrorCatcher) and on
 ## a cast that is refused or touches nothing. One line per skill: what it hit, the statuses it
 ## left, and whether it is simplified. Run headless:
 ##   --headless --fixed-fps 60 --path game res://tests/cast_every_skill.tscn   (prints CASTALL: PASS / FAIL)
@@ -55,7 +56,7 @@ func _ready() -> void:
 		if bool(worded.get("great", false)):
 			counts["great"] += 1
 		if not bool(worded.get("sealed", true)):
-			_failures.append("%s: the free edit would not seal its word (%s)" % [id, str(worded.get("seal_why", ""))])
+			_failures.append("%s: the level locks would not seal its word (%s)" % [id, str(worded.get("seal_why", ""))])
 		if ab.has("simplified"):
 			counts["simplified"] += 1
 			simplified.append("%s (%s)" % [id, str(ab["simplified"])])
@@ -213,22 +214,28 @@ func _try(id: String, runes: Array[String]) -> Dictionary:
 	return {"cast": cast, "why": why, "hit": hits > 0, "hits": hits, "statuses": statuses, "effect": effect, "sealed": sealed, "seal_why": seal_why, "great": great}
 
 
-## The test character's free edit: the good runes on ring 1 (joined to the skill's own rune where it
-## has bonds left, else to the first of them, else loose), then a great ring on ring 2 - a three-bond
-## rune of the skill's affinity and four universal runes bonded round, the three-bond one joined to a
-## ring-1 rune with a bond to spare - if the rules let it be built. Sealed (closure not needed in a
-## free edit). Returns the seal's answer.
+## The word, lock by lock (no free edit since Brent 2026-10-23): at the first level lock the good
+## runes on ring 1 (joined to the skill's own rune where it has bonds left, else to the first of them;
+## one that can be joined to neither is left out - ring 1 must reach the skill), bound with a vestige;
+## at the second, a great ring on ring 2 - a three-bond rune of the skill's affinity and four
+## universal runes bonded round, the three-bond one joined to a ring-1 rune with a bond to spare - if
+## the rules let it be built, bound with a remnant. Both binds go through the test hook
+## Player.test_bind_unclosed (a sure roll; the closed-word rule waived, everything else the real
+## lock). Returns {ok, text}.
 func _seal_word(p: Node, index: int, runes: Array[String]) -> Dictionary:
-	p.call("open_free_edit", index)
+	p.call("open_seal", index)
 	var placed: Array[int] = []
 	for rid: String in runes:
 		var r: Dictionary = p.call("word_add", index, rid, 0, 1)
 		if not bool(r["ok"]) and not placed.is_empty():
 			r = p.call("word_add", index, rid, placed[0], 1)
-		if not bool(r["ok"]):
-			r = p.call("word_add", index, rid, -1, 1)
 		if bool(r["ok"]):
 			placed.append(int(r["node"]))
+	var lock1: String = str(p.call("test_bind_unclosed", 0.0))
+	if lock1 != "bound":
+		p.call("close_seal")
+		return {"ok": false, "text": "the first lock: " + lock1}
+	p.call("open_seal", index)
 	var word: Dictionary = p.call("ability_word", index)
 	var host := -1
 	for i: int in placed:
@@ -255,9 +262,26 @@ func _seal_word(p: Node, index: int, runes: Array[String]) -> Dictionary:
 				prev = int(r3["node"])
 			if ok:
 				p.call("word_toggle_link", index, prev, first)
-	var sealed: Dictionary = p.call("seal_now")
+	# the second lock forms ring 2: if no great ring could be hung on ring 1 (no rune there with a bond to
+	# spare), one rune out on ring 2 instead - taking the last ring-1 rune out to free a bond if need be
+	if RuneWord.ring_nodes(p.call("ability_word", index), 2).is_empty():
+		var tries: Array[String] = ["UNI-19a", "UNI-28a", "UNI-26b", "UNI-27b"]
+		tries.append_array(runes)
+		if not _one_on_ring2(p, index, placed, tries) and placed.size() > 1:
+			p.call("word_remove", index, placed.pop_back())
+			_one_on_ring2(p, index, placed, tries)
+	var second: String = str(p.call("test_bind_unclosed", 0.0))
 	p.call("close_seal")
-	return sealed
+	return {"ok": second == "bound", "text": "the second lock: " + second}
+
+
+## Set one of `tries` on ring 2, joined to one of the ring-1 runes `placed`; true if one took.
+func _one_on_ring2(p: Node, index: int, placed: Array[int], tries: Array[String]) -> bool:
+	for host: int in placed:
+		for rid: String in tries:
+			if bool((p.call("word_add", index, rid, host, 2) as Dictionary)["ok"]):
+				return true
+	return false
 
 
 func _start_of(k: int) -> Vector3:

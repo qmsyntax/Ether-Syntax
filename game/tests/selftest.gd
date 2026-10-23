@@ -792,15 +792,15 @@ func _test_abilities() -> void:
 
 	var cons: Array = p.get("constructs")
 	cons.append({"tier": "remnant", "concept": "piercing"})
-	_check("the wrong tier is refused", str(p.call("bind_construct", 0, 0, 0.0)) == "needs a vestige" and cons.size() == 1)
+	_check("the wrong tier is refused", str(p.call("_bind_construct", 0, 0, 0.0)) == "needs a vestige" and cons.size() == 1)
 	cons.clear()
 	cons.append({"tier": "vestige", "concept": "acceleration"})
 	var pb0: Body = p.get("body")
 	var wounds_before: int = pb0.wounds.size()
-	_check("a failed bind loses the construct", str(p.call("bind_construct", 0, 0, 0.99)) == "failed" and cons.is_empty() and int(ab[0]["stage"]) == 0)
+	_check("a failed bind loses the construct", str(p.call("_bind_construct", 0, 0, 0.99)) == "failed" and cons.is_empty() and int(ab[0]["stage"]) == 0)
 	_check("a failed bind wounds you", pb0.wounds.size() == wounds_before + 1 and str(pb0.wounds[pb0.wounds.size() - 1]["name"]) == "Soul-burn")
 	cons.append({"tier": "vestige", "concept": "acceleration"})
-	_check("a vestige binds into stage 0 and advances it", str(p.call("bind_construct", 0, 0, 0.0)) == "bound" and int(ab[0]["stage"]) == 1 and _near(float(ab[0]["progress"]), 0.0))
+	_check("a vestige binds into stage 0 and advances it", str(p.call("_bind_construct", 0, 0, 0.0)) == "bound" and int(ab[0]["stage"]) == 1 and _near(float(ab[0]["progress"]), 0.0))
 	var stats: Dictionary = p.call("ability_stats", ab[0])
 	_check("the concept shapes the skill (acceleration: bolt speed x1.5)", _near(float(stats["speed"]), 30.0), "speed %f" % float(stats["speed"]))
 	_check("and reaches into what the skill does on a hit (acceleration doubles the shove)", _near(float((stats["on_hit"] as Dictionary)["shove"]), 3.0)
@@ -1177,7 +1177,7 @@ func _test_playtest_1011() -> void:
 	# the preview must agree with what binding then does
 	bolt["progress"] = 100.0
 	(q.get("constructs") as Array).append({"tier": "vestige", "concept": "acceleration"})
-	q.call("bind_construct", 0, 0, 0.0)
+	q.call("_bind_construct", 0, 0, 0.0)
 	_check("the bind does what the preview said", _near(float((q.call("ability_stats", bolt) as Dictionary)["speed"]), 30.0) and int(bolt["stage"]) == 1)
 	q.queue_free()
 
@@ -5191,16 +5191,20 @@ func _test_runes() -> void:
 			hub = id
 	var p: Node = _new_player()
 	p.call("set_affinities", ["water", "fire"])
-	((p.get("abilities") as Array)[0] as Dictionary)["stage"] = 2          # two rings
-	p.set("test_character", true)                                          # a free edit: no binding needed
-	p.call("open_free_edit", 0)
-	var adds: Array = [p.call("word_add", 0, hub, 0), p.call("word_add", 0, _runes_of("fire")[0], 1),
-		p.call("word_add", 0, expand, 1), p.call("word_add", 0, caps[0])]
-	_check("a word is built through the player: four runes set", adds.all(func(r: Dictionary) -> bool: return bool(r["ok"])), str(adds))
+	p.set("test_character", true)              # for the test hook: two level locks with the closed-word rule waived
+	var pst: Dictionary = (p.get("abilities") as Array)[0]
+	pst["progress"] = 100.0
+	(p.get("constructs") as Array).append_array([{"tier": "vestige", "concept": "reach"}, {"tier": "remnant", "concept": "reach"}])
+	p.call("open_seal", 0)
+	var adds: Array = [p.call("word_add", 0, hub, 0)]
+	var lock1: String = str(p.call("test_bind_unclosed", 0.0))
+	p.call("open_seal", 0)                     # the bar was refilled (a test character's override)
+	adds.append_array([p.call("word_add", 0, _runes_of("fire")[0], 1), p.call("word_add", 0, expand, 1), p.call("word_add", 0, caps[0])])
+	_check("a word is built through the player, lock by lock: four runes set", lock1 == "bound" and adds.all(func(r: Dictionary) -> bool: return bool(r["ok"])), "%s %s" % [lock1, str(adds)])
 	if BondRules.valence(hub) >= 4:
 		p.call("word_toggle_link", 0, 1, 4)
-	_check("and sealed (a test character's free edit)", bool((p.call("seal_now") as Dictionary)["ok"]))
-	p.call("close_seal")
+	_check("and sealed through two rings (the test hook: the second level lock, closure waived)",
+		str(p.call("test_bind_unclosed", 0.0)) == "bound" and RuneWord.sealed(p.call("ability_word", 0)) == 2 and int(pst["stage"]) == 2)
 	var saved: Dictionary = p.call("ability_word", 0)
 	var save_text: String = JSON.stringify(p.call("to_save"))
 	var q: Node = _new_player()
@@ -5211,7 +5215,10 @@ func _test_runes() -> void:
 		and RuneWord.rings(loaded) == RuneWord.rings(saved) and RuneWord.sealed(loaded) == RuneWord.sealed(saved) and RuneWord.sealed(loaded) > 0, "%s vs %s" % [str(loaded), str(saved)])
 	_check("its links come back as whole numbers", typeof((RuneWord.links(loaded)[0] as Dictionary)["a"]) == TYPE_INT)
 	_check("and the rules read it the same", str(bond.word_state(loaded, q.call("rune_context", 0))) == str(bond.word_state(saved, p.call("rune_context", 0))))
-	q.call("open_free_edit", 0)
+	q.set("stars", 3)
+	((q.get("abilities") as Array)[0] as Dictionary)["progress"] = 100.0
+	(q.get("constructs") as Array).append({"tier": "spirit", "concept": "reach"})
+	q.call("open_seal", 0)
 	q.call("word_clear", 0)
 	_check("a draft can be cleared back to its anchor", RuneWord.nodes(q.call("ability_word", 0)) == [anchor])
 	q.call("close_seal")
@@ -5223,14 +5230,16 @@ func _test_runes() -> void:
 	var f: Node = _new_player()
 	f.call("set_affinities", ["water"])
 	f.set("test_character", true)
-	f.call("open_free_edit", 0)
+	((f.get("abilities") as Array)[0] as Dictionary)["progress"] = 100.0
+	(f.get("constructs") as Array).append({"tier": "vestige", "concept": "reach"})
+	f.call("open_seal", 0)
 	var fa: Array = [f.call("word_add", 0, water[0], 0), f.call("word_add", 0, water[1], 0)]
 	var f3: Dictionary = f.call("word_add", 0, water[2], 0)
 	_check("with the test rules in force the player's word follows them: three runes at most",
 		bool(fa[0]["ok"]) and bool(fa[1]["ok"]) and str(f3["reason"]) == "capacity")
 	_check("under them a rune joins anything", bool((f.call("word_toggle_link", 0, 1, 2) as Dictionary)["ok"]) and RuneWord.degree(f.call("ability_word", 0), 1) == 2)
 	var fw: Dictionary = f.call("ability_word", 0)
-	f.call("seal_now")
+	f.call("test_bind_unclosed", 0.0)
 	var fdata: Dictionary = JSON.parse_string(JSON.stringify(f.call("to_save")))
 	Runes.use(null)
 	_check("back to the data's rule set", Runes.active() is BondRules)
@@ -5406,9 +5415,9 @@ func _test_rune_effects() -> void:
 	# the ionic anchor loses its signature: Water Bolt joined only to a rune that pulls far harder
 	var p: Node = _new_player()
 	p.call("set_affinities", ["water"])
-	((p.get("abilities") as Array)[0] as Dictionary)["stage"] = 3
-	p.set("test_character", true)
-	p.call("open_free_edit", 0)
+	((p.get("abilities") as Array)[0] as Dictionary)["progress"] = 100.0
+	(p.get("constructs") as Array).append({"tier": "vestige", "concept": "reach"})
+	p.call("open_seal", 0)
 	var lone: Dictionary = p.call("word_add", 0, ionic_r, 0)
 	var pv: Dictionary = p.call("rune_preview", 0)
 	_check("bonded ionically to a rune with more pull, Water Bolt loses its shove (%s)" % str(GameData.rune(ionic_r)["name"]),
@@ -5765,14 +5774,18 @@ func _test_seals() -> void:
 	for i: int in (g.get("abilities") as Array).size():
 		if str((g.get("abilities") as Array)[i]["id"]) == bolt:
 			gi = i
-	((g.get("abilities") as Array)[gi] as Dictionary)["stage"] = 2
-	g.call("open_free_edit", gi)
-	var steps: Array = [g.call("word_add", gi, "WAT-5a", 0), g.call("word_add", gi, "WAT-1a", 1), g.call("word_add", gi, "UNI-19a", 2),
-		g.call("word_add", gi, "UNI-28a", 3), g.call("word_add", gi, "UNI-26b", 4), g.call("word_add", gi, "UNI-27b", 5), g.call("word_toggle_link", gi, 6, 2)]
-	_check("a great ring is built by the free edit's rules (Gush on ring 1, Flood and four universal runes round ring 2)",
-		steps.all(func(r: Dictionary) -> bool: return bool(r["ok"])) and _trait_ids(Runes.active(), g.call("ability_word", gi)).has("great_ring"), str(steps))
-	g.call("seal_now")
-	g.call("close_seal")
+	# two level locks (the test hook waives the closed-word rule; everything else is the real lock)
+	((g.get("abilities") as Array)[gi] as Dictionary)["progress"] = 100.0
+	(g.get("constructs") as Array).append_array([{"tier": "vestige", "concept": "reach"}, {"tier": "remnant", "concept": "reach"}])
+	g.call("open_seal", gi)
+	var steps: Array = [g.call("word_add", gi, "WAT-5a", 0)]
+	var g_lock1: String = str(g.call("test_bind_unclosed", 0.0))
+	g.call("open_seal", gi)
+	steps.append_array([g.call("word_add", gi, "WAT-1a", 1), g.call("word_add", gi, "UNI-19a", 2),
+		g.call("word_add", gi, "UNI-28a", 3), g.call("word_add", gi, "UNI-26b", 4), g.call("word_add", gi, "UNI-27b", 5), g.call("word_toggle_link", gi, 6, 2)])
+	_check("a great ring is built lock by lock (Gush on ring 1 at the first; Flood and four universal runes round ring 2 at the second)",
+		g_lock1 == "bound" and steps.all(func(r: Dictionary) -> bool: return bool(r["ok"])) and _trait_ids(Runes.active(), g.call("ability_word", gi)).has("great_ring"), str(steps))
+	_check("and the second lock binds it", str(g.call("test_bind_unclosed", 0.0)) == "bound" and RuneWord.sealed(g.call("ability_word", gi)) == 2)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	var foe := _foe(g, Vector3(0, 0, -6.0))
@@ -5830,10 +5843,225 @@ func _test_seals() -> void:
 	s.call("close_seal")
 	_check("a draft left without binding changes nothing", RuneWord.shape_key(s.call("ability_word", 0)) == RuneWord.shape_key(reworked))
 	s.call("open_seal", 0, 0)
-	_check("binding with the draft untouched keeps the word as it is", str(s.call("bind_seal", 0.0)) == "bound" and RuneWord.shape_key(s.call("ability_word", 0)) == RuneWord.shape_key(reworked) and int(st["stage"]) == 3)
-	_check("a normal character has no free edit; a test character does", not bool((s.call("open_free_edit", 0) as Dictionary)["ok"]) and bool((g.call("open_free_edit", 0) as Dictionary)["ok"]))
+	var untouched: Dictionary = s.call("can_bind_seal")
+	var held_n: int = (s.get("constructs") as Array).size()
+	var said: String = str(s.call("bind_seal", 0.0))
+	_check("a lock with its new ring left empty cannot bind - ring and construct lock together (Brent 2026-10-23); the construct is kept",
+		not bool(untouched["ok"]) and str(untouched["reason"]) == "ring_unformed" and said == str(untouched["text"]) and int(st["stage"]) == 2
+		and (s.get("constructs") as Array).size() == held_n and RuneWord.shape_key(s.call("ability_word", 0)) == RuneWord.shape_key(reworked), said)
+	s.call("close_seal")
+	_check("there is no free edit any more, for anyone: no open_free_edit, no seal_now (Brent 2026-10-23)",
+		not s.has_method("open_free_edit") and not s.has_method("seal_now") and not g.has_method("open_free_edit") and not s.has_method("bind_first_ready"))
 	for n: Node in [g, s, foe, floor_n]:
 		n.queue_free()
+	await get_tree().process_frame
+	await _test_level_locks()
+
+
+## A closed word for level lock `k` on skill `index` of `p`'s open draft, built from the skill outward:
+## the skill's own rune joined to caps on ring 1 and, from lock 2 on, to a chain of links running out
+## ring by ring to a cap on ring k. Cleared first (a rework of every sealed ring is allowed at a lock).
+## Returns every word_add's answer.
+func _closed_chain(p: Node, index: int, k: int, cap: String, link: String) -> Array:
+	p.call("word_clear", index)
+	var out: Array = []
+	var need: int = (Runes.active() as RingRules).anchor_needs(p.call("ability_word", index))
+	var caps_on_1: int = need
+	if k >= 2:
+		var prev := 0
+		for ring: int in range(1, k):
+			var r: Dictionary = p.call("word_add", index, link, prev, ring)
+			out.append(r)
+			prev = int(r.get("node", prev))
+		out.append(p.call("word_add", index, cap, prev, k))
+		caps_on_1 = need - 1
+	for j: int in caps_on_1:
+		out.append(p.call("word_add", index, cap, 0, 1))
+	return out
+
+
+## The level lock (Brent 2026-10-23: "you should have to build out to in ... You should not be able to
+## build level 2 until level 1 is fully formed with construct. The levels all LOCK together. No binding
+## the constructs on the main page, only with the runes."): the rules refuse ring k before ring k-1 is
+## formed; a bind forms ring and construct together; nothing binds outside the seal screen; a test
+## character walks 0 -> 5 through five real locks; an old save forms its missing inner rings in order.
+func _test_level_locks() -> void:
+	print("the level lock: ring and construct together, built from the skill outward (Brent 2026-10-23):")
+	var rules: RingRules = Runes.active() as RingRules
+	var bolt: String = "water_bolt"
+	var anchor: String = GameData.skill_anchor(bolt)
+	var cap: String = ""
+	var link: String = ""
+	for rid: String in _runes_of("water", -1, [anchor]):
+		if cap == "" and BondRules.valence(rid) == 1 and rules.alignment_state(anchor, rid) == "ok":
+			cap = rid
+		if link == "" and BondRules.valence(rid) == 2 and rules.alignment_state(anchor, rid) == "ok" and rules.alignment_state(rid, rid) == "ok":
+			link = rid
+	# ---- the rules: ring 2 is refused before ring 1 is formed
+	var ctx3: RuneContext = _rctx(bolt, 2)
+	ctx3.rings = 3
+	ctx3.forming = 3
+	var w: Dictionary = RuneWord.make(anchor)
+	var r2: Dictionary = rules.can_add(w, link, ctx3, -1, 2)
+	_check("the rules refuse a rune on ring 2 while ring 1 is empty, and say why (\"%s\")" % str(r2.get("text", "")),
+		not bool(r2["ok"]) and str(r2["reason"]) == "ring_unformed" and str(r2["text"]).contains("ring 1 is not formed"))
+	rules.add(w, link, ctx3, -1, 1)
+	var r2b: Dictionary = rules.can_add(w, link, ctx3, -1, 2)
+	_check("a rune on ring 1 that is not joined to the skill does not form it: ring 2 still refused", not bool(r2b["ok"]) and str(r2b["reason"]) == "ring_unformed")
+	rules.link(w, 0, 1, ctx3)
+	_check("joined to the skill, ring 1 is formed: ring 2 is open, ring 3 still refused (ring 2 is not formed)",
+		rules.ring_formed(w, 1) and bool(rules.can_add(w, link, ctx3, -1, 2)["ok"]) and str(rules.can_add(w, link, ctx3, -1, 3)["reason"]) == "ring_unformed")
+	_check("placing without a ring picks the innermost ring that may take it", int(rules.can_add(w, cap, ctx3, -1, -1)["ring"]) <= 2)
+
+	# ---- the same refusal through the player, with the reason the board shows
+	var p: Node = _new_player()
+	p.call("set_affinities", ["water"])
+	var st: Dictionary = (p.get("abilities") as Array)[0]
+	for rid: String in [cap, link]:
+		p.call("discover_rune", rid, "")
+	st["progress"] = 100.0
+	(p.get("constructs") as Array).append({"tier": "vestige", "concept": "reach"})
+	(p.get("constructs") as Array).append({"tier": "vestige", "concept": "tension"})
+	p.call("open_seal", 0)
+	var ctx: RuneContext = p.call("rune_context", 0)
+	_check("the first lock opens ring 1 only and chooses a carried vestige", ctx.forming == 1 and ctx.rings == 1
+		and str(((p.get("constructs") as Array)[int(p.call("seal_construct"))] as Dictionary)["tier"]) == "vestige")
+	_check("the construct is chosen on the seal screen: another concept of the tier can be chosen, a wrong tier cannot",
+		bool((p.call("choose_seal_construct", 1) as Dictionary)["ok"]) and int(p.call("seal_construct")) == 1
+		and (func() -> bool:
+			(p.get("constructs") as Array).append({"tier": "remnant", "concept": "reach"})
+			var bad: Dictionary = p.call("choose_seal_construct", 2)
+			(p.get("constructs") as Array).pop_back()
+			return not bool(bad["ok"]) and str(bad["reason"]) == "wrong_tier").call())
+	var empty_bind: Dictionary = p.call("can_bind_seal")
+	_check("with ring 1 empty the lock cannot bind (\"%s\")" % str(empty_bind["text"]), not bool(empty_bind["ok"]) and str(empty_bind["reason"]) == "ring_unformed")
+	var built: Array = _closed_chain(p, 0, 1, cap, link)
+	var held_before: int = (p.get("constructs") as Array).size()
+	var chosen: Dictionary = (p.get("constructs") as Array)[int(p.call("seal_construct"))]
+	var result: String = str(p.call("bind_seal", 0.0))
+	var w1: Dictionary = p.call("ability_word", 0)
+	var bound: Array = st.get("bound", [])
+	_check("binding forms ring and construct together: stage 1, ring 1 sealed, the chosen vestige bound and used up",
+		built.all(func(r: Dictionary) -> bool: return bool(r["ok"])) and result == "bound" and int(st["stage"]) == 1 and RuneWord.sealed(w1) == 1
+		and RuneWord.ring_nodes(w1, 1).size() > 0 and bound.size() == 1 and str((bound[0] as Dictionary)["concept"]) == str(chosen["concept"])
+		and (p.get("constructs") as Array).size() == held_before - 1 and _near(float(st["progress"]), 0.0), "%s %s" % [result, str(built)])
+	p.queue_free()
+
+	# ---- no bind entry point outside the seal screen: the code, and the main page's UI tree
+	var callers: Dictionary = {}
+	var dirs: Array[String] = ["res://scripts"]
+	while not dirs.is_empty():
+		var d: String = dirs.pop_back()
+		for sub: String in DirAccess.get_directories_at(d):
+			dirs.append(d.path_join(sub))
+		for f: String in DirAccess.get_files_at(d):
+			if not f.ends_with(".gd"):
+				continue
+			var text: String = FileAccess.get_file_as_string(d.path_join(f))
+			for name: String in ["bind_seal", "_bind_construct", "test_bind_unclosed", "bind_first_ready", "open_free_edit", "seal_now"]:
+				if text.contains("\"%s\"" % name) or text.contains("%s(" % name):
+					if not callers.has(name):
+						callers[name] = []
+					(callers[name] as Array).append(f)
+	_check("in the game's scripts only the seal screen calls bind_seal; the bind itself (_bind_construct) and the test hook live in player.gd alone",
+		(callers.get("bind_seal", []) as Array).all(func(f: String) -> bool: return f in ["player.gd", "ethercosm_screen.gd"])
+		and (callers.get("bind_seal", []) as Array).has("ethercosm_screen.gd")
+		and (callers.get("_bind_construct", []) as Array) == ["player.gd"] and (callers.get("test_bind_unclosed", []) as Array) == ["player.gd"], str(callers))
+	_check("and the old entry points are gone: bind_first_ready, open_free_edit, seal_now", not callers.has("bind_first_ready") and not callers.has("open_free_edit") and not callers.has("seal_now"), str(callers))
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	main.set("_test_mode", true)
+	add_child(main)
+	await get_tree().process_frame
+	main.call("start_new_character", 0)
+	var mp: Node = main.get("player")
+	((mp.get("abilities") as Array)[0] as Dictionary)["progress"] = 100.0
+	(mp.get("constructs") as Array).append({"tier": "vestige", "concept": "tension"})
+	(mp.get("constructs") as Array).append({"tier": "vestige", "concept": "reach"})
+	main.call("open_ethercosm")
+	await get_tree().process_frame
+	var es: Node = main.get("screen")
+	es.call("select", 0)
+	await get_tree().process_frame
+	var binds: Array = es.find_children("*", "Button", true, false).filter(func(b: Node) -> bool: return (b as Button).text.to_lower().contains("bind"))
+	var open_b: Node = es.find_child("OpenSealButton", true, false)
+	var ready_l: Node = es.find_child("LockReady", true, false)
+	_check("the ethercosm main page has no bind button and no bind preview, only the lock's state and one Open the seal button",
+		binds.is_empty() and es.find_children("BindPreview", "", true, false).is_empty() and open_b is Button and ready_l is Label
+		and (ready_l as Label).text.begins_with("Ready for its level 1 lock: needs a vestige"), "%s; %s" % [str(binds.map(func(b: Node) -> String: return (b as Button).text)), (ready_l as Label).text if ready_l is Label else "no label"])
+	(open_b as Button).emit_signal("pressed")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	es = main.get("screen")
+	_check("its button opens the seal screen at the level lock, with the vestiges carried to choose from",
+		str(es.call("seal_view")) == "bind" and es.find_child("LockConstruct_tension", true, false) is Button and es.find_child("LockConstruct_reach", true, false) is Button
+		and es.find_child("ChosenConstruct", true, false) != null)
+	main.call("close_screen")
+	main.call("open_inventory")
+	await get_tree().process_frame
+	var inv: Node = main.get("screen")
+	inv.set("_tab", "soul")
+	inv.call("rebuild")
+	await get_tree().process_frame
+	var inv_binds: Array = inv.find_children("*", "Button", true, false).filter(func(b: Node) -> bool: return (b as Button).text.to_lower().contains("bind"))
+	_check("the inventory's soul tab has no bind button either: its button opens the seal", inv_binds.is_empty() and inv.find_child("OpenSealButton_0", true, false) is Button,
+		str(inv_binds.map(func(b: Node) -> String: return (b as Button).text)))
+	main.call("close_screen")
+	main.queue_free()
+	await get_tree().process_frame
+
+	# ---- a test character walks every lock in order: 0 -> 1 -> 2 -> 3 -> 4 -> 5
+	var tc: Node = _new_player()
+	tc.call("make_test_character", "water")
+	var ti := -1
+	for i: int in (tc.get("abilities") as Array).size():
+		if str(((tc.get("abilities") as Array)[i] as Dictionary)["id"]) == bolt:
+			ti = i
+	var tst: Dictionary = (tc.get("abilities") as Array)[ti]
+	var walk: Array[String] = []
+	var walk_ok: bool = int(tst["stage"]) == 0 and GameData.inum("skills", "test_stage") == 0 and int(tc.get("stars")) == GameData.inum("skills", "test_stars")
+	for k: int in range(1, 6):
+		var o: Dictionary = tc.call("open_seal", ti)
+		var tier: String = str(((tc.get("constructs") as Array)[int(tc.call("seal_construct"))] as Dictionary)["tier"]) if bool(o["ok"]) else "?"
+		var tctx: RuneContext = tc.call("rune_context", ti)
+		var made: Array = _closed_chain(tc, ti, k, cap, link)
+		var res: String = str(tc.call("bind_seal", 0.0))
+		walk.append("%d:%s:%s" % [k, tier, res])
+		walk_ok = (walk_ok and bool(o["ok"]) and tctx.forming == k and tier == GameData.tier_for_stage(k - 1) and res == "bound"
+			and made.all(func(r: Dictionary) -> bool: return bool(r["ok"])) and int(tst["stage"]) == k and RuneWord.sealed(tc.call("ability_word", ti)) == k
+			and RuneWord.ring_nodes(tc.call("ability_word", ti), k).size() > 0)
+		if k < 5:
+			walk_ok = walk_ok and _near(float(tst["progress"]), 100.0)      # the test override: the next lock is open at once
+	_check("a test character starts at stage 0 and walks Water Bolt through five real locks, vestige to asura, one ring each (%s)" % ", ".join(walk), walk_ok)
+	_check("after the asura lock (stage 5 = stars + 1) no lock is left", str(tc.call("pending_tier", tst)) == "" and not bool((tc.call("open_seal", ti) as Dictionary)["ok"]))
+	tc.queue_free()
+
+	# ---- an old save: stage 2, no word (bound twice under the old flow, the draft left untouched)
+	var o_p: Node = _new_player()
+	o_p.call("set_affinities", ["water"])
+	o_p.set("stars", 3)
+	for rid2: String in [cap, link]:
+		o_p.call("discover_rune", rid2, "")
+	var ost: Dictionary = (o_p.get("abilities") as Array)[0]
+	ost["stage"] = 2
+	ost["progress"] = 100.0
+	ost["bound"] = [{"stage": 0, "tier": "vestige", "concept": "reach"}, {"stage": 1, "tier": "remnant", "concept": "reach"}]
+	(o_p.get("constructs") as Array).append({"tier": "spirit", "concept": "tension"})
+	o_p.call("open_seal", 0)
+	var octx: RuneContext = o_p.call("rune_context", 0)
+	var on2: Dictionary = o_p.call("word_add", 0, link, -1, 2)
+	var on3: Dictionary = o_p.call("word_add", 0, link, -1, 3)
+	_check("an old save's next lock (stage 2, no word) opens rings 1-3, but ring 2 and ring 3 are refused while ring 1 is unformed",
+		octx.forming == 3 and octx.rings == 3 and str(on2["reason"]) == "ring_unformed" and str(on3["reason"]) == "ring_unformed" and RuneWord.size(o_p.call("ability_word", 0)) == 1)
+	var on1: Dictionary = o_p.call("word_add", 0, link, 0, 1)
+	var on2b: Dictionary = o_p.call("word_add", 0, link, int(on1.get("node", 0)), 2)
+	var cut: Dictionary = o_p.call("can_bind_seal")
+	_check("formed in order - ring 1 joined to the skill, then ring 2 - and still the lock will not bind until ring 3, its own ring, is formed too",
+		bool(on1["ok"]) and bool(on2b["ok"]) and not bool(cut["ok"]) and str(cut["reason"]) == "ring_unformed")
+	var oc: Array = _closed_chain(o_p, 0, 3, cap, link)
+	var ores: String = str(o_p.call("bind_seal", 0.0))
+	_check("with every missing inner ring formed, in order, plus the new one, it binds: stage 3, sealed through three rings",
+		oc.all(func(r: Dictionary) -> bool: return bool(r["ok"])) and ores == "bound" and int(ost["stage"]) == 3 and RuneWord.sealed(o_p.call("ability_word", 0)) == 3, ores)
+	o_p.queue_free()
 	await get_tree().process_frame
 
 
@@ -6068,14 +6296,7 @@ func _test_seal_editing() -> void:
 	add_child(main)
 	await get_tree().process_frame
 	main.call("start_test_character", "water")
-	main.call("open_ethercosm")
-	await get_tree().process_frame
-	var s: Node = main.get("screen")
-	s.call("open_runes")
-	await get_tree().process_frame
-	await get_tree().process_frame
 	var p: Node = main.get("player")
-	var b: RuneBoard = s.find_children("RuneBoard", "Control", true, false)[0] as RuneBoard
 	var anchor: String = RuneWord.anchor(p.call("ability_word", 0))
 	var links2: Array[String] = []
 	var caps: Array[String] = []
@@ -6084,6 +6305,25 @@ func _test_seal_editing() -> void:
 			caps.append(rid)
 		elif BondRules.valence(rid) >= 2 and links2.size() < 5:
 			links2.append(rid)
+	# no free edit since Brent 2026-10-23: the test character's first skill goes through two level locks
+	# (the test hook waives only the closed-word rule), so its third lock's draft has rings 1-3
+	var prev := 0
+	for k0: int in [1, 2]:
+		p.call("open_seal", 0)
+		prev = int((p.call("word_add", 0, links2[0], prev, k0) as Dictionary).get("node", prev))
+		p.call("test_bind_unclosed", 0.0)
+	var sealed_key: String = RuneWord.shape_key(p.call("ability_word", 0))
+	main.call("open_ethercosm")
+	await get_tree().process_frame
+	var s: Node = main.get("screen")
+	s.call("open_runes")                    # its bar is full again (a test override): the third lock
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var b: RuneBoard = s.find_children("RuneBoard", "Control", true, false)[0] as RuneBoard
+	_check("the seal screen opens a test character's skill at its level 3 lock, two rings sealed", str(s.call("seal_view")) == "bind"
+		and (p.call("rune_context", 0) as RuneContext).forming == 3 and int(s.call("sealed_rings")) == 2)
+	p.call("word_clear", 0)                 # rework it all, from the skill outward
+	await get_tree().process_frame
 	var w := func() -> Dictionary: return p.call("ability_word", 0)
 
 	# ---- place: a rune goes exactly where it is put, and alone (bugs 1 and 4)
@@ -6099,15 +6339,13 @@ func _test_seal_editing() -> void:
 	_bclick(b, _local(b, b.empty_slot_global(1, 0)))
 	_check("with a rune selected, a new rune is set alone - never bonded to the selection (bug 1)",
 		RuneWord.size(w.call()) == 3 and RuneWord.degree(w.call(), 2) == 0 and RuneWord.links(w.call()).is_empty(), str(w.call()))
-	# a palette rune carried to a place and let go there (the chip hands the cursor to the screen)
-	var drop_g: Vector2 = b.empty_slot_global(2, 2)
-	var drop_j: int = b.empty_place(2, 2)
-	s.call("carry_move", links2[2], drop_g + Vector2(30, 10))
-	var carrying: bool = b.is_carrying()
-	s.call("carry_move", links2[2], drop_g)
-	s.call("carry_end", links2[2], drop_g)
-	_check("a palette rune carried to an empty place of ring 2 and let go is set there", carrying and not b.is_carrying() and RuneWord.size(w.call()) == 4
-		and RuneWord.ring(w.call(), 3) == 2 and RuneWord.places(w.call())[3] == drop_j)
+	# ring 2 is refused while ring 1 is not formed (Brent 2026-10-23: built from the skill outward)
+	var early_g: Vector2 = b.empty_slot_global(2, 2)
+	s.call("carry_move", links2[2], early_g)
+	var early: Dictionary = s.call("place_check", links2[2], 2)
+	s.call("carry_end", links2[2], early_g)
+	_check("ring 2 refused while ring 1 is not formed: no rune on it is joined to the skill (\"%s\")" % RuneBoard.short_reason(early),
+		str(early["reason"]) == "ring_unformed" and RuneWord.size(w.call()) == 3 and str(s.get("_rune_msg")).contains("ring 1 is not formed"), str(s.get("_rune_msg")))
 
 	# ---- bond by dragging (and the stale-pick bug 2: clicks only select)
 	_bclick(b, _local(b, b.node_global(0)))
@@ -6124,6 +6362,16 @@ func _test_seal_editing() -> void:
 		if b.node_global(i2).distance_to(before_pos[i2]) > 0.5:
 			moved = true
 	_check("bonding moves nothing on the board (bug 5: runes jumped to sit by their partners)", not moved)
+	# a palette rune carried to a place and let go there (the chip hands the cursor to the screen):
+	# ring 1 is formed now, so ring 2 takes it
+	var drop_g: Vector2 = b.empty_slot_global(2, 2)
+	var drop_j: int = b.empty_place(2, 2)
+	s.call("carry_move", links2[2], drop_g + Vector2(30, 10))
+	var carrying: bool = b.is_carrying()
+	s.call("carry_move", links2[2], drop_g)
+	s.call("carry_end", links2[2], drop_g)
+	_check("with ring 1 formed, a palette rune carried to an empty place of ring 2 and let go is set there", carrying and not b.is_carrying() and RuneWord.size(w.call()) == 4
+		and RuneWord.ring(w.call(), 3) == 2 and RuneWord.places(w.call())[3] == drop_j, str(s.get("_rune_msg")))
 	_bdrag(b, _local(b, b.node_global(1)), _local(b, b.node_global(3)))
 	_check("a rune on ring 1 dragged to one on ring 2: bonded", RuneWord.linked(w.call(), 1, 3))
 	_bclick(b, _local(b, b.node_global(0)))
@@ -6211,7 +6459,7 @@ func _test_seal_editing() -> void:
 			fwd_ok = false
 	_check("Ctrl+Z steps back through %d edits, each to exactly the draft it was (runes, rings, places, bonds)" % (states.size() - 1), back_ok)
 	_check("and Ctrl+Y forward again, exactly", fwd_ok)
-	_check("nothing is committed: the skill's own word is untouched by the draft", not RuneWord.is_sealed((p.get("abilities") as Array)[0].get("word", {})))
+	_check("nothing is committed: the skill's own word is untouched by the draft", RuneWord.shape_key((p.get("abilities") as Array)[0].get("word", {})) == sealed_key)
 
 	# ---- Esc cancels a drag and keeps the screen (bug 11: Esc closed it and the draft with it)
 	_bpress(b, _local(b, b.node_global(0)))
@@ -6225,17 +6473,19 @@ func _test_seal_editing() -> void:
 
 	# ---- the board's geometry (bugs 6 and 10)
 	p.call("word_clear", 0)
+	s.call("place_rune", links2[3], 1, 0)            # ring 1 first, joined to the skill: ring 2 is open
+	s.call("finish_bond", 0, 1)
 	for j: int in 3:
 		s.call("place_rune", links2[j], 2, j)
-	s.call("finish_bond", 1, 3)
+	s.call("finish_bond", 2, 4)
 	await get_tree().process_frame
-	var pts: PackedVector2Array = b._bond_points(1, 3)
-	var mid_pos: Vector2 = (b.get("_pos") as Array)[2]
+	var pts: PackedVector2Array = b._bond_points(2, 4)
+	var mid_pos: Vector2 = (b.get("_pos") as Array)[3]
 	var nearest := INF
 	for q: Vector2 in pts:
 		nearest = minf(nearest, q.distance_to(mid_pos))
 	_check("two runes of ring 2 with one between them: their bond is drawn across, %.0f px clear of the middle rune (bug 6: along the ring, through it)" % nearest,
-		RuneWord.linked(w.call(), 1, 3) and nearest > RuneBoard.SEAL_R + 2.0)
+		RuneWord.size(w.call()) == 5 and RuneWord.linked(w.call(), 2, 4) and nearest > RuneBoard.SEAL_R + 2.0, str(w.call()))
 	var saved_pos: Array = (b.get("_pos") as Array).duplicate()
 	var c0: Vector2 = saved_pos[0]
 	b.set("_pos", [c0, c0 + Vector2(200, 0), c0 + Vector2(240, 0)] as Array[Vector2])
