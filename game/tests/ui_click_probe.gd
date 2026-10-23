@@ -377,7 +377,7 @@ func _rune_steps(at: int) -> void:
 			_stats_before = str(player.call("ability_stats", (player.get("abilities") as Array)[0]))
 			var seal0: Control = _find(main, "SealBindButton")
 			_expect("with only the skill's own rune the draft is unchanged: binding would leave it without a word, and the screen says so",
-				seal0 != null and not (seal0 as Button).disabled and str(main.get("screen").get("_lock_note").text).begins_with("Unchanged"))
+				seal0 != null and not (seal0 as Button).disabled and str(main.get("screen").get("_lock_note").text).begins_with("Nothing set"))
 			_click_at((_find(main, "RuneBoard") as RuneBoard).node_global(0))
 		130, 140, 150:
 			var k: int = int(float(at - 130) / 10.0)

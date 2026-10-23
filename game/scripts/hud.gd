@@ -686,9 +686,9 @@ func _draw_rune_card(vs: Vector2) -> void:
 	var rune: Dictionary = GameData.rune(rid)
 	var aff: String = str(rune.get("affinity", ""))
 	var col: Color = GameData.affinity_color(aff).lightened(0.3) if aff != "" else UiTheme.STAR
-	var w := 520.0
+	var w := 600.0
 	var h := 138.0
-	var r := Rect2(vs.x * 0.5 - w * 0.5, vs.y * 0.30, w, h)
+	var r := Rect2(vs.x * 0.5 - w * 0.5, vs.y * 0.155, w, h)
 	_soft_shade(Rect2(r.position - Vector2(60, 30), r.size + Vector2(120, 60)), 0.5 * a)
 	draw_rect(r, Color(0.035, 0.03, 0.05, 0.86 * a))
 	draw_rect(r, Color(UiTheme.GOLD, 0.55 * a), false, 1.5)
@@ -710,7 +710,7 @@ func _draw_rune_card(vs: Vector2) -> void:
 	UiDraw.outlined(self, Vector2(x, r.position.y + 62.0), "%s%s" % [str(rune.get("name", rid)), ("   -   " + str(GameData.affinity(aff).get("label", aff))) if aff != "" else "   -   universal"], 26, Color(col.lightened(0.2), a), HORIZONTAL_ALIGNMENT_LEFT, tw, true)
 	UiDraw.text(self, Vector2(x, r.position.y + 88.0), str(rune.get("meaning", "")), 14, Color(UiTheme.TEXT, a), HORIZONTAL_ALIGNMENT_LEFT, tw)
 	var src: String = str(_rune_card.get("source", ""))
-	UiDraw.text(self, Vector2(x, r.position.y + 112.0), (src.capitalize().substr(0, 1) + src.substr(1) + ".  " if src != "" else "") + "Known for good: set it in any seal.", 12, Color(UiTheme.TEXT_FAINT, a), HORIZONTAL_ALIGNMENT_LEFT, tw)
+	UiDraw.text(self, Vector2(x, r.position.y + 112.0), (src.capitalize().substr(0, 1) + src.substr(1) + ".  " if src != "" else "") + "Yours for good, in any seal.", 12, Color(UiTheme.TEXT_FAINT, a), HORIZONTAL_ALIGNMENT_LEFT, tw)
 
 
 # --- bottom left: message log ---------------------------------------------------------------

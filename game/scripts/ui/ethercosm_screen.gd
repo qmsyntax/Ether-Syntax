@@ -424,8 +424,9 @@ func _mode_banner(mode: String, ctx: RuneContext, st: Dictionary) -> String:
 			var ci: int = int(player.call("seal_construct"))
 			var c: Dictionary = cons[ci] if ci >= 0 and ci < cons.size() else {}
 			var label: String = str(GameData.concept(str(c.get("concept", ""))).get("label", c.get("concept", "?")))
-			return "FORMING RING %d  -  binding the %s of %s. Rework the inner ring%s and add the new one; the bind seals it." % [
-				ctx.forming, str(c.get("tier", "?")), label, "" if ctx.forming <= 2 else "s"]
+			var how: String = "Set the first ring; the bind seals it." if ctx.forming <= 1 else \
+				"Rework the inner ring%s and add the new one; the bind seals it." % ("" if ctx.forming == 2 else "s")
+			return "FORMING RING %d  -  binding the %s of %s. %s" % [ctx.forming, str(c.get("tier", "?")), label, how]
 		"test":
 			return "TEST CHARACTER  -  FREE EDIT: every rune, any time; a word need not be closed to seal. Not how a real character works."
 	var n: int = sealed_rings()
@@ -647,7 +648,7 @@ func _refresh_runes() -> void:
 			_lock_button.disabled = not bool(can["ok"])
 			_lock_button.tooltip_text = "" if bool(can["ok"]) else str(can["text"])
 			_lock_note.text = (str(can["text"]) if not bool(can["ok"]) else
-				("Unchanged: binding keeps the word as it is.  " if bool(can.get("unchanged", false)) else "Ready: the seal forms if the bind takes.  ")
+				((("Unchanged: binding keeps the word as it is.  " if sealed_rings() > 0 else "Nothing set: binding leaves it without a word.  ") if bool(can.get("unchanged", false)) else "Ready: the seal forms if the bind takes.  "))
 				+ "%d%% it takes; a failed bind loses the construct, wounds you, and forms no seal." % int(round(GameData.num("binding", "success_chance") * 100.0)))
 		elif mode == "test":
 			var can2: Dictionary = rules.can_seal(word, ctx)

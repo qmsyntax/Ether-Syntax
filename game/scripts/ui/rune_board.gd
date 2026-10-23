@@ -678,6 +678,18 @@ func _bond_points(a: int, b: int) -> PackedVector2Array:
 	var ra: float = (CORE_R if a == 0 else SEAL_R) + 4.0
 	var rb: float = (CORE_R if b == 0 else SEAL_R) + 4.0
 	var out := PackedVector2Array()
+	# two runes on the same ring: the bond runs round the ring, the shorter way
+	var word: Dictionary = _word()
+	var ka: int = RuneWord.ring(word, a)
+	if ka >= 1 and ka == RuneWord.ring(word, b) and _lock_t < 0.0:
+		var r: float = (pa - c).length()
+		var a0: float = (pa - c).angle()
+		var span: float = angle_difference(a0, (pb - c).angle())
+		for s2: int in 41:
+			var q2: Vector2 = c + Vector2.from_angle(a0 + span * float(s2) / 40.0) * r
+			if q2.distance_to(pa) >= ra and q2.distance_to(pb) >= rb:
+				out.append(q2)
+		return out
 	for s: int in 29:
 		var t: float = float(s) / 28.0
 		var q: Vector2 = pa.lerp(ctrl, t).lerp(ctrl.lerp(pb, t), t)

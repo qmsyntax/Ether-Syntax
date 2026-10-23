@@ -2404,6 +2404,7 @@ func _shot_skill(id: String) -> int:
 ##   seal-palette       the palette of a new character: what it knows, and the "?" it has yet to find
 func _setup_seal_shot(which: String) -> void:
 	_select_talent(0)
+	(player.get("constructs") as Array).clear()          # the other UI shots hand out two vestiges first
 	match which:
 		"seal-forming", "runes", "runes-locking":
 			player.call("set_affinities", ["water", "fire"])
@@ -2465,7 +2466,7 @@ func _setup_seal_shot(which: String) -> void:
 				if stone.stone_id == "stubble_waystone_runes":
 					break
 			if stone != null:
-				player.global_position = stone.global_position + Vector3(1.6, 0.0, 1.6)
+				player.global_position = stone.global_position + Vector3(2.2, 0.0, 0.0)
 				player.set("rng", RandomNumberGenerator.new())
 				_read_stone(stone)
 			_shot_countdown = 40
