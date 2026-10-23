@@ -27,7 +27,10 @@ func _ready() -> void:
 func _click(c: Control) -> void:
 	if c == null:
 		return
-	var at: Vector2 = c.get_global_rect().get_center()
+	_click_at(c.get_global_rect().get_center())
+
+
+func _click_at(at: Vector2) -> void:
 	var mv := InputEventMouseMotion.new()
 	mv.position = at
 	mv.global_position = at
@@ -91,8 +94,14 @@ func _process(_delta: float) -> void:
 				if str(GameData.rune(id).get("affinity", "")) == AFF and id != GameData.skill_anchor(str(((player.get("abilities") as Array)[0] as Dictionary)["id"])) and _pick == "":
 					_pick = id
 			_click(main.find_child("Rune_" + _pick, true, false) as Control)
+		95:
+			# a rune picked up in the palette goes where an empty place is clicked (2026-10-23)
+			var board: RuneBoard = main.find_child("RuneBoard", true, false) as RuneBoard
+			_expect("clicking a rune picks it up", str(main.get("screen").get("armed_rune")) == _pick)
+			if board != null:
+				_click_at(board.empty_slot_global(1, 0))
 		100:
-			_expect("clicking a rune sets it into the word at once", RuneWord.nodes(player.call("ability_word", 0)).has(_pick))
+			_expect("and clicking an empty place sets it into the word", RuneWord.nodes(player.call("ability_word", 0)).has(_pick))
 			_click(main.find_child("SealNowButton", true, false) as Control)
 		110:
 			_expect("Seal now (test) seals it without a binding", bool(player.call("word_locked", 0)) and RuneWord.nodes((player.get("abilities") as Array)[0]["word"]).has(_pick))

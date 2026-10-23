@@ -10,7 +10,7 @@ extends Node
 ## defaults", and the menu closed with its own button. The player's saved key bindings are
 ## backed up first and restored at the end. Then, in town, the skill trainer: click the trainer
 ## in the street to walk up and talk, click Training, click a node of the tree and click Learn.
-## Then the seal screen (design/14 section 8), by clicks - see _rune_steps.
+## Then the seal screen (design/14 section 8), by real drags, clicks and keys - see _rune_steps.
 ## Prints PASS/FAIL and exits 0/1.
 ## `--field` does it in the arena, where the inventory pauses the game (and skips the trainer).
 
@@ -31,6 +31,10 @@ var _stats_before := ""                # the skill's numbers before the word is 
 var _unknown := ""                     # a rune the character has not discovered
 var _chance := 0.0                     # balance "binding" success_chance, put back after the forced rolls
 var _sealed_key := ""                  # the sealed word's shape, to see that a failed bind keeps it
+var _drag_from := Vector2.ZERO          # where a palette drag started
+var _drop_to := Vector2.ZERO            # the empty place it is dropped on
+var _drop_place := -1                   # that place's index on its ring
+var _kept := ""                         # the draft as it was, to see that undo puts it back exactly
 
 const FreeRules := preload("res://tests/free_rules.gd")
 
@@ -109,8 +113,8 @@ func _service(title: String) -> Button:
 	return null
 
 
-func _expect(label: String, ok: bool) -> void:
-	results.append("%s %s" % ["ok  " if ok else "FAIL", label])
+func _expect(label: String, ok: bool, detail: String = "") -> void:
+	results.append("%s %s%s" % ["ok  " if ok else "FAIL", label, ("  [%s]" % detail) if not ok and detail != "" else ""])
 	if not ok:
 		failed = true
 
@@ -257,21 +261,26 @@ func _process(_delta: float) -> void:
 		_rune_steps(frames - _runes_from)
 
 
-## The seal screen (design/14 sections 7-8, Brent 2026-10-23), by clicking: a skill whose bar is full
-## and a vestige carried; Bind the vestige - form the seal opens the seal screen, forming ring 1.
-## Set a rune from the palette, join it to the skill's own rune by clicking both, set a second rune
-## onto the picked anchor, and a third (refused and explained when the anchor's two bonds are taken);
-## then with a second rule set in force (tests/free_rules.gd) the same view follows those rules:
-## their three-rune limit, explained, and a join by clicking. An undiscovered rune ("?") is refused
-## and explained. Clear the draft; aim at ring 1 by clicking an empty place on it; close a word by
-## clicking (the anchor's bonds filled with caps); Bind and seal - the skill's numbers change and the
-## word is sealed. Then the next binding, from the ethercosm by clicks: a failed bind (forced) forms
-## no seal and the word stays. The bind's roll is forced through balance "binding" success_chance
-## (1, then 0) so the probe is not left to chance; it is put back after. Runes are chosen from the
-## data by affinity and valence, not by name; the probe discovers them first (data, not clicks).
+## The seal screen (design/14 sections 7-8; the building controls Brent asked for on 2026-10-23), by
+## real mouse and keyboard events: a skill whose bar is full and a vestige carried; Bind the vestige -
+## form the seal opens the seal screen, forming ring 1. A palette rune is DRAGGED onto an empty place
+## (press, motion, release - Godot's own drag and drop) and lands on that place; a second is clicked
+## in the palette and then on a place, and is set alone, unbonded. Bonds are made by dragging from the
+## skill's core to a rune and from a rune to the core (live motion between press and release); a drag
+## onto a full rune is refused while dragging and on release, and says why. A bond is selected by
+## clicking its curve and deleted with its x; Ctrl+Z brings it back. A rune right-clicked is taken out
+## with its bonds; Ctrl+Z / Ctrl+Y step back and forth exactly. With a second rule set in force
+## (tests/free_rules.gd) the same view follows those rules (their three-rune limit, explained). An
+## undiscovered rune ("?") is refused and explained. Then Clear, close a word by drags (caps on the
+## skill's rune), Bind and seal - the skill's numbers change and the word is sealed. Then the next
+## binding, from the ethercosm by clicks: a failed bind (forced) forms no seal and the word stays. The
+## bind's roll is forced through balance "binding" success_chance (1, then 0) so the probe is not
+## left to chance; it is put back after. Runes are chosen from the data by affinity and valence, not
+## by name; the probe discovers them first (data, not clicks).
 func _rune_steps(at: int) -> void:
 	var player: Node = main.get("player")
 	var s: Node = main.get("screen")
+	var board: RuneBoard = _find(main, "RuneBoard") as RuneBoard
 	match at:
 		1:
 			for i: int in 4:
@@ -284,7 +293,7 @@ func _rune_steps(at: int) -> void:
 			for id: String in (player.call("rune_palette") as Array):
 				if str(GameData.rune(id).get("affinity", "")) != "water" or id == _anchor:
 					continue
-				if BondRules.valence(id) == 1 and _caps.size() < BondRules.valence(_anchor):
+				if BondRules.valence(id) == 1 and _caps.size() < BondRules.valence(_anchor) and (Runes.active() as BondRules).alignment_state(_anchor, id) == "ok":
 					_caps.append(id)
 				elif _spare.size() < 3 and BondRules.valence(id) > 1:
 					_spare.append(id)
@@ -304,91 +313,144 @@ func _rune_steps(at: int) -> void:
 			if b != null:
 				_click_at(_centre(b))
 		20:
-			_expect("the bind step opens the seal screen, forming ring 1", s != null and bool(s.get("rune_mode")) and _find(main, "RuneBoard") != null
+			_expect("the bind step opens the seal screen, forming ring 1", s != null and bool(s.get("rune_mode")) and board != null
 				and str(s.call("seal_view")) == "bind" and (player.call("rune_context", 0) as RuneContext).forming == 1)
 			var chip: Control = _find(main, "Rune_" + _spare[0])
 			_expect("the palette offers the runes it knows", chip != null)
+			# drag the palette rune onto the second empty place of ring 1: press on the chip...
+			_drop_place = board.empty_place(1, 1)
+			_drop_to = board.empty_slot_global(1, 1)
 			if chip != null:
-				_click_at(_centre(chip))
+				_drag_from = _centre(chip)
+				_move(_drag_from, false)
+				_mouse(_drag_from, MOUSE_BUTTON_LEFT, true)
+		21, 22, 23, 24:
+			# ...move with the button held (Godot starts its drag past its threshold)...
+			_move(_drag_from.lerp(_drop_to, float(at - 20) / 4.0), true)
+		25:
+			_expect("while the palette rune is carried, the board knows it is in hand", str(board.call("_in_hand")) == _spare[0])
+			_move(_drop_to, true)
+			_mouse(_drop_to, MOUSE_BUTTON_LEFT, false)
 		30:
 			var w: Dictionary = player.call("ability_word", 0)
-			_expect("clicking a palette rune sets it into the draft, on ring 1", RuneWord.size(w) == 2 and RuneWord.node_id(w, 1) == _spare[0] and RuneWord.ring(w, 1) == 1)
-			_click_at((_find(main, "RuneBoard") as RuneBoard).node_global(0))
-		35:
-			_expect("clicking the anchor picks it", int(s.get("picked")) == 0)
-			_click_at((_find(main, "RuneBoard") as RuneBoard).node_global(1))
-		45:
-			_expect("clicking a second rune joins the two", RuneWord.linked(player.call("ability_word", 0), 0, 1))
-			_click_at((_find(main, "RuneBoard") as RuneBoard).node_global(0))
+			_expect("a palette rune dragged onto an empty place is set on that place, unbonded", RuneWord.size(w) == 2 and RuneWord.node_id(w, 1) == _spare[0]
+				and RuneWord.ring(w, 1) == 1 and RuneWord.places(w)[1] == _drop_place and board.node_global(1).distance_to(_drop_to) < 1.0 and RuneWord.links(w).is_empty(),
+				"%s place %d at %s; drawn %s; msg %s" % [str(w), _drop_place, _drop_to, board.node_global(1) if RuneWord.size(w) > 1 else Vector2.ZERO, str(s.get("_rune_msg"))])
+			# a click on a palette rune, then on an empty place
+			_click_at(_centre(_find(main, "Rune_" + _caps[0])))
+		33:
+			_expect("clicking a palette rune picks it up", str(s.get("armed_rune")) == _caps[0])
+			_click_at(board.empty_slot_global(1, 0))
+		38:
+			var w2: Dictionary = player.call("ability_word", 0)
+			_expect("then clicking an empty place sets it there, alone (not bonded to the rune selected before)",
+				RuneWord.size(w2) == 3 and RuneWord.node_id(w2, 2) == _caps[0] and RuneWord.links(w2).is_empty() and str(s.get("armed_rune")) == "", "%s msg %s" % [str(w2), str(s.get("_rune_msg"))])
+			_drag_start(board.node_global(0))
+		39, 40, 41:
+			_move(board.node_global(0).lerp(board.node_global(1), float(at - 38) / 3.0), true)
+		42:
+			_expect("dragging from the skill's core: a live bond follows the cursor", board.is_dragging() and board.drag_source() == 0)
+			_drag_end(board.node_global(1))
+		46:
+			_expect("let go on a rune: the core and the rune are bonded, and the new bond is selected",
+				RuneWord.linked(player.call("ability_word", 0), 0, 1) and s.get("picked_bond") == Vector2i(0, 1))
+			_drag_start(board.node_global(2))
+		47, 48, 49:
+			_move(board.node_global(2).lerp(board.node_global(0), float(at - 46) / 3.0), true)
 		50:
-			var chip: Control = _find(main, "Rune_" + _spare[1])
-			if chip != null:
-				_click_at(_centre(chip))
-		60:
-			_expect("with the anchor picked, a palette rune is set joined to it", RuneWord.linked(player.call("ability_word", 0), 0, 2))
-			var chip: Control = _find(main, "Rune_" + _spare[2])
-			if chip != null:
-				_click_at(_centre(chip))
-		70:
+			_drag_end(board.node_global(0))
+		54:
+			_expect("dragging from a rune to the core bonds them too", RuneWord.linked(player.call("ability_word", 0), 0, 2))
+			# a refused drag: the cap is full now
+			_drag_start(board.node_global(1))
+		55, 56, 57:
+			_move(board.node_global(1).lerp(board.node_global(2), float(at - 54) / 3.0), true)
+		58:
+			var chk: Dictionary = (board.get("_drag_checks") as Dictionary).get(2, {})
+			_expect("dragging onto a full rune: it is marked refused while dragging (%s)" % RuneBoard.short_reason(chk),
+				board.is_dragging() and not bool(chk.get("ok", true)) and str(chk.get("reason", "")) == "valence_full")
+			_drag_end(board.node_global(2))
+		62:
 			var msg: Control = _find(main, "RuneMessage")
-			if BondRules.valence(_anchor) <= 2:
-				_expect("a third rune on the full anchor is refused, and the screen says why",
-					RuneWord.size(player.call("ability_word", 0)) == 3 and msg != null and (msg as Label).text.contains("full"))
-			else:
-				_expect("a third rune on the anchor, which has room, is set", RuneWord.linked(player.call("ability_word", 0), 0, 3))
+			_expect("and letting go there makes no bond, and the screen says why", not RuneWord.linked(player.call("ability_word", 0), 1, 2)
+				and msg != null and (msg as Label).text.contains("full"))
+			# select a bond by clicking on its curve
+			_click_at(board.bond_global(0, 1))
+		66:
+			_expect("clicking a bond's curve selects it, and the panel shows its kind and what it carries", s.get("picked_bond") == Vector2i(0, 1)
+				and _find(main, "SelectedBond") != null and _find(main, "BondKind") != null and _find(main, "BondCarries") != null)
+			_expect("the selected bond shows its x", board.cross_global().x >= 0.0)
+			_click_at(board.cross_global())
+		70:
+			_expect("clicking the x deletes the bond", not RuneWord.linked(player.call("ability_word", 0), 0, 1) and s.get("picked_bond") == Vector2i(-1, -1))
+			_press_key(KEY_Z, true)
+		74:
+			_expect("Ctrl+Z brings it back", RuneWord.linked(player.call("ability_word", 0), 0, 1))
+			_kept = JSON.stringify(player.call("ability_word", 0), "", true)
+			_mouse(board.node_global(2), MOUSE_BUTTON_RIGHT, true)
+			_mouse(board.node_global(2), MOUSE_BUTTON_RIGHT, false)
+		78:
+			_expect("right-clicking a rune takes it out with its bond", RuneWord.size(player.call("ability_word", 0)) == 2 and RuneWord.degree(player.call("ability_word", 0), 0) == 1)
+			_press_key(KEY_Z, true)
+		82:
+			_expect("Ctrl+Z puts it back exactly", JSON.stringify(player.call("ability_word", 0), "", true) == _kept)
+			_press_key(KEY_Y, true)
+		86:
+			_expect("Ctrl+Y takes it out again", RuneWord.size(player.call("ability_word", 0)) == 2)
+			_press_key(KEY_Z, true)
+		90:
+			_expect("and Ctrl+Z back again, exactly", JSON.stringify(player.call("ability_word", 0), "", true) == _kept)
 			_held = RuneWord.size(player.call("ability_word", 0))
 			Runes.use(FreeRules.new())
-			s.set("picked", -1)
 			s.call("rebuild")
-		80:
-			var chip: Control = _find(main, "Rune_" + _spare[2])
-			if chip != null:
-				_click_at(_centre(chip))
-		90:
-			var msg: Control = _find(main, "RuneMessage")
+		94:
+			_click_at(_centre(_find(main, "Rune_" + _spare[1])))
+		97:
+			_click_at(board.empty_slot_global(1, 0))
+		101:
+			var msg2: Control = _find(main, "RuneMessage")
 			_expect("under the test rules the same view refuses a rune past their three, and says so",
-				RuneWord.size(player.call("ability_word", 0)) == _held and msg != null and (msg as Label).text.contains("holds 3"))
-			_click_at((_find(main, "RuneBoard") as RuneBoard).node_global(1))
-		95:
-			_click_at((_find(main, "RuneBoard") as RuneBoard).node_global(2))
-		105:
-			_expect("and joins two runes by clicking", RuneWord.linked(player.call("ability_word", 0), 1, 2))
+				RuneWord.size(player.call("ability_word", 0)) == _held and msg2 != null and (msg2 as Label).text.contains("holds 3"))
 			Runes.use(null)
+			s.call("deselect")
 			s.call("rebuild")
-		110:
+		105:
 			var q: Control = _find(main, "Rune_" + _unknown)
 			_expect("an undiscovered rune shows in the palette as \"?\"", q != null and not bool((s.call("chip_state", _unknown) as Dictionary)["known"]))
 			if q != null:
 				_click_at(_centre(q))
-		115:
-			var msg: Control = _find(main, "RuneMessage")
-			_expect("and clicking it is refused: not discovered yet", msg != null and (msg as Label).text.contains("discovered") and RuneWord.size(player.call("ability_word", 0)) == _held)
+		109:
+			var msg3: Control = _find(main, "RuneMessage")
+			_expect("and clicking it is refused: not discovered yet", msg3 != null and (msg3 as Label).text.contains("discovered") and RuneWord.size(player.call("ability_word", 0)) == _held)
 			var clear: Control = _find(main, "ClearWordButton")
 			_expect("the seal screen offers Clear", clear != null and not (clear as Button).disabled)
 			if clear != null:
 				_click_at(_centre(clear))
-		122:
+		114:
 			_expect("Clear leaves the skill's own rune alone", RuneWord.size(player.call("ability_word", 0)) == 1)
-			var slot: Vector2 = (_find(main, "RuneBoard") as RuneBoard).empty_slot_global(1)
-			_expect("ring 1 shows its empty places", slot.x >= 0.0)
-			_click_at(slot)
-		126:
-			_expect("clicking an empty place aims the next rune at its ring", int(s.get("target_ring")) == 1)
 			_stats_before = str(player.call("ability_stats", (player.get("abilities") as Array)[0]))
 			var seal0: Control = _find(main, "SealBindButton")
 			_expect("with only the skill's own rune the draft is unchanged: binding would leave it without a word, and the screen says so",
 				seal0 != null and not (seal0 as Button).disabled and str(main.get("screen").get("_lock_note").text).begins_with("Nothing set"))
-			_click_at((_find(main, "RuneBoard") as RuneBoard).node_global(0))
-		130, 140, 150:
-			var k: int = int(float(at - 130) / 10.0)
+		120, 140:
+			# each cap: picked in the palette, set on a place, dragged to the core
+			var k: int = 0 if at == 120 else 1
 			if k < _caps.size():
-				var chip: Control = _find(main, "Rune_" + _caps[k])
-				if chip != null:
-					_click_at(_centre(chip))
+				_click_at(_centre(_find(main, "Rune_" + _caps[k])))
+		123, 143:
+			_click_at(board.empty_slot_global(1, 0))
+		127, 147:
+			_drag_start(board.node_global(RuneWord.size(player.call("ability_word", 0)) - 1))
+		128, 148:
+			_move(board.node_global(RuneWord.size(player.call("ability_word", 0)) - 1).lerp(board.node_global(0), 0.5), true)
+		129, 149:
+			_move(board.node_global(0), true)
+		130, 150:
+			_drag_end(board.node_global(0))
 		160:
 			var w: Dictionary = player.call("ability_word", 0)
-			_expect("the anchor's bonds filled with caps by clicking: the word is closed",
-				RuneWord.size(w) == _caps.size() + 1 and bool(Runes.active().word_state(w, player.call("rune_context", 0))["closed"]))
+			_expect("the skill's own rune's bonds filled with caps, by drags: the word is closed",
+				RuneWord.size(w) == _caps.size() + 1 and bool(Runes.active().word_state(w, player.call("rune_context", 0))["closed"]), str(w))
 			var sb: Control = _find(main, "SealBindButton")
 			_expect("and Bind and seal is live", sb != null and not (sb as Button).disabled)
 			(GameData.balance["binding"] as Dictionary)["success_chance"] = 1.0
@@ -423,14 +485,38 @@ func _rune_steps(at: int) -> void:
 				_click_at(_centre(sb2))
 		210:
 			(GameData.balance["binding"] as Dictionary)["success_chance"] = _chance
-			var msg: Control = _find(main, "RuneMessage")
+			var msg4: Control = _find(main, "RuneMessage")
 			_expect("a failed bind forms no seal: the word stays as it was, the remnant is gone",
 				RuneWord.shape_key(player.call("ability_word", 0)) == _sealed_key and RuneWord.sealed(player.call("ability_word", 0)) == 1
 				and int(((player.get("abilities") as Array)[0] as Dictionary)["stage"]) == 1 and (player.get("constructs") as Array).is_empty()
-				and msg != null and (msg as Label).text.contains("fails"))
+				and msg4 != null and (msg4 as Label).text.contains("fails"))
 			main.call("close_screen")
 			_runes_from = 0
 			_finish()
+
+
+## A press on the board, the start of a drag (the moves and the release come on later frames).
+func _drag_start(at: Vector2) -> void:
+	_move(at, false)
+	_mouse(at, MOUSE_BUTTON_LEFT, true)
+
+
+func _drag_end(at: Vector2) -> void:
+	_move(at, true)
+	_mouse(at, MOUSE_BUTTON_LEFT, false)
+
+
+## A key pressed and let go (with Ctrl when `ctrl`), as the keyboard would send it.
+func _press_key(code: Key, ctrl: bool) -> void:
+	var key := InputEventKey.new()
+	key.physical_keycode = code
+	key.keycode = code
+	key.ctrl_pressed = ctrl
+	key.pressed = true
+	get_viewport().push_input(key)
+	var up := key.duplicate() as InputEventKey
+	up.pressed = false
+	get_viewport().push_input(up)
 
 
 ## The skill trainer in the street, counted in frames from the moment the controls menu closed.

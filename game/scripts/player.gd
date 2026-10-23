@@ -3654,14 +3654,74 @@ func seal_construct() -> int:
 	return int(seal_draft.get("construct", -1))
 
 
-## A fresh draft of ability `index`: its sealed word, unsealed, its rings made explicit.
+## A fresh draft of ability `index`: its sealed word, unsealed, its rings made explicit and every
+## rune given its place on its ring (so nothing moves when bonds change).
 func _draft_from(index: int) -> Dictionary:
 	var w: Dictionary = _sealed_word(index).duplicate(true)
 	for key: String in ["sealed", "locked", "free_edit"]:
 		w.erase(key)
 	w["rings"] = RuneWord.rings(w)
 	w["made_under"] = Runes.active().id
+	_pin_places(w, rune_context(index))
 	return w
+
+
+## Give every rune of a word a place on its ring (the ones it has are kept).
+static func _pin_places(word: Dictionary, ctx: RuneContext) -> void:
+	word["places"] = RuneWord.layout_places(word, Runes.place_counts(word, ctx))
+
+
+# --- the draft's history (Ctrl+Z / Ctrl+Y on the seal screen) ---------------------------------
+# Every change to the draft that the rules allow is a step; undo puts the draft back as it was before
+# the last step, redo puts the step back. The history lives with the draft and goes when it closes:
+# nothing is committed until the bind (or a test character's "Seal now").
+
+const DRAFT_HISTORY_MAX := 200
+
+
+## Keep the draft as it is now, before a change (call _changed after the change took).
+func _before_change() -> Dictionary:
+	return (seal_draft["word"] as Dictionary).duplicate(true)
+
+
+func _changed(before: Dictionary) -> void:
+	var undo: Array = seal_draft.get("undo", [])
+	undo.append(before)
+	if undo.size() > DRAFT_HISTORY_MAX:
+		undo.pop_front()
+	seal_draft["undo"] = undo
+	seal_draft["redo"] = []
+	_pin_places(seal_draft["word"], rune_context(sealing_index()))
+
+
+func can_undo() -> bool:
+	return not seal_draft.is_empty() and not (seal_draft.get("undo", []) as Array).is_empty()
+
+
+func can_redo() -> bool:
+	return not seal_draft.is_empty() and not (seal_draft.get("redo", []) as Array).is_empty()
+
+
+## Step the draft back. Returns false if there is nothing to undo.
+func draft_undo() -> bool:
+	if not can_undo():
+		return false
+	var redo: Array = seal_draft.get("redo", [])
+	redo.append((seal_draft["word"] as Dictionary).duplicate(true))
+	seal_draft["redo"] = redo
+	seal_draft["word"] = (seal_draft["undo"] as Array).pop_back()
+	return true
+
+
+## Step the draft forward again. Returns false if there is nothing to redo.
+func draft_redo() -> bool:
+	if not can_redo():
+		return false
+	var undo: Array = seal_draft.get("undo", [])
+	undo.append((seal_draft["word"] as Dictionary).duplicate(true))
+	seal_draft["undo"] = undo
+	seal_draft["word"] = (seal_draft["redo"] as Array).pop_back()
+	return true
 
 
 ## Open the seal of ability `index` for binding construct `construct_index` into it: the draft starts
@@ -3694,10 +3754,12 @@ func close_seal() -> void:
 	seal_draft = {}
 
 
-## Put the draft back as the sealed word was.
+## Put the draft back as the sealed word was (a step that can be undone).
 func draft_reset() -> void:
 	if not seal_draft.is_empty():
+		var before: Dictionary = _before_change()
 		seal_draft["word"] = _draft_from(sealing_index())
+		_changed(before)
 
 
 ## The draft differs from the skill's sealed word.
@@ -3777,8 +3839,9 @@ func _not_sealing(index: int) -> Dictionary:
 
 
 ## Set a rune into the draft of ability `index`, joined to node `to_node` when that is >= 0, on ring
-## `ring` when that is >= 0. Returns the rules' check: {ok, reason, text}.
-func word_add(index: int, rune_id: String, to_node: int = -1, ring: int = -1) -> Dictionary:
+## `ring` when that is >= 0, at place `place` of that ring when that is >= 0 and free (otherwise the
+## layout picks one). Returns the rules' check: {ok, reason, text, node, ring}.
+func word_add(index: int, rune_id: String, to_node: int = -1, ring: int = -1, place: int = -1) -> Dictionary:
 	if index < 0 or index >= abilities.size():
 		return RuneRules.no("no_skill", "No such skill.")
 	var w: Dictionary = _draft_for(index)
@@ -3788,34 +3851,77 @@ func word_add(index: int, rune_id: String, to_node: int = -1, ring: int = -1) ->
 		return RuneRules.no("not_yours", "%s belongs to an affinity you do not hold." % str(GameData.rune(rune_id).get("name", rune_id)))
 	if not knows_rune(rune_id):
 		return RuneRules.no("unknown", "You have not discovered that rune yet: runes are found in the Netherecho, in fights and on old stones.")
-	return Runes.active().add(w, rune_id, rune_context(index), to_node, ring)
+	var before: Dictionary = _before_change()
+	var r: Dictionary = Runes.active().add(w, rune_id, rune_context(index), to_node, ring)
+	if bool(r["ok"]):
+		var i: int = int(r["node"])
+		var k: int = RuneWord.ring(w, i)
+		var free: bool = place >= 0
+		for o: int in RuneWord.ring_nodes(w, k):
+			if o != i and RuneWord.places(w)[o] == place:
+				free = false
+		RuneWord.set_place(w, i, place if free else -1)
+		_changed(before)
+	return r
 
 
 ## Join two runes of the draft, or part them if they are joined.
 func word_toggle_link(index: int, a: int, b: int) -> Dictionary:
+	var w: Dictionary = _draft_for(index) if index >= 0 and index < abilities.size() else {}
+	if not w.is_empty() and RuneWord.linked(w, a, b):
+		return word_unlink(index, a, b)
+	return word_link(index, a, b)
+
+
+## Bond two runes of the draft (never parts them). Returns the rules' check.
+func word_link(index: int, a: int, b: int) -> Dictionary:
 	if index < 0 or index >= abilities.size():
 		return RuneRules.no("no_skill", "No such skill.")
 	var w: Dictionary = _draft_for(index)
 	if w.is_empty():
 		return _not_sealing(index)
-	return Runes.active().toggle_link(w, a, b, rune_context(index))
+	var before: Dictionary = _before_change()
+	var r: Dictionary = Runes.active().link(w, a, b, rune_context(index))
+	if bool(r["ok"]):
+		_changed(before)
+	return r
 
 
-## Take a rune (not the skill's own) out of the draft.
+## Part two runes of the draft. Returns the rules' check.
+func word_unlink(index: int, a: int, b: int) -> Dictionary:
+	if index < 0 or index >= abilities.size():
+		return RuneRules.no("no_skill", "No such skill.")
+	var w: Dictionary = _draft_for(index)
+	if w.is_empty():
+		return _not_sealing(index)
+	var before: Dictionary = _before_change()
+	var r: Dictionary = Runes.active().unlink(w, a, b, rune_context(index))
+	if bool(r["ok"]):
+		_changed(before)
+	return r
+
+
+## Take a rune (not the skill's own) out of the draft, with its bonds.
 func word_remove(index: int, node: int) -> Dictionary:
 	if index < 0 or index >= abilities.size():
 		return RuneRules.no("no_skill", "No such skill.")
 	var w: Dictionary = _draft_for(index)
 	if w.is_empty():
 		return _not_sealing(index)
-	return Runes.active().remove(w, node, rune_context(index))
+	var before: Dictionary = _before_change()
+	var r: Dictionary = Runes.active().remove(w, node, rune_context(index))
+	if bool(r["ok"]):
+		_changed(before)
+	return r
 
 
-## Clear the draft back to the skill's own rune alone.
+## Clear the draft back to the skill's own rune alone (a step that can be undone).
 func word_clear(index: int) -> void:
 	if sealing_index() == index:
+		var before: Dictionary = _before_change()
 		var w: Dictionary = RuneWord.make(GameData.skill_anchor(str(abilities[index]["id"])), Runes.active().id)
 		seal_draft["word"] = w
+		_changed(before)
 
 
 ## The skill uses a sealed word.
@@ -3860,7 +3966,8 @@ func rune_preview(index: int) -> Dictionary:
 		rows.append({"label": "Repeats", "group": "power", "before": "no", "after": "x%d at %d%%" % [int(rep.get("times", 1)), int(round(float(rep.get("mult", 0.0)) * 100.0))],
 			"changed": true, "better": true})
 	return {"rows": rows, "lines": fx.get("lines", []), "runes": fx.get("runes", []), "anchor": fx.get("anchor", {}),
-		"groups": fx.get("groups", {}), "traits": fx.get("traits", []), "effect_lines": fx.get("effect_lines", fx.get("lines", [])), "transfers": fx.get("transfers", []), "before": before, "after": after}
+		"groups": fx.get("groups", {}), "traits": fx.get("traits", []), "effect_lines": fx.get("effect_lines", fx.get("lines", [])), "transfers": fx.get("transfers", []),
+		"conversions": fx.get("conversions", []), "before": before, "after": after}
 
 
 ## Short lines on what a SEALED word does to ability `index` ([] if it has none), for tooltips and

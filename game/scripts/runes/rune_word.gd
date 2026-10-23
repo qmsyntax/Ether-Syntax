@@ -7,7 +7,11 @@ extends RefCounted
 ##    "rings": [0, 1, 2, ...],                             # each node's ring; the anchor is ring 0
 ##    "links": [{"a": 0, "b": 1}, {"a": 1, "b": 2, "data": {...}}],
 ##    "made_under": "bond_v2",                             # the rule set it was built under (for reports)
-##    "sealed": 2}                                         # rings sealed in (0 / absent: no seal yet)
+##    "sealed": 2,                                         # rings sealed in (0 / absent: no seal yet)
+##    "places": [-1, 0, 2, ...]}                           # where each rune sits on its ring (optional)
+##
+## "places" is layout only (2026-10-23): the index of each rune's place on its ring, so a rune stays
+## where it was set when bonds change (-1: not chosen - layout_places picks). No rule reads it.
 ##
 ## Brent 2026-10-23: the word is concentric circles, one per level, stacking outward; each binding
 ## seals a ring. A word is sealed when its skill uses it (sealed > 0); a seal is drafted on a copy
@@ -187,13 +191,119 @@ static func add_node(word: Dictionary, rune_id: String, k: int = -1) -> int:
 	if not word.has("nodes"):
 		word["nodes"] = []
 	var had_rings: bool = (word.get("rings", []) as Array).size() == size(word) and word.has("rings")
+	var had_places: bool = word.has("places") and (word["places"] as Array).size() == size(word)
 	if k >= 0 and not had_rings:
 		word["rings"] = rings(word)
 		had_rings = true
 	(word["nodes"] as Array).append(rune_id)
 	if had_rings:
 		(word["rings"] as Array).append(k if k >= 0 else (0 if size(word) == 1 else 1))
+	if had_places:
+		(word["places"] as Array).append(-1)
+	else:
+		word.erase("places")
 	return (word["nodes"] as Array).size() - 1
+
+
+# --- places (layout only) ---------------------------------------------------------------------
+
+## Each node's stored place on its ring (-1: none stored).
+static func places(word: Dictionary) -> Array[int]:
+	var out: Array[int] = []
+	var ps: Array = word.get("places", [])
+	var n: int = size(word)
+	for i: int in n:
+		out.append(int(ps[i]) if ps.size() == n else -1)
+	return out
+
+
+static func set_place(word: Dictionary, i: int, j: int) -> void:
+	if not has_node(word, i):
+		return
+	word["places"] = places(word)
+	(word["places"] as Array)[i] = j
+
+
+## The angle of place j of `count` on ring k (the first at the top; even rings turned half a step,
+## so neighbouring rings' places do not line up).
+static func place_angle(k: int, j: int, count: int) -> float:
+	var c: int = maxi(1, count)
+	return -PI / 2.0 + (PI / float(c) if k % 2 == 0 else 0.0) + TAU * float(j) / float(c)
+
+
+## Every node's place, given how many places each ring has (`counts` {ring: n}): a stored place is
+## kept when it is on the ring and free; the others are chosen - inner rings first, the rune with the
+## most placed partners next, at the free place nearest the mean angle of its partners already
+## placed (the first free place when it has none). The anchor (ring 0) is -1.
+static func layout_places(word: Dictionary, counts: Dictionary) -> Array[int]:
+	var n: int = size(word)
+	var rs: Array[int] = rings(word)
+	var stored: Array[int] = places(word)
+	var out: Array[int] = []
+	var angle: Array[float] = []
+	var placed: Array[bool] = []
+	for i: int in n:
+		out.append(-1)
+		angle.append(0.0)
+		placed.append(i == 0)
+	var ks: Array = counts.keys()
+	ks.sort()
+	for kv: Variant in ks:
+		var k: int = int(kv)
+		var count: int = int(counts[kv])
+		var taken: Array[int] = []
+		for j: int in count:
+			taken.append(-1)
+		var todo: Array[int] = ring_nodes(word, k)
+		for i: int in todo.duplicate():
+			var j0: int = stored[i]
+			if j0 >= 0 and j0 < count and taken[j0] < 0:
+				taken[j0] = i
+				out[i] = j0
+				angle[i] = place_angle(k, j0, count)
+				placed[i] = true
+				todo.erase(i)
+		while not todo.is_empty():
+			var best_i := -1
+			var best_n := -1
+			for i: int in todo:
+				var m := 0
+				for p: int in neighbours(word, i):
+					if placed[p]:
+						m += 1
+				if m > best_n:
+					best_n = m
+					best_i = i
+			todo.erase(best_i)
+			var sx := 0.0
+			var sy := 0.0
+			for p: int in neighbours(word, best_i):
+				if placed[p] and p != 0:
+					sx += cos(angle[p])
+					sy += sin(angle[p])
+			var free_first := -1
+			for j: int in count:
+				if taken[j] < 0:
+					free_first = j
+					break
+			if free_first < 0:
+				continue
+			var pick: int = free_first
+			if absf(sx) + absf(sy) > 0.0001:
+				var want: float = atan2(sy, sx)
+				var pick_d := INF
+				for j: int in count:
+					if taken[j] >= 0:
+						continue
+					var d: float = absf(angle_difference(want, place_angle(k, j, count)))
+					if d < pick_d - 0.0001:
+						pick_d = d
+						pick = j
+			taken[pick] = best_i
+			out[best_i] = pick
+			angle[best_i] = place_angle(k, pick, count)
+			placed[best_i] = true
+	return out
 
 
 ## Add a link (no checks: ask the rules first).
@@ -221,9 +331,14 @@ static func remove_node(word: Dictionary, i: int) -> void:
 	if not has_node(word, i):
 		return
 	var had_rings: bool = (word.get("rings", []) as Array).size() == size(word)
+	var had_places: bool = (word.get("places", []) as Array).size() == size(word)
 	(word["nodes"] as Array).remove_at(i)
 	if had_rings:
 		(word["rings"] as Array).remove_at(i)
+	if had_places:
+		(word["places"] as Array).remove_at(i)
+	else:
+		word.erase("places")
 	var kept: Array = []
 	for l: Dictionary in links(word):
 		var a: int = int(l["a"])
@@ -261,6 +376,8 @@ static func normalize(saved: Variant, anchor_id: String) -> Dictionary:
 		return make(anchor_id, str(src.get("made_under", "")))
 	var src_rings: Array = src.get("rings", [])
 	var stored: bool = src_rings.size() == src_nodes.size()
+	var src_places: Array = src.get("places", [])
+	var kept_places: Array = []
 	var index_map: Dictionary = {}
 	var out: Dictionary = make("", str(src.get("made_under", "")))
 	out.erase("rings")
@@ -274,6 +391,7 @@ static func normalize(saved: Variant, anchor_id: String) -> Dictionary:
 		if stored and i > 0:
 			r = maxi(1, int(src_rings[i]))
 		kept_rings.append(r)
+		kept_places.append(int(src_places[i]) if src_places.size() == src_nodes.size() and i > 0 else -1)
 	for l: Variant in src.get("links", []):
 		if typeof(l) != TYPE_DICTIONARY or not (l as Dictionary).has("a") or not (l as Dictionary).has("b"):
 			continue
@@ -288,6 +406,8 @@ static func normalize(saved: Variant, anchor_id: String) -> Dictionary:
 		var data: Variant = (l as Dictionary).get("data", {})
 		add_link(out, a, b, data if typeof(data) == TYPE_DICTIONARY else {})
 	out["rings"] = kept_rings if stored else rings(out)
+	if src_places.size() == src_nodes.size():
+		out["places"] = kept_places
 	if int(src.get("sealed", 0)) > 0:
 		out["sealed"] = int(src["sealed"])
 	elif bool(src.get("locked", false)):

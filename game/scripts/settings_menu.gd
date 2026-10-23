@@ -10,6 +10,7 @@ const GROUPS: Array = [
 	["Movement", ["move_up", "move_down", "move_left", "move_right"], 0],
 	["Combat", ["strike", "overcharge", "ranged_stance"], 0],
 	["Skills", ["ability_1", "ability_2", "ability_3", "ability_4", "ability_5", "ability_6"], 0],
+	["The seal screen", ["seal_delete", "seal_delete_alt", "seal_undo", "seal_redo"], 0],
 	["Soul", ["meditate", "ascend", "bind", "project"], 1],
 	["Screens", ["inventory", "ethercosm", "settings"], 1],
 	["Town and passage", ["interact", "healer", "rest", "go_now", "restart"], 1],

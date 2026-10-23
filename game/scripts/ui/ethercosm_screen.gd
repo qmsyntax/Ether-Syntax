@@ -17,17 +17,25 @@ extends UiScreen
 ## otherwise it shows the sealed word; a test character gets a clearly marked free edit. Everything
 ## it shows about a word - what may be added or joined and why not, sockets, link kinds, rings,
 ## shape traits, whether the word is closed - comes from the rule set in force (Runes.active()).
+## Building it (design/14 section 10): runes are set from the palette by carrying or click-then-place
+## and never bonded by a placement; bonds are dragged rune to rune on the board; a rune or a bond is
+## selected by a click and deleted with Delete / Backspace (InputMap seal_delete / seal_delete_alt),
+## right-click or the bond's x; Ctrl+Z / Ctrl+Y (seal_undo / seal_redo) step the draft's history;
+## Esc first cancels whatever is in progress. The screen holds the selection (picked, picked_bond,
+## armed_rune); the board only reads the mouse and calls back.
 
 const RUNES_PER_STAGE := 16
 
 var selected := 0
 ## The rune-setting view is open on the selected skill.
 var rune_mode := false
-## The rune picked on the board (-1 = none): the next rune set is joined to it, and clicking a
-## second rune joins or parts the two.
+## The rune selected on the board (-1 = none): the panel shows it; Delete takes it out.
 var picked := -1
-## The ring the next rune set goes on, picked by clicking an empty place on it (-1: let the rules choose).
-var target_ring := -1
+## The bond selected on the board, (a, b) with a < b ((-1, -1) = none): the panel shows it; Delete or
+## its x parts it.
+var picked_bond := Vector2i(-1, -1)
+## A palette rune picked up by a click, waiting for a click on an empty place ("" = none).
+var armed_rune := ""
 var _cosmos: Cosmos
 var _detail: VBoxContainer
 var _board: RuneBoard
@@ -37,6 +45,8 @@ var _lock_button: Button
 var _lock_note: Label
 var _clear_button: Button
 var _reset_button: Button
+var _undo_button: Button
+var _redo_button: Button
 var _palette_title: Label
 var _palette_tabs: HBoxContainer
 var _palette_flow: HFlowContainer
@@ -102,8 +112,7 @@ func select(index: int) -> void:
 func open_seal(construct_index: int) -> void:
 	var r: Dictionary = player.call("open_seal", selected, construct_index)
 	rune_mode = true
-	picked = -1
-	target_ring = -1
+	_clear_selection()
 	_palette_tab = ""
 	_say("" if bool(r["ok"]) else str(r["text"]), not bool(r["ok"]))
 	rebuild()
@@ -112,8 +121,7 @@ func open_seal(construct_index: int) -> void:
 ## Open the rune view: a test character's free edit, or the sealed word to look at.
 func open_runes() -> void:
 	rune_mode = true
-	picked = -1
-	target_ring = -1
+	_clear_selection()
 	_rune_msg = ""
 	_palette_tab = ""
 	if bool(player.get("test_character")):
@@ -125,10 +133,15 @@ func open_runes() -> void:
 
 func close_runes() -> void:
 	rune_mode = false
-	picked = -1
-	target_ring = -1
+	_clear_selection()
 	player.call("close_seal")
 	rebuild()
+
+
+func _clear_selection() -> void:
+	picked = -1
+	picked_bond = Vector2i(-1, -1)
+	armed_rune = ""
 
 
 func _exit_tree() -> void:
@@ -158,75 +171,230 @@ func sealed_rings() -> int:
 	return RuneWord.sealed(st.get("word", {}))
 
 
-## A click on the board: pick a rune, drop the pick (-1), or - with one picked - join or part the two.
+## Select rune i on the board (-1: none). Also what the shots call.
+func select_node(i: int) -> void:
+	picked = i if i >= 0 and i < RuneWord.size(current_word()) else -1
+	picked_bond = Vector2i(-1, -1)
+	_refresh_runes()
+
+
+## The old name of select_node (shots and tests).
 func pick_node(i: int) -> void:
-	if seal_view() == "view":
-		if i >= 0:
-			picked = i if picked != i else -1
-		else:
-			picked = -1
-		_refresh_runes()
-		return
-	target_ring = -1 if i >= 0 else target_ring
-	if i < 0 or i == picked:
-		picked = -1
-	elif picked < 0:
-		picked = i
-	else:
-		var a: int = picked
-		var before: Dictionary = current_word()
-		var names: Array = [RuneRules.rune_name(before, a), RuneRules.rune_name(before, i)]
-		var r: Dictionary = player.call("word_toggle_link", selected, a, i)
-		picked = -1
-		if not bool(r["ok"]):
-			_say("%s and %s cannot be joined: %s" % [names[0], names[1], str(r["text"])], true)
-		else:
-			var word: Dictionary = current_word()
-			if RuneWord.linked(word, a, i):
-				_say("Joined: %s." % str(Runes.active().describe_link(word, a, i, current_context()).get("text", "")), false)
-			else:
-				_say("Parted %s and %s." % [RuneRules.rune_name(word, a), RuneRules.rune_name(word, i)], false)
-	_refresh_runes()
+	select_node(i)
 
 
-## A click on an empty place of ring k: the next rune set goes there.
-func pick_ring(k: int) -> void:
-	if seal_view() == "view":
+## Select the bond a-b.
+func select_bond(a: int, b: int) -> void:
+	if not RuneWord.linked(current_word(), a, b):
 		return
-	target_ring = k if target_ring != k else -1
+	picked_bond = Vector2i(mini(a, b), maxi(a, b))
 	picked = -1
-	if target_ring > 0:
-		_say("Ring %d: the next rune you set goes here." % k, false)
 	_refresh_runes()
 
 
-## A click on a rune in the palette: set it - joined to the picked rune if there is one, on the
-## ring clicked if there is one.
-func add_rune(rune_id: String) -> void:
-	var nm: String = str(GameData.rune(rune_id).get("name", rune_id)) if bool(player.call("knows_rune", rune_id)) else "That rune"
+## A click on empty space: put down the rune in hand, else drop the selection.
+func deselect() -> void:
+	if armed_rune != "":
+		armed_rune = ""
+	else:
+		picked = -1
+		picked_bond = Vector2i(-1, -1)
+	_refresh_runes()
+
+
+## Esc: cancel what is in progress - a bond being dragged, a rune in hand, a selection. Returns true
+## if there was something to cancel (otherwise Esc closes the screen as before).
+func cancel_action() -> bool:
+	if _board != null and is_instance_valid(_board) and _board.cancel_drag():
+		_say("No bond made.", false)
+		_refresh_runes()
+		return true
+	if armed_rune != "":
+		armed_rune = ""
+		_say("", false)
+		_refresh_runes()
+		return true
+	if picked >= 0 or picked_bond.x >= 0:
+		picked = -1
+		picked_bond = Vector2i(-1, -1)
+		_refresh_runes()
+		return true
+	return false
+
+
+## A click on a palette rune: pick it up (or put it down again); a click on an empty place then sets
+## it there. An undiscovered rune says why it cannot be set.
+func arm_rune(rune_id: String) -> void:
+	var known: bool = bool(player.call("knows_rune", rune_id))
+	var nm: String = str(GameData.rune(rune_id).get("name", rune_id)) if known else "That rune"
 	if seal_view() == "view":
 		_say("Runes are set when a construct is bound into the skill: fill its bar, then bind one and form the seal.", true)
-		_refresh_runes()
-		return
-	var host: int = picked
-	var r: Dictionary = player.call("word_add", selected, rune_id, host, target_ring)
-	if bool(r["ok"]):
-		var ring: int = int(r.get("ring", 1))
-		_say(("Set %s on ring %d, joined to %s." % [nm, ring, RuneRules.rune_name(current_word(), host)]) if host >= 0
-			else ("Set %s on ring %d. Pick it and another rune to join them." % [nm, ring]), false)
+	elif not known:
+		_say("%s cannot be set: you have not discovered it yet - runes are found in the Netherecho, in fights and on old stones." % nm, true)
+	elif armed_rune == rune_id:
+		armed_rune = ""
+		_say("", false)
 	else:
-		_say("%s cannot be set: %s" % [nm, str(r["text"])], true)
+		armed_rune = rune_id
+		picked = -1
+		picked_bond = Vector2i(-1, -1)
+		_say("%s picked up: click an empty place on a ring to set it." % nm, false)
 	_refresh_runes()
 
 
-## Take rune i out of the draft.
+## A palette rune is being carried to the board, the cursor at `at` (global): the board lights the
+## places that would take it and draws it at the cursor.
+func carry_move(rune_id: String, at: Vector2) -> void:
+	armed_rune = ""
+	if _board != null and is_instance_valid(_board):
+		_board.carry_at(rune_id, at)
+
+
+## The carried rune let go at `at` (global): the board sets it on the place there, if any.
+func carry_end(rune_id: String, at: Vector2) -> void:
+	if _board != null and is_instance_valid(_board):
+		_board.drop_at(rune_id, at)
+
+
+## The carried rune let go away from the board.
+func carry_cancelled(_rune_id: String) -> void:
+	_refresh_runes()
+
+
+## A click on an empty place of ring k: the rune in hand goes there.
+func click_slot(k: int, place: int) -> void:
+	if seal_view() == "view":
+		return
+	if armed_rune != "":
+		place_rune(armed_rune, k, place)
+		return
+	picked = -1
+	picked_bond = Vector2i(-1, -1)
+	_say("An empty place on ring %d: drag a rune here from the panel, or click one there first." % k, false)
+	_refresh_runes()
+
+
+## May rune `rune_id` be set on ring k now? {ok, reason, text} - the character's knowledge first,
+## then the rules.
+func place_check(rune_id: String, k: int) -> Dictionary:
+	if not bool(player.call("knows_rune", rune_id)):
+		return RuneRules.no("unknown", "Not discovered yet: runes are found in the Netherecho, in fights and on old stones.")
+	if not bool(player.call("can_use_rune", rune_id)):
+		return RuneRules.no("not_yours", "%s belongs to an affinity you do not hold." % str(GameData.rune(rune_id).get("name", rune_id)))
+	return Runes.active().can_add(current_word(), rune_id, current_context(), -1, k)
+
+
+## Set rune `rune_id` on ring k at place `place` (dropped there, or clicked after picking it up).
+## It is set alone: bonds are made by dragging from one rune to another.
+func place_rune(rune_id: String, k: int, place: int) -> void:
+	var nm: String = str(GameData.rune(rune_id).get("name", rune_id))
+	var r: Dictionary = player.call("word_add", selected, rune_id, -1, k, place)
+	if bool(r["ok"]):
+		armed_rune = ""
+		picked = int(r.get("node", -1))
+		picked_bond = Vector2i(-1, -1)
+		_say("Set %s on ring %d. Drag from it to another rune to bond them." % [nm, k], false)
+	else:
+		_say("%s cannot be set there: %s" % [nm, str(r["text"])], true)
+	_refresh_runes()
+
+
+## A palette rune was let go over the board but not on an empty place.
+func drop_missed(rune_id: String) -> void:
+	_say("Drop %s on an empty place on a ring." % str(GameData.rune(rune_id).get("name", rune_id)), false)
+	_refresh_runes()
+
+
+## The end of a bond drag from rune a: let go on rune b (-1: elsewhere - no bond).
+func finish_bond(a: int, b: int) -> void:
+	if b < 0:
+		_say("No bond made: let go on a glowing rune to bond it.", false)
+		_refresh_runes()
+		return
+	var before: Dictionary = current_word()
+	var names: Array = [RuneRules.rune_name(before, a), RuneRules.rune_name(before, b)]
+	var r: Dictionary = player.call("word_link", selected, a, b)
+	if bool(r["ok"]):
+		picked_bond = Vector2i(mini(a, b), maxi(a, b))
+		picked = -1
+		_say("Bonded: %s." % str(Runes.active().describe_link(current_word(), a, b, current_context()).get("text", "")), false)
+	else:
+		_say("%s and %s cannot bond: %s" % [names[0], names[1], str(r["text"])], true)
+	_refresh_runes()
+
+
+## Part the bond a-b (its x, right-click, or Delete with it selected).
+func delete_bond(a: int, b: int) -> void:
+	var word: Dictionary = current_word()
+	var names: Array = [RuneRules.rune_name(word, a), RuneRules.rune_name(word, b)]
+	var r: Dictionary = player.call("word_unlink", selected, a, b)
+	if bool(r["ok"]):
+		picked_bond = Vector2i(-1, -1)
+		_say("Parted %s and %s. %s brings the bond back." % [names[0], names[1], Keybinds.binding_text("seal_undo")], false)
+	else:
+		_say(str(r["text"]), true)
+	_refresh_runes()
+
+
+## Delete or Backspace: the selected bond, or the selected rune with its bonds.
+func delete_selected() -> void:
+	if picked_bond.x >= 0:
+		delete_bond(picked_bond.x, picked_bond.y)
+	elif picked >= 0:
+		remove_node(picked)
+
+
+## Ctrl+Z: the draft one step back.
+func undo() -> void:
+	if bool(player.call("draft_undo")):
+		_say("Undone.", false)
+	else:
+		_say("Nothing to undo.", false)
+	picked = -1
+	picked_bond = Vector2i(-1, -1)
+	_refresh_runes()
+
+
+## Ctrl+Y: the step undone, again.
+func redo() -> void:
+	if bool(player.call("draft_redo")):
+		_say("Redone.", false)
+	else:
+		_say("Nothing to redo.", false)
+	picked = -1
+	picked_bond = Vector2i(-1, -1)
+	_refresh_runes()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if rune_mode and seal_view() != "view" and not event.is_echo():
+		if event.is_action_pressed("seal_undo"):
+			get_viewport().set_input_as_handled()
+			undo()
+			return
+		if event.is_action_pressed("seal_redo"):
+			get_viewport().set_input_as_handled()
+			redo()
+			return
+		if event.is_action_pressed("seal_delete") or event.is_action_pressed("seal_delete_alt"):
+			get_viewport().set_input_as_handled()
+			delete_selected()
+			return
+	if rune_mode and event.is_action_pressed("settings") and not event.is_echo() and cancel_action():
+		get_viewport().set_input_as_handled()
+		return
+	super._unhandled_input(event)
+
+
+## Take a rune out of the draft, with its bonds.
 func remove_node(i: int) -> void:
 	var word: Dictionary = current_word()
 	var nm: String = RuneRules.rune_name(word, i)
 	var r: Dictionary = player.call("word_remove", selected, i)
 	if bool(r["ok"]):
 		picked = -1 if picked == i else (picked - 1 if picked > i else picked)
-		_say("Took %s out." % nm, false)
+		picked_bond = Vector2i(-1, -1)
+		_say("Took %s out, with its bonds. %s puts it back." % [nm, Keybinds.binding_text("seal_undo")], false)
 	else:
 		_say(str(r["text"]), true)
 	_refresh_runes()
@@ -235,7 +403,8 @@ func remove_node(i: int) -> void:
 func clear_word() -> void:
 	player.call("word_clear", selected)
 	picked = -1
-	_say("The draft is cleared back to the skill's own rune.", false)
+	picked_bond = Vector2i(-1, -1)
+	_say("The draft is cleared back to the skill's own rune. %s brings it back." % Keybinds.binding_text("seal_undo"), false)
 	_refresh_runes()
 
 
@@ -243,6 +412,7 @@ func clear_word() -> void:
 func reset_draft() -> void:
 	player.call("draft_reset")
 	picked = -1
+	picked_bond = Vector2i(-1, -1)
 	_say("The draft is back as the seal was.", false)
 	_refresh_runes()
 
@@ -258,7 +428,8 @@ func bind_and_seal(roll: float = -1.0) -> void:
 	var unchanged: bool = bool(check.get("unchanged", false))
 	var result: String = str(player.call("bind_seal", roll))
 	picked = -1
-	target_ring = -1
+	picked_bond = Vector2i(-1, -1)
+	armed_rune = ""
 	if result == "bound":
 		_say(("The bind takes. %s binds; the word stays as it was." % skill) if unchanged else ("The bind takes. The seal forms: %s now works through this word." % skill), false)
 	elif result == "failed":
@@ -283,15 +454,22 @@ func seal_now() -> void:
 	_refresh_runes()
 
 
-## For a palette chip: whether the rules would take that rune now, its sockets, and whether it is known.
+## For a palette chip: whether some ring would take that rune now, its sockets, and whether it is known.
 func chip_state(rune_id: String) -> Dictionary:
 	var known: bool = bool(player.call("knows_rune", rune_id))
 	if not known:
 		return {"ok": false, "known": false, "text": "Not discovered yet.", "sockets": -1}
 	var ctx: RuneContext = current_context()
 	var rules: RuneRules = Runes.active()
-	var live: bool = seal_view() != "view"
-	var r: Dictionary = rules.can_add(current_word(), rune_id, ctx, picked, target_ring) if live else {"ok": true, "text": ""}
+	var r: Dictionary = {"ok": true, "text": ""}
+	if seal_view() != "view":
+		r = RuneRules.no("ring", "No ring has room for it.")
+		for k: int in range(1, maxi(1, ctx.rings) + 1):
+			var c: Dictionary = place_check(rune_id, k)
+			if bool(c["ok"]):
+				r = c
+				break
+			r = c
 	return {"ok": bool(r["ok"]), "known": true, "text": str(r["text"]), "sockets": int(rules.describe_rune(rune_id, ctx).get("sockets", -1))}
 
 
@@ -379,15 +557,31 @@ func _build_runes(root: Control) -> void:
 		actions.add_child(_lock_button)
 	_lock_note = UiTheme.body("", 12, UiTheme.TEXT_FAINT)
 	_lock_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_lock_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	actions.add_child(_lock_note)
-	if mode == "bind":
-		_reset_button = UiWidgets.small_button("Put it back", func() -> void: reset_draft.call_deferred())
-		_reset_button.name = "DraftResetButton"
-		actions.add_child(_reset_button)
+	# the draft's own row: undo, redo, put it back, clear
+	_undo_button = null
+	_redo_button = null
 	if mode != "view":
+		var edits := HBoxContainer.new()
+		edits.add_theme_constant_override("separation", 6)
+		box.add_child(edits)
+		_undo_button = UiWidgets.small_button("Undo  (%s)" % Keybinds.binding_text("seal_undo"), func() -> void: undo.call_deferred())
+		_undo_button.name = "UndoButton"
+		edits.add_child(_undo_button)
+		_redo_button = UiWidgets.small_button("Redo  (%s)" % Keybinds.binding_text("seal_redo"), func() -> void: redo.call_deferred())
+		_redo_button.name = "RedoButton"
+		edits.add_child(_redo_button)
+		var gap := Control.new()
+		gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		edits.add_child(gap)
+		if mode == "bind":
+			_reset_button = UiWidgets.small_button("Put it back", func() -> void: reset_draft.call_deferred())
+			_reset_button.name = "DraftResetButton"
+			edits.add_child(_reset_button)
 		_clear_button = UiWidgets.small_button("Clear", func() -> void: clear_word.call_deferred())
 		_clear_button.name = "ClearWordButton"
-		actions.add_child(_clear_button)
+		edits.add_child(_clear_button)
 
 	var pal_head := HBoxContainer.new()
 	pal_head.add_theme_constant_override("separation", 4)
@@ -574,14 +768,19 @@ func _refresh_runes() -> void:
 			var tl := UiTheme.body("  %s%s:  %s" % [str(t2["label"]), (" (ring %d)" % int(t2["ring"])) if t2.has("ring") else "", str(t2.get("effect", ""))], 13, UiTheme.GOLD.lightened(0.2))
 			tl.name = "Trait_%s" % str(t2["id"])
 			_rune_info.add_child(tl)
-	# what ionic bonds carried where
+	# what ionic bonds carried where, and what they converted into strength (Bond Rules rows 71-72)
 	var transfers: Array = pv.get("transfers", [])
-	if not transfers.is_empty():
-		var ch := UiTheme.section("Carried")
+	var convs: Array = pv.get("conversions", [])
+	if not transfers.is_empty() or not convs.is_empty():
+		var ch := UiTheme.section("Carried and converted")
 		ch.name = "Carried"
 		_rune_info.add_child(ch)
 		for tr: Dictionary in transfers:
 			_rune_info.add_child(UiTheme.body("  %s" % str(tr["text"]), 13, RuneBoard.LINK_COLOURS["ionic"].lightened(0.3)))
+		for cv: Dictionary in convs:
+			var cvl := UiTheme.body("  %s" % str(cv["text"]), 13, RuneBoard.LINK_COLOURS["ionic"].lightened(0.45))
+			cvl.name = "Conversion_%d" % int(cv["from"])
+			_rune_info.add_child(cvl)
 
 	# rune by rune
 	var rows: Array = pv.get("runes", [])
@@ -607,6 +806,13 @@ func _refresh_runes() -> void:
 			var sl := UiTheme.body(("-> %s" % str(r.get("carried_by", ""))) if carried else "x%.2f" % float(r["strength"]), 13, RuneBoard.LINK_COLOURS["ionic"].lightened(0.3) if carried else UiTheme.GOLD)
 			sl.autowrap_mode = TextServer.AUTOWRAP_OFF
 			line.add_child(sl)
+			if float(r.get("converted", 0.0)) > 0.0:
+				# ionic conversion (Bond Rules rows 71-72): what it took became its strength
+				var cl := UiTheme.body("      strength x%.2f + %.2f %s = x%.2f%s" % [float(r["path_strength"]), float(r["converted"]),
+					str(r.get("converted_from", "converted")), float(r["strength"]), "  (capped)" if bool(r.get("capped", false)) else ""], 12,
+					RuneBoard.LINK_COLOURS["ionic"].lightened(0.35))
+				cl.name = "Converted_%d" % int(r["node"])
+				_rune_info.add_child(cl)
 			var gives: Array = (r.get("used", []) as Array) + (r.get("fallback", []) as Array)
 			if carried:
 				gives = ["its effect is carried by %s" % str(r.get("carried_by", ""))]
@@ -626,14 +832,52 @@ func _refresh_runes() -> void:
 		pl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		prow.add_child(pl)
 		if picked > 0 and mode != "view":
-			var rm: Button = UiWidgets.small_button("Take it out", func() -> void: remove_node.call_deferred(picked))
+			var rm: Button = UiWidgets.small_button("Take it out  (%s)" % Keybinds.binding_text("seal_delete"), func() -> void: remove_node.call_deferred(picked))
 			rm.name = "RemoveRuneButton"
 			prow.add_child(rm)
+		if d.has("strength") and picked > 0:
+			var stl: String = "strength x%.2f" % float(d["strength"])
+			if float(d.get("converted", 0.0)) > 0.0:
+				stl = "strength x%.2f + %.2f %s = x%.2f" % [float(d["path_strength"]), float(d["converted"]), str(d.get("converted_from", "")), float(d["strength"])]
+			var stb := UiTheme.body("      " + stl, 13, RuneBoard.LINK_COLOURS["ionic"].lightened(0.35) if float(d.get("converted", 0.0)) > 0.0 else UiTheme.GOLD)
+			stb.name = "PickedStrength"
+			picked_box.add_child(stb)
 		for k: int in RuneWord.neighbours(word, picked):
 			var dl: Dictionary = rules.describe_link(word, picked, k, ctx)
 			var flags: Array = dl.get("flags", [])
 			picked_box.add_child(UiTheme.body("      %s%s" % [str(dl.get("label", "")), ("   (%s)" % ", ".join(PackedStringArray(flags.map(func(v: Variant) -> String: return str(v))))) if not flags.is_empty() else ""],
 				13, (RuneBoard.LINK_COLOURS.get(str(dl.get("colour", "plain")), UiTheme.TEXT_DIM) as Color).lightened(0.2)))
+	# the selected bond: its kind, who dominates, what it passes on, what it carries
+	if picked_bond.x >= 0 and RuneWord.linked(word, picked_bond.x, picked_bond.y):
+		var bd: Dictionary = rules.describe_link(word, picked_bond.x, picked_bond.y, ctx)
+		var kc: Color = (RuneBoard.LINK_COLOURS.get(str(bd.get("colour", "plain")), UiTheme.TEXT_DIM) as Color).lightened(0.25)
+		var bsec := UiTheme.section("Selected bond")
+		bsec.name = "SelectedBond"
+		picked_box.add_child(bsec)
+		var brow := HBoxContainer.new()
+		picked_box.add_child(brow)
+		var bt := UiTheme.body("%s  -  %s" % [RuneRules.rune_name(word, picked_bond.x), RuneRules.rune_name(word, picked_bond.y)], 14, UiTheme.GOLD)
+		bt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		brow.add_child(bt)
+		if mode != "view":
+			var db: Button = UiWidgets.small_button("Delete bond  (%s)" % Keybinds.binding_text("seal_delete"), func() -> void: delete_bond.call_deferred(picked_bond.x, picked_bond.y))
+			db.name = "DeleteBondButton"
+			brow.add_child(db)
+		var kind_l := UiTheme.body("      %s%s" % [str(bd.get("kind", "")).capitalize(), ("  -  " + str(bd.get("label", "")).get_slice(": ", 1)) if str(bd.get("label", "")).contains(": ") else ""], 13, kc)
+		kind_l.name = "BondKind"
+		picked_box.add_child(kind_l)
+		if bd.has("transmission"):
+			picked_box.add_child(UiTheme.body("      passes x%.2f inward (its kind factor, read from %s's side, further out)" % [float(bd["transmission"]),
+				RuneRules.rune_name(word, int(bd.get("outer", picked_bond.y)))], 13, UiTheme.TEXT_DIM))
+		var carries: Array = bd.get("carries", [])
+		var cl2 := UiTheme.body("      carries " + (", ".join(PackedStringArray(carries.map(func(cc: Dictionary) -> String: return "%s (x%.2f)" % [str(cc["name"]), float(cc["strength"])])))
+			if not carries.is_empty() else "nothing: no rune's strongest way to the skill runs through it"), 13, UiTheme.TEXT_DIM)
+		cl2.name = "BondCarries"
+		picked_box.add_child(cl2)
+		for h: Variant in bd.get("hand_over", []):
+			picked_box.add_child(UiTheme.body("      " + str(h), 13, RuneBoard.LINK_COLOURS["ionic"].lightened(0.35)))
+		for fl: Variant in bd.get("flags", []):
+			picked_box.add_child(UiTheme.body("      %s" % ("weakened: the affinities lean apart" if str(fl) == "weakened" else str(fl)), 12, UiTheme.BAD.lightened(0.2)))
 	for n2: String in rules.notes():
 		_rune_info.add_child(UiTheme.body(n2, 12, UiTheme.TEXT_FAINT))
 
@@ -661,6 +905,10 @@ func _refresh_runes() -> void:
 		_clear_button.disabled = RuneWord.size(word) <= 1
 	if _reset_button != null and is_instance_valid(_reset_button):
 		_reset_button.disabled = not bool(player.call("draft_changed"))
+	if _undo_button != null and is_instance_valid(_undo_button):
+		_undo_button.disabled = not bool(player.call("can_undo"))
+	if _redo_button != null and is_instance_valid(_redo_button):
+		_redo_button.disabled = not bool(player.call("can_redo"))
 	for chip: Control in _chips:
 		chip.queue_redraw()
 

@@ -21,6 +21,7 @@ func _ready() -> void:
 		await _test_rune_effects()
 		await _test_seals()
 		_test_strength_rules()
+		await _test_seal_editing()
 		await _test_rune_discovery()
 		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
@@ -69,6 +70,7 @@ func _ready() -> void:
 	await _test_rune_effects()
 	await _test_seals()
 	_test_strength_rules()
+	await _test_seal_editing()
 	await _test_rune_discovery()
 	await _test_build_1022()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
@@ -5062,16 +5064,14 @@ func _test_runes() -> void:
 	var spare: Array[String] = _runes_of("water", -1, [GameData.skill_anchor(str(((mp.get("abilities") as Array)[0] as Dictionary)["id"]))])
 	for rid: String in spare:
 		mp.call("discover_rune", rid, "")
-	s.call("add_rune", spare[0])
-	s.call("pick_node", 0)
-	s.call("pick_node", 1)
-	_check("the view sets a rune and joins it to the anchor", RuneWord.linked(mp.call("ability_word", 0), 0, 1))
+	s.call("place_rune", spare[0], 1, -1)
+	s.call("finish_bond", 0, 1)
+	_check("the view sets a rune and bonds it to the anchor", RuneWord.linked(mp.call("ability_word", 0), 0, 1))
 	Runes.use(free)
 	s.call("rebuild")
 	await get_tree().process_frame
-	s.call("pick_node", 0)
-	s.call("add_rune", spare[1])
-	s.call("add_rune", spare[2])
+	s.call("place_rune", spare[1], 1, -1)
+	s.call("place_rune", spare[2], 1, -1)
 	_check("with the test rules in force the same view follows them: the fourth rune is refused, and it says why",
 		RuneWord.size(mp.call("ability_word", 0)) == 3 and str(s.get("_rune_msg")).contains("full"), str(s.get("_rune_msg")))
 	await get_tree().process_frame
@@ -5773,6 +5773,263 @@ func _test_strength_rules() -> void:
 			found = true
 	if not found:
 		print("    (no word in the data passes the cap - it is checked on the function only)")
+
+
+# --- the seal board, driven by mouse events sent straight to it (Brent 2026-10-23: "redo the
+# interface... make the bonds selectable for deletion and allow click and drag to create the bonds")
+
+func _bpress(b: Control, at: Vector2, button: MouseButton = MOUSE_BUTTON_LEFT) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = button
+	ev.pressed = true
+	ev.position = at
+	b.call("_gui_input", ev)
+
+
+func _brelease(b: Control, at: Vector2, button: MouseButton = MOUSE_BUTTON_LEFT) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = button
+	ev.pressed = false
+	ev.position = at
+	b.call("_gui_input", ev)
+
+
+func _bmove(b: Control, at: Vector2) -> void:
+	var ev := InputEventMouseMotion.new()
+	ev.position = at
+	ev.button_mask = MOUSE_BUTTON_MASK_LEFT
+	b.call("_gui_input", ev)
+
+
+func _bclick(b: Control, at: Vector2, button: MouseButton = MOUSE_BUTTON_LEFT) -> void:
+	_bmove(b, at)
+	_bpress(b, at, button)
+	_brelease(b, at, button)
+
+
+## A drag from `from` to `to` on the board, with motion in between (a real drag, not a teleport).
+func _bdrag(b: Control, from: Vector2, to: Vector2) -> void:
+	_bpress(b, from)
+	for k: int in 6:
+		_bmove(b, from.lerp(to, float(k + 1) / 6.0))
+	_brelease(b, to)
+
+
+func _local(b: Control, global_at: Vector2) -> Vector2:
+	return b.get_global_transform().affine_inverse() * global_at
+
+
+func _key(s: Node, action: String) -> void:
+	var src: InputEvent = InputMap.action_get_events(action)[0]
+	var ev: InputEventKey = (src as InputEventKey).duplicate()
+	ev.pressed = true
+	s.call("_unhandled_input", ev)
+
+
+func _word_json(w: Dictionary) -> String:
+	return JSON.stringify(w, "", true)
+
+
+## The seal board's building controls, headless: events go straight to the board's _gui_input (the
+## windowed ui_click_probe does the same through real hit-testing). One check per bug found in the
+## old board (2026-10-23), so none comes back.
+func _test_seal_editing() -> void:
+	print("the seal board: place, bond by dragging, select, delete, undo (2026-10-23):")
+	var errors_before: int = _errors.count()
+	Keybinds.reset_defaults()
+	var z: InputEventKey = InputMap.action_get_events("seal_undo")[0] as InputEventKey
+	_check("undo and redo are InputMap actions: %s, %s; delete is %s or %s" % [Keybinds.binding_text("seal_undo"), Keybinds.binding_text("seal_redo"),
+		Keybinds.binding_text("seal_delete"), Keybinds.binding_text("seal_delete_alt")], z.ctrl_pressed and z.physical_keycode == KEY_Z
+		and Keybinds.binding_text("seal_delete") == "Delete" and Keybinds.binding_text("seal_delete_alt") == "Backspace")
+	var plain_z := InputEventKey.new()
+	plain_z.physical_keycode = KEY_Z
+	plain_z.pressed = true
+	var ctrl_z: InputEventKey = plain_z.duplicate()
+	ctrl_z.ctrl_pressed = true
+	_check("a plain Z is not undo; Ctrl+Z is", not plain_z.is_action_pressed("seal_undo") and ctrl_z.is_action_pressed("seal_undo"))
+
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	main.set("_test_mode", true)
+	add_child(main)
+	await get_tree().process_frame
+	main.call("start_test_character", "water")
+	main.call("open_ethercosm")
+	await get_tree().process_frame
+	var s: Node = main.get("screen")
+	s.call("open_runes")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var p: Node = main.get("player")
+	var b: RuneBoard = s.find_children("RuneBoard", "Control", true, false)[0] as RuneBoard
+	var anchor: String = RuneWord.anchor(p.call("ability_word", 0))
+	var links2: Array[String] = []
+	var caps: Array[String] = []
+	for rid: String in _runes_of("water", -1, [anchor]):
+		if BondRules.valence(rid) == 1 and caps.size() < 3 and (Runes.active() as BondRules).alignment_state(anchor, rid) == "ok":
+			caps.append(rid)
+		elif BondRules.valence(rid) >= 2 and links2.size() < 5:
+			links2.append(rid)
+	var w := func() -> Dictionary: return p.call("ability_word", 0)
+
+	# ---- place: a rune goes exactly where it is put, and alone (bugs 1 and 4)
+	var place_j: int = b.empty_place(1, 1)
+	var slot_at: Vector2 = b.empty_slot_global(1, 1)
+	s.call("arm_rune", links2[0])
+	_bclick(b, _local(b, slot_at))
+	_check("a palette rune picked up, then an empty place clicked: set on that very place (bug 4: it landed elsewhere on the ring)",
+		RuneWord.size(w.call()) == 2 and RuneWord.places(w.call())[1] == place_j and b.node_global(1).distance_to(slot_at) < 1.0,
+		"%s vs %s" % [b.node_global(1), slot_at])
+	s.call("select_node", 1)
+	s.call("arm_rune", links2[1])
+	_bclick(b, _local(b, b.empty_slot_global(1, 0)))
+	_check("with a rune selected, a new rune is set alone - never bonded to the selection (bug 1)",
+		RuneWord.size(w.call()) == 3 and RuneWord.degree(w.call(), 2) == 0 and RuneWord.links(w.call()).is_empty(), str(w.call()))
+	# a palette rune carried to a place and let go there (the chip hands the cursor to the screen)
+	var drop_g: Vector2 = b.empty_slot_global(2, 2)
+	var drop_j: int = b.empty_place(2, 2)
+	s.call("carry_move", links2[2], drop_g + Vector2(30, 10))
+	var carrying: bool = b.is_carrying()
+	s.call("carry_move", links2[2], drop_g)
+	s.call("carry_end", links2[2], drop_g)
+	_check("a palette rune carried to an empty place of ring 2 and let go is set there", carrying and not b.is_carrying() and RuneWord.size(w.call()) == 4
+		and RuneWord.ring(w.call(), 3) == 2 and RuneWord.places(w.call())[3] == drop_j)
+
+	# ---- bond by dragging (and the stale-pick bug 2: clicks only select)
+	_bclick(b, _local(b, b.node_global(0)))
+	_bclick(b, _local(b, b.node_global(2)))
+	_check("clicking the core, then a rune, only selects them - no bond is made (bug 2: a leftover pick joined the wrong pair)",
+		RuneWord.links(w.call()).is_empty() and int(s.get("picked")) == 2)
+	var before_pos: Array[Vector2] = []
+	for i: int in RuneWord.size(w.call()):
+		before_pos.append(b.node_global(i))
+	_bdrag(b, _local(b, b.node_global(0)), _local(b, b.node_global(1)))
+	_check("pressing on the core and dragging to a rune bonds them, and selects the new bond", RuneWord.linked(w.call(), 0, 1) and s.get("picked_bond") == Vector2i(0, 1))
+	var moved := false
+	for i2: int in before_pos.size():
+		if b.node_global(i2).distance_to(before_pos[i2]) > 0.5:
+			moved = true
+	_check("bonding moves nothing on the board (bug 5: runes jumped to sit by their partners)", not moved)
+	_bdrag(b, _local(b, b.node_global(1)), _local(b, b.node_global(3)))
+	_check("a rune on ring 1 dragged to one on ring 2: bonded", RuneWord.linked(w.call(), 1, 3))
+	_bclick(b, _local(b, b.node_global(0)))
+	_bclick(b, _local(b, b.node_global(1)))
+	_check("clicking two bonded runes, one then the other, leaves their bond alone (bug 3: it was parted)", RuneWord.linked(w.call(), 0, 1) and int(s.get("picked")) == 1)
+	# a drag let go on empty space makes nothing
+	var n_links: int = RuneWord.links(w.call()).size()
+	_bdrag(b, _local(b, b.node_global(2)), Vector2(b.size.x - 24.0, b.size.y * 0.5 + 40.0))
+	_check("a drag let go on empty space makes no bond", RuneWord.links(w.call()).size() == n_links and not b.is_dragging())
+	# a refused drag: ring 3 is not next to ring 1
+	s.call("place_rune", links2[3], 3, -1)
+	var far: int = RuneWord.size(w.call()) - 1
+	_bpress(b, _local(b, b.node_global(2)))
+	for k: int in 6:
+		_bmove(b, _local(b, b.node_global(2)).lerp(_local(b, b.node_global(far)), float(k + 1) / 6.0))
+	var refused: Dictionary = (b.get("_drag_checks") as Dictionary).get(far, {})
+	_check("while dragging, a rune two rings out is marked refused, with the reason (%s)" % RuneBoard.short_reason(refused),
+		b.is_dragging() and not bool(refused.get("ok", true)) and str(refused.get("reason", "")) == "rings_apart")
+	_brelease(b, _local(b, b.node_global(far)))
+	_check("and letting go on it makes no bond, and says why", not RuneWord.linked(w.call(), 2, far) and str(s.get("_rune_msg")).contains("cannot bond"), str(s.get("_rune_msg")))
+
+	# ---- select a bond along its curve, delete it three ways
+	_bclick(b, _local(b, b.bond_global(1, 3)))
+	_check("a click on a bond's curve selects it", s.get("picked_bond") == Vector2i(1, 3), str(s.get("picked_bond")))
+	_key(s, "seal_delete")
+	_check("Delete parts the selected bond", not RuneWord.linked(w.call(), 1, 3) and s.get("picked_bond") == Vector2i(-1, -1))
+	_bdrag(b, _local(b, b.node_global(1)), _local(b, b.node_global(3)))
+	_bclick(b, _local(b, b.bond_global(1, 3)))
+	var cross: Vector2 = b.cross_global()
+	_bclick(b, _local(b, cross))
+	_check("a selected bond shows an x, and clicking it parts the bond", cross.x >= 0.0 and not RuneWord.linked(w.call(), 1, 3))
+	_bdrag(b, _local(b, b.node_global(1)), _local(b, b.node_global(3)))
+	_bclick(b, _local(b, b.bond_global(1, 3)), MOUSE_BUTTON_RIGHT)
+	_check("right-clicking a bond parts it", not RuneWord.linked(w.call(), 1, 3))
+	_bdrag(b, _local(b, b.node_global(1)), _local(b, b.node_global(3)))
+	_bclick(b, _local(b, b.bond_global(1, 3)))
+	_key(s, "seal_delete_alt")
+	_check("Backspace parts the selected bond too", not RuneWord.linked(w.call(), 1, 3))
+
+	# ---- a full rune selected does not stop a placement (bug 7)
+	s.call("place_rune", caps[0], 1, -1)
+	var cap_i: int = RuneWord.size(w.call()) - 1
+	_bdrag(b, _local(b, b.node_global(cap_i)), _local(b, b.node_global(2)))
+	_bclick(b, _local(b, b.node_global(cap_i)))
+	var size_before: int = RuneWord.size(w.call())
+	var full: bool = RuneWord.degree(w.call(), cap_i) == 1 and int(s.get("picked")) == cap_i
+	s.call("arm_rune", links2[4])
+	_bclick(b, _local(b, b.empty_slot_global(2, 0)))
+	_check("with a full rune selected, a new rune is still set (bug 7: refused because it would have bonded to the selection)",
+		full and RuneWord.size(w.call()) == size_before + 1, "%s %s" % [str(full), str(s.get("_rune_msg"))])
+
+	# ---- right-click a rune: gone with its bonds; Ctrl+Z brings it back exactly (bug 8)
+	var kept: String = _word_json(w.call())
+	var n_now: int = RuneWord.size(w.call())
+	var had_bond: bool = RuneWord.linked(w.call(), 0, 1)
+	_bclick(b, _local(b, b.node_global(1)), MOUSE_BUTTON_RIGHT)
+	var gone: bool = had_bond and RuneWord.size(w.call()) == n_now - 1 and RuneWord.neighbours(w.call(), 0).size() == 0
+	_key(s, "seal_undo")
+	_check("right-click takes a rune out with its bonds; Ctrl+Z puts the draft back exactly (bug 8: no way back)", gone and _word_json(w.call()) == kept)
+
+	# ---- undo and redo restore the draft exactly, step by step
+	p.call("word_clear", 0)
+	var states: Array[String] = [_word_json(w.call())]
+	var steps: Array[Callable] = [
+		func() -> void: s.call("place_rune", links2[0], 1, 0),
+		func() -> void: s.call("place_rune", links2[1], 1, 2),
+		func() -> void: _bdrag(b, _local(b, b.node_global(0)), _local(b, b.node_global(1))),
+		func() -> void: _bdrag(b, _local(b, b.node_global(1)), _local(b, b.node_global(2))),
+		func() -> void: s.call("place_rune", links2[2], 2, 1),
+		func() -> void: s.call("delete_bond", 0, 1),
+		func() -> void: s.call("remove_node", 1),
+	]
+	for st: Callable in steps:
+		st.call()
+		states.append(_word_json(w.call()))
+	var back_ok := true
+	for k2: int in range(states.size() - 2, -1, -1):
+		_key(s, "seal_undo")
+		if _word_json(w.call()) != states[k2]:
+			back_ok = false
+	var fwd_ok := true
+	for k3: int in range(1, states.size()):
+		_key(s, "seal_redo")
+		if _word_json(w.call()) != states[k3]:
+			fwd_ok = false
+	_check("Ctrl+Z steps back through %d edits, each to exactly the draft it was (runes, rings, places, bonds)" % (states.size() - 1), back_ok)
+	_check("and Ctrl+Y forward again, exactly", fwd_ok)
+	_check("nothing is committed: the skill's own word is untouched by the draft", not RuneWord.is_sealed((p.get("abilities") as Array)[0].get("word", {})))
+
+	# ---- Esc cancels a drag and keeps the screen (bug 11: Esc closed it and the draft with it)
+	_bpress(b, _local(b, b.node_global(0)))
+	_bmove(b, _local(b, b.node_global(0)) + Vector2(40, 30))
+	var dragging: bool = b.is_dragging()
+	var esc: InputEventKey = (InputMap.action_get_events("settings")[0] as InputEventKey).duplicate()
+	esc.pressed = true
+	s.call("_unhandled_input", esc)
+	_check("Esc cancels a bond being dragged; the screen and the draft stay", dragging and not b.is_dragging() and main.get("screen") == s and bool(s.get("rune_mode")))
+	_brelease(b, _local(b, b.node_global(0)) + Vector2(40, 30))
+
+	# ---- the board's geometry (bugs 6 and 10)
+	p.call("word_clear", 0)
+	for j: int in 3:
+		s.call("place_rune", links2[j], 2, j)
+	s.call("finish_bond", 1, 3)
+	await get_tree().process_frame
+	var pts: PackedVector2Array = b._bond_points(1, 3)
+	var mid_pos: Vector2 = (b.get("_pos") as Array)[2]
+	var nearest := INF
+	for q: Vector2 in pts:
+		nearest = minf(nearest, q.distance_to(mid_pos))
+	_check("two runes of ring 2 with one between them: their bond is drawn across, %.0f px clear of the middle rune (bug 6: along the ring, through it)" % nearest,
+		RuneWord.linked(w.call(), 1, 3) and nearest > RuneBoard.SEAL_R + 2.0)
+	var saved_pos: Array = (b.get("_pos") as Array).duplicate()
+	var c0: Vector2 = saved_pos[0]
+	b.set("_pos", [c0, c0 + Vector2(200, 0), c0 + Vector2(240, 0)] as Array[Vector2])
+	_check("a click between two close runes picks the nearer (bug 10: the first by index won)", b._node_at(c0 + Vector2(226, 0)) == 2)
+	await get_tree().process_frame
+	_check("the board drew every state above without a script error", _errors.count() == errors_before, _errors.first())
+	main.call("close_screen")
+	main.queue_free()
+	await get_tree().process_frame
 
 
 ## Rune discovery (Brent 2026-10-23, design/14 section 8): starting knowledge, the three sources

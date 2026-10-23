@@ -42,6 +42,19 @@ static func test_palette(held: Array) -> Array[String]:
 	return usable(held)
 
 
+## How many places each ring of a word has, for layout ({ring: n}): what the rules in force give the
+## ring (never fewer than the runes on it), for every ring the skill may hold and any the word holds
+## beyond them; under rules with no ring sizes, one more than the ring holds (always a free place).
+## Shared by the draft (which pins each rune's place) and the board that draws it.
+static func place_counts(word: Dictionary, ctx: RuneContext) -> Dictionary:
+	var rules: RuneRules = active()
+	var out: Dictionary = {}
+	for k: int in range(1, maxi(1, maxi(ctx.rings, RuneWord.outer_ring(word))) + 1):
+		var on: int = RuneWord.ring_nodes(word, k).size()
+		out[k] = maxi(on, int(rules.call("ring_capacity", k))) if rules.has_method("ring_capacity") else on + 1
+	return out
+
+
 static func usable(held: Array) -> Array[String]:
 	var out: Array[String] = []
 	var base: Dictionary = GameData.runes.get("base_runes", {})

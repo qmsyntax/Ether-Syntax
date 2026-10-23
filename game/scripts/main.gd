@@ -2195,6 +2195,7 @@ func _setup_ui_shot(which: String) -> void:
 			_enter_town()
 			open_ethercosm()
 		"runes-locked", "runes-locking", "runes", "seal-forming", "seal-traits", "seal-drown-self", "seal-drown-flood", "seal-drown-surge", \
+				"seal-drag", "seal-refused", "seal-bond", "seal-convert", \
 				"seal-discovered", "seal-palette":
 			_setup_seal_shot(which)
 		"nether":
@@ -2381,6 +2382,30 @@ func _shot_seal(index: int, stage: int, rows: Array, links: Array = []) -> void:
 		player.call("_know", str(rid))
 
 
+## The seal board in the middle of an action, for a shot (the draft of "seal-drag" and friends):
+## "seal-drag" Drown dragged onto Flood (an ionic bond: Drown would take Flood's effect), "seal-refused"
+## Drown dragged onto Dry (full), "seal-bond" the Drown - Flood bond made and selected.
+func _shot_board_state(which: String) -> void:
+	if not (screen is EthercosmScreen):
+		return
+	var board: RuneBoard = null
+	for n: Node in screen.find_children("RuneBoard", "Control", true, false):
+		board = n as RuneBoard
+	if board == null:
+		return
+	var word: Dictionary = player.call("ability_word", 0)
+	var idx := {}
+	for i: int in RuneWord.size(word):
+		idx[RuneWord.node_id(word, i)] = i
+	match which:
+		"seal-drag":
+			board.show_drag(int(idx["WAT-4b"]), board.node_global(int(idx["WAT-1a"])) + Vector2(4.0, 3.0))
+		"seal-refused":
+			board.show_drag(int(idx["WAT-4b"]), board.node_global(int(idx["WAT-3b"])) + Vector2(4.0, 3.0))
+		"seal-bond":
+			screen.call("finish_bond", int(idx["WAT-4b"]), int(idx["WAT-1a"]))
+
+
 ## The index of ability `id` on the player, learning it first if need be.
 func _shot_skill(id: String) -> int:
 	if not bool(player.call("knows", id)):
@@ -2400,12 +2425,33 @@ func _shot_skill(id: String) -> int:
 ##   seal-traits        a three-ring Water Bolt: a closed ring 1, a spoke out to ring 3, two branch runes
 ##   seal-drown-*       Pressure Jet's three Drown words: Drown on the skill itself, Drown hung off Flood,
 ##                      Drown hung off Surge (each carries what it took over its ionic bond)
+##   seal-drag          the seal-forming draft with a bond being dragged onto a rune that takes it: the
+##                      live bond, its kind and dominant side in words, valid runes glowing, the rest dimmed
+##   seal-refused       the same, dragged onto a rune that refuses it: the reason under it and at the cursor
+##   seal-bond          the same draft with a bond selected: its gold sheath, its x, the panel's bond section
+##   seal-convert       Drown takes Wave on Tidal Bore (sealed, looked at, Drown selected): the converted
+##                      strength 1.5 -> 2.5 and where it came from, the silence and the longer Dazed
 ##   seal-discovered    a new water character reading the waystone's runes: the "Rune discovered" card
 ##   seal-palette       the palette of a new character: what it knows, and the "?" it has yet to find
 func _setup_seal_shot(which: String) -> void:
 	_select_talent(0)
 	(player.get("constructs") as Array).clear()          # the other UI shots hand out two vestiges first
 	match which:
+		"seal-drag", "seal-refused", "seal-bond":
+			# ring 1 sealed: Flood and Gush on Surge, Dry on Gush; forming ring 2: Drown and Settle set, not bonded
+			player.call("set_affinities", ["water"])
+			_shot_seal(0, 1, [["WAT-1a", 0], ["WAT-5a", 0], ["WAT-3b", 2]])
+			for rid2: String in ["WAT-6b", "WAT-4b", "WAT-8b", "UNI-05a"]:
+				player.call("_know", rid2)
+			(player.get("abilities") as Array)[0]["progress"] = 100.0
+			(player.get("constructs") as Array).append({"tier": "remnant", "concept": "tension"})
+			_enter_town()
+			open_seal(0, 0)
+			screen.call("place_rune", "WAT-4b", 2, 1)          # Drown, ring 2
+			screen.call("place_rune", "WAT-6b", 2, 3)          # Settle, ring 2
+			screen.call("deselect")
+			_shot_countdown = 60
+			get_tree().create_timer(0.4, true).timeout.connect(_shot_board_state.bind(which))
 		"seal-forming", "runes", "runes-locking":
 			player.call("set_affinities", ["water", "fire"])
 			_shot_seal(0, 1, [["WAT-1a", 0], ["WAT-5a", 0], ["WAT-3b", 1]], [[1, 2]])     # Flood, Gush (joined), Dry
@@ -2428,6 +2474,15 @@ func _setup_seal_shot(which: String) -> void:
 				_shot_countdown = 38
 			else:
 				screen.call("pick_node", 7)                # Expand picked: one bond still open
+		"seal-convert":
+			player.call("set_affinities", ["water"])
+			var tb: int = _shot_skill("tidal_bore")
+			_shot_seal(tb, 1, [["WAT-4b", 0]])                # Drown on Wave: ionic, Drown takes it
+			_enter_town()
+			open_ethercosm()
+			screen.call("select", tb)
+			screen.call("open_runes")
+			screen.call("pick_node", 1)
 		"runes-locked":
 			player.call("set_affinities", ["water", "fire"])
 			_shot_seal(0, 2, [["WAT-6b", 0], ["WAT-4b", 0], ["WAT-3b", 1], ["WAT-5a", 1, 2], ["WAT-8b", 1, 2], ["FIR-1b", 4, 2]])

@@ -1,6 +1,8 @@
 extends Node
 ## Autoload: every rebindable control is an InputMap action with exactly one binding.
 ## Defaults live here; the player's overrides are saved to user://keybinds.cfg.
+## A binding is a key, a mouse button, or a key held with Ctrl ("ctrl_key": the seal screen's undo
+## and redo); a rebind keeps Ctrl or Alt if they were held with the new key.
 ## Menu choices (number keys on the talent/town screens) are not actions and are not rebindable.
 
 const SAVE_PATH := "user://keybinds.cfg"
@@ -33,6 +35,10 @@ const ACTIONS: Array = [
 	["rest", "Rest", "key", KEY_E],
 	["go_now", "Skip the rest", "key", KEY_SPACE],
 	["restart", "Start over", "key", KEY_R],
+	["seal_delete", "Delete the selected rune or bond", "key", KEY_DELETE],
+	["seal_delete_alt", "Delete (second key)", "key", KEY_BACKSPACE],
+	["seal_undo", "Undo", "ctrl_key", KEY_Z],
+	["seal_redo", "Redo", "ctrl_key", KEY_Y],
 	["settings", "Controls menu", "key", KEY_ESCAPE],
 ]
 
@@ -79,7 +85,7 @@ static func describe(event: InputEvent) -> String:
 			var mapped: Key = DisplayServer.keyboard_get_keycode_from_physical(key.physical_keycode)
 			if mapped != KEY_NONE:
 				code = mapped
-		return OS.get_keycode_string(code)
+		return ("Ctrl+" if key.ctrl_pressed else "") + ("Alt+" if key.alt_pressed else "") + OS.get_keycode_string(code)
 	var mouse := event as InputEventMouseButton
 	if mouse != null:
 		match mouse.button_index:
@@ -127,21 +133,26 @@ static func _default_event(a: Array) -> InputEvent:
 	return _make(a[2], int(a[3]))
 
 
-static func _make(kind: String, code: int) -> InputEvent:
+static func _make(kind: String, code: int, alt: bool = false) -> InputEvent:
 	if kind == "mouse":
 		var m := InputEventMouseButton.new()
 		m.button_index = code as MouseButton
 		return m
 	var k := InputEventKey.new()
 	k.physical_keycode = code as Key
+	k.ctrl_pressed = kind == "ctrl_key"
+	k.alt_pressed = alt
 	return k
 
 
-## Strip modifiers/position so the stored event matches on the key or button alone.
+## Strip position and Shift so the stored event matches on the key or button (with Ctrl / Alt, if
+## they were held with a key that is not itself a modifier).
 static func _clean(event: InputEvent) -> InputEvent:
 	var key := event as InputEventKey
 	if key != null:
-		return _make("key", key.physical_keycode if key.physical_keycode != KEY_NONE else key.keycode)
+		var code: Key = key.physical_keycode if key.physical_keycode != KEY_NONE else key.keycode
+		var modifier: bool = code in [KEY_CTRL, KEY_ALT, KEY_SHIFT, KEY_META]
+		return _make("ctrl_key" if key.ctrl_pressed and not modifier else "key", code, key.alt_pressed and not modifier)
 	var mouse := event as InputEventMouseButton
 	if mouse != null:
 		return _make("mouse", mouse.button_index)
@@ -157,7 +168,7 @@ func _save() -> void:
 			continue
 		var key := events[0] as InputEventKey
 		if key != null:
-			cfg.set_value("binds", action, "key:%d" % key.physical_keycode)
+			cfg.set_value("binds", action, "key:%d%s%s" % [key.physical_keycode, ":ctrl" if key.ctrl_pressed else "", ":alt" if key.alt_pressed else ""])
 		else:
 			cfg.set_value("binds", action, "mouse:%d" % (events[0] as InputEventMouseButton).button_index)
 	cfg.save(SAVE_PATH)
@@ -175,5 +186,5 @@ func _load() -> void:
 			InputMap.action_erase_events(action)
 			continue
 		var parts: PackedStringArray = raw.split(":")
-		if parts.size() == 2 and (parts[0] == "key" or parts[0] == "mouse"):
-			_set_binding(action, _make(parts[0], int(parts[1])))
+		if parts.size() >= 2 and (parts[0] == "key" or parts[0] == "mouse"):
+			_set_binding(action, _make("ctrl_key" if parts[0] == "key" and parts.has("ctrl") else parts[0], int(parts[1]), parts.has("alt")))
