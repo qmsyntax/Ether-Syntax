@@ -338,9 +338,11 @@ What the game does now, and the calls made where Brent has not ruled. Rule set `
 
 - **Seals** [B]: a skill has no word before its first binding. Binding a construct opens the seal screen: the draft is
   the sealed word, every inner ring may be reworked and the new ring added; the bind's roll seals it, a failed bind
-  forms no seal. Binding with the draft untouched keeps the word as it is (so a skill can always advance) [MODEL].
-  A seal must be a closed word, as the lock was (Bond Rules B36) [MODEL]. The B key opens the seal screen too.
-- **Test characters** keep a free edit: any rune, any time, "Seal now", and a free-edit seal need not be closed [MODEL].
+  forms no seal. Binding with the draft untouched keeps the word as it is (so a skill can always advance) [MODEL;
+  superseded by section 11: the new ring must be formed]. A seal must be a closed word, as the lock was (Bond Rules
+  B36) [MODEL]. The B key opens the seal screen too.
+- **Test characters** keep a free edit: any rune, any time, "Seal now", and a free-edit seal need not be closed [MODEL;
+  superseded by section 11: no free edit].
 - **Ring capacity** [MODEL, OPEN]: "Runes it adds" (C47:C51) is read as *each ring holds the ring inside plus its
   adds*: 3, 5, 7, 9, 11. The other reading (each ring holds exactly its adds: 3, 2, 2, 2, the "+2 per level" of row
   52) leaves the great ring (a closed ring of 5) impossible. One data switch, `ring_capacity`, picks the reading.
@@ -425,3 +427,42 @@ on Tidal Bore - 1.5 + 1.0 = 2.5, "converted from Wave's reach, stagger and carry
 
 Not built: moving a placed rune to another place (take it out and set it again), dragging a bond's end to re-route
 it, touch or gamepad controls for the board, and a sound for any of it. Feel is untested - needs Brent.
+
+
+## 11. Ruling and build (2026-10-23, third pass): the level lock, built from the skill outward
+
+Brent, looking at a Water test character's free edit (rings 1-3 open at once, nothing sealed) and at the ethercosm's
+main page ("needs a eidolon" on every skill, "Bind the eidolon of Acceleration x3 - form the seal" buttons in the
+panel): "wait....something is wrong....you should have to build out to in....the binding of the constructs should
+come with each level lock. You should not be able to build level 2 until level 1 is fully formed with construct. The
+levels all LOCK together. No binding the constructs on the main page, only with the runes." [B]
+
+- **One level, one ring, one construct, bound together** [B]. A level lock is one act on the seal screen: build the
+  forming ring, choose the construct of the right tier on that screen, bind. The ring and the construct lock together;
+  the forming ring cannot be left empty (an untouched draft no longer binds). "Build out to in" is read as from the
+  skill outward: ring 1 first [MODEL reading of B]. At a lock the sealed rings may still be reworked (section 8), and
+  the whole word is sealed as one ("the levels all LOCK together") [B].
+- **Never more than one forming ring; ring N+1 only after ring N** [B]. In the rules (`RingRules`), not only the
+  screen: no rune is set on ring k while a ring inside it is not formed, and a seal is refused while any ring up to the
+  one being formed is not. Inside a draft a ring counts as formed when at least one rune on it is joined to the skill
+  through runes no further out than that ring [MODEL]: the ring reaches the skill from inside. (A seal must also be
+  closed, so every rune of a sealed word is joined; "formed" only fixes the order.)
+- **No binding from the main page** [B]. The ethercosm's panel shows a full skill's state ("Ready for its level N lock:
+  needs a <tier>") and one "Open the seal" button; its bind buttons and bind previews are gone, as is the inventory's
+  bind button (it opens the seal too). The B key opens the seal of the first skill ready for its lock and binds
+  nothing. On the seal screen the carried constructs of the tier are listed by concept, each with what it would do
+  once bound; with none carried the ring can be laid out but not bound, and the screen says why.
+- **Test characters follow the same rule** [B]. No free edit. They start every skill at stage 0 with a full bar and
+  four stars (the stage cap is stars + 1, so the asura lock is reachable) and carry three of every construct; after a
+  bind that takes, the bar is refilled so the next lock opens at once (a test override, `balance.json` skills
+  `test_refill_after_bind`) [MODEL]. Binds otherwise follow the normal rules: they can fail and the construct is used
+  up. Tests that need a big word build it lock by lock through a code-only test hook that waives only the closed-word
+  rule.
+- **Old saves** [MODEL]: a skill bound under the earlier flow may be at stage N with no word, or with fewer sealed
+  rings than N. Its next lock opens rings 1..N+1 as usual but they are still built inside out: it forms every missing
+  inner ring, in order, plus the new one, and the bind needs all of them formed. Nothing is taken from the skill.
+
+Not built: a separate cost or ritual for reworking a sealed ring at a lock; keeping a failed bind's draft (a failed
+bind reopens the lock on the sealed word). Open for Brent: whether a ring must be *full* (every place used) to count as
+formed, rather than reaching the skill; whether an old save should instead lose the stages its word never had. Feel is
+untested - needs Brent.
