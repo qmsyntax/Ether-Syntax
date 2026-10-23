@@ -4176,12 +4176,27 @@ func _test_real_bodies() -> void:
 					missing.append(str(m))
 		_check("%s: every wardrobe and hair mesh is in the model" % id, missing.is_empty(), str(missing))
 		var ap: AnimationPlayer = rc.get("_player")
-		var clips: Array[String] = ["idle", "walk", "run", "slash_in", "slash_out", "slash_in_l", "slash_out_l", "heavy", "hit", "death", "cast", "cast_area", "dodge", "pickup", "throw", "power_up", "meditate"]
+		var clips: Array[String] = ["idle", "walk", "run", "run_armed", "sprint", "sprint_armed", "slash_in", "slash_out", "slash_in_l", "slash_out_l", "heavy", "hit", "death", "cast", "cast_area", "dodge", "pickup", "throw", "power_up", "meditate"]
 		var no_clip: Array[String] = []
 		for c: String in clips:
 			if ap == null or not ap.has_animation(c):
 				no_clip.append(c)
 		_check("%s: every clip the game plays is there" % id, no_clip.is_empty(), str(no_clip))
+		# Brent 2026-10-22, "the arm positions when running are still bad": the clips were played on the
+		# wrong rest pose (Mixamo's T-pose channels on our A-pose rig), which swung the upper arms into the
+		# chest and the hands across the body (elbows were 4 cm past the middle in the run). Each elbow
+		# must stay well out on its own side, and a hand may reach the middle but not cross it.
+		for loop: String in ["walk", "run", "sprint", "run_armed", "sprint_armed"]:
+			var clear: Vector2 = _arm_clearance(rc, loop)
+			_check("%s: %s keeps the elbows out (closest %.2f m) and the hands on their own side (%.2f m)" % [id, loop, clear.x, clear.y],
+				clear.x >= 0.1 and clear.y >= -0.05, str(clear))
+		# a weapon in hand runs with the armed loops; empty hands with the plain ones
+		_check("%s: a full-speed empty-handed body sprints" % id, _loop_at(rc, 6.5) == "sprint", _loop_at(rc, 6.5))
+		rc.set_weapon(Models.weapon("serrated_dagger"))
+		_check("%s: armed, it sprints with the weapon carried" % id, _loop_at(rc, 6.5) == "sprint_armed", _loop_at(rc, 6.5))
+		_check("%s: armed, a run is the sword-and-shield run" % id, _loop_at(rc, 3.6) == "run_armed", _loop_at(rc, 3.6))
+		rc.set_weapon(null)
+		_check("%s: unarmed again, a run is the plain run" % id, _loop_at(rc, 4.0) == "run", _loop_at(rc, 4.0))
 		var item_missing: Array[String] = []
 		for item: String in w["items"]:
 			if GameData.item(item).is_empty():
@@ -4234,6 +4249,35 @@ func _test_real_bodies() -> void:
 		rc.set_weapon(blade)
 		_check("%s: with the right arm gone the weapon is in the left hand" % id, blade.get_parent() == rc.get("_hand_l"))
 		rc.queue_free()
+
+
+## How far the elbows and the hands of a real body stay out from its middle, each on its own side,
+## over eight frames of a loop: [closest elbow, closest hand] in metres (negative = across the body).
+func _arm_clearance(rc: RealCharacter, loop: String) -> Vector2:
+	var sk: Skeleton3D = rc.get("_skeleton")
+	var bone := func(n: String) -> Vector3:
+		var i: int = sk.find_bone("mixamorig_" + n)
+		if i < 0:
+			i = sk.find_bone("mixamorig:" + n)
+		return rc.to_local(sk.global_transform * sk.get_bone_global_pose(i).origin)
+	var worst := Vector2(INF, INF)
+	for k: int in 8:
+		rc.pose_at(loop, -1.0, float(k) / 8.0)
+		var mid: float = (bone.call("Hips") as Vector3).x
+		for side: String in ["Left", "Right"]:
+			var sign_x: float = signf((bone.call(side + "Arm") as Vector3).x - mid)
+			worst.x = minf(worst.x, ((bone.call(side + "ForeArm") as Vector3).x - mid) * sign_x)
+			worst.y = minf(worst.y, ((bone.call(side + "Hand") as Vector3).x - mid) * sign_x)
+	rc.pose_at("idle", 0.0)
+	return worst
+
+
+## The loop a real body picks at a ground speed (m/s).
+func _loop_at(rc: RealCharacter, speed: float) -> String:
+	rc.set("_one_shot", "")
+	rc.animate(0.016, speed, false)
+	var ap: AnimationPlayer = rc.get("_player")
+	return String(ap.current_animation)
 
 
 func _test_skill_tree() -> void:

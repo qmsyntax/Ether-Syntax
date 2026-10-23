@@ -611,19 +611,28 @@
     }
   },
   "bodies": {
-    "_note": "walk/run: metres a second each loop covers at speed 1 (measured from the clips by blender_character.py; the run is Mixamo's 'Running', arms kept at the sides); height for selection and bars",
+    "_note": "walk/run/run_armed/sprint: metres a second each loop covers at speed 1 (measured from the clips by blender_character.py: SPEED lines); the run is Mixamo's 'Running', run_armed the sword-and-shield run, sprint Mixamo's standard sprint; height for selection and bars",
     "body_male": {
-      "walk_speed": 1.347,
-      "run_speed": 4.131,
+      "walk_speed": 1.311,
+      "run_speed": 4.15,
+      "run_armed_speed": 3.636,
+      "sprint_speed": 5.408,
       "height": 1.74,
       "stature": 1.684
     },
     "body_female": {
-      "walk_speed": 1.303,
-      "run_speed": 4.067,
+      "walk_speed": 1.29,
+      "run_speed": 4.074,
+      "run_armed_speed": 3.577,
+      "sprint_speed": 5.322,
       "height": 1.69,
       "stature": 1.641
     }
+  },
+  "armed_loops": {
+    "_note": "with a weapon in hand (and both arms) the run and the sprint play these instead: the sword-and-shield run, and the sprint with that run's sword arm (made by blender_character.py compose), so the weapon is carried at the ready and not pumped through the body",
+    "run": "run_armed",
+    "sprint": "sprint_armed"
   },
   "grip": {
     "_note": "a weapon on the hand bone: rotation (degrees, XYZ) and position (metres) in the bone's frame; items: per-weapon overrides (knuckles sit over the fist, not in it). Checked by eye with tests/character_preview.gd grip=...",
