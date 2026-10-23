@@ -186,6 +186,48 @@ EFFECTS_V1 = OrderedDict([
         ("trail.life", "Trail lasts"), ("leave_prop.life", "Stone stands for"), ("on_hit.poise", "Poise damage"),
         ("heavy_poise", "Poise damage (heavy)"), ("on_stop.poise", "Poise damage"), ("zone.payload.poise", "Poise damage per tick"),
     ])),
+    # 2026-10-23 (Brent: "the details of the skill visible in text"): fields shown in the skill's
+    # numbers and the seal's before/after, but in no stat group - so no rune multiplier reaches them
+    # through a group (a rune's own grant, "shove +1" or "jumps +1", still moves them). Shown when
+    # the skill has the field or a word's patch sets it. "pct" shows a fraction as a percent, "bool"
+    # as yes / no, "default" [section, key] reads balance.json when the skill leaves it out.
+    ("shown_fields", [
+        OrderedDict([("path", "recovery"), ("label", "Recovery"), ("unit", " s"), ("lower_is_better", True),
+                     ("default", ["abilities", "cast_recovery"])]),
+        OrderedDict([("path", "tick"), ("label", "Hits every"), ("unit", " s"), ("lower_is_better", True)]),
+        OrderedDict([("path", "zone.tick_s"), ("label", "Zone hits every"), ("unit", " s"), ("lower_is_better", True)]),
+        OrderedDict([("path", "trail.tick_s"), ("label", "Trail hits every"), ("unit", " s"), ("lower_is_better", True)]),
+        OrderedDict([("path", "cost_per_s"), ("label", "Essence a second"), ("lower_is_better", True)]),
+        OrderedDict([("path", "jumps"), ("label", "Jumps")]),
+        OrderedDict([("path", "on_hit.jumps"), ("label", "Jumps")]),
+        OrderedDict([("path", "pierce"), ("label", "Pierces"), ("bool", True)]),
+        OrderedDict([("path", "bounces"), ("label", "Bounces")]),
+        OrderedDict([("path", "on_hit.shove"), ("label", "Shove"), ("unit", " m")]),
+        OrderedDict([("path", "on_pass.shove"), ("label", "Shove, passing"), ("unit", " m")]),
+        OrderedDict([("path", "on_stop.shove"), ("label", "Shove, at the end"), ("unit", " m")]),
+        OrderedDict([("path", "on_rise.shove"), ("label", "Shove, as it rises"), ("unit", " m")]),
+        OrderedDict([("path", "on_arrive.shove"), ("label", "Shove, on landing"), ("unit", " m")]),
+        OrderedDict([("path", "on_hit.release_shove"), ("label", "Thrown when it ends"), ("unit", " m")]),
+        OrderedDict([("path", "pull"), ("label", "Pull"), ("unit", " m")]),
+        OrderedDict([("path", "on_hit.pull"), ("label", "Pull"), ("unit", " m")]),
+        OrderedDict([("path", "on_hit.marks"), ("label", "Live marks")]),
+        OrderedDict([("path", "on_arrive.marks"), ("label", "Live marks, on landing")]),
+        OrderedDict([("path", "relay_hit.marks"), ("label", "Live marks, relayed")]),
+        OrderedDict([("path", "zone.on_enter.marks"), ("label", "Live marks, on entering")]),
+        OrderedDict([("path", "on_hit.interrupts"), ("label", "Interrupts"), ("bool", True)]),
+        OrderedDict([("path", "on_hit.through"), ("label", "Past shields and armour"), ("bool", True)]),
+        OrderedDict([("path", "braced"), ("label", "Braced while casting"), ("bool", True)]),
+        OrderedDict([("path", "on_hit.execute_below"), ("label", "Ends it below"), ("pct", True)]),
+        OrderedDict([("path", "charge_max"), ("label", "Longest charge"), ("unit", " s")]),
+        OrderedDict([("path", "move_factor"), ("label", "Your pace while it lasts"), ("pct", True)]),
+        OrderedDict([("path", "spend_pips"), ("label", "Pips spent"), ("lower_is_better", True)]),
+        OrderedDict([("path", "gain_pips"), ("label", "Pips gained")]),
+        OrderedDict([("path", "max_count"), ("label", "At most")]),
+        OrderedDict([("path", "absorb"), ("label", "Absorbs")]),
+        OrderedDict([("path", "hp"), ("label", "Health")]),
+        OrderedDict([("path", "break_range"), ("label", "Breaks past"), ("unit", " m")]),
+        OrderedDict([("path", "min_range"), ("label", "Closest"), ("unit", " m"), ("lower_is_better", True)]),
+    ]),
 ])
 
 EFFECT_GROUPS = list(EFFECTS_V1["stat_groups"].keys())

@@ -290,6 +290,176 @@
 						"on_stop.poise": "Poise damage",
 						"zone.payload.poise": "Poise damage per tick"
 					},
+					"shown_fields": [
+						{
+							"path": "recovery",
+							"label": "Recovery",
+							"unit": " s",
+							"lower_is_better": true,
+							"default": [
+								"abilities",
+								"cast_recovery"
+							]
+						},
+						{
+							"path": "tick",
+							"label": "Hits every",
+							"unit": " s",
+							"lower_is_better": true
+						},
+						{
+							"path": "zone.tick_s",
+							"label": "Zone hits every",
+							"unit": " s",
+							"lower_is_better": true
+						},
+						{
+							"path": "trail.tick_s",
+							"label": "Trail hits every",
+							"unit": " s",
+							"lower_is_better": true
+						},
+						{
+							"path": "cost_per_s",
+							"label": "Essence a second",
+							"lower_is_better": true
+						},
+						{
+							"path": "jumps",
+							"label": "Jumps"
+						},
+						{
+							"path": "on_hit.jumps",
+							"label": "Jumps"
+						},
+						{
+							"path": "pierce",
+							"label": "Pierces",
+							"bool": true
+						},
+						{
+							"path": "bounces",
+							"label": "Bounces"
+						},
+						{
+							"path": "on_hit.shove",
+							"label": "Shove",
+							"unit": " m"
+						},
+						{
+							"path": "on_pass.shove",
+							"label": "Shove, passing",
+							"unit": " m"
+						},
+						{
+							"path": "on_stop.shove",
+							"label": "Shove, at the end",
+							"unit": " m"
+						},
+						{
+							"path": "on_rise.shove",
+							"label": "Shove, as it rises",
+							"unit": " m"
+						},
+						{
+							"path": "on_arrive.shove",
+							"label": "Shove, on landing",
+							"unit": " m"
+						},
+						{
+							"path": "on_hit.release_shove",
+							"label": "Thrown when it ends",
+							"unit": " m"
+						},
+						{
+							"path": "pull",
+							"label": "Pull",
+							"unit": " m"
+						},
+						{
+							"path": "on_hit.pull",
+							"label": "Pull",
+							"unit": " m"
+						},
+						{
+							"path": "on_hit.marks",
+							"label": "Live marks"
+						},
+						{
+							"path": "on_arrive.marks",
+							"label": "Live marks, on landing"
+						},
+						{
+							"path": "relay_hit.marks",
+							"label": "Live marks, relayed"
+						},
+						{
+							"path": "zone.on_enter.marks",
+							"label": "Live marks, on entering"
+						},
+						{
+							"path": "on_hit.interrupts",
+							"label": "Interrupts",
+							"bool": true
+						},
+						{
+							"path": "on_hit.through",
+							"label": "Past shields and armour",
+							"bool": true
+						},
+						{
+							"path": "braced",
+							"label": "Braced while casting",
+							"bool": true
+						},
+						{
+							"path": "on_hit.execute_below",
+							"label": "Ends it below",
+							"pct": true
+						},
+						{
+							"path": "charge_max",
+							"label": "Longest charge",
+							"unit": " s"
+						},
+						{
+							"path": "move_factor",
+							"label": "Your pace while it lasts",
+							"pct": true
+						},
+						{
+							"path": "spend_pips",
+							"label": "Pips spent",
+							"lower_is_better": true
+						},
+						{
+							"path": "gain_pips",
+							"label": "Pips gained"
+						},
+						{
+							"path": "max_count",
+							"label": "At most"
+						},
+						{
+							"path": "absorb",
+							"label": "Absorbs"
+						},
+						{
+							"path": "hp",
+							"label": "Health"
+						},
+						{
+							"path": "break_range",
+							"label": "Breaks past",
+							"unit": " m"
+						},
+						{
+							"path": "min_range",
+							"label": "Closest",
+							"unit": " m",
+							"lower_is_better": true
+						}
+					],
 					"anchor_rule": "The skill's own rune: its Effect names what the skill already does (Surge: the shove). Its bond factors scale that part of the skill, averaged over its bonds: bonded ionically to a stronger rune, Water Bolt loses its shove.",
 					"syntax": "Effect syntax (one op per \";\"): <group> x<m> multiplies every field of a stat group the skill has: power (damage), reach (range, radius, arc, width), speed, cost, reflux, windup (wind-up and recovery), duration, poise. Also: status <id> [n], shove +<m>, pull +<m>, marks +<n>, jumps +<n>, pierce +<n>, interrupts, braced, bonus <status> +<fraction>. Strength scales each: a multiplier m becomes 1 + (m - 1) x strength; an amount is multiplied by strength. A skill without a group's fields takes a quarter of the change as power instead, so no rune does nothing. New (2026-10-22): through - the hit ignores front block and shields. Planned rules for the build: a status a skill already applies adds stacks; jumps arc any hit on; braced works on any skill; poise on any hit adds stagger damage; duration also lengthens the statuses a skill applies; every skill's recovery counts as wind-up."
 				}
@@ -624,6 +794,176 @@
 						"on_stop.poise": "Poise damage",
 						"zone.payload.poise": "Poise damage per tick"
 					},
+					"shown_fields": [
+						{
+							"path": "recovery",
+							"label": "Recovery",
+							"unit": " s",
+							"lower_is_better": true,
+							"default": [
+								"abilities",
+								"cast_recovery"
+							]
+						},
+						{
+							"path": "tick",
+							"label": "Hits every",
+							"unit": " s",
+							"lower_is_better": true
+						},
+						{
+							"path": "zone.tick_s",
+							"label": "Zone hits every",
+							"unit": " s",
+							"lower_is_better": true
+						},
+						{
+							"path": "trail.tick_s",
+							"label": "Trail hits every",
+							"unit": " s",
+							"lower_is_better": true
+						},
+						{
+							"path": "cost_per_s",
+							"label": "Essence a second",
+							"lower_is_better": true
+						},
+						{
+							"path": "jumps",
+							"label": "Jumps"
+						},
+						{
+							"path": "on_hit.jumps",
+							"label": "Jumps"
+						},
+						{
+							"path": "pierce",
+							"label": "Pierces",
+							"bool": true
+						},
+						{
+							"path": "bounces",
+							"label": "Bounces"
+						},
+						{
+							"path": "on_hit.shove",
+							"label": "Shove",
+							"unit": " m"
+						},
+						{
+							"path": "on_pass.shove",
+							"label": "Shove, passing",
+							"unit": " m"
+						},
+						{
+							"path": "on_stop.shove",
+							"label": "Shove, at the end",
+							"unit": " m"
+						},
+						{
+							"path": "on_rise.shove",
+							"label": "Shove, as it rises",
+							"unit": " m"
+						},
+						{
+							"path": "on_arrive.shove",
+							"label": "Shove, on landing",
+							"unit": " m"
+						},
+						{
+							"path": "on_hit.release_shove",
+							"label": "Thrown when it ends",
+							"unit": " m"
+						},
+						{
+							"path": "pull",
+							"label": "Pull",
+							"unit": " m"
+						},
+						{
+							"path": "on_hit.pull",
+							"label": "Pull",
+							"unit": " m"
+						},
+						{
+							"path": "on_hit.marks",
+							"label": "Live marks"
+						},
+						{
+							"path": "on_arrive.marks",
+							"label": "Live marks, on landing"
+						},
+						{
+							"path": "relay_hit.marks",
+							"label": "Live marks, relayed"
+						},
+						{
+							"path": "zone.on_enter.marks",
+							"label": "Live marks, on entering"
+						},
+						{
+							"path": "on_hit.interrupts",
+							"label": "Interrupts",
+							"bool": true
+						},
+						{
+							"path": "on_hit.through",
+							"label": "Past shields and armour",
+							"bool": true
+						},
+						{
+							"path": "braced",
+							"label": "Braced while casting",
+							"bool": true
+						},
+						{
+							"path": "on_hit.execute_below",
+							"label": "Ends it below",
+							"pct": true
+						},
+						{
+							"path": "charge_max",
+							"label": "Longest charge",
+							"unit": " s"
+						},
+						{
+							"path": "move_factor",
+							"label": "Your pace while it lasts",
+							"pct": true
+						},
+						{
+							"path": "spend_pips",
+							"label": "Pips spent",
+							"lower_is_better": true
+						},
+						{
+							"path": "gain_pips",
+							"label": "Pips gained"
+						},
+						{
+							"path": "max_count",
+							"label": "At most"
+						},
+						{
+							"path": "absorb",
+							"label": "Absorbs"
+						},
+						{
+							"path": "hp",
+							"label": "Health"
+						},
+						{
+							"path": "break_range",
+							"label": "Breaks past",
+							"unit": " m"
+						},
+						{
+							"path": "min_range",
+							"label": "Closest",
+							"unit": " m",
+							"lower_is_better": true
+						}
+					],
 					"ring_fade": [
 						{
 							"ring": 1,
