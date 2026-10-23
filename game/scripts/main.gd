@@ -2283,6 +2283,36 @@ func _setup_test_shot(what: String) -> void:
 			start_test_character("water")
 			open_ethercosm()
 			return
+		"detail-mask", "detail-water", "detail-chain", "detail-sealed", "status-tip", "status-glossary":
+			# the ethercosm's skill details (Brent 2026-10-23): a skill's numbers and its statuses
+			var spec: Array = {"detail-mask": ["dream", "changeling_mask"], "detail-water": ["water", "water_bolt"],
+				"detail-chain": ["lightning", "forked_path"], "detail-sealed": ["water", "water_bolt"],
+				"status-tip": ["dream", "rousing_blow"], "status-glossary": ["dream", "changeling_mask"]}[what]
+			start_test_character(str(spec[0]))
+			if what == "detail-sealed":
+				_shot_lock_word()                      # Water Bolt sealed through two rings: base beside sealed
+			open_ethercosm()
+			var at: int = (player.get("abilities") as Array).map(func(s: Dictionary) -> String: return str(s["id"])).find(str(spec[1]))
+			screen.call("select", maxi(0, at))
+			if what == "status-glossary":
+				screen.call("show_glossary", true)
+			if what == "status-tip":
+				# a status named on the panel, its definition open in place and as a tooltip: the pointer
+				# rests on the chip until the tooltip shows
+				_shot_countdown = 90
+				get_tree().create_timer(0.25).timeout.connect(func() -> void:
+					var chip: Control = screen.find_child("StatusTerm_asleep", true, false) as Control
+					if chip == null:
+						print("shot: no Asleep chip")
+						return
+					(chip as Button).emit_signal("pressed")
+					var p: Vector2 = chip.get_global_rect().get_center()
+					var mv := InputEventMouseMotion.new()
+					mv.position = p
+					mv.global_position = p
+					get_viewport().push_input(mv)
+					Input.warp_mouse(p))
+			return
 		"skilltree":
 			# a new water character a few skills in: the eighteen-skill tree, four tiers deep
 			_select_talent(0)
