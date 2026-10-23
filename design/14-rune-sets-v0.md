@@ -329,3 +329,42 @@ base runes. 25 of the first five's runes already carry a design/05 skill.
   - an ionic bond really transfers: the weaker rune's effect leaves it and is carried by the stronger rune;
   - shape traits: a closed ring lasts longer (a large one repeats once); a radial chain through several rings reaches
     further and faster; a rune with three or more bonds spreads its effect; a balanced first ring does not fade.
+
+## 9. Built (2026-10-23): seals, rings, structure v2, discovery
+
+What the game does now, and the calls made where Brent has not ruled. Rule set `bond_v2`
+(`game/scripts/runes/ring_rules.gd`, interaction `effects_v2.gd`); numbers from Bond Rules rows 43-59 through
+`tools/runes/export_runes_json.py`; discovery data `game/data/rune_discovery.json` from `tools/runes/rune_sources.py`.
+
+- **Seals** [B]: a skill has no word before its first binding. Binding a construct opens the seal screen: the draft is
+  the sealed word, every inner ring may be reworked and the new ring added; the bind's roll seals it, a failed bind
+  forms no seal. Binding with the draft untouched keeps the word as it is (so a skill can always advance) [MODEL].
+  A seal must be a closed word, as the lock was (Bond Rules B36) [MODEL]. The B key opens the seal screen too.
+- **Test characters** keep a free edit: any rune, any time, "Seal now", and a free-edit seal need not be closed [MODEL].
+- **Ring capacity** [MODEL, OPEN]: "Runes it adds" (C47:C51) is read as *each ring holds the ring inside plus its
+  adds*: 3, 5, 7, 9, 11. The other reading (each ring holds exactly its adds: 3, 2, 2, 2, the "+2 per level" of row
+  52) leaves the great ring (a closed ring of 5) impossible. One data switch, `ring_capacity`, picks the reading.
+- **The skill's own rune** bonds only to ring 1, so it counts as filled once it holds as many bonds as ring 1 has
+  places (a four-bond rune could otherwise never close a level 1 seal) [MODEL].
+- **Strength** [B outline, MODEL detail]: paths run inward (to the same ring or one further in, never back out, no rune
+  twice); the strongest path counts; each bond's factor is read from the side further out *along the path*.
+- **Ionic** [B outline, MODEL detail]: a rune weaker in two ionic bonds hands its effect to the partner with the most
+  pull; hand-overs chain to the strongest; the skill's own rune on the weak side loses its nature and nothing carries
+  it (as before); on the strong side it carries what it takes at full strength.
+- **Traits** [MODEL detail]: a closed ring is three or more runes, each bonded to two on its ring, one piece, and joined
+  to the skill; a branch rune is any but the skill's own; a spoke starts from a ring-1 rune bonded to the skill. The
+  great ring's repeat is a generic `rune_repeat` patch read in `Player._perform_cast`: the same cast again at 40% of its
+  stage multiplier (damage), 0.45 s later. Skills that move you, are held, or last (dash, blink, grapple, streak,
+  channel, charge_release, self_buff, summon, rod, prop, seed) cannot repeat; their great ring gives the fallback
+  (a quarter of the 40%) as damage instead. A trait with nothing to change in a skill also takes the fallback.
+- **Discovery** [B sources, MODEL numbers]: a new character knows its starting skills' runes and, per affinity, its
+  first Cap and first Link that no starter skill is built on. Learning a skill later also teaches its own rune
+  [MODEL]. Subduing a construct reveals runes of its concept (vestige 1 base; remnant 1, 30% universal; deeper more);
+  each concept's runes are the nearest rune profiles to a hand-set concept profile, three per affinity plus three
+  universal. A kill reveals a rune of the enemy kind's nature with a small chance (4%; brute and drummer 8%, commander
+  25%; 10% of those universal). Rune stones: two in The Stubble (zones.json), two in the passage (walls 3 and 8, the
+  deeper one universal). Only runes the character can use and does not know are revealed; when a pool is exhausted
+  nothing is found (a stone falls back to any base rune of yours).
+
+Not built: rune acquisition by trade or teaching, hybrid affinities' runes, reactions between opposites, "unstable",
+any cost to rework a ring, and a sound or animation for discovery beyond the HUD card.
