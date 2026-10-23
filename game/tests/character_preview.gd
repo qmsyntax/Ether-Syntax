@@ -133,6 +133,15 @@ func _make_cell(spec: Dictionary, size: Vector2i) -> SubViewport:
 		right["rot_deg"] = [float(g[0]), float(g[1]), float(g[2])]
 		if g.size() >= 6:
 			right["pos"] = [float(g[3]), float(g[4]), float(g[5])]
+	if spec.has("grip_rest"):                  # grip_rest=rx:ry:rz[:px:py:pz] overrides the stand's rest grip
+		var gr: PackedStringArray = str(spec["grip_rest"]).split(":")
+		var rests: Dictionary = ((GameData.wardrobe["stances"] as Dictionary)["stand"] as Dictionary)["grip_rest"]
+		var rest: Dictionary = rests["right"]
+		if spec.has("weapon") and (rests.get("items", {}) as Dictionary).has(str(spec["weapon"])):
+			rest = rests["items"][str(spec["weapon"])]["right"]
+		rest["rot_deg"] = [float(gr[0]), float(gr[1]), float(gr[2])]
+		if gr.size() >= 6:
+			rest["pos"] = [float(gr[3]), float(gr[4]), float(gr[5])]
 	var rig: ModelRig = Models.enemy(str(spec["kind"])) if spec.has("kind") else CharacterLook.build(look)
 	vp.add_child(rig)
 	rig.rotation_degrees.y = float(spec.get("yaw", "0"))

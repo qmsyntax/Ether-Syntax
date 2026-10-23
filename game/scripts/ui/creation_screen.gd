@@ -216,6 +216,8 @@ func _refresh_model() -> void:
 	_rig = CharacterLook.build(spec["look"])
 	if _rig.has_method("set_barefoot"):
 		_rig.call("set_barefoot", true)        # no foot wraps in the creator (Brent 2026-10-18)
+	if _rig.has_method("set_stance"):
+		_rig.call("set_stance", "menu")        # standing relaxed, not in the combat guard (Brent 2026-10-23)
 	_pivot.add_child(_rig)
 
 

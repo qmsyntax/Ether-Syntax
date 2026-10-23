@@ -9,7 +9,9 @@ extends ModelRig
 ## set_dead_look() - so the player does not need to know which kind of model it has. On top:
 ## apply_look(look) dresses it from the creator's options, set_outfit(equipped) from the
 ## inventory (data/wardrobe.json says which item shows as what), play_action(name) plays a one-off
-## (a cast, a dodge) and set_activity(name) holds a state (meditating).
+## (a cast, a dodge), set_activity(name) holds a state (meditating) and set_stance(place) picks the
+## still loop for where the character is shown (the combat guard in the field, a relaxed stand on
+## menus and in town; data/wardrobe.json "stances", built by StancePose).
 
 const DIR := "res://assets/characters/"
 const TEX := "res://assets/characters/textures/"
@@ -19,6 +21,7 @@ const LOST_ARM_MASK := (1 << 7) | (1 << 9) | (1 << 17)
 
 static var _scenes: Dictionary = {}
 static var _textures: Dictionary = {}
+static var _stance_anims: Dictionary = {}         # "body|build|stance" -> Animation (StancePose)
 
 var _body_id := "body_male"
 var _model: Node3D
@@ -57,6 +60,8 @@ var _one_shot := ""                        # an action playing to its end; the l
 var _activity := ""
 var _strike_side := false
 var _was_attacking := false
+var _place := ""                           # set_stance: where the character is shown
+var _held_at_rest := ""                    # the stance whose rest grip holds the weapon now ("" = the usual grip)
 
 
 ## True if a real model exists for this body ("body_male", ...).
@@ -97,6 +102,7 @@ func _build(packed: PackedScene) -> void:
 		if _player != null and _player.has_animation(anim_name):
 			_player.get_animation(anim_name).loop_mode = Animation.LOOP_LINEAR
 	if _player != null:
+		_own_library()
 		_player.animation_finished.connect(func(done: StringName) -> void:
 			if String(done) == _one_shot:
 				_one_shot = "")
@@ -238,6 +244,8 @@ func apply_look(look: Dictionary) -> void:
 		m.set_shader_parameter("hair_color", hair_col)
 	_piece_mat.clear()
 	_refresh_outfit()
+	if _is_stance(_idle_clip):                 # a build turns the arms its own way (builds.<id>.stand)
+		_add_stance(_idle_clip)
 
 
 ## Leave the foot wraps off when no footwear is worn (the creator shows bare feet).
@@ -460,6 +468,8 @@ func set_weapon(weapon: Node3D) -> void:
 	_weapon = weapon
 	if weapon != null:
 		_place_weapon(weapon)
+		if _player != null:
+			_hold_for(String(_player.current_animation))
 
 
 func _place_weapon(weapon: Node3D) -> void:
@@ -469,6 +479,8 @@ func _place_weapon(weapon: Node3D) -> void:
 	if weapon.get_parent() != null:
 		weapon.get_parent().remove_child(weapon)
 	var grips: Dictionary = _wardrobe().get("grip", {})
+	if _held_at_rest != "":
+		grips = (_stance_cfg(_held_at_rest).get("grip_rest", grips) as Dictionary)
 	var grip: Dictionary = grips.get("left" if _arm_lost else "right", {})
 	var by_item: Dictionary = (grips.get("items", {}) as Dictionary).get(str(weapon.get_meta("item_id", "")), {})
 	if by_item.has("left" if _arm_lost else "right"):
@@ -661,6 +673,8 @@ func lie_dead() -> void:
 ## Freeze on one frame of a clip, at t seconds or (if t < 0) at fraction f of its length - for
 ## previews and tests.
 func pose_at(anim: String, t: float, f: float = -1.0) -> void:
+	if _player != null and _is_stance(anim):
+		_add_stance(anim)
 	if _player == null or not _player.has_animation(anim):
 		return
 	_one_shot = anim
@@ -668,6 +682,7 @@ func pose_at(anim: String, t: float, f: float = -1.0) -> void:
 	_player.play(anim, 0.0)
 	_player.seek(at, true)
 	_player.pause()
+	_hold_for(anim)
 
 
 ## Hold a state until it is cleared with "": "meditate".
@@ -722,6 +737,7 @@ func animate(_delta: float, speed: float, attacking: bool) -> void:
 		rate = speed / _walk_speed
 	if _player.current_animation != want:
 		_player.play(want, 0.2)
+		_hold_for(want)
 	_player.speed_scale = clampf(rate, 0.6, 1.8) if want != _idle_clip else 1.0
 
 
@@ -732,3 +748,100 @@ func _loop_for(base: String) -> String:
 		return base
 	var armed: String = str((_wardrobe().get("armed_loops", {}) as Dictionary).get(base, base))
 	return armed if _player.has_animation(armed) else base
+
+
+# --- stances ----------------------------------------------------------------------------------
+
+## Stand the way the place calls for (data/wardrobe.json "stances" "places"): "menu" (creation,
+## inventory), "town", or main.state ("field", "dungeon", ...). The still loop becomes that clip -
+## the combat guard ("idle") or a stance built from the body's skeleton ("stand").
+func set_stance(place: String) -> void:
+	if place == _place or _player == null:
+		return
+	_place = place
+	var places: Dictionary = (_wardrobe().get("stances", {}) as Dictionary).get("places", {})
+	var clip: String = str(places.get(place, places.get("_default", "idle")))
+	if _is_stance(clip):
+		_add_stance(clip)
+	if not _player.has_animation(clip) or clip == _idle_clip:
+		return
+	var was_still: bool = _player.current_animation == _idle_clip or _player.current_animation == ""
+	_idle_clip = clip
+	_player.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
+	if was_still and _one_shot == "" and _activity == "" and not _dead:
+		_player.speed_scale = 1.0
+		_player.play(clip, 0.25)
+		_hold_for(clip)
+
+
+## The still loop played when nothing moves ("idle", the guard, in the field; "stand" on menus).
+func still_clip() -> String:
+	return _idle_clip
+
+
+func _stance_cfg(clip: String) -> Dictionary:
+	var cfg: Variant = (_wardrobe().get("stances", {}) as Dictionary).get(clip, null)
+	return cfg if cfg is Dictionary and (cfg as Dictionary).has("pose") else {}
+
+
+func _is_stance(clip: String) -> bool:
+	return not _stance_cfg(clip).is_empty()
+
+
+## Put the stance's clip for this body and build into this character's own animation library.
+func _add_stance(clip: String) -> void:
+	if _skeleton == null or _player == null:
+		return
+	var build: String = str(_look.get("body", "a"))
+	var key: String = "%s|%s|%s" % [_body_id, build, clip]
+	if not _stance_anims.has(key):
+		var cfg: Dictionary = _stance_cfg(clip)
+		var extra: Array[Dictionary] = []
+		var by_body: Variant = (cfg.get("by_body", {}) as Dictionary).get(_body_id, null)
+		if by_body is Dictionary:
+			extra.append(by_body)
+		var by_build: Variant = ((_wardrobe().get("builds", {}) as Dictionary).get(build, {}) as Dictionary).get(clip, null)
+		if by_build is Dictionary:
+			extra.append(by_build)
+		var root: Node = _player.get_node(_player.root_node)
+		_stance_anims[key] = StancePose.build(_skeleton, str(root.get_path_to(_skeleton)), cfg, extra)
+	var lib: AnimationLibrary = _own_library()
+	var anim: Animation = _stance_anims[key]
+	if lib.has_animation(clip) and lib.get_animation(clip) == anim:
+		return
+	var playing: bool = _player.current_animation == clip
+	var at: float = _player.current_animation_position if playing else 0.0
+	if lib.has_animation(clip):
+		lib.remove_animation(clip)
+	lib.add_animation(clip, anim)
+	if playing:
+		_player.play(clip, 0.0)
+		_player.seek(at, true)
+
+
+## This character's own copy of the body's animation library: the imported one is shared by every
+## instance of the body, and a stance differs by build.
+func _own_library() -> AnimationLibrary:
+	var lib: AnimationLibrary = _player.get_animation_library("")
+	if lib.has_meta("own") and int(lib.get_meta("own")) == get_instance_id():
+		return lib
+	var mine := AnimationLibrary.new()
+	mine.set_meta("own", get_instance_id())
+	for a: StringName in lib.get_animation_list():
+		mine.add_animation(a, lib.get_animation(a))
+	_player.remove_animation_library("")
+	_player.add_animation_library("", mine)
+	return mine
+
+
+## While a stance plays, an in-hand weapon is held the stance's way ("weapon": "rest" by its
+## grip_rest, "hide" out of sight); any other clip holds it the usual way.
+func _hold_for(clip: String) -> void:
+	var rule: String = str(_stance_cfg(clip).get("weapon", ""))
+	var rest: String = clip if rule == "rest" and _stance_cfg(clip).has("grip_rest") else ""
+	if _weapon != null and is_instance_valid(_weapon):
+		_weapon.visible = rule != "hide"
+		if rest != _held_at_rest:
+			_held_at_rest = rest
+			_place_weapon(_weapon)
+	_held_at_rest = rest
