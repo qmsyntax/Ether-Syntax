@@ -96,6 +96,15 @@
       "color": "fff2a8",
       "damage_taken_mult": 1.5
     },
+    "silenced": {
+      "label": "Silenced",
+      "stacks": 1,
+      "lasts": 1.5,
+      "color": "9fc3e8",
+      "cannot_attack": true,
+      "no_call": true,
+      "control": true
+    },
     "pinned": {
       "label": "Pinned",
       "stacks": 1,

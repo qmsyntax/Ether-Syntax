@@ -734,6 +734,38 @@
 							"seed"
 						]
 					},
+					"on_off": {
+						"status_time_per_strength": 1,
+						"status_time_cap": 2.5,
+						"stack_per_strength": 1,
+						"silence_above": 1,
+						"silence_s_per_strength": 1.5,
+						"silence_status": "silenced"
+					},
+					"ionic_conversion": {
+						"rate": 1,
+						"cap": 3
+					},
+					"nature_words": {
+						"power": "force",
+						"reach": "reach",
+						"speed": "speed",
+						"cost": "thrift",
+						"reflux": "reflux",
+						"windup": "timing",
+						"duration": "hold",
+						"poise": "stagger",
+						"interrupts": "interrupt",
+						"shove": "shove",
+						"pull": "pull",
+						"marks": "marks",
+						"jumps": "jumps",
+						"pierce": "pierce",
+						"braced": "brace",
+						"through": "guard-breaking",
+						"bonus": "edge"
+					},
+					"strength_rule": "Dominance must pay: an on/off effect (a status, an interrupt) also grows with strength, and in an ionic bond nothing is lost - what the weaker side gives up is converted into the stronger rune's strength. Example: Drown takes Wave (ionic) on Tidal Bore. Wave gives up all of its nature (reach, stagger, carry), so Drown's strength goes 1.5 -> 2.5: its interrupt becomes a 2.25 s silence and Dazed lasts 2.5x as long.",
 					"anchor_rule": "The skill's own rune: its Effect names what the skill already does (Surge: the shove). Its bond factors scale that part of the skill, averaged over its bonds: bonded ionically to a stronger rune, Water Bolt loses its shove.",
 					"syntax": "Effect syntax (one op per \";\"): <group> x<m> multiplies every field of a stat group the skill has: power (damage), reach (range, radius, arc, width), speed, cost, reflux, windup (wind-up and recovery), duration, poise. Also: status <id> [n], shove +<m>, pull +<m>, marks +<n>, jumps +<n>, pierce +<n>, interrupts, braced, bonus <status> +<fraction>. Strength scales each: a multiplier m becomes 1 + (m - 1) x strength; an amount is multiplied by strength. A skill without a group's fields takes a quarter of the change as power instead, so no rune does nothing. New (2026-10-22): through - the hit ignores front block and shields. Planned rules for the build: a status a skill already applies adds stacks; jumps arc any hit on; braced works on any skill; poise on any hit adds stagger damage; duration also lengthens the statuses a skill applies; every skill's recovery counts as wind-up."
 				}
@@ -741,7 +773,8 @@
 			"notes": [
 				"Runes are sealed when a vestige (or a later construct) is bound into the skill; the word changes the skill only once sealed.",
 				"Strength = the ring's fade x every bond's transmission on the strongest path to the skill.",
-				"An ionic bond hands the weaker rune's whole effect to the stronger one.",
+				"An ionic bond hands the weaker rune's whole effect to the stronger one, and what it gives up becomes the stronger rune's strength.",
+				"A status lasts longer, and an interrupt also silences, the stronger the rune that adds it.",
 				"Universal runes have placeholder bonds (2) until Brent sets them."
 			]
 		}

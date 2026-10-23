@@ -2078,11 +2078,13 @@ func apply_hit(target: Node, payload: Dictionary, tags: Array = [], stage_mult: 
 	var stun_marks: int = int(target.call("status_stacks", "live")) if payload.has("stun_per_mark") else 0
 	var opts: Dictionary = _status_opts(target, payload, tags)
 	if not bool(payload.get("needs_facing", false)) or bool(target.call("is_in_front", global_position)):
+		var time_of: Dictionary = payload.get("status_time_of", {})
 		if payload.has("status"):
-			_give_status(target, str(payload["status"]), int(payload.get("stacks", 1)), opts, memo, held_before)
-		# further statuses, as a list [{id, stacks}] (rune words add them here)
+			_give_status(target, str(payload["status"]), int(payload.get("stacks", 1)), _status_time(opts, time_of, str(payload["status"]), {}), memo, held_before)
+		# further statuses, as a list [{id, stacks, lasts?}] (rune words add them here)
 		for extra: Variant in payload.get("statuses", []):
-			_give_status(target, str((extra as Dictionary).get("id", "")), int((extra as Dictionary).get("stacks", 1)), opts, memo, held_before)
+			var e: Dictionary = extra as Dictionary
+			_give_status(target, str(e.get("id", "")), int(e.get("stacks", 1)), _status_time(opts, time_of, str(e.get("id", "")), e), memo, held_before)
 		if bool(payload.get("blind_if_dark", false)) and Light.is_dark(get_tree(), (target as Node3D).global_position):
 			_give_status(target, "blinded", 1, opts, memo, held_before)
 	if not is_instance_valid(target) or bool(target.call("is_dead")):
@@ -2145,6 +2147,22 @@ func apply_hit(target: Node, payload: Dictionary, tags: Array = [], stage_mult: 
 				arc[k] = float(arc[k]) * cut
 		_arc_on(target as Node3D, arc, tags + ["arc"], stage_mult, int(payload["jumps"]), GameData.num("skills", "jump_radius"))
 	return ctx
+
+
+## One status's own timing on a hit (2026-10-23, rune strength): the payload's `status_time_of`
+## {id: multiple} lengthens that status alone; a `statuses` entry with its own "lasts" lasts exactly
+## that (a silence's seconds), whatever the payload's other statuses do. Data only - no ids here.
+static func _status_time(opts: Dictionary, time_of: Dictionary, id: String, entry: Dictionary) -> Dictionary:
+	var m: float = float(time_of.get(id, 1.0))
+	if not entry.has("lasts") and absf(m - 1.0) < 0.000001:
+		return opts
+	var o: Dictionary = opts.duplicate()
+	if entry.has("lasts"):
+		o["lasts"] = float(entry["lasts"])
+		o.erase("time_mult")
+	if absf(m - 1.0) >= 0.000001:
+		o["time_mult"] = float(o.get("time_mult", 1.0)) * m
+	return o
 
 
 ## A status from a hit: once per target per cast through a ticking payload if it is a hold.
@@ -3438,7 +3456,7 @@ static func apply_rune_patch(ab: Dictionary, patch: Array) -> void:
 		var keys: PackedStringArray = str(p.get("path", "")).split(".")
 		var last: String = keys[keys.size() - 1]
 		var holder: Dictionary = ab
-		var make: bool = str(p["op"]) in ["add", "set", "append"]
+		var make: bool = str(p["op"]) in ["add", "set", "append", "max"]
 		var ok := true
 		for k: int in keys.size() - 1:
 			if not holder.has(keys[k]) or typeof(holder[keys[k]]) != TYPE_DICTIONARY:
@@ -3465,6 +3483,9 @@ static func apply_rune_patch(ab: Dictionary, patch: Array) -> void:
 			"min":
 				if is_num:
 					holder[last] = minf(float(cur), float(p["value"]))
+			"max":
+				# the larger of what is there and the value (creates it when absent)
+				holder[last] = maxf(float(cur), float(p["value"])) if is_num else float(p["value"])
 			"add":
 				if typeof(p["value"]) == TYPE_INT and (cur == null or typeof(cur) == TYPE_INT):
 					holder[last] = (int(cur) if cur != null else 0) + int(p["value"])

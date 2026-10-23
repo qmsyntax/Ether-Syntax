@@ -21,8 +21,10 @@ What it writes:
   2026-10-22 rulings (WORD_RULES below - these are not in the workbook). bond_v2 (in force since
   2026-10-23, design/14 section 8) adds structure v2 from "Bond Rules" rows 43-59: the rings (fade
   and runes each seal adds, rows 47-51) and the shape traits (rows 55-59, their needs and changes
-  read out of the cells' words), plus RING_RULES and REPEAT_RULES below. A new rule set gets an
-  entry here and a script in game/scripts/runes/;
+  read out of the cells' words), plus RING_RULES and REPEAT_RULES below; and from rows 62-74 the
+  strength on on/off effects (status duration, extra stacks, silence) and the ionic conversion
+  (rate and cap), plus STRENGTH_RULES and NATURE_WORDS below. A new rule set gets an entry here and
+  a script in game/scripts/runes/;
 - skill_anchor: ability id (game/data/abilities.json) -> the base rune it is built on: each ability's
   "base_rune" (written by tools/skills/emit_abilities.py from the skill drafts, build brief
   2026-10-22). The affinity sheets' "Skills on it" names are still read, as a cross-check only:
@@ -90,10 +92,25 @@ REPEAT_RULES = OrderedDict([
                          "rod", "prop", "seed"]),
 ])
 
+# Strength on on/off effects and ionic conversion (Brent 2026-10-23; Bond Rules rows 62-74 hold the
+# numbers). These are the words the workbook does not hold.
+STRENGTH_RULES = OrderedDict([
+    # the status an interrupt above the silence line also applies (statuses.json, made by
+    # tools/skills/skill_tables.py): it cannot start an attack or call for help
+    ("silence_status", "silenced"),
+])
+# [MODEL] how a rune's or a skill's nature is named when it is converted ("converted from Wave's reach,
+# stagger and carry"): a stat group's word, else the field's own name.
+NATURE_WORDS = OrderedDict([("power", "force"), ("reach", "reach"), ("speed", "speed"), ("cost", "thrift"), ("reflux", "reflux"),
+                            ("windup", "timing"), ("duration", "hold"), ("poise", "stagger"), ("interrupts", "interrupt"),
+                            ("shove", "shove"), ("pull", "pull"), ("marks", "marks"), ("jumps", "jumps"), ("pierce", "pierce"),
+                            ("braced", "brace"), ("through", "guard-breaking"), ("bonus", "edge")])
+
 BOND_V2_NOTES = [
     "Runes are sealed when a vestige (or a later construct) is bound into the skill; the word changes the skill only once sealed.",
     "Strength = the ring's fade x every bond's transmission on the strongest path to the skill.",
-    "An ionic bond hands the weaker rune's whole effect to the stronger one.",
+    "An ionic bond hands the weaker rune's whole effect to the stronger one, and what it gives up becomes the stronger rune's strength.",
+    "A status lasts longer, and an interrupt also silences, the stronger the rune that adds it.",
     "Universal runes have placeholder bonds (2) until Brent sets them.",
 ]
 
@@ -283,6 +300,38 @@ def read_structure_v2(cells):
     return rings, traits, " ".join([text(cells.get((44, 1))), text(cells.get((52, 1)))])
 
 
+def read_strength_rules(cells, statuses):
+    """Bond Rules rows 62-74 (Brent 2026-10-23): strength on on/off effects and ionic conversion. Each
+    knob is found by the words in its A cell, so a moved row stops the export instead of feeding a
+    wrong number into the game."""
+    if not text(cells.get((62, 1))).lower().startswith("strength on on/off effects"):
+        sys.exit("export_runes_json: Bond Rules A62 is not the strength-on-on/off header - the layout moved")
+    if text(cells.get((65, 1))).lower() != "knob" or text(cells.get((65, 2))).lower() != "value":
+        sys.exit("export_runes_json: Bond Rules A65:B65 are not 'Knob', 'Value' - the layout moved")
+    want = OrderedDict([
+        (66, ("status duration per strength", "status_time_per_strength")),
+        (67, ("status duration cap", "status_time_cap")),
+        (68, ("extra stack per strength above 1", "stack_per_strength")),
+        (69, ("interrupt becomes silence above strength", "silence_above")),
+        (70, ("silence seconds per strength above 1", "silence_s_per_strength")),
+        (71, ("ionic conversion rate", "rate")),
+        (72, ("converted strength cap", "cap")),
+    ])
+    got = OrderedDict()
+    for r, (label, key) in want.items():
+        if text(cells.get((r, 1))).lower() != label:
+            sys.exit("export_runes_json: Bond Rules A%d is not '%s' - the layout moved" % (r, label))
+        got[key] = clean(num(cells.get((r, 2)), "Bond Rules B%d" % r))
+    if STRENGTH_RULES["silence_status"] not in statuses:
+        sys.exit("export_runes_json: the silence status '%s' is not in statuses.json" % STRENGTH_RULES["silence_status"])
+    on_off = OrderedDict([(k, got[k]) for k in ["status_time_per_strength", "status_time_cap", "stack_per_strength",
+                                                 "silence_above", "silence_s_per_strength"]])
+    on_off["silence_status"] = STRENGTH_RULES["silence_status"]
+    conversion = OrderedDict([("rate", got["rate"]), ("cap", got["cap"])])
+    words = " ".join([text(cells.get((63, 1))), text(cells.get((74, 1)))])
+    return on_off, conversion, words
+
+
 def num(v, what):
     if v is None or v == "":
         sys.exit("export_runes_json: %s is empty in the workbook (open it in Excel and save, so values are cached)" % what)
@@ -300,7 +349,7 @@ def main():
 
     # --- bond rules ---------------------------------------------------------------------
     br = wb["Bond Rules"]
-    cells = {(r, c): v for r, row in enumerate(br.iter_rows(min_row=1, max_row=60, values_only=True), 1) for c, v in enumerate(row, 1)}
+    cells = {(r, c): v for r, row in enumerate(br.iter_rows(min_row=1, max_row=80, values_only=True), 1) for c, v in enumerate(row, 1)}
     roles = OrderedDict()
     for r in range(4, 8):
         role = text(cells.get((r, 1)))
@@ -341,6 +390,7 @@ def main():
     syntax_text = text(cells.get((40, 1)))
     statuses = set(json.loads(STATUSES.read_text(encoding="utf-8"))["statuses"].keys())
     rings, shape_traits, structure_text = read_structure_v2(cells)
+    on_off, conversion, strength_text = read_strength_rules(cells, statuses)
 
     # --- alignment thresholds -------------------------------------------------------------
     al = wb["Alignment"]
@@ -501,6 +551,10 @@ def main():
                         ("ring_fade", [OrderedDict([("ring", r["ring"]), ("or_more", r["or_more"]), ("fade", r["fade"])]) for r in rings]),
                         ("shape_traits", shape_traits),
                         ("repeat", REPEAT_RULES),
+                        ("on_off", on_off),
+                        ("ionic_conversion", conversion),
+                        ("nature_words", NATURE_WORDS),
+                        ("strength_rule", strength_text),
                         ("anchor_rule", anchor_rule_text), ("syntax", syntax_text),
                     ])),
                 ])),

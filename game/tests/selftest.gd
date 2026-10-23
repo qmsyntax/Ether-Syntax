@@ -20,6 +20,7 @@ func _ready() -> void:
 		await _test_runes()
 		await _test_rune_effects()
 		await _test_seals()
+		_test_strength_rules()
 		await _test_rune_discovery()
 		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
@@ -67,6 +68,7 @@ func _ready() -> void:
 	await _test_runes()
 	await _test_rune_effects()
 	await _test_seals()
+	_test_strength_rules()
 	await _test_rune_discovery()
 	await _test_build_1022()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
@@ -5432,8 +5434,9 @@ func _test_seals() -> void:
 	var fx_flood: Dictionary = rules.effects(w_flood, ctxp)
 	var worked: float = fade2 * ionic_more * even_more
 	print("    worked example (Pressure Jet): Drown on ring 2 -> Flood -> Gush = fade %.2f x ionic %.2f (Drown's side) x even %.2f (Flood's side) = %.3f" % [fade2, ionic_more, even_more, worked])
-	_check("strength is a product along the path: Drown off Flood = %.3f" % worked, _near(float(_row(fx_flood, 2)["strength"]), worked, 0.0001), str(_row(fx_flood, 2)))
+	_check("strength is a product along the path: Drown off Flood = %.3f (before conversion)" % worked, _near(float(_row(fx_flood, 2)["path_strength"]), worked, 0.0001), str(_row(fx_flood, 2)))
 	var v1_s: float = float(_row(Runes.make("bond_v1").effects(w_flood, ctxp), 2)["strength"])
+	var conv_p: Dictionary = fxp["ionic_conversion"]
 	_check("the bond further in now counts: bond_v1 gave %.3f for the same rune" % v1_s, not _near(v1_s, worked, 0.0001))
 	# two ways in: the stronger counts (Soak on ring 2, bonded to Flood and to Settle)
 	var w_two: Dictionary = _ring_word([gush, "WAT-1a", "WAT-6b", "WAT-3a"], [0, 1, 1, 2], [[0, 1], [0, 2], [1, 3], [2, 3]])
@@ -5447,11 +5450,13 @@ func _test_seals() -> void:
 	var flood_row: Dictionary = _row(fx_flood, 1)
 	var drown_row: Dictionary = _row(fx_flood, 2)
 	var reach_m: float = 1.0
+	# Drown's strength once Flood's is converted into it (Bond Rules rows 71-72)
+	var drown_s: float = minf(float(conv_p["cap"]), worked + float(flood_row["path_strength"]) * float(conv_p["rate"]))
 	for o: Dictionary in GameData.rune("WAT-1a")["ops"]:
 		if str(o["op"]) == "mul" and str(o["group"]) == "reach":
-			reach_m = 1.0 + (float(o["value"]) - 1.0) * worked
+			reach_m = 1.0 + (float(o["value"]) - 1.0) * drown_s
 	_check("ionic: Flood's whole effect leaves it (it is carried by Drown)", int(flood_row.get("carried_to", -1)) == 2 and (flood_row["used"] as Array).is_empty())
-	_check("and Drown carries it at Drown's strength: reach x%.3f, not Flood's own x%.3f" % [reach_m, 1.0 + 0.2 * float(flood_row["strength"])],
+	_check("and Drown carries it at Drown's converted strength %.3f: reach x%.3f, not Flood's own x%.3f" % [drown_s, reach_m, 1.0 + 0.2 * float(flood_row["strength"])],
 		_near(float((fx_flood["groups"] as Dictionary).get("reach", 1.0)), reach_m, 0.0005) and str(drown_row["used"]).contains("from Flood"), str(fx_flood["groups"]))
 	_check("the panel says what was carried where", (fx_flood["transfers"] as Array).size() == 1 and str((fx_flood["transfers"] as Array)[0]["text"]).contains("carried by Drown"))
 	# the skill's own rune on the weak side loses its nature, and nothing carries it
@@ -5481,7 +5486,7 @@ func _test_seals() -> void:
 		and float(((after3[2] as Dictionary)["on_hit"] as Dictionary)["shove"]) > float((base_pj["on_hit"] as Dictionary)["shove"]) + 0.01
 		and not str((after3[2] as Dictionary)["on_hit"]).contains("soaked") and _near(float((after3[2] as Dictionary)["range"]), float(base_pj["range"])))
 	_check("and Drown on the skill itself is a third result: full strength, Gush's nature lost",
-		_near(float(_row(fx_self, 1)["strength"]), ionic_more) and str(after3[0]) != str(after3[1]) and str(after3[0]) != str(after3[2]) and str(after3[1]) != str(after3[2]))
+		_near(float(_row(fx_self, 1)["path_strength"]), ionic_more) and str(after3[0]) != str(after3[1]) and str(after3[0]) != str(after3[2]) and str(after3[1]) != str(after3[2]))
 
 	# ---- shape traits
 	var bolt := "water_bolt"
@@ -5615,6 +5620,159 @@ func _test_seals() -> void:
 	for n: Node in [g, s, foe, floor_n]:
 		n.queue_free()
 	await get_tree().process_frame
+
+
+## Strength on on/off effects and ionic conversion (Brent 2026-10-23, Bond Rules rows 62-74): a
+## status lasts base x strength up to the cap, a full 1.0 of strength above 1 adds a stack where the
+## status stacks, an interrupt above the silence line also silences; and nothing is lost in an ionic
+## bond - Drown takes Wave on Tidal Bore and Wave's nature becomes Drown's strength (1.5 -> 2.5).
+func _test_strength_rules() -> void:
+	print("strength on on/off effects and ionic conversion (Bond Rules rows 62-74):")
+	var rules: RuneRules = Runes.make("bond_v2")
+	var fxp: Dictionary = (rules.params["interaction_params"] as Dictionary)["effects_v2"]
+	var oo: Dictionary = fxp["on_off"]
+	var cv: Dictionary = fxp["ionic_conversion"]
+	var rv: RuneInteraction = rules.interactions[0]
+	_check("rows 66-72 came through the exporter: x%.1f per strength, cap x%.1f, silence %.1f s per strength above %.1f, conversion x%.1f up to %.1f" % [
+		float(oo["status_time_per_strength"]), float(oo["status_time_cap"]), float(oo["silence_s_per_strength"]), float(oo["silence_above"]), float(cv["rate"]), float(cv["cap"])],
+		_near(float(oo["status_time_per_strength"]), 1.0) and _near(float(oo["status_time_cap"]), 2.5) and _near(float(oo["silence_s_per_strength"]), 1.5)
+		and _near(float(oo["silence_above"]), 1.0) and _near(float(cv["rate"]), 1.0) and _near(float(cv["cap"]), 3.0) and int(oo["stack_per_strength"]) == 1
+		and not GameData.status(str(oo["silence_status"])).is_empty())
+
+	# ---- (a) the numbers
+	var t15: Array = rv.call("status_time", 1.5)
+	var t25: Array = rv.call("status_time", 2.5)
+	var t30: Array = rv.call("status_time", 3.0)
+	_check("a status lasts base x strength: x1.5 at 1.5, x2.5 at 2.5", _near(float(t15[0]), 1.5, 0.0001) and _near(float(t25[0]), 2.5, 0.0001) and not bool(t25[1]))
+	_check("and no longer than the cap: x2.5 at strength 3.0 (capped)", _near(float(t30[0]), 2.5, 0.0001) and bool(t30[1]))
+	var stacker := ""
+	for sid: String in (GameData.get("_statuses") as Dictionary):
+		if int(GameData.status(sid).get("stacks", 1)) >= 3 and not GameData.status(sid).has("alias_of"):
+			stacker = sid
+			break
+	_check("each full 1.0 above 1 adds a stack where the status stacks (%s: +0 at 1.9, +1 at 2.5, +2 at 3.0); Dazed, which does not stack, gets none" % stacker,
+		int(rv.call("extra_stacks", stacker, 1.9)) == 0 and int(rv.call("extra_stacks", stacker, 2.5)) == 1 and int(rv.call("extra_stacks", stacker, 3.0)) == 2
+		and int(rv.call("extra_stacks", "dazed", 2.5)) == 0)
+	_check("an interrupt above the line silences for 1.5 s per strength above it: 2.25 s at 2.5, none at 1.0",
+		_near(float(rv.call("silence_s", 2.5)), 2.25, 0.0001) and _near(float(rv.call("silence_s", 1.0)), 0.0, 0.0001) and _near(float(rv.call("silence_s", 0.8)), 0.0, 0.0001))
+
+	# ---- (b) the worked example: Drown takes Wave on Tidal Bore
+	var bore := "tidal_bore"
+	var wave: String = GameData.skill_anchor(bore)
+	var ctx: RuneContext = _rings_ctx(bore, 1)
+	var w: Dictionary = _ring_word([wave, "WAT-4b"], [0, 1], [[0, 1]])
+	var fx: Dictionary = rules.effects(w, ctx)
+	var drown: Dictionary = _row(fx, 1)
+	print("    Tidal Bore: Drown takes %s - path strength %.2f, converted +%.2f -> %.2f (%s)" % [
+		str(GameData.rune(wave)["name"]), float(drown.get("path_strength", 0.0)), float(drown.get("converted", 0.0)), float(drown.get("strength", 0.0)), str(drown.get("converted_from", ""))])
+	_check("the bond is ionic and Drown takes it: Wave keeps x0 of its nature", str(drown.get("kind", "")) == "ionic" and str(drown.get("side", "")) == "more"
+		and _near(float((fx["anchor"] as Dictionary)["factor"]), 0.0))
+	_check("Drown's strength goes 1.5 -> 2.5: all of Wave's nature converted (x1.0)", _near(float(drown["path_strength"]), 1.5, 0.0001)
+		and _near(float(drown["strength"]), 2.5, 0.0001) and _near(float(drown["converted"]), 1.0, 0.0001), str(drown))
+	_check("and the panel says where it came from: \"converted from Wave's reach, stagger and carry\"",
+		str(drown.get("converted_from", "")) == "converted from Wave's reach, stagger and carry", str(drown.get("converted_from", "")))
+	var ab: Dictionary = GameData.ability(bore).duplicate(true)
+	PlayerScript.apply_rune_patch(ab, fx["patch"])
+	var hit: Dictionary = ab["on_hit"]
+	var sil: Dictionary = {}
+	var dazed_e: Dictionary = {}
+	for e: Dictionary in hit.get("statuses", []):
+		if str(e["id"]) == str(oo["silence_status"]):
+			sil = e
+		elif str(e["id"]) == "dazed":
+			dazed_e = e
+	_check("its interrupt becomes a 2.25 s silence", bool(hit.get("interrupts", false)) and _near(float(sil.get("lasts", 0.0)), 2.25, 0.0001), str(hit))
+	_check("and Dazed lasts 2.5x as long (the cap)", not dazed_e.is_empty() and _near(float((hit.get("status_time_of", {}) as Dictionary).get("dazed", 0.0)), 2.5, 0.0001), str(hit))
+	var dline: String = str(drown["used"])
+	_check("the rune's lines say so (\"lasts x2.50\", \"silences 2.25 s\")", dline.contains("lasts x2.50") and dline.contains("silences 2.25 s"), dline)
+	# the same payload through a real hit: the status engine gives each its time, nothing branches on ids
+	var p := _new_player()
+	var foe := _dummy_enemy(p)
+	p.call("apply_hit", foe, hit, ["ability", "water"])
+	var on: Dictionary = foe.get("statuses")
+	var base_daze: float = float(GameData.status("dazed")["lasts"])
+	var base_soak: float = float(GameData.status("soaked")["lasts"])
+	print("    a real hit: Dazed %.2f s (base %.1f), Silenced %.2f s, Soaked %.2f s (base %.1f)" % [float((on.get("dazed", {}) as Dictionary).get("t", 0.0)), base_daze,
+		float((on.get(str(oo["silence_status"]), {}) as Dictionary).get("t", 0.0)), float((on.get("soaked", {}) as Dictionary).get("t", 0.0)), base_soak])
+	_check("a real hit: Dazed lasts %.1f s (x2.5), the silence 2.25 s, Soaked its own %.1f s" % [base_daze * 2.5, base_soak],
+		_near(float((on.get("dazed", {}) as Dictionary).get("t", 0.0)), base_daze * 2.5, 0.001) and _near(float((on.get(str(oo["silence_status"]), {}) as Dictionary).get("t", 0.0)), 2.25, 0.001)
+		and _near(float((on.get("soaked", {}) as Dictionary).get("t", 0.0)), base_soak, 0.001), str(on.keys()))
+	_check("and silenced, it cannot start an attack", bool(foe.call("_no_attack")))
+	p.queue_free()
+	foe.queue_free()
+
+	# ---- outer runes: Drown off Flood on Pressure Jet - Flood's whole effect carried, and its strength added
+	var pj := "pressure_jet"
+	var gush: String = GameData.skill_anchor(pj)
+	var w2: Dictionary = _ring_word([gush, "WAT-1a", "WAT-4b"], [0, 1, 2], [[0, 1], [1, 2]])
+	var fx2: Dictionary = rules.effects(w2, _rings_ctx(pj, 2))
+	var flood: Dictionary = _row(fx2, 1)
+	var drown2: Dictionary = _row(fx2, 2)
+	var want2: float = float(drown2["path_strength"]) + float(flood["path_strength"]) * float(cv["rate"])
+	_check("outer runes: Drown (%.3f) takes Flood (%.3f) and its strength too: %.3f, converted from Flood's reach and Soaked" % [
+		float(drown2["path_strength"]), float(flood["path_strength"]), want2], int(flood.get("carried_to", -1)) == 2 and _near(float(drown2["strength"]), want2, 0.0001)
+		and str(drown2.get("converted_from", "")) == "converted from Flood's reach and Soaked", str(drown2))
+	_check("and the bond's description names the hand-over", str(rules.describe_link(w2, 1, 2, _rings_ctx(pj, 2)).get("hand_over", [])).contains("+0.75 strength to Drown"),
+		str(rules.describe_link(w2, 1, 2, _rings_ctx(pj, 2)).get("hand_over", [])))
+
+	# ---- the skill's own rune taken in part: it gives up only the share that bond takes
+	var even_mate := ""
+	for rid: String in _runes_of("water", -1, [wave, "WAT-4b"]):
+		if (rules as BondRules).bond_kind(wave, rid) == "even" and (rules as BondRules).alignment_state(wave, rid) == "ok":
+			even_mate = rid
+			break
+	if even_mate != "":
+		var w3: Dictionary = _ring_word([wave, "WAT-4b", even_mate], [0, 1, 1], [[0, 1], [0, 2]])
+		var fx3: Dictionary = rules.effects(w3, ctx)
+		var af: float = float((fx3["anchor"] as Dictionary)["factor"])
+		var kf: Dictionary = fxp["kind_factors"]
+		var even_f: float = float((kf["even"] as Dictionary)["more_pull"])
+		var frac: float = (1.0 - af) * 1.0 / (1.0 + (1.0 - even_f))
+		_check("Wave bonded to Drown and to %s (even): it keeps x%.3f and gives Drown only the share that bond takes (+%.3f -> %.3f)" % [
+			str(GameData.rune(even_mate)["name"]), af, frac, 1.5 + frac], _near(float(_row(fx3, 1)["strength"]), 1.5 + frac, 0.0001) and frac < 0.999, str(_row(fx3, 1)))
+
+	# ---- the cap
+	_check("conversion stops at the cap: 2.5 + 1.0 -> 3.0; a rune already past it keeps its own",
+		_near(float(rv.call("converted_strength", 2.5, 1.0)), 3.0, 0.0001) and _near(float(rv.call("converted_strength", 3.2, 0.5)), 3.2, 0.0001)
+		and _near(float(rv.call("converted_strength", 1.5, 1.0)), 2.5, 0.0001))
+	# in a word: a rune on ring 1, bonded to the skill's own rune, taking the runes beside it over ionic
+	# bonds - its strength plus theirs would pass the cap; it stops there
+	var found := false
+	var bonds := rules as BondRules
+	for sid: String in GameData.abilities:
+		var own: String = GameData.skill_anchor(sid)
+		if found or own == "":
+			continue
+		var aff: String = str(GameData.rune(own).get("affinity", ""))
+		for taker: String in _runes_of(aff, -1, [own]):
+			if found or BondRules.valence(taker) < 2 or bonds.alignment_state(own, taker) == "refused" or BondRules.electronegativity(taker) < BondRules.electronegativity(own):
+				continue
+			var givers: Array[String] = []
+			for giver: String in _runes_of(aff, -1, [own, taker]):
+				if bonds.bond_kind(taker, giver) == "ionic" and BondRules.electronegativity(giver) < BondRules.electronegativity(taker):
+					while givers.size() < BondRules.valence(taker) - 1:
+						givers.append(giver)          # the same rune may be set more than once
+			if givers.is_empty():
+				continue
+			var ids: Array = [own, taker] + givers
+			var rings: Array = [0, 1]
+			for gk: int in givers.size():
+				rings.append(1 if gk < 2 else 2)      # ring 1 holds three: the rest go out on ring 2
+			var links: Array = [[0, 1]]
+			for gi: int in givers.size():
+				links.append([1, 2 + gi])
+			var w4: Dictionary = _ring_word(ids, rings, links)
+			var r4: Dictionary = _row(rules.effects(w4, _rings_ctx(sid, 2)), 1)
+			var raw: float = float(r4["path_strength"])
+			for c4: Dictionary in rules.effects(w4, _rings_ctx(sid, 2)).get("conversions", []):
+				raw += float(c4["amount"])
+			if raw <= float(cv["cap"]) + 0.001:
+				continue
+			_check("in a word (%s): %s (%.2f) takes %s: %.2f before the cap; it stops at %.1f" % [str(GameData.ability(sid)["name"]),
+				str(GameData.rune(taker)["name"]), float(r4["path_strength"]), str(r4.get("converted_from", "")), raw, float(cv["cap"])], _near(float(r4["strength"]), float(cv["cap"]), 0.0001) and bool(r4.get("capped", false)), str(r4))
+			found = true
+	if not found:
+		print("    (no word in the data passes the cap - it is checked on the function only)")
 
 
 ## Rune discovery (Brent 2026-10-23, design/14 section 8): starting knowledge, the three sources

@@ -116,6 +116,11 @@ EXISTING_STATUSES = OD([
     ("drummed", OD([("label", "Drummed"), ("stacks", 1), ("lasts", 1.0), ("color", "d9694f"), ("attack_rate_mult", 1.25), ("poise_mult", 1.5)])),
     ("roused", OD([("label", "Roused"), ("stacks", 1), ("lasts", 12.0), ("color", "ffffff")])),
     ("dazed", OD([("label", "Dazed"), ("stacks", 1), ("lasts", 3.0), ("color", "fff2a8"), ("damage_taken_mult", 1.5)])),
+    # Brent 2026-10-23 (Bond Rules rows 69-70): an interrupt carried at a strength above the silence line
+    # also silences - it cannot start an attack or call for help. How long comes from the hit (the rune
+    # word's strength); "lasts" is only the fallback. [MODEL: cannot cast = cannot_attack + no_call]
+    ("silenced", OD([("label", "Silenced"), ("stacks", 1), ("lasts", 1.5), ("color", "9fc3e8"), ("cannot_attack", True),
+                     ("no_call", True), ("control", True)])),
     ("pinned", OD([("label", "Pinned"), ("stacks", 1), ("lasts", 2.0), ("color", "bfe9dc"), ("speed_mult", 0.4), ("control", True),
                    ("heavy_lasts_mult", 1.0)])),
     ("slowed", OD([("label", "Slowed"), ("stacks", 1), ("lasts", 3.0), ("color", "a8824a"), ("speed_mult", 0.6)])),

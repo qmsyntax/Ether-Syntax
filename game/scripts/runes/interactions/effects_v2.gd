@@ -20,6 +20,19 @@ extends "res://scripts/runes/interactions/effects_v1.gd"
 ##              (reach per branch rune, capped), balanced (the skill's own rune keeps all its nature).
 ##              A trait's change goes through the same op rules as a rune at strength 1, so a skill
 ##              with nothing for it to change takes the fallback instead.
+##
+## Brent 2026-10-23 (Bond Rules rows 62-74, params "on_off" and "ionic_conversion"):
+##   on/off     a status the word adds lasts base x (1 + (strength - 1) x per), up to the cap (a
+##              status the skill already applies is only ever lengthened); each full 1.0 of
+##              strength above 1 adds a stack where the status stacks; an interrupt above the
+##              silence line also applies the silence status for (strength - line) x its seconds.
+##              They reach the hit as data: payload "status_time_of" {id: mult} and a "statuses"
+##              entry's own "lasts" (Player.apply_hit), never by id.
+##   conversion nothing is lost in an ionic bond: what the weaker side gives up is added to the
+##              strength of the rune that ends up holding it, x rate, up to the cap. An outer rune
+##              gives up its whole effect (already carried) and its strength; the skill's own rune
+##              gives up the share of its signature that bond takes from it (all of it when it is
+##              taken whole). The skill's own rune on the strong side converts nothing [MODEL].
 
 
 func on_describe_link(word: Dictionary, a: int, b: int, ctx: RuneContext, desc: Dictionary) -> void:
@@ -30,7 +43,26 @@ func on_describe_link(word: Dictionary, a: int, b: int, ctx: RuneContext, desc: 
 	var ra: int = RuneWord.ring(word, a)
 	var rb: int = RuneWord.ring(word, b)
 	var outer: int = b if rb > ra or (rb == ra and float(st[b]) <= float(st[a])) else a
+	var inner: int = a if outer == b else b
 	desc["strength"] = 1.0 if outer == 0 else float(st[outer])
+	# what the bond passes on: its kind factor read from the side further out, and the runes whose
+	# strongest way to the skill runs through it
+	desc["transmission"] = _side_factor(word, outer, inner)
+	desc["outer"] = outer
+	var carries: Array = []
+	var paths: Array = r.get("_paths", [])
+	for i: int in paths.size():
+		var path: Array = paths[i]
+		for k: int in range(path.size() - 1):
+			if (int(path[k]) == a and int(path[k + 1]) == b) or (int(path[k]) == b and int(path[k + 1]) == a):
+				carries.append({"node": i, "name": RuneRules.rune_name(word, i), "strength": float(st[i])})
+				break
+	desc["carries"] = carries
+	var hand: Array = []
+	for c: Dictionary in r.get("conversions", []):
+		if (int(c["from"]) == a and int(c["via"]) == b) or (int(c["from"]) == b and int(c["via"]) == a):
+			hand.append(str(c["text"]))
+	desc["hand_over"] = hand
 
 
 func on_describe_node(word: Dictionary, i: int, ctx: RuneContext, desc: Dictionary) -> void:
@@ -41,6 +73,10 @@ func on_describe_node(word: Dictionary, i: int, ctx: RuneContext, desc: Dictiona
 	for row: Dictionary in r.get("runes", []):
 		if int(row["node"]) == i:
 			desc["strength"] = float(row["strength"])
+			if float(row.get("converted", 0.0)) > 0.0:
+				desc["converted"] = float(row["converted"])
+				desc["path_strength"] = float(row["path_strength"])
+				desc["converted_from"] = str(row.get("converted_from", ""))
 			if int(row.get("carried_to", -1)) >= 0:
 				desc["carried_to"] = int(row["carried_to"])
 				(desc["badges"] as Array).append("carried by %s" % str(row.get("carried_by", "")))
@@ -109,6 +145,22 @@ func _walk(word: Dictionary, rs: Array[int], at: int, path: Array, prod: float, 
 ## on to the strongest). The anchor never hands its effect on (its nature is lost instead).
 func carriers(word: Dictionary) -> Array[int]:
 	var n: int = RuneWord.size(word)
+	var to: Array[int] = hand_to(word)
+	var out: Array[int] = []
+	for i: int in n:
+		var at: int = i
+		var hops := 0
+		while to[at] != at and hops < n:
+			at = to[at]
+			hops += 1
+		out.append(at)
+	return out
+
+
+## The rune each node hands its effect to over an ionic bond, one step (itself if none): the
+## partner with the most pull among those it is weaker than ionically.
+func hand_to(word: Dictionary) -> Array[int]:
+	var n: int = RuneWord.size(word)
 	var to: Array[int] = []
 	for i: int in n:
 		to.append(i)
@@ -123,15 +175,202 @@ func carriers(word: Dictionary) -> Array[int]:
 					best = k
 		if best >= 0:
 			to[i] = best
-	var out: Array[int] = []
-	for i: int in n:
-		var at: int = i
-		var hops := 0
-		while to[at] != at and hops < n:
-			at = to[at]
-			hops += 1
-		out.append(at)
+	return to
+
+
+## Ionic conversion (Bond Rules rows 71-72): what each holder gains, [{from, via, to, amount, words,
+## text}]. `from` gave something up over its bond with `via`; `to` is the rune that ends up holding it.
+##   an outer rune handing its effect on: its strength (the strongest of its own way in and the way
+##   in through the rune it hands to, as if that bond passed it on whole) x rate;
+##   the skill's own rune on the weak side of an ionic bond: the share of its signature that bond
+##   takes (its factor's shortfall from 1, split over its bonds by what each takes) x rate.
+func conversions(word: Dictionary, ab: Dictionary, sres: Dictionary, carry: Array[int], af: float) -> Array:
+	var conv: Dictionary = params.get("ionic_conversion", {})
+	var rate: float = float(conv.get("rate", 0.0))
+	var out: Array = []
+	if rate <= 0.0:
+		return out
+	var n: int = RuneWord.size(word)
+	var st: Array = sres["strength"]
+	var prods: Array = sres["product"]
+	var rs: Array[int] = RuneWord.rings(word)
+	var to: Array[int] = hand_to(word)
+	for j: int in range(1, n):
+		var t: int = to[j]
+		var h: int = carry[j]
+		if t == j or h == 0:
+			continue
+		var s: float = float(st[j])
+		if rs[t] <= rs[j] and t > 0:
+			s = maxf(s, _ring_fade(rs[j]) * float(prods[t]))
+		if s <= 0.0:
+			continue
+		var words: String = _rune_nature(RuneWord.node_id(word, j))
+		out.append({"from": j, "via": t, "to": h, "amount": s * rate, "words": words,
+			"text": "%s gives up its %s: +%.2f strength to %s" % [RuneRules.rune_name(word, j), words, s * rate, RuneRules.rune_name(word, h)]})
+	# the skill's own rune, taken over an ionic bond
+	var lost: float = maxf(0.0, 1.0 - af)
+	if lost > 0.0:
+		var share := 0.0
+		for k: int in RuneWord.neighbours(word, 0):
+			share += maxf(0.0, 1.0 - _side_factor(word, 0, k))
+		for k2: int in RuneWord.neighbours(word, 0):
+			if _kind(word, 0, k2) != "ionic" or _side(word, 0, k2) != "less" or share <= 0.0:
+				continue
+			var frac: float = lost * maxf(0.0, 1.0 - _side_factor(word, 0, k2)) / share
+			var h2: int = carry[k2]
+			if frac <= 0.0 or h2 == 0:
+				continue
+			var words2: String = _signature_nature(ab)
+			out.append({"from": 0, "via": k2, "to": h2, "amount": frac * rate, "fraction": frac, "words": words2,
+				"text": "%s gives up %s of its %s: +%.2f strength to %s" % [RuneRules.rune_name(word, 0),
+					"all" if frac >= 0.999 else "%d%%" % int(round(frac * 100.0)), words2, frac * rate, RuneRules.rune_name(word, h2)]})
 	return out
+
+
+## A holder's strength once conversion is added: up to the cap (a rune already past it keeps its own).
+func converted_strength(s: float, add: float) -> float:
+	if add <= 0.0:
+		return s
+	var cap: float = float((params.get("ionic_conversion", {}) as Dictionary).get("cap", INF))
+	return s if s >= cap else minf(cap, s + add)
+
+
+## A rune's nature in words: what its ops change ("reach, stagger").
+func _rune_nature(rune_id: String) -> String:
+	var words: Array[String] = []
+	var nw: Dictionary = params.get("nature_words", {})
+	for op: Dictionary in GameData.rune(rune_id).get("ops", []):
+		var w: String = ""
+		match str(op["op"]):
+			"mul":
+				w = str(nw.get(str(op["group"]), _group_word(str(op["group"]))))
+			"status":
+				w = _status_label(str(op["id"]))
+			_:
+				w = str(nw.get(str(op["op"]), str(op["op"])))
+		if w != "" and not words.has(w):
+			words.append(w)
+	return _and_list(words)
+
+
+## The skill's signature in words: each signature field's stat group ("reach", "stagger"), its status,
+## or its own name ("carry").
+func _signature_nature(ab: Dictionary) -> String:
+	var words: Array[String] = []
+	var nw: Dictionary = params.get("nature_words", {})
+	var groups: Dictionary = params.get("stat_groups", {})
+	for sig: Variant in ab.get("signature", []):
+		var path: String = str(sig)
+		var w: String = ""
+		if path.ends_with("status") and typeof(get_path_value(ab, path)) == TYPE_STRING:
+			w = _status_label(str(get_path_value(ab, path)))
+		else:
+			for g: String in groups:
+				for spec: Variant in groups[g]:
+					var sp: String = str(spec)
+					if sp.get_slice("@", 0) == path and (not sp.contains("@") or sp.get_slice("@", 1).split("|").has(str(ab.get("kind", "")))):
+						w = str(nw.get(g, _group_word(g)))
+				if w != "":
+					break
+		if w == "":
+			var last: String = path.get_slice(".", path.get_slice_count(".") - 1)
+			w = str(nw.get(last, last.replace("_", " ")))
+		if not words.has(w):
+			words.append(w)
+	return _and_list(words) if not words.is_empty() else "nature"
+
+
+static func _and_list(words: Array[String]) -> String:
+	if words.size() <= 1:
+		return "".join(PackedStringArray(words))
+	return ", ".join(PackedStringArray(words.slice(0, words.size() - 1))) + " and " + words[words.size() - 1]
+
+
+# --- on/off effects grow with strength (Bond Rules rows 66-70) ------------------------------
+
+## How much longer a status lasts at strength s (a multiple of its base), and whether the cap held it.
+func status_time(s: float) -> Array:
+	var oo: Dictionary = params.get("on_off", {})
+	var m: float = 1.0 + (s - 1.0) * float(oo.get("status_time_per_strength", 0.0))
+	var cap: float = float(oo.get("status_time_cap", INF))
+	return [clampf(m, 0.0, cap), m > cap + 0.0001]
+
+
+## Extra stacks at strength s, where status `id` stacks (its max above 1).
+func extra_stacks(id: String, s: float) -> int:
+	var def: Dictionary = GameData.status(id)
+	if def.has("alias_of"):
+		def = GameData.status(str(def["alias_of"]))
+	if int(def.get("stacks", 1)) <= 1 or s <= 1.0:
+		return 0
+	return int(floor(s - 1.0 + 0.000001)) * int((params.get("on_off", {}) as Dictionary).get("stack_per_strength", 0))
+
+
+## Seconds of silence an interrupt carries at strength s (0 at or below the line).
+func silence_s(s: float) -> float:
+	var oo: Dictionary = params.get("on_off", {})
+	var line: float = float(oo.get("silence_above", INF))
+	if s <= line + 0.000001:
+		return 0.0
+	return (s - line) * float(oo.get("silence_s_per_strength", 0.0))
+
+
+func _apply_op(ab: Dictionary, op: Dictionary, s: float, threshold: float, groups: Dictionary, patch: Array) -> Dictionary:
+	match str(op["op"]):
+		"status":
+			return _grow_status(ab, op, s, threshold, patch)
+		"interrupts":
+			var res: Dictionary = super._apply_op(ab, op, s, threshold, groups, patch)
+			var secs: float = silence_s(s)
+			var part: String = _payload_part(ab)
+			var sid: String = str((params.get("on_off", {}) as Dictionary).get("silence_status", ""))
+			if secs <= 0.0 or part == "" or sid == "":
+				return res
+			patch.append({"op": "append", "path": part + ".statuses", "value": {"id": sid, "stacks": 1, "lasts": secs}})
+			var said: String = "silences %.2f s" % secs
+			if bool(res["used"]):
+				res["text"] = "%s, %s" % [str(res["text"]), said]
+				res["line"] = "%s, and %s" % [str(res.get("line", "")), "silences what it hits for %.2f s" % secs]
+				return res
+			return {"used": true, "text": said, "line": "silences what it hits for %.2f s" % secs}
+	return super._apply_op(ab, op, s, threshold, groups, patch)
+
+
+## A status op at strength s: as effects_v1 (it applies, or adds stacks to what the skill already
+## applies), plus its duration and stacks by strength.
+func _grow_status(ab: Dictionary, op: Dictionary, s: float, threshold: float, patch: Array) -> Dictionary:
+	var grant_change: float = float(params.get("grant_as_change", 0.2)) * s
+	var part: String = _payload_part(ab)
+	var id: String = str(op["id"])
+	if part == "":
+		return {"used": false, "change": grant_change, "why": "nothing it hits"}
+	if s < threshold:
+		return {"used": false, "change": grant_change, "why": "too faint to take hold"}
+	var label: String = _status_label(id)
+	var extra: int = extra_stacks(id, s)
+	var stacks: int = int(op.get("stacks", 1)) + extra
+	var tm: Array = status_time(s)
+	var mult: float = float(tm[0])
+	var had: bool = _has_status(ab, part, id)
+	if had:
+		mult = maxf(1.0, mult)                  # the skill's own status is never cut short by a rune
+	var grow: Array[String] = []
+	if absf(mult - 1.0) > 0.001:
+		patch.append({"op": "max", "path": "%s.status_time_of.%s" % [part, id], "value": mult})
+		grow.append("lasts x%.2f%s" % [mult, " (capped)" if bool(tm[1]) else ""])
+	if extra > 0:
+		grow.append("+%d stack%s by strength" % [extra, "" if extra == 1 else "s"])
+	var tail: String = (" (" + ", ".join(PackedStringArray(grow)) + ")") if not grow.is_empty() else ""
+	if had:
+		var p: Dictionary = get_path_value(ab, part)
+		if str(p.get("status", "")) == id:
+			patch.append({"op": "set", "path": part + ".stacks", "value": int(p.get("stacks", 1)) + stacks})
+		else:
+			patch.append({"op": "append", "path": part + ".statuses", "value": {"id": id, "stacks": stacks}})
+		return {"used": true, "text": "+%d %s%s" % [stacks, label, tail], "line": "+%d stack%s of %s%s" % [stacks, "" if stacks == 1 else "s", label, tail]}
+	patch.append({"op": "append", "path": part + ".statuses", "value": {"id": id, "stacks": stacks}})
+	return {"used": true, "text": "applies %s%s" % [label, tail], "line": "applies %s%s" % [label, tail]}
 
 
 func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
@@ -140,7 +379,7 @@ func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
 	var sres: Dictionary = strengths(word)
 	var st: Array = sres["strength"]
 	var out: Dictionary = {"patch": [], "groups": {}, "lines": [], "runes": [], "anchor": {}, "traits": [], "transfers": [],
-		"_dist": _distances(word), "_strength": st}
+		"conversions": [], "_dist": _distances(word), "_strength": st, "_paths": sres["path"]}
 	if ab.is_empty() or n == 0:
 		return out
 	var groups: Dictionary = {}
@@ -167,14 +406,41 @@ func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
 				anchor_lines.append(t2)
 	out["anchor"] = {"factor": af, "lines": anchor_lines, "kinds": _anchor_kinds(word), "balanced": balanced}
 
-	# who carries whose effect
+	# who carries whose effect, and what the ionic bonds convert into strength (rows 71-72)
 	var carry: Array[int] = carriers(word)
+	var conv: Array = conversions(word, ab, sres, carry, af)
+	out["conversions"] = conv
+	var gain: Dictionary = {}
+	var gain_from: Dictionary = {}
+	for c: Dictionary in conv:
+		var h0: int = int(c["to"])
+		gain[h0] = float(gain.get(h0, 0.0)) + float(c["amount"])
+		if not gain_from.has(h0):
+			gain_from[h0] = []
+		(gain_from[h0] as Array).append("%s's %s" % [RuneRules.rune_name(word, int(c["from"])), str(c["words"])])
+	var final_st: Array[float] = []
+	for i0: int in n:
+		final_st.append(1.0 if i0 == 0 else converted_strength(float(st[i0]), float(gain.get(i0, 0.0))))
+	out["_final"] = final_st
 	var rows: Array = []
 	for i: int in range(1, n):
 		var rid: String = RuneWord.node_id(word, i)
 		var row: Dictionary = {"node": i, "id": rid, "name": str(GameData.rune(rid).get("name", rid)), "ring": RuneWord.ring(word, i),
 			"bonds": (sres["path"][i] as Array).size() - 1 if not (sres["path"][i] as Array).is_empty() else -1,
-			"kind": "", "side": "", "strength": float(st[i]), "path": sres["path"][i], "used": [], "fallback": [], "carries": []}
+			"kind": "", "side": "", "strength": final_st[i], "path_strength": float(st[i]), "path": sres["path"][i], "used": [], "fallback": [], "carries": []}
+		if final_st[i] > float(st[i]) + 0.000001:
+			row["converted"] = final_st[i] - float(st[i])
+			var from_words: Array[String] = []
+			var times: Dictionary = {}
+			for fw: Variant in gain_from[i]:
+				if not times.has(str(fw)):
+					from_words.append(str(fw))
+				times[str(fw)] = int(times.get(str(fw), 0)) + 1
+			for k: int in from_words.size():
+				if int(times[from_words[k]]) > 1:
+					from_words[k] = "%s (x%d)" % [from_words[k], int(times[from_words[k]])]
+			row["converted_from"] = "converted from %s" % _and_list(from_words)
+			row["capped"] = float(st[i]) + float(gain[i]) > final_st[i] + 0.000001
 		var path: Array = sres["path"][i]
 		if path.size() >= 2:
 			row["kind"] = _kind(word, i, int(path[1]))
@@ -190,7 +456,7 @@ func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
 		if not holders.has(carry[i]):
 			holders.append(carry[i])
 	for h: int in holders:
-		var s: float = 1.0 if h == 0 else float(st[h])
+		var s: float = final_st[h]
 		var hrow: Dictionary = {} if h == 0 else rows[h - 1]
 		for j: int in range(1, n):
 			if carry[j] != h:
@@ -251,6 +517,8 @@ func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
 		lines.append("%s: %s" % [str(t["label"]) + ((" (ring %d)" % int(t["ring"])) if t.has("ring") else ""), tt["effect"]])
 	for tr: Dictionary in out["transfers"]:
 		lines.append(str(tr["text"]))
+	for cv: Dictionary in conv:
+		lines.append(str(cv["text"]))
 	_finish(ab, groups, fallback_mult, patch, lines, anchor_lines, out)
 	return out
 
