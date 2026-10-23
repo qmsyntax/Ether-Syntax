@@ -36,9 +36,13 @@ static func use(rules: RuneRules) -> void:
 	GameData.rune_rules_override = rules
 
 
-## TEST LOADOUT until rune acquisition is designed: the base runes of the affinities the character
-## holds, then every universal rune. Rune ids, in workbook order.
+## The runes a character holding these affinities could set: their base runes, then every universal
+## rune. Rune ids, in workbook order. Which of them it KNOWS is the player's (knows_rune).
 static func test_palette(held: Array) -> Array[String]:
+	return usable(held)
+
+
+static func usable(held: Array) -> Array[String]:
 	var out: Array[String] = []
 	var base: Dictionary = GameData.runes.get("base_runes", {})
 	for a: Variant in held:

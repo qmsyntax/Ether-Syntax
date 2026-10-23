@@ -6,8 +6,9 @@ extends Node
 ##      it spends set out first (statuses on the dummies, a corpse, a patch of growth, a blood pool,
 ##      held blood, pips, heat);
 ##   3. a few seconds of game time ticked (physics frames at the fixed physics rate);
-## then all of it again with a LOCKED word of three good modifiers from the skill's own draft, so the
-## rune engine (effects_v1) runs on every skill. It fails on any script error (ErrorCatcher) and on
+## then all of it again with a SEALED word, made in the test character's free edit (design/14 section 8):
+## three good modifiers from the skill's own draft on ring 1, and - where the runes allow - a great ring
+## of five round ring 2, so the rune engine (effects_v2) and the great ring's repeat run on every skill. It fails on any script error (ErrorCatcher) and on
 ## a cast that is refused or touches nothing. One line per skill: what it hit, the statuses it
 ## left, and whether it is simplified. Run headless:
 ##   --headless --fixed-fps 60 --path game res://tests/cast_every_skill.tscn   (prints CASTALL: PASS / FAIL)
@@ -27,7 +28,7 @@ func _ready() -> void:
 	_errors = ErrorCatcher.install()
 	# procedural bodies: the real ones take seconds each to build and say nothing about the skills
 	(GameData.balance["art"] as Dictionary)["real_bodies"] = false
-	var counts := {"hit": 0, "status": 0, "effect": 0, "simplified": 0, "worded": 0}
+	var counts := {"hit": 0, "status": 0, "effect": 0, "simplified": 0, "worded": 0, "great": 0}
 	var simplified: Array[String] = []
 	var only: String = ""
 	for a: String in OS.get_cmdline_user_args():
@@ -51,6 +52,10 @@ func _ready() -> void:
 			counts["effect"] += 1
 		if bool(worded["cast"]):
 			counts["worded"] += 1
+		if bool(worded.get("great", false)):
+			counts["great"] += 1
+		if not bool(worded.get("sealed", true)):
+			_failures.append("%s: the free edit would not seal its word (%s)" % [id, str(worded.get("seal_why", ""))])
 		if ab.has("simplified"):
 			counts["simplified"] += 1
 			simplified.append("%s (%s)" % [id, str(ab["simplified"])])
@@ -69,9 +74,9 @@ func _ready() -> void:
 	for id2: String in GameData.abilities:
 		if only == "" or id2 == only or str(GameData.ability(id2)["affinity"]) == only:
 			n += 1
-	print("CASTALL: %s - %d skills cast plain and with a locked word of three: %d hit something, %d applied a status, %d did something else (no damage, no status), %d simplified, %d cast with a word; %d script errors%s" % [
+	print("CASTALL: %s - %d skills cast plain and with a sealed word: %d hit something, %d applied a status, %d did something else (no damage, no status), %d simplified, %d cast with a word, %d of them with a great ring; %d script errors%s" % [
 		"PASS" if _failures.is_empty() and _errors.count() == 0 else "FAIL", n, int(counts["hit"]), int(counts["status"]), int(counts["effect"]),
-		int(counts["simplified"]), int(counts["worded"]), _errors.count(), "" if _failures.is_empty() else ": " + "; ".join(_failures)])
+		int(counts["simplified"]), int(counts["worded"]), int(counts["great"]), _errors.count(), "" if _failures.is_empty() else ": " + "; ".join(_failures)])
 	get_tree().quit(0 if _failures.is_empty() and _errors.count() == 0 else 1)
 
 
@@ -149,13 +154,14 @@ func _try(id: String, runes: Array[String]) -> Dictionary:
 	if index < 0:
 		_world.queue_free()
 		return {"cast": false, "why": "not learned", "hit": false, "hits": 0, "statuses": [], "effect": false}
+	var sealed := true
+	var seal_why := ""
+	var great := false
 	if not runes.is_empty():
-		var word: Dictionary = RuneWord.make(GameData.skill_anchor(id))
-		for k: int in runes.size():
-			RuneWord.add_node(word, runes[k])
-			RuneWord.add_link(word, 0, k + 1)
-		word["locked"] = true
-		(list[index] as Dictionary)["word"] = word
+		var made: Dictionary = _seal_word(p, index, runes)
+		sealed = bool(made["ok"])
+		seal_why = str(made["text"])
+		great = (p.call("ability_stats", list[index]) as Dictionary).has("rune_repeat")
 	var hp_before: Array = dummies.map(func(e: Node) -> float: return (e.get("body") as Body).hp)
 	var poise_before: Array = dummies.map(func(e: Node) -> float: return float(e.get("poise")))
 	var st_before: Array = dummies.map(func(e: Node) -> Array: return (e.get("statuses") as Dictionary).keys())
@@ -204,7 +210,54 @@ func _try(id: String, runes: Array[String]) -> Dictionary:
 		effect = true                                 # a wound mended
 	_world.queue_free()
 	await get_tree().process_frame
-	return {"cast": cast, "why": why, "hit": hits > 0, "hits": hits, "statuses": statuses, "effect": effect}
+	return {"cast": cast, "why": why, "hit": hits > 0, "hits": hits, "statuses": statuses, "effect": effect, "sealed": sealed, "seal_why": seal_why, "great": great}
+
+
+## The test character's free edit: the good runes on ring 1 (joined to the skill's own rune where it
+## has bonds left, else to the first of them, else loose), then a great ring on ring 2 - a three-bond
+## rune of the skill's affinity and four universal runes bonded round, the three-bond one joined to a
+## ring-1 rune with a bond to spare - if the rules let it be built. Sealed (closure not needed in a
+## free edit). Returns the seal's answer.
+func _seal_word(p: Node, index: int, runes: Array[String]) -> Dictionary:
+	p.call("open_free_edit", index)
+	var placed: Array[int] = []
+	for rid: String in runes:
+		var r: Dictionary = p.call("word_add", index, rid, 0, 1)
+		if not bool(r["ok"]) and not placed.is_empty():
+			r = p.call("word_add", index, rid, placed[0], 1)
+		if not bool(r["ok"]):
+			r = p.call("word_add", index, rid, -1, 1)
+		if bool(r["ok"]):
+			placed.append(int(r["node"]))
+	var word: Dictionary = p.call("ability_word", index)
+	var host := -1
+	for i: int in placed:
+		if RuneWord.degree(word, i) < BondRules.valence(RuneWord.node_id(word, i)):
+			host = i
+			break
+	var aff: String = str(GameData.ability(str(((p.get("abilities") as Array)[index] as Dictionary)["id"])).get("affinity", ""))
+	var hub := ""
+	for rid2: String in (GameData.runes["base_runes"] as Dictionary):
+		if str(GameData.rune(rid2)["affinity"]) == aff and BondRules.valence(rid2) == 3:
+			hub = rid2
+			break
+	if host >= 0 and hub != "":
+		var r2: Dictionary = p.call("word_add", index, hub, host, 2)
+		if bool(r2["ok"]):
+			var first: int = int(r2["node"])
+			var prev: int = first
+			var ok := true
+			for u: String in ["UNI-19a", "UNI-28a", "UNI-26b", "UNI-27b"]:
+				var r3: Dictionary = p.call("word_add", index, u, prev, 2)
+				if not bool(r3["ok"]):
+					ok = false
+					break
+				prev = int(r3["node"])
+			if ok:
+				p.call("word_toggle_link", index, prev, first)
+	var sealed: Dictionary = p.call("seal_now")
+	p.call("close_seal")
+	return sealed
 
 
 func _start_of(k: int) -> Vector3:

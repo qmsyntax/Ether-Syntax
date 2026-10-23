@@ -48,6 +48,7 @@ func build() -> void:
 		_edge(level, edge, heights[edge])
 	_cut_house(level)
 	var keep_clear: Array = _landmarks(level)
+	keep_clear.append_array(_inscriptions(level))
 	_scatter(level, keep_clear)
 	_decor(level, keep_clear)
 
@@ -218,6 +219,23 @@ func _landmarks(level: Node3D) -> Array:
 		clear.append([to_local((float(y[0]) + float(y[2])) * 0.5, (float(y[1]) + float(y[3])) * 0.5), 14.0])
 	for line: Dictionary in def.get("lines", []):
 		clear.append([line_centre(line), float(line["width"]) + 4.0])
+	return clear
+
+
+## Rune stones (design/14 section 8): each reveals one rune when read. Dim if already read.
+func _inscriptions(level: Node3D) -> Array:
+	var clear: Array = []
+	var player: Node = main.get("player")
+	var read: Array = player.get("read_inscriptions") if player != null else []
+	for ins: Dictionary in def.get("inscriptions", []):
+		var at: Array = ins["at"]
+		var stone := RuneStone.new()
+		stone.setup(str(ins["id"]), str(ins.get("name", "A rune stone")), str(ins.get("pool", "base")))
+		stone.position = to_local(float(at[0]), float(at[1]))
+		stone.rotation.y = float(hash(str(ins["id"])) % 628) * 0.01
+		level.add_child(stone)
+		stone.set_read(read.has(str(ins["id"])))
+		clear.append([stone.position, 3.0])
 	return clear
 
 

@@ -18,7 +18,10 @@ What it writes:
 - rule_set / rule_sets: which rule set is in force (ACTIVE_RULE_SET) and each rule set's script and
   params. bond_v1's params are the alignment thresholds ("Alignment" B19/B20), the role table,
   electronegativity centre and bond-kind thresholds ("Bond Rules"), and the word rules from Brent's
-  2026-10-22 rulings (WORD_RULES below - these are not in the workbook). A new rule set gets an
+  2026-10-22 rulings (WORD_RULES below - these are not in the workbook). bond_v2 (in force since
+  2026-10-23, design/14 section 8) adds structure v2 from "Bond Rules" rows 43-59: the rings (fade
+  and runes each seal adds, rows 47-51) and the shape traits (rows 55-59, their needs and changes
+  read out of the cells' words), plus RING_RULES and REPEAT_RULES below. A new rule set gets an
   entry here and a script in game/scripts/runes/;
 - skill_anchor: ability id (game/data/abilities.json) -> the base rune it is built on: each ability's
   "base_rune" (written by tools/skills/emit_abilities.py from the skill drafts, build brief
@@ -60,7 +63,39 @@ WORD_RULES = OrderedDict([
 # Which rule set the game uses. A rule set is a GDScript extending RuneRules; its entry under
 # "rule_sets" names the script and carries its params. Interactions (RuneInteraction scripts in
 # game/scripts/runes/interactions/) are listed by id per rule set.
-ACTIVE_RULE_SET = "bond_v1"
+ACTIVE_RULE_SET = "bond_v2"
+
+# Structure v2 (Brent 2026-10-23, design/14 section 8; Bond Rules rows 43-59 hold the numbers). These
+# are the parts the workbook does not hold. The rule set is game/scripts/runes/ring_rules.gd, its
+# interaction game/scripts/runes/interactions/effects_v2.gd.
+RING_RULES = OrderedDict([
+    # OPEN [MODEL]: how "Runes it adds" (Bond Rules C47:C51) reads. "grows": each ring holds the ring
+    # inside it plus its adds (3, 5, 7, 9, 11) - the only reading under which the great ring (a closed
+    # ring of 5 or more, row 56) can ever form. "own": each ring holds exactly its adds (3, 2, 2, 2):
+    # total +2 per level, as row 52 words it, but no ring past the first can be great.
+    ("ring_capacity", "grows"),
+    # [MODEL] the skill's own rune can only bond to ring 1, so it counts as filled once it holds as
+    # many bonds as ring 1 has places (a four-bond rune would otherwise never close at level 1)
+    ("anchor_fills_by_ring", True),
+    # [MODEL] a seal is formed only from a closed word (the old lock rule, Bond Rules B36)
+    ("seal_needs_closed", True),
+])
+
+# [MODEL] the generic "repeat once" a great ring gives: how long after the cast, and which kinds of
+# skill cannot repeat (moving you, held, or lasting things) - for those the great ring's 40% lands
+# as power through the fallback instead.
+REPEAT_RULES = OrderedDict([
+    ("delay_s", 0.45),
+    ("no_repeat_kinds", ["dash", "blink", "grapple", "streak", "channel", "charge_release", "self_buff", "summon",
+                         "rod", "prop", "seed"]),
+])
+
+BOND_V2_NOTES = [
+    "Runes are sealed when a vestige (or a later construct) is bound into the skill; the word changes the skill only once sealed.",
+    "Strength = the ring's fade x every bond's transmission on the strongest path to the skill.",
+    "An ionic bond hands the weaker rune's whole effect to the stronger one.",
+    "Universal runes have placeholder bonds (2) until Brent sets them.",
+]
 
 # Shown on the rune-setting screen under the word: what is not decided yet.
 BOND_V1_NOTES = [
@@ -176,6 +211,78 @@ def text(v):
     return "" if v is None else str(v).strip()
 
 
+def read_structure_v2(cells):
+    """Bond Rules rows 43-59 (Brent 2026-10-23): the rings (fade, runes each seal adds) and the shape
+    traits. The traits' needs and changes are read out of their words; anything that does not read
+    stops the export, so a reworded cell is noticed rather than silently dropped."""
+    if not text(cells.get((43, 1))).lower().startswith("structure v2"):
+        sys.exit("export_runes_json: Bond Rules A43 is not the structure v2 header - the layout moved")
+    if text(cells.get((46, 1))).lower() != "ring (seal)" or text(cells.get((46, 2))).lower() != "fade":
+        sys.exit("export_runes_json: Bond Rules A46:B46 are not 'Ring (seal)', 'Fade' - the layout moved")
+    rings = []
+    for r in range(47, 52):
+        label = text(cells.get((r, 1)))
+        m = re.match(r"(\d+)", label)
+        if not m:
+            sys.exit("export_runes_json: Bond Rules A%d '%s' does not start with a ring number" % (r, label))
+        rings.append(OrderedDict([("ring", int(m.group(1))), ("or_more", "more" in label.lower()),
+                                  ("fade", clean(num(cells.get((r, 2)), "Bond Rules B%d" % r))),
+                                  ("adds", int(num(cells.get((r, 3)), "Bond Rules C%d" % r)))]))
+    if [x["ring"] for x in rings] != [1, 2, 3, 4, 5] or not rings[-1]["or_more"]:
+        sys.exit("export_runes_json: Bond Rules A47:A51 are not rings 1, 2, 3, 4, 5 or more - the layout moved")
+    if text(cells.get((54, 1))).lower() != "shape trait":
+        sys.exit("export_runes_json: Bond Rules A54 is not 'Shape trait' - the layout moved")
+    rows = {}
+    for r in range(55, 60):
+        rows[text(cells.get((r, 1))).lower()] = (r, text(cells.get((r, 2))), text(cells.get((r, 3))), text(cells.get((r, 4))))
+    want = ["closed ring", "great ring", "spoke", "branch", "balanced"]
+    if list(rows) != want:
+        sys.exit("export_runes_json: Bond Rules A55:A59 are not %s - the layout moved" % want)
+
+    def must(pattern, value, where):
+        m = re.search(pattern, value)
+        if not m:
+            sys.exit("export_runes_json: Bond Rules %s '%s' does not read as /%s/" % (where, value, pattern))
+        return m
+
+    def group(word):
+        g = word.lower()
+        if g not in EFFECT_GROUPS:
+            sys.exit("export_runes_json: shape trait group '%s' is not a stat group %s" % (word, EFFECT_GROUPS))
+        return g
+
+    traits = OrderedDict()
+    r, needs, change, what = rows["closed ring"]
+    m = must(r"(\w+) x([\d.]+) per closed ring", change, "C%d" % r)
+    traits["closed_ring"] = OrderedDict([("label", "Closed ring"), ("needs", needs), ("change", change), ("what", what),
+                                         ("min_runes", 3), ("ops", [OrderedDict([("op", "mul"), ("group", group(m.group(1))), ("value", clean(float(m.group(2))))])])])
+    r, needs, change, what = rows["great ring"]
+    m1 = must(r"closed ring of (\d+) or more", needs, "B%d" % r)
+    m2 = must(r"repeats (once|twice) at (\d+)%", change, "C%d" % r)
+    traits["great_ring"] = OrderedDict([("label", "Great ring"), ("needs", needs), ("change", change), ("what", what),
+                                        ("min_runes", int(m1.group(1))), ("repeats", 1 if m2.group(1) == "once" else 2),
+                                        ("mult", clean(int(m2.group(2)) / 100.0))])
+    r, needs, change, what = rows["spoke"]
+    m1 = must(r"through (\d+) or more rings", needs, "B%d" % r)
+    m2 = must(r"(\w+) x([\d.]+) and (\w+) x([\d.]+) per ring past the (first|second|third)", change, "C%d" % r)
+    traits["spoke"] = OrderedDict([("label", "Spoke"), ("needs", needs), ("change", change), ("what", what),
+                                   ("min_rings", int(m1.group(1))), ("free_rings", {"first": 1, "second": 2, "third": 3}[m2.group(5)]),
+                                   ("ops", [OrderedDict([("op", "mul"), ("group", group(m2.group(1))), ("value", clean(float(m2.group(2))))]),
+                                            OrderedDict([("op", "mul"), ("group", group(m2.group(3))), ("value", clean(float(m2.group(4))))])])])
+    r, needs, change, what = rows["branch"]
+    m1 = must(r"(\d+) or more bonds", needs, "B%d" % r)
+    m2 = must(r"(\w+)(?: \(\w+\))? x([\d.]+) per branch rune, up to (\d+)", change, "C%d" % r)
+    traits["branch"] = OrderedDict([("label", "Branch"), ("needs", needs), ("change", change), ("what", what),
+                                    ("min_bonds", int(m1.group(1))), ("max_count", int(m2.group(3))),
+                                    ("ops", [OrderedDict([("op", "mul"), ("group", group(m2.group(1))), ("value", clean(float(m2.group(2))))])])])
+    r, needs, change, what = rows["balanced"]
+    must(r"ring 1 full", needs, "B%d" % r)
+    must(r"same kind", needs, "B%d" % r)
+    must(r"keeps all", change, "C%d" % r)
+    traits["balanced"] = OrderedDict([("label", "Balanced"), ("needs", needs), ("change", change), ("what", what), ("anchor_factor", 1)])
+    return rings, traits, " ".join([text(cells.get((44, 1))), text(cells.get((52, 1)))])
+
+
 def num(v, what):
     if v is None or v == "":
         sys.exit("export_runes_json: %s is empty in the workbook (open it in Excel and save, so values are cached)" % what)
@@ -193,7 +300,7 @@ def main():
 
     # --- bond rules ---------------------------------------------------------------------
     br = wb["Bond Rules"]
-    cells = {(r, c): v for r, row in enumerate(br.iter_rows(min_row=1, max_row=42, values_only=True), 1) for c, v in enumerate(row, 1)}
+    cells = {(r, c): v for r, row in enumerate(br.iter_rows(min_row=1, max_row=60, values_only=True), 1) for c, v in enumerate(row, 1)}
     roles = OrderedDict()
     for r in range(4, 8):
         role = text(cells.get((r, 1)))
@@ -233,6 +340,7 @@ def main():
     anchor_rule_text = text(cells.get((38, 1)))
     syntax_text = text(cells.get((40, 1)))
     statuses = set(json.loads(STATUSES.read_text(encoding="utf-8"))["statuses"].keys())
+    rings, shape_traits, structure_text = read_structure_v2(cells)
 
     # --- alignment thresholds -------------------------------------------------------------
     al = wb["Alignment"]
@@ -347,7 +455,13 @@ def main():
                   "runes have no position. Universal valence and electronegativity are PLACEHOLDERS (placeholder: true): Brent "
                   "has not set them. Rune effects (layers 1-3, Bond Rules rows 19-40): each rune's 'effect' text and parsed 'ops', worked out by "
                   "the interaction effects_v1 (scripts/runes/interactions/effects_v1.gd) from bond_v1.interaction_params.effects_v1; "
-                  "they change a skill only while its word is locked."),
+                  "they change a skill only while its word is locked. "
+                  "bond_v2 (scripts/runes/ring_rules.gd, Brent 2026-10-23, design/14 section 8, Bond Rules rows 43-59) is in force: "
+                  "the word is concentric rings round the skill, one per level, sealed when a construct is bound into the skill; "
+                  "'rings' gives each ring's fade and the runes it adds (ring_capacity says how 'adds' reads); a rune bonds only on "
+                  "its own ring and the rings next to it; strength = the ring's fade x the product of the bonds' transmissions on "
+                  "the strongest path; an ionic bond hands the weaker rune's effect to the stronger; shape_traits (closed ring, "
+                  "great ring, spoke, branch, balanced) are worked out by effects_v2 (scripts/runes/interactions/effects_v2.gd)."),
         ("rule_set", ACTIVE_RULE_SET),
         ("rule_sets", OrderedDict([
             ("bond_v1", OrderedDict([
@@ -367,6 +481,30 @@ def main():
                     ])),
                 ])),
                 ("notes", BOND_V1_NOTES),
+            ])),
+            ("bond_v2", OrderedDict([
+                ("script", "res://scripts/runes/ring_rules.gd"),
+                ("title", "Seals (structure v2, 2026-10-23)"),
+                ("refuse_below", refuse_below), ("weaken_below", weaken_below),
+                ("electronegativity_centre", en_centre), ("roles", roles), ("bond_kinds", bond_kinds),
+            ] + list(WORD_RULES.items()) + [
+                ("lock_needs_closed", lock_needs_closed),
+                ("rings", rings),
+            ] + list(RING_RULES.items()) + [
+                ("structure", structure_text),
+                ("interactions", ["effects_v2"]),
+                ("interaction_params", OrderedDict([
+                    ("effects_v2", OrderedDict([
+                        ("fade", fade), ("kind_factors", kind_factors), ("status_threshold", status_threshold),
+                        ("mult_min", mult_min), ("mult_max", mult_max),
+                    ] + list(EFFECTS_V1.items()) + [
+                        ("ring_fade", [OrderedDict([("ring", r["ring"]), ("or_more", r["or_more"]), ("fade", r["fade"])]) for r in rings]),
+                        ("shape_traits", shape_traits),
+                        ("repeat", REPEAT_RULES),
+                        ("anchor_rule", anchor_rule_text), ("syntax", syntax_text),
+                    ])),
+                ])),
+                ("notes", BOND_V2_NOTES),
             ])),
         ])),
         ("axes", axes),

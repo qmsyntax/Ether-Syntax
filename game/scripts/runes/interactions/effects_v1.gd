@@ -74,7 +74,7 @@ func on_describe_rune(rune_id: String, _ctx: RuneContext, desc: Dictionary) -> v
 
 ## The whole result for a word in a skill (cached on the word and the skill's level).
 func compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
-	var key: String = "%s|%d|%s|%s" % [ctx.ability_id, ctx.stage, str(RuneWord.nodes(word)), str(RuneWord.links(word))]
+	var key: String = "%s|%d|%d|%s" % [ctx.ability_id, ctx.stage, ctx.rings, RuneWord.shape_key(word)]
 	if key == _cache_key:
 		return _cache
 	_cache = _compute(word, ctx)
@@ -127,7 +127,13 @@ func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
 					fallback_mult *= 1.0 + float(res["change"]) * float(params.get("fallback_fraction", 0.25))
 					(row["fallback"] as Array).append("%s -> %s" % [op_words(op, s), str(res["why"])])
 		(out["runes"] as Array).append(row)
+	_finish(ab, groups, fallback_mult, patch, lines, anchor_lines, out)
+	return out
 
+
+## The end of a computation, shared with later effects versions: the fallback lands, the group
+## multipliers are clamped and patched onto their fields, and the words for the screen are made.
+func _finish(ab: Dictionary, groups: Dictionary, fallback_mult: float, patch: Array, lines: Array, anchor_lines: Array, out: Dictionary) -> void:
 	# the fallback lands on power, or on cost for a skill that deals no damage
 	if absf(fallback_mult - 1.0) > 0.000001:
 		var landed := false
@@ -168,7 +174,6 @@ func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
 	summary.append_array(anchor_lines)
 	summary.append_array(lines)
 	out["summary"] = summary
-	return out
 
 
 ## Every stat field the skill has, for the before/after preview: [{path, group, label, unit,

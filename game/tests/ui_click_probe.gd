@@ -10,6 +10,7 @@ extends Node
 ## defaults", and the menu closed with its own button. The player's saved key bindings are
 ## backed up first and restored at the end. Then, in town, the skill trainer: click the trainer
 ## in the street to walk up and talk, click Training, click a node of the tree and click Learn.
+## Then the seal screen (design/14 section 8), by clicks - see _rune_steps.
 ## Prints PASS/FAIL and exits 0/1.
 ## `--field` does it in the arena, where the inventory pauses the game (and skips the trainer).
 
@@ -26,7 +27,10 @@ var _anchor := ""                      # the first skill's anchor rune
 var _spare: Array[String] = []         # three runes of its affinity to set, picked from the data
 var _held := 0                         # runes in the word when the rule sets are swapped
 var _caps: Array[String] = []          # one-bond runes to close the word with
-var _stats_before := ""                # the skill's numbers before the word is locked
+var _stats_before := ""                # the skill's numbers before the word is sealed
+var _unknown := ""                     # a rune the character has not discovered
+var _chance := 0.0                     # balance "binding" success_chance, put back after the forced rolls
+var _sealed_key := ""                  # the sealed word's shape, to see that a failed bind keeps it
 
 const FreeRules := preload("res://tests/free_rules.gd")
 
@@ -253,13 +257,18 @@ func _process(_delta: float) -> void:
 		_rune_steps(frames - _runes_from)
 
 
-## The rune-setting view in the ethercosm (design/14 section 7), by clicking: open it from the
-## selected skill, set a rune from the palette, join it to the anchor by clicking both, set a
-## second rune onto the picked anchor, and a third (refused and explained when the anchor's two
-## bonds are taken); then with a second rule set in force (tests/free_rules.gd) the same view
-## follows those rules: their three-rune limit, explained, and a join by clicking. Last, Clear the
-## word; then close a word by clicking (the anchor's bonds filled with caps), Lock it - the skill's
-## numbers change - and Unlock it. Runes are chosen from the data by affinity and valence, not by name.
+## The seal screen (design/14 sections 7-8, Brent 2026-10-23), by clicking: a skill whose bar is full
+## and a vestige carried; Bind the vestige - form the seal opens the seal screen, forming ring 1.
+## Set a rune from the palette, join it to the skill's own rune by clicking both, set a second rune
+## onto the picked anchor, and a third (refused and explained when the anchor's two bonds are taken);
+## then with a second rule set in force (tests/free_rules.gd) the same view follows those rules:
+## their three-rune limit, explained, and a join by clicking. An undiscovered rune ("?") is refused
+## and explained. Clear the draft; aim at ring 1 by clicking an empty place on it; close a word by
+## clicking (the anchor's bonds filled with caps); Bind and seal - the skill's numbers change and the
+## word is sealed. Then the next binding, from the ethercosm by clicks: a failed bind (forced) forms
+## no seal and the word stays. The bind's roll is forced through balance "binding" success_chance
+## (1, then 0) so the probe is not left to chance; it is put back after. Runes are chosen from the
+## data by affinity and valence, not by name; the probe discovers them first (data, not clicks).
 func _rune_steps(at: int) -> void:
 	var player: Node = main.get("player")
 	var s: Node = main.get("screen")
@@ -268,28 +277,42 @@ func _rune_steps(at: int) -> void:
 			for i: int in 4:
 				if main.get("screen") != null:
 					main.call("close_screen")
+			_anchor = GameData.skill_anchor(str(((player.get("abilities") as Array)[0] as Dictionary)["id"]))
+			_spare.clear()
+			_caps.clear()
+			_unknown = ""
+			for id: String in (player.call("rune_palette") as Array):
+				if str(GameData.rune(id).get("affinity", "")) != "water" or id == _anchor:
+					continue
+				if BondRules.valence(id) == 1 and _caps.size() < BondRules.valence(_anchor):
+					_caps.append(id)
+				elif _spare.size() < 3 and BondRules.valence(id) > 1:
+					_spare.append(id)
+			for id2: String in _spare + _caps:
+				player.call("discover_rune", id2, "")
+			for id3: String in (player.call("rune_palette") as Array):
+				if str(GameData.rune(id3).get("affinity", "")) == "water" and not bool(player.call("knows_rune", id3)) and _unknown == "":
+					_unknown = id3
+			((player.get("abilities") as Array)[0] as Dictionary)["progress"] = 100.0
+			(player.get("constructs") as Array).append({"tier": "vestige", "concept": "tension"})
+			_chance = GameData.num("binding", "success_chance")
 			main.call("open_ethercosm")
 		10:
-			_expect("the ethercosm is open", s is UiScreen and s.has_method("open_runes"))
-			var b: Control = _find(main, "RunesButton")
-			_expect("the selected skill offers Set runes", b != null)
+			_expect("the ethercosm is open", main.get("screen") is UiScreen and main.get("screen").has_method("open_seal"))
+			var b: Control = _find(main, "FormSealButton_0")
+			_expect("a full skill with a vestige carried offers to bind it and form the seal", b != null)
 			if b != null:
 				_click_at(_centre(b))
 		20:
-			_expect("Set runes opens the rune view", s != null and bool(s.get("rune_mode")) and _find(main, "RuneBoard") != null)
-			# three water runes other than the skill's anchor, taken from the data (not by name)
-			_anchor = GameData.skill_anchor(str(((player.get("abilities") as Array)[0] as Dictionary)["id"]))
-			_spare.clear()
-			for id: String in (player.call("rune_palette") as Array):
-				if str(GameData.rune(id).get("affinity", "")) == "water" and id != _anchor and _spare.size() < 3:
-					_spare.append(id)
+			_expect("the bind step opens the seal screen, forming ring 1", s != null and bool(s.get("rune_mode")) and _find(main, "RuneBoard") != null
+				and str(s.call("seal_view")) == "bind" and (player.call("rune_context", 0) as RuneContext).forming == 1)
 			var chip: Control = _find(main, "Rune_" + _spare[0])
-			_expect("the palette offers the skill's affinity's runes", chip != null)
+			_expect("the palette offers the runes it knows", chip != null)
 			if chip != null:
 				_click_at(_centre(chip))
 		30:
 			var w: Dictionary = player.call("ability_word", 0)
-			_expect("clicking a palette rune sets it into the word", RuneWord.size(w) == 2 and RuneWord.node_id(w, 1) == _spare[0])
+			_expect("clicking a palette rune sets it into the draft, on ring 1", RuneWord.size(w) == 2 and RuneWord.node_id(w, 1) == _spare[0] and RuneWord.ring(w, 1) == 1)
 			_click_at((_find(main, "RuneBoard") as RuneBoard).node_global(0))
 		35:
 			_expect("clicking the anchor picks it", int(s.get("picked")) == 0)
@@ -332,21 +355,29 @@ func _rune_steps(at: int) -> void:
 			_expect("and joins two runes by clicking", RuneWord.linked(player.call("ability_word", 0), 1, 2))
 			Runes.use(null)
 			s.call("rebuild")
+		110:
+			var q: Control = _find(main, "Rune_" + _unknown)
+			_expect("an undiscovered rune shows in the palette as \"?\"", q != null and not bool((s.call("chip_state", _unknown) as Dictionary)["known"]))
+			if q != null:
+				_click_at(_centre(q))
 		115:
+			var msg: Control = _find(main, "RuneMessage")
+			_expect("and clicking it is refused: not discovered yet", msg != null and (msg as Label).text.contains("discovered") and RuneWord.size(player.call("ability_word", 0)) == _held)
 			var clear: Control = _find(main, "ClearWordButton")
-			_expect("the view offers Clear the word", clear != null and not (clear as Button).disabled)
+			_expect("the seal screen offers Clear", clear != null and not (clear as Button).disabled)
 			if clear != null:
 				_click_at(_centre(clear))
-		125:
-			_expect("Clear the word leaves the anchor alone", RuneWord.size(player.call("ability_word", 0)) == 1)
-			# the lock: fill every one of the anchor's bonds with a cap (one bond each), by clicking
-			_caps.clear()
-			for id: String in (player.call("rune_palette") as Array):
-				if str(GameData.rune(id).get("affinity", "")) == "water" and BondRules.valence(id) == 1 and _caps.size() < BondRules.valence(_anchor):
-					_caps.append(id)
+		122:
+			_expect("Clear leaves the skill's own rune alone", RuneWord.size(player.call("ability_word", 0)) == 1)
+			var slot: Vector2 = (_find(main, "RuneBoard") as RuneBoard).empty_slot_global(1)
+			_expect("ring 1 shows its empty places", slot.x >= 0.0)
+			_click_at(slot)
+		126:
+			_expect("clicking an empty place aims the next rune at its ring", int(s.get("target_ring")) == 1)
 			_stats_before = str(player.call("ability_stats", (player.get("abilities") as Array)[0]))
-			var lock0: Control = _find(main, "LockButton")
-			_expect("Lock is offered but not live while the word is open", lock0 != null and (lock0 as Button).disabled)
+			var seal0: Control = _find(main, "SealBindButton")
+			_expect("with only the skill's own rune the draft is unchanged: binding would leave it without a word, and the screen says so",
+				seal0 != null and not (seal0 as Button).disabled and str(main.get("screen").get("_lock_note").text).begins_with("Unchanged"))
 			_click_at((_find(main, "RuneBoard") as RuneBoard).node_global(0))
 		130, 140, 150:
 			var k: int = int(float(at - 130) / 10.0)
@@ -358,19 +389,45 @@ func _rune_steps(at: int) -> void:
 			var w: Dictionary = player.call("ability_word", 0)
 			_expect("the anchor's bonds filled with caps by clicking: the word is closed",
 				RuneWord.size(w) == _caps.size() + 1 and bool(Runes.active().word_state(w, player.call("rune_context", 0))["closed"]))
-			var lock: Control = _find(main, "LockButton")
-			_expect("and Lock is live", lock != null and not (lock as Button).disabled)
-			if lock != null:
-				_click_at(_centre(lock))
+			var sb: Control = _find(main, "SealBindButton")
+			_expect("and Bind and seal is live", sb != null and not (sb as Button).disabled)
+			(GameData.balance["binding"] as Dictionary)["success_chance"] = 1.0
+			if sb != null:
+				_click_at(_centre(sb))
 		175:
-			_expect("clicking Lock locks the word", bool(player.call("word_locked", 0)))
+			(GameData.balance["binding"] as Dictionary)["success_chance"] = _chance
+			_expect("clicking it binds the vestige and seals the word: stage 1, one ring sealed",
+				bool(player.call("word_locked", 0)) and int(((player.get("abilities") as Array)[0] as Dictionary)["stage"]) == 1 and RuneWord.sealed(player.call("ability_word", 0)) == 1)
 			_expect("and the skill's numbers change with it", str(player.call("ability_stats", (player.get("abilities") as Array)[0])) != _stats_before
 				and not (player.call("rune_summary", 0) as Array).is_empty())
-			_expect("the button now offers Unlock", (_find(main, "LockButton") as Button).text.begins_with("Unlock"))
-			_click_at(_centre(_find(main, "LockButton")))
-		190:
-			_expect("clicking Unlock gives the skill its own numbers back", not bool(player.call("word_locked", 0))
-				and str(player.call("ability_stats", (player.get("abilities") as Array)[0])) == _stats_before)
+			_expect("the screen now shows the seal, read-only", str(main.get("screen").call("seal_view")) == "view" and _find(main, "SealBindButton") == null)
+			_sealed_key = RuneWord.shape_key(player.call("ability_word", 0))
+			# the next binding: a full bar and a remnant
+			((player.get("abilities") as Array)[0] as Dictionary)["progress"] = 100.0
+			(player.get("constructs") as Array).append({"tier": "remnant", "concept": "reach"})
+			var back: Control = _find(main, "RunesBackButton")
+			if back != null:
+				_click_at(_centre(back))
+		185:
+			var b2: Control = _find(main, "FormSealButton_0")
+			_expect("back in the ethercosm, the next binding is offered", b2 != null)
+			if b2 != null:
+				_click_at(_centre(b2))
+		195:
+			_expect("it opens the seal forming ring 2, the sealed ring 1 in the draft", str(main.get("screen").call("seal_view")) == "bind"
+				and (player.call("rune_context", 0) as RuneContext).forming == 2 and RuneWord.shape_key(player.call("ability_word", 0)) == _sealed_key)
+			var sb2: Control = _find(main, "SealBindButton")
+			_expect("an untouched draft may be bound as it is", sb2 != null and not (sb2 as Button).disabled)
+			(GameData.balance["binding"] as Dictionary)["success_chance"] = 0.0
+			if sb2 != null:
+				_click_at(_centre(sb2))
+		210:
+			(GameData.balance["binding"] as Dictionary)["success_chance"] = _chance
+			var msg: Control = _find(main, "RuneMessage")
+			_expect("a failed bind forms no seal: the word stays as it was, the remnant is gone",
+				RuneWord.shape_key(player.call("ability_word", 0)) == _sealed_key and RuneWord.sealed(player.call("ability_word", 0)) == 1
+				and int(((player.get("abilities") as Array)[0] as Dictionary)["stage"]) == 1 and (player.get("constructs") as Array).is_empty()
+				and msg != null and (msg as Label).text.contains("fails"))
 			main.call("close_screen")
 			_runes_from = 0
 			_finish()

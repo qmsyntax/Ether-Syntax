@@ -19,6 +19,8 @@ func _ready() -> void:
 	if OS.get_cmdline_user_args().has("--only=runes"):
 		await _test_runes()
 		await _test_rune_effects()
+		await _test_seals()
+		await _test_rune_discovery()
 		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 		get_tree().quit(1 if _failed > 0 else 0)
@@ -64,6 +66,8 @@ func _ready() -> void:
 	await _test_crafting_town()
 	await _test_runes()
 	await _test_rune_effects()
+	await _test_seals()
+	await _test_rune_discovery()
 	await _test_build_1022()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
 	_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
@@ -4847,7 +4851,8 @@ func _test_runes() -> void:
 	print("runes (design/14 section 7):")
 	var base: Dictionary = GameData.runes.get("base_runes", {})
 	var uni: Dictionary = GameData.runes.get("universal_runes", {})
-	_check("runes.json names bond_v1, and it is the rule set in force", str(GameData.runes.get("rule_set", "")) == "bond_v1" and Runes.active() is BondRules)
+	_check("runes.json names bond_v2 (seals as rings), and it is the rule set in force", str(GameData.runes.get("rule_set", "")) == "bond_v2" and Runes.active() is RingRules)
+	_check("bond_v1 is still in the data and still builds (the chemistry checks below run on it)", Runes.make("bond_v1") is BondRules and not (Runes.make("bond_v1") is RingRules))
 	_check("all 166 base runes and 56 universal runes are loaded", base.size() == 166 and uni.size() == 56, "%d / %d" % [base.size(), uni.size()])
 	var anchored := true
 	for id: String in GameData.abilities:
@@ -4967,35 +4972,46 @@ func _test_runes() -> void:
 			hub = id
 	var p: Node = _new_player()
 	p.call("set_affinities", ["water", "fire"])
-	((p.get("abilities") as Array)[0] as Dictionary)["stage"] = 2          # room for eight
+	((p.get("abilities") as Array)[0] as Dictionary)["stage"] = 2          # two rings
+	p.set("test_character", true)                                          # a free edit: no binding needed
+	p.call("open_free_edit", 0)
 	var adds: Array = [p.call("word_add", 0, hub, 0), p.call("word_add", 0, _runes_of("fire")[0], 1),
 		p.call("word_add", 0, expand, 1), p.call("word_add", 0, caps[0])]
 	_check("a word is built through the player: four runes set", adds.all(func(r: Dictionary) -> bool: return bool(r["ok"])), str(adds))
 	if BondRules.valence(hub) >= 4:
 		p.call("word_toggle_link", 0, 1, 4)
+	_check("and sealed (a test character's free edit)", bool((p.call("seal_now") as Dictionary)["ok"]))
+	p.call("close_seal")
 	var saved: Dictionary = p.call("ability_word", 0)
 	var save_text: String = JSON.stringify(p.call("to_save"))
 	var q: Node = _new_player()
 	q.call("from_save", JSON.parse_string(save_text))
 	var loaded: Dictionary = q.call("ability_word", 0)
-	_check("a word survives save and load: the same runes and the same links",
-		RuneWord.nodes(loaded) == RuneWord.nodes(saved) and RuneWord.links(loaded) == RuneWord.links(saved) and RuneWord.size(loaded) == 5, "%s vs %s" % [str(loaded), str(saved)])
+	_check("a word survives save and load: the same runes, rings and links, still sealed",
+		RuneWord.nodes(loaded) == RuneWord.nodes(saved) and RuneWord.links(loaded) == RuneWord.links(saved) and RuneWord.size(loaded) == 5
+		and RuneWord.rings(loaded) == RuneWord.rings(saved) and RuneWord.sealed(loaded) == RuneWord.sealed(saved) and RuneWord.sealed(loaded) > 0, "%s vs %s" % [str(loaded), str(saved)])
 	_check("its links come back as whole numbers", typeof((RuneWord.links(loaded)[0] as Dictionary)["a"]) == TYPE_INT)
 	_check("and the rules read it the same", str(bond.word_state(loaded, q.call("rune_context", 0))) == str(bond.word_state(saved, p.call("rune_context", 0))))
+	q.call("open_free_edit", 0)
 	q.call("word_clear", 0)
-	_check("a word can be cleared back to its anchor", RuneWord.nodes(q.call("ability_word", 0)) == [anchor])
+	_check("a draft can be cleared back to its anchor", RuneWord.nodes(q.call("ability_word", 0)) == [anchor])
+	q.call("close_seal")
+	_check("closing the draft leaves the sealed word as it was", RuneWord.size(q.call("ability_word", 0)) == 5)
 
 	# another rule set in force: the same player methods and save path
 	var free: RuneRules = FreeRules.new()
 	Runes.use(free)
 	var f: Node = _new_player()
 	f.call("set_affinities", ["water"])
+	f.set("test_character", true)
+	f.call("open_free_edit", 0)
 	var fa: Array = [f.call("word_add", 0, water[0], 0), f.call("word_add", 0, water[1], 0)]
 	var f3: Dictionary = f.call("word_add", 0, water[2], 0)
 	_check("with the test rules in force the player's word follows them: three runes at most",
 		bool(fa[0]["ok"]) and bool(fa[1]["ok"]) and str(f3["reason"]) == "capacity")
 	_check("under them a rune joins anything", bool((f.call("word_toggle_link", 0, 1, 2) as Dictionary)["ok"]) and RuneWord.degree(f.call("ability_word", 0), 1) == 2)
 	var fw: Dictionary = f.call("ability_word", 0)
+	f.call("seal_now")
 	var fdata: Dictionary = JSON.parse_string(JSON.stringify(f.call("to_save")))
 	Runes.use(null)
 	_check("back to the data's rule set", Runes.active() is BondRules)
@@ -5010,15 +5026,15 @@ func _test_runes() -> void:
 	g.call("from_save", fdata)
 	var gw: Dictionary = g.call("ability_word", 0)
 	var gs: Dictionary = Runes.active().word_state(gw, g.call("rune_context", 0))
-	_check("a word made under other rules loads under bond_v1 as it was", RuneWord.size(gw) == va + 2 and RuneWord.links(gw).size() == va + 1 and str(gw.get("made_under", "")) == "free_test")
-	_check("and bond_v1 reports what breaks its rules instead of failing",
+	_check("a word made under other rules loads under bond_v2 as it was", RuneWord.size(gw) == va + 2 and RuneWord.links(gw).size() == va + 1 and str(gw.get("made_under", "")) == "free_test")
+	_check("and bond_v2 reports what breaks its rules instead of failing",
 		not bool(gs["closed"]) and str(gs["problems"]).contains("%s has %d bonds" % [aname, va + 1]), str(gs))
 	_check("the over-full rune is badged for the screen", (Runes.active().describe_node(gw, 0, g.call("rune_context", 0))["badges"] as Array).has("over"))
 	Runes.use(free)
 	var h: Node = _new_player()
 	h.call("from_save", JSON.parse_string(save_text))          # a fresh read: loading keeps the save's dictionaries
 	var hs: Dictionary = free.word_state(h.call("ability_word", 0), h.call("rune_context", 0))
-	_check("a bond_v1 word with five runes loads under the three-rune rules, reported as over capacity",
+	_check("a bond_v2 word with five runes loads under the three-rune rules, reported as over capacity",
 		RuneWord.size(h.call("ability_word", 0)) == 5 and str(hs["problems"]).contains("room for 3"), str(hs))
 	Runes.use(null)
 	_check("the test rules' word was untouched by the swap", RuneWord.size(fw) == 3 and RuneWord.links(fw).size() == 3)
@@ -5032,14 +5048,18 @@ func _test_runes() -> void:
 	add_child(main)
 	await get_tree().process_frame
 	main.call("start_new_character", 0)
-	main.call("open_ethercosm")
-	var s: Node = main.get("screen")
-	s.call("open_runes")
-	await get_tree().process_frame
-	await get_tree().process_frame
-	_check("Set runes opens the rune view on the selected skill", bool(s.get("rune_mode")) and s.find_children("RuneBoard", "Control", true, false).size() == 1)
 	var mp: Node = main.get("player")
+	((mp.get("abilities") as Array)[0] as Dictionary)["progress"] = 100.0
+	(mp.get("constructs") as Array).append({"tier": "vestige", "concept": "tension"})
+	main.call("open_seal", 0, 0)
+	var s: Node = main.get("screen")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check("the bind step opens the seal screen on the skill, forming ring 1", bool(s.get("rune_mode")) and s.find_children("RuneBoard", "Control", true, false).size() == 1
+		and str(s.call("seal_view")) == "bind" and (mp.call("rune_context", 0) as RuneContext).forming == 1)
 	var spare: Array[String] = _runes_of("water", -1, [GameData.skill_anchor(str(((mp.get("abilities") as Array)[0] as Dictionary)["id"]))])
+	for rid: String in spare:
+		mp.call("discover_rune", rid, "")
 	s.call("add_rune", spare[0])
 	s.call("pick_node", 0)
 	s.call("pick_node", 1)
@@ -5170,6 +5190,8 @@ func _test_rune_effects() -> void:
 	var p: Node = _new_player()
 	p.call("set_affinities", ["water"])
 	((p.get("abilities") as Array)[0] as Dictionary)["stage"] = 3
+	p.set("test_character", true)
+	p.call("open_free_edit", 0)
 	var lone: Dictionary = p.call("word_add", 0, ionic_r, 0)
 	var pv: Dictionary = p.call("rune_preview", 0)
 	_check("bonded ionically to a rune with more pull, Water Bolt loses its shove (%s)" % str(GameData.rune(ionic_r)["name"]),
@@ -5237,16 +5259,28 @@ func _test_rune_effects() -> void:
 	var q: Node = _new_player()
 	q.call("set_affinities", ["water"])
 	var speed0: float = float(q.call("ability_stats", (q.get("abilities") as Array)[0])["speed"])
+	for rid: String in [fast_r, cap_status, cap_any]:
+		q.call("discover_rune", rid, "")
+	_check("before its first binding a skill has no word, and none can be set", not bool((q.call("word_add", 0, fast_r, 0) as Dictionary)["ok"])
+		and str((q.call("word_add", 0, fast_r, 0) as Dictionary)["reason"]) == "not_sealing" and RuneWord.size(q.call("ability_word", 0)) == 1)
+	_check("nor can a seal be opened while the bar is not full", not bool((q.call("open_seal", 0, 0) as Dictionary)["ok"]))
+	((q.get("abilities") as Array)[0] as Dictionary)["progress"] = 100.0
+	(q.get("constructs") as Array).append({"tier": "vestige", "concept": "tension"})
+	_check("a full bar and a vestige carried: the seal opens, forming ring 1", bool((q.call("open_seal", 0, 0) as Dictionary)["ok"]) and (q.call("rune_context", 0) as RuneContext).forming == 1)
 	q.call("word_add", 0, fast_r, 0)
-	_check("an open word cannot be locked", str((q.call("word_lock", 0) as Dictionary)["reason"]) == "not_closed")
+	_check("an open word cannot be sealed", str((q.call("can_bind_seal") as Dictionary)["reason"]) == "not_closed")
 	q.call("word_add", 0, cap_status, 0)
 	q.call("word_add", 0, cap_any, 1)
 	var st0: Dictionary = (q.get("abilities") as Array)[0]
-	_check("the word is closed", bool(bond.word_state(q.call("ability_word", 0), q.call("rune_context", 0))["closed"]))
-	_check("an unlocked word does not touch the skill", _near(float(q.call("ability_stats", st0)["speed"]), speed0))
-	var lk: Dictionary = q.call("word_lock", 0)
+	_check("the word is closed", bool(Runes.active().word_state(q.call("ability_word", 0), q.call("rune_context", 0))["closed"]))
+	_check("a draft does not touch the skill", _near(float(q.call("ability_stats", st0)["speed"]), speed0))
+	var bound: String = str(q.call("bind_seal", 0.0))
 	var locked_ab: Dictionary = q.call("ability_stats", st0)
-	var fast_s: float = float(_row(Runes.active().effects(q.call("ability_word", 0), q.call("rune_context", 0)), 1)["strength"])
+	var fx_q: Dictionary = Runes.active().effects(q.call("ability_word", 0), q.call("rune_context", 0))
+	var fast_row: Dictionary = _row(fx_q, 1)
+	# structure v2: an ionic bond hands the weaker rune's effect to the stronger, at its strength
+	var fast_s: float = float(_row(fx_q, int(fast_row["carried_to"]))["strength"]) if int(fast_row.get("carried_to", -1)) > 0 else float(fast_row["strength"])
+	print("    the speed rune's effect works at x%.3f%s" % [fast_s, (" (carried by %s)" % str(fast_row["carried_by"])) if fast_row.has("carried_by") else ""])
 	var speed_m: float = 1.0
 	for o: Dictionary in GameData.rune(fast_r)["ops"]:
 		if str(o["op"]) == "mul" and str(o["group"]) == "speed":
@@ -5255,18 +5289,16 @@ func _test_rune_effects() -> void:
 	for o: Dictionary in GameData.rune(cap_status)["ops"]:
 		if str(o["op"]) == "status":
 			cap_sid = str(o["id"])
-	_check("a closed word locks, and the locked word reshapes the skill: speed x%.3f, and it applies %s" % [speed_m, cap_sid],
-		bool(lk["ok"]) and _near(float(locked_ab["speed"]), speed0 * speed_m, 0.001)
+	_check("the bind takes and seals the word, and the sealed word reshapes the skill: speed x%.3f, and it applies %s" % [speed_m, cap_sid],
+		bound == "bound" and int(st0["stage"]) == 1 and RuneWord.sealed(q.call("ability_word", 0)) == 1 and _near(float(locked_ab["speed"]), speed0 * speed_m, 0.001)
 		and ((locked_ab["on_hit"] as Dictionary).get("statuses", []) as Array).any(func(s: Dictionary) -> bool: return str(s["id"]) == cap_sid), str(locked_ab["on_hit"]))
-	_check("a locked word cannot be changed", str((q.call("word_add", 0, cap_any, -1) as Dictionary)["reason"]) == "locked")
+	_check("a sealed word cannot be changed outside a binding", str((q.call("word_add", 0, cap_any, -1) as Dictionary)["reason"]) == "not_sealing")
 	_check("the tooltip summary names what it does", (q.call("rune_summary", 0) as Array).size() > 0, str(q.call("rune_summary", 0)))
 	var qtext: String = JSON.stringify(q.call("to_save"))
 	var r2: Node = _new_player()
 	r2.call("from_save", JSON.parse_string(qtext))
-	_check("a locked word survives save and load, still locked and still shaping the skill",
+	_check("a sealed word survives save and load, still sealed and still shaping the skill",
 		bool(r2.call("word_locked", 0)) and _near(float(r2.call("ability_stats", (r2.get("abilities") as Array)[0])["speed"]), speed0 * speed_m, 0.001))
-	_check("unlocking gives the skill its own numbers back", bool((q.call("word_unlock", 0) as Dictionary)["ok"]) and _near(float(q.call("ability_stats", st0)["speed"]), speed0))
-	q.call("word_lock", 0)
 
 	# a real cast: the locked Water Bolt flies faster and leaves its new status on what it hits
 	var here := Vector3(-300, 0, 0)
@@ -5280,10 +5312,441 @@ func _test_rune_effects() -> void:
 	q.set("essence", 99.0)
 	_cast(q, "water_bolt")
 	var shot: Node3D = _bolt_of(q)
-	_check("the cast bolt flies at the locked word's speed (%.1f, not %.1f)" % [speed0 * speed_m, speed0], shot != null and _near(float(shot.get("speed")), speed0 * speed_m, 0.01), str(shot.get("speed") if shot != null else "no bolt"))
+	_check("the cast bolt flies at the sealed word's speed (%.1f, not %.1f)" % [speed0 * speed_m, speed0], shot != null and _near(float(shot.get("speed")), speed0 * speed_m, 0.01), str(shot.get("speed") if shot != null else "no bolt"))
 	if shot != null:
 		_fly(shot)
 	_check("and the target is %s" % cap_sid, int(foe.call("status_stacks", cap_sid)) > 0, str(foe.get("statuses")))
 	for n: Node in [p, q, r2, foe, world]:
 		n.queue_free()
 	await get_tree().process_frame
+
+
+## A word on rings built straight, no rules asked: ids[0] is the anchor (ring 0), rings[k] the ring
+## of ids[k], links [[a, b], ...].
+func _ring_word(ids: Array, rings: Array, links: Array) -> Dictionary:
+	var w: Dictionary = RuneWord.make(str(ids[0]))
+	for k: int in range(1, ids.size()):
+		RuneWord.add_node(w, str(ids[k]), int(rings[k]))
+	for l: Array in links:
+		RuneWord.add_link(w, int(l[0]), int(l[1]))
+	return w
+
+
+## The level 2 rework of the seal test's word: Flood and Gush parted, Dry out and Slack in on ring
+## 1, Settle (with Drown and Slack) and Expand on ring 2.
+func _rework(s: Node) -> void:
+	s.call("word_toggle_link", 0, 1, 2)      # part Flood and Gush: ring 1 reworked
+	s.call("word_remove", 0, 3)              # Dry out
+	s.call("word_add", 0, "WAT-8b", 1, 1)    # Slack in its place, on ring 1, off Flood
+	s.call("word_add", 0, "WAT-6b", 2)       # Settle off Gush, ring 2
+	s.call("word_add", 0, "WAT-4b", 4)       # Drown off Settle, ring 2
+	s.call("word_add", 0, "WAT-8b", 4)       # Slack off Settle, ring 2
+	s.call("word_add", 0, "UNI-05a", 1)      # Expand off Flood, ring 2
+	s.call("word_toggle_link", 0, 4, 7)      # Expand and Settle
+
+
+func _rings_ctx(ability_id: String, rings: int) -> RuneContext:
+	var c: RuneContext = RuneContext.of({"id": ability_id, "stage": rings})
+	return c
+
+
+func _trait_ids(rules: RuneRules, w: Dictionary) -> Array:
+	return (rules.call("shape_traits", w) as Array).map(func(t: Dictionary) -> String: return str(t["id"]))
+
+
+func _first_skill_of_kind(kind: String) -> String:
+	for id: String in GameData.abilities:
+		if str(GameData.ability(id).get("kind", "")) == kind:
+			return id
+	return ""
+
+
+## Structure v2 and seals (Brent 2026-10-23, design/14 section 8; Bond Rules rows 43-59): ring
+## capacity, bonds only within a ring or between neighbouring rings, strength as a product along the
+## path, the ionic hand-over, each shape trait, the great ring's repeat in a real cast, and the seal
+## flow - only at a binding, a failed bind keeping the old word, inner rings reworked at the next.
+## Runes are mostly named here (Flood, Drown, Surge, Gush...): Brent's proof is about those runes.
+func _test_seals() -> void:
+	print("seals and structure v2 (design/14 section 8):")
+	var rules: RuneRules = Runes.make("bond_v2")
+	var rr: RingRules = rules as RingRules
+	var fxp: Dictionary = (rules.params["interaction_params"] as Dictionary)["effects_v2"]
+	var kf: Dictionary = fxp["kind_factors"]
+	var rows: Array = rules.params["rings"]
+	_check("effects_v2 is the interaction bond_v2 runs, and the rings came from Bond Rules rows 47-51",
+		rules.interactions.size() == 1 and rules.interactions[0].id == "effects_v2" and rows.size() == 5 and int((rows[0] as Dictionary)["adds"]) == 3)
+
+	# ---- ring capacity
+	var adds: Array = rows.map(func(r: Dictionary) -> int: return int(r["adds"]))
+	var want1: int = int(adds[0])
+	var want2: int = want1 + int(adds[1]) if str(rules.params.get("ring_capacity", "")) == "grows" else int(adds[1])
+	var want3: int = want2 + int(adds[2]) if str(rules.params.get("ring_capacity", "")) == "grows" else int(adds[2])
+	print("    ring capacity (%s): ring 1 holds %d, ring 2 %d, ring 3 %d" % [str(rules.params.get("ring_capacity", "")), rr.ring_capacity(1), rr.ring_capacity(2), rr.ring_capacity(3)])
+	_check("ring 1 holds 3 runes - with the skill's own rune, Brent's 'level 0 holds 4'", rr.ring_capacity(1) == 3 and rules.capacity(_rings_ctx("water_bolt", 1)) == 4)
+	_check("each later ring adds 2 (the data's reading: %d, %d)" % [want2, want3], rr.ring_capacity(2) == want2 and rr.ring_capacity(3) == want3
+		and rules.capacity(_rings_ctx("water_bolt", 2)) == 1 + want1 + want2)
+	var surge: String = GameData.skill_anchor("water_bolt")
+	var caps: Array[String] = _runes_of("water", 1, [surge])
+	var w0: Dictionary = RuneWord.make(surge)
+	var no_rings: Dictionary = rules.add(w0, caps[0], _rings_ctx("water_bolt", 0), 0)
+	_check("before its first binding (no rings) nothing can be set, and the screen says why", not bool(no_rings["ok"]) and str(no_rings["text"]).contains("first binding"), str(no_rings))
+	var ctx1: RuneContext = _rings_ctx("water_bolt", 1)
+	var w1: Dictionary = RuneWord.make(surge)
+	for k: int in 3:
+		rules.add(w1, caps[k % caps.size()], ctx1)
+	var fourth: Dictionary = rules.add(w1, caps[0], ctx1)
+	_check("ring 1 takes three and refuses a fourth", RuneWord.ring_nodes(w1, 1).size() == 3 and str(fourth["reason"]) in ["ring_full", "capacity"], str(fourth))
+	_check("a ring past the skill's rings is refused", str(rules.add(RuneWord.make(surge), caps[0], ctx1, -1, 2)["reason"]) == "ring")
+	var frame_skill := ""
+	for id: String in GameData.abilities:
+		if BondRules.valence(GameData.skill_anchor(id)) == 4:
+			frame_skill = id
+			break
+	if frame_skill != "":
+		var fa: String = GameData.skill_anchor(frame_skill)
+		var fcaps: Array[String] = _runes_of(str(GameData.rune(fa)["affinity"]), 1, [fa])
+		var wf: Dictionary = RuneWord.make(fa)
+		for k2: int in 3:
+			rules.add(wf, fcaps[k2 % fcaps.size()], _rings_ctx(frame_skill, 1), 0)
+		_check("a four-bond skill rune (%s) counts as filled once ring 1 is: its first seal can close" % str(GameData.rune(fa)["name"]),
+			bool(rules.word_state(wf, _rings_ctx(frame_skill, 1))["closed"]), str(rules.word_state(wf, _rings_ctx(frame_skill, 1))))
+
+	# ---- bonds only within a ring or between rings next to each other
+	var ctx3: RuneContext = _rings_ctx("water_bolt", 3)
+	var links_w: Dictionary = _ring_word(["WAT-2a", "UNI-19a", "UNI-28a", "UNI-26b", "UNI-27b"], [0, 1, 2, 3, 1], [[0, 1]])
+	_check("ring 1 to ring 3: refused", str(rules.can_link(links_w, 1, 3, ctx3)["reason"]) == "rings_apart", str(rules.can_link(links_w, 1, 3, ctx3)))
+	_check("the skill's own rune to ring 2: refused", str(rules.can_link(links_w, 0, 2, ctx3)["reason"]) == "rings_apart")
+	_check("ring 1 to ring 2, and ring 1 to ring 1: allowed", bool(rules.can_link(links_w, 1, 2, ctx3)["ok"]) and bool(rules.can_link(links_w, 1, 4, ctx3)["ok"]))
+	_check("set onto a rune two rings in: refused", str(rules.add(links_w, "UNI-19b", ctx3, 1, 3)["reason"]) == "rings_apart")
+	var bad: Dictionary = _ring_word(["WAT-2a", "UNI-19a", "UNI-28a"], [0, 1, 3], [[0, 1], [1, 2]])
+	_check("a saved word bonded across rings that do not touch is reported, not obeyed", str(rules.word_state(bad, ctx3)["problems"]).contains("do not touch"))
+
+	# ---- strength: the ring's fade x the product of the bonds' transmissions on the strongest path
+	var pj := "pressure_jet"
+	var gush: String = GameData.skill_anchor(pj)
+	var ctxp: RuneContext = _rings_ctx(pj, 2)
+	var fade2: float = rr.ring_fade(2)
+	var ionic_more: float = float((kf["ionic"] as Dictionary)["more_pull"])
+	var even_more: float = float((kf["even"] as Dictionary)["more_pull"])
+	var w_flood: Dictionary = _ring_word([gush, "WAT-1a", "WAT-4b"], [0, 1, 2], [[0, 1], [1, 2]])
+	var fx_flood: Dictionary = rules.effects(w_flood, ctxp)
+	var worked: float = fade2 * ionic_more * even_more
+	print("    worked example (Pressure Jet): Drown on ring 2 -> Flood -> Gush = fade %.2f x ionic %.2f (Drown's side) x even %.2f (Flood's side) = %.3f" % [fade2, ionic_more, even_more, worked])
+	_check("strength is a product along the path: Drown off Flood = %.3f" % worked, _near(float(_row(fx_flood, 2)["strength"]), worked, 0.0001), str(_row(fx_flood, 2)))
+	var v1_s: float = float(_row(Runes.make("bond_v1").effects(w_flood, ctxp), 2)["strength"])
+	_check("the bond further in now counts: bond_v1 gave %.3f for the same rune" % v1_s, not _near(v1_s, worked, 0.0001))
+	# two ways in: the stronger counts (Soak on ring 2, bonded to Flood and to Settle)
+	var w_two: Dictionary = _ring_word([gush, "WAT-1a", "WAT-6b", "WAT-3a"], [0, 1, 1, 2], [[0, 1], [0, 2], [1, 3], [2, 3]])
+	var rv2: RuneInteraction = rules.interactions[0]
+	var via_flood: float = fade2 * float(rv2.call("_side_factor", w_two, 3, 1)) * float(rv2.call("_side_factor", w_two, 1, 0))
+	var via_settle: float = fade2 * float(rv2.call("_side_factor", w_two, 3, 2)) * float(rv2.call("_side_factor", w_two, 2, 0))
+	_check("of two paths the strongest counts (%.3f via Flood, %.3f via Settle)" % [via_flood, via_settle],
+		_near(float(_row(rules.effects(w_two, ctxp), 3)["strength"]), maxf(via_flood, via_settle), 0.0001) and not _near(via_flood, via_settle, 0.001))
+
+	# ---- ionic really transfers: Flood's effect leaves it and Drown carries it
+	var flood_row: Dictionary = _row(fx_flood, 1)
+	var drown_row: Dictionary = _row(fx_flood, 2)
+	var reach_m: float = 1.0
+	for o: Dictionary in GameData.rune("WAT-1a")["ops"]:
+		if str(o["op"]) == "mul" and str(o["group"]) == "reach":
+			reach_m = 1.0 + (float(o["value"]) - 1.0) * worked
+	_check("ionic: Flood's whole effect leaves it (it is carried by Drown)", int(flood_row.get("carried_to", -1)) == 2 and (flood_row["used"] as Array).is_empty())
+	_check("and Drown carries it at Drown's strength: reach x%.3f, not Flood's own x%.3f" % [reach_m, 1.0 + 0.2 * float(flood_row["strength"])],
+		_near(float((fx_flood["groups"] as Dictionary).get("reach", 1.0)), reach_m, 0.0005) and str(drown_row["used"]).contains("from Flood"), str(fx_flood["groups"]))
+	_check("the panel says what was carried where", (fx_flood["transfers"] as Array).size() == 1 and str((fx_flood["transfers"] as Array)[0]["text"]).contains("carried by Drown"))
+	# the skill's own rune on the weak side loses its nature, and nothing carries it
+	var w_self: Dictionary = _ring_word([gush, "WAT-4b"], [0, 1], [[0, 1]])
+	var fx_self: Dictionary = rules.effects(w_self, ctxp)
+	_check("the skill's own rune losing an ionic bond loses its nature (factor 0), as before",
+		_near(float((fx_self["anchor"] as Dictionary)["factor"]), 0.0) and (fx_self["transfers"] as Array).is_empty())
+
+	# ---- Brent's proof: three Drown words on Pressure Jet
+	var w_surge: Dictionary = _ring_word([gush, "WAT-2a", "WAT-4b"], [0, 1, 2], [[0, 1], [1, 2]])
+	var fx_surge: Dictionary = rules.effects(w_surge, ctxp)
+	var base_pj: Dictionary = GameData.ability(pj).duplicate(true)
+	var words3: Array = [["on the skill", fx_self], ["off Flood", fx_flood], ["off Surge", fx_surge]]
+	var after3: Array = []
+	for pair: Array in words3:
+		var ab: Dictionary = base_pj.duplicate(true)
+		PlayerScript.apply_rune_patch(ab, (pair[1] as Dictionary)["patch"])
+		after3.append(ab)
+		var dr: Dictionary = _row(pair[1], RuneWord.size(w_self) - 1 if pair[0] == "on the skill" else 2)
+		print("    Drown %-12s strength %.3f | damage %.2f -> %.2f | shove %.2f -> %.2f | range %.2f -> %.2f | statuses %s | interrupts %s | carries %s" % [
+			str(pair[0]), float(dr["strength"]), float((base_pj["on_hit"] as Dictionary)["damage"]), float((ab["on_hit"] as Dictionary).get("damage", 0.0)),
+			float((base_pj["on_hit"] as Dictionary)["shove"]), float((ab["on_hit"] as Dictionary).get("shove", 0.0)), float(base_pj["range"]), float(ab["range"]),
+			str(((ab["on_hit"] as Dictionary).get("statuses", []) as Array).map(func(s: Dictionary) -> String: return str(s["id"]))),
+			str((ab["on_hit"] as Dictionary).get("interrupts", false)), str(dr.get("carries", []))])
+	_check("Drown off Flood carries Flood's reach and Soaked; off Surge it carries Surge's shove instead",
+		float((after3[1] as Dictionary)["range"]) > float(base_pj["range"]) + 0.01 and str((after3[1] as Dictionary)["on_hit"]).contains("soaked")
+		and float(((after3[2] as Dictionary)["on_hit"] as Dictionary)["shove"]) > float((base_pj["on_hit"] as Dictionary)["shove"]) + 0.01
+		and not str((after3[2] as Dictionary)["on_hit"]).contains("soaked") and _near(float((after3[2] as Dictionary)["range"]), float(base_pj["range"])))
+	_check("and Drown on the skill itself is a third result: full strength, Gush's nature lost",
+		_near(float(_row(fx_self, 1)["strength"]), ionic_more) and str(after3[0]) != str(after3[1]) and str(after3[0]) != str(after3[2]) and str(after3[1]) != str(after3[2]))
+
+	# ---- shape traits
+	var bolt := "water_bolt"
+	var t_word: Dictionary = _ring_word([surge, "WAT-1a", "WAT-6b", "WAT-3a", "WAT-5a", "WAT-4b"], [0, 1, 1, 1, 2, 3],
+		[[0, 1], [0, 2], [1, 3], [1, 2], [2, 3], [2, 4], [4, 5]])
+	var t_ids: Array = _trait_ids(rules, t_word)
+	var fx_t: Dictionary = rules.effects(t_word, ctx3)
+	var tdefs: Dictionary = fxp["shape_traits"]
+	var closed_m: float = float(((tdefs["closed_ring"] as Dictionary)["ops"] as Array)[0]["value"])
+	_check("closed ring: Flood, Settle and Soak bonded round ring 1 is a closed ring, and the skill lasts longer (duration x%.2f)" % closed_m,
+		t_ids.has("closed_ring") and _near(float((fx_t["groups"] as Dictionary).get("duration", 1.0)), closed_m, 0.0005), "%s %s" % [str(t_ids), str(fx_t["groups"])])
+	var open_ring: Dictionary = t_word.duplicate(true)
+	RuneWord.remove_link(open_ring, 1, 3)
+	_check("part one bond round it and it is no longer closed", not _trait_ids(rules, open_ring).has("closed_ring") and not (rules.effects(open_ring, ctx3)["groups"] as Dictionary).has("duration"))
+	var spoke_m: float = float(((tdefs["spoke"] as Dictionary)["ops"] as Array)[0]["value"])
+	var no_spoke: Dictionary = _ring_word([surge, "WAT-1a", "WAT-6b", "WAT-3a", "WAT-5a"], [0, 1, 1, 1, 2], [[0, 1], [0, 2], [1, 3], [1, 2], [2, 3], [2, 4]])
+	var speed_spoke: float = float((fx_t["groups"] as Dictionary).get("speed", 1.0))
+	var speed_two: float = float((rules.effects(no_spoke, ctx3)["groups"] as Dictionary).get("speed", 1.0))
+	_check("spoke: Settle -> Gush -> Drown out through three rings is a spoke; two rings is not", t_ids.has("spoke") and not _trait_ids(rules, no_spoke).has("spoke"))
+	_check("and it reaches further and faster: x%.2f per ring past the second" % spoke_m,
+		str(fx_t["traits"]).contains("Spoke") and speed_spoke > speed_two, "%f vs %f" % [speed_spoke, speed_two])
+	var hubs: Dictionary = _ring_word([surge, "UNI-19a", "UNI-28a", "UNI-26b", "UNI-27b", "UNI-21a", "UNI-01a", "UNI-11a"], [0, 1, 1, 1, 2, 2, 2, 2],
+		[[0, 1], [0, 2], [0, 3], [1, 2], [2, 3], [3, 1], [1, 4], [2, 5], [3, 6], [4, 5], [5, 6], [6, 7], [7, 4]])
+	var branch_t: Dictionary = {}
+	for t: Dictionary in rules.call("shape_traits", hubs):
+		if str(t["id"]) == "branch":
+			branch_t = t
+	_check("branch: six runes with three or more bonds count as %d (capped)" % int((tdefs["branch"] as Dictionary)["max_count"]),
+		not branch_t.is_empty() and (branch_t["nodes"] as Array).size() == 6 and int(branch_t["count"]) == int((tdefs["branch"] as Dictionary)["max_count"]), str(branch_t))
+	var bal_ctx: RuneContext = _rings_ctx(bolt, 1)
+	var polar_r: String = "WAT-6b"
+	var bal: Dictionary = _ring_word([surge, polar_r, polar_r, polar_r], [0, 1, 1, 1], [[0, 1], [0, 2], [0, 3]])
+	var unbal: Dictionary = _ring_word([surge, polar_r, polar_r], [0, 1, 1], [[0, 1], [0, 2]])
+	var fx_bal: Dictionary = rules.effects(bal, bal_ctx)
+	var fx_unbal: Dictionary = rules.effects(unbal, bal_ctx)
+	_check("balanced: ring 1 full, every bond to the skill the same kind - the skill's own rune keeps all its nature (x%.2f, against x%.2f with ring 1 not full)" % [
+		float((fx_bal["anchor"] as Dictionary)["factor"]), float((fx_unbal["anchor"] as Dictionary)["factor"])],
+		_trait_ids(rules, bal).has("balanced") and _near(float((fx_bal["anchor"] as Dictionary)["factor"]), 1.0) and float((fx_unbal["anchor"] as Dictionary)["factor"]) < 1.0)
+	# the great ring
+	var great: Dictionary = _ring_word([surge, "WAT-1a", "UNI-19a", "UNI-28a", "UNI-26b", "UNI-27b", "UNI-21a"], [0, 1, 2, 2, 2, 2, 2],
+		[[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 2]])
+	var fx_great: Dictionary = rules.effects(great, _rings_ctx(bolt, 2))
+	var rep_patch: Array = (fx_great["patch"] as Array).filter(func(o: Dictionary) -> bool: return str(o["path"]) == "rune_repeat")
+	_check("great ring: a closed ring of five makes a bolt repeat once at %d%%" % int(round(float((tdefs["great_ring"] as Dictionary)["mult"]) * 100.0)),
+		_trait_ids(rules, great).has("great_ring") and rep_patch.size() == 1 and _near(float((rep_patch[0]["value"] as Dictionary)["mult"]), float((tdefs["great_ring"] as Dictionary)["mult"])), str(rep_patch))
+	var four: Dictionary = _ring_word([surge, "WAT-1a", "UNI-19a", "UNI-28a", "UNI-26b", "UNI-27b"], [0, 1, 2, 2, 2, 2], [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 2]])
+	_check("a closed ring of four is closed but not great", _trait_ids(rules, four).has("closed_ring") and not _trait_ids(rules, four).has("great_ring"))
+	var dash_id: String = _first_skill_of_kind("dash")
+	var fx_dash: Dictionary = rules.effects(_ring_word([GameData.skill_anchor(dash_id), "UNI-19b", "UNI-19a", "UNI-28a", "UNI-26b", "UNI-27b", "UNI-21a"], [0, 1, 2, 2, 2, 2, 2],
+		[[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 2]]), _rings_ctx(dash_id, 2))
+	_check("a dash cannot repeat: its great ring falls back to damage", not str(fx_dash["patch"]).contains("rune_repeat") and str(fx_dash["traits"]).contains("cannot repeat"), str(fx_dash["traits"]))
+
+	# the repeat in a real cast: a test character seals a great ring on Water Bolt and casts it
+	var here := Vector3(-340, 0, 0)
+	var floor_n := _test_floor(here)
+	var g: Node = _new_player()
+	g.global_position = here
+	g.call("set_affinities", ["water"])
+	g.set("test_character", true)
+	var gi := -1
+	for i: int in (g.get("abilities") as Array).size():
+		if str((g.get("abilities") as Array)[i]["id"]) == bolt:
+			gi = i
+	((g.get("abilities") as Array)[gi] as Dictionary)["stage"] = 2
+	g.call("open_free_edit", gi)
+	var steps: Array = [g.call("word_add", gi, "WAT-5a", 0), g.call("word_add", gi, "WAT-1a", 1), g.call("word_add", gi, "UNI-19a", 2),
+		g.call("word_add", gi, "UNI-28a", 3), g.call("word_add", gi, "UNI-26b", 4), g.call("word_add", gi, "UNI-27b", 5), g.call("word_toggle_link", gi, 6, 2)]
+	_check("a great ring is built by the free edit's rules (Gush on ring 1, Flood and four universal runes round ring 2)",
+		steps.all(func(r: Dictionary) -> bool: return bool(r["ok"])) and _trait_ids(Runes.active(), g.call("ability_word", gi)).has("great_ring"), str(steps))
+	g.call("seal_now")
+	g.call("close_seal")
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var foe := _foe(g, Vector3(0, 0, -6.0))
+	g.set("cursor_fixed", here + Vector3(0, 0, -6.0))
+	g.set("_facing", Vector3(0, 0, -1))
+	g.set("essence", 99.0)
+	var bolts := func() -> int: return g.get_parent().get_children().filter(func(n: Node) -> bool: return n.get("shooter") == g and n.has_method("tick") and not n.is_queued_for_deletion()).size()
+	_cast(g, bolt)
+	var first_n: int = bolts.call()
+	var timers: Array = g.get_parent().get_children().filter(func(n: Node) -> bool: return n is SkillTimer)
+	for t2: Node in timers:
+		t2.call("tick", float(GameData.runes["rule_sets"]["bond_v2"]["interaction_params"]["effects_v2"]["repeat"]["delay_s"]) + 0.05)
+	_check("the sealed great ring repeats the cast: one bolt, then a second", first_n == 1 and int(bolts.call()) == 2, "%d then %d" % [first_n, int(bolts.call())])
+
+	# ---- the seal flow: only at a binding; a failed bind keeps the word; inner rings reworked later
+	var s: Node = _new_player()
+	s.call("set_affinities", ["water"])
+	var st: Dictionary = (s.get("abilities") as Array)[0]
+	for rid: String in ["WAT-1a", "WAT-3b", "WAT-5a", "WAT-6b", "WAT-4b", "WAT-8b", "UNI-05a"]:
+		s.call("discover_rune", rid, "")
+	st["progress"] = 100.0
+	(s.get("constructs") as Array).append({"tier": "vestige", "concept": "reach"})
+	s.call("open_seal", 0, 0)
+	s.call("word_add", 0, "WAT-1a", 0)       # Flood
+	s.call("word_add", 0, "WAT-5a", 0)       # Gush
+	s.call("word_add", 0, "WAT-3b", 1)       # Dry
+	s.call("word_toggle_link", 0, 1, 2)
+	_check("a closed first seal binds", str(s.call("bind_seal", 0.0)) == "bound" and RuneWord.sealed(s.call("ability_word", 0)) == 1)
+	var ring1: String = RuneWord.shape_key(s.call("ability_word", 0))
+	st["progress"] = 100.0
+	(s.get("constructs") as Array).append({"tier": "remnant", "concept": "tension"})
+	s.call("open_seal", 0, 0)
+	_check("the next seal opens on the sealed word, with room for ring 2", RuneWord.shape_key(s.call("ability_word", 0)) == ring1 and (s.call("rune_context", 0) as RuneContext).forming == 2)
+	_rework(s)
+	_check("the reworked draft is closed", bool(Runes.active().word_state(s.call("ability_word", 0), s.call("rune_context", 0))["closed"]))
+	var hurt0: int = (s.get("body") as Body).wounds.size()
+	var failed: String = str(s.call("bind_seal", 0.99))
+	_check("a failed bind forms no seal: the word stays as it was, the construct is gone",
+		failed == "failed" and RuneWord.shape_key(s.call("ability_word", 0)) == ring1 and RuneWord.sealed(s.call("ability_word", 0)) == 1
+		and int(st["stage"]) == 1 and (s.get("constructs") as Array).is_empty() and (s.get("body") as Body).wounds.size() > hurt0, failed)
+	(s.get("constructs") as Array).append({"tier": "remnant", "concept": "tension"})
+	s.call("open_seal", 0, 0)
+	_rework(s)
+	var reworked: Dictionary = (s.call("ability_word", 0) as Dictionary).duplicate(true)
+	var second: String = str(s.call("bind_seal", 0.0))
+	var w2: Dictionary = s.call("ability_word", 0)
+	_check("the level 2 seal reworks ring 1 (Dry out, Slack in, Flood and Gush parted) and adds ring 2",
+		second == "bound" and RuneWord.sealed(w2) == 2 and RuneWord.shape_key(w2) == RuneWord.shape_key(reworked) and not RuneWord.nodes(w2).has("WAT-3b")
+		and RuneWord.ring_nodes(w2, 2).size() == 4 and not RuneWord.linked(w2, 1, 2), str(w2))
+	st["progress"] = 100.0
+	(s.get("constructs") as Array).append({"tier": "spirit", "concept": "reach"})
+	s.set("stars", 3)
+	s.call("open_seal", 0, 0)
+	s.call("word_add", 0, "UNI-05a", -1, 3)
+	s.call("close_seal")
+	_check("a draft left without binding changes nothing", RuneWord.shape_key(s.call("ability_word", 0)) == RuneWord.shape_key(reworked))
+	s.call("open_seal", 0, 0)
+	_check("binding with the draft untouched keeps the word as it is", str(s.call("bind_seal", 0.0)) == "bound" and RuneWord.shape_key(s.call("ability_word", 0)) == RuneWord.shape_key(reworked) and int(st["stage"]) == 3)
+	_check("a normal character has no free edit; a test character does", not bool((s.call("open_free_edit", 0) as Dictionary)["ok"]) and bool((g.call("open_free_edit", 0) as Dictionary)["ok"]))
+	for n: Node in [g, s, foe, floor_n]:
+		n.queue_free()
+	await get_tree().process_frame
+
+
+## Rune discovery (Brent 2026-10-23, design/14 section 8): starting knowledge, the three sources
+## (subduing a construct, kills, rune stones in zones and the passage), permanence and saves, the
+## test character's every-rune knowledge, the palette and the HUD card. Chances are data; the
+## checks force them where a roll would make a check flaky.
+func _test_rune_discovery() -> void:
+	print("rune discovery (design/14 section 8):")
+	var disc: Dictionary = GameData.rune_discovery
+	_check("rune_discovery.json is loaded: start runes, construct concepts, kill pools, passage stones",
+		disc.has("start") and disc.has("construct") and disc.has("kills") and disc.has("inscriptions"))
+	var p: Node = _new_player()
+	p.call("set_affinities", ["water"])
+	p.call("start_with_skills", p.call("default_start_skills"))
+	var known: Array = p.get("known_runes")
+	var want: Array = []
+	for st: Dictionary in p.get("abilities"):
+		if not want.has(GameData.skill_anchor(str(st["id"]))):
+			want.append(GameData.skill_anchor(str(st["id"])))
+	for rid: Variant in ((disc["start"] as Dictionary)["affinity_runes"] as Dictionary)["water"]:
+		if not want.has(str(rid)):
+			want.append(str(rid))
+	_check("a new character knows its two starting skills' runes and a couple of its affinity's (%s)" % ", ".join(known.map(func(id: String) -> String: return str(GameData.rune(id)["name"]))),
+		known.size() == want.size() and want.all(func(id: String) -> bool: return known.has(id)), "%s vs %s" % [str(known), str(want)])
+	var palette: Array = p.call("rune_palette")
+	var unknown: Array = palette.filter(func(id: String) -> bool: return not bool(p.call("knows_rune", id)))
+	_check("the palette lists every rune it could use, most of them still unknown", palette.size() > known.size() and unknown.size() == palette.size() - known.size())
+	var tc: Node = _new_player()
+	tc.call("make_test_character", "water")
+	_check("a test character knows every rune", (tc.call("rune_palette") as Array).all(func(id: String) -> bool: return bool(tc.call("knows_rune", id))))
+	# an unknown rune cannot be set
+	((p.get("abilities") as Array)[0] as Dictionary)["progress"] = 100.0
+	(p.get("constructs") as Array).append({"tier": "vestige", "concept": "reach"})
+	p.call("open_seal", 0, 0)
+	_check("an undiscovered rune cannot be set, and the screen says why", str((p.call("word_add", 0, str(unknown[0]), 0) as Dictionary)["reason"]) == "unknown")
+	p.call("close_seal")
+	(p.get("constructs") as Array).clear()
+
+	# subduing a construct reveals a rune of its concept
+	var heard: Array = []
+	p.connect("rune_discovered", func(id: String, _src: String) -> void: heard.append(id))
+	var pool_reach: Array = ((((disc["construct"] as Dictionary)["concepts"] as Dictionary)["reach"] as Dictionary)["base"] as Dictionary)["water"]
+	var before: int = (p.get("known_runes") as Array).size()
+	var got: Array = p.call("on_construct_subdued", "vestige", "reach")
+	_check("subduing a vestige of Reach reveals a rune of its concept (%s)" % str(got.map(func(id: String) -> String: return str(GameData.rune(id)["name"]))),
+		got.size() == 1 and pool_reach.has(str(got[0])) and (p.get("known_runes") as Array).size() == before + 1 and heard == got
+		and str((p.get("last_rune") as Dictionary)["id"]) == str(got[0]) and str((p.get("log_lines") as Array).back()).begins_with("Rune discovered: "))
+	var n_echo := Netherecho.new()
+	add_child(n_echo)
+	n_echo.player = p
+	var c: Node3D = n_echo.spawn_construct(Vector3.ZERO, "vestige", "stillness", true)
+	var before2: int = (p.get("known_runes") as Array).size()
+	c.emit_signal("subdued", c)
+	_check("and in the Netherecho itself: a subdued construct reveals one", (p.get("known_runes") as Array).size() == before2 + 1)
+	n_echo.queue_free()
+	var uni_id: String = str(p.call("reveal_rune", [], (GameData.runes["universal_runes"] as Dictionary).keys(), 1.0, "test"))
+	_check("universal runes come from deeper sources: a vestige never gives one, a deep roll does",
+		float((((disc["construct"] as Dictionary)["by_tier"] as Dictionary)["vestige"] as Dictionary)["universal_chance"]) == 0.0
+		and float((((disc["construct"] as Dictionary)["by_tier"] as Dictionary)["remnant"] as Dictionary)["universal_chance"]) > 0.0
+		and uni_id != "" and not GameData.rune(uni_id).has("affinity"))
+	# kills
+	var kills: Dictionary = disc["kills"]
+	var by_kind: Dictionary = kills["chance_by_kind"]
+	var saved_chance: Variant = by_kind.get("grunt")
+	var kp: Node = _new_player()
+	kp.call("set_affinities", ["water"])
+	var foe := _dummy_enemy(kp)
+	by_kind["grunt"] = 0.0
+	var before3: int = (kp.get("known_runes") as Array).size()
+	kp.call("_roll_kill_rune", foe)
+	var none_then: bool = (kp.get("known_runes") as Array).size() == before3
+	by_kind["grunt"] = 1.0
+	kp.call("_roll_kill_rune", foe)
+	var latest: String = str((kp.get("last_rune") as Dictionary).get("id", ""))
+	var grunt_pool: Array = (((kills["by_kind"] as Dictionary)["grunt"] as Dictionary)["base"] as Dictionary)["water"] + (((kills["by_kind"] as Dictionary)["grunt"] as Dictionary)["universal"] as Array)
+	_check("a kill reveals a rune of the enemy's nature only on its chance (0: nothing; 1: %s)" % str(GameData.rune(latest).get("name", "?")),
+		none_then and (kp.get("known_runes") as Array).size() == before3 + 1 and grunt_pool.has(latest), "%s in %s" % [latest, str(grunt_pool)])
+	if saved_chance == null:
+		by_kind.erase("grunt")
+	else:
+		by_kind["grunt"] = saved_chance
+	foe.queue_free()
+	kp.queue_free()
+	# rune stones
+	var r1: String = str(p.call("read_inscription", "test_stone", "base", "A test stone"))
+	var r_again: String = str(p.call("read_inscription", "test_stone", "base", "A test stone"))
+	var r_deep: String = str(p.call("read_inscription", "test_deep", "universal", "A deep stone"))
+	_check("a rune stone reveals one rune of your affinity, once; a deep one a universal rune",
+		r1 != "" and str(GameData.rune(r1)["affinity"]) == "water" and r_again == "" and r_deep != "" and not GameData.rune(r_deep).has("affinity"))
+	var everything: Node = _new_player()
+	everything.call("set_affinities", ["water"])
+	for rid: String in everything.call("rune_palette"):
+		everything.call("discover_rune", rid, "")
+	_check("with every rune known there is nothing left to find", str(everything.call("read_inscription", "x", "base", "x")) == "" and (everything.call("on_construct_subdued", "remnant", "reach") as Array).is_empty())
+	# permanence: saves
+	var known_now: Array = (p.get("known_runes") as Array).duplicate()
+	var q: Node = _new_player()
+	q.call("from_save", JSON.parse_string(JSON.stringify(p.call("to_save"))))
+	_check("discovered runes and read stones are saved with the character", (q.get("known_runes") as Array) == known_now and (q.get("read_inscriptions") as Array).has("test_stone"))
+	var old: Dictionary = JSON.parse_string(JSON.stringify(p.call("to_save")))
+	old.erase("known_runes")
+	var o: Node = _new_player()
+	o.call("from_save", old)
+	_check("a save from before discovery knows what a new character would", (o.get("known_runes") as Array).size() >= 2 and (o.get("known_runes") as Array).size() < known_now.size())
+	for n: Node in [p, tc, everything, q, o]:
+		n.queue_free()
+
+	# in the world: the zone's stones and the passage's, read with interact; the HUD's card
+	var errors_before: int = _errors.count()
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	main.set("_test_mode", true)
+	add_child(main)
+	await get_tree().process_frame
+	main.call("start_new_character", 0)
+	main.call("enter_zone", "the_stubble", "dross_gate")
+	await get_tree().process_frame
+	var stones: Array = get_tree().get_nodes_in_group("rune_stones")
+	_check("The Stubble has its rune stones (%d)" % stones.size(), stones.size() == (GameData.zone("the_stubble").get("inscriptions", []) as Array).size() and stones.size() >= 1)
+	var mp: Node = main.get("player")
+	if not stones.is_empty():
+		var stone: Node3D = stones[0]
+		mp.global_position = stone.global_position + Vector3(1.2, 0.0, 0.0)
+		var k0: int = (mp.get("known_runes") as Array).size()
+		main.call("_field_interact")
+		var hud: Node = main.get("hud")
+		_check("interact beside a stone reads it: a rune discovered, and the HUD shows its card",
+			(mp.get("known_runes") as Array).size() == k0 + 1 and not (hud.get("_rune_card") as Dictionary).is_empty() and (mp.get("read_inscriptions") as Array).has(str(stone.get("stone_id"))))
+	main.call("_enter_dungeon")
+	await get_tree().process_frame
+	_check("the passage has its rune stones (%d)" % get_tree().get_nodes_in_group("rune_stones").size(),
+		get_tree().get_nodes_in_group("rune_stones").filter(func(n: Node) -> bool: return not n.is_queued_for_deletion()).size() == ((disc["inscriptions"] as Dictionary)["passage"] as Array).size())
+	_check("no script error in the world part", _errors.count() == errors_before, _errors.first())
+	main.queue_free()
+	await get_tree().process_frame
+

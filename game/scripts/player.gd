@@ -7,6 +7,8 @@ extends CharacterBody3D
 signal died
 ## The body was hurt while the soul was out of it.
 signal disturbed
+## A rune became known (design/14 section 8): its id and where it was found.
+signal rune_discovered(rune_id: String, source: String)
 
 const FloatText := preload("res://scripts/float_text.gd")
 const Projectile := preload("res://scripts/projectile.gd")
@@ -55,6 +57,17 @@ var heal_points_total := 0.0
 var arm_right := 100.0            # striking arm integrity; overcharging spends it
 var arm_right_lost := false
 var discoveries: Array[String] = []
+## Runes this character has discovered (Brent 2026-10-23): permanent knowledge, usable in any seal.
+## A test character knows every rune (knows_rune) whatever is listed here.
+var known_runes: Array[String] = []
+## Rune stones already read, by id: each reveals its rune once.
+var read_inscriptions: Array[String] = []
+## The last rune discovered, {id, source}, for the HUD's card.
+var last_rune: Dictionary = {}
+## The seal being drafted while the seal screen is open (not saved): {index, word, construct, mode}
+## - mode "bind" (a construct is being bound and the next ring formed) or "test" (a test
+## character's free edit).
+var seal_draft: Dictionary = {}
 var log_lines: Array[String] = []
 ## Counts every note() ever written, so the HUD can tell which lines are new.
 var log_serial := 0
@@ -301,6 +314,10 @@ func set_affinities(list: Array) -> void:
 	_reset_loadout()
 	clear_reflux()
 	_reset_tempering()
+	known_runes.clear()
+	read_inscriptions.clear()
+	seal_draft = {}
+	_grant_start_runes()
 
 
 # --- tempering ------------------------------------------------------------------------
@@ -1030,6 +1047,7 @@ func learn(ability_id: String) -> bool:
 		if hotbar[i] < 0:
 			hotbar[i] = abilities.size() - 1
 			break
+	_know(GameData.skill_anchor(ability_id))          # a skill's own rune comes with it [MODEL]
 	return true
 
 
@@ -1086,6 +1104,8 @@ func start_with_skills(ids: Array) -> String:
 		hotbar[i] = -1
 	for id: String in picked:
 		learn(id)
+	known_runes.clear()
+	_grant_start_runes()
 	return ""
 
 
@@ -1813,6 +1833,7 @@ func _on_kill(target: Node) -> void:
 	grow_star(float(target.get("aura_value")) * GameData.num("stars", "growth_pct_per_aura"))
 	_roll_drops(target)
 	_roll_loot(target)
+	_roll_kill_rune(target)
 
 
 # --- click targeting ------------------------------------------------------------
@@ -3313,6 +3334,27 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 			_streak(ab, stage_mult, tags)
 		"field_pulse":
 			_field_pulse(blink_to, ab, stage_mult, tags)
+	_repeat_cast(ab, kind, aff, stage_mult, tags, strike_target, blink_to)
+
+
+## A sealed word's great ring (design/14 section 8) makes the skill come round again: the same cast,
+## at "mult" of its strength, "delay_s" later ("times" in all). Generic: it is the rune patch's
+## "rune_repeat" field, read here for any skill; which kinds may repeat is the rule set's data.
+func _repeat_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float, tags: Array, strike_target: Node3D, blink_to: Vector3) -> void:
+	var rep: Variant = ab.get("rune_repeat")
+	if typeof(rep) != TYPE_DICTIONARY or not is_inside_tree() or get_parent() == null:
+		return
+	var echo: Dictionary = ab.duplicate(true)
+	echo.erase("rune_repeat")                    # the echo itself does not repeat
+	var mult: float = float((rep as Dictionary).get("mult", 0.0))
+	var delay: float = float((rep as Dictionary).get("delay_s", 0.4))
+	var times: int = maxi(1, int((rep as Dictionary).get("times", 1)))
+	var target: Node3D = strike_target
+	SkillTimer.after(get_parent(), delay, func(n: int) -> void:
+		if dead or not is_inside_tree():
+			return
+		var t: Node3D = target if target != null and is_instance_valid(target) and not bool(target.call("is_dead")) else null
+		_perform_cast(echo, kind, aff, stage_mult * pow(mult, float(n + 1)), tags, t, blink_to), times - 1, delay)
 
 
 ## Put an ability on a skill slot. An ability lives on one slot at a time; whatever was in the
@@ -3536,76 +3578,233 @@ func bind_first_ready() -> void:
 	note("No ability is full and waiting for what you carry.")
 
 
-# --- rune words (design/14 section 7) ----------------------------------------------------
-# A skill's word is saved on its ability state as "word" (RuneWord: nodes + links, no rules in it).
+# --- rune words and seals (design/14 sections 7-8) -------------------------------------------
+# A skill's word is saved on its ability state as "word" (RuneWord: nodes on rings + links, no rules
+# in it). Brent 2026-10-23: a skill just levels until its bar is full; binding a construct into it
+# is when its runes are SEALED, one ring per level. Before the first binding a skill has no word.
+# The seal is drafted on a copy (seal_draft) while the seal screen is open - inner rings may be
+# reworked and the new ring added - and becomes the skill's word only if the bind takes; a failed
+# bind forms no seal. A test character has a free edit instead: any rune, any time.
 # Whether a change is allowed, and what the word is, is asked of the rule set in force
-# (Runes.active()). Runes change no skill's numbers yet.
+# (Runes.active()).
 
-## What the rule set may know about ability `index`.
+## What the rule set may know about ability `index` - the draft's context while it is being sealed.
 func rune_context(index: int) -> RuneContext:
-	return RuneContext.of(abilities[index] if index >= 0 and index < abilities.size() else {}, affinities)
+	if index < 0 or index >= abilities.size():
+		return RuneContext.of({}, affinities)
+	var drafting: bool = sealing_index() == index
+	var c: RuneContext = RuneContext.of(abilities[index], affinities, drafting and seal_mode() == "bind")
+	if drafting and seal_mode() == "test":
+		c.free_edit = true
+		c.rings = maxi(1, c.stage)
+	return c
 
 
-## The word built in ability `index` (a word holding just the skill's anchor if none is built).
+## The word of ability `index`: the draft while it is being sealed, else its sealed word, else a word
+## holding just the skill's own rune (no word yet).
 func ability_word(index: int) -> Dictionary:
 	if index < 0 or index >= abilities.size():
 		return RuneWord.make("")
+	if sealing_index() == index:
+		return seal_draft["word"]
+	return _sealed_word(index)
+
+
+## The skill's own word, never the draft.
+func _sealed_word(index: int) -> Dictionary:
 	var st: Dictionary = abilities[index]
 	if st.has("word"):
 		return st["word"]
 	return RuneWord.make(GameData.skill_anchor(str(st["id"])), Runes.active().id)
 
 
-func _stored_word(index: int) -> Dictionary:
-	var st: Dictionary = abilities[index]
-	if not st.has("word"):
-		st["word"] = RuneWord.make(GameData.skill_anchor(str(st["id"])), Runes.active().id)
-	return st["word"]
+## The ability being sealed (-1: none).
+func sealing_index() -> int:
+	return int(seal_draft.get("index", -1)) if not seal_draft.is_empty() else -1
 
 
-## Set a rune into ability `index`'s word, joined to node `to_node` when that is >= 0.
-## Returns the rules' check: {ok, reason, text}.
-func word_add(index: int, rune_id: String, to_node: int = -1) -> Dictionary:
+## "bind", "test", or "" when no seal is being drafted.
+func seal_mode() -> String:
+	return str(seal_draft.get("mode", ""))
+
+
+## The construct a "bind" draft will bind (-1: none).
+func seal_construct() -> int:
+	return int(seal_draft.get("construct", -1))
+
+
+## A fresh draft of ability `index`: its sealed word, unsealed, its rings made explicit.
+func _draft_from(index: int) -> Dictionary:
+	var w: Dictionary = _sealed_word(index).duplicate(true)
+	for key: String in ["sealed", "locked", "free_edit"]:
+		w.erase(key)
+	w["rings"] = RuneWord.rings(w)
+	w["made_under"] = Runes.active().id
+	return w
+
+
+## Open the seal of ability `index` for binding construct `construct_index` into it: the draft starts
+## as the sealed word, with room for one more ring. Returns {ok, reason, text}.
+func open_seal(index: int, construct_index: int) -> Dictionary:
 	if index < 0 or index >= abilities.size():
 		return RuneRules.no("no_skill", "No such skill.")
-	return Runes.active().add(_stored_word(index), rune_id, rune_context(index), to_node)
+	var need: String = pending_tier(abilities[index])
+	if need == "":
+		return RuneRules.no("not_ready", "%s is not ready for a binding: its bar is not full." % str(GameData.ability(str(abilities[index]["id"])).get("name", "?")))
+	if construct_index < 0 or construct_index >= constructs.size():
+		return RuneRules.no("no_construct", "You carry no such construct.")
+	if str(constructs[construct_index]["tier"]) != need:
+		return RuneRules.no("wrong_tier", "It needs a %s." % need)
+	seal_draft = {"index": index, "construct": construct_index, "mode": "bind", "word": _draft_from(index)}
+	return RuneRules.ok()
 
 
-## Join two runes of the word, or part them if they are joined.
+## A test character's free edit of ability `index`: every rune, any time, sealed when it says so.
+func open_free_edit(index: int) -> Dictionary:
+	if index < 0 or index >= abilities.size():
+		return RuneRules.no("no_skill", "No such skill.")
+	if not test_character:
+		return RuneRules.no("not_test", "Only a test character can edit a word freely; runes are sealed at a binding.")
+	seal_draft = {"index": index, "construct": -1, "mode": "test", "word": _draft_from(index)}
+	return RuneRules.ok()
+
+
+func close_seal() -> void:
+	seal_draft = {}
+
+
+## Put the draft back as the sealed word was.
+func draft_reset() -> void:
+	if not seal_draft.is_empty():
+		seal_draft["word"] = _draft_from(sealing_index())
+
+
+## The draft differs from the skill's sealed word.
+func draft_changed() -> bool:
+	if seal_draft.is_empty():
+		return false
+	return RuneWord.shape_key(seal_draft["word"]) != RuneWord.shape_key(_draft_from(sealing_index()))
+
+
+## May the open draft be bound? Unchanged (the word stays as it is) or a seal the rules accept.
+## {ok, reason, text, unchanged}.
+func can_bind_seal() -> Dictionary:
+	if seal_mode() != "bind":
+		return RuneRules.no("not_sealing", "No binding is being prepared.")
+	var c: int = seal_construct()
+	if c < 0 or c >= constructs.size() or pending_tier(abilities[sealing_index()]) != str(constructs[c]["tier"]):
+		return RuneRules.no("no_construct", "The construct is no longer here to bind.")
+	if not draft_changed():
+		var r: Dictionary = RuneRules.ok()
+		r["unchanged"] = true
+		return r
+	return Runes.active().can_seal(seal_draft["word"], rune_context(sealing_index()))
+
+
+## Bind the draft's construct and, if the bind takes, seal the draft as the skill's word (one ring per
+## level). A failed bind (the existing roll) forms no seal: the word stays as it was. Returns what
+## bind_construct returns ("bound", "failed", ...) or why it could not be tried.
+func bind_seal(roll: float = -1.0) -> String:
+	var check: Dictionary = can_bind_seal()
+	if not bool(check["ok"]):
+		return str(check["text"])
+	var index: int = sealing_index()
+	var draft: Dictionary = (seal_draft["word"] as Dictionary).duplicate(true)
+	var changed: bool = not bool(check.get("unchanged", false))
+	var result: String = bind_construct(index, seal_construct(), roll)
+	close_seal()
+	var st: Dictionary = abilities[index]
+	var skill: String = str(GameData.ability(str(st["id"])).get("name", "?"))
+	if result == "bound" and changed:
+		var after: RuneContext = RuneContext.of(st, affinities)
+		var r: Dictionary = Runes.active().seal(draft, after, int(st["stage"]))
+		if bool(r["ok"]):
+			st["word"] = draft
+			note("The seal forms: %s now holds %d ring%s." % [skill, int(st["stage"]), "" if int(st["stage"]) == 1 else "s"])
+	elif result == "bound":
+		note("%s binds. The word stays as it was%s." % [skill, "" if st.has("word") else " - it has no word yet"])
+	elif result == "failed":
+		note("No seal forms. The word of %s stays as it was." % skill)
+	return result
+
+
+## A test character's free edit: seal the draft now (it need not be closed). The draft stays open.
+func seal_now() -> Dictionary:
+	if seal_mode() != "test":
+		return RuneRules.no("not_test", "Only a test character's free edit seals without a binding.")
+	var index: int = sealing_index()
+	var ctx: RuneContext = rune_context(index)
+	var w: Dictionary = (seal_draft["word"] as Dictionary).duplicate(true)
+	var r: Dictionary = Runes.active().seal(w, ctx, ctx.rings)
+	if bool(r["ok"]):
+		(abilities[index] as Dictionary)["word"] = w
+	return r
+
+
+## The draft of ability `index` if it is being sealed, else {}.
+func _draft_for(index: int) -> Dictionary:
+	return seal_draft["word"] if sealing_index() == index else {}
+
+
+func _not_sealing(index: int) -> Dictionary:
+	if test_character:
+		return RuneRules.no("not_sealing", "Open the free edit to change the word.")
+	var st: Dictionary = abilities[index] if index >= 0 and index < abilities.size() else {}
+	var need: String = pending_tier(st) if not st.is_empty() else ""
+	return RuneRules.no("not_sealing", ("Runes are sealed when a construct is bound: bind a %s into it to form the seal." % need) if need != ""
+		else "Runes are sealed when a construct is bound into the skill: fill its bar first.")
+
+
+## Set a rune into the draft of ability `index`, joined to node `to_node` when that is >= 0, on ring
+## `ring` when that is >= 0. Returns the rules' check: {ok, reason, text}.
+func word_add(index: int, rune_id: String, to_node: int = -1, ring: int = -1) -> Dictionary:
+	if index < 0 or index >= abilities.size():
+		return RuneRules.no("no_skill", "No such skill.")
+	var w: Dictionary = _draft_for(index)
+	if w.is_empty():
+		return _not_sealing(index)
+	if not can_use_rune(rune_id):
+		return RuneRules.no("not_yours", "%s belongs to an affinity you do not hold." % str(GameData.rune(rune_id).get("name", rune_id)))
+	if not knows_rune(rune_id):
+		return RuneRules.no("unknown", "You have not discovered that rune yet: runes are found in the Netherecho, in fights and on old stones.")
+	return Runes.active().add(w, rune_id, rune_context(index), to_node, ring)
+
+
+## Join two runes of the draft, or part them if they are joined.
 func word_toggle_link(index: int, a: int, b: int) -> Dictionary:
 	if index < 0 or index >= abilities.size():
 		return RuneRules.no("no_skill", "No such skill.")
-	return Runes.active().toggle_link(_stored_word(index), a, b, rune_context(index))
+	var w: Dictionary = _draft_for(index)
+	if w.is_empty():
+		return _not_sealing(index)
+	return Runes.active().toggle_link(w, a, b, rune_context(index))
 
 
-## Take a rune (not the anchor) out of the word.
+## Take a rune (not the skill's own) out of the draft.
 func word_remove(index: int, node: int) -> Dictionary:
 	if index < 0 or index >= abilities.size():
 		return RuneRules.no("no_skill", "No such skill.")
-	return Runes.active().remove(_stored_word(index), node, rune_context(index))
+	var w: Dictionary = _draft_for(index)
+	if w.is_empty():
+		return _not_sealing(index)
+	return Runes.active().remove(w, node, rune_context(index))
 
 
-## Lock the word: from now on its skill uses it (only a closed word, if the rules say so).
-func word_lock(index: int) -> Dictionary:
-	if index < 0 or index >= abilities.size():
-		return RuneRules.no("no_skill", "No such skill.")
-	return Runes.active().lock(_stored_word(index), rune_context(index))
+## Clear the draft back to the skill's own rune alone.
+func word_clear(index: int) -> void:
+	if sealing_index() == index:
+		var w: Dictionary = RuneWord.make(GameData.skill_anchor(str(abilities[index]["id"])), Runes.active().id)
+		seal_draft["word"] = w
 
 
-## Unlock the word: its skill goes back to its own numbers and the word can be changed again.
-func word_unlock(index: int) -> Dictionary:
-	if index < 0 or index >= abilities.size():
-		return RuneRules.no("no_skill", "No such skill.")
-	return Runes.active().unlock(_stored_word(index), rune_context(index))
-
-
+## The skill uses a sealed word.
 func word_locked(index: int) -> bool:
-	return index >= 0 and index < abilities.size() and RuneWord.is_locked(ability_word(index))
+	return index >= 0 and index < abilities.size() and RuneWord.is_locked(_sealed_word(index))
 
 
-## What the word in ability `index` does - or would do once locked - to its skill:
-## {rows: [{label, before, after, better}], lines: [...], runes: [...], anchor: {...}, groups: {...}}.
-## `before` is the skill without the word, `after` with it locked. Numbers are already formatted.
+## What the word in ability `index` (the draft, while sealing) does - or would do once sealed - to
+## its skill: {rows: [{label, before, after, better}], lines, runes, anchor, groups, traits,
+## transfers}. `before` is the skill without the word, `after` with it. Numbers are formatted.
 func rune_preview(index: int) -> Dictionary:
 	if index < 0 or index >= abilities.size():
 		return {}
@@ -3635,16 +3834,20 @@ func rune_preview(index: int) -> Dictionary:
 			"before": (("%d" % int(round(shown_b))) if whole else ("%.2f" % shown_b).rstrip("0").rstrip(".")) + unit,
 			"after": (("%d" % int(round(shown_a))) if whole else ("%.2f" % shown_a).rstrip("0").rstrip(".")) + unit,
 			"changed": absf(shown_a - shown_b) > 0.0001, "better": (shown_a < shown_b) == bool(f.get("lower_is_better", false))})
+	if after.has("rune_repeat"):
+		var rep: Dictionary = after["rune_repeat"]
+		rows.append({"label": "Repeats", "group": "power", "before": "no", "after": "x%d at %d%%" % [int(rep.get("times", 1)), int(round(float(rep.get("mult", 0.0)) * 100.0))],
+			"changed": true, "better": true})
 	return {"rows": rows, "lines": fx.get("lines", []), "runes": fx.get("runes", []), "anchor": fx.get("anchor", {}),
-		"groups": fx.get("groups", {}), "before": before, "after": after}
+		"groups": fx.get("groups", {}), "traits": fx.get("traits", []), "effect_lines": fx.get("effect_lines", fx.get("lines", [])), "transfers": fx.get("transfers", []), "before": before, "after": after}
 
 
-## Short lines on what a LOCKED word does to ability `index` ([] if its word is not locked), for
-## tooltips and the ethercosm.
+## Short lines on what a SEALED word does to ability `index` ([] if it has none), for tooltips and
+## the ethercosm.
 func rune_summary(index: int) -> Array:
 	if not word_locked(index):
 		return []
-	return Runes.active().locked_effects(ability_word(index), rune_context(index)).get("summary", [])
+	return Runes.active().locked_effects(_sealed_word(index), RuneContext.of(abilities[index], affinities)).get("summary", [])
 
 
 static func _path_value(d: Dictionary, path: String) -> Variant:
@@ -3656,15 +3859,146 @@ static func _path_value(d: Dictionary, path: String) -> Variant:
 	return cur
 
 
-## Clear the word back to the skill's anchor alone (and unlock it).
-func word_clear(index: int) -> void:
-	if index >= 0 and index < abilities.size():
-		(abilities[index] as Dictionary).erase("word")
-
-
-## The runes this character may set. TEST LOADOUT until rune acquisition is designed.
+## Every rune this character could set - its affinities' base runes and the universal ones, in
+## workbook order - known or not (the screen shows the unknown ones as "?").
 func rune_palette() -> Array[String]:
-	return Runes.test_palette(affinities)
+	return Runes.usable(affinities)
+
+
+# --- rune discovery (Brent 2026-10-23, design/14 section 8) -----------------------------------
+# A discovered rune is permanent knowledge. Runes are found by subduing constructs (a rune of the
+# construct's concept), by kills (a small chance of a rune of the enemy's nature) and at rune
+# stones; universal runes are rarer and come from deeper sources. Pools and chances are
+# data/rune_discovery.json; only runes this character can use and does not know are revealed.
+
+func knows_rune(rune_id: String) -> bool:
+	return test_character or known_runes.has(rune_id)
+
+
+## A base rune of an affinity held, or a universal rune.
+func can_use_rune(rune_id: String) -> bool:
+	var r: Dictionary = GameData.rune(rune_id)
+	if r.is_empty():
+		return false
+	var aff: String = str(r.get("affinity", ""))
+	return aff == "" or affinities.has(aff)
+
+
+## Learn a rune: a message, the HUD's card (rune_discovered). False if it was known or is no rune.
+func discover_rune(rune_id: String, source: String = "") -> bool:
+	if rune_id == "" or GameData.rune(rune_id).is_empty() or known_runes.has(rune_id):
+		return false
+	known_runes.append(rune_id)
+	last_rune = {"id": rune_id, "source": source}
+	note("Rune discovered: %s%s" % [str(GameData.rune(rune_id).get("name", rune_id)), (" - " + source) if source != "" else ""])
+	rune_discovered.emit(rune_id, source)
+	return true
+
+
+## Know a rune without a fanfare (a starting rune, a learned skill's own rune).
+func _know(rune_id: String) -> void:
+	if rune_id != "" and not GameData.rune(rune_id).is_empty() and not known_runes.has(rune_id):
+		known_runes.append(rune_id)
+
+
+## What a new character knows: the runes of the skills it holds, and a couple of each affinity's
+## runes (rune_discovery.json "start").
+func _grant_start_runes() -> void:
+	for st: Dictionary in abilities:
+		_know(GameData.skill_anchor(str(st["id"])))
+	var start: Dictionary = (GameData.rune_discovery.get("start", {}) as Dictionary).get("affinity_runes", {})
+	for a: String in affinities:
+		for rid: Variant in start.get(a, []):
+			_know(str(rid))
+
+
+func _unknown_usable(pool: Array) -> Array[String]:
+	var out: Array[String] = []
+	for rid: Variant in pool:
+		if can_use_rune(str(rid)) and not knows_rune(str(rid)) and not out.has(str(rid)):
+			out.append(str(rid))
+	return out
+
+
+## Every base rune of the affinities held, then every universal rune (for stones).
+func _all_base() -> Array:
+	return Runes.usable(affinities).filter(func(id: String) -> bool: return str(GameData.rune(id).get("affinity", "")) != "")
+
+
+func _all_universal() -> Array:
+	return (GameData.runes.get("universal_runes", {}) as Dictionary).keys()
+
+
+## Reveal one rune: universal with `universal_chance` (else from `base`); a universal wish that finds
+## nothing falls back to base, never the other way (universal runes are the rarer). With
+## `any_base`, a base pool with nothing new falls back to any base rune of the affinities held.
+## Returns the rune id, or "" if there was nothing new to find.
+func reveal_rune(base: Array, universal: Array, universal_chance: float, source: String, any_base: bool = false) -> String:
+	var picks: Array[String] = []
+	if universal_chance > 0.0 and rng.randf() < universal_chance:
+		picks = _unknown_usable(universal)
+	if picks.is_empty():
+		picks = _unknown_usable(base)
+	if picks.is_empty() and any_base:
+		picks = _unknown_usable(_all_base())
+	if picks.is_empty():
+		return ""
+	var rid: String = picks[rng.randi() % picks.size()]
+	discover_rune(rid, source)
+	return rid
+
+
+## A construct subdued in the Netherecho reveals runes of its concept. Returns the ids revealed.
+func on_construct_subdued(tier: String, concept: String) -> Array[String]:
+	var cfg: Dictionary = GameData.rune_discovery.get("construct", {})
+	var by_tier: Dictionary = (cfg.get("by_tier", {}) as Dictionary).get(tier, {})
+	var entry: Dictionary = (cfg.get("concepts", {}) as Dictionary).get(concept, {})
+	var base: Array = []
+	for a: String in affinities:
+		base.append_array((entry.get("base", {}) as Dictionary).get(a, []))
+	var label: String = str(GameData.concept(concept).get("label", concept.capitalize()))
+	var out: Array[String] = []
+	for n: int in int(by_tier.get("reveals", 0)):
+		var rid: String = reveal_rune(base, entry.get("universal", []), float(by_tier.get("universal_chance", 0.0)), "from the %s of %s you subdued" % [tier, label])
+		if rid != "":
+			out.append(rid)
+	return out
+
+
+## A kill may reveal a rune of the enemy's nature.
+func _roll_kill_rune(target: Node) -> void:
+	var kind_v: Variant = target.get("kind")
+	if kind_v == null or str(kind_v) == "":
+		return
+	var cfg: Dictionary = GameData.rune_discovery.get("kills", {})
+	var chance: float = float((cfg.get("chance_by_kind", {}) as Dictionary).get(str(kind_v), cfg.get("chance", 0.0)))
+	if rng.randf() >= chance:
+		return
+	kill_reveals(str(kind_v))
+
+
+## The rune a kill of `kind` reveals (the chance already rolled). Public for tests.
+func kill_reveals(kind: String) -> String:
+	var cfg: Dictionary = GameData.rune_discovery.get("kills", {})
+	var entry: Dictionary = (cfg.get("by_kind", {}) as Dictionary).get(kind, {})
+	var base: Array = []
+	for a: String in affinities:
+		base.append_array((entry.get("base", {}) as Dictionary).get(a, []))
+	return reveal_rune(base, entry.get("universal", []), float(cfg.get("universal_chance", 0.0)), "from the %s you killed" % kind)
+
+
+## Read a rune stone: once per stone, a rune of one of your affinities ("base") or a universal one.
+## Returns the rune revealed, or "".
+func read_inscription(id: String, pool: String, stone_name: String = "the stone") -> String:
+	if read_inscriptions.has(id):
+		note("You have read %s; it holds nothing more for you." % stone_name.to_lower())
+		return ""
+	read_inscriptions.append(id)
+	var fallback: bool = bool((GameData.rune_discovery.get("inscriptions", {}) as Dictionary).get("base_fallback", true))
+	var rid: String = reveal_rune(_all_base(), _all_universal(), 1.0 if pool == "universal" else 0.0, "read from %s" % stone_name.to_lower(), fallback)
+	if rid == "":
+		note("%s holds only runes you already know." % stone_name)
+	return rid
 
 
 ## PLACEHOLDER source of constructs until the Netherecho exists: some enemies leave one behind.
@@ -3814,6 +4148,7 @@ func to_save() -> Dictionary:
 		"craft_skill": craft_skill.duplicate(), "craft_known": craft_known.duplicate(), "craft_made": craft_made.duplicate(),
 		"tool_uses": tool_uses.duplicate(),
 		"constructs": constructs.duplicate(true), "discoveries": discoveries.duplicate(),
+		"known_runes": known_runes.duplicate(), "read_inscriptions": read_inscriptions.duplicate(),
 		"heal_points_total": heal_points_total, "inventory": inventory.to_dict(), "corpses": corpses.duplicate(true), "explored": explored.duplicate(),
 	}
 
@@ -3864,8 +4199,15 @@ func from_save(d: Dictionary) -> void:
 			a["stage"] = int(a.get("stage", 0))
 			a["progress"] = float(a.get("progress", 0.0))
 			if a.has("word"):
-				# rule-free data: read back as it was; the rules in force report what no longer fits
-				a["word"] = RuneWord.normalize(a["word"], GameData.skill_anchor(str(a.get("id", ""))))
+				# rule-free data: read back as it was; the rules in force report what no longer fits.
+				# No seal outlasts its skill's level (a word locked before seals, on a stage-0 skill,
+				# comes back unsealed: before the first binding a skill has no word).
+				var w: Dictionary = RuneWord.normalize(a["word"], GameData.skill_anchor(str(a.get("id", ""))))
+				if RuneWord.sealed(w) > int(a["stage"]):
+					w["sealed"] = int(a["stage"])
+				if RuneWord.sealed(w) <= 0:
+					w.erase("sealed")
+				a["word"] = w
 			abilities.append(a)
 	var saved_hotbar: Array = d.get("hotbar", [])
 	for i: int in mini(saved_hotbar.size(), hotbar.size()):
@@ -3888,6 +4230,17 @@ func from_save(d: Dictionary) -> void:
 	discoveries.clear()
 	for line: Variant in d.get("discoveries", []):
 		discoveries.append(str(line))
+	seal_draft = {}
+	known_runes.clear()
+	if d.has("known_runes"):
+		for rid: Variant in d["known_runes"]:
+			if not GameData.rune(str(rid)).is_empty() and not known_runes.has(str(rid)):
+				known_runes.append(str(rid))
+	else:
+		_grant_start_runes()              # a save from before discovery: what a new character knows
+	read_inscriptions.clear()
+	for sid: Variant in d.get("read_inscriptions", []):
+		read_inscriptions.append(str(sid))
 	heal_points_total = float(d.get("heal_points_total", 0.0))
 	corpses = (d.get("corpses", []) as Array).duplicate(true)
 	explored = (d.get("explored", {}) as Dictionary).duplicate()

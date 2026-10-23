@@ -189,6 +189,8 @@ func _on_subdued(construct: Node) -> void:
 	(player.get("constructs") as Array).append({"tier": str(construct.get("tier")), "concept": str(construct.get("concept"))})
 	player.call("note", "The %s is subdued. It is yours to bind." % str(construct.get("display_name")))
 	player.call("add_aura", 6.0 if str(construct.get("tier")) == "vestige" else 18.0)
+	# subduing a construct reveals a rune of its concept (Brent 2026-10-23, design/14 section 8)
+	player.call("on_construct_subdued", str(construct.get("tier")), str(construct.get("concept")))
 
 
 func _on_projection_destroyed() -> void:

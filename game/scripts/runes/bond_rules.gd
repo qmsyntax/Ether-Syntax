@@ -105,7 +105,7 @@ func _full(word: Dictionary, i: int) -> Dictionary:
 
 # --- RuneRules ----------------------------------------------------------------------------
 
-func _can_add(word: Dictionary, rune_id: String, _ctx: RuneContext, to_node: int) -> Dictionary:
+func _can_add(word: Dictionary, rune_id: String, _ctx: RuneContext, to_node: int, _ring: int) -> Dictionary:
 	if not bool(params.get("allow_repeats", true)) and RuneWord.nodes(word).has(rune_id):
 		return no("repeat", "%s is already in the word." % str(GameData.rune(rune_id).get("name", rune_id)))
 	if to_node >= 0:

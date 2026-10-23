@@ -609,14 +609,13 @@ func _build_soul(box: VBoxContainer) -> void:
 			col.add_child(UiTheme.body("Bound: " + ", ".join(names), 12, UiTheme.STAR))
 		var rune_fx: Array = player.call("rune_summary", ai)
 		if not rune_fx.is_empty():
-			col.add_child(UiTheme.body("Rune word locked: " + ", ".join(PackedStringArray(rune_fx.map(func(v: Variant) -> String: return str(v)))), 12, UiTheme.GOLD))
+			col.add_child(UiTheme.body("Sealed word: " + ", ".join(PackedStringArray(rune_fx.map(func(v: Variant) -> String: return str(v)))), 12, UiTheme.GOLD))
 		if need != "":
 			for ci: int in held.size():
 				if str(held[ci]["tier"]) == need:
 					var label: String = str(GameData.concept(str(held[ci]["concept"])).get("label", held[ci]["concept"]))
-					var bind_b: Button = UiWidgets.small_button("Bind the %s of %s  (irreversible, may fail)" % [need, label], func() -> void:
-						player.call("bind_construct", ai, ci)
-						rebuild())
+					var bind_b: Button = UiWidgets.small_button("Bind the %s of %s - form the seal" % [need, label], func() -> void:
+						game.call("open_seal", ai, ci))
 					bind_b.add_theme_font_size_override("font_size", UiTheme.FS_SMALL + 1)
 					col.add_child(bind_b)
 		list.add_child(UiTheme.rule())

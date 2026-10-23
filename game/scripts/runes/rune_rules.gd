@@ -20,7 +20,7 @@ extends RefCounted
 ## word_state    -> {"closed": bool, "label", "problems": [...], "lines": [...]}
 ## effects       -> {} for now: what the word does to its skill.
 
-const LOCKED := {"ok": false, "reason": "locked", "text": "The word is locked. Unlock it to change it."}
+const LOCKED := {"ok": false, "reason": "locked", "text": "The word is sealed. It can be reworked when the next seal is formed."}
 
 var id := ""
 var params: Dictionary = {}
@@ -73,7 +73,10 @@ func used(word: Dictionary, _ctx: RuneContext) -> int:
 
 # --- checks (structural first, then the rule set, then interactions) -----------------------
 
-func can_add(word: Dictionary, rune_id: String, ctx: RuneContext, to_node: int = -1) -> Dictionary:
+## May `rune_id` be set into the word - joined to `to_node` when that is >= 0, on ring `ring` when
+## that is >= 0 (otherwise the rule set places it: place_ring)? The answer carries "ring": where it
+## would go.
+func can_add(word: Dictionary, rune_id: String, ctx: RuneContext, to_node: int = -1, ring: int = -1) -> Dictionary:
 	var r: Dictionary
 	if RuneWord.size(word) == 0:
 		r = no("no_anchor", "This skill has no anchor rune in the data yet.")
@@ -84,12 +87,27 @@ func can_add(word: Dictionary, rune_id: String, ctx: RuneContext, to_node: int =
 	elif to_node >= 0 and not RuneWord.has_node(word, to_node):
 		r = no("no_node", "There is no such rune in the word.")
 	elif capacity(ctx) >= 0 and used(word, ctx) + 1 > capacity(ctx):
-		r = no("capacity", "The word is full: this skill holds %d runes at level %d." % [capacity(ctx), ctx.stage])
+		r = no("capacity", full_text(ctx))
 	else:
-		r = _can_add(word, rune_id, ctx, to_node)
+		var k: int = place_ring(word, ctx, to_node, ring)
+		r = _can_add(word, rune_id, ctx, to_node, k)
+		r["ring"] = k
 	for it: RuneInteraction in interactions:
 		it.on_can_add(word, rune_id, ctx, to_node, r)
 	return r
+
+
+## Why the word can take no more runes.
+func full_text(ctx: RuneContext) -> String:
+	return "The word is full: this skill holds %d runes at level %d." % [capacity(ctx), ctx.stage]
+
+
+## Which ring a new rune goes on: `ring` if given, else one further out than the rune it joins,
+## else ring 1. Rule sets with rings of their own (RingRules) choose by room.
+func place_ring(word: Dictionary, _ctx: RuneContext, to_node: int, ring: int) -> int:
+	if ring >= 0:
+		return ring
+	return RuneWord.ring(word, to_node) + 1 if to_node >= 0 else 1
 
 
 func can_link(word: Dictionary, a: int, b: int, ctx: RuneContext) -> Dictionary:
@@ -126,10 +144,11 @@ func can_remove(word: Dictionary, i: int, _ctx: RuneContext) -> Dictionary:
 # --- changes (check, then change the word only if allowed) ------------------------------
 
 ## Add a rune, joined to `to_node` when that is >= 0 (the link must be allowed too).
-func add(word: Dictionary, rune_id: String, ctx: RuneContext, to_node: int = -1) -> Dictionary:
-	var r: Dictionary = can_add(word, rune_id, ctx, to_node)
+func add(word: Dictionary, rune_id: String, ctx: RuneContext, to_node: int = -1, ring: int = -1) -> Dictionary:
+	var r: Dictionary = can_add(word, rune_id, ctx, to_node, ring)
 	if bool(r["ok"]):
-		var i: int = RuneWord.add_node(word, rune_id)
+		var i: int = RuneWord.add_node(word, rune_id, int(r.get("ring", -1)))
+		r["node"] = i
 		if to_node >= 0:
 			RuneWord.add_link(word, to_node, i, link_data(word, to_node, i, ctx))
 	return r
@@ -193,17 +212,54 @@ func unlock(word: Dictionary, _ctx: RuneContext) -> Dictionary:
 	return ok()
 
 
-## What a word does to its skill now: its effects if it is locked and still fits the rules in
-## force (a word made under other rules that no longer does fit does nothing), else {}.
+## What a word does to its skill now: its effects if it is sealed (or locked, from before seals)
+## and still fits the rules in force (a word made under other rules that no longer does fit does
+## nothing), else {}. A test character's free-edit seal need not be closed.
 func locked_effects(word: Dictionary, ctx: RuneContext) -> Dictionary:
 	if not RuneWord.is_locked(word):
 		return {}
 	var st: Dictionary = word_state(word, ctx)
 	if not (st.get("problems", []) as Array).is_empty():
 		return {}
-	if bool(params.get("lock_needs_closed", true)) and not bool(st.get("closed", false)):
+	if _needs_closed() and not bool(st.get("closed", false)) and not bool(word.get("free_edit", false)):
 		return {}
 	return effects(word, ctx)
+
+
+func _needs_closed() -> bool:
+	return bool(params.get("seal_needs_closed", params.get("lock_needs_closed", true)))
+
+
+# --- seals (design/14 section 8) -----------------------------------------------------------
+# A seal is formed when a construct is bound into the skill (Player.bind_seal): the draft the player
+# built (a copy of the sealed word, reworked, with the new ring added) becomes the skill's word.
+# A test character's free edit seals at any time and need not be closed.
+
+## May this draft be sealed? Closed and free of problems (a free edit: free of problems).
+func can_seal(word: Dictionary, ctx: RuneContext) -> Dictionary:
+	if RuneWord.size(word) == 0:
+		return no("no_anchor", "This skill has no anchor rune in the data yet.")
+	var st: Dictionary = word_state(word, ctx)
+	if not (st.get("problems", []) as Array).is_empty():
+		return no("problems", "The seal breaks these rules: %s" % str((st["problems"] as Array)[0]))
+	if RuneWord.size(word) < 2:
+		return no("empty", "Set runes into the seal first.")
+	if _needs_closed() and not ctx.free_edit and not bool(st.get("closed", false)):
+		return no("not_closed", "Only a closed word can be sealed; this one is %s." % str(st.get("label", "open")))
+	return ok()
+
+
+## Seal the draft through `rings` rings (the skill's level after the binding).
+func seal(word: Dictionary, ctx: RuneContext, rings: int) -> Dictionary:
+	var r: Dictionary = can_seal(word, ctx)
+	if bool(r["ok"]):
+		word["sealed"] = maxi(1, rings)
+		word.erase("locked")
+		if ctx.free_edit:
+			word["free_edit"] = true
+		else:
+			word.erase("free_edit")
+	return r
 
 
 # --- descriptions (the rule set's answer, then interactions) -------------------------------
@@ -272,7 +328,7 @@ func effects(word: Dictionary, ctx: RuneContext) -> Dictionary:
 
 # --- overridden by a rule set ---------------------------------------------------------------
 
-func _can_add(_word: Dictionary, _rune_id: String, _ctx: RuneContext, _to_node: int) -> Dictionary:
+func _can_add(_word: Dictionary, _rune_id: String, _ctx: RuneContext, _to_node: int, _ring: int) -> Dictionary:
 	return ok()
 
 

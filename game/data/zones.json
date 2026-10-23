@@ -1,5 +1,5 @@
 {
-  "_note": "Overland zones (design/07, approved by Brent 2026-10-18). Coordinates are metres in the zone's own map frame: origin at the north-west corner, x east, y south; north is the far side of the screen. A zone is built by scripts/zone_builder.gd. lines: gaps in the edge that lead somewhere - 'to' is a zone id, 'town', or a dungeon; a line that is not 'open' is drawn shut with a sign. arrive: where you stand when you come in by that line. All numbers [MODEL]. decor: real models (game/assets/models/props/<model>.glb) scattered over the zone, 'count' of each at a random 'scale' in the range; 'solid' gives it a trunk collider of that radius. A landmark prop may be [\"model\", id, dx, dy, scale].",
+  "_note": "Overland zones (design/07, approved by Brent 2026-10-18). Coordinates are metres in the zone's own map frame: origin at the north-west corner, x east, y south; north is the far side of the screen. A zone is built by scripts/zone_builder.gd. lines: gaps in the edge that lead somewhere - 'to' is a zone id, 'town', or a dungeon; a line that is not 'open' is drawn shut with a sign. arrive: where you stand when you come in by that line. All numbers [MODEL]. decor: real models (game/assets/models/props/<model>.glb) scattered over the zone, 'count' of each at a random 'scale' in the range; 'solid' gives it a trunk collider of that radius. A landmark prop may be [\"model\", id, dx, dy, scale]. inscriptions: rune stones (Brent 2026-10-23, design/14 section 8): read with interact, each reveals one rune once per character - pool base (a rune of one of your affinities) or universal (rarer); rules in rune_discovery.json.",
   "zones": {
     "the_stubble": {
       "name": "The Stubble",
@@ -64,6 +64,26 @@
         ],
         "width": 8
       },
+      "inscriptions": [
+        {
+          "id": "stubble_waystone_runes",
+          "name": "Runes cut below the waystone",
+          "at": [
+            183,
+            49
+          ],
+          "pool": "base"
+        },
+        {
+          "id": "stubble_heap_stone",
+          "name": "A carved stone in the dross",
+          "at": [
+            70,
+            30
+          ],
+          "pool": "base"
+        }
+      ],
       "landmarks": [
         {
           "id": "dross_heap",

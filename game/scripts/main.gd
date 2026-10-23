@@ -287,7 +287,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif event.is_action_pressed("ascend"):
 				player.call("try_ascend")
 			elif event.is_action_pressed("bind"):
-				player.call("bind_first_ready")
+				open_seal_first_ready()
 			elif event.is_action_pressed("go_now"):
 				if state == "arena_rest":
 					rest_timer = 0.0
@@ -309,7 +309,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif event.is_action_pressed("ascend"):
 				player.call("try_ascend")
 			elif event.is_action_pressed("bind"):
-				player.call("bind_first_ready")
+				open_seal_first_ready()
 			elif event.is_action_pressed("healer"):
 				player.call("note", "No healer out here. The town is back through the gate.")
 			elif event.is_action_pressed("interact"):
@@ -320,11 +320,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif event.is_action_pressed("ascend"):
 				player.call("try_ascend")
 			elif event.is_action_pressed("bind"):
-				player.call("bind_first_ready")
+				open_seal_first_ready()
 			elif event.is_action_pressed("healer"):
 				player.call("note", "No healer in here. The entrance is sealed.")
 			elif event.is_action_pressed("interact"):
-				if _pad_in_reach():
+				if _rune_stone_in_reach() != null:
+					_read_stone(_rune_stone_in_reach())
+				elif _pad_in_reach():
 					_extract()
 				elif pads.is_empty():
 					player.call("note", "No exit yet. %d more walls." % maxi(0, gate_at - cleared))
@@ -643,6 +645,7 @@ func _tick_field(_delta: float) -> void:
 			_prompt = str(line.get("sign", "Closed."))
 	if _cut_door_in_reach():
 		_prompt = "%s the door into Tenwall Cut - an owned passage: ticket $%d, and a meter while you are inside." % [_k("interact"), ticket_price]
+	_stone_prompt()
 
 
 ## Clear the fog round where you stand, and keep what you have seen with the character.
@@ -686,6 +689,10 @@ func _cut_door_in_reach() -> bool:
 
 ## The interact key in a zone: the Cut House door, if you are at it.
 func _field_interact() -> void:
+	var stone: RuneStone = _rune_stone_in_reach()
+	if stone != null:
+		_read_stone(stone)
+		return
 	if _cut_door_in_reach():
 		var from_zone: String = zone_id
 		enter_passage()
@@ -1138,6 +1145,17 @@ func _enter_dungeon() -> void:
 				-float(c) * ch_len - rng.randf_range(1.5, ch_len - 1.5))
 			_spawn_cuttable(i, pos)
 
+	# rune stones (design/14 section 8): one cut into the wall of each chamber the data names
+	for ins: Dictionary in (GameData.rune_discovery.get("inscriptions", {}) as Dictionary).get("passage", []):
+		var c2: int = int(ins.get("chamber", 1))
+		if c2 < 0 or c2 > chambers:
+			continue
+		var stone := RuneStone.new()
+		stone.setup(str(ins["id"]), str(ins.get("name", "A rune stone")), str(ins.get("pool", "base")))
+		stone.position = Vector3(ch_half_w - 0.9, 0.0, -(float(c2) + 0.5) * ch_len)
+		stone.rotation.y = -PI / 2.0
+		level.add_child(stone)
+		stone.set_read((player.get("read_inscriptions") as Array).has(str(ins["id"])))
 	# the spirit layer: one site per chamber, antechamber included
 	for c: int in range(0, chambers + 1):
 		nether.populate_site(Vector3(0.0, 0.0, -(float(c) + 0.5) * ch_len), Vector2(ch_half_w - 1.5, ch_len * 0.5 - 1.5))
@@ -1343,6 +1361,68 @@ func _set_dungeon_banner() -> void:
 		_prompt = "%s on a glowing exit to leave with spoils worth $%d   -   or push on: wall %d adds $%d more.\nRent is $%d a second while you stand here." % [_k("interact"), _payout_now(), cleared + 1, stage_value * (cleared + 1), int(dungeon_rent_per_second)]
 	else:
 		_prompt = "Spoils worth $%d waiting, but no exit until wall %d.   Rest if you need it - rent is $%d a second." % [bank, gate_at, int(dungeon_rent_per_second)]
+	_stone_prompt()
+
+
+# --- rune stones (design/14 section 8) ------------------------------------------------------
+
+## The nearest rune stone within reading reach, or null.
+func _rune_stone_in_reach() -> RuneStone:
+	if player == null:
+		return null
+	var reach: float = float((GameData.rune_discovery.get("inscriptions", {}) as Dictionary).get("reach", 2.5))
+	var best: RuneStone = null
+	var best_d := INF
+	for n: Node in get_tree().get_nodes_in_group("rune_stones"):
+		var st := n as RuneStone
+		if st == null or not st.is_inside_tree():
+			continue
+		var d: float = _flat_dist(st.global_position, player.global_position)
+		if d <= reach and d < best_d:
+			best = st
+			best_d = d
+	return best
+
+
+func _read_stone(stone: RuneStone) -> void:
+	player.call("read_inscription", stone.stone_id, stone.pool, stone.stone_name)
+	stone.set_read(true)
+	save_now()
+
+
+func _stone_prompt() -> void:
+	var stone: RuneStone = _rune_stone_in_reach()
+	if stone == null:
+		return
+	var read: bool = (player.get("read_inscriptions") as Array).has(stone.stone_id)
+	_prompt = ("%s.   Already read." % stone.stone_name) if read else ("%s read %s - runes are cut into it." % [_k("interact"), stone.stone_name.to_lower()])
+
+
+## Open the seal screen to bind carried construct `construct_index` into ability `ability_index`
+## (design/14 section 8: the seal is drafted there and formed by the binding).
+func open_seal(ability_index: int, construct_index: int) -> void:
+	if not (screen is EthercosmScreen):
+		if state == "select" or state == "dead":
+			return
+		_show_screen(EthercosmScreen.new(self), state != "town")
+	screen.call("select", ability_index)
+	screen.call("open_seal", construct_index)
+
+
+## The bind key: open the seal of the first skill that is full and waiting for a construct carried.
+func open_seal_first_ready() -> void:
+	var cons: Array = player.get("constructs")
+	if cons.is_empty():
+		player.call("note", "You carry no constructs.")
+		return
+	var abilities: Array = player.get("abilities")
+	for ai: int in abilities.size():
+		var need: String = str(player.call("pending_tier", abilities[ai]))
+		for ci: int in cons.size():
+			if need != "" and str(cons[ci]["tier"]) == need:
+				open_seal(ai, ci)
+				return
+	player.call("note", "No ability is full and waiting for what you carry.")
 
 
 # --- shared ---------------------------------------------------------------------
@@ -1682,7 +1762,14 @@ func _build_player() -> void:
 	player.global_position = Vector3.ZERO
 	player.connect("died", _on_player_died)
 	player.connect("disturbed", _on_body_disturbed)
+	player.connect("rune_discovered", _on_rune_discovered)
 	nether.player = player
+
+
+## A rune became known: the HUD shows it (design/14 section 8).
+func _on_rune_discovered(rune_id: String, source: String) -> void:
+	if hud != null:
+		hud.call("show_rune", rune_id, source)
 
 
 func _build_hud() -> void:
@@ -1748,6 +1835,9 @@ func _setup_ui_shot(which: String) -> void:
 		return
 	if which.begins_with("test-"):
 		_setup_test_shot(which.trim_prefix("test-"))
+		return
+	if which.begins_with("seal-"):
+		_setup_seal_shot(which)
 		return
 	if which == "icons":
 		# every skill's glyph in a slot, by affinity, with its name
@@ -2104,46 +2194,9 @@ func _setup_ui_shot(which: String) -> void:
 			_shot_lock_word()                              # Water Bolt's ring becomes its word's chain
 			_enter_town()
 			open_ethercosm()
-		"runes-locked", "runes-locking":
-			# a closed seven-rune word on Water Bolt at level 2, locked: the chain, and the effects panel
-			# (runes-locking: locked through the screen, caught mid-animation)
-			player.call("set_affinities", ["water", "fire"])
-			var mine: Array = player.get("abilities")
-			mine[0]["stage"] = 2
-			player.call("word_add", 0, "WAT-6b", 0)       # Settle on Surge
-			player.call("word_add", 0, "WAT-4b", 0)       # Drown on Surge
-			player.call("word_add", 0, "WAT-3b", 1)       # Dry on Settle
-			player.call("word_add", 0, "WAT-5a", 1)       # Gush on Settle
-			player.call("word_add", 0, "WAT-8b", 1)       # Slack on Settle
-			player.call("word_add", 0, "FIR-1b", 4)       # Quench on Gush (water and fire lean apart)
-			if which == "runes-locked":
-				player.call("word_lock", 0)
-			_enter_town()
-			open_ethercosm()
-			screen.call("open_runes")
-			if which == "runes-locking":
-				screen.call("toggle_lock")
-				_shot_countdown = 38
-		"runes":
-			# a water + fire character's Water Bolt at level 2 (room for eight runes), its word part-built:
-			# even, polar, ionic and weakened bonds, one rune loose, and the last move refused.
-			# Rune ids are the 2026-10-22 workbook's; if it is revised a set may be refused and the
-			# picture changes, nothing breaks.
-			player.call("set_affinities", ["water", "fire"])
-			var own: Array = player.get("abilities")
-			own[0]["stage"] = 2
-			player.call("word_add", 0, "WAT-6b", 0)       # Settle (frame) on Surge, the anchor
-			player.call("word_add", 0, "WAT-3b", 1)       # Dry on Settle
-			player.call("word_add", 0, "FIR-2a", 1)       # Ignite on Settle (water and fire lean apart)
-			player.call("word_add", 0, "WAT-4b", 0)       # Drown on Surge
-			player.call("word_add", 0, "UNI-05a", 1)      # Expand on Settle
-			player.call("word_add", 0, "UNI-13a")         # Repeat, loose
-			_enter_town()
-			open_ethercosm()
-			screen.call("open_runes")
-			screen.call("pick_node", 3)
-			screen.call("pick_node", 0)                    # Surge is full: refused, and the screen says why
-			screen.call("pick_node", 1)                    # Settle picked: its bonds name their dominant side
+		"runes-locked", "runes-locking", "runes", "seal-forming", "seal-traits", "seal-drown-self", "seal-drown-flood", "seal-drown-surge", \
+				"seal-discovered", "seal-palette":
+			_setup_seal_shot(which)
 		"nether":
 			_show_screen(null, false)
 			_enter_dungeon()
@@ -2240,12 +2293,14 @@ func _setup_test_shot(what: String) -> void:
 			open_skill_tree(false)
 			return
 		"runes":
+			# a test character's free edit (any rune, any time), its word sealed
 			start_test_character("ice")
-			player.call("word_add", 0, "ICE-5a", 0)       # Brittle on Frost (Hoarline)
-			player.call("word_add", 0, "UNI-11a", 0)      # Persist
-			player.call("word_add", 0, "UNI-03b", 1)      # Straight on Brittle
 			open_ethercosm()
 			screen.call("open_runes")
+			player.call("word_add", 0, "ICE-5a", 0)       # Brittle on Frost (Hoarline)
+			player.call("word_add", 0, "UNI-11a", 0)      # Persist
+			player.call("word_add", 0, "UNI-03b", 1)      # Straight on Brittle, ring 2
+			player.call("seal_now")
 			screen.call("pick_node", 1)
 			return
 		"statuses":
@@ -2299,10 +2354,131 @@ func _setup_test_shot(what: String) -> void:
 
 
 func _shot_lock_word() -> void:
-	player.call("word_add", 0, "WAT-5a", 0)       # Gush on Surge
-	player.call("word_add", 0, "WAT-4b", 0)       # Drown on Surge
-	player.call("word_add", 0, "WAT-3b", 1)       # Dry on Gush
-	player.call("word_lock", 0)
+	# Gush and Drown on ring 1, Dry on Gush on ring 2: sealed through two rings
+	_shot_seal(0, 2, [["WAT-5a", 0], ["WAT-4b", 0], ["WAT-3b", 1]])
+
+
+## For screenshots: seal a word on skill `index` as if it had been bound in (the skill is raised to
+## `stage` first). Rows are [rune, joined to node, ring (optional)]; `links` are extra [a, b] bonds.
+## Goes round the rules' seal check the way a test character's free edit does.
+func _shot_seal(index: int, stage: int, rows: Array, links: Array = []) -> void:
+	var st: Dictionary = (player.get("abilities") as Array)[index]
+	st["stage"] = maxi(stage, int(st["stage"]))
+	var w: Dictionary = RuneWord.make(GameData.skill_anchor(str(st["id"])), Runes.active().id)
+	player.set("seal_draft", {"index": index, "construct": -1, "mode": "test", "word": w})
+	var rules: RuneRules = Runes.active()
+	for row: Array in rows:
+		var r: Dictionary = rules.add(w, str(row[0]), player.call("rune_context", index), int(row[1]), int(row[2]) if row.size() > 2 else -1)
+		if not bool(r["ok"]):
+			print("shot seal: %s refused: %s" % [str(row[0]), str(r["text"])])
+	for l: Array in links:
+		var r2: Dictionary = rules.link(w, int(l[0]), int(l[1]), player.call("rune_context", index))
+		if not bool(r2["ok"]):
+			print("shot seal: link %s refused: %s" % [str(l), str(r2["text"])])
+	player.call("seal_now")
+	player.call("close_seal")
+	for rid: Variant in RuneWord.nodes(w):
+		player.call("_know", str(rid))
+
+
+## The index of ability `id` on the player, learning it first if need be.
+func _shot_skill(id: String) -> int:
+	if not bool(player.call("knows", id)):
+		player.call("learn", id)
+	var list: Array = player.get("abilities")
+	for i: int in list.size():
+		if str(list[i]["id"]) == id:
+			return i
+	return 0
+
+
+## The seal screen's shots (design/14 section 8). Rune ids are the 2026-10-22 workbook's.
+##   seal-forming       a water + fire Water Bolt sealed through ring 1, its bar full and a remnant
+##                      carried: the seal screen forming ring 2 over ring 1, part-built (also "runes")
+##   runes-locking      the same seal bound through the screen (a sure roll), caught mid-animation
+##   runes-locked       a two-ring seal on Water Bolt, looked at (no binding)
+##   seal-traits        a three-ring Water Bolt: a closed ring 1, a spoke out to ring 3, two branch runes
+##   seal-drown-*       Pressure Jet's three Drown words: Drown on the skill itself, Drown hung off Flood,
+##                      Drown hung off Surge (each carries what it took over its ionic bond)
+##   seal-discovered    a new water character reading the waystone's runes: the "Rune discovered" card
+##   seal-palette       the palette of a new character: what it knows, and the "?" it has yet to find
+func _setup_seal_shot(which: String) -> void:
+	_select_talent(0)
+	match which:
+		"seal-forming", "runes", "runes-locking":
+			player.call("set_affinities", ["water", "fire"])
+			_shot_seal(0, 1, [["WAT-1a", 0], ["WAT-5a", 0], ["WAT-3b", 1]], [[1, 2]])     # Flood, Gush (joined), Dry
+			for rid: String in ["WAT-6b", "WAT-4b", "WAT-8b", "UNI-05a", "UNI-11a", "FIR-1b", "WAT-2b"]:
+				player.call("_know", rid)
+			var own: Array = player.get("abilities")
+			own[0]["progress"] = 100.0
+			(player.get("constructs") as Array).append({"tier": "remnant", "concept": "tension"})
+			_enter_town()
+			open_seal(0, 0)
+			# rework ring 1: part Flood and Gush, so each has a bond for the new ring
+			player.call("word_toggle_link", 0, 1, 2)
+			player.call("word_add", 0, "WAT-6b", 2)        # Settle off Gush, out on ring 2
+			player.call("word_add", 0, "WAT-4b", 4)        # Drown off Settle, ring 2
+			player.call("word_add", 0, "WAT-8b", 4)        # Slack off Settle, ring 2
+			player.call("word_add", 0, "UNI-05a", 1)       # Expand off Flood, ring 2
+			if which == "runes-locking":
+				player.call("word_toggle_link", 0, 4, 7)   # Expand joins Settle: the word closes
+				screen.call("bind_and_seal", 0.0)
+				_shot_countdown = 38
+			else:
+				screen.call("pick_node", 7)                # Expand picked: one bond still open
+		"runes-locked":
+			player.call("set_affinities", ["water", "fire"])
+			_shot_seal(0, 2, [["WAT-6b", 0], ["WAT-4b", 0], ["WAT-3b", 1], ["WAT-5a", 1, 2], ["WAT-8b", 1, 2], ["FIR-1b", 4, 2]])
+			_enter_town()
+			open_ethercosm()
+			screen.call("open_runes")
+		"seal-traits":
+			player.call("set_affinities", ["water"])
+			# ring 1: Flood, Settle, Soak round a triangle; Settle -> Gush (ring 2) -> Drown (ring 3)
+			_shot_seal(0, 3, [["WAT-1a", 0], ["WAT-6b", 0], ["WAT-3a", 1, 1], ["WAT-5a", 2, 2], ["WAT-4b", 4, 3]], [[1, 2], [2, 3]])
+			_enter_town()
+			open_ethercosm()
+			screen.call("open_runes")
+		"seal-drown-self", "seal-drown-flood", "seal-drown-surge":
+			player.call("set_affinities", ["water"])
+			var pj: int = _shot_skill("pressure_jet")
+			match which:
+				"seal-drown-self":
+					_shot_seal(pj, 2, [["WAT-4b", 0]])
+				"seal-drown-flood":
+					_shot_seal(pj, 2, [["WAT-1a", 0], ["WAT-4b", 1]])
+				"seal-drown-surge":
+					_shot_seal(pj, 2, [["WAT-2a", 0], ["WAT-4b", 1]])
+			_enter_town()
+			open_ethercosm()
+			screen.call("select", pj)
+			screen.call("open_runes")
+		"seal-discovered":
+			player.call("set_affinities", ["water"])
+			player.call("start_with_skills", player.call("default_start_skills"))
+			_show_screen(null, false)
+			enter_zone("the_stubble", "dross_gate")
+			var stone: RuneStone = null
+			for n: Node in get_tree().get_nodes_in_group("rune_stones"):
+				stone = n as RuneStone
+				if stone.stone_id == "stubble_waystone_runes":
+					break
+			if stone != null:
+				player.global_position = stone.global_position + Vector3(1.6, 0.0, 1.6)
+				player.set("rng", RandomNumberGenerator.new())
+				_read_stone(stone)
+			_shot_countdown = 40
+		"seal-palette":
+			player.call("set_affinities", ["water"])
+			player.call("start_with_skills", player.call("default_start_skills"))
+			var mine: Array = player.get("abilities")
+			mine[0]["progress"] = 100.0
+			(player.get("constructs") as Array).append({"tier": "vestige", "concept": "reach"})
+			player.call("discover_rune", "UNI-05a", "")
+			_enter_town()
+			open_seal(0, 0)
+			screen.call("set_palette_tab", "universal")
 
 
 func _tick_bot_report() -> void:

@@ -32,6 +32,9 @@ var show_world := true             # false on menu screens: hide bars, orbs stay
 
 var _time := 0.0
 var _title_age := 99.0
+## The "Rune discovered" card (design/14 section 8): {id, source, age} while it shows.
+var _rune_card: Dictionary = {}
+const RUNE_CARD_S := 5.5
 var _log: Array = []               # [{text, age}]
 var _log_seen := 0
 var _hurt_flash := 0.0
@@ -93,6 +96,11 @@ func announce(text: String) -> void:
 	_title_age = 0.0
 
 
+## Show the card for a rune just discovered: its glyph, name, meaning and where it was found.
+func show_rune(rune_id: String, source: String) -> void:
+	_rune_card = {"id": rune_id, "source": source, "age": 0.0}
+
+
 ## True when the cursor is over a HUD panel, so a click there is not also an attack order.
 func mouse_over_ui() -> bool:
 	return ui_at(get_local_mouse_position())
@@ -111,6 +119,10 @@ func ui_at(m: Vector2) -> bool:
 func _process(delta: float) -> void:
 	_time += delta
 	_title_age += delta
+	if not _rune_card.is_empty():
+		_rune_card["age"] = float(_rune_card["age"]) + delta
+		if float(_rune_card["age"]) > RUNE_CARD_S:
+			_rune_card = {}
 	_hurt_flash = maxf(0.0, _hurt_flash - delta * 2.5)
 	for entry: Dictionary in _log:
 		entry["age"] = float(entry["age"]) + delta
@@ -164,6 +176,7 @@ func _draw() -> void:
 		_draw_target_frame(vs)
 		_draw_prompt(vs)
 		_draw_title(vs)
+		_draw_rune_card(vs)
 		if not _hidden.has("log"):
 			_draw_log(vs)
 		if not _hidden.has("tracker"):
@@ -660,6 +673,44 @@ func _draw_title(vs: Vector2) -> void:
 	draw_line(Vector2(vs.x * 0.5 - w * 0.5 - 150.0, ry), Vector2(vs.x * 0.5 - w * 0.5 - 24.0, ry), Color(UiTheme.GOLD, 0.7 * a), 1.5, true)
 	draw_line(Vector2(vs.x * 0.5 + w * 0.5 + 24.0, ry), Vector2(vs.x * 0.5 + w * 0.5 + 150.0, ry), Color(UiTheme.GOLD, 0.7 * a), 1.5, true)
 	UiDraw.outlined(self, Vector2(0.0, y), title, px, Color(UiTheme.GOLD, a), HORIZONTAL_ALIGNMENT_CENTER, vs.x)
+
+
+## The rune just discovered, under the title: a glyph in its affinity's colour, RUNE DISCOVERED,
+## its name, what it means and where it was found. Fades in and out.
+func _draw_rune_card(vs: Vector2) -> void:
+	if _rune_card.is_empty():
+		return
+	var age: float = float(_rune_card["age"])
+	var a: float = clampf(age * 3.0, 0.0, 1.0) * clampf((RUNE_CARD_S - age) / 0.8, 0.0, 1.0)
+	var rid: String = str(_rune_card["id"])
+	var rune: Dictionary = GameData.rune(rid)
+	var aff: String = str(rune.get("affinity", ""))
+	var col: Color = GameData.affinity_color(aff).lightened(0.3) if aff != "" else UiTheme.STAR
+	var w := 520.0
+	var h := 138.0
+	var r := Rect2(vs.x * 0.5 - w * 0.5, vs.y * 0.30, w, h)
+	_soft_shade(Rect2(r.position - Vector2(60, 30), r.size + Vector2(120, 60)), 0.5 * a)
+	draw_rect(r, Color(0.035, 0.03, 0.05, 0.86 * a))
+	draw_rect(r, Color(UiTheme.GOLD, 0.55 * a), false, 1.5)
+	draw_rect(r.grow(-5.0), Color(UiTheme.GOLD, 0.18 * a), false, 1.0)
+	var gc := Vector2(r.position.x + 70.0, r.position.y + h * 0.5)
+	var pulse: float = 1.0 + 0.06 * sin(_time * 3.0)
+	for k: int in 6:
+		draw_circle(gc, (54.0 - float(k) * 7.0) * pulse, Color(col, (0.03 + float(k) * 0.025) * a))
+	draw_circle(gc, 36.0, Color(0, 0, 0, 0.8 * a))
+	draw_arc(gc, 37.0, 0.0, TAU, 48, Color(UiTheme.GOLD, 0.8 * a), 1.5, true)
+	var spin: float = _time * 0.6
+	for j: int in 3:
+		var a0: float = spin + TAU * float(j) / 3.0
+		draw_arc(gc, 44.0, a0, a0 + 1.3, 16, Color(col, 0.7 * a), 1.5, true)
+	UiDraw.rune_glyph(self, gc, rid, str(rune.get("character", "")), 40, Color(col.lightened(0.35), a))
+	var x: float = r.position.x + 128.0
+	var tw: float = w - 140.0
+	UiDraw.text(self, Vector2(x, r.position.y + 28.0), "R U N E   D I S C O V E R E D", 13, Color(UiTheme.GOLD, a), HORIZONTAL_ALIGNMENT_LEFT, tw)
+	UiDraw.outlined(self, Vector2(x, r.position.y + 62.0), "%s%s" % [str(rune.get("name", rid)), ("   -   " + str(GameData.affinity(aff).get("label", aff))) if aff != "" else "   -   universal"], 26, Color(col.lightened(0.2), a), HORIZONTAL_ALIGNMENT_LEFT, tw, true)
+	UiDraw.text(self, Vector2(x, r.position.y + 88.0), str(rune.get("meaning", "")), 14, Color(UiTheme.TEXT, a), HORIZONTAL_ALIGNMENT_LEFT, tw)
+	var src: String = str(_rune_card.get("source", ""))
+	UiDraw.text(self, Vector2(x, r.position.y + 112.0), (src.capitalize().substr(0, 1) + src.substr(1) + ".  " if src != "" else "") + "Known for good: set it in any seal.", 12, Color(UiTheme.TEXT_FAINT, a), HORIZONTAL_ALIGNMENT_LEFT, tw)
 
 
 # --- bottom left: message log ---------------------------------------------------------------
@@ -1247,7 +1298,7 @@ func _draw_tooltip(vs: Vector2) -> void:
 			lines.append(["Stage %d   -   %d%% toward the next" % [int(st["stage"]), int(float(st["progress"]))], body_px, UiTheme.TEXT_DIM])
 			var rune_fx: Array = player.call("rune_summary", idx)
 			if not rune_fx.is_empty():
-				lines.append(["Rune word locked: " + ", ".join(PackedStringArray(rune_fx.map(func(v: Variant) -> String: return str(v)))), body_px, UiTheme.GOLD])
+				lines.append(["Sealed word: " + ", ".join(PackedStringArray(rune_fx.map(func(v: Variant) -> String: return str(v)))), body_px, UiTheme.GOLD])
 			var need: String = str(player.call("pending_tier", st))
 			if need != "":
 				lines.append(["Full. Bind a %s to advance (%s, or the inventory to choose)." % [need, Keybinds.binding_text("bind")], body_px, UiTheme.GOLD])

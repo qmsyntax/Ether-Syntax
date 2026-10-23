@@ -4,7 +4,8 @@ extends Node
 ## On the title screen, clicks the "Test characters" button for one affinity (Dream), then checks
 ## the character: that one affinity, every skill of it learned at the test stage, a full tank,
 ## marked as a test character, standing in town; then presses the hotbar_page key and checks that
-## the bar shows the next six skills. Prints "TESTCHAR: PASS" / "TESTCHAR: FAIL" and exits 0/1.
+## the bar shows the next six skills; then the free edit (design/14 section 8): open it from the
+## ethercosm, set a rune by clicking and Seal now. Prints "TESTCHAR: PASS" / "TESTCHAR: FAIL" and exits 0/1.
 
 const AFF := "dream"
 
@@ -12,6 +13,7 @@ var main: Node
 var frames := 0
 var results: Array[String] = []
 var failed := false
+var _pick := ""                  # a rune set in the free edit
 
 
 func _ready() -> void:
@@ -73,7 +75,29 @@ func _process(_delta: float) -> void:
 			ev2.pressed = false
 			Input.parse_input_event(ev2)
 			_expect("the next-page key shows skills seven to twelve", int((player.get("hotbar") as Array)[0]) == 6, str(player.get("hotbar")))
+			main.call("open_ethercosm")
 		80:
+			# the free edit (design/14 section 8): a test character tries any word without a binding
+			var rb: Node = main.find_child("RunesButton", true, false)
+			_expect("the ethercosm offers a test character its free edit", rb is Button and (rb as Button).text.begins_with("Free edit"))
+			_click(rb as Control)
+		90:
+			var s: Node = main.get("screen")
+			_expect("it opens, clearly marked as a test character's free edit", s != null and str(s.call("seal_view")) == "test"
+				and main.find_child("SealBanner", true, false) != null and str((main.find_child("SealBanner", true, false) as Label).text).begins_with("TEST CHARACTER"))
+			_expect("a test character knows every rune", (player.call("rune_palette") as Array).all(func(id: String) -> bool: return bool(player.call("knows_rune", id))))
+			_pick = ""
+			for id: String in (player.call("rune_palette") as Array):
+				if str(GameData.rune(id).get("affinity", "")) == AFF and id != GameData.skill_anchor(str(((player.get("abilities") as Array)[0] as Dictionary)["id"])) and _pick == "":
+					_pick = id
+			_click(main.find_child("Rune_" + _pick, true, false) as Control)
+		100:
+			_expect("clicking a rune sets it into the word at once", RuneWord.nodes(player.call("ability_word", 0)).has(_pick))
+			_click(main.find_child("SealNowButton", true, false) as Control)
+		110:
+			_expect("Seal now (test) seals it without a binding", bool(player.call("word_locked", 0)) and RuneWord.nodes((player.get("abilities") as Array)[0]["word"]).has(_pick))
+			main.call("close_screen")
+		120:
 			for r: String in results:
 				print("  " + r)
 			print("TESTCHAR: %s" % ("FAIL" if failed else "PASS"))
