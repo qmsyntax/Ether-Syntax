@@ -634,6 +634,49 @@
     "run": "run_armed",
     "sprint": "sprint_armed"
   },
+  "stances": {
+    "_note": "Which still loop a character stands in, by where it is shown (Brent 2026-10-23: the combat guard looked odd on the creation turntable). places: 'menu' (the creation turntable, the inventory figure), 'town' (townsfolk, and the player while main.state is 'town'), else main.state ('field', 'arena_rest', 'arena_fight', 'dungeon', ...), else '_default'. A value is a clip in the body .glb (idle = Mixamo's combat guard) or a stance defined here, built at load from the body's own skeleton by scripts/art/stance_pose.gd (rest pose + these turns, see its header for the axes; by_body and builds.<id>.stand add to them). weapon: 'rest' holds an in-hand weapon by the grip in grip_rest, 'hide' hides it, while the stance is the clip playing. Look with tests/character_preview.tscn ... anim=stand.",
+    "places": {
+      "menu": "stand",
+      "town": "stand",
+      "_default": "idle"
+    },
+    "stand": {
+      "length": 4.0,
+      "keys": 25,
+      "weapon": "rest",
+      "grip_rest": {
+        "_note": "a weapon in hand while standing: held loosely by the side, point down, forward and a little out (same form as grip; knuckles stay on the fist). Checked with tests/character_preview.gd grip_rest=...",
+        "right": {"rot_deg": [66.0, -78.0, 0.0], "pos": [0.0, 0.08, 0.03]},
+        "left": {"rot_deg": [66.0, 78.0, 0.0], "pos": [0.0, 0.08, 0.03]},
+        "items": {"iron_knuckles": {"right": {"rot_deg": [0.0, 0.0, 90.0], "pos": [0.0, 0.07, 0.0]}, "left": {"rot_deg": [0.0, 0.0, -90.0], "pos": [0.0, 0.07, 0.0]}}}
+      },
+      "pose": {
+        "Hips": [0.0, 0.0, 0.0],
+        "UpLeg": [-3.0, 0.0, 0.0],
+        "Leg": [6.0, 0.0, 0.0],
+        "Foot": {"rot": [0.0, -5.0, 0.0], "flat": true},
+        "Spine2": [-2.0, 0.0, 0.0],
+        "Shoulder": [0.0, 0.0, -2.0],
+        "Arm": [-2.0, 0.0, -16.0],
+        "ForeArm": {"rot": [0.0, 0.0, 0.0], "twist": 25.0},
+        "Hand": [8.0, 0.0, 0.0]
+      },
+      "finger_curl": [20.0, 28.0, 18.0],
+      "finger_close": {"Index": 6.0, "Ring": 4.0, "Pinky": 10.0, "Thumb": 15.0},
+      "pinky_extra": 4.0,
+      "breath": {
+        "Spine1": [-0.8, 0.0, 0.0],
+        "Spine2": [-1.0, 0.0, 0.0],
+        "Shoulder": [0.0, 0.0, 1.5],
+        "Neck": [1.0, 0.0, 0.0],
+        "Head": [0.8, 0.0, 0.0]
+      },
+      "by_body": {
+        "body_female": {}
+      }
+    }
+  },
   "grip": {
     "_note": "a weapon on the hand bone: rotation (degrees, XYZ) and position (metres) in the bone's frame; items: per-weapon overrides (knuckles sit over the fist, not in it). Checked by eye with tests/character_preview.gd grip=...",
     "right": {

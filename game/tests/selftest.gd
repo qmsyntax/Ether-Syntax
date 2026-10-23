@@ -60,6 +60,7 @@ func _ready() -> void:
 	await _test_netherecho()
 	_test_real_bodies()
 	_test_real_enemies()
+	await _test_stances()
 	_test_skill_tree()
 	await _test_town()
 	_test_crafting()
@@ -4274,6 +4275,87 @@ func _arm_clearance(rc: RealCharacter, loop: String) -> Vector2:
 			worst.y = minf(worst.y, ((bone.call(side + "Hand") as Vector3).x - mid) * sign_x)
 	rc.pose_at("idle", 0.0)
 	return worst
+
+
+## Brent 2026-10-23: "the character creation ... looks weird" in the combat guard. Menus and the town
+## stand relaxed (wardrobe.json "stances": a clip built from the body's own skeleton); the field keeps
+## the guard. The stand keeps the feet on the ground and the hands out by the thighs on every build.
+func _test_stances() -> void:
+	print("stances: a relaxed stand on menus and in town, the guard in the field (Brent 2026-10-23):")
+	var places: Dictionary = (GameData.wardrobe["stances"] as Dictionary)["places"]
+	_check("the data stands menus and the town relaxed, and the field in the guard", str(places.get("menu")) == "stand" and str(places.get("town")) == "stand" and str(places.get("_default")) == "idle", str(places))
+	for sex: String in ["male", "female"]:
+		var id: String = "body_" + sex
+		if not RealCharacter.exists(id):
+			continue
+		var rc: RealCharacter = RealCharacter.create(id)
+		add_child(rc)
+		var sk: Skeleton3D = rc.get("_skeleton")
+		var at := func(n: String) -> Vector3:
+			var i: int = sk.find_bone("mixamorig_" + n)
+			if i < 0:
+				i = sk.find_bone("mixamorig:" + n)
+			return rc.to_local(sk.global_transform * sk.get_bone_global_pose(i).origin)
+		for build: String in ["a", "b", "c", "d"]:
+			rc.apply_look({"sex": sex, "body": build})
+			rc.pose_at("idle", 0.0)
+			rc.pose_at("stand", 0.0)
+			var rest_feet: Array[float] = []
+			for b: String in ["LeftFoot", "RightFoot", "LeftToeBase", "RightToeBase"]:
+				var i: int = sk.find_bone("mixamorig_" + b)
+				rest_feet.append(rc.to_local(sk.global_transform * sk.get_bone_global_rest(i).origin).y)
+			var worst_foot := 0.0
+			var spread := INF
+			for f: float in [0.0, 0.25, 0.5, 0.75]:
+				rc.pose_at("stand", -1.0, f)
+				var k := 0
+				for b: String in ["LeftFoot", "RightFoot", "LeftToeBase", "RightToeBase"]:
+					worst_foot = maxf(worst_foot, absf((at.call(b) as Vector3).y - rest_feet[k]))
+					k += 1
+				var mid: float = (at.call("Hips") as Vector3).x
+				for side: String in ["Left", "Right"]:
+					var hip_out: float = absf((at.call(side + "UpLeg") as Vector3).x - mid)
+					spread = minf(spread, absf((at.call(side + "Hand") as Vector3).x - mid) - hip_out)
+			_check("%s build %s: standing, the feet stay where the rest pose puts them on the ground (%.3f m)" % [id, build, worst_foot], worst_foot < 0.01)
+			_check("%s build %s: standing, each wrist hangs outside its hip joint (%.2f m)" % [id, build, spread], spread > 0.08)
+		var ap: AnimationPlayer = rc.get("_player")
+		var stand: Animation = ap.get_animation("stand")
+		_check("%s: the stand breathes in a seamless loop of about four seconds" % id, stand != null and stand.loop_mode == Animation.LOOP_LINEAR and absf(stand.length - 4.0) < 0.5)
+		rc.queue_free()
+	# a field enemy keeps its guard
+	var foe: ModelRig = Models.enemy("grunt")
+	add_child(foe)
+	_check("a field enemy stands in the guard", not (foe is RealCharacter) or (foe as RealCharacter).still_clip() == "idle", str(foe.get("_idle_clip")))
+	foe.queue_free()
+	# the game: the creation turntable, the townsfolk, the player in town and then in the field
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	main.set("_test_mode", true)
+	add_child(main)
+	await get_tree().process_frame
+	var creator: Node = main.get("screen")
+	var turntable: Variant = creator.get("_rig") if creator is CreationScreen else null
+	_check("the creation turntable plays the stand, not the guard", turntable is RealCharacter and (turntable as RealCharacter).still_clip() == "stand"
+		and String(((turntable as RealCharacter).get("_player") as AnimationPlayer).current_animation) == "stand",
+		str(turntable.call("still_clip")) if turntable is RealCharacter else str(turntable))
+	var spec := {"talent_id": "grudge", "affinities": ["wind", "fire"], "name": "Test", "identity": "man", "look": CharacterLook.default_look(), "skills": ["cutting_gust", "flashover"]}
+	main.call("begin_character", spec)
+	for i: int in 4:
+		await get_tree().physics_frame
+	var p: Node3D = main.get("player")
+	var body: Variant = p.get("_rig")
+	_check("the player stands relaxed in town", body is RealCharacter and (body as RealCharacter).still_clip() == "stand", str(body.call("still_clip")) if body is RealCharacter else str(body))
+	var town: TownBuilder = main.get("_town")
+	_check("the townsfolk stand relaxed", not town.folk.is_empty() and town.folk.all(func(f: Townsperson) -> bool:
+		var r: Variant = f.get("_rig")
+		return r is RealCharacter and (r as RealCharacter).still_clip() == "stand"))
+	main.call("enter_zone", "the_stubble", "dross_gate")
+	for i: int in 4:
+		await get_tree().physics_frame
+	body = p.get("_rig")
+	_check("in the field the player is back in the guard", str(main.get("state")) == "field" and body is RealCharacter and (body as RealCharacter).still_clip() == "idle",
+		"%s %s" % [main.get("state"), body.call("still_clip") if body is RealCharacter else body])
+	main.queue_free()
+	await get_tree().process_frame
 
 
 ## The loop a real body picks at a ground speed (m/s).

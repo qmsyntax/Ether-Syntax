@@ -78,6 +78,8 @@ func show_look(look: Dictionary) -> void:
 	if _rig != null:
 		_rig.queue_free()
 	_rig = CharacterLook.build(look)
+	if _rig.has_method("set_stance"):
+		_rig.call("set_stance", "menu")        # standing relaxed on a menu (data/wardrobe.json "stances")
 	_pivot.add_child(_rig)
 
 

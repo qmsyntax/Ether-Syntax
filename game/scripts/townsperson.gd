@@ -34,6 +34,8 @@ func setup(def: Dictionary, rng: RandomNumberGenerator) -> void:
 	collision_mask = 0
 
 	_rig = CharacterLook.build(look_for(def, rng))
+	if _rig.has_method("set_stance"):
+		_rig.call("set_stance", "town")        # standing about, not in the combat guard
 	add_child(_rig)
 	if _rig.has_method("set_outfit"):
 		var worn: Dictionary = {}
