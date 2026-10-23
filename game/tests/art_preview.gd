@@ -96,6 +96,12 @@ func _ready() -> void:
 			_layout_new_enemies()
 		"enemies-game":
 			_layout_enemy_wall()
+		"beasts":
+			_layout_beasts(false)
+		"beasts2":
+			_layout_beasts(true)
+		var beast when beast.begins_with("beast:"):
+			_layout_beasts(false, beast.trim_prefix("beast:"))
 		"weapons":
 			_layout_weapons()
 		"props":
@@ -378,6 +384,44 @@ func _layout_new_enemies() -> void:
 					frames = 40
 			_facing = Vector3(-1.0, 0.0, -0.6) if pose == 1 or pose == 3 else FACING
 			_place(rig, at, tag, 0.0, attacking, frames)
+		row += 1
+
+
+## The Stubble's unstarred beasts (procedural stand-ins, CreatureModels): per kind a row of idle,
+## from behind, mid-walk, wind-up and strike. `--shot=beasts` (first four kinds) / `beasts2` (the rest).
+func _layout_beasts(second: bool, only: String = "") -> void:
+	var all: Array[String] = CreatureModels.builders()
+	var kinds: Array[String] = all.slice(4, 8) if second else all.slice(0, 4)
+	if only != "":
+		kinds = [only]
+	_camera.size = 9.0 if only == "" else 4.2
+	_aim_camera(Vector3(0, 0.5, 0))
+	var row: int = 0
+	for kind: String in kinds:
+		for pose: int in 5:
+			var rig: ModelRig = CreatureModels.make(kind)
+			var at: Vector3 = _spot(pose, 5, 2.9 if only == "" else 1.6, (3.6 - 2.6 * float(row)) if only == "" else -0.4)
+			var tag: String = kind
+			var frames: int = -1
+			var speed: float = 0.0
+			var attacking: bool = false
+			match pose:
+				1:
+					tag = "from behind"
+				2:
+					tag = "walking"
+					speed = rig.stride_speed
+					frames = 23
+				3:
+					rig.set_windup(true)
+					tag = "wind-up"
+					frames = 40
+				4:
+					tag = "strike"
+					attacking = true
+					frames = 14
+			_facing = Vector3(-1.0, 0.0, -0.6) if pose == 1 else FACING
+			_place(rig, at, tag, speed, attacking, frames)
 		row += 1
 
 
@@ -728,7 +772,7 @@ func _save_biome_shot(second: bool) -> void:
 func _save_shot() -> void:
 	var dir: String = ProjectSettings.globalize_path("res://").path_join("../shots").simplify_path()
 	DirAccess.make_dir_recursive_absolute(dir)
-	var file: String = "art-%s%s.png" % [_shot_mode, "-gameenv" if _game_env else ""]
+	var file: String = "art-%s%s.png" % [_shot_mode.replace(":", "-"), "-gameenv" if _game_env else ""]
 	if _shot_mode == "enemies-game":
 		var rid: RID = get_viewport().get_viewport_rid()
 		print("art_preview: 12 enemies + player: render %.2f ms cpu + %.2f ms gpu, script+idle %.2f ms" % [RenderingServer.viewport_get_measured_render_time_cpu(rid) + RenderingServer.get_frame_setup_time_cpu(), RenderingServer.viewport_get_measured_render_time_gpu(rid), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0])

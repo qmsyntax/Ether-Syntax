@@ -1,9 +1,9 @@
 {
-  "_note": "Overland zones (design/07, approved by Brent 2026-10-18). Coordinates are metres in the zone's own map frame: origin at the north-west corner, x east, y south; north is the far side of the screen. A zone is built by scripts/zone_builder.gd. lines: gaps in the edge that lead somewhere - 'to' is a zone id, 'town', or a dungeon; a line that is not 'open' is drawn shut with a sign. arrive: where you stand when you come in by that line. All numbers [MODEL]. decor: real models (game/assets/models/props/<model>.glb) scattered over the zone, 'count' of each at a random 'scale' in the range; 'solid' gives it a trunk collider of that radius. A landmark prop may be [\"model\", id, dx, dy, scale]. inscriptions: rune stones (Brent 2026-10-23, design/14 section 8): read with interact, each reveals one rune once per character - pool base (a rune of one of your affinities) or universal (rarer); rules in rune_discovery.json.",
+  "_note": "Overland zones (design/07, approved by Brent 2026-10-18). Coordinates are metres in the zone's own map frame: origin at the north-west corner, x east, y south; north is the far side of the screen. A zone is built by scripts/zone_builder.gd. lines: gaps in the edge that lead somewhere - 'to' is a zone id, 'town', or a dungeon; a line that is not 'open' is drawn shut with a sign. arrive: where you stand when you come in by that line. All numbers [MODEL]. decor: real models (game/assets/models/props/<model>.glb) scattered over the zone, 'count' of each at a random 'scale' in the range; 'solid' gives it a trunk collider of that radius. A landmark prop may be [\"model\", id, dx, dy, scale]. inscriptions: rune stones (Brent 2026-10-23, design/14 section 8): read with interact, each reveals one rune once per character - pool base (a rune of one of your affinities) or universal (rarer); rules in rune_discovery.json. 2026-10-23 (the Stubble populated, Brent): tracks - narrower ways (drawn, kept clear). power_line - pole points [x, y] (+ 'down' for a fallen one), wires between standing neighbours. features - [kit ('field' = scripts/art/field_props.gd, else a biome kit), kind, x, y, yaw, size]. entrances - dungeon mouths not open yet (scripts/field_entrance.gd): name, flavour, 'sealed' line, and 'dungeon' (the id it will open one day). camps - FieldCamps (scripts/field_camps.gd): at, strength (hp and damage factor), leash, aggro, members [{kind, n}], edge (Gleaners and where they run), herd (neutral until one is hurt), live_chance (the spare sites, rolled on each visit until there is a world clock), path + roam_speed (roamers), respawn_s. lurker_patches - a buried Sod-Lurker under turned earth at each. nether - the zone's own Netherecho: echoes, sites (wisps by affinity, 'own' = one of yours; constructs), scale by tier.",
   "zones": {
     "the_stubble": {
       "name": "The Stubble",
-      "desc": "The yard outside the Dross Gate: open scrub, the city tip, a dry well, a hanging tree, and at the far side the Cut House over the mouth of Tenwall Cut.",
+      "desc": "The yard outside the Dross Gate, the first zone outside town: open scrub with the road running east under a line of power poles, the city tip, a dry well, a hanging tree, a burnt farmstead with its cellar, a sinkhole, and at the far side the Cut House over the mouth of Tenwall Cut. Beast country: nothing here has a star.",
       "biome": "scrubland",
       "size": [
         240,
@@ -62,7 +62,14 @@
             36
           ]
         ],
-        "width": 8
+        "width": 8,
+        "color": [
+          0.5,
+          0.43,
+          0.33,
+          0.55
+        ],
+        "note": "A packed-dirt road, paler than the scrub: the safe way (no camp within 25 m, no lurker within 10 m)."
       },
       "inscriptions": [
         {
@@ -308,7 +315,843 @@
           ],
           "solid": 0.9
         }
-      ]
+      ],
+      "tracks": [
+        {
+          "name": "The Cut track",
+          "points": [
+            [
+              188,
+              44
+            ],
+            [
+              196,
+              70
+            ],
+            [
+              206,
+              96
+            ],
+            [
+              214,
+              112
+            ]
+          ],
+          "width": 4,
+          "color": [
+            0.45,
+            0.38,
+            0.29,
+            0.4
+          ]
+        },
+        {
+          "name": "The steading lane",
+          "points": [
+            [
+              72,
+              16
+            ],
+            [
+              66,
+              60
+            ],
+            [
+              64,
+              100
+            ],
+            [
+              70,
+              126
+            ]
+          ],
+          "width": 3.5,
+          "color": [
+            0.42,
+            0.36,
+            0.28,
+            0.3
+          ]
+        }
+      ],
+      "power_line": {
+        "note": "Poles along the south side of the road; the one at 152 has fallen and the wires stop either side of it.",
+        "poles": [
+          [
+            56,
+            19.2
+          ],
+          [
+            80,
+            22.6
+          ],
+          [
+            104,
+            26.0
+          ],
+          [
+            128,
+            29.3
+          ],
+          [
+            152,
+            32.7,
+            "down"
+          ],
+          [
+            176,
+            36.0
+          ],
+          [
+            200,
+            39.4
+          ],
+          [
+            224,
+            42.8
+          ]
+        ],
+        "sag": 1.1
+      },
+      "features": [
+        [
+          "field",
+          "road_sign",
+          50,
+          14,
+          200
+        ],
+        [
+          "field",
+          "car_hulk",
+          116,
+          11,
+          75
+        ],
+        [
+          "field",
+          "car_hulk",
+          58,
+          124,
+          20
+        ],
+        [
+          "field",
+          "ruin_wall",
+          72,
+          130,
+          0,
+          7.0
+        ],
+        [
+          "field",
+          "ruin_wall",
+          76.2,
+          135,
+          90,
+          5.0
+        ],
+        [
+          "field",
+          "ruin_slab",
+          66,
+          138,
+          30
+        ],
+        [
+          "field",
+          "wire_fence",
+          92,
+          142,
+          0,
+          26.0
+        ],
+        [
+          "field",
+          "wire_fence",
+          112,
+          108,
+          90,
+          12.0
+        ],
+        [
+          "field",
+          "wire_fence",
+          136,
+          84,
+          14,
+          18.0
+        ],
+        [
+          "field",
+          "wire_fence",
+          30,
+          60,
+          90,
+          20.0
+        ],
+        [
+          "field",
+          "road_sign",
+          186,
+          38,
+          160
+        ]
+      ],
+      "entrances": [
+        {
+          "id": "the_swallow",
+          "name": "The Swallow",
+          "kind": "sinkhole",
+          "at": [
+            170,
+            138
+          ],
+          "size": 2.2,
+          "solid": 2.0,
+          "reach": 4.6,
+          "dungeon": "the_swallow",
+          "state": "sealed",
+          "flavour": "The ground fell in here one wet spring and never stopped. Cold air comes up out of it, and a smell of old rain.",
+          "sealed": "There is no getting down yet - the sides crumble under your hand. (Not yet open.)"
+        },
+        {
+          "id": "steading_cellar",
+          "name": "The Steading Cellar",
+          "kind": "cellar_hatch",
+          "at": [
+            69,
+            134
+          ],
+          "yaw": 15,
+          "reach": 3.6,
+          "dungeon": "steading_cellar",
+          "state": "sealed",
+          "flavour": "A storm-cellar hatch under the burnt farmhouse, barred and chained from the outside. Someone wanted whatever is down there to stay there.",
+          "sealed": "The bar is rusted fast and the chain will not give. (Not yet open.)"
+        }
+      ],
+      "camps": [
+        {
+          "id": "tip_pickers",
+          "name": "The tip-pickers",
+          "at": [
+            78,
+            40
+          ],
+          "strength": 0.6,
+          "leash": 22,
+          "members": [
+            {
+              "kind": "kettle_beetle",
+              "n": 2
+            }
+          ],
+          "job": "The first fight, in sight of the gate. Kettle Beetles burst when they die."
+        },
+        {
+          "id": "the_ditch",
+          "name": "The ditch",
+          "at": [
+            52,
+            96
+          ],
+          "strength": 0.6,
+          "leash": 22,
+          "members": [
+            {
+              "kind": "ditch_hound",
+              "n": 3
+            }
+          ],
+          "job": "Off the road, for those who go looking: three hounds that want your back."
+        },
+        {
+          "id": "well_watch",
+          "name": "The well-watch",
+          "at": [
+            112,
+            58
+          ],
+          "strength": 0.7,
+          "leash": 24,
+          "members": [
+            {
+              "kind": "chaff_wren",
+              "n": 5
+            }
+          ],
+          "edge": [
+            {
+              "kind": "gleaner",
+              "runs_to": "the_sounder",
+              "offset": [
+                -6,
+                3
+              ]
+            }
+          ],
+          "job": "A flock, and the first runner: its Gleaner runs for the sounder, 54 m east."
+        },
+        {
+          "id": "the_herd",
+          "name": "The herd",
+          "at": [
+            120,
+            122
+          ],
+          "strength": 0.8,
+          "leash": 40,
+          "herd": true,
+          "clear": 9,
+          "members": [
+            {
+              "kind": "thornback",
+              "n": 4
+            }
+          ],
+          "job": "Neutral. The first choice that is not a fight - until you make it one."
+        },
+        {
+          "id": "the_sounder",
+          "name": "The sounder",
+          "at": [
+            166,
+            60
+          ],
+          "strength": 0.7,
+          "leash": 24,
+          "members": [
+            {
+              "kind": "burr_hog",
+              "n": 2
+            }
+          ],
+          "job": "Two Burr-Hogs: armoured in front. Make them miss."
+        },
+        {
+          "id": "tree_camp",
+          "name": "The tree camp",
+          "at": [
+            154,
+            104
+          ],
+          "strength": 0.7,
+          "leash": 26,
+          "members": [
+            {
+              "kind": "ditch_hound",
+              "n": 2
+            },
+            {
+              "kind": "chaff_wren",
+              "n": 3
+            }
+          ],
+          "edge": [
+            {
+              "kind": "gleaner",
+              "runs_to": "cut_pickets",
+              "offset": [
+                6,
+                -4
+              ]
+            }
+          ],
+          "job": "Under the hanging tree; its Gleaner runs for the Cut pickets."
+        },
+        {
+          "id": "cut_pickets",
+          "name": "The Cut pickets",
+          "at": [
+            204,
+            92
+          ],
+          "strength": 0.9,
+          "leash": 26,
+          "members": [
+            {
+              "kind": "burr_hog",
+              "n": 1
+            },
+            {
+              "kind": "ditch_hound",
+              "n": 2
+            }
+          ],
+          "job": "The gate before the gate, on the Cut track. Beat this and you may knock."
+        },
+        {
+          "id": "steading",
+          "name": "The steading",
+          "at": [
+            96,
+            132
+          ],
+          "strength": 0.7,
+          "leash": 24,
+          "live_chance": 0.5,
+          "members": [
+            {
+              "kind": "kettle_beetle",
+              "n": 2
+            },
+            {
+              "kind": "chaff_wren",
+              "n": 2
+            }
+          ],
+          "job": "A spare site by the burnt farmhouse."
+        },
+        {
+          "id": "swallow_lip",
+          "name": "The Swallow's lip",
+          "at": [
+            196,
+            140
+          ],
+          "strength": 0.8,
+          "leash": 24,
+          "live_chance": 0.5,
+          "members": [
+            {
+              "kind": "ditch_hound",
+              "n": 3
+            }
+          ],
+          "job": "A spare site by the sinkhole."
+        },
+        {
+          "id": "verge_wirehorns",
+          "name": "Wirehorns on the verge",
+          "at": [
+            90,
+            30
+          ],
+          "strength": 0.7,
+          "leash": 30,
+          "herd": true,
+          "members": [
+            {
+              "kind": "wirehorn",
+              "n": 2
+            }
+          ],
+          "path": [
+            [
+              90,
+              30
+            ],
+            [
+              130,
+              34
+            ],
+            [
+              170,
+              40
+            ],
+            [
+              210,
+              44
+            ],
+            [
+              170,
+              40
+            ],
+            [
+              130,
+              34
+            ]
+          ],
+          "roam_speed": 0.5,
+          "job": "Roamers: a pair grazing along the power line. Shy - and their back end kicks."
+        }
+      ],
+      "lurker_patches": [
+        {
+          "id": "p1",
+          "at": [
+            90,
+            48
+          ],
+          "radius": 2.2
+        },
+        {
+          "id": "p2",
+          "at": [
+            130,
+            80
+          ],
+          "radius": 2.2
+        },
+        {
+          "id": "p3",
+          "at": [
+            70,
+            70
+          ],
+          "radius": 2.2
+        },
+        {
+          "id": "p4",
+          "at": [
+            185,
+            75
+          ],
+          "radius": 2.2
+        },
+        {
+          "id": "p5",
+          "at": [
+            110,
+            100
+          ],
+          "radius": 2.2
+        },
+        {
+          "id": "p6",
+          "at": [
+            178,
+            122
+          ],
+          "radius": 2.2
+        }
+      ],
+      "nether": {
+        "note": "The Stubble's Netherecho (design/07: the dry well is the first Netherecho site). Echoes are the landmarks' painted, caricatured versions - only what stands still shows there. Sites set their own wisps by the place (water by the well, earth in the ruins and the tip, wind on the open ground, lightning on the power line, nature and death at the hanging tree); 'own' is one of the traveller's affinities, so every character finds something. scale: wild constructs here are weaker, for a new character's projection.",
+        "scale": {
+          "vestige": {
+            "hp_mult": 0.8,
+            "damage_mult": 0.75
+          },
+          "remnant": {
+            "hp_mult": 0.6,
+            "damage_mult": 0.6
+          }
+        },
+        "echoes": [
+          {
+            "kind": "well",
+            "at": [
+              98,
+              70
+            ],
+            "scale": 1.0
+          },
+          {
+            "kind": "hanging_tree",
+            "at": [
+              150,
+              96
+            ],
+            "scale": 1.0
+          },
+          {
+            "kind": "heap",
+            "at": [
+              62,
+              22
+            ],
+            "scale": 1.0
+          },
+          {
+            "kind": "waystone",
+            "at": [
+              188,
+              44
+            ],
+            "scale": 1.0
+          },
+          {
+            "kind": "pole",
+            "at": [
+              104,
+              25.96
+            ],
+            "yaw": 0
+          },
+          {
+            "kind": "pole",
+            "at": [
+              200,
+              39.4
+            ],
+            "yaw": 0
+          },
+          {
+            "kind": "ruin",
+            "at": [
+              72,
+              130
+            ]
+          },
+          {
+            "kind": "sinkhole",
+            "at": [
+              170,
+              138
+            ]
+          }
+        ],
+        "sites": [
+          {
+            "id": "the_well",
+            "name": "The dry well",
+            "at": [
+              98,
+              70
+            ],
+            "half": [
+              5,
+              5
+            ],
+            "wisps": [
+              {
+                "affinity": "water",
+                "n": 3
+              },
+              {
+                "affinity": "own",
+                "n": 2
+              },
+              {
+                "affinity": "plain",
+                "n": 2
+              }
+            ],
+            "constructs": [
+              {
+                "tier": "vestige",
+                "concept": "stillness"
+              },
+              {
+                "tier": "remnant",
+                "concept": "stillness",
+                "docile": true
+              }
+            ]
+          },
+          {
+            "id": "the_heap",
+            "name": "The dross heap",
+            "at": [
+              62,
+              22
+            ],
+            "half": [
+              4,
+              4
+            ],
+            "wisps": [
+              {
+                "affinity": "earth",
+                "n": 2
+              },
+              {
+                "affinity": "own",
+                "n": 1
+              },
+              {
+                "affinity": "plain",
+                "n": 1
+              }
+            ],
+            "constructs": [
+              {
+                "tier": "vestige",
+                "concept": "compression"
+              }
+            ]
+          },
+          {
+            "id": "the_tree",
+            "name": "The hanging tree",
+            "at": [
+              150,
+              96
+            ],
+            "half": [
+              5,
+              5
+            ],
+            "wisps": [
+              {
+                "affinity": "nature",
+                "n": 2
+              },
+              {
+                "affinity": "death",
+                "n": 1
+              },
+              {
+                "affinity": "own",
+                "n": 1
+              }
+            ],
+            "constructs": [
+              {
+                "tier": "vestige",
+                "concept": "tension"
+              },
+              {
+                "tier": "vestige",
+                "concept": "tension",
+                "docile": true
+              }
+            ]
+          },
+          {
+            "id": "the_waystone",
+            "name": "The waystone",
+            "at": [
+              188,
+              44
+            ],
+            "half": [
+              4,
+              4
+            ],
+            "wisps": [
+              {
+                "affinity": "wind",
+                "n": 2
+              },
+              {
+                "affinity": "earth",
+                "n": 1
+              },
+              {
+                "affinity": "own",
+                "n": 1
+              }
+            ],
+            "constructs": [
+              {
+                "tier": "vestige",
+                "concept": "reach"
+              }
+            ]
+          },
+          {
+            "id": "open_ground",
+            "name": "The open scrub",
+            "at": [
+              130,
+              50
+            ],
+            "half": [
+              7,
+              5
+            ],
+            "wisps": [
+              {
+                "affinity": "wind",
+                "n": 3
+              },
+              {
+                "affinity": "plain",
+                "n": 1
+              }
+            ],
+            "constructs": [
+              {
+                "tier": "vestige",
+                "concept": "acceleration",
+                "docile": true
+              }
+            ]
+          },
+          {
+            "id": "power_line",
+            "name": "The power line",
+            "at": [
+              176,
+              34
+            ],
+            "half": [
+              8,
+              2
+            ],
+            "wisps": [
+              {
+                "affinity": "lightning",
+                "n": 3
+              },
+              {
+                "affinity": "metal",
+                "n": 1
+              }
+            ],
+            "constructs": []
+          },
+          {
+            "id": "the_steading",
+            "name": "The burnt steading",
+            "at": [
+              72,
+              132
+            ],
+            "half": [
+              5,
+              4
+            ],
+            "wisps": [
+              {
+                "affinity": "earth",
+                "n": 2
+              },
+              {
+                "affinity": "fire",
+                "n": 1
+              },
+              {
+                "affinity": "own",
+                "n": 1
+              }
+            ],
+            "constructs": [
+              {
+                "tier": "vestige",
+                "concept": "compression",
+                "docile": true
+              }
+            ]
+          },
+          {
+            "id": "the_swallow",
+            "name": "The Swallow",
+            "at": [
+              170,
+              138
+            ],
+            "half": [
+              4,
+              4
+            ],
+            "wisps": [
+              {
+                "affinity": "dark",
+                "n": 2
+              },
+              {
+                "affinity": "earth",
+                "n": 1
+              },
+              {
+                "affinity": "own",
+                "n": 1
+              }
+            ],
+            "constructs": [
+              {
+                "tier": "remnant",
+                "concept": "piercing",
+                "docile": true
+              }
+            ]
+          }
+        ]
+      }
     }
   }
 }

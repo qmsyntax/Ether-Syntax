@@ -7,6 +7,7 @@ extends Node
 
 const PlayerScript := preload("res://scripts/player.gd")
 const FreeRules := preload("res://tests/free_rules.gd")
+const BeastChecks := preload("res://tests/beast_checks.gd")
 
 var _failed := 0
 var _passed := 0
@@ -15,6 +16,13 @@ var _errors: ErrorCatcher
 
 func _ready() -> void:
 	_errors = ErrorCatcher.install()
+	# `-- --only=beasts` runs just the Stubble's beast and camp checks (tests/beast_checks.gd)
+	if OS.get_cmdline_user_args().has("--only=beasts"):
+		await BeastChecks.new(self, _check).run()
+		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
+		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
+		get_tree().quit(1 if _failed > 0 else 0)
+		return
 	# `-- --only=runes` runs just the rune checks (quicker while working on runes)
 	if OS.get_cmdline_user_args().has("--only=statuses"):
 		await _test_status_text()
@@ -81,6 +89,7 @@ func _ready() -> void:
 	await _test_rune_discovery()
 	await _test_build_1022()
 	await _test_status_text()
+	await BeastChecks.new(self, _check).run()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
 	_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
@@ -4748,7 +4757,7 @@ func _test_crafting() -> void:
 		made.append_array(Crafting.outputs(rid).keys())
 	var drops: Array = []
 	for kind: String in GameData.enemies:
-		drops.append(str(GameData.enemy(kind).get("remains", "")))
+		drops.append_array(PlayerScript.remains_of(kind))
 		for e: Dictionary in GameData.enemy(kind).get("loot", []):
 			drops.append(str(e.get("item", "")))
 	var orphans: Array[String] = []

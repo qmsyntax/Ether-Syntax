@@ -192,7 +192,14 @@
   "light": {
     "_note": "Light levels (Dark's rule, 2026-10-22 drafts): every spot is lit, dim or dark. The level's base light by game state (scripts/light.gd: light sources make lit circles, dark ground makes dark); default for anything not listed. [MODEL]",
     "default": "dim",
-    "by_state": {"town": "lit", "field": "lit", "arena_rest": "lit", "arena_fight": "lit", "dungeon": "dim", "select": "dim"}
+    "by_state": {
+      "town": "lit",
+      "field": "lit",
+      "arena_rest": "lit",
+      "arena_fight": "lit",
+      "dungeon": "dim",
+      "select": "dim"
+    }
   },
   "meditation": {
     "_note": "Meditation gathers wisps (Brent 2026-09-23): refills essence while you sit still. Brent 2026-10-11: it must not work on the move - sitting roots you, and nothing is gathered until you have been still for settle_s.",
@@ -451,5 +458,24 @@
   "art": {
     "_note": "real_bodies: the player is drawn with the real rigged, clothed body (assets/characters/body_<sex>.glb, scripts/art/real_character.gd, dressed by data/wardrobe.json) instead of the procedural one. On since 2026-10-18; false brings the procedural body back. --real-body on the command line forces it on for one run.",
     "real_bodies": true
+  },
+  "camps": {
+    "_note": "Overland camps (design/07 3.5; scripts/field_camps.gd). A camp sleeps until you come within aggro_radius (or one of it is hurt); past the leash (from the camp, or from the camp that fetched it) its members walk home and mend; a cleared camp refills after respawn_s at the first moment you are more than respawn_clear_m away (no world clock yet, so real seconds; design/07 says eight world hours). fight_radius: anything awake this close keeps you 'in a fight' (no projecting, no natural healing). spread: how far apart members stand. Every number [MODEL]. field_autosave_s: out in a zone the autosave is written this often, so a save keeps your place.",
+    "aggro_radius": 12.0,
+    "leash": 24.0,
+    "home_reached": 1.5,
+    "respawn_s": 480.0,
+    "respawn_clear_m": 60.0,
+    "fight_radius": 30.0,
+    "spread": 3.0,
+    "roam_speed": 0.5,
+    "lurker_strength": 0.7,
+    "lurker_respawn_s": 300.0,
+    "field_autosave_s": 30.0
+  },
+  "unstarred": {
+    "_note": "design/01 LAW 2 (Brent 2026-10-19): a kill of an unstarred monster (enemies.json stars 0) pays little latent aura and star growth, and less as the star grows: aura x star_falloff^(stars - 1) x lerp(1, at_full_star, newest star's fill / max_pct). So the early hunt carries a baby star through the low part of 1-star and then points you at starred quarry. [MODEL]",
+    "star_falloff": 0.35,
+    "at_full_star": 0.25
   }
 }

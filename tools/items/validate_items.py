@@ -311,6 +311,12 @@ if recipes_file:
     for r in recipes_file.get("recipes", []):
         out = r.get("output")
         seen.add(out)
+        if r.get("alt"):
+            # an alternative recipe (the Stubble's beast remains, 2026-10-23): its output and inputs must exist
+            for k in list(r.get("inputs", {})) + [out] + list((r.get("byproducts") or {})):
+                if k not in items:
+                    err(f"recipes file: alternative '{r.get('id')}' names '{k}', which is not an item")
+            continue
         if out not in items or "recipe" not in items[out]:
             err(f"recipes file: '{r.get('id')}' makes '{out}', which has no recipe in the items")
             continue

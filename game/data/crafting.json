@@ -90,6 +90,195 @@
 		}
 	},
 	"recipes": {
+		"r_barrow_bone_meal__hog_tusk": {
+			"output": "barrow_bone_meal",
+			"makes": 1,
+			"skill": "rendering",
+			"trivial": 8,
+			"min_skill": 0,
+			"tool": {
+				"kind": "flensing_knife",
+				"tier": 1
+			},
+			"station": "flensing_yard",
+			"grade": 1,
+			"inputs": {
+				"hog_tusk": 1
+			},
+			"fee": 7,
+			"hours": 2,
+			"byproducts": {
+				"barrow_marrow": 1
+			}
+		},
+		"r_barrow_bone_meal__hound_fang": {
+			"output": "barrow_bone_meal",
+			"makes": 1,
+			"skill": "rendering",
+			"trivial": 8,
+			"min_skill": 0,
+			"tool": {
+				"kind": "flensing_knife",
+				"tier": 1
+			},
+			"station": "flensing_yard",
+			"grade": 1,
+			"inputs": {
+				"hound_fang": 4
+			},
+			"fee": 10,
+			"hours": 2
+		},
+		"r_barrow_bone_meal__kettle_shell": {
+			"output": "barrow_bone_meal",
+			"makes": 1,
+			"skill": "rendering",
+			"trivial": 8,
+			"min_skill": 0,
+			"tool": {
+				"kind": "flensing_knife",
+				"tier": 1
+			},
+			"station": "flensing_yard",
+			"grade": 1,
+			"inputs": {
+				"kettle_shell": 2
+			},
+			"fee": 12,
+			"hours": 2
+		},
+		"r_barrow_bone_meal__lurker_jaw": {
+			"output": "barrow_bone_meal",
+			"makes": 2,
+			"skill": "rendering",
+			"trivial": 8,
+			"min_skill": 0,
+			"tool": {
+				"kind": "flensing_knife",
+				"tier": 1
+			},
+			"station": "flensing_yard",
+			"grade": 1,
+			"inputs": {
+				"lurker_jaw": 1
+			},
+			"fee": 32,
+			"hours": 2,
+			"byproducts": {
+				"barrow_marrow": 1
+			}
+		},
+		"r_barrow_bone_meal__thornback_horn": {
+			"output": "barrow_bone_meal",
+			"makes": 4,
+			"skill": "rendering",
+			"trivial": 8,
+			"min_skill": 0,
+			"tool": {
+				"kind": "flensing_knife",
+				"tier": 1
+			},
+			"station": "flensing_yard",
+			"grade": 1,
+			"inputs": {
+				"thornback_horn": 1
+			},
+			"fee": 42,
+			"hours": 2,
+			"byproducts": {
+				"barrow_marrow": 2
+			}
+		},
+		"r_barrow_bone_meal__wirehorn_antler": {
+			"output": "barrow_bone_meal",
+			"makes": 2,
+			"skill": "rendering",
+			"trivial": 8,
+			"min_skill": 0,
+			"tool": {
+				"kind": "flensing_knife",
+				"tier": 1
+			},
+			"station": "flensing_yard",
+			"grade": 1,
+			"inputs": {
+				"wirehorn_antler": 1
+			},
+			"fee": 9,
+			"hours": 2
+		},
+		"r_barrow_tallow__game_haunch": {
+			"output": "barrow_tallow",
+			"makes": 2,
+			"skill": "rendering",
+			"trivial": 8,
+			"min_skill": 0,
+			"tool": {
+				"kind": "flensing_knife",
+				"tier": 1
+			},
+			"station": "flensing_yard",
+			"grade": 1,
+			"inputs": {
+				"game_haunch": 1
+			},
+			"fee": 4,
+			"hours": 2
+		},
+		"r_barrow_tallow__hog_fatback": {
+			"output": "barrow_tallow",
+			"makes": 4,
+			"skill": "rendering",
+			"trivial": 8,
+			"min_skill": 0,
+			"tool": {
+				"kind": "flensing_knife",
+				"tier": 1
+			},
+			"station": "flensing_yard",
+			"grade": 1,
+			"inputs": {
+				"hog_fatback": 1
+			},
+			"fee": 4,
+			"hours": 2
+		},
+		"r_barrow_tallow__lurker_blubber": {
+			"output": "barrow_tallow",
+			"makes": 3,
+			"skill": "rendering",
+			"trivial": 8,
+			"min_skill": 0,
+			"tool": {
+				"kind": "flensing_knife",
+				"tier": 1
+			},
+			"station": "flensing_yard",
+			"grade": 1,
+			"inputs": {
+				"lurker_blubber": 1
+			},
+			"fee": 4,
+			"hours": 2
+		},
+		"r_barrow_tallow__thornback_suet": {
+			"output": "barrow_tallow",
+			"makes": 6,
+			"skill": "rendering",
+			"trivial": 8,
+			"min_skill": 0,
+			"tool": {
+				"kind": "flensing_knife",
+				"tier": 1
+			},
+			"station": "flensing_yard",
+			"grade": 1,
+			"inputs": {
+				"thornback_suet": 1
+			},
+			"fee": 6,
+			"hours": 2
+		},
 		"r_scraped_brute_hide": {
 			"output": "scraped_brute_hide",
 			"makes": 1,
@@ -109,6 +298,90 @@
 			"hours": 2,
 			"byproducts": {
 				"barrow_tallow": 2
+			}
+		},
+		"r_scraped_field_hide__hog_hide": {
+			"output": "scraped_field_hide",
+			"makes": 2,
+			"skill": "rendering",
+			"trivial": 8,
+			"min_skill": 0,
+			"tool": {
+				"kind": "flensing_knife",
+				"tier": 1
+			},
+			"station": "flensing_yard",
+			"grade": 1,
+			"inputs": {
+				"hog_hide": 1
+			},
+			"fee": 26,
+			"hours": 2,
+			"byproducts": {
+				"barrow_tallow": 2
+			}
+		},
+		"r_scraped_field_hide__hound_pelt": {
+			"output": "scraped_field_hide",
+			"makes": 1,
+			"skill": "rendering",
+			"trivial": 8,
+			"min_skill": 0,
+			"tool": {
+				"kind": "flensing_knife",
+				"tier": 1
+			},
+			"station": "flensing_yard",
+			"grade": 1,
+			"inputs": {
+				"hound_pelt": 1
+			},
+			"fee": 11,
+			"hours": 2,
+			"byproducts": {
+				"barrow_tallow": 1
+			}
+		},
+		"r_scraped_field_hide__thornback_hide": {
+			"output": "scraped_field_hide",
+			"makes": 6,
+			"skill": "rendering",
+			"trivial": 8,
+			"min_skill": 0,
+			"tool": {
+				"kind": "flensing_knife",
+				"tier": 1
+			},
+			"station": "flensing_yard",
+			"grade": 1,
+			"inputs": {
+				"thornback_hide": 1
+			},
+			"fee": 90,
+			"hours": 2,
+			"byproducts": {
+				"barrow_tallow": 4
+			}
+		},
+		"r_scraped_field_hide__wirehorn_hide": {
+			"output": "scraped_field_hide",
+			"makes": 2,
+			"skill": "rendering",
+			"trivial": 8,
+			"min_skill": 0,
+			"tool": {
+				"kind": "flensing_knife",
+				"tier": 1
+			},
+			"station": "flensing_yard",
+			"grade": 1,
+			"inputs": {
+				"wirehorn_hide": 1
+			},
+			"fee": 18,
+			"hours": 2,
+			"byproducts": {
+				"barrow_tallow": 1
 			}
 		},
 		"r_barrow_bone_meal": {
@@ -167,6 +440,25 @@
 				"heartwood_tanning_liquor": 1
 			},
 			"fee": 54,
+			"hours": 2
+		},
+		"r_cured_hide__field": {
+			"output": "cured_hide",
+			"makes": 1,
+			"skill": "leatherwork",
+			"trivial": 12,
+			"min_skill": 0,
+			"tool": {
+				"kind": "currier_knife",
+				"tier": 1
+			},
+			"station": "leatherworks",
+			"grade": 1,
+			"inputs": {
+				"scraped_field_hide": 2,
+				"heartwood_tanning_liquor": 1
+			},
+			"fee": 22,
 			"hours": 2
 		},
 		"r_cured_hide_grip_wrap": {
@@ -700,6 +992,17 @@
 			"weight": 6.0,
 			"value": 450,
 			"desc": "A hide flensed clean and ready for the tanning pit. The fat came off it in buckets.",
+			"icon": "hide"
+		},
+		"scraped_field_hide": {
+			"name": "Scraped Field Hide",
+			"slot": "",
+			"kind": "material",
+			"category": "material",
+			"band": 1,
+			"weight": 2.0,
+			"value": 90,
+			"desc": "A beast hide of the Stubble flensed clean. Two of them tan into a side of cured hide.",
 			"icon": "hide"
 		},
 		"smiths_hammer": {

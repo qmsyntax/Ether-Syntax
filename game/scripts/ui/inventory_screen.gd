@@ -211,6 +211,14 @@ func equip_item(id: String, into: String = "") -> void:
 	if kind == "tool" or kind == "material":
 		player.call("note", "%s is for crafting: a tool goes back to your hand after each combine, a material goes into one." % str(GameData.item(id).get("name", id)))
 		return
+	if kind == "consumable":
+		# using it: a field dressing binds a cut, out of a fight
+		var said: String = player.call("use_consumable", id)
+		if said != "":
+			player.call("note", said)
+		game.call("save_now")
+		rebuild()
+		return
 	if str(GameData.item(id).get("kind", "")) == "scroll":
 		# reading it: the skill is yours and the scroll is gone
 		var why: String = player.call("read_scroll", id)

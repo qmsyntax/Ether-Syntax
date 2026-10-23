@@ -148,4 +148,80 @@ func _process(delta: float) -> void:
 			_expect("and marked on the minimap", (info2.get("corpses", []) as Array).size() == 1)
 			if bodies.size() == 1:
 				_expect("take it and you are dressed again", bool(player.call("take_pickup", bodies[0])) and not (player.get("inventory") as Inventory).equipped.is_empty())
+			_next()
+		# --- the populated Stubble (2026-10-23) ---
+		9:
+			if t < 0.3:
+				return
+			var camps: FieldCamps = main.get("field_camps")
+			var def: Dictionary = GameData.zone("the_stubble")
+			var fixed: Array = (def["camps"] as Array).filter(func(c: Dictionary) -> bool: return float(c.get("live_chance", 1.0)) >= 1.0)
+			_expect("the Stubble's camps are up: every fixed site, its spares rolled", camps != null and fixed.all(func(c: Dictionary) -> bool: return camps.camps.has(str(c["id"]))), str(camps.camps.keys() if camps else []))
+			var beasts: Array = camps.all_living()
+			_expect("and its beasts with them, every one unstarred", beasts.size() >= 25 and beasts.all(func(e: Node) -> bool: return int(GameData.enemy(str(e.get("kind"))).get("stars", 1)) == 0), str(beasts.size()))
+			_expect("six Sod-Lurker patches, buried", camps.patches.size() == 6 and camps.patches.all(func(p: Dictionary) -> bool: return p["lurker"] != null and bool((p["lurker"] as Node).get("buried"))))
+			_expect("the herd grazes and the camps sleep", camps.state_of("the_herd") == "calm" and camps.state_of("tip_pickers") == "asleep")
+			_expect("two dungeon mouths stand in the zone", get_tree().get_nodes_in_group("field_entrances").size() == 2)
+			var info: Dictionary = main.call("minimap_info")
+			_expect("the minimap knows the camps", (info.get("camps", []) as Array).size() == camps.camps.size())
+			_stand(167.5, 136)
+			_next()
+		10:
+			if t < 0.3:
+				return
+			_expect("at the Swallow the prompt names it", str(main.get("_prompt")).contains("The Swallow"), str(main.get("_prompt")))
+			main.call("_field_interact")
+			var said: Array = player.get("log_lines")
+			_expect("using it says it is not open yet", not said.is_empty() and str(said.back()).contains("Not yet open"), str(said.back()) if not said.is_empty() else "")
+			_stand(69.5, 132)
+			_next()
+		11:
+			if t < 0.3:
+				return
+			main.call("_field_interact")
+			var said2: Array = player.get("log_lines")
+			_expect("and the steading cellar answers the same way", str(said2.back()).contains("Steading Cellar") and str(said2.back()).contains("Not yet open"), str(said2.back()))
+			# a camp's leash: wake the tip-pickers, then walk off past it
+			_stand(78, 32)
+			_next()
+		12:
+			if t < 0.3:
+				return
+			var camps2: FieldCamps = main.get("field_camps")
+			_expect("come near a camp and it wakes", camps2.state_of("tip_pickers") == "awake")
+			_stand(78, 75)
+			camps2.tick(0.016)
+			_expect("go past its leash and it turns for home", camps2.state_of("tip_pickers") == "returning", camps2.state_of("tip_pickers"))
+			_next()
+		13:
+			if t < 0.3:
+				return
+			var camps3: FieldCamps = main.get("field_camps")
+			if camps3.state_of("tip_pickers") != "asleep" and t < 40.0:
+				return
+			_expect("it walks home, mends and sleeps", camps3.state_of("tip_pickers") == "asleep")
+			for e: Node in camps3.members_of("tip_pickers"):
+				player.call("deal_damage", e, 99999.0, ["melee"])
+			camps3.tick(0.016)
+			_expect("killed, the camp is cleared", camps3.state_of("tip_pickers") == "cleared")
+			camps3.set_respawn_timer("tip_pickers", 0.2)
+			_stand(150, 60)                                     # more than respawn_clear_m away
+			_next()
+		14:
+			if t < 0.5:
+				return
+			var camps4: FieldCamps = main.get("field_camps")
+			_expect("and refills when its time is up and you are far off", camps4.state_of("tip_pickers") == "asleep" and camps4.members_of("tip_pickers").size() == 2)
+			# the save keeps your place out here
+			_stand(150, 60)
+			var place: Dictionary = main.call("_place_for_save")
+			_expect("a save made out here names the zone and the spot", str(place.get("zone", "")) == "the_stubble" and (place["at"] as Array).size() == 2)
+			main.call("_enter_town")
+			main.call("_resume_place", place)
+			_next()
+		15:
+			if t < 0.3:
+				return
+			var at: Vector2 = main.call("zone_point", (player as Node3D).global_position)
+			_expect("and loading it puts you back there", str(main.get("state")) == "field" and at.distance_to(Vector2(150, 60)) < 0.6, str(at))
 			_finish()

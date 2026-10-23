@@ -1839,8 +1839,9 @@ func add_aura(amount: float) -> void:
 func _on_kill(target: Node) -> void:
 	var hurt: float = 1.0 - body.total() / body.total_max()
 	var risk: float = 1.0 + hurt * float(_p["aura_hurt_risk_bonus"])
-	_latent_aura += float(target.get("aura_value")) * risk
-	grow_star(float(target.get("aura_value")) * GameData.num("stars", "growth_pct_per_aura"))
+	var aura: float = float(target.get("aura_value")) * kill_aura_mult(target)
+	_latent_aura += aura * risk
+	grow_star(aura * GameData.num("stars", "growth_pct_per_aura"))
 	_roll_drops(target)
 	_roll_loot(target)
 	_roll_kill_rune(target)
@@ -4308,10 +4309,14 @@ func _roll_loot(target: Node) -> void:
 	var parent: Node = target.get_parent()
 	if parent == null:
 		return
-	# every kill leaves something to sell: the kind's remains (nothing pays cash - Brent 2026-10-18)
-	var remains: String = str(GameData.enemy(str(kind_v)).get("remains", ""))
-	if remains != "" and not bool(target.get("is_scenery")):
-		spawn_pickup(parent, remains, (target as Node3D).global_position)
+	# every kill leaves something to sell: the kind's remains (nothing pays cash - Brent 2026-10-18);
+	# a beast may leave several (hide, bone, meat, fat - enemies.json "remains" as a list)
+	if not bool(target.get("is_scenery")):
+		var k: int = 0
+		for remains: String in remains_of(str(kind_v)):
+			var off := Vector3(0.45 * float(k), 0.0, -0.3 * float(k))
+			spawn_pickup(parent, remains, (target as Node3D).global_position + off)
+			k += 1
 	for entry: Dictionary in GameData.enemy(str(kind_v)).get("loot", []):
 		if rng.randf() < float(entry["chance"]):
 			if bool(entry.get("learnable", false)):
@@ -5553,3 +5558,52 @@ func _swing_visual(reach: float, heavy: bool, narrow: bool) -> void:
 	var tween: Tween = arc.create_tween()
 	tween.tween_property(arc, "scale", Vector3(1.1, 1.0, 1.1), 0.12)
 	tween.tween_callback(arc.queue_free)
+
+
+# --- the unstarred tier and field consumables (2026-10-23, the Stubble) --------------------------
+
+## How much of a kill's aura counts (design/01 LAW 2, Brent 2026-10-19): a starred foe in full; an
+## unstarred one (enemies.json stars 0) less for every star you hold, and less again as your newest
+## star fills (balance.json "unstarred").
+func kill_aura_mult(target: Node) -> float:
+	var kind_v: Variant = target.get("kind")
+	if kind_v == null or int(GameData.enemy(str(kind_v)).get("stars", 1)) > 0:
+		return 1.0
+	var cfg: Dictionary = GameData.balance.get("unstarred", {})
+	var fill: float = 0.0
+	if not star_pct.is_empty():
+		fill = clampf(star_pct[star_pct.size() - 1] / GameData.num("stars", "max_pct"), 0.0, 1.0)
+	return pow(float(cfg.get("star_falloff", 0.35)), float(maxi(0, stars - 1))) * lerpf(1.0, float(cfg.get("at_full_star", 0.25)), fill)
+
+
+## Every remains item a kill of `kind` leaves ("remains" may be one id or a list).
+static func remains_of(kind: String) -> Array[String]:
+	var out: Array[String] = []
+	var r: Variant = GameData.enemy(kind).get("remains", "")
+	if r is Array:
+		for id: Variant in r:
+			out.append(str(id))
+	elif str(r) != "":
+		out.append(str(r))
+	return out
+
+
+## Use a consumable from the pack (items.json kind "consumable", "use"). Returns "" if it was used
+## (and is gone), else why not. Only "heal" is built: a field dressing, out of a fight.
+func use_consumable(item_id: String) -> String:
+	var def: Dictionary = GameData.item(item_id)
+	if str(def.get("kind", "")) != "consumable" or not inventory.bag.has(item_id):
+		return "That is not something you can use."
+	var use: Dictionary = def.get("use", {})
+	if bool(use.get("out_of_combat", false)) and in_combat:
+		return "Not in the middle of a fight."
+	match str(use.get("effect", "")):
+		"heal":
+			if body.total() >= body.total_max():
+				return "You are not hurt."
+			body.heal(float(use.get("amount", 0.0)))
+		_:
+			return "Nothing comes of it."
+	inventory.remove(item_id)
+	note("You use the %s." % str(def.get("name", item_id)).to_lower())
+	return ""

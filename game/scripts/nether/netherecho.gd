@@ -57,6 +57,46 @@ func populate_site(centre: Vector3, half: Vector2) -> void:
 		spawn_construct(at2, tier, str(ids[rng.randi() % ids.size()]), rng.randf() < float(_cfg["docile_chance"]))
 
 
+## A zone's own Netherecho, from its data (zones.json "nether"): the landmarks' echoes, and sites
+## whose wisps and constructs are set by the place rather than rolled. `to_local` turns a map-frame
+## [x, y] into this node's (the level's) frame. A wisp's affinity may be "own" (one of the
+## traveller's own affinities - so everyone finds something here) or "plain"; a construct may
+## carry hp_mult / damage_mult (the zone's "scale" by tier applies first), so a zone for new
+## characters is fought by a new character's projection.
+func populate_zone(def: Dictionary, to_local: Callable) -> void:
+	for echo: Dictionary in def.get("echoes", []):
+		var at: Array = echo["at"]
+		var node: Node3D = NetherEchoes.build(str(echo["kind"]))
+		node.position = to_local.call(float(at[0]), float(at[1]))
+		node.rotation.y = deg_to_rad(float(echo.get("yaw", 0.0)))
+		node.scale = Vector3.ONE * float(echo.get("scale", 1.0))
+		node.add_to_group("nether_echoes")
+		add_child(node)
+	var by_tier: Dictionary = def.get("scale", {})
+	for site: Dictionary in def.get("sites", []):
+		var at2: Array = site["at"]
+		var centre: Vector3 = to_local.call(float(at2[0]), float(at2[1]))
+		var half: Array = site.get("half", [4.0, 4.0])
+		for w: Dictionary in site.get("wisps", []):
+			for i: int in int(w.get("n", 1)):
+				var spot := centre + Vector3(rng.randf_range(-float(half[0]), float(half[0])), 0.0, rng.randf_range(-float(half[1]), float(half[1])))
+				var aff: String = str(w.get("affinity", "plain"))
+				if aff == "own":
+					var mine: Array = player.get("affinities") if player != null else []
+					aff = str(mine[rng.randi() % mine.size()]) if not mine.is_empty() else "plain"
+				spawn_wisp(spot, aff).set_meta("site", str(site.get("id", "")))
+		var k: int = 0
+		for c: Dictionary in site.get("constructs", []):
+			var a: float = TAU * float(k) / maxf(1.0, float((site.get("constructs", []) as Array).size())) + 0.7
+			k += 1
+			var spot2 := centre + Vector3(cos(a), 0.0, sin(a)) * float(half[0]) * 0.6
+			var tier: String = str(c.get("tier", "vestige"))
+			var made: Node3D = spawn_construct(spot2, tier, str(c.get("concept", "stillness")), bool(c.get("docile", false)))
+			var ts: Dictionary = by_tier.get(tier, {})
+			made.call("scale_for", float(ts.get("hp_mult", 1.0)) * float(c.get("hp_mult", 1.0)), float(ts.get("damage_mult", 1.0)) * float(c.get("damage_mult", 1.0)))
+			made.set_meta("site", str(site.get("id", "")))
+
+
 ## What a new wisp is: one of the traveller's own affinities, someone else's, or plain ether.
 func _roll_wisp_affinity() -> String:
 	var mine: Array = player.get("affinities") if player != null else []

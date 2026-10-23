@@ -962,6 +962,147 @@
    }
   },
   {
+   "id": "r_barrow_bone_meal__hound_fang",
+   "output": "barrow_bone_meal",
+   "band": 1,
+   "alt": true,
+   "skill": "rendering",
+   "trivial": 8,
+   "min_skill": 0,
+   "tool": {
+    "kind": "flensing_knife",
+    "tier": 1
+   },
+   "station": "flensing_yard",
+   "grade": 1,
+   "stars": 1,
+   "inputs": {
+    "hound_fang": 4
+   },
+   "fee": 10,
+   "makes": 1,
+   "hours": 2
+  },
+  {
+   "id": "r_barrow_bone_meal__hog_tusk",
+   "output": "barrow_bone_meal",
+   "band": 1,
+   "alt": true,
+   "skill": "rendering",
+   "trivial": 8,
+   "min_skill": 0,
+   "tool": {
+    "kind": "flensing_knife",
+    "tier": 1
+   },
+   "station": "flensing_yard",
+   "grade": 1,
+   "stars": 1,
+   "inputs": {
+    "hog_tusk": 1
+   },
+   "fee": 7,
+   "makes": 1,
+   "hours": 2,
+   "byproducts": {
+    "barrow_marrow": 1
+   }
+  },
+  {
+   "id": "r_barrow_bone_meal__wirehorn_antler",
+   "output": "barrow_bone_meal",
+   "band": 1,
+   "alt": true,
+   "skill": "rendering",
+   "trivial": 8,
+   "min_skill": 0,
+   "tool": {
+    "kind": "flensing_knife",
+    "tier": 1
+   },
+   "station": "flensing_yard",
+   "grade": 1,
+   "stars": 1,
+   "inputs": {
+    "wirehorn_antler": 1
+   },
+   "fee": 9,
+   "makes": 2,
+   "hours": 2
+  },
+  {
+   "id": "r_barrow_bone_meal__lurker_jaw",
+   "output": "barrow_bone_meal",
+   "band": 1,
+   "alt": true,
+   "skill": "rendering",
+   "trivial": 8,
+   "min_skill": 0,
+   "tool": {
+    "kind": "flensing_knife",
+    "tier": 1
+   },
+   "station": "flensing_yard",
+   "grade": 1,
+   "stars": 1,
+   "inputs": {
+    "lurker_jaw": 1
+   },
+   "fee": 32,
+   "makes": 2,
+   "hours": 2,
+   "byproducts": {
+    "barrow_marrow": 1
+   }
+  },
+  {
+   "id": "r_barrow_bone_meal__thornback_horn",
+   "output": "barrow_bone_meal",
+   "band": 1,
+   "alt": true,
+   "skill": "rendering",
+   "trivial": 8,
+   "min_skill": 0,
+   "tool": {
+    "kind": "flensing_knife",
+    "tier": 1
+   },
+   "station": "flensing_yard",
+   "grade": 1,
+   "stars": 1,
+   "inputs": {
+    "thornback_horn": 1
+   },
+   "fee": 42,
+   "makes": 4,
+   "hours": 2,
+   "byproducts": {
+    "barrow_marrow": 2
+   }
+  },
+  {
+   "id": "r_barrow_bone_meal__kettle_shell",
+   "output": "barrow_bone_meal",
+   "band": 1,
+   "alt": true,
+   "skill": "rendering",
+   "trivial": 8,
+   "min_skill": 0,
+   "tool": {
+    "kind": "flensing_knife",
+    "tier": 1
+   },
+   "station": "flensing_yard",
+   "grade": 1,
+   "stars": 1,
+   "inputs": {
+    "kettle_shell": 2
+   },
+   "fee": 12,
+   "makes": 1,
+   "hours": 2
+  },
+  {
    "id": "r_barrow_quench_oil",
    "output": "barrow_quench_oil",
    "band": 1,
@@ -980,6 +1121,94 @@
    },
    "fee": 4,
    "makes": 2,
+   "hours": 2
+  },
+  {
+   "id": "r_barrow_tallow__game_haunch",
+   "output": "barrow_tallow",
+   "band": 1,
+   "alt": true,
+   "skill": "rendering",
+   "trivial": 8,
+   "min_skill": 0,
+   "tool": {
+    "kind": "flensing_knife",
+    "tier": 1
+   },
+   "station": "flensing_yard",
+   "grade": 1,
+   "stars": 1,
+   "inputs": {
+    "game_haunch": 1
+   },
+   "fee": 4,
+   "makes": 2,
+   "hours": 2
+  },
+  {
+   "id": "r_barrow_tallow__hog_fatback",
+   "output": "barrow_tallow",
+   "band": 1,
+   "alt": true,
+   "skill": "rendering",
+   "trivial": 8,
+   "min_skill": 0,
+   "tool": {
+    "kind": "flensing_knife",
+    "tier": 1
+   },
+   "station": "flensing_yard",
+   "grade": 1,
+   "stars": 1,
+   "inputs": {
+    "hog_fatback": 1
+   },
+   "fee": 4,
+   "makes": 4,
+   "hours": 2
+  },
+  {
+   "id": "r_barrow_tallow__lurker_blubber",
+   "output": "barrow_tallow",
+   "band": 1,
+   "alt": true,
+   "skill": "rendering",
+   "trivial": 8,
+   "min_skill": 0,
+   "tool": {
+    "kind": "flensing_knife",
+    "tier": 1
+   },
+   "station": "flensing_yard",
+   "grade": 1,
+   "stars": 1,
+   "inputs": {
+    "lurker_blubber": 1
+   },
+   "fee": 4,
+   "makes": 3,
+   "hours": 2
+  },
+  {
+   "id": "r_barrow_tallow__thornback_suet",
+   "output": "barrow_tallow",
+   "band": 1,
+   "alt": true,
+   "skill": "rendering",
+   "trivial": 8,
+   "min_skill": 0,
+   "tool": {
+    "kind": "flensing_knife",
+    "tier": 1
+   },
+   "station": "flensing_yard",
+   "grade": 1,
+   "stars": 1,
+   "inputs": {
+    "thornback_suet": 1
+   },
+   "fee": 6,
+   "makes": 6,
    "hours": 2
   },
   {
@@ -1004,6 +1233,106 @@
    "hours": 2,
    "byproducts": {
     "barrow_tallow": 2
+   }
+  },
+  {
+   "id": "r_scraped_field_hide__hound_pelt",
+   "output": "scraped_field_hide",
+   "band": 1,
+   "alt": true,
+   "skill": "rendering",
+   "trivial": 8,
+   "min_skill": 0,
+   "tool": {
+    "kind": "flensing_knife",
+    "tier": 1
+   },
+   "station": "flensing_yard",
+   "grade": 1,
+   "stars": 1,
+   "inputs": {
+    "hound_pelt": 1
+   },
+   "fee": 11,
+   "makes": 1,
+   "hours": 2,
+   "byproducts": {
+    "barrow_tallow": 1
+   }
+  },
+  {
+   "id": "r_scraped_field_hide__hog_hide",
+   "output": "scraped_field_hide",
+   "band": 1,
+   "alt": true,
+   "skill": "rendering",
+   "trivial": 8,
+   "min_skill": 0,
+   "tool": {
+    "kind": "flensing_knife",
+    "tier": 1
+   },
+   "station": "flensing_yard",
+   "grade": 1,
+   "stars": 1,
+   "inputs": {
+    "hog_hide": 1
+   },
+   "fee": 26,
+   "makes": 2,
+   "hours": 2,
+   "byproducts": {
+    "barrow_tallow": 2
+   }
+  },
+  {
+   "id": "r_scraped_field_hide__wirehorn_hide",
+   "output": "scraped_field_hide",
+   "band": 1,
+   "alt": true,
+   "skill": "rendering",
+   "trivial": 8,
+   "min_skill": 0,
+   "tool": {
+    "kind": "flensing_knife",
+    "tier": 1
+   },
+   "station": "flensing_yard",
+   "grade": 1,
+   "stars": 1,
+   "inputs": {
+    "wirehorn_hide": 1
+   },
+   "fee": 18,
+   "makes": 2,
+   "hours": 2,
+   "byproducts": {
+    "barrow_tallow": 1
+   }
+  },
+  {
+   "id": "r_scraped_field_hide__thornback_hide",
+   "output": "scraped_field_hide",
+   "band": 1,
+   "alt": true,
+   "skill": "rendering",
+   "trivial": 8,
+   "min_skill": 0,
+   "tool": {
+    "kind": "flensing_knife",
+    "tier": 1
+   },
+   "station": "flensing_yard",
+   "grade": 1,
+   "stars": 1,
+   "inputs": {
+    "thornback_hide": 1
+   },
+   "fee": 90,
+   "makes": 6,
+   "hours": 2,
+   "byproducts": {
+    "barrow_tallow": 4
    }
   },
   {
@@ -14432,6 +14761,29 @@
    },
    "fee": 54,
    "makes": 9,
+   "hours": 2
+  },
+  {
+   "id": "r_cured_hide__field",
+   "output": "cured_hide",
+   "band": 1,
+   "alt": true,
+   "skill": "leatherwork",
+   "trivial": 12,
+   "min_skill": 0,
+   "tool": {
+    "kind": "currier_knife",
+    "tier": 1
+   },
+   "station": "leatherworks",
+   "grade": 1,
+   "stars": 1,
+   "inputs": {
+    "scraped_field_hide": 2,
+    "heartwood_tanning_liquor": 1
+   },
+   "fee": 22,
+   "makes": 1,
    "hours": 2
   },
   {

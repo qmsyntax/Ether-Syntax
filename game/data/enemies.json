@@ -1,5 +1,5 @@
 {
-  "_note": "Enemy kinds. hp and damage are multiplied by the spawn's strength factor (walls past the gate use passage.late_strength). aura_value feeds hidden latent aura on kill; remains: the item every kill of this kind leaves (Brent 2026-10-18: kills pay loot, not cash). drops: unused since the Netherecho exists - constructs are subdued there, never looted. loot: item drops left on the ground, each rolled independently. shove_resist scales how far a shove moves this enemy: 1.0 light, 0.5 heavy, 0.25 elite - never zero. design/05 step 2: poise (see balance.combat); behaviour is melee | ranged | pouncer. A melee enemy may set attack_shape 'circle' (hits everything within attack_radius of itself when the wind-up ends), interruptible (a white flash; an interrupting skill or a poise break cancels it), stuck_after_miss (seconds it stands open after hitting nothing) and front_armour (share of damage it ignores from its front arc). ranged: holds between keep_range_min and max, aims for windup seconds along a line that stops following you aim_lock seconds before release, backs off if you come within back_off_within. pouncer: circles at circle_distance; when you have been moving away from the pack for pounce_after_retreat_s it crouches for windup and leaps pounce_range; any hit during the crouch or the leap knocks it down for knockdown_s; a leap that misses leaves it stuck. STEP 4 (design/05 6.1): front_armour may be dropped below front_armour_until_frac of health; blocks_shots: a piercing shot from the front stops on it; stagger_s: how long a poise break lasts for this kind; attack_shove: metres its blow pushes the player; death_burst: what it leaves when it dies (scripts/censer_burst.gd); aura_ring: a ring drawn on the ground round it. behaviour support (the Drummer): never attacks, stands stand_behind metres behind the line, gives aura_status to allies within aura_radius, and every attack_cooldown winds up a roll (interruptible) that gives roll_status to one ally. behaviour commander: melee with a counter-swing after a blocked hit, and by health phase2_at: 'calls' reinforcements once and adds the 'sweep'; phase3_at: adds the 'charge', which crashes if it ends on a wall or stone. loot: an entry {learnable, chance} drops a skill scroll this character can learn and does not have. 2026-10-22 build: metal (0 bare, 1 mailed, 2 plated: Metal's rule, +25% a class, and Rusting burns by it), flesh (0-1, the share not under worn armour: every Disease hit and tick is multiplied by it), living (false for anything animated: Life does nothing to it), elite (the Wall Commander: holds that would lock it become something lesser).",
+  "_note": "Enemy kinds. hp and damage are multiplied by the spawn's strength factor (walls past the gate use passage.late_strength). aura_value feeds hidden latent aura on kill; remains: the item every kill of this kind leaves (Brent 2026-10-18: kills pay loot, not cash). drops: unused since the Netherecho exists - constructs are subdued there, never looted. loot: item drops left on the ground, each rolled independently. shove_resist scales how far a shove moves this enemy: 1.0 light, 0.5 heavy, 0.25 elite - never zero. design/05 step 2: poise (see balance.combat); behaviour is melee | ranged | pouncer. A melee enemy may set attack_shape 'circle' (hits everything within attack_radius of itself when the wind-up ends), interruptible (a white flash; an interrupting skill or a poise break cancels it), stuck_after_miss (seconds it stands open after hitting nothing) and front_armour (share of damage it ignores from its front arc). ranged: holds between keep_range_min and max, aims for windup seconds along a line that stops following you aim_lock seconds before release, backs off if you come within back_off_within. pouncer: circles at circle_distance; when you have been moving away from the pack for pounce_after_retreat_s it crouches for windup and leaps pounce_range; any hit during the crouch or the leap knocks it down for knockdown_s; a leap that misses leaves it stuck. STEP 4 (design/05 6.1): front_armour may be dropped below front_armour_until_frac of health; blocks_shots: a piercing shot from the front stops on it; stagger_s: how long a poise break lasts for this kind; attack_shove: metres its blow pushes the player; death_burst: what it leaves when it dies (scripts/censer_burst.gd); aura_ring: a ring drawn on the ground round it. behaviour support (the Drummer): never attacks, stands stand_behind metres behind the line, gives aura_status to allies within aura_radius, and every attack_cooldown winds up a roll (interruptible) that gives roll_status to one ally. behaviour commander: melee with a counter-swing after a blocked hit, and by health phase2_at: 'calls' reinforcements once and adds the 'sweep'; phase3_at: adds the 'charge', which crashes if it ends on a wall or stone. loot: an entry {learnable, chance} drops a skill scroll this character can learn and does not have. 2026-10-22 build: metal (0 bare, 1 mailed, 2 plated: Metal's rule, +25% a class, and Rusting burns by it), flesh (0-1, the share not under worn armour: every Disease hit and tick is multiplied by it), living (false for anything animated: Life does nothing to it), elite (the Wall Commander: holds that would lock it become something lesser). 2026-10-23 (Brent: the Stubble, unstarred first): stars - 0 for the mortal tier (design/01 LAW 2: an unstarred kill pays little latent aura, less as the star grows - balance.json 'unstarred'). creature: a procedural four-legged (or six, or two) STAND-IN model (scripts/art/creature_models.gd) until there is a creature rig source; stand_in marks them. remains may be a list (every kill leaves all of them); loot entries may carry a rarity (common | uncommon | rare) - a label, the chance is the roll. Beast behaviours (scripts/beast.gd): runner (the Gleaner - runs for the next camp, keep_away, fetch_reach), lurker (rise.*: trigger_radius, windup, radius, damage, shove; tether, burrow_s), grazer (neutral herd; charge.* as the commander's, plus max_dist and shove; angry_speed; graze_radius), flanker (flank_distance, rear_bite_mult on your back, patience_s, front_arc_deg), charger (charge.*; stuck_s after a miss), skittish (shy_radius, angry_s, calm_distance; kick.* from behind), darter (retreat_s, retreat_distance after each peck). death_burst kind 'scald' hurts whoever stands in it (scripts/scald_burst.gd); swell: below_frac of health it moves speed_mult faster.",
   "enemies": {
     "grunt": {
       "metal": 0,
@@ -388,6 +388,460 @@
         }
       ],
       "remains": "war_drumhead"
+    },
+    "chaff_wren": {
+      "metal": 0,
+      "flesh": 1.0,
+      "living": true,
+      "stars": 0,
+      "heavy": false,
+      "drops": {},
+      "name": "Chaff Wren",
+      "creature": "chaff_wren",
+      "behaviour": "darter",
+      "hp": 160.0,
+      "radius": 0.3,
+      "height": 0.5,
+      "speed": 6.0,
+      "damage": 9.0,
+      "aura_value": 0.6,
+      "color": [
+        0.52,
+        0.46,
+        0.32
+      ],
+      "poise": 90.0,
+      "shove_resist": 1.0,
+      "attack_cooldown": 1.4,
+      "windup": 0.3,
+      "reach": 1.8,
+      "retreat_s": 1.3,
+      "retreat_distance": 5.0,
+      "remains": [
+        "wren_down"
+      ],
+      "loot": [
+        {
+          "item": "wren_glint",
+          "chance": 0.06,
+          "rarity": "rare"
+        },
+        {
+          "item": "field_dressing",
+          "chance": 0.04,
+          "rarity": "uncommon"
+        }
+      ],
+      "stand_in": true
+    },
+    "kettle_beetle": {
+      "metal": 0,
+      "flesh": 1.0,
+      "living": true,
+      "stars": 0,
+      "heavy": false,
+      "drops": {},
+      "name": "Kettle Beetle",
+      "creature": "kettle_beetle",
+      "behaviour": "melee",
+      "hp": 600.0,
+      "radius": 0.55,
+      "height": 0.7,
+      "speed": 2.3,
+      "damage": 14.0,
+      "aura_value": 1.2,
+      "color": [
+        0.5,
+        0.36,
+        0.24
+      ],
+      "poise": 130.0,
+      "shove_resist": 0.7,
+      "front_armour": 0.35,
+      "attack_cooldown": 1.9,
+      "windup": 0.7,
+      "reach": 1.8,
+      "interruptible": true,
+      "swell": {
+        "below_frac": 0.5,
+        "speed_mult": 1.6
+      },
+      "death_burst": {
+        "kind": "scald",
+        "delay": 1.1,
+        "radius": 2.6,
+        "damage": 22.0,
+        "color": [
+          1.0,
+          0.78,
+          0.6
+        ]
+      },
+      "remains": [
+        "kettle_shell"
+      ],
+      "loot": [
+        {
+          "item": "scald_gland",
+          "chance": 0.35,
+          "rarity": "uncommon"
+        },
+        {
+          "item": "field_dressing",
+          "chance": 0.05,
+          "rarity": "uncommon"
+        }
+      ],
+      "stand_in": true
+    },
+    "ditch_hound": {
+      "metal": 0,
+      "flesh": 1.0,
+      "living": true,
+      "stars": 0,
+      "heavy": false,
+      "drops": {},
+      "name": "Ditch Hound",
+      "creature": "ditch_hound",
+      "behaviour": "flanker",
+      "hp": 700.0,
+      "radius": 0.42,
+      "height": 0.85,
+      "speed": 6.4,
+      "damage": 13.0,
+      "aura_value": 1.6,
+      "color": [
+        0.5,
+        0.42,
+        0.3
+      ],
+      "poise": 90.0,
+      "shove_resist": 1.0,
+      "attack_cooldown": 1.5,
+      "windup": 0.4,
+      "reach": 1.8,
+      "flank_distance": 2.6,
+      "rear_bite_mult": 1.6,
+      "patience_s": 1.2,
+      "front_arc_deg": 110.0,
+      "remains": [
+        "hound_pelt",
+        "game_haunch"
+      ],
+      "loot": [
+        {
+          "item": "hound_fang",
+          "chance": 0.45,
+          "rarity": "common"
+        },
+        {
+          "item": "field_dressing",
+          "chance": 0.05,
+          "rarity": "uncommon"
+        }
+      ],
+      "stand_in": true
+    },
+    "burr_hog": {
+      "metal": 0,
+      "flesh": 1.0,
+      "living": true,
+      "stars": 0,
+      "heavy": false,
+      "drops": {},
+      "name": "Burr-Hog",
+      "creature": "burr_hog",
+      "behaviour": "charger",
+      "hp": 1000.0,
+      "radius": 0.62,
+      "height": 1.0,
+      "speed": 3.6,
+      "damage": 16.0,
+      "aura_value": 2.6,
+      "color": [
+        0.36,
+        0.27,
+        0.2
+      ],
+      "poise": 200.0,
+      "shove_resist": 0.5,
+      "front_armour": 0.5,
+      "attack_cooldown": 1.8,
+      "windup": 0.55,
+      "reach": 1.9,
+      "charge": {
+        "windup": 1.1,
+        "length": 12.0,
+        "speed": 13.0,
+        "damage": 26.0,
+        "width": 1.6,
+        "cooldown": 6.0,
+        "min_dist": 5.0,
+        "max_dist": 13.0,
+        "crash_stun_s": 2.5,
+        "crash_status": "dazed",
+        "stuck_s": 2.2,
+        "shove": 2.5
+      },
+      "remains": [
+        "hog_hide",
+        "hog_fatback"
+      ],
+      "loot": [
+        {
+          "item": "hog_tusk",
+          "chance": 0.5,
+          "rarity": "common"
+        },
+        {
+          "item": "field_dressing",
+          "chance": 0.06,
+          "rarity": "uncommon"
+        },
+        {
+          "item": "river_stone",
+          "chance": 0.01,
+          "rarity": "rare"
+        }
+      ],
+      "stand_in": true
+    },
+    "wirehorn": {
+      "metal": 0,
+      "flesh": 1.0,
+      "living": true,
+      "stars": 0,
+      "heavy": false,
+      "drops": {},
+      "name": "Wirehorn",
+      "creature": "wirehorn",
+      "behaviour": "skittish",
+      "hp": 800.0,
+      "radius": 0.55,
+      "height": 1.75,
+      "speed": 5.2,
+      "damage": 14.0,
+      "aura_value": 2.2,
+      "color": [
+        0.46,
+        0.4,
+        0.32
+      ],
+      "poise": 150.0,
+      "shove_resist": 0.6,
+      "turn_rate_deg": 120.0,
+      "attack_cooldown": 1.7,
+      "windup": 0.65,
+      "reach": 2.2,
+      "shy_radius": 9.0,
+      "angry_s": 10.0,
+      "calm_distance": 14.0,
+      "kick": {
+        "windup": 0.4,
+        "damage": 28.0,
+        "reach": 2.3,
+        "arc_deg": 110.0,
+        "shove": 3.5,
+        "cooldown": 2.6
+      },
+      "remains": [
+        "wirehorn_hide"
+      ],
+      "loot": [
+        {
+          "item": "wirehorn_antler",
+          "chance": 0.6,
+          "rarity": "common"
+        },
+        {
+          "item": "game_haunch",
+          "chance": 0.5,
+          "rarity": "common"
+        },
+        {
+          "item": "copper_tangle",
+          "chance": 0.15,
+          "rarity": "uncommon"
+        },
+        {
+          "item": "cooling_coil",
+          "chance": 0.01,
+          "rarity": "rare"
+        }
+      ],
+      "stand_in": true
+    },
+    "gleaner": {
+      "metal": 0,
+      "flesh": 1.0,
+      "living": true,
+      "stars": 0,
+      "heavy": false,
+      "drops": {},
+      "name": "Gleaner",
+      "creature": "gleaner",
+      "behaviour": "runner",
+      "hp": 220.0,
+      "radius": 0.42,
+      "height": 0.95,
+      "speed": 7.4,
+      "damage": 0.0,
+      "aura_value": 0.8,
+      "color": [
+        0.55,
+        0.47,
+        0.36
+      ],
+      "poise": 10.0,
+      "stagger_s": 0.7,
+      "shove_resist": 1.0,
+      "attack_cooldown": 3.0,
+      "windup": 0.5,
+      "reach": 1.5,
+      "keep_away": 10.0,
+      "fetch_reach": 5.0,
+      "remains": [
+        "gleaner_hoard"
+      ],
+      "loot": [
+        {
+          "item": "scrap_iron",
+          "chance": 0.25,
+          "rarity": "common"
+        },
+        {
+          "item": "field_dressing",
+          "chance": 0.1,
+          "rarity": "uncommon"
+        },
+        {
+          "item": "wren_glint",
+          "chance": 0.08,
+          "rarity": "rare"
+        },
+        {
+          "item": "river_stone",
+          "chance": 0.02,
+          "rarity": "rare"
+        }
+      ],
+      "stand_in": true
+    },
+    "sod_lurker": {
+      "metal": 0,
+      "flesh": 1.0,
+      "living": true,
+      "stars": 0,
+      "heavy": false,
+      "drops": {},
+      "name": "Sod-Lurker",
+      "creature": "sod_lurker",
+      "behaviour": "lurker",
+      "hp": 700.0,
+      "radius": 0.62,
+      "height": 0.8,
+      "speed": 3.0,
+      "damage": 16.0,
+      "aura_value": 2.2,
+      "color": [
+        0.4,
+        0.32,
+        0.23
+      ],
+      "poise": 160.0,
+      "shove_resist": 0.4,
+      "attack_cooldown": 1.7,
+      "windup": 0.55,
+      "reach": 2.0,
+      "rise": {
+        "trigger_radius": 2.2,
+        "windup": 0.7,
+        "radius": 2.4,
+        "damage": 30.0,
+        "shove": 2.5
+      },
+      "tether": 8.0,
+      "burrow_s": 4.0,
+      "remains": [
+        "lurker_jaw",
+        "lurker_blubber"
+      ],
+      "loot": [
+        {
+          "item": "field_dressing",
+          "chance": 0.05,
+          "rarity": "uncommon"
+        },
+        {
+          "item": "lurker_pearl",
+          "chance": 0.03,
+          "rarity": "rare"
+        }
+      ],
+      "stand_in": true
+    },
+    "thornback": {
+      "metal": 0,
+      "flesh": 1.0,
+      "living": true,
+      "stars": 0,
+      "heavy": false,
+      "drops": {},
+      "name": "Thornback",
+      "creature": "thornback",
+      "behaviour": "grazer",
+      "hp": 1000.0,
+      "radius": 0.95,
+      "height": 1.65,
+      "speed": 1.6,
+      "angry_speed": 4.2,
+      "damage": 18.0,
+      "aura_value": 3.5,
+      "color": [
+        0.42,
+        0.36,
+        0.3
+      ],
+      "poise": 400.0,
+      "shove_resist": 0.25,
+      "front_armour": 0.25,
+      "attack_cooldown": 2.6,
+      "windup": 0.7,
+      "reach": 2.4,
+      "turn_rate_deg": 110.0,
+      "graze_radius": 6.0,
+      "charge": {
+        "windup": 1.2,
+        "length": 14.0,
+        "speed": 11.0,
+        "damage": 30.0,
+        "width": 2.2,
+        "cooldown": 7.0,
+        "min_dist": 5.0,
+        "max_dist": 16.0,
+        "crash_stun_s": 3.0,
+        "crash_status": "dazed",
+        "stuck_s": 1.2,
+        "shove": 3.0
+      },
+      "remains": [
+        "thornback_hide",
+        "thornback_horn",
+        "thornback_suet"
+      ],
+      "loot": [
+        {
+          "item": "thornback_heartstone",
+          "chance": 0.05,
+          "rarity": "rare"
+        },
+        {
+          "item": "field_dressing",
+          "chance": 0.05,
+          "rarity": "uncommon"
+        }
+      ],
+      "stand_in": true
     }
   }
 }

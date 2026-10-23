@@ -58,6 +58,8 @@ static func normalize_look(look: Dictionary) -> Dictionary:
 ## An enemy model for a kind in data/enemies.json ("grunt", "brute", "commander"). Radius,
 ## height and base colour come from that file. Unknown kinds get a plain figure.
 static func enemy(kind: String) -> ModelRig:
+	if str(GameData.enemy(kind).get("creature", "")) != "":
+		return CreatureModels.make(kind)          # an unstarred beast: a procedural stand-in (creature_models.gd)
 	var look: Dictionary = GameData.enemy_looks.get(kind, {})
 	var real: bool = bool((GameData.balance.get("art", {}) as Dictionary).get("real_bodies", false)) or OS.get_cmdline_user_args().has("--real-body")
 	if real and not look.is_empty() and RealCharacter.exists("body_" + str(look.get("body", "male"))):

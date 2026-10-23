@@ -697,6 +697,60 @@ From the table in section 4. **Bold** is needed before the zone can be walked at
 Not needed for this zone: pathfinding (E4b), the map screen (E10 — though it will be missed by the second zone), walkable
 services (E11), carriage posts (E16), perches (E18).
 
+### 6.6 As built, 2026-10-23: the Stubble populated [MODEL unless marked]
+
+Asked for by Brent 2026-10-23 [B]: build out the starting zone, populate it with monsters and a couple of stubbed dungeon
+entrances; balance the monsters for a brand-new character; give each a loot table and a rune pool; build the zone's Netherecho.
+Read through the 2026-10-19 ruling [B]: **unstarred monsters only** - the camps of 6.3 keep their places and jobs, but hold
+beasts, not invaders. Numbers live in data (`enemies.json`, `zones.json`, `balance.json` "camps" and "unstarred"). Nothing here
+has been played by hand; `tests/newbie_duels.tscn` is a careful *scripted* fighter, not a feel test.
+
+**The eight unstarred kinds** (enemies.json `stars` 0; strength at the camp scales hp and most blows). Stats are at strength 1.0.
+All are procedural stand-ins (no creature rig source yet - six are four-legged, the beetle six, the wren two).
+
+| Kind | Behaviour | hp / blow / speed / poise | What it does | The question |
+|---|---|---|---|---|
+| Gleaner | runner | 220 / - / 7.4 / 10 | Hangs at a camp's edge; when the camp wakes it runs for the next camp and brings it. Any hit makes it stumble | Can you stop it before it gets there? |
+| Sod-Lurker | lurker | 700 / 16 (rise 30) / 3.0 / 160 | Buried under turned earth; step on the patch and it heaves up (a filling circle) for a heavy hit and a shove. Tether 8 m, then back under | Were you reading the ground, or running? |
+| Thornback | grazer | 1,000 / 18 (charge 30) / 1.6-4.2 / 400 | Neutral herd; hit one and all charge down marked lanes, wheeling away between charges and running through each other | Is this worth the weight and the walk? |
+| Ditch Hound | flanker | 700 / 13 (x1.6 on your back) / 6.4 / 90 | Works round to your back before biting; loses patience after 1.2 s | Can you keep them all in front of you? |
+| Burr-Hog | charger | 1,000 / 16 (charge 26) / 3.6 / 200 | Front armoured by its burrs (0.5); scrapes, then charges a lane; a miss leaves it stuck with its guard down | Can you make it miss? |
+| Wirehorn | skittish | 800 / 14 (kick 28) / 5.2 / 150 | Neutral, shies off; angered, an antler toss in front and a heavy kick (with a shove) behind | Where is it safe to stand? |
+| Kettle Beetle | melee + scald | 600 / 14 (scald 22) / 2.3 / 130 | Shell guards its front (0.35); hurt, it swells and hurries; dead, it bursts in steam after 1.1 s | Where do you finish it? |
+| Chaff Wren | darter | 160 / 9 / 6.0 / 90 | In flocks; pecks once and scatters | Do you have an answer for many small things? |
+
+**Remains and loot** (items.json; remains feed band-1 Rendering and Leatherwork as alternative recipes, tools/items): hound pelt +
+haunch; hog hide + fatback; wirehorn hide; thornback hide + horn + suet; lurker jaw + blubber; kettle shell; wren down; Gleaner's
+hoard. Chance drops: bone (fang, tusk, antler), the field dressing (a usable band-1 consumable), curios (wren's glint, scald gland,
+copper tangle, lurker pearl, thornback heartstone) and, rarely, a live trinket (River Stone Charm, Cooling Coil). Nothing pays cash.
+**Rune pools**: tools/runes/rune_sources.py KIND_PROFILES + KIND_THEMES (earth, water, nature and the rest by creature): a themed
+affinity gets four runes in the pool instead of two; kill chances 2-10%.
+
+**The aura rule** (design/01 LAW 2) [MODEL]: an unstarred kill's aura x 0.35^(stars - 1) x lerp(1, 0.25, newest star's fill).
+
+**Camps** (zones.json "camps"): the tip-pickers (2 beetles, 0.6), the ditch (3 hounds, 0.6), the well-watch (5 wrens + a Gleaner
+that runs for the sounder, 0.7), the herd (4 Thornbacks, neutral, 0.8), the sounder (2 Burr-Hogs, 0.7), the tree camp (2 hounds +
+3 wrens + a Gleaner that runs for the Cut pickets, **0.7**, eased from 0.8 by the duels), the Cut pickets (a hog + 2 hounds, 0.9),
+two spares rolled at 50% per visit (the steading, the Swallow's lip), and a pair of Wirehorns roaming the power-line verge. Six
+Sod-Lurker patches. Leash 22-40 m, aggro 12 m, respawn 480 s (real seconds - there is no world clock yet), never within 60 m of you.
+
+**Countryside** (New Earth, modern-rural [B 2026-10-18]): a paler packed-dirt road, the Cut track and a steading lane, a power line
+of eight poles with sagging wires (one pole down), the burnt steading (brick walls, a fallen slab, a car hulk), a second car hulk
+by the road, wire fences, road signs.
+
+**Entrances** - stubbed, one approach for both: each stands in the world with a name plate and a line, and using it says it is not
+open yet; each names the dungeon id it will open (zones.json "entrances"). **The Swallow** - a sinkhole south of the hanging tree;
+**the Steading Cellar** - a barred, chained storm-cellar hatch in the burnt farmhouse.
+
+**The Netherecho** (zones.json "nether"): painted echoes of the dry well (the first site, as 5.8 says), the hanging tree, the dross
+heap, the waystone, two power poles, the steading and the Swallow; eight sites with wisps by the place (water at the well, earth at
+the heap and the steading, wind on the open scrub, lightning on the power line, nature and death at the tree, dark at the Swallow)
+plus one of the traveller's own; vestiges (and two docile remnants, at the well and the Swallow) scaled x0.8 / x0.6 for a new
+projection. Subduing one reveals a rune as before.
+
+**Not built** (still as 6.5): the world clock (and with it the night Harrier and the eight-hour refill), named spawns (Old
+Ha'penny, the Widow-Mask), the off-screen threat marker, the Drove Stile and the Wet Gap (still shut).
+
 ---
 ## 7. Build order
 
