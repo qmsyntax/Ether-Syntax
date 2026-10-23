@@ -3563,6 +3563,27 @@ func _preview_row(out: Array[Dictionary], label: String, before: float, after: f
 	out.append({"label": label, "before": a, "after": b, "better": (after > before) == more_is_better})
 
 
+## The carried constructs grouped by tier and concept, in carried order: [{tier, concept, count,
+## index (the first one carried), text ("eidolon of Reach x3")}], optionally of one tier only.
+func construct_groups(tier: String = "") -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var at: Dictionary = {}
+	for i: int in constructs.size():
+		var c: Dictionary = constructs[i]
+		if tier != "" and str(c["tier"]) != tier:
+			continue
+		var key: String = "%s|%s" % [c["tier"], c["concept"]]
+		if at.has(key):
+			out[int(at[key])]["count"] = int(out[int(at[key])]["count"]) + 1
+		else:
+			at[key] = out.size()
+			out.append({"tier": str(c["tier"]), "concept": str(c["concept"]), "count": 1, "index": i})
+	for g: Dictionary in out:
+		g["text"] = "%s of %s%s" % [g["tier"], str(GameData.concept(str(g["concept"])).get("label", g["concept"])),
+			(" x%d" % int(g["count"])) if int(g["count"]) > 1 else ""]
+	return out
+
+
 ## Bind a carried construct into an ability. Irreversible; can fail, and failure hurts
 ## (Brent 2026-09-23). `roll` < 0 means roll randomly (tests pass a fixed roll).
 func bind_construct(ability_index: int, construct_index: int, roll: float = -1.0) -> String:
@@ -4356,9 +4377,15 @@ func make_test_character(aff: String) -> void:
 		hotbar[i] = -1
 	var stage: int = mini(GameData.inum("skills", "test_stage"), stars + 1)
 	for id: String in ids:
-		abilities.append({"id": id, "stage": stage, "progress": 0.0})
+		abilities.append({"id": id, "stage": stage, "progress": 100.0})       # full bars: ready to bind
 	for i: int in mini(hotbar.size(), abilities.size()):
 		hotbar[i] = i
+	# every construct tier of every concept, test_constructs_each of each, to bind with (Brent 2026-10-23)
+	constructs.clear()
+	for tier: Variant in GameData.construct_tiers:
+		for concept: Variant in GameData.concept_ids():
+			for k: int in GameData.inum("skills", "test_constructs_each"):
+				constructs.append({"tier": str(tier), "concept": concept})
 	note("TEST CHARACTER: every %s skill, stage %d. %s turns the skill bar to the next six." % [str(GameData.affinity(aff).get("label", aff)).to_lower(), stage, Keybinds.binding_text("hotbar_page")])
 
 

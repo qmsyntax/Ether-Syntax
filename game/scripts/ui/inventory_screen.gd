@@ -611,13 +611,12 @@ func _build_soul(box: VBoxContainer) -> void:
 		if not rune_fx.is_empty():
 			col.add_child(UiTheme.body("Sealed word: " + ", ".join(PackedStringArray(rune_fx.map(func(v: Variant) -> String: return str(v)))), 12, UiTheme.GOLD))
 		if need != "":
-			for ci: int in held.size():
-				if str(held[ci]["tier"]) == need:
-					var label: String = str(GameData.concept(str(held[ci]["concept"])).get("label", held[ci]["concept"]))
-					var bind_b: Button = UiWidgets.small_button("Bind the %s of %s - form the seal" % [need, label], func() -> void:
-						game.call("open_seal", ai, ci))
-					bind_b.add_theme_font_size_override("font_size", UiTheme.FS_SMALL + 1)
-					col.add_child(bind_b)
+			for g: Dictionary in player.call("construct_groups", need):       # one button per concept carried
+				var ci: int = int(g["index"])
+				var bind_b: Button = UiWidgets.small_button("Bind the %s - form the seal" % str(g["text"]), func() -> void:
+					game.call("open_seal", ai, ci))
+				bind_b.add_theme_font_size_override("font_size", UiTheme.FS_SMALL + 1)
+				col.add_child(bind_b)
 		list.add_child(UiTheme.rule())
 
 	box.add_child(UiTheme.heading("Constructs carried", 18))
@@ -625,8 +624,8 @@ func _build_soul(box: VBoxContainer) -> void:
 		box.add_child(UiTheme.body("None. For now they come from the strongest things you kill.", 13, UiTheme.TEXT_FAINT))
 	else:
 		var names2: Array[String] = []
-		for c: Dictionary in held:
-			names2.append("%s of %s" % [str(c["tier"]), str(GameData.concept(str(c["concept"])).get("label", c["concept"]))])
+		for g: Dictionary in player.call("construct_groups"):
+			names2.append(str(g["text"]))
 		box.add_child(UiTheme.body(", ".join(names2), 14, UiTheme.GOLD))
 	var proven: Array = player.get("discoveries")
 	if not proven.is_empty():

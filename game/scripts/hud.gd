@@ -599,7 +599,7 @@ func _draw_plate() -> void:
 	if not held.is_empty():
 		var gx: float = x + 6.0
 		var gy: float = y + 40.0
-		for c: Dictionary in held:
+		for c: Dictionary in held.slice(0, 8):                 # at most 8 gems; the count says the rest
 			UiDraw.icon(self, "gem", Vector2(gx, gy - 5.0), 14.0, UiTheme.GOLD if str(c["tier"]) == "vestige" else UiTheme.STAR)
 			gx += 17.0
 		UiDraw.rich(self, Vector2(gx + 4.0, gy), "%d to bind  [%s]" % [held.size(), Keybinds.binding_text("bind")], UiTheme.FS_CAPTION + 1, UiTheme.TEXT_DIM, -1.0, false)

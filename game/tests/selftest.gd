@@ -420,6 +420,17 @@ func _test_build_1022() -> void:
 		_check("a %s test character knows every %s skill (%d), at stage %d, with a full tank" % [aff, aff, want_ids.size(), GameData.inum("skills", "test_stage")],
 			have.size() == want_ids.size() and want_ids.all(func(id: String) -> bool: return have.has(id)) and stage_ok and _near(float(tc.get("essence")), float(tc.get("essence_max")))
 			and bool(tc.get("test_character")), "%d of %d" % [have.size(), want_ids.size()])
+		var each: int = GameData.inum("skills", "test_constructs_each")
+		var held: Array = tc.get("constructs")
+		var every_kind: bool = GameData.construct_tiers.all(func(t: Variant) -> bool: return GameData.concept_ids().all(func(c: Variant) -> bool:
+			return held.filter(func(h: Dictionary) -> bool: return str(h["tier"]) == str(t) and str(h["concept"]) == str(c)).size() == each))
+		_check("and carries %d of every construct tier and concept, its bars full: ready to bind (Brent 2026-10-23)" % each,
+			every_kind and held.size() == each * GameData.construct_tiers.size() * GameData.concept_ids().size()
+			and str(tc.call("pending_tier", (tc.get("abilities") as Array)[0])) == GameData.tier_for_stage(GameData.inum("skills", "test_stage")),
+			"%d carried" % held.size())
+		_check("carried constructs group by tier and concept with a count",
+			(tc.call("construct_groups", "eidolon") as Array).size() == GameData.concept_ids().size()
+			and int(((tc.call("construct_groups", "eidolon") as Array)[0] as Dictionary)["count"]) == each)
 		tc.call("next_hotbar_page")
 		_check("its bar turns to the next six", int((tc.get("hotbar") as Array)[0]) == 6)
 		tc.queue_free()

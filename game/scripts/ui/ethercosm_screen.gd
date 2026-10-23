@@ -1023,14 +1023,13 @@ func _build_skill_detail(box: VBoxContainer, held: Array) -> void:
 	# binding
 	if need != "":
 		var any := false
-		for ci: int in held.size():
-			if str(held[ci]["tier"]) == need:
-				any = true
-				var label: String = str(GameData.concept(str(held[ci]["concept"])).get("label", held[ci]["concept"]))
-				var fb: Button = UiWidgets.small_button("Bind the %s of %s - form the seal" % [need, label], func() -> void: open_seal.call_deferred(ci))
-				fb.name = "FormSealButton_%d" % ci
-				box.add_child(fb)
-				box.add_child(_bind_preview(st, str(held[ci]["concept"])))
+		for g: Dictionary in player.call("construct_groups", need):       # one button per concept carried
+			any = true
+			var ci: int = int(g["index"])
+			var fb: Button = UiWidgets.small_button("Bind the %s - form the seal" % str(g["text"]), func() -> void: open_seal.call_deferred(ci))
+			fb.name = "FormSealButton_%d" % ci
+			box.add_child(fb)
+			box.add_child(_bind_preview(st, str(g["concept"])))
 		if not any:
 			box.add_child(UiTheme.body("You carry no %s to bind." % need, 13, UiTheme.BAD))
 
@@ -1161,8 +1160,15 @@ func _build_slots(box: VBoxContainer, held: Array) -> void:
 			rebuild()))
 	if not held.is_empty():
 		var names: Array[String] = []
-		for c2: Dictionary in held:
-			names.append("%s of %s" % [str(c2["tier"]), str(GameData.concept(str(c2["concept"])).get("label", c2["concept"]))])
+		var groups: Array = player.call("construct_groups")
+		if groups.size() > 6:          # a long list (a test character's): count by tier
+			for tier: Variant in GameData.construct_tiers:
+				var n: int = held.filter(func(c2: Dictionary) -> bool: return str(c2["tier"]) == str(tier)).size()
+				if n > 0:
+					names.append("%d %s" % [n, str(tier)])
+		else:
+			for g: Dictionary in groups:
+				names.append(str(g["text"]))
 		box.add_child(UiTheme.body("Constructs carried:  " + ", ".join(names), 13, UiTheme.GOLD))
 
 
