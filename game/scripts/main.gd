@@ -880,13 +880,15 @@ func _setup_stubble_shot(which: String) -> bool:
 		"gleaner":
 			stand.call(112.0, 36.0)
 			go = func() -> void:
-				stand.call(112.0, 48.0)
+				stand.call(108.0, 53.0)
 				field_camps.tick(0.016)
 			_cam_zoom_target = 0.15
 			cam_zoom = 0.15
+			var gl_frames: Array = [0]
 			until = func() -> bool:
 				var g: Node = near_kind.call("gleaner")
-				return g != null and bool(g.call("is_running")) and (g as Node3D).global_position.distance_to(player.global_position) > 12.0
+				gl_frames[0] = int(gl_frames[0]) + 1
+				return g != null and bool(g.call("is_running")) and int(gl_frames[0]) > 45
 		"scald":
 			stand.call(140.0, 50.0)
 			var at: Array = [0]
