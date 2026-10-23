@@ -16,6 +16,12 @@ var _errors: ErrorCatcher
 func _ready() -> void:
 	_errors = ErrorCatcher.install()
 	# `-- --only=runes` runs just the rune checks (quicker while working on runes)
+	if OS.get_cmdline_user_args().has("--only=statuses"):
+		await _test_status_text()
+		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
+		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
+		get_tree().quit(1 if _failed > 0 else 0)
+		return
 	if OS.get_cmdline_user_args().has("--only=runes"):
 		await _test_runes()
 		await _test_rune_effects()
@@ -74,10 +80,117 @@ func _ready() -> void:
 	await _test_seal_editing()
 	await _test_rune_discovery()
 	await _test_build_1022()
+	await _test_status_text()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
 	_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
+
+
+## Status definitions and skill details (Brent 2026-10-23: "What does Masked mean?"): every status has
+## a written desc and a rules line; every key a status uses is worded or explicitly ignored, and each
+## worded key really changes the line; what a skill applies, for how long, and what it only reads;
+## the ethercosm's numbers for a shove, a chain and a sealed change.
+func _test_status_text() -> void:
+	print("status definitions and skill details (2026-10-23):")
+	var ids: Array[String] = GameData.status_ids()
+	var no_desc: Array[String] = []
+	var no_rules: Array[String] = []
+	for id: String in ids:
+		if StatusText.desc(id).strip_edges() == "":
+			no_desc.append(id)
+		if StatusText.rules(id).strip_edges() == "":
+			no_rules.append(id)
+	_check("every status (%d) has a written desc, an alias its target's" % ids.size(), no_desc.is_empty(), str(no_desc))
+	_check("every status has a rules line", no_rules.is_empty(), str(no_rules))
+	var unexplained: Array[String] = []
+	for k: String in StatusText.keys_in_use():
+		if not StatusText.WORDED.has(k) and not StatusText.IGNORED.has(k):
+			unexplained.append(k)
+	_check("every key a status uses is worded or listed as ignored", unexplained.is_empty(), "explain: %s" % str(unexplained))
+	# a worded key must really say something: drop it from a status that has it and the line changes
+	var silent: Array[String] = []
+	for k2: String in StatusText.WORDED:
+		var users: Array[String] = ids.filter(func(id: String) -> bool: return GameData.status(id).has(k2))
+		if users.is_empty():
+			continue
+		var moves := false
+		for id2: String in users:
+			var def: Dictionary = GameData.status(id2).duplicate(true)
+			var line: String = StatusText.rules_of(def)
+			def.erase(k2)
+			if StatusText.rules_of(def) != line:
+				moves = true
+		if not moves:
+			silent.append(k2)
+	_check("every worded key changes the rules line of a status that has it", silent.is_empty(), "silent: %s" % str(silent))
+	_check("an alias reads as what it stands for (Rooted is Pinned)", StatusText.rules("rooted") == StatusText.rules("pinned")
+		and StatusText.label("rooted") == StatusText.label("pinned") and StatusText.desc("rooted") == StatusText.desc("pinned"))
+	var masked: Dictionary = GameData.status("masked")
+	_check("Masked's rules say how far its friends are drawn, the heavy rule and the elite rule",
+		StatusText.rules("masked").contains("%d m" % int(masked["lure_radius"])) and StatusText.rules("masked").contains("half as long")
+		and StatusText.rules("masked").contains("elites get %s instead" % StatusText.label(str(masked["elite_status"]))))
+	_check("a skill's own duration replaces the status's in its rules line", StatusText.rules("masked", 9.0).begins_with("Lasts 9 s"))
+	# the rune view's "+ applies Brittle" lines: the definition as a tooltip, and a click opens it in place
+	var sl: Control = UiWidgets.status_line("  +  applies Brittle (lasts x0.50)", 13, UiTheme.STAR)
+	var sl_label: Label = sl.get_child(0) as Label if sl.get_child_count() > 0 else null
+	var sl_defs: Control = sl.find_child("StatusLineDefs", true, false) as Control
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	var shut_before: bool = sl_defs != null and not sl_defs.visible
+	if sl_label != null:
+		sl_label.gui_input.emit(press)
+	_check("a rune line naming a status carries its definition as a tooltip, and a click opens it in place",
+		sl_label != null and sl_label.tooltip_text.contains(StatusText.desc("brittle")) and sl_label.mouse_filter == Control.MOUSE_FILTER_STOP
+		and shut_before and sl_defs.visible)
+	sl.free()
+	var plain: Control = UiWidgets.status_line("+12% damage", 13, UiTheme.STAR)
+	_check("a line naming no status stays a plain label", plain is Label)
+	plain.free()
+	_check("statuses are found in a line by name, whole words only", StatusText.mentioned("+1 stack of Brittle") == (["brittle"] as Array[String])
+		and StatusText.mentioned("a litany of nothing").is_empty())
+
+	# what a skill applies, for how long as it applies it, and what it only reads
+	var cm: Array[Dictionary] = StatusText.applied_by(GameData.ability("changeling_mask"))
+	_check("Changeling Mask applies Masked, for Masked's own time", cm.size() == 1 and str(cm[0]["id"]) == "masked" and _near(float(cm[0]["lasts"]), float(masked["lasts"])))
+	var gk: Dictionary = GameData.ability("gullet_knot")
+	var gka: Array[Dictionary] = StatusText.applied_by(gk)
+	var frac: float = float((gk["on_hit"] as Dictionary)["status_s_if_not"]["frac"])
+	_check("Gullet Knot applies Choked, shorter unless it is Bleeding - and only reads Bleeding",
+		gka.size() == 1 and str(gka[0]["id"]) == "choked" and str(gka[0]["notes"]).contains(StatusText._n(float(gka[0]["lasts"]) * frac) + " s unless it is Bleeding")
+		and StatusText.read_by(gk).has("bleeding"), "%s / %s" % [str(gka), str(StatusText.read_by(gk))])
+	var ic: Array[Dictionary] = StatusText.applied_by(GameData.ability("iron_clasp"))
+	_check("Iron Clasp's Shackled lasts its skill's time, longer per class of metal", ic.size() == 1 and _near(float(ic[0]["lasts"]), float((GameData.ability("iron_clasp")["on_hit"] as Dictionary)["status_s"]))
+		and str(ic[0]["notes"]).contains("per class of metal"), str(ic))
+	_check("Drawdown only spends Soaked", StatusText.applied_by(GameData.ability("drawdown")).is_empty() and StatusText.read_by(GameData.ability("drawdown")).has("soaked"))
+	var cmp: Array[Dictionary] = StatusText.compare({"on_hit": {"status": "soaked"}},
+		{"on_hit": {"status": "soaked", "status_time_mult": 1.5, "statuses": [{"id": "silenced", "stacks": 1, "lasts": 2.0}]}})
+	var soak_s: float = float(GameData.status("soaked")["lasts"])
+	_check("a sealed word's longer status shows beside the skill's own, and a status it adds is marked as added",
+		cmp.size() == 2 and _near(float(cmp[0]["lasts"]), soak_s * 1.5) and _near(float(cmp[0]["lasts_before"]), soak_s) and not bool(cmp[0]["added"])
+		and str(cmp[1]["id"]) == "silenced" and _near(float(cmp[1]["lasts"]), 2.0) and bool(cmp[1]["added"]), str(cmp))
+
+	# the ethercosm's numbers: a water shove, a lightning chain, a sealed change
+	var p := _new_player()
+	p.call("set_affinities", ["water", "lightning"])
+	p.call("learn", "forked_path")
+	var names: Array = (p.get("abilities") as Array).map(func(s: Dictionary) -> String: return str(s["id"]))
+	var wb: Dictionary = p.call("skill_details", names.find("water_bolt"))
+	var shove_row: Array = (wb.get("rows", []) as Array).filter(func(r: Dictionary) -> bool: return str(r["label"]) == "Shove")
+	_check("Water Bolt's numbers include its shove, in metres", shove_row.size() == 1
+		and str(shove_row[0]["after"]) == "%s m" % StatusText._n(float((GameData.ability("water_bolt")["on_hit"] as Dictionary)["shove"])), str(shove_row))
+	_check("and its statuses, Soaked", (wb.get("statuses", []) as Array).any(func(s: Dictionary) -> bool: return str(s["id"]) == "soaked"))
+	var fp: Dictionary = p.call("skill_details", names.find("forked_path"))
+	var labels: Array = (fp.get("rows", []) as Array).map(func(r: Dictionary) -> String: return str(r["label"]))
+	_check("Forked Path's numbers include its jumps, what each jump does, and its Live mark", labels.has("Jumps") and labels.has("Damage, each jump") and labels.has("Live marks"), str(labels))
+	_check("every skill's numbers name its recovery and the reflux it leaves", labels.has("Recovery") and labels.has("Reflux left behind"))
+	var rows: Array[Dictionary] = p.call("_stat_rows", {"on_hit": {"shove": 1.5}}, {"on_hit": {"shove": 2.5}, "pierce": true},
+		[{"path": "on_hit.shove", "group": "shown", "label": "Shove", "unit": " m"}, {"path": "pierce", "group": "shown", "label": "Pierces", "bool": true}], 1.0)
+	_check("a sealed number shows beside the skill's own (more shove is better; a word that adds a pierce)",
+		rows.size() == 2 and str(rows[0]["before"]) == "1.5 m" and str(rows[0]["after"]) == "2.5 m" and bool(rows[0]["changed"]) and bool(rows[0]["better"])
+		and str(rows[1]["before"]) == "no" and str(rows[1]["after"]) == "yes", str(rows))
+	p.queue_free()
 
 
 ## Every affinity's skills (build brief 2026-10-22): the status engine, the rune-engine rule changes

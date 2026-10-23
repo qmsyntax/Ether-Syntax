@@ -164,7 +164,7 @@ func _finish(ab: Dictionary, groups: Dictionary, fallback_mult: float, patch: Ar
 		_extra_group_patch(ab, g, m2, patch)
 	out["patch"] = patch
 	out["lines"] = lines
-	out["fields"] = _fields_shown(ab)
+	out["fields"] = _fields_shown(ab, patch)
 	# one short list for tooltips: each group that moves, then the hit effects
 	var summary: Array = []
 	for g: String in out["groups"]:
@@ -177,8 +177,36 @@ func _finish(ab: Dictionary, groups: Dictionary, fallback_mult: float, patch: Ar
 
 
 ## Every stat field the skill has, for the before/after preview: [{path, group, label, unit,
-## lower_is_better, scaled_by_stage}].
-func _fields_shown(ab: Dictionary) -> Array:
+## lower_is_better, scaled_by_stage}], then the params' shown_fields (group "shown": no group
+## multiplier reaches them) the skill has or `patch` sets, with their pct / bool / default.
+func _fields_shown(ab: Dictionary, patch: Array = []) -> Array:
+	var out: Array = _group_fields_shown(ab)
+	var patched: Dictionary = {}
+	for p: Variant in patch:
+		patched[str((p as Dictionary).get("path", ""))] = true
+	var have: Dictionary = {}
+	for f: Dictionary in out:
+		have[str(f["path"])] = true
+	for spec: Variant in params.get("shown_fields", []):
+		var s: Dictionary = spec
+		var path: String = str(s["path"])
+		if have.has(path):
+			continue
+		var v: Variant = get_path_value(ab, path)
+		var present: bool = (v is bool and bool(v)) or ((typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT) and float(v) != 0.0)
+		if not present and not patched.has(path) and not s.has("default"):
+			continue
+		have[path] = true
+		var f2: Dictionary = {"path": path, "group": "shown", "label": str(s.get("label", path.capitalize())), "unit": str(s.get("unit", "")),
+			"lower_is_better": bool(s.get("lower_is_better", false)), "scaled_by_stage": false}
+		for k: String in ["pct", "bool", "default"]:
+			if s.has(k):
+				f2[k] = s[k]
+		out.append(f2)
+	return out
+
+
+func _group_fields_shown(ab: Dictionary) -> Array:
 	var out: Array = []
 	var labels: Dictionary = params.get("field_labels", {})
 	var units: Dictionary = params.get("group_units", {})

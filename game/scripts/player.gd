@@ -3954,23 +3954,8 @@ func rune_preview(index: int) -> Dictionary:
 	var after: Dictionary = before.duplicate(true)
 	apply_rune_patch(after, fx.get("patch", []))
 	# the rule set names the fields worth showing: [{path, group, label, lower_is_better, unit}]
-	var rows: Array[Dictionary] = []
 	var stage_mult: float = ability_damage_mult(int(state["stage"])) * float(before.get("damage_all", 1.0))
-	for f: Dictionary in fx.get("fields", []):
-		var path: String = str(f["path"])
-		var b: Variant = _path_value(before, path)
-		var a: Variant = _path_value(after, path)
-		if not (typeof(b) == TYPE_FLOAT or typeof(b) == TYPE_INT) or not (typeof(a) == TYPE_FLOAT or typeof(a) == TYPE_INT):
-			continue
-		var scale: float = stage_mult if bool(f.get("scaled_by_stage", false)) else 1.0
-		var shown_b: float = float(b) * scale
-		var shown_a: float = float(a) * scale
-		var whole: bool = absf(shown_b) >= 10.0
-		var unit: String = str(f.get("unit", ""))
-		rows.append({"label": str(f["label"]), "group": str(f["group"]),
-			"before": (("%d" % int(round(shown_b))) if whole else ("%.2f" % shown_b).rstrip("0").rstrip(".")) + unit,
-			"after": (("%d" % int(round(shown_a))) if whole else ("%.2f" % shown_a).rstrip("0").rstrip(".")) + unit,
-			"changed": absf(shown_a - shown_b) > 0.0001, "better": (shown_a < shown_b) == bool(f.get("lower_is_better", false))})
+	var rows: Array[Dictionary] = _stat_rows(before, after, fx.get("fields", []), stage_mult)
 	if after.has("rune_repeat"):
 		var rep: Dictionary = after["rune_repeat"]
 		rows.append({"label": "Repeats", "group": "power", "before": "no", "after": "x%d at %d%%" % [int(rep.get("times", 1)), int(round(float(rep.get("mult", 0.0)) * 100.0))],
@@ -3978,6 +3963,111 @@ func rune_preview(index: int) -> Dictionary:
 	return {"rows": rows, "lines": fx.get("lines", []), "runes": fx.get("runes", []), "anchor": fx.get("anchor", {}),
 		"groups": fx.get("groups", {}), "traits": fx.get("traits", []), "effect_lines": fx.get("effect_lines", fx.get("lines", [])), "transfers": fx.get("transfers", []),
 		"conversions": fx.get("conversions", []), "before": before, "after": after}
+
+
+## Labelled rows for `fields` (the rule set's field list), `before` beside `after`: [{label, group,
+## path, before, after, changed, better}], numbers formatted. A field one side lacks counts as 0 (or
+## "no"); a field's "default" [section, key] is read from balance.json when the skill leaves it out.
+func _stat_rows(before: Dictionary, after: Dictionary, fields: Array, stage_mult: float) -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	for f: Dictionary in fields:
+		var path: String = str(f["path"])
+		var b: Variant = _path_value(before, path)
+		var a: Variant = _path_value(after, path)
+		var label: String = str(f["label"])
+		if bool(f.get("bool", false)):
+			var bb: bool = b is bool and bool(b)
+			var ab2: bool = a is bool and bool(a)
+			rows.append({"label": label, "group": str(f["group"]), "path": path, "before": "yes" if bb else "no", "after": "yes" if ab2 else "no",
+				"changed": bb != ab2, "better": ab2})
+			continue
+		if f.has("default"):
+			var dflt: Array = f["default"]
+			var dv: float = GameData.num(str(dflt[0]), str(dflt[1]))
+			b = b if (typeof(b) == TYPE_FLOAT or typeof(b) == TYPE_INT) else dv
+			a = a if (typeof(a) == TYPE_FLOAT or typeof(a) == TYPE_INT) else dv
+		var b_num: bool = typeof(b) == TYPE_FLOAT or typeof(b) == TYPE_INT
+		var a_num: bool = typeof(a) == TYPE_FLOAT or typeof(a) == TYPE_INT
+		if not b_num and not a_num:
+			continue
+		var scale: float = stage_mult if bool(f.get("scaled_by_stage", false)) else 1.0
+		var shown_b: float = (float(b) if b_num else 0.0) * scale
+		var shown_a: float = (float(a) if a_num else 0.0) * scale
+		rows.append({"label": label, "group": str(f["group"]), "path": path,
+			"before": _stat_text(shown_b, f), "after": _stat_text(shown_a, f),
+			"changed": absf(shown_a - shown_b) > 0.0001, "better": (shown_a < shown_b) == bool(f.get("lower_is_better", false))})
+	return rows
+
+
+## The number at `path` in `d`, or 0 when it is not a number there.
+static func _num_at(d: Dictionary, path: String) -> float:
+	var v: Variant = _path_value(d, path)
+	return float(v) if typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT else 0.0
+
+
+static func _stat_text(v: float, f: Dictionary) -> String:
+	if bool(f.get("pct", false)):
+		return "%d%%" % int(round(v * 100.0))
+	var whole: bool = absf(v) >= 10.0
+	return (("%d" % int(round(v))) if whole else ("%.2f" % v).rstrip("0").rstrip(".")) + str(f.get("unit", ""))
+
+
+## What skill `index` does, in numbers and statuses, for the ethercosm (Brent 2026-10-23: "the
+## details of the skill visible in text"): {rows, statuses, works_on, sealed}. `rows` are the rule
+## set's fields (rune_preview's list) plus a few worked out from them, each "before" the skill
+## without its sealed word and "after" as it is now - the same before/after a seal view shows.
+## `statuses`: StatusText.compare of what it applies, bare and sealed. `works_on`: statuses it
+## reads, spends or keeps off without applying them.
+func skill_details(index: int) -> Dictionary:
+	if index < 0 or index >= abilities.size():
+		return {}
+	var state: Dictionary = abilities[index]
+	var bare: Dictionary = state.duplicate(true)
+	bare.erase("word")
+	var before: Dictionary = ability_stats(bare)
+	var after: Dictionary = ability_stats(state)
+	if before.is_empty():
+		return {}
+	var fx: Dictionary = Runes.active().effects(_sealed_word(index), rune_context(index))
+	var stage_mult: float = ability_damage_mult(int(state["stage"])) * float(before.get("damage_all", 1.0))
+	var stage_after: float = ability_damage_mult(int(state["stage"])) * float(after.get("damage_all", 1.0))
+	var fields: Array = (fx.get("fields", []) as Array).duplicate(true)
+	if str(before.get("kind", "")) == "channel":
+		for f: Dictionary in fields:
+			if str(f["path"]) == "cost":
+				f["label"] = "Essence a second"        # a held skill's cost is by the second
+	var rows: Array[Dictionary] = _stat_rows(before, after, fields, stage_mult)
+	# worked out from the fields: what a strike-scaled hit does, where a shot reaches, how far a dash
+	# goes, what an arc does on a jump, and the reflux the cost leaves
+	var strike: float = strike_damage()
+	var derived: Array[Dictionary] = []
+	for part: String in ["", "on_hit."]:
+		if _num_at(before, part + "damage_mult") > 0.0:
+			derived.append({"label": "Damage, each hit", "b": strike * _num_at(before, part + "damage_mult") * stage_mult,
+				"a": strike * _num_at(after, part + "damage_mult") * stage_after, "f": {}})
+			break
+	if str(before.get("kind", "")) == "projectile" and not before.has("range") and before.has("speed") and before.has("life"):
+		derived.append({"label": "Reaches", "b": _num_at(before, "speed") * _num_at(before, "life"), "a": _num_at(after, "speed") * _num_at(after, "life"), "f": {"unit": " m"}})
+	if before.has("dash_speed") and before.has("dash_time"):
+		derived.append({"label": "Dash distance", "b": _num_at(before, "dash_speed") * _num_at(before, "dash_time"), "a": _num_at(after, "dash_speed") * _num_at(after, "dash_time"), "f": {"unit": " m"}})
+	var jumps_b: int = int(maxf(_num_at(before, "jumps"), _num_at(before, "on_hit.jumps")))
+	var jumps_a: int = int(maxf(_num_at(after, "jumps"), _num_at(after, "on_hit.jumps")))
+	if jumps_b > 0 or jumps_a > 0:
+		var hit_b: float = maxf(_num_at(before, "on_hit.damage"), _num_at(before, "damage"))
+		var hit_a: float = maxf(_num_at(after, "on_hit.damage"), _num_at(after, "damage"))
+		var cut: float = GameData.num("skills", "jump_damage_mult")
+		if hit_b > 0.0 or hit_a > 0.0:
+			derived.append({"label": "Damage, each jump", "b": hit_b * cut * stage_mult if jumps_b > 0 else 0.0, "a": hit_a * cut * stage_after if jumps_a > 0 else 0.0, "f": {}})
+		if not before.has("jump_radius"):
+			derived.append({"label": "Jumps reach", "b": GameData.num("skills", "jump_radius"), "a": GameData.num("skills", "jump_radius"), "f": {"unit": " m"}})
+	derived.append({"label": "Reflux left behind", "b": float(before["cost"]) * float(before.get("reflux_per_cost", 1.0)),
+		"a": float(after["cost"]) * float(after.get("reflux_per_cost", 1.0)), "f": {}, "lower": true})
+	for d: Dictionary in derived:
+		var fd: Dictionary = d["f"]
+		rows.append({"label": str(d["label"]), "group": "derived", "path": "", "before": _stat_text(float(d["b"]), fd), "after": _stat_text(float(d["a"]), fd),
+			"changed": absf(float(d["a"]) - float(d["b"])) > 0.0001, "better": (float(d["a"]) < float(d["b"])) == bool(d.get("lower", false))})
+	return {"rows": rows, "statuses": StatusText.compare(before, after), "works_on": StatusText.read_by(after),
+		"sealed": word_locked(index), "before": before, "after": after}
 
 
 ## Short lines on what a SEALED word does to ability `index` ([] if it has none), for tooltips and

@@ -252,6 +252,15 @@ func status(id: String) -> Dictionary:
 	return _statuses.get(id, {})
 
 
+## Every status id in statuses.json (aliases included), in file order.
+func status_ids() -> Array[String]:
+	_ensure()
+	var out: Array[String] = []
+	for id: Variant in _statuses:
+		out.append(str(id))
+	return out
+
+
 ## One of the player's own short states (statuses.json "player_states": Quickened), or {}.
 func player_state(id: String) -> Dictionary:
 	_ensure()

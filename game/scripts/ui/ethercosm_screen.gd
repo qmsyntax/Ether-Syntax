@@ -36,6 +36,8 @@ var picked := -1
 var picked_bond := Vector2i(-1, -1)
 ## A palette rune picked up by a click, waiting for a click on an empty place ("" = none).
 var armed_rune := ""
+## The panel shows the glossary of every status instead of the selected skill.
+var glossary := false
 var _cosmos: Cosmos
 var _detail: VBoxContainer
 var _board: RuneBoard
@@ -94,9 +96,11 @@ func build(root: Control) -> void:
 
 func select(index: int) -> void:
 	selected = index
+	glossary = false
 	if rune_mode or _detail == null or not is_instance_valid(_detail):
 		return
 	for c: Node in _detail.get_children():
+		_detail.remove_child(c)              # out at once, so the new rows keep their names
 		c.queue_free()
 	_build_detail()
 
@@ -741,9 +745,11 @@ func _refresh_runes() -> void:
 	_rune_info.add_child(grid)
 	for row: Dictionary in pv.get("rows", []):
 		var changed: bool = bool(row["changed"])
-		var lab := UiTheme.body(str(row["label"]), 13, UiTheme.TEXT if changed else UiTheme.TEXT_FAINT)
+		# a row that names a status ("Live marks") explains it: a tooltip, and a click opens it in place
+		var lab: Control = UiWidgets.status_line(str(row["label"]), 13, UiTheme.TEXT if changed else UiTheme.TEXT_FAINT)
 		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lab.autowrap_mode = TextServer.AUTOWRAP_OFF
+		if lab is Label:
+			(lab as Label).autowrap_mode = TextServer.AUTOWRAP_OFF
 		grid.add_child(lab)
 		var val := UiTheme.body(("%s   ->   %s" % [str(row["before"]), str(row["after"])]) if changed else str(row["before"]), 13,
 			(UiTheme.GOOD if bool(row["better"]) else UiTheme.BAD) if changed else UiTheme.TEXT_FAINT)
@@ -752,7 +758,7 @@ func _refresh_runes() -> void:
 		grid.add_child(val)
 	var anchor_info: Dictionary = pv.get("anchor", {})
 	for t: Variant in (anchor_info.get("lines", []) as Array) + (pv.get("effect_lines", []) as Array):
-		_rune_info.add_child(UiTheme.body("  +  %s" % str(t), 13, UiTheme.STAR))
+		_rune_info.add_child(UiWidgets.status_line("  +  %s" % str(t), 13, UiTheme.STAR))      # names a status: tooltip + click
 	if not anchor_info.is_empty() and RuneWord.degree(word, 0) > 0:
 		_rune_info.add_child(UiTheme.body("The skill's own rune keeps x%.2f of what it does (%s)%s." % [float(anchor_info.get("factor", 1.0)),
 			", ".join(PackedStringArray((anchor_info.get("kinds", []) as Array).map(func(v: Variant) -> String: return str(v)))),
@@ -817,7 +823,7 @@ func _refresh_runes() -> void:
 			if carried:
 				gives = ["its effect is carried by %s" % str(r.get("carried_by", ""))]
 			if not gives.is_empty():
-				_rune_info.add_child(UiTheme.body("      " + ";  ".join(PackedStringArray(gives.map(func(v: Variant) -> String: return str(v)))), 12, UiTheme.TEXT_FAINT))
+				_rune_info.add_child(UiWidgets.status_line("      " + ";  ".join(PackedStringArray(gives.map(func(v: Variant) -> String: return str(v)))), 12, UiTheme.TEXT_FAINT))
 
 	# the picked rune
 	if picked >= 0 and picked < RuneWord.size(word):
@@ -925,14 +931,50 @@ func _build_detail() -> void:
 	var box: VBoxContainer = _detail
 	var head := HBoxContainer.new()
 	box.add_child(head)
-	var title := UiTheme.heading("Ethercosm", 28)
+	var title := UiTheme.heading("Statuses" if glossary else "Ethercosm", 28)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
+	var gb: Button = UiWidgets.small_button("Back" if glossary else "Statuses", show_glossary.bind(not glossary))
+	gb.name = "GlossaryButton"
+	head.add_child(gb)
 	head.add_child(UiWidgets.small_button("Skill tree  (%s)" % Keybinds.binding_text("skills"), func() -> void: game.call("open_skill_tree", false)))
 	head.add_child(UiWidgets.small_button("Close  (%s)" % Keybinds.binding_text("ethercosm"), func() -> void: game.call("close_screen")))
-	box.add_child(UiTheme.body("The inner space of your soul.", 14, UiTheme.TEXT_DIM))
+	box.add_child(UiTheme.body("Every status a skill can leave on an enemy. Click a name to fold it." if glossary else "The inner space of your soul.", 14, UiTheme.TEXT_DIM))
 	box.add_child(UiTheme.rule())
+	# everything between the heading and the skill slots scrolls, so the slots stay in reach
+	var scroll := ScrollContainer.new()
+	scroll.name = "DetailScroll"
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(scroll)
+	var pad := MarginContainer.new()
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pad.add_theme_constant_override("margin_right", 14)          # clear of the scroll bar
+	scroll.add_child(pad)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 7)
+	pad.add_child(list)
+	var held: Array = player.get("constructs")
+	if glossary:
+		for id: String in StatusText.all_ids():
+			list.add_child(UiWidgets.StatusEntry.new(id, "", -1.0, true))
+	else:
+		_build_skill_detail(list, held)
+	_build_slots(box, held)
 
+
+## The glossary of every status (the header's "Statuses" button) in place of the skill.
+func show_glossary(on: bool) -> void:
+	glossary = on
+	if _detail == null or not is_instance_valid(_detail):
+		return
+	for c: Node in _detail.get_children():
+		_detail.remove_child(c)
+		c.queue_free()
+	_build_detail()
+
+
+func _build_skill_detail(box: VBoxContainer, held: Array) -> void:
 	# the soul at a glance
 	var t: Dictionary = player.get("talent")
 	box.add_child(UiWidgets.stat_row("Talent", str(t.get("name", "?")), UiTheme.GOLD))
@@ -960,7 +1002,9 @@ func _build_detail() -> void:
 	name_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_col.add_theme_constant_override("separation", 1)
 	name_row.add_child(name_col)
-	name_col.add_child(UiTheme.heading(str(ab.get("name", "?")), 22))
+	var nm := UiTheme.heading(str(ab.get("name", "?")), 22)
+	nm.name = "SkillName"
+	name_col.add_child(nm)
 	name_col.add_child(UiTheme.body(UiTheme.verse_of(ab), 14, UiTheme.STAR))
 	if str(ab.get("summary", "")) != "":
 		box.add_child(UiTheme.body(str(ab["summary"]), 14, UiTheme.TEXT))
@@ -969,8 +1013,6 @@ func _build_detail() -> void:
 	box.add_child(UiWidgets.Bar.new(float(st["progress"]) / 100.0, UiTheme.GOLD if need != "" else UiTheme.ESSENCE,
 		("stage %d   -   runechain complete, needs a %s" % [int(st["stage"]), need]) if need != ""
 		else "stage %d   -   %d of %d runes lit" % [int(st["stage"]), int(float(st["progress"]) / 100.0 * RUNES_PER_STAGE), RUNES_PER_STAGE], 22.0))
-	box.add_child(UiWidgets.stat_row("Essence cost", "%d" % int(round(float(ab.get("cost", 0.0))))))
-	box.add_child(UiWidgets.stat_row("Reflux left behind", "%d" % int(round(float(ab.get("cost", 0.0)) * float(ab.get("reflux_per_cost", 1.0))))))
 	box.add_child(UiTheme.body("It grows by essence spent through it - fastest when something is trying to kill you.", 13, UiTheme.TEXT_FAINT))
 
 	var bound: Array = st.get("bound", [])
@@ -979,7 +1021,6 @@ func _build_detail() -> void:
 		box.add_child(UiTheme.body("Bound at stage %d:  %s of %s" % [int(up["stage"]), str(up["tier"]), str(c.get("label", up["concept"]))], 14, UiTheme.STAR))
 
 	# binding
-	var held: Array = player.get("constructs")
 	if need != "":
 		var any := false
 		for ci: int in held.size():
@@ -993,12 +1034,66 @@ func _build_detail() -> void:
 		if not any:
 			box.add_child(UiTheme.body("You carry no %s to bind." % need, 13, UiTheme.BAD))
 
+	# what it does: the skill's real numbers, and the statuses it leaves
+	var det: Dictionary = player.call("skill_details", selected)
+	var sealed: bool = bool(det.get("sealed", false))
+	box.add_child(UiTheme.section("What it does"))
+	if sealed:
+		box.add_child(UiTheme.body("As sealed. Where the word changes a number, the skill's own is in brackets.", 12, UiTheme.TEXT_FAINT))
+	var grid := GridContainer.new()
+	grid.name = "SkillDetailRows"
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 1)
+	box.add_child(grid)
+	for row: Dictionary in det.get("rows", []):
+		var changed: bool = bool(row["changed"])
+		var lab := UiTheme.body(str(row["label"]), 14, UiTheme.TEXT_DIM)
+		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lab.autowrap_mode = TextServer.AUTOWRAP_OFF
+		lab.name = "Row_" + str(row["label"]).replace(" ", "_").replace(",", "")
+		grid.add_child(lab)
+		var val_box := HBoxContainer.new()
+		val_box.add_theme_constant_override("separation", 6)
+		val_box.alignment = BoxContainer.ALIGNMENT_END
+		grid.add_child(val_box)
+		var val := UiTheme.body(str(row["after"]), 14, ((UiTheme.GOOD if bool(row["better"]) else UiTheme.BAD) if changed else UiTheme.TEXT))
+		val.autowrap_mode = TextServer.AUTOWRAP_OFF
+		val.name = "Value"
+		val_box.add_child(val)
+		if changed:
+			var base := UiTheme.body("(%s)" % str(row["before"]), 13, UiTheme.TEXT_FAINT)
+			base.autowrap_mode = TextServer.AUTOWRAP_OFF
+			base.name = "Base"
+			val_box.add_child(base)
+
+	var applied: Array = det.get("statuses", [])
+	var shown: Array[String] = []
+	if not applied.is_empty():
+		var ss := UiTheme.section("Statuses it leaves")
+		ss.name = "SkillStatuses"
+		box.add_child(ss)
+		for s: Dictionary in applied:
+			shown.append(str(s["id"]))
+			box.add_child(UiWidgets.StatusEntry.new(str(s["id"]), _status_note(s), float(s["lasts"]), true,
+				UiTheme.GOLD if bool(s["added"]) else UiTheme.TEXT_DIM))
+	# statuses it reads, spends or keeps off, and any its words name: closed, a click opens each
+	var others: Array[String] = []
+	for id: Variant in (det.get("works_on", []) as Array) + StatusText.mentioned(str(ab.get("summary", ""))):
+		if not shown.has(str(id)) and not others.has(str(id)):
+			others.append(str(id))
+	if not others.is_empty():
+		var ws := UiTheme.section("Statuses it works on")
+		ws.name = "SkillWorksOn"
+		box.add_child(ws)
+		for id2: String in others:
+			box.add_child(UiWidgets.StatusEntry.new(id2, "", -1.0, false))
+
 	# the word built in it
 	box.add_child(UiTheme.rule())
 	var word: Dictionary = player.call("ability_word", selected)
 	var ctx: RuneContext = player.call("rune_context", selected)
 	var rules: RuneRules = Runes.active()
-	var cap: int = rules.capacity(ctx)
 	var runes_row := HBoxContainer.new()
 	box.add_child(runes_row)
 	var n_sealed: int = RuneWord.sealed(word)
@@ -1012,37 +1107,58 @@ func _build_detail() -> void:
 	runes_row.add_child(rb)
 	var fx_lines: Array = player.call("rune_summary", selected)
 	if not fx_lines.is_empty():
-		box.add_child(UiTheme.body("Sealed word:  " + ",  ".join(PackedStringArray(fx_lines.map(func(v: Variant) -> String: return str(v)))), 13, UiTheme.GOLD))
+		box.add_child(UiWidgets.status_line("Sealed word:  " + ",  ".join(PackedStringArray(fx_lines.map(func(v: Variant) -> String: return str(v)))), 13, UiTheme.GOLD))
 	var known: Array = player.get("known_runes")
 	box.add_child(UiTheme.body("Every rune known (test character)." if test else "Runes known: %d of %d. Found in the Netherecho, in fights and on old stones." % [
 		(player.call("rune_palette") as Array).filter(func(id: String) -> bool: return known.has(id)).size(), (player.call("rune_palette") as Array).size()], 12, UiTheme.TEXT_FAINT))
 
-	# hotbar assignment
-	box.add_child(UiTheme.rule())
-	box.add_child(UiTheme.body("Skill slot", 13, UiTheme.TEXT_DIM))
-	var hotbar: Array = player.get("hotbar")
-	var slots := HBoxContainer.new()
-	slots.add_theme_constant_override("separation", 6)
-	box.add_child(slots)
-	for i: int in hotbar.size():
-		var here: bool = int(hotbar[i]) == selected
-		var b: Button = UiWidgets.small_button(Keybinds.binding_text("ability_%d" % (i + 1)), func() -> void:
-			player.call("assign_slot", i, selected)
-			game.call("save_now")
-			rebuild())
-		b.custom_minimum_size = Vector2(44, 40)
-		if here:
-			b.add_theme_stylebox_override("normal", UiTheme.box(Color("3a3024"), UiTheme.GOLD, 2, 4, 10))
-			b.add_theme_color_override("font_color", UiTheme.GOLD)
-		slots.add_child(b)
-	slots.add_child(UiWidgets.small_button("clear", func() -> void:
-		player.call("unassign_ability", selected)
-		game.call("save_now")
-		rebuild()))
 
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	box.add_child(spacer)
+## How a skill applies one status, beside its name: how long, how many, its conditions, and what the
+## sealed word changed (the skill's own value in brackets).
+func _status_note(s: Dictionary) -> String:
+	var parts: Array[String] = []
+	var lasts: float = float(s["lasts"])
+	var before: float = float(s.get("lasts_before", -1.0))
+	if lasts > 0.0:
+		parts.append("lasts %s s%s" % [StatusText._n(lasts), (" (%s s)" % StatusText._n(before)) if before >= 0.0 and absf(before - lasts) > 0.001 else ""])
+	var n: int = int(s["stacks"])
+	var nb: int = int(s.get("stacks_before", -1))
+	if n > 1 or (nb >= 0 and nb != n):
+		parts.append("%d stack%s a hit%s" % [n, "" if n == 1 else "s", (" (%d)" % nb) if nb >= 0 and nb != n else ""])
+	for t: Variant in s.get("notes", []):
+		parts.append(str(t))
+	if bool(s.get("added", false)) and bool(player.call("word_locked", selected)):
+		parts.append("from the sealed word")
+	return ";  ".join(PackedStringArray(parts))
+
+
+## The skill slots (and the constructs carried), under the scrolling part so they are always in reach.
+func _build_slots(box: VBoxContainer, held: Array) -> void:
+	var abilities: Array = player.get("abilities")
+	if not abilities.is_empty() and not glossary:
+		box.add_child(UiTheme.rule())
+		box.add_child(UiTheme.body("Skill slot", 13, UiTheme.TEXT_DIM))
+		var hotbar: Array = player.get("hotbar")
+		var slots := HBoxContainer.new()
+		slots.name = "SkillSlots"
+		slots.add_theme_constant_override("separation", 6)
+		box.add_child(slots)
+		for i: int in hotbar.size():
+			var here: bool = int(hotbar[i]) == selected
+			var b: Button = UiWidgets.small_button(Keybinds.binding_text("ability_%d" % (i + 1)), func() -> void:
+				player.call("assign_slot", i, selected)
+				game.call("save_now")
+				rebuild())
+			b.name = "SlotButton_%d" % i
+			b.custom_minimum_size = Vector2(44, 40)
+			if here:
+				b.add_theme_stylebox_override("normal", UiTheme.box(Color("3a3024"), UiTheme.GOLD, 2, 4, 10))
+				b.add_theme_color_override("font_color", UiTheme.GOLD)
+			slots.add_child(b)
+		slots.add_child(UiWidgets.small_button("clear", func() -> void:
+			player.call("unassign_ability", selected)
+			game.call("save_now")
+			rebuild()))
 	if not held.is_empty():
 		var names: Array[String] = []
 		for c2: Dictionary in held:
@@ -1095,9 +1211,15 @@ class Cosmos extends Control:
 
 	func _gui_input(event: InputEvent) -> void:
 		var mb := event as InputEventMouseButton
-		if mb != null and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT and _hover >= 0:
-			screen.call("select", _hover)
-			accept_event()
+		if mb != null and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+			# what is under the click itself (the hover is only refreshed once a frame)
+			var at: int = -1
+			for n: Dictionary in _nodes:
+				if mb.position.distance_to(n["pos"]) <= float(n["r"]):
+					at = int(n["index"])
+			if at >= 0:
+				screen.call("select", at)
+				accept_event()
 
 	func _draw() -> void:
 		var player: Node = screen.get("player")
