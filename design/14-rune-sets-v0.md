@@ -308,3 +308,24 @@ base runes. 25 of the first five's runes already carry a design/05 skill.
   `design/runes-data/revised-rune-set.md` and is now in the workbook. IDs, characters and opposite pairs are
   unchanged. Section 3's first-pass tables and the water deep dive's §4 are history; the workbook is the source of
   truth for rune names, meanings, roles and draws.
+
+## 8. Rulings on seals, discovery and structure (Brent, 2026-10-23)
+
+- **The structure must matter** [B: "there does not appear to be any difference when building out the runes based on
+  structure"]. Today a rune's strength depends only on its distance and the one bond on its own side of the path;
+  what is bonded further out never counts, ionic "transfer" takes nothing, and shapes do nothing. Structure v2 fixes
+  this (below).
+- **Seals form at vestige binding** [B]. A skill just levels until its stage is full; binding the vestige is when its
+  runes are sealed in. Before the first binding a skill has no word.
+- **Seals can be reformed at the next level** [B]: when forming the level 2 seal you may rework level 1 and add level
+  2 on top.
+- **The word is concentric circles, one per level, stacking outward** [B]. Each seal adds a ring around the skill.
+- **A discovered rune is permanent knowledge** [B], usable in any number of seals. Runes are **found through
+  exploration and combat** [B]. Proposed sources [MODEL]: subduing a Netherecho construct reveals a rune of its concept
+  (constructs carry concepts in the books); kills can reveal runes of the enemy's nature; inscriptions in realms,
+  dungeons and Netherecho sites; universal runes rarer and deeper.
+- **Structure v2** [MODEL, approved in outline by Brent 2026-10-23]:
+  - strength = the ring's fade x the product of every bond's transmission along the path to the skill;
+  - an ionic bond really transfers: the weaker rune's effect leaves it and is carried by the stronger rune;
+  - shape traits: a closed ring lasts longer (a large one repeats once); a radial chain through several rings reaches
+    further and faster; a rune with three or more bonds spreads its effect; a balanced first ring does not fade.
