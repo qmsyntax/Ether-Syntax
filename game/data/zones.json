@@ -509,7 +509,7 @@
           ],
           "size": 2.2,
           "solid": 2.0,
-          "reach": 4.0,
+          "reach": 4.6,
           "dungeon": "the_swallow",
           "state": "sealed",
           "flavour": "The ground fell in here one wet spring and never stopped. Cold air comes up out of it, and a smell of old rain.",
@@ -524,7 +524,7 @@
             134
           ],
           "yaw": 15,
-          "reach": 3.0,
+          "reach": 3.6,
           "dungeon": "steading_cellar",
           "state": "sealed",
           "flavour": "A storm-cellar hatch under the burnt farmhouse, barred and chained from the outside. Someone wanted whatever is down there to stay there.",

@@ -42,7 +42,7 @@ func setup(def: Dictionary) -> void:
 	_plate.text = entrance_name
 	_plate.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_plate.no_depth_test = true
-	_plate.font_size = 40
+	_plate.font_size = 26
 	_plate.outline_size = 12
 	_plate.pixel_size = 0.01
 	_plate.modulate = Color(0.95, 0.82, 0.55)

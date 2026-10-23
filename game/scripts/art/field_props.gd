@@ -15,8 +15,8 @@ const SOIL_D := Color(0.13, 0.1, 0.08)
 const SOIL_L := Color(0.3, 0.25, 0.18)
 const POLE := Color(0.25, 0.2, 0.15)
 const CERAMIC := Color(0.62, 0.62, 0.58)
-const BRICK := Color(0.4, 0.25, 0.19)
-const BRICK_D := Color(0.28, 0.18, 0.14)
+const BRICK := Color(0.3, 0.2, 0.16)
+const BRICK_D := Color(0.16, 0.12, 0.11)
 const CONCRETE := Color(0.46, 0.45, 0.42)
 const CONCRETE_D := Color(0.32, 0.31, 0.29)
 const RUST := Color(0.36, 0.2, 0.12)
@@ -90,7 +90,7 @@ static func _build(b: EnvBuilder, kind: String, size: float) -> Dictionary:
 			for k: int in 5:
 				var z: float = lerpf(-r * 0.6, r * 0.6, float(k) / 4.0)
 				var half: float = sqrt(maxf(0.0, r * r * 0.7 - z * z))
-				b.m(SOIL_D.darkened(0.3)).box(half * 2.0, 0.03, 0.08, 0, 0.06, z, b.rf(-8, 8))
+				b.m(SOIL_D.lerp(SOIL, 0.4)).box(half * 2.0, 0.02, 0.05, 0, 0.04, z, b.rf(-8, 8))
 			b.tuft(4, 0.35, r * 0.7, STEM, STRAW, r * 0.8, 0.0, 0.03)
 			return _meta(r, 0.25, false)
 		"power_pole":
@@ -182,7 +182,7 @@ static func _build(b: EnvBuilder, kind: String, size: float) -> Dictionary:
 			for i: int in 8:
 				var a2: float = b.rf(0, TAU)
 				var d2: float = r2 + b.rf(0.6, 1.4)
-				b.m(SOIL_D.darkened(0.2)).box(b.rf(0.6, 1.2), 0.02, 0.06, cos(a2) * d2, 0.02, sin(a2) * d2, rad_to_deg(-a2) + 90.0)
+				b.m(SOIL_D.lerp(SOIL, 0.3)).box(b.rf(0.6, 1.2), 0.015, 0.04, cos(a2) * d2, 0.015, sin(a2) * d2, rad_to_deg(-a2) + 90.0)
 			for i: int in 6:
 				var a3: float = b.rf(0, TAU)
 				b.m(Color(0.18, 0.13, 0.09)).tube([cos(a3) * r2, 0.05, sin(a3) * r2, cos(a3) * (r2 - 0.4), -0.2, sin(a3) * (r2 - 0.4), cos(a3) * (r2 - 0.5), -0.6, sin(a3) * (r2 - 0.5)], [0.04, 0.025, 0.0], 4)

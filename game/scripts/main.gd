@@ -743,7 +743,7 @@ func _entrance_in_reach() -> FieldEntrance:
 func _entrance_prompt() -> void:
 	var e: FieldEntrance = _entrance_in_reach()
 	if e != null:
-		_prompt = "%s %s - %s" % [_k("interact"), e.entrance_name, e.flavour]
+		_prompt = "%s %s" % [_k("interact"), e.entrance_name]
 	_field_save_t += get_process_delta_time()
 	if _field_save_t >= float((GameData.balance.get("camps", {}) as Dictionary).get("field_autosave_s", 30.0)):
 		_field_save_t = 0.0
@@ -765,6 +765,7 @@ func _use_entrance() -> bool:
 ##   overview, map, nether, swallow, cellar, herd, lurker, gleaner, scald, and fight-<kind>.
 func _setup_stubble_shot(which: String) -> bool:
 	var what: String = which.trim_prefix("stubble-")
+	_shot_countdown = 0                              # the watch below takes the shot, at its moment
 	_select_talent(0)
 	player.set("look", CharacterLook.default_look())
 	walk_out()
@@ -828,6 +829,9 @@ func _setup_stubble_shot(which: String) -> bool:
 			player.set_physics_process(true)
 			nether.enter()
 			nether.projection.global_position = level.to_global(_zone.to_local(99.0, 68.0))
+			nether.projection.set("hp_max", 1.0e6)            # the screenshot is of the place, not of a fight
+			nether.projection.set("hp", 1.0e6)
+			nether.projection.set("input_blocked", true)
 			_cam_zoom_target = 0.25
 			cam_zoom = 0.25
 		"lineup":
@@ -847,18 +851,18 @@ func _setup_stubble_shot(which: String) -> bool:
 			_cam_zoom_target = 0.35
 			cam_zoom = 0.35
 		"swallow":
-			stand.call(166.0, 134.0)
+			stand.call(169.0, 142.0)
 		"cellar":
-			stand.call(70.0, 131.0)
+			stand.call(69.0, 137.0)
 		"herd":
-			stand.call(126.0, 106.0)
+			stand.call(119.0, 131.0)
 			player.set("_facing", Vector3(0, 0, 1))
 			go = func() -> void: field_camps.wake_camp("the_herd")
 			_cam_zoom_target = 0.2
 			cam_zoom = 0.2
 			until = func() -> bool:
 				for n: Node in field_camps.members_of("the_herd"):
-					if str(n.get("_special")) == "charge" and float(n.get("_windup")) < 0.5:
+					if str(n.get("_special")) == "charge" and float(n.get("_windup")) < 0.4:
 						return true
 				return false
 		"lurker":

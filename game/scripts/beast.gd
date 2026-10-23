@@ -39,6 +39,7 @@ var _graze_goal := Vector3.ZERO
 var _graze_t := 0.0
 var _base_speed := 0.0
 var _last_hit_by: Node = null
+var _charge_len := 12.0              # this charge's run: its length, or far enough to carry it past you
 
 
 func setup(enemy_kind: String, player: Node3D, strength: float = 1.0) -> void:
@@ -385,11 +386,11 @@ func _think_charging(delta: float, dir: Vector3, dist: float) -> void:
 	if _special == "charge":
 		_windup -= delta
 		var filled: float = 1.0 - maxf(0.0, _windup) / maxf(0.001, float(cfg.get("windup", 1.0)))
-		telegraph = {"kind": "lane", "to": global_position + _charge_dir * float(cfg.get("length", 12.0)), "width": float(cfg.get("width", 2.0)), "frac": filled}
+		telegraph = {"kind": "lane", "to": global_position + _charge_dir * _charge_len, "width": float(cfg.get("width", 2.0)), "frac": filled}
 		if _windup < 0.0:
 			_special = ""
 			telegraph = {}
-			_charge_left = float(cfg.get("length", 12.0))
+			_charge_left = _charge_len
 			_charge_hit = false
 		return
 	if _windup < 0.0 and not _no_attack() and not cfg.is_empty() and float(_special_cd["charge"]) <= 0.0 \
@@ -399,6 +400,7 @@ func _think_charging(delta: float, dir: Vector3, dist: float) -> void:
 		_windup = float(cfg.get("windup", 1.0))
 		_special_cd["charge"] = float(cfg.get("cooldown", 6.0))
 		_charge_dir = dir
+		_charge_len = maxf(float(cfg.get("length", 12.0)), dist + 3.0)
 		facing = dir
 		return
 	if behaviour == "grazer" and _windup < 0.0 and dist < float(cfg.get("min_dist", 5.0)) + 1.0 and float(_special_cd["charge"]) > 1.0:
