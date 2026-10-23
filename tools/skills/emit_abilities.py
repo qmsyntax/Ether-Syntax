@@ -460,11 +460,25 @@ def main():
         "control (a hold: a ticking payload applies it at most once per target per cast), heavy_lasts_mult, elite_status, "
         "derived (below_half: Dying; above_half: Hale - never applied, read from health), alias_of, shatter, light_radius, "
         "retch_every / retch_s, ends_after_damage, makes_interruptible, staggers_in_windup, lure_radius, cap_raise, shove_mult, "
-        "ends_on_shove, goes_to_goal, hidden (not drawn). Merged duplicates: " +
+        "ends_on_shove, goes_to_goal, hidden (not drawn). desc is one plain line for the player (skill_tables.STATUS_DESC); the rules line "
+        "under it is made from these keys by StatusText (game/scripts/ui/status_text.gd). Merged duplicates: " +
         "; ".join("%s - %s" % (k, v) for k, v in T.MERGED.items()) + ".")
     statuses = OD()
-    statuses.update(T.EXISTING_STATUSES)
-    statuses.update(T.NEW_STATUSES)
+    for sid, sdef in list(T.EXISTING_STATUSES.items()) + list(T.NEW_STATUSES.items()):
+        if "alias_of" in sdef:
+            statuses[sid] = sdef                # an alias reads its target's words
+            continue
+        if not T.STATUS_DESC.get(sid, "").strip():
+            sys.exit("emit_abilities: status '%s' has no desc in skill_tables.STATUS_DESC" % sid)
+        out_def = OD()
+        for k, v in sdef.items():
+            out_def[k] = v
+            if k == "label":
+                out_def["desc"] = T.STATUS_DESC[sid]
+        statuses[sid] = out_def
+    for sid in T.STATUS_DESC:
+        if sid not in statuses:
+            sys.exit("emit_abilities: STATUS_DESC names '%s', which is not a status" % sid)
     STATUSES.write_text(json.dumps(OD([("_note", st_note), ("statuses", statuses), ("player_states", T.PLAYER_STATES)]),
                                    indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
 
