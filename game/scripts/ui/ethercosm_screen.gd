@@ -1080,6 +1080,11 @@ func _build_skill_detail(box: VBoxContainer, held: Array) -> void:
 	name_col.add_child(UiTheme.body(UiTheme.verse_of(ab), 14, UiTheme.STAR))
 	if str(ab.get("summary", "")) != "":
 		box.add_child(UiTheme.body(str(ab["summary"]), 14, UiTheme.TEXT))
+	var asc: String = str(player.call("ascension_summary", selected))
+	if asc != "":
+		var asc_l := UiTheme.body(asc, 14, UiTheme.STAR)
+		asc_l.name = "AscensionBoosts"
+		box.add_child(asc_l)
 
 	var need: String = str(player.call("pending_tier", st))
 	box.add_child(UiWidgets.Bar.new(float(st["progress"]) / 100.0, UiTheme.GOLD if need != "" else UiTheme.ESSENCE,
@@ -1116,8 +1121,10 @@ func _build_skill_detail(box: VBoxContainer, held: Array) -> void:
 	var det: Dictionary = player.call("skill_details", selected)
 	var sealed: bool = bool(det.get("sealed", false))
 	box.add_child(UiTheme.section("What it does"))
-	if sealed:
-		box.add_child(UiTheme.body("As sealed. Where the word changes a number, the skill's own is in brackets.", 12, UiTheme.TEXT_FAINT))
+	if sealed or bool(det.get("boosted", false)):
+		box.add_child(UiTheme.body("As %s. Where %s changes a number, the skill's own is in brackets." % [
+			"sealed and ascended" if sealed and bool(det.get("boosted", false)) else ("sealed" if sealed else "ascended"),
+			"the word or an ascension" if sealed and bool(det.get("boosted", false)) else ("the word" if sealed else "an ascension")], 12, UiTheme.TEXT_FAINT))
 	var grid := GridContainer.new()
 	grid.name = "SkillDetailRows"
 	grid.columns = 2

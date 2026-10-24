@@ -70,6 +70,45 @@ AFFINITIES = OD([
                     ("times_flesh", True), ("through", True)])),
 ])
 
+# The affinity framework (design/affinities/framework.md, Brent 2026-10-24 [B]): eight bases, and every other
+# affinity a hybrid of two bases. Each affinity in the game gets "kind" ("base" | "hybrid"), "parents" (a hybrid's
+# two bases, [] for a base) and "role" (the framework's one line). Holy and Unholy are listed but have no draft, so
+# the emitter leaves them out of affinities.json until they exist; nothing offers an affinity the game lacks.
+LINEAGE = OD([
+    ("water", ("base", [], "Bruiser - heavy hits, shoves, crushes")),
+    ("fire", ("base", [], "Burst caster - big hits, spreading burns")),
+    ("earth", ("base", [], "Area tank - walls, terrain, immovable")),
+    ("wind", ("base", [], "Evasive monk - positioning, rear hits, speed")),
+    ("light", ("base", [], "Ranged caster - reveal, smite")),
+    ("dark", ("base", [], "Assassin - stealth, rear hits, darkness")),
+    ("life", ("base", [], "Healer - regrowth, the living only")),
+    ("death", ("base", [], "Necromancer - corpses, thralls, the dying")),
+    ("lightning", ("hybrid", ["fire", "wind"], "Spellblade - burst and speed")),
+    ("metal", ("hybrid", ["earth", "fire"], "Armoured duellist - ground and forge")),
+    ("nature", ("hybrid", ["earth", "life"], "Druid - growth, buffs")),
+    ("ice", ("hybrid", ["water", "dark"], "Control - flow made still")),
+    ("blood", ("hybrid", ["life", "death"], "Berserker - spilled life, never your own")),
+    ("holy", ("hybrid", ["light", "life"], "Paladin - support")),
+    ("unholy", ("hybrid", ["dark", "death"], "Shadow knight")),
+    ("dream", ("hybrid", ["light", "dark"], "Enchanter - twilight")),
+    ("poison", ("hybrid", ["water", "death"], "Coating - tainted water that pays out later")),
+    ("disease", ("hybrid", ["earth", "death"], "Plague - rot")),
+])
+
+
+def check_lineage():
+    """Problems with LINEAGE: a hybrid without exactly two base parents, a base with parents."""
+    out = []
+    for aff, (kind, parents, _role) in LINEAGE.items():
+        if kind == "base" and parents:
+            out.append("%s is a base with parents" % aff)
+        if kind == "hybrid" and (len(parents) != 2 or any(LINEAGE.get(p, ("",))[0] != "base" for p in parents)):
+            out.append("%s needs two base parents, has %s" % (aff, parents))
+        if kind not in ("base", "hybrid"):
+            out.append("%s has kind %s" % (aff, kind))
+    return out
+
+
 # reflux tier -> reflux_per_cost when a draft gives none (design/05 cost tiers: low 0.4-0.7, middling 1.0, high 1.4)
 REFLUX_TIER = {"low": 0.7, "middling": 1.0, "high": 1.4}
 

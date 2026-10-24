@@ -327,6 +327,43 @@ func effects(word: Dictionary, ctx: RuneContext) -> Dictionary:
 	return e
 
 
+# --- the stat groups, for whatever else scales a skill by them (an ascension boost) ----------------
+
+## The patch that multiplies each stat group in `groups` ({group: multiplier}) in this skill, from
+## the first interaction that reads stat groups; [] under rules with none.
+func group_patch(ab: Dictionary, groups: Dictionary) -> Array:
+	for it: RuneInteraction in interactions:
+		if it.has_method("group_patch"):
+			return it.call("group_patch", ab, groups)
+	return []
+
+
+## Whether stat group `g` reaches anything in this skill (false under rules with no stat groups).
+func group_acts(ab: Dictionary, g: String) -> bool:
+	for it: RuneInteraction in interactions:
+		if it.has_method("group_acts"):
+			return bool(it.call("group_acts", ab, g))
+	return false
+
+
+## The stat groups a field path of this skill belongs to.
+func groups_of_path(ab: Dictionary, path: String) -> Array[String]:
+	for it: RuneInteraction in interactions:
+		if it.has_method("groups_of_path"):
+			var out: Array[String] = []
+			out.assign(it.call("groups_of_path", ab, path))
+			return out
+	return []
+
+
+## The skill's before/after field list ([{path, group, label, unit, lower_is_better, ...}]).
+func fields_of(ab: Dictionary) -> Array:
+	for it: RuneInteraction in interactions:
+		if it.has_method("fields_of"):
+			return it.call("fields_of", ab)
+	return []
+
+
 # --- overridden by a rule set ---------------------------------------------------------------
 
 func _can_add(_word: Dictionary, _rune_id: String, _ctx: RuneContext, _to_node: int, _ring: int) -> Dictionary:

@@ -220,6 +220,30 @@ func affinity_ids() -> Array:
 	return _affinities.keys()
 
 
+## The base affinities (affinities.json kind "base"; design/affinities/framework.md): the eight a
+## character can be created with. Hybrids come only from ascension (Brent 2026-10-24).
+func base_affinity_ids() -> Array[String]:
+	var out: Array[String] = []
+	for id: Variant in affinity_ids():
+		if str(affinity(str(id)).get("kind", "base")) == "base":
+			out.append(str(id))
+	return out
+
+
+## A hybrid's two base parents ([] for a base or an unknown id).
+func affinity_parents(id: String) -> Array[String]:
+	var out: Array[String] = []
+	for p: Variant in affinity(id).get("parents", []):
+		out.append(str(p))
+	return out
+
+
+## True if the game has this affinity to give: it is in affinities.json and has a kit of skills.
+## (Holy and Unholy are in the framework but not in the game yet - never offered.)
+func affinity_playable(id: String) -> bool:
+	return not (affinity(id).get("kit", []) as Array).is_empty()
+
+
 func affinity_color(id: String) -> Color:
 	return Color(str(affinity(id).get("color", "9c917b")))
 

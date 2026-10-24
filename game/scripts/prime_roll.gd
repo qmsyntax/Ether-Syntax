@@ -38,9 +38,10 @@ static func roll_slots(rng: RandomNumberGenerator) -> int:
 	return 1
 
 
-## `slots` different affinities, each equally likely.
+## `slots` different affinities, each equally likely - bases only (Brent 2026-10-24: a character is
+## made from the eight bases; hybrids come from ascension, `Ascension.offer`).
 static func roll_affinities(rng: RandomNumberGenerator, slots: int) -> Array[String]:
-	var left: Array = GameData.affinity_ids().duplicate()
+	var left: Array = GameData.base_affinity_ids().filter(func(id: String) -> bool: return GameData.affinity_playable(id))
 	var out: Array[String] = []
 	while out.size() < slots and not left.is_empty():
 		var id: String = str(left[rng.randi() % left.size()])

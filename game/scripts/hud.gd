@@ -1348,6 +1348,9 @@ func _draw_tooltip(vs: Vector2) -> void:
 			var rune_fx: Array = player.call("rune_summary", idx)
 			if not rune_fx.is_empty():
 				lines.append(["Sealed word: " + ", ".join(PackedStringArray(rune_fx.map(func(v: Variant) -> String: return str(v)))), body_px, UiTheme.GOLD])
+			var asc: String = str(player.call("ascension_summary", idx))
+			if asc != "":
+				lines.append([asc, body_px, UiTheme.STAR])
 			var need: String = str(player.call("pending_tier", st))
 			if need != "":
 				lines.append(["Full. Ready for its level %d lock: needs a %s, bound on its seal (%s)." % [int(st["stage"]) + 1, need, Keybinds.binding_text("bind")], body_px, UiTheme.GOLD])

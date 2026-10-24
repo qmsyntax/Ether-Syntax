@@ -30,6 +30,13 @@ func _ready() -> void:
 		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 		get_tree().quit(1 if _failed > 0 else 0)
 		return
+	if OS.get_cmdline_user_args().has("--only=ascension"):
+		_test_affinities()
+		_test_ascension()
+		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
+		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
+		get_tree().quit(1 if _failed > 0 else 0)
+		return
 	if OS.get_cmdline_user_args().has("--only=runes"):
 		await _test_runes()
 		await _test_rune_effects()
@@ -71,6 +78,7 @@ func _ready() -> void:
 	await _test_pathfinding()
 	await _test_combat_rules()
 	_test_affinities()
+	_test_ascension()
 	_test_fog_map()
 	_test_models()
 	await _test_netherecho()
@@ -1432,13 +1440,19 @@ func _test_combat_rules() -> void:
 	(p.get("body") as Body).hp = 100.0
 	var b2 := _fighter(p, Vector3(0, 0, -2.6), "brute")
 	b2.set("_attack_cd", 0.0)
-	_run(b2, 0.2)
+	# it walks the last 0.3 m before it can swing; run it until the slam starts. Called outside a
+	# physics frame, move_and_slide steps by the IDLE frame time, so a fixed 0.2 s of steps was
+	# frame-rate dependent (it missed whenever the machine was busy) - 2026-10-24
+	var walk_t := 0.0
+	while float(b2.get("_windup")) < 0.0 and walk_t < 1.0:
+		_run(b2, 1.0 / 60.0)
+		walk_t += 1.0 / 60.0
 	var facing_then: Vector3 = b2.get("facing")
 	p.global_position = b2.global_position + Vector3(1.2, 0, 2.2)   # a sidestep - still 2.5 m from it, inside the 3 m circle
 	_run(b2, 0.6)
 	_check("it does not track you once it has committed", (b2.get("facing") as Vector3).is_equal_approx(facing_then) and float(b2.get("_windup")) >= 0.0)
 	var hp_before: float = (p.get("body") as Body).hp
-	_run(b2, 0.6)
+	_run(b2, 0.7)                                                    # past the rest of the 1.2 s wind-up
 	_check("the slam lands on anyone still in the circle, for 45", _near(hp_before - (p.get("body") as Body).hp, 45.0), "took %f" % (hp_before - (p.get("body") as Body).hp))
 	_check("a heavy blow takes your feet for a moment", bool(p.call("is_staggered")))
 	var ess: float = float(p.get("essence"))
@@ -3613,6 +3627,144 @@ func _test_water_and_lightning() -> void:
 	_check("the water skills carry our own names now, ids unchanged", str(GameData.ability("tsunami_strike")["name"]) == "Breaker" and str(GameData.ability("hydraulic_flex")["name"]) == "Sluice Step")
 
 
+## The ascension (Brent 2026-10-24): the affinity offer, the boost formula, aspects onto the rune stat
+## groups, stacking and saving, add_affinity giving no skill, and the pending ascension's rules.
+func _test_ascension() -> void:
+	print("ascension (2026-10-24):")
+	var rng := RandomNumberGenerator.new()
+	# the offer: a hybrid of a held parent first, then a random affinity not held; never a held one
+	var hybrid_first := true
+	var never_held := true
+	var right_size := true
+	var seen_second: Dictionary = {}
+	for s: int in 300:
+		rng.seed = 1000 + s
+		var o: Array[String] = Ascension.offer(["fire"], rng)
+		right_size = right_size and o.size() == int(Ascension.cfg()["offer_count"])
+		hybrid_first = hybrid_first and ["lightning", "metal"].has(o[0])
+		never_held = never_held and not o.has("fire") and o.size() == 2 and o[0] != o[1]
+		seen_second[o[1]] = true
+	_check("holding Fire, one choice is always a hybrid with Fire as a parent (Lightning or Metal)", hybrid_first)
+	_check("the offer is offer_count (2) different affinities, none held", right_size and never_held)
+	_check("the other choice is random: over 300 rolls it ranges widely, bases included", seen_second.size() >= 10 and seen_second.has("water") and seen_second.has("death"), str(seen_second.keys()))
+	var water_h := true
+	for s2: int in 100:
+		rng.seed = 5000 + s2
+		water_h = water_h and ["ice", "poison"].has(Ascension.offer(["water"], rng)[0])
+	_check("holding Water, the hybrid is Ice or Poison", water_h)
+	# no hybrid applies when every hybrid of the held parents is held already: randoms only
+	var all_random := true
+	for s3: int in 100:
+		rng.seed = 7000 + s3
+		var o3: Array[String] = Ascension.offer(["fire", "lightning", "metal"], rng)
+		all_random = all_random and o3.size() == 2 and not o3.has("fire") and not o3.has("lightning") and not o3.has("metal")
+	_check("with no hybrid left to grow into, both choices are random affinities not held", all_random)
+	# never an affinity the game lacks: Holy (Light + Life) without skills is never offered, even to Light
+	var affs: Dictionary = GameData.get("_affinities")
+	affs["holy"] = {"label": "Holy", "kind": "hybrid", "parents": ["light", "life"], "kit": []}
+	var no_holy := true
+	for s4: int in 200:
+		rng.seed = 9000 + s4
+		no_holy = no_holy and not Ascension.offer(["light"], rng).has("holy")
+	affs.erase("holy")
+	_check("an affinity with no skills in the game (Holy, made up for the check) is never offered", no_holy)
+	_check("Holy and Unholy are not in the game's affinities yet", not GameData.affinity_ids().has("holy") and not GameData.affinity_ids().has("unholy"))
+	_check("every hybrid in the game has two base parents (affinities.json, generated)", GameData.affinity_ids().all(func(id: String) -> bool:
+		var k: String = str(GameData.affinity(id).get("kind", ""))
+		var ps: Array[String] = GameData.affinity_parents(id)
+		return (k == "base" and ps.is_empty()) or (k == "hybrid" and ps.size() == 2 and ps.all(func(p: String) -> bool: return GameData.base_affinity_ids().has(p)))))
+
+	# the formula: (P / n) x (1 + a x stage)
+	var p2: float = Ascension.pool(2)
+	var a: float = float(Ascension.cfg()["stage_weight"])
+	_check("P for the second star is pool_by_star \"2\", and a star past the table uses the last entry", _near(p2, float((Ascension.cfg()["pool_by_star"] as Dictionary)["2"]))
+		and _near(Ascension.pool(99), float((Ascension.cfg()["pool_by_star"] as Dictionary)["5"])))
+	_check("the worked example: P 0.6, four skills, stage 1, a 0.5 -> 0.225", _near(Ascension.amount(0.6, 4, 1, 0.5), 0.225, 0.0001))
+	var two: Array[Dictionary] = Ascension.boosts([{"id": "water_bolt", "stage": 1}, {"id": "tsunami_strike", "stage": 1}], 2)
+	var four: Array[Dictionary] = Ascension.boosts([{"id": "water_bolt", "stage": 1}, {"id": "tsunami_strike", "stage": 1}, {"id": "hydraulic_flex", "stage": 1}, {"id": "drench", "stage": 1}], 2)
+	_check("more skills means less each (two skills get twice what four get)", _near(float(two[0]["amount"]), 2.0 * float(four[0]["amount"]), 0.0001)
+		and _near(float(two[0]["amount"]), p2 / 2.0 * (1.0 + a)), "%f %f" % [float(two[0]["amount"]), float(four[0]["amount"])])
+	var mixed: Array[Dictionary] = Ascension.boosts([{"id": "water_bolt", "stage": 0}, {"id": "tsunami_strike", "stage": 3}], 2)
+	_check("a higher stage gains more: stage 3 gets (1 + 3a) / 1 of stage 0's", float(mixed[1]["amount"]) > float(mixed[0]["amount"])
+		and _near(float(mixed[1]["amount"]) / float(mixed[0]["amount"]), 1.0 + 3.0 * a, 0.0001))
+
+	# an aspect maps to the right stat group, through the same reader as a sealed word
+	_check("aspects: power -> power, reach -> reach, speed -> speed + wind-up (+ duration), cost -> cost",
+		Ascension.aspect_groups("power").has("power") and Ascension.aspect_groups("reach").has("reach") and Ascension.aspect_groups("speed").has("speed")
+		and str(Ascension.aspect_groups("speed")["windup"]) == "down" and str(Ascension.aspect_groups("cost")["cost"]) == "down")
+	var w := _new_player("grudge")
+	w.call("set_affinities", ["water"])
+	var base: Dictionary = w.call("ability_stats", {"id": "water_bolt", "stage": 0, "progress": 0.0})
+	var pw: Dictionary = w.call("ability_stats", {"id": "water_bolt", "stage": 0, "progress": 0.0, "ascension": {"power": 0.2}})
+	var rc: Dictionary = w.call("ability_stats", {"id": "water_bolt", "stage": 0, "progress": 0.0, "ascension": {"reach": 0.2}})
+	var sp: Dictionary = w.call("ability_stats", {"id": "water_bolt", "stage": 0, "progress": 0.0, "ascension": {"speed": 0.2}})
+	var co: Dictionary = w.call("ability_stats", {"id": "water_bolt", "stage": 0, "progress": 0.0, "ascension": {"cost": 0.25}})
+	_check("power +20%: Water Bolt's damage x1.2, its reach and cost untouched", _near(float(pw["damage"]), float(base["damage"]) * 1.2)
+		and _near(float(pw["life"]), float(base["life"])) and _near(float(pw["cost"]), float(base["cost"])))
+	_check("reach +20%: its flight time (reach on a projectile) x1.2, damage untouched", _near(float(rc["life"]), float(base["life"]) * 1.2) and _near(float(rc["damage"]), float(base["damage"])))
+	_check("speed +20%: flight speed x1.2 and the (default) recovery / 1.2", _near(float(sp["speed"]), float(base["speed"]) * 1.2)
+		and _near(float(sp["recovery"]), GameData.num("abilities", "cast_recovery") / 1.2, 0.0001), "%s %s" % [str(sp.get("speed")), str(sp.get("recovery"))])
+	_check("essence +25%: the cost / 1.25 (a discount that can never reach zero)", _near(float(co["cost"]), float(base["cost"]) / 1.25, 0.0001))
+	_check("a boost is not levelling: the stage multiplier is the stage's alone", _near(float(w.call("ability_damage_mult", 0)), 1.0))
+	w.free()
+
+	# the whole ascension on a character: pending, resolve, add_affinity (no skill), stacking, saving
+	var p := _new_player("grudge")
+	p.call("set_affinities", ["fire"])
+	p.call("start_with_skills", GameData.skill_roots(["fire"]).slice(0, 2))
+	(p.get("abilities") as Array)[0]["stage"] = 1
+	(p.get("rng") as RandomNumberGenerator).seed = 4242
+	p.call("grow_star", 500.0)
+	p.set("_latent_aura", 999999.0)
+	var points0: int = int(p.get("skill_points"))
+	p.call("try_ascend")
+	var pend: Dictionary = p.get("ascension_pending")
+	_check("ascending leaves a pending ascension beside the talents' on_ascend and its skill points", int(p.get("stars")) == 2 and not pend.is_empty()
+		and (pend["offer"] as Array).size() == 2 and (pend["skills"] as Array).size() == 2 and int(p.get("skill_points")) > points0)
+	_check("its boosts were measured at the ascension: stage 1 takes (1 + a) / 1 of stage 0's", _near(float((pend["skills"] as Array)[0]["amount"]),
+		Ascension.amount(p2, 2, 1, a), 0.0001) and _near(float((pend["skills"] as Array)[1]["amount"]), Ascension.amount(p2, 2, 0, a), 0.0001))
+	_check("an affinity that was not offered is refused", str(p.call("resolve_ascension", "dream" if not (pend["offer"] as Array).has("dream") else "blood", {})) != ""
+		and not (p.get("ascension_pending") as Dictionary).is_empty())
+	var take: String = str((pend["offer"] as Array)[0])
+	var n_before: int = (p.get("abilities") as Array).size()
+	var st0: Dictionary = ((p.get("abilities") as Array)[0] as Dictionary).duplicate(true)
+	var amt0: float = float((pend["skills"] as Array)[0]["amount"])
+	var amt1: float = float((pend["skills"] as Array)[1]["amount"])
+	var main1: String = Ascension.main_aspect(p.call("ability_stats", (p.get("abilities") as Array)[1]))
+	var why: String = p.call("resolve_ascension", take, {0: "reach"})
+	var abs_now: Array = p.get("abilities")
+	_check("settling adds the chosen affinity and no skill (its tree is trained)", why == "" and (p.get("affinities") as Array).has(take) and abs_now.size() == n_before, why)
+	_check("the boost lands in the chosen aspect; a skill left out gets its main aspect (%s)" % main1,
+		_near(float((abs_now[0]["ascension"] as Dictionary).get("reach", 0.0)), amt0, 0.0001)
+		and _near(float((abs_now[1]["ascension"] as Dictionary).get(main1, 0.0)), amt1, 0.0001), str(abs_now))
+	_check("and does not level: stage and bar unchanged", int(abs_now[0]["stage"]) == int(st0["stage"]) and _near(float(abs_now[0]["progress"]), float(st0["progress"])))
+	_check("the new affinity's tempering technique comes with it (if it has one)", GameData.technique_ids().filter(func(t: String) -> bool:
+		return str(GameData.technique(t).get("affinity", "")) == take).all(func(t: String) -> bool: return (p.get("tempering") as Dictionary).has(t)))
+	_check("nothing is pending after", (p.get("ascension_pending") as Dictionary).is_empty() and str(p.call("resolve_ascension", "", {})) != "")
+	# a later ascension stacks into the same aspect
+	p.set("stars", 3)
+	p.call("_begin_ascension")
+	var amt_b: float = float(((p.get("ascension_pending") as Dictionary)["skills"] as Array)[0]["amount"])
+	_check("the third star's pool is pool_by_star \"3\"", _near(amt_b, Ascension.amount(Ascension.pool(3), 2, 1, a), 0.0001))
+	_check("declining is allowed when the data says so", Ascension.allow_decline() and str(p.call("resolve_ascension", "", {"0": "reach"})) == "")
+	var tot: float = float((((p.get("abilities") as Array)[0] as Dictionary)["ascension"] as Dictionary)["reach"])
+	_check("boosts of one aspect add up across ascensions", _near(tot, amt0 + amt_b, 0.0001), "%f" % tot)
+	var stats_before: Dictionary = p.call("ability_stats", (p.get("abilities") as Array)[0])
+	# saved: the totals and a pending ascension come back from a save
+	p.call("_begin_ascension")
+	var data: Dictionary = JSON.parse_string(JSON.stringify(p.call("to_save")))
+	var q := _new_player("grudge")
+	q.call("from_save", data)
+	var qa: Dictionary = (q.get("abilities") as Array)[0]
+	var stats_after: Dictionary = q.call("ability_stats", qa)
+	_check("the boosts are saved and give the same numbers after a load", _near(float((qa["ascension"] as Dictionary)["reach"]), tot, 0.0001)
+		and JSON.stringify(stats_after) == JSON.stringify(stats_before))
+	_check("an unsettled ascension is saved and comes back pending", ((q.get("ascension_pending") as Dictionary).get("offer", []) as Array).size() == 2
+		and str(q.call("resolve_ascension", "", {})) == "")
+	p.free()
+	q.free()
+
+
 func _test_affinities() -> void:
 	print("affinities:")
 	var ids: Array = GameData.affinity_ids()
@@ -3637,6 +3789,7 @@ func _test_affinities() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261011
 	var pool: Array = ["one_percent_lifesteal", "tenth_strike", "grudge", "glass_hour", "debt_of_pain", "furnace_gut"]
+	var bases: Array[String] = GameData.base_affinity_ids()
 	var offers: Array[Dictionary] = PrimeRoll.roll_offers(rng, pool)
 	_check("three primes are offered, all different", offers.size() == 3 and str(offers[0]["talent_id"]) != str(offers[1]["talent_id"])
 		and str(offers[1]["talent_id"]) != str(offers[2]["talent_id"]) and str(offers[0]["talent_id"]) != str(offers[2]["talent_id"]))
@@ -3648,14 +3801,16 @@ func _test_affinities() -> void:
 		var affs: Array = o["affinities"]
 		slot_counts[affs.size()] = int(slot_counts.get(affs.size(), 0)) + 1
 		for a: String in affs:
-			clean = clean and ids.has(a) and affs.count(a) == 1
+			clean = clean and bases.has(a) and affs.count(a) == 1
 		if not by_talent.has(o["talent_id"]):
 			by_talent[o["talent_id"]] = {}
 		(by_talent[o["talent_id"]] as Dictionary)[affs[0]] = true
-	_check("a prime never repeats an affinity or holds an unknown one", clean)
+	_check("a prime never repeats an affinity, and rolls only the eight bases (Brent 2026-10-24: hybrids come from ascension)", clean)
+	_check("the bases are the framework's eight", bases.size() == 8 and ["water", "fire", "earth", "wind", "light", "dark", "life", "death"].all(
+		func(a: String) -> bool: return bases.has(a)), str(bases))
 	_check("one affinity is common, two rare, three very very rare", slot_counts[1] > 16500 and slot_counts[2] > 1800 and slot_counts[2] < 3000
 		and slot_counts[3] > 20 and slot_counts[3] < 250 and slot_counts.size() == 3, str(slot_counts))
-	_check("any talent can come with any affinity", by_talent.values().all(func(seen: Dictionary) -> bool: return seen.size() == ids.size()))
+	_check("any talent can come with any base", by_talent.values().all(func(seen: Dictionary) -> bool: return seen.size() == bases.size()))
 	_check("rarity is named by slot count", PrimeRoll.rarity(1) == "common" and PrimeRoll.rarity(2) == "rare" and PrimeRoll.rarity(3) == "legendary")
 
 	# a single-affinity character starts with that affinity's kit
