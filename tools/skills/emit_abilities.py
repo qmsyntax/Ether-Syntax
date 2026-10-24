@@ -56,14 +56,17 @@ BY_KIND = {
     "beam": {"width", "pierce", "jumps", "jump_radius", "bounces", "bounce_off", "frozen_counts_as"},
     "melee_burst": {"arc_deg", "reach_bonus", "pull", "pull_before_blast", "spall", "patch_bonus", "patch_bonus_max",
                     "per_patch_essence", "zone", "douses", "clears_clouds", "damage_from_heat", "heat_floor", "spend_blood",
+                    "conjure_weapon", "heal_per_target", "heal_over_s", "heal_targets_max", "per_patch_heal",
                     "pools_per_two_spent", "consume", "daze_at", "essence_per_hit", "essence_max_hits", "swallow_per_hit",
                     "pip_shove", "elite_stun_mult"},
     "targeted_strike": {"range_bonus", "burst", "burst_always", "through", "through_dist", "pip_mult", "force_rear",
                         "waterlogged_stacks", "burst_zone", "spall", "swallow_per_hit", "zone"},
     "dash": {"dash_speed", "dash_time", "on_pass", "pass_radius", "stops_at_bodies", "trail", "on_stop", "heavy_poise",
              "gain_pips", "no_recovery", "after_speed_mult", "passes_bodies", "pass_through", "pool_bonus_m", "pool_bonus_max",
-             "clears_winded", "never_winds", "pass_armoured", "leave_decoy", "on_arrive", "arrive_radius", "leap", "range"},
-    "blink": {"arrive_radius", "on_arrive", "corpse_range", "needs_shadow", "arrive_behind", "rear_window"},
+             "clears_winded", "never_winds", "pass_armoured", "leave_decoy", "on_arrive", "arrive_radius", "leap", "range",
+             "after_heal_per_s", "dir"},
+    "blink": {"arrive_radius", "on_arrive", "corpse_range", "needs_shadow", "arrive_behind", "rear_window", "thrall_range", "swap_thrall",
+              "swap_heal"},
     "ground_zone": {"zone", "at", "needs", "recent_death_s", "spends_corpse", "drops_aggro"},
     "self_buff": {"buff", "move_speed_mult", "add_reflux", "strike_status", "hits", "melee_taken_mult", "radius", "retaliate",
                   "strikes_per_mark", "absorb", "on_break", "unaware_mult", "incoming_mult", "attacker_status",
@@ -76,30 +79,38 @@ BY_KIND = {
                   "aura", "on_end", "immovable", "set_focus", "attacker_reach", "deflect_radius", "gain_pips_per_deflect",
                   "window_s", "move_factor", "counter_reach", "counter", "counter_ward", "patience_ward", "behind_dist",
                   "force_rear", "gain_pips", "refund_unused", "burst", "burst_radius", "focus_gain", "refuses_shots",
-                  "hush_radius", "status_time_mult"},
+                  "hush_radius", "status_time_mult",
+                  # v2: blood's pools and frenzy, Life's and Nature's shared buffs, Death's thrall_ keys, the conjured weapon
+                  "pool_radius", "attack_rate_mult", "strike_reach_bonus", "kill_blood", "upkeep_blood_per_s", "upkeep_grace_s",
+                  "heal_to_poise", "heal_per_hit", "buff_targets", "summon_deals_mult", "phantom_extra_hits", "thrall_incoming_mult",
+                  "thrall_time_paused", "corpse_hold", "spread_radius", "spread_stacks", "conjure_weapon", "summon_ward",
+                  "expire_heal_frac", "ward", "ward_from", "ward_max", "no_stagger", "turns_away"},
     "delayed_blast": {"radius", "delay", "leave_prop", "bonus_also_vs", "follows_lit"},
     "detonate": {"refund_per_stack", "consume_zone", "per_target_damage", "ray_damage", "gather_radius", "gather_into",
                  "gather_cap", "needs_status", "consume", "beats", "beat_s", "pool_per_beat", "after_status",
-                 "bonus_vs_asleep", "decoy_burst", "per_stack_burst", "overload_fracs", "clock_to", "bill_mult", "stagger_at"},
-    "chain": {"jumps", "jump_radius", "fan", "depth", "first_hit", "carries_caster", "force_rear"},
+                 "bonus_vs_asleep", "decoy_burst", "per_stack_burst", "overload_fracs", "clock_to", "bill_mult", "stagger_at",
+                 "consume_thralls", "hp_frac", "max_sites", "spends_corpse", "recent_infected_death_s"},
+    "chain": {"jumps", "jump_radius", "fan", "depth", "first_hit", "carries_caster", "force_rear", "dying_stacks"},
     "displace": {"mode", "radius", "pull", "keep", "turn_s", "throw", "on_land"},
     "prop": {"min_range", "width", "thickness", "height", "rise_time", "life", "on_rise", "hp", "hp_per_s", "spread_every",
              "spread_kind", "max_count", "shape", "light_radius", "tick_s", "payload", "blocks_movement", "blocks_shots",
-             "radius", "blocks", "collapse_radius", "length", "shatter_burst", "lure_radius", "turn_s", "crack_radius", "sear_bonus"},
+             "radius", "blocks", "collapse_radius", "length", "shatter_burst", "lure_radius", "turn_s", "crack_radius", "sear_bonus",
+             "corpse_life", "corpse_hp_mult", "collapse_status", "needs", "decoy_radius", "decoy_s"},
     "rod": {"life", "relay_radius", "relay_range", "relay_hit"},
     "smite": {"delay", "nearest_to_point", "lure_radius", "elite_ok", "stand_s", "on_death_growth", "from_above",
-              "spread_stacks", "spread_radius", "spread_max"},
+              "spread_stacks", "spread_radius", "spread_max", "command_radius", "leap_speed", "summon_hit", "summon_buff"},
     "channel": {"shape", "tick", "move_factor", "pip_cost_per_s", "radius", "pools_per_tick", "blood_per_take", "sink_per_s",
-                "arm_rate", "breaks_on_hit", "break_range", "arc_deg", "width"},
+                "arm_rate", "breaks_on_hit", "break_range", "arc_deg", "width", "pause_on_hit_s", "summon_heal_per_s"},
     "charge_release": {"charge_max", "move_factor", "release", "radius", "damage_full", "leave_prop", "line_width", "pierce",
                        "damage_min", "marks_by_charge", "arc_deg", "reach_bonus", "damage_mult_min", "focus_spend", "per_focus_mult",
                        "range_min", "pass_radius", "on_pass"},
-    "summon": {"needs", "max_count", "thrall"},
+    "summon": {"needs", "max_count", "thrall", "radius", "max_count_from", "spends_patch_age", "age_scales", "bloom_count"},
     "seed": {"seeds", "radius", "delay", "trigger_radius", "leave_growth"},
     "grapple": {"dash_speed", "arrive_radius", "on_arrive"},
     "streak": {"pass_radius", "on_pass"},
     "field_pulse": {"radius", "max_corpses", "per_corpse_essence", "per_corpse_reflux", "drag_radius", "age_scales",
-                    "ages_added", "spreads", "effect_mult"},
+                    "ages_added", "spreads", "effect_mult", "pool_radius", "max_take", "blood_per_take", "green_heal_mult",
+                    "green_damage_mult"},
 }
 # keys inside a hit payload the game reads (Player.apply_hit)
 PAYLOAD_KEYS = {"damage", "damage_mult", "status", "stacks", "statuses", "status_s", "status_s_per_class", "status_s_per_heat",
@@ -107,7 +118,8 @@ PAYLOAD_KEYS = {"damage", "damage_mult", "status", "stacks", "statuses", "status
                 "shove_dir", "marks", "bonus_vs", "bonus_flat_vs", "poise_vs", "through", "jumps", "consume", "consume_stacks",
                 "execute_below", "execute_excludes", "unliving_mult", "stun_per_mark", "stun_min", "turn_s", "needs_facing",
                 "quells_censer", "release_shove", "status_s_if_not", "dark_status_s", "blind_if_dark", "shatter_radius",
-                "burst_radius", "elite_stun_mult", "heat_scale", "jump_radius", "against_wall_mult", "on_kill", "execute_needs"}
+                "burst_radius", "elite_stun_mult", "heat_scale", "jump_radius", "against_wall_mult", "on_kill", "execute_needs",
+                "drain_frac", "drain_cap"}
 ZONE_KEYS = {"shape", "radius", "length", "width", "life", "tick_s", "payload", "extra_status", "shove_mult", "push_per_s",
              "caster_speed_mult", "pip_gain_mult", "bright", "blocks_sight", "banks", "life_per_heat", "life_max", "on_enter",
              "pull_per_s", "drift_speed", "drift", "drift_dir", "dark", "dark_extra_ticks", "kill_projectiles", "freeze_pips",
@@ -177,7 +189,10 @@ def relocate(e, path):
     a channel's payload is its on_hit. A path into a status list names the entry by id (on_hit.statuses.dosed.stacks)."""
     if getp_any(e, path) is not None:
         return path
-    moved = {"duration": ["on_hit.status_s"], "on_rise.damage": ["zone.on_enter.damage"]}
+    moved = {"duration": ["on_hit.status_s"], "on_rise.damage": ["zone.on_enter.damage"],
+             "thrall_damage_mult": ["on_hit.status_data.summon_damage_mult"], "thrall_rate_mult": ["on_hit.status_data.summon_rate_mult"],
+             "drain": ["on_hit.drain_frac", "on_stop.drain_frac"], "tether_m": ["on_hit.status_data.leash_m"],
+             "barb_s": ["on_hit.status_data.every"], "kill_steals": ["on_hit.on_kill.steals"]}
     if path == "bonus_damage":
         for part in ("on_hit", "on_arrive"):
             vs = getp_any(e, part + ".bonus_flat_vs")
@@ -409,6 +424,25 @@ def normalise(aid, aff, s, nums, kind):
     # a skill's own bonus on the Dying (Last Draught's dying_mult, as Death's rule does for every Death skill)
     if "dying_mult" in nums and isinstance(nums.get("on_hit"), dict):
         nums["on_hit"].setdefault("bonus_vs", OD())["dying"] = round(nums.pop("dying_mult") - 1.0, 4)
+    # one drain (drain_frac): Life's Lifeline ("drain") and Unholy's skills; it rides on the hit, its cap per cast
+    if "drain" in nums and not isinstance(nums["drain"], dict):
+        nums["drain_frac"] = nums.pop("drain")
+    if "drain_frac" in nums:
+        part = next((p for p in ("on_hit", "on_stop") if isinstance(nums.get(p), dict)), "on_hit")
+        nums.setdefault(part, OD())["drain_frac"] = nums.pop("drain_frac")
+        if "drain_cap" in nums:
+            nums[part]["drain_cap"] = nums.pop("drain_cap")
+    # Grave Mark: how much harder and faster your thralls go for the Bidden one rides on the status
+    for src, dst in (("thrall_damage_mult", "summon_damage_mult"), ("thrall_rate_mult", "summon_rate_mult")):
+        if src in nums and kind == "smite" and isinstance(nums.get("on_hit"), dict):
+            nums["on_hit"].setdefault("status_data", OD())[dst] = nums.pop(src)
+    # Last Mercy: a kneeling Spared one of yours counts as a corpse for every Death skill (Player._corpse_near); the
+    # kneel is Spared's own (statuses.json kneels_below)
+    if aid == "last_mercy" or ("captures" in nums and kind == "smite"):
+        nums.pop("captures", None)
+        nums.pop("capture_excludes", None)
+        if "kneels_below" in nums and isinstance(nums.get("on_hit"), dict):
+            nums["on_hit"].setdefault("status_data", OD())["kneels_below"] = nums.pop("kneels_below")
     if "dose_clock" in nums:
         nums["status_lasts"] = OD([("dosed", nums.pop("dose_clock"))])      # read generically: a buff that sets a status's clock
     if "times_flesh" in nums:
@@ -485,6 +519,9 @@ def ability_entry(aid, name, aff, d, s, legacy):
         e["starter"] = True
     for k, v in nums.items():
         e[k] = v
+    # the signature names draft fields; normalise() moved some (Lifeline's drain into on_hit.drain_frac), so point
+    # each at where it lives now (Ascension.main_aspect reads them as paths)
+    e["signature"] = [relocate(e, str(p)) for p in e["signature"]]
     mags = list(T.MAGNITUDE.get(aid, [])) + ascension_magnitudes(aid, kind, e)
     if mags:
         seen_m = []

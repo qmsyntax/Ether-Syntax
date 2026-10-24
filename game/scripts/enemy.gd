@@ -747,6 +747,9 @@ func _death_effects() -> void:
 		var by: Variant = s.get("by")
 		var who: Node = by if (by != null and is_instance_valid(by)) else null
 		# a skill may leave word with its status of what its applier regrows if the body dies carrying it (Withering Needle)
+		# a status that leaves something when its body dies tells its applier where (Exhume reads these grave sites)
+		if not (def.get("on_death", {}) as Dictionary).is_empty() and who != null and who.has_method("status_death"):
+			who.call("status_death", id, global_position)
 		var okh: Variant = (s.get("data", {}) as Dictionary).get("on_kill_heal")
 		if okh is Dictionary and who != null and who.has_method("heal_over"):
 			who.call("heal_over", float((okh as Dictionary).get("heal", 0.0)), float((okh as Dictionary).get("over_s", 2.0)))
@@ -1250,7 +1253,7 @@ func lure_reach() -> float:
 ## Spared and Dying: it kneels and does nothing.
 func _kneeling() -> bool:
 	for id: String in statuses:
-		var below: float = float(_sdef(id).get("kneels_below", 0.0))
+		var below: float = float((statuses[id] as Dictionary).get("data", {}).get("kneels_below", _sdef(id).get("kneels_below", 0.0)))
 		if below > 0.0 and body.total() < body.total_max() * below:
 			return true
 	return false

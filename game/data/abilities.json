@@ -939,8 +939,8 @@
       "base_rune": "FIR-1b",
       "rune": "Quench",
       "signature": [
-        "per_stack_damage",
-        "vent_per_stack"
+        "on_hit.consume.per_stack_damage",
+        "on_hit.consume.vent_per_stack"
       ],
       "ascension_fields": {
         "power": "on_hit.consume.per_stack_damage",
@@ -1026,7 +1026,7 @@
       "rune": "Flare",
       "signature": [
         "on_hit.status",
-        "status_s_per_heat"
+        "on_hit.status_s_per_heat"
       ],
       "ascension_fields": {
         "power": "on_hit.damage",
@@ -1121,7 +1121,7 @@
       "rune": "Sear",
       "signature": [
         "damage",
-        "heat_scale"
+        "on_hit.heat_scale"
       ],
       "ascension_fields": {
         "power": "damage",
@@ -1717,7 +1717,7 @@
       "rune": "Bury",
       "signature": [
         "on_hit.status",
-        "duration"
+        "on_hit.status_s"
       ],
       "ascension_fields": {
         "power": "shatter_bonus",
@@ -2080,7 +2080,7 @@
       "rune": "Drop",
       "signature": [
         "on_arrive.status",
-        "bonus_damage"
+        "on_arrive.bonus_flat_vs.aloft"
       ],
       "ascension_fields": {
         "power": "on_arrive.damage",
@@ -2795,7 +2795,7 @@
       "rune": "Insulate",
       "signature": [
         "on_hit.status",
-        "duration"
+        "on_hit.status_s"
       ],
       "ascension_fields": {
         "power": "damage",
@@ -3137,7 +3137,7 @@
       "base_rune": "ICE-3b",
       "rune": "Melt",
       "signature": [
-        "per_stack_damage",
+        "on_hit.consume.per_stack_damage",
         "on_hit.status"
       ],
       "ascension_fields": {
@@ -3244,7 +3244,7 @@
       "base_rune": "ICE-4b",
       "rune": "Shatter",
       "signature": [
-        "bonus_damage",
+        "on_hit.bonus_flat_vs.frozen",
         "on_hit.poise"
       ],
       "ascension_fields": {
@@ -3371,8 +3371,7 @@
       ],
       "verse": "",
       "icon": "coat_static:ICE-5b",
-      "simplified": "'ward' is not built",
-      "summary": "A shell of ice closes over you for 8 s: a 60 Ward (the shared cap). When it is broken it bursts: 40 damage and 2 Chill to everything within 2.5 m. (simplified)",
+      "summary": "A shell of ice closes over you for 8 s: a 60 Ward (the shared cap). When it is broken it bursts: 40 damage and 2 Chill to everything within 2.5 m.",
       "good_modifiers": [
         "Persist",
         "Self",
@@ -3634,7 +3633,7 @@
       "rune": "Expose",
       "signature": [
         "on_hit.status",
-        "duration"
+        "on_hit.status_s"
       ],
       "ascension_fields": {
         "power": "damage",
@@ -3837,7 +3836,7 @@
       "rune": "Devour",
       "signature": [
         "on_hit.execute_below",
-        "on_kill.self_unseen_s"
+        "on_hit.on_kill.self_unseen_s"
       ],
       "ascension_fields": {
         "power": "damage_mult",
@@ -3931,7 +3930,7 @@
       "rune": "Fuse",
       "signature": [
         "on_hit.statuses",
-        "tether_m"
+        "on_hit.status_data.leash_m"
       ],
       "ascension_fields": {
         "power": "damage",
@@ -4261,7 +4260,7 @@
       "rune": "Strip",
       "signature": [
         "on_hit.status",
-        "duration"
+        "on_hit.status_s"
       ],
       "ascension_fields": {
         "power": "damage_mult",
@@ -4333,7 +4332,7 @@
       "rune": "Seal",
       "signature": [
         "on_hit.status",
-        "duration"
+        "on_hit.status_s"
       ],
       "ascension_fields": {
         "power": "damage",
@@ -4480,8 +4479,7 @@
       ],
       "verse": "",
       "icon": "coat_static:BLD-1b",
-      "simplified": "'pool_radius' is not built",
-      "summary": "For 6 s no blow opens a wound on you: each one that would have spends 2 blood instead - from a pool within 3 m of you first, then from what you hold. The blow still takes health from the bar; with no blood to spend, the wound opens as usual. (simplified)",
+      "summary": "For 6 s no blow opens a wound on you: each one that would have spends 2 blood instead - from a pool within 3 m of you first, then from what you hold. The blow still takes health from the bar; with no blood to spend, the wound opens as usual.",
       "good_modifiers": [
         "Persist",
         "Clot",
@@ -4528,8 +4526,7 @@
       ],
       "verse": "",
       "icon": "tremor:BLD-2a",
-      "simplified": "'pool_radius' is not built; 'max_take' is not built; 'blood_per_take' is not built",
-      "summary": "Drink it in at once, without stopping: one Bleeding stack is drawn out of every bleeding enemy within 6 m (12 damage each) and every blood pool within 4 m is drunk. Each stack or pool becomes 1 held blood (up to 6 from one cast). (simplified)",
+      "summary": "Drink it in at once, without stopping: one Bleeding stack is drawn out of every bleeding enemy within 6 m (12 damage each) and every blood pool within 4 m is drunk. Each stack or pool becomes 1 held blood (up to 6 from one cast).",
       "good_modifiers": [
         "Expand",
         "Attract",
@@ -4587,7 +4584,7 @@
       "rune": "Clot",
       "signature": [
         "conjure_weapon",
-        "per_stack_damage"
+        "on_hit.consume.per_stack_damage"
       ],
       "ascension_fields": {
         "power": "damage_mult",
@@ -4624,8 +4621,7 @@
       },
       "verse": "",
       "icon": "backdraft:BLD-3a",
-      "simplified": "'conjure_weapon' is not built",
-      "summary": "A wide sweep as cleavers of hardened blood form in your hands: 1.8x strike damage in front of you, and every Bleeding stack on a target sets hard in the cut for +22 damage and +12 poise (those stacks are spent). Then you keep the clotblades for 8 s - 1 s more for each held blood you spend, up to 4: your strikes do 1.5x and half again the poise damage, and each strike opens 1 Bleeding. (simplified)",
+      "summary": "A wide sweep as cleavers of hardened blood form in your hands: 1.8x strike damage in front of you, and every Bleeding stack on a target sets hard in the cut for +22 damage and +12 poise (those stacks are spent). Then you keep the clotblades for 8 s - 1 s more for each held blood you spend, up to 4: your strikes do 1.5x and half again the poise damage, and each strike opens 1 Bleeding.",
       "good_modifiers": [
         "Bleed",
         "Pulse",
@@ -4711,8 +4707,7 @@
       },
       "verse": "",
       "icon": "coat_static:BLD-4a",
-      "simplified": "'attack_rate_mult' is not built; 'strike_reach_bonus' is not built; 'upkeep_blood_per_s' is not built; 'upkeep_grace_s' is not built",
-      "summary": "Your heart pounds: for 8 s you strike 25% faster, move 25% faster, hit 20% harder and reach 0.4 m further, and light blows cannot stagger you. Every kill gives you 2 held blood. The first 3 s are free; after that it burns 1 held blood every 2 s, and it ends early when you run dry - never on your health. (simplified)",
+      "summary": "Your heart pounds: for 8 s you strike 25% faster, move 25% faster, hit 20% harder and reach 0.4 m further, and light blows cannot stagger you. Every kill gives you 2 held blood. The first 3 s are free; after that it burns 1 held blood every 2 s, and it ends early when you run dry - never on your health.",
       "good_modifiers": [
         "Fury",
         "Persist",
@@ -4841,8 +4836,7 @@
       ],
       "verse": "",
       "icon": "coat_static:BLD-5b",
-      "simplified": "'pool_radius' is not built",
-      "summary": "Breathe out up to 4 blood - pools within 3 m first, then what you hold: each takes 6 off your hottest reflux at once. Then for 6 s your poise is refilled and doubled, and reflux sheds twice as fast. (simplified)",
+      "summary": "Breathe out up to 4 blood - pools within 3 m first, then what you hold: each takes 6 off your hottest reflux at once. Then for 6 s your poise is refilled and doubled, and reflux sheds twice as fast.",
       "good_modifiers": [
         "Persist",
         "Calm",
@@ -4893,8 +4887,7 @@
       ],
       "verse": "",
       "icon": "coat_static:BLD-6a",
-      "simplified": "'conjure_weapon' is not built",
-      "summary": "Blood draws out into a long glaive in your hands for 10 s: your strikes reach 3.6 m in a 70 degree sweep at 1.3x, and each strike that lands on a bleeder draws 1 stack out of it into held blood. It swings faster the emptier you are: up to 30% faster with nothing held. (simplified)",
+      "summary": "Blood draws out into a long glaive in your hands for 10 s: your strikes reach 3.6 m in a 70 degree sweep at 1.3x, and each strike that lands on a bleeder draws 1 stack out of it into held blood. It swings faster the emptier you are: up to 30% faster with nothing held.",
       "good_modifiers": [
         "Thin",
         "Persist",
@@ -4911,7 +4904,7 @@
       "rune": "Sate",
       "signature": [
         "per_stack_damage",
-        "execute_below"
+        "on_hit.execute_below"
       ],
       "ascension_fields": {
         "power": "damage_mult",
@@ -5074,8 +5067,7 @@
       ],
       "verse": "",
       "icon": "dash:LIF-2a",
-      "simplified": "'after_heal_per_s' is not built",
-      "summary": "A 5.2 m dash on renewed legs. It never leaves you Winded and clears Winded if you are. For 3 s after you move 15% faster and regrow 3 health a second. It stops at bodies. (simplified)",
+      "summary": "A 5.2 m dash on renewed legs. It never leaves you Winded and clears Winded if you are. For 3 s after you move 15% faster and regrow 3 health a second. It stops at bodies.",
       "good_modifiers": [
         "Motion",
         "Heal",
@@ -5116,8 +5108,7 @@
       },
       "verse": "",
       "icon": "backdraft:LIF-2b",
-      "simplified": "'heal_per_target' is not built; 'heal_over_s' is not built; 'heal_targets_max' is not built",
-      "summary": "Everything within 3 m of you takes 1.7x strike damage and is Spent for 4 s (25% slower, attacks 30% slower). Every living enemy hit gives its stamina to you: 3 health over 3 s for each, up to 5. (simplified)",
+      "summary": "Everything within 3 m of you takes 1.7x strike damage and is Spent for 4 s (25% slower, attacks 30% slower). Every living enemy hit gives its stamina to you: 3 health over 3 s for each, up to 5.",
       "good_modifiers": [
         "Expand",
         "Tithe",
@@ -5165,8 +5156,7 @@
       ],
       "verse": "",
       "icon": "coat_static:LIF-3a",
-      "simplified": "'heal_to_poise' is not built",
-      "summary": "For 7 s your muscles thicken, and those of your living summons within 6 m: bare strikes do 40% more damage and 50% more poise damage, heavy blows take only half as much of your poise, and every point of health you regrow also refills a point of poise. (simplified)",
+      "summary": "For 7 s your muscles thicken, and those of your living summons within 6 m: bare strikes do 40% more damage and 50% more poise damage, heavy blows take only half as much of your poise, and every point of health you regrow also refills a point of poise.",
       "good_modifiers": [
         "Persist",
         "Regrow",
@@ -5268,7 +5258,7 @@
       "rune": "Sicken",
       "signature": [
         "on_hit.status",
-        "duration"
+        "on_hit.status_s"
       ],
       "ascension_fields": {
         "power": "on_hit.damage",
@@ -5333,8 +5323,7 @@
       ],
       "verse": "",
       "icon": "lane:LIF-5a",
-      "simplified": "'pause_on_hit_s' is not built; 'summon_heal_per_s' is not built",
-      "summary": "Hold for up to 8 s, walking at 40%: 1.5 points a second go into your oldest wound until it closes and gives its share of the bar back, then into the next; a lost arm mends at half the rate. Living summons within 6 m regain 4.5 health a second. A blow no longer ends it: it stalls for 1 s and carries on. (simplified)",
+      "summary": "Hold for up to 8 s, walking at 40%: 1.5 points a second go into your oldest wound until it closes and gives its share of the bar back, then into the next; a lost arm mends at half the rate. Living summons within 6 m regain 4.5 health a second. A blow no longer ends it: it stalls for 1 s and carries on.",
       "good_modifiers": [
         "Heal",
         "Calm",
@@ -5387,7 +5376,7 @@
       "base_rune": "LIF-6a",
       "rune": "Tithe",
       "signature": [
-        "drain",
+        "on_hit.drain_frac",
         "on_hit.damage"
       ],
       "ascension_fields": {
@@ -5404,14 +5393,13 @@
       "duration": 5,
       "tick": 0.5,
       "move_factor": 0.5,
-      "drain": 0.5,
       "on_hit": {
-        "damage": 6
+        "damage": 6,
+        "drain_frac": 0.5
       },
       "verse": "",
       "icon": "lane:LIF-6a",
-      "simplified": "'drain' is not built",
-      "summary": "Hold on one living enemy within 8 m: a thread of its life runs into you. It takes 12 a second, past armour (a quarter more while it is Hale), and you regrow half of what it loses. You walk at 50%. The thread breaks if a wall comes between you or it gets 11 m away. (simplified)",
+      "summary": "Hold on one living enemy within 8 m: a thread of its life runs into you. It takes 12 a second, past armour (a quarter more while it is Hale), and you regrow half of what it loses. You walk at 50%. The thread breaks if a wall comes between you or it gets 11 m away.",
       "good_modifiers": [
         "Wither",
         "Far",
@@ -5461,8 +5449,7 @@
       ],
       "verse": "",
       "icon": "mask:LIF-6b",
-      "simplified": "'radius' is not built",
-      "summary": "You quicken a small living thing: a heartseed that floats at your shoulder for 15 s with 60 health. While it lives it pours 3 health a second into you and into your living summons within 6 m, and each hit you land makes it pulse 2 more into you. Enemies close by may strike it, and Life heals it. One at a time; it costs essence only, never your health. (simplified)",
+      "summary": "You quicken a small living thing: a heartseed that floats at your shoulder for 15 s with 60 health. While it lives it pours 3 health a second into you and into your living summons within 6 m, and each hit you land makes it pulse 2 more into you. Enemies close by may strike it, and Life heals it. One at a time; it costs essence only, never your health.",
       "good_modifiers": [
         "Persist",
         "Strengthen",
@@ -5478,7 +5465,7 @@
       "base_rune": "DTH-1a",
       "rune": "Kill",
       "signature": [
-        "execute_below"
+        "on_hit.execute_below"
       ],
       "ascension_fields": {
         "power": "damage_mult",
@@ -5519,10 +5506,10 @@
       "rune": "Spare",
       "signature": [
         "on_hit.status",
-        "duration"
+        "on_hit.status_s"
       ],
       "ascension_fields": {
-        "power": "kneels_below",
+        "power": "on_hit.status_data.kneels_below",
         "reach": "range",
         "speed": "on_hit.status_s",
         "cost": "cost"
@@ -5532,24 +5519,21 @@
       "range": 10,
       "on_hit": {
         "status": "spared",
-        "status_s": 4
+        "status_s": 4,
+        "status_data": {
+          "kneels_below": 0.5
+        }
       },
-      "kneels_below": 0.5,
-      "captures": true,
-      "capture_excludes": [
-        "elite"
-      ],
       "magnitude": [
         {
-          "path": "kneels_below",
+          "path": "on_hit.status_data.kneels_below",
           "as": "amount",
           "dir": "up"
         }
       ],
       "verse": "",
       "icon": "sigil:DTH-1b",
-      "simplified": "'kneels_below' is not built; 'captures' is not built; 'capture_excludes' is not built",
-      "summary": "One enemy within 10 m is Spared for 4 s: nothing can take it below 1 health. If it is below half, it kneels and does nothing, and while it kneels your Death skills can take it as a corpse: Rise Again raises it on the spot. (simplified)",
+      "summary": "One enemy within 10 m is Spared for 4 s: nothing can take it below 1 health. If it is below half, it kneels and does nothing, and while it kneels your Death skills can take it as a corpse: Rise Again raises it on the spot.",
       "good_modifiers": [
         "Persist",
         "Far",
@@ -5591,8 +5575,7 @@
       "max_count_from": "affinity.thrall_cap",
       "verse": "",
       "icon": "mask:DTH-2a",
-      "simplified": "'max_count_from' is not built",
-      "summary": "Point at a corpse within 10 m: it gets up and fights for you for 20 s, with 120 health, hitting the nearest enemy for 15 a blow. Up to three of your dead walk at once. Without a corpse nothing happens and nothing is spent. (simplified)",
+      "summary": "Point at a corpse within 10 m: it gets up and fights for you for 20 s, with 120 health, hitting the nearest enemy for 15 a blow. Up to three of your dead walk at once. Without a corpse nothing happens and nothing is spent.",
       "good_modifiers": [
         "Preserve",
         "Persist",
@@ -5727,8 +5710,7 @@
       ],
       "verse": "",
       "icon": "coat_static:DTH-3b",
-      "simplified": "'thrall_incoming_mult' is not built; 'thrall_time_paused' is not built; 'corpse_hold' is not built",
-      "summary": "For 8 s your thralls within 12 m are embalmed: they take 40% less damage and their time stops running down. Corpses near you stop decaying while it lasts. (simplified)",
+      "summary": "For 8 s your thralls within 12 m are embalmed: they take 40% less damage and their time stops running down. Corpses near you stop decaying while it lasts.",
       "good_modifiers": [
         "Persist",
         "Animate",
@@ -5788,7 +5770,7 @@
       "base_rune": "DTH-4b",
       "rune": "Exorcise",
       "signature": [
-        "unliving_mult",
+        "on_hit.unliving_mult",
         "on_hit.interrupts"
       ],
       "ascension_fields": {
@@ -5855,8 +5837,7 @@
       ],
       "verse": "",
       "icon": "blink:DTH-5a",
-      "simplified": "'thrall_range' is not built; 'swap_thrall' is not built; 'swap_heal' is not built",
-      "summary": "You pass out of sight and step out up to 6 m away, 12 m onto a corpse, or 14 m onto one of your thralls: you trade places with it, and it arrives with 40 health back. Every enemy that was aiming at you loses its aim. (simplified)",
+      "summary": "You pass out of sight and step out up to 6 m away, 12 m onto a corpse, or 14 m onto one of your thralls: you trade places with it, and it arrives with 40 health back. Every enemy that was aiming at you loses its aim.",
       "good_modifiers": [
         "Far",
         "Elsewhere",
@@ -5896,8 +5877,7 @@
       "needs": "corpse_or_ground",
       "verse": "",
       "icon": "wall:DTH-5b",
-      "simplified": "'corpse_life' is not built; 'corpse_hp_mult' is not built; 'collapse_status' is not built; 'needs' is not built",
-      "summary": "Point, 8 m: a likeness of you takes form out of grave-dust. For 5 s every enemy within 6 m turns on it instead of you. Raised on a corpse it is made of the body: it stands 8 s with twice the health, and the corpse is spent. When it breaks or its time runs out, it falls apart: 40 and Rotting to everything within 3 m. (simplified)",
+      "summary": "Point, 8 m: a likeness of you takes form out of grave-dust. For 5 s every enemy within 6 m turns on it instead of you. Raised on a corpse it is made of the body: it stands 8 s with twice the health, and the corpse is spent. When it breaks or its time runs out, it falls apart: 40 and Rotting to everything within 3 m.",
       "good_modifiers": [
         "Persist",
         "Expand",
@@ -5915,10 +5895,10 @@
       "rune": "Bid",
       "signature": [
         "on_hit.statuses.bidden",
-        "thrall_damage_mult"
+        "on_hit.status_data.summon_damage_mult"
       ],
       "ascension_fields": {
-        "power": "thrall_damage_mult",
+        "power": "on_hit.status_data.summon_damage_mult",
         "reach": "range",
         "speed": "on_hit.status_s",
         "cost": "cost"
@@ -5938,21 +5918,22 @@
             "stacks": 1
           }
         ],
-        "status_s": 6
+        "status_s": 6,
+        "status_data": {
+          "summon_damage_mult": 1.5,
+          "summon_rate_mult": 1.3
+        }
       },
-      "thrall_damage_mult": 1.5,
-      "thrall_rate_mult": 1.3,
       "magnitude": [
         {
-          "path": "thrall_damage_mult",
+          "path": "on_hit.status_data.summon_damage_mult",
           "as": "mult",
           "dir": "up"
         }
       ],
       "verse": "",
       "icon": "sigil:DTH-6a",
-      "simplified": "'thrall_damage_mult' is not built; 'thrall_rate_mult' is not built",
-      "summary": "One enemy within 12 m is marked for the grave for 6 s: every thrall of yours goes for it at once, hitting 50% harder and 30% faster, and it is Rotting while the mark lasts. (simplified)",
+      "summary": "One enemy within 12 m is marked for the grave for 6 s: every thrall of yours goes for it at once, hitting 50% harder and 30% faster, and it is Rotting while the mark lasts.",
       "good_modifiers": [
         "Persist",
         "Far",
@@ -5990,8 +5971,7 @@
       },
       "verse": "",
       "icon": "short:DTH-6b",
-      "simplified": "'consume_thralls' is not built; 'hp_frac' is not built",
-      "summary": "Let your dead go. Every thrall of yours within 12 m comes apart at once: 70, plus a quarter of the health it had left, to everything within 2.5 m of it, and Rotting. Nothing is left of them. (simplified)",
+      "summary": "Let your dead go. Every thrall of yours within 12 m comes apart at once: 70, plus a quarter of the health it had left, to everything within 2.5 m of it, and Rotting. Nothing is left of them.",
       "good_modifiers": [
         "Expand",
         "Rot",
@@ -6026,8 +6006,7 @@
       "heal_per_hit": 2,
       "verse": "",
       "icon": "coat_static:NAT-1a",
-      "simplified": "'heal_per_hit' is not built",
-      "summary": "For 8 s you and every beast of yours within 8 m grow larger and stronger: 20% more damage, half the poise loss, and every blow you land regrows you 2 health. (simplified)",
+      "summary": "For 8 s you and every beast of yours within 8 m grow larger and stronger: 20% more damage, half the poise loss, and every blow you land regrows you 2 health.",
       "good_modifiers": [
         "Persist",
         "Flourish",
@@ -6044,7 +6023,7 @@
       "rune": "Shrink",
       "signature": [
         "on_hit.status",
-        "duration"
+        "on_hit.status_s"
       ],
       "ascension_fields": {
         "power": "on_hit.damage",
@@ -6151,8 +6130,7 @@
       },
       "verse": "",
       "icon": "wall:NAT-2a",
-      "simplified": "'decoy_radius' is not built; 'decoy_s' is not built",
-      "summary": "Point, 8 m: a sapling bursts up into a trunk in 0.6 s, shoving anyone there aside for 25. For its first 6 s every enemy within 5 m turns on it instead of you. It blocks walking and shots for 30 s, toughens every second, and every 5 s spreads a bramble patch at its foot. One at a time. (simplified)",
+      "summary": "Point, 8 m: a sapling bursts up into a trunk in 0.6 s, shoving anyone there aside for 25. For its first 6 s every enemy within 5 m turns on it instead of you. It blocks walking and shots for 30 s, toughens every second, and every 5 s spreads a bramble patch at its foot. One at a time.",
       "good_modifiers": [
         "Persist",
         "Flourish",
@@ -6231,8 +6209,7 @@
       ],
       "verse": "",
       "icon": "tremor:NAT-3a",
-      "simplified": "'green_heal_mult' is not built; 'green_damage_mult' is not built",
-      "summary": "Every patch of your growth within 12 m grows one age at once and puts out a new patch. For 6 s all of it works 50% harder, and you and your beasts In the Green regrow twice as fast and hit 15% harder. (simplified)",
+      "summary": "Every patch of your growth within 12 m grows one age at once and puts out a new patch. For 6 s all of it works 50% harder, and you and your beasts In the Green regrow twice as fast and hit 15% harder.",
       "good_modifiers": [
         "Persist",
         "Expand",
@@ -6308,8 +6285,7 @@
       },
       "verse": "",
       "icon": "backdraft:NAT-4a",
-      "simplified": "'per_patch_heal' is not built",
-      "summary": "A wide scything sweep through 180 degrees: 1.8x strike damage. Each patch of your growth in the arc is cut back to a sprout and adds 15% to the blow (up to 60%), 1 essence and 3 health to you; the roots stay and regrow. (simplified)",
+      "summary": "A wide scything sweep through 180 degrees: 1.8x strike damage. Each patch of your growth in the arc is cut back to a sprout and adds 15% to the blow (up to 60%), 1 essence and 3 health to you; the roots stay and regrow.",
       "good_modifiers": [
         "Expand",
         "Grow",
@@ -6479,8 +6455,7 @@
       },
       "verse": "",
       "icon": "mask:NAT-6a",
-      "simplified": "'spends_patch_age' is not built; 'age_scales' is not built; 'bloom_count' is not built",
-      "summary": "Point at a patch of your growth within 10 m: the thicket gives up a briar hound that runs with you for 20 s - 90 health, a bite of 12 every 0.9 s that Slows. A grown patch gives a hound a quarter stronger, a bloom patch two hounds half as strong again. The patch goes back to a sprout. Up to three hounds; with no patch in range nothing happens and nothing is spent. (simplified)",
+      "summary": "Point at a patch of your growth within 10 m: the thicket gives up a briar hound that runs with you for 20 s - 90 health, a bite of 12 every 0.9 s that Slows. A grown patch gives a hound a quarter stronger, a bloom patch two hounds half as strong again. The patch goes back to a sprout. Up to three hounds; with no patch in range nothing happens and nothing is spent.",
       "good_modifiers": [
         "Persist",
         "Grow",
@@ -6532,8 +6507,7 @@
       ],
       "verse": "",
       "icon": "sigil:NAT-6b",
-      "simplified": "'command_radius' is not built; 'leap_speed' is not built; 'summon_hit' is not built; 'summon_buff' is not built",
-      "summary": "Point at one enemy within 12 m: it becomes your Quarry (20 damage) and every beast of yours within 12 m leaps on it at once, each landing 30 poise damage. For 6 s they run wild: 40% more damage and 30% faster attacks. With no beasts out it only marks the Quarry. (simplified)",
+      "summary": "Point at one enemy within 12 m: it becomes your Quarry (20 damage) and every beast of yours within 12 m leaps on it at once, each landing 30 poise damage. For 6 s they run wild: 40% more damage and 30% faster attacks. With no beasts out it only marks the Quarry.",
       "good_modifiers": [
         "Persist",
         "Fury",
@@ -7142,8 +7116,7 @@
       ],
       "verse": "",
       "icon": "coat_static:DRM-1b",
-      "simplified": "'buff_targets' is not built; 'summon_deals_mult' is not built; 'phantom_extra_hits' is not built",
-      "summary": "For 6 s you are wide awake while they dream: your Dream statuses last 30% longer and your casts recover 30% faster. Your phantoms and every mind you have turned within 12 m share it: they deal 30% more, and a phantom takes one more blow to break. (simplified)",
+      "summary": "For 6 s you are wide awake while they dream: your Dream statuses last 30% longer and your casts recover 30% faster. Your phantoms and every mind you have turned within 12 m share it: they deal 30% more, and a phantom takes one more blow to break.",
       "good_modifiers": [
         "Persist",
         "Self",
@@ -7844,7 +7817,7 @@
       "base_rune": "POI-3b",
       "rune": "Neutralise",
       "signature": [
-        "stun_per_stack"
+        "on_hit.consume.stun_per_stack"
       ],
       "ascension_fields": {
         "power": "on_hit.consume.stun_per_stack",
@@ -7893,7 +7866,7 @@
       "rune": "Linger",
       "signature": [
         "on_hit.statuses.barbed",
-        "barb_s"
+        "on_hit.status_data.every"
       ],
       "ascension_fields": {
         "power": "damage",
@@ -7988,7 +7961,7 @@
       "rune": "Sap",
       "signature": [
         "tick",
-        "payload.statuses.sapped"
+        "on_hit.statuses.sapped"
       ],
       "ascension_fields": {
         "power": "on_hit.statuses.dosed.stacks",
@@ -8099,8 +8072,8 @@
       "base_rune": "POI-6a",
       "rune": "Steep",
       "signature": [
-        "bill_mult",
-        "clock_add"
+        "on_hit.status_data.bill_mult",
+        "on_hit.status_data.clock_add"
       ],
       "ascension_fields": {
         "power": "on_hit.status_data.bill_mult",
@@ -8322,8 +8295,7 @@
       "dying_stacks": 2,
       "verse": "",
       "icon": "fork:DIS-2a",
-      "simplified": "'dying_stacks' is not built",
-      "summary": "One enemy within 9 m catches it (2 Infected); then every enemy within 3 m of it catches it, and every enemy within 3 m of those - up to 8 bodies, 20 and 1 Infected each. A Dying body passes 2 stacks instead of 1. (simplified)",
+      "summary": "One enemy within 9 m catches it (2 Infected); then every enemy within 3 m of it catches it, and every enemy within 3 m of those - up to 8 bodies, 20 and 1 Infected each. A Dying body passes 2 stacks instead of 1.",
       "good_modifiers": [
         "Expand",
         "Many",
@@ -8423,8 +8395,7 @@
       ],
       "verse": "",
       "icon": "coat_static:DIS-3a",
-      "simplified": "'spread_radius' is not built; 'spread_stacks' is not built",
-      "summary": "For 8 s every hit you land on an Infected enemy - bare strikes too - adds a stack, its poise stops refilling while the wound festers, and the nearest other enemy within 2 m catches a stack from it. (simplified)",
+      "summary": "For 8 s every hit you land on an Infected enemy - bare strikes too - adds a stack, its poise stops refilling while the wound festers, and the nearest other enemy within 2 m catches a stack from it.",
       "good_modifiers": [
         "Persist",
         "Self",
@@ -8765,8 +8736,7 @@
       },
       "verse": "",
       "icon": "short:DIS-6b",
-      "simplified": "'max_sites' is not built; 'spends_corpse' is not built; 'recent_infected_death_s' is not built",
-      "summary": "Every corpse within 10 m, and every spot where an Infected enemy died in the last 15 s, bursts up out of the ground (up to 4): 50 and 2 Infected to everything within 2.5 m, and a cloud 2.5 m across that hangs 6 s. The corpses are spent. (simplified)",
+      "summary": "Every corpse within 10 m, and every spot where an Infected enemy died in the last 15 s, bursts up out of the ground (up to 4): 50 and 2 Infected to everything within 2.5 m, and a cloud 2.5 m across that hangs 6 s. The corpses are spent.",
       "good_modifiers": [
         "Expand",
         "Persist",
@@ -8808,8 +8778,7 @@
       ],
       "verse": "",
       "icon": "coat_static:HOL-1a",
-      "simplified": "'ward' is not built; 'summon_ward' is not built; 'expire_heal_frac' is not built",
-      "summary": "A ward of light closes round you for 8 s and takes the next 40 damage; each summon of yours within 6 m gets a 20 ward of its own. A ward a blow breaks bursts outward (30 and Lit, Holy's rule). Whatever is left of yours when the 8 s run out sinks in: half of it comes back to you as health, at once. (simplified)",
+      "summary": "A ward of light closes round you for 8 s and takes the next 40 damage; each summon of yours within 6 m gets a 20 ward of its own. A ward a blow breaks bursts outward (30 and Lit, Holy's rule). Whatever is left of yours when the 8 s run out sinks in: half of it comes back to you as health, at once.",
       "good_modifiers": [
         "Persist",
         "Bless",
@@ -8964,7 +8933,7 @@
       ],
       "verse": "",
       "icon": "coat_static:HOL-3a",
-      "simplified": "'ward' is not built; 'ward_per_cleansed' is not built; 'ward_cleansed_max' is not built; 'turns_away' is not built",
+      "simplified": "'ward_per_cleansed' is not built; 'ward_cleansed_max' is not built",
       "summary": "At once, every bind on you and your summons within 8 m is lifted: stagger, holds, slows, stuns, blinding, choking and fear. You gain a 10 ward, and 8 more for each bind lifted (up to 40). For 4 s after, the next bind to reach you is turned away. (simplified)",
       "good_modifiers": [
         "Persist",
@@ -8982,7 +8951,7 @@
       "rune": "Penance",
       "signature": [
         "on_hit.status",
-        "duration"
+        "on_hit.status_s"
       ],
       "ascension_fields": {
         "power": "on_hit.damage",
@@ -9291,8 +9260,8 @@
       "base_rune": "UNH-1a",
       "rune": "Leech",
       "signature": [
-        "drain_frac",
-        "drain_cap"
+        "on_hit.drain_frac",
+        "on_hit.drain_cap"
       ],
       "ascension_fields": {
         "power": "damage_mult",
@@ -9307,15 +9276,14 @@
       "damage_mult": 1.8,
       "reach_bonus": 0.6,
       "arc_deg": 150,
-      "drain_frac": 0.2,
-      "drain_cap": 20,
       "on_hit": {
-        "poise": 20
+        "poise": 20,
+        "drain_frac": 0.2,
+        "drain_cap": 20
       },
       "verse": "",
       "icon": "backdraft:UNH-1a",
-      "simplified": "'drain_frac' is not built; 'drain_cap' is not built",
-      "summary": "A wide, heavy cleave in front of you (150 degrees): 1.8x, and it drains - a fifth of the damage it deals comes back to you as health (twice that from the Dying or from anything standing in Dark), up to 20 a swing. (simplified)",
+      "summary": "A wide, heavy cleave in front of you (150 degrees): 1.8x, and it drains - a fifth of the damage it deals comes back to you as health (twice that from the Dying or from anything standing in Dark), up to 20 a swing.",
       "good_modifiers": [
         "Reave",
         "Gloom",
@@ -9371,7 +9339,7 @@
       "rune": "Daunt",
       "signature": [
         "on_hit.status",
-        "dark_status_s"
+        "on_hit.dark_status_s"
       ],
       "ascension_fields": {
         "power": "damage",
@@ -9430,14 +9398,13 @@
         "status_s": 4.0,
         "status_data": {
           "leash_m": 4.0
-        }
+        },
+        "drain_frac": 0.1,
+        "drain_cap": 10
       },
-      "drain_frac": 0.1,
-      "drain_cap": 10,
       "verse": "",
       "icon": "undertow:UNH-2b",
-      "simplified": "'drain_frac' is not built; 'drain_cap' is not built",
-      "summary": "One enemy within 12 m: a hand of shadow takes it and hauls it to arm's length in front of you: 45, it drains, and it is Leashed to you for 4 s - it cannot get more than 4 m from you. (simplified)",
+      "summary": "One enemy within 12 m: a hand of shadow takes it and hauls it to arm's length in front of you: 45, it drains, and it is Leashed to you for 4 s - it cannot get more than 4 m from you.",
       "good_modifiers": [
         "Far",
         "Stalk",
@@ -9530,8 +9497,7 @@
       ],
       "verse": "",
       "icon": "coat_static:UNH-3b",
-      "simplified": "'ward' is not built; 'ward_from' is not built; 'ward_max' is not built; 'no_stagger' is not built",
-      "summary": "Draw the dark tight round you: a ward of 40, plus all your stolen life (100 at most), that takes blows before your health does, for 8 s. While it holds nothing staggers you. If it breaks, the dark bursts off you: everything within 3 m is Terrified for 1.5 s. (simplified)",
+      "summary": "Draw the dark tight round you: a ward of 40, plus all your stolen life (100 at most), that takes blows before your health does, for 8 s. While it holds nothing staggers you. If it breaks, the dark bursts off you: everything within 3 m is Terrified for 1.5 s.",
       "good_modifiers": [
         "Persist",
         "Leech",
@@ -9547,8 +9513,8 @@
       "base_rune": "UNH-4a",
       "rune": "Reave",
       "signature": [
-        "drain_frac",
-        "kill_steals"
+        "on_hit.drain_frac",
+        "on_hit.on_kill.steals"
       ],
       "ascension_fields": {
         "power": "damage_mult",
@@ -9561,18 +9527,17 @@
       "windup": 0.25,
       "damage_mult": 2.4,
       "range_bonus": 1.0,
-      "drain_frac": 0.3,
-      "drain_cap": 30,
       "on_hit": {
         "poise": 30,
         "on_kill": {
           "steals": true
-        }
+        },
+        "drain_frac": 0.3,
+        "drain_cap": 30
       },
       "verse": "",
       "icon": "fist:UNH-4a",
-      "simplified": "'drain_frac' is not built; 'drain_cap' is not built",
-      "summary": "One enemy in reach: a slow, heavy blow, 2.4x, that drains 30% of what it deals (60% from the Dying), up to 30. If it kills, all the health it had left before the blow is stolen. (simplified)",
+      "summary": "One enemy in reach: a slow, heavy blow, 2.4x, that drains 30% of what it deals (60% from the Dying), up to 30. If it kills, all the health it had left before the blow is stolen.",
       "good_modifiers": [
         "Hold",
         "One",
@@ -9590,7 +9555,7 @@
       "rune": "Torment",
       "signature": [
         "on_hit.status",
-        "duration"
+        "on_hit.status_s"
       ],
       "ascension_fields": {
         "power": "damage",
@@ -9716,8 +9681,7 @@
       ],
       "verse": "",
       "icon": "dash:UNH-5b",
-      "simplified": "'dir' is not built",
-      "summary": "Break off: leap 5 m back, away from your aim, and leave the ground you stood on forsaken - a Dark circle 3 m across for 4 s. Enemies in it take 10 a second and are Dreading: they back out and will not walk in. (simplified)",
+      "summary": "Break off: leap 5 m back, away from your aim, and leave the ground you stood on forsaken - a Dark circle 3 m across for 4 s. Enemies in it take 10 a second and are Dreading: they back out and will not walk in.",
       "good_modifiers": [
         "Persist",
         "Expand",

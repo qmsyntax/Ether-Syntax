@@ -74,14 +74,17 @@ AFFINITIES = OD([
                  ("through", True), ("living_only", True), ("hale_mult", 1.25),
                  # v2 (life.json heal_mult_after_hit): Life heals over time run this much faster for after_hit_s after you land a hit;
                  # a self buff with a radius is shared with your living summons only
-                 ("heal_mult_after_hit", 1.5), ("after_hit_s", 2.0), ("shares_living_only", True)])),
+                 ("heal_mult_after_hit", 1.5), ("after_hit_s", 2.0), ("shares_living_only", True), ("shares_buffs", True)])),
     ("death", OD([("label", "Death"), ("color", "ddd3b4"),
                   ("desc", "The necromancer. What has died stays useful: corpses lie longer for you, up to three of your dead fight for you, and the Dying take more."),
                   ("dying_mult", 1.3), ("corpse_lie_s", 20.0),
                   # v2 (death.json rule_keys): at most this many thralls stand for you at once
-                  ("thrall_cap", 3)])),
+                  ("thrall_cap", 3),
+                  # its buffs reach its thralls (Embalm's thrall_ keys: the one shared-buff radius)
+                  ("shares_buffs", True)])),
     ("nature", OD([("label", "Nature"), ("color", "4fae5a"),
-                   ("desc", "The druid (Earth's ground, Life's growth). Plant growth that stays, spreads and ages; stand in it to regrow, call beasts up out of it, then cash it in.")])),
+                   ("desc", "The druid (Earth's ground, Life's growth). Plant growth that stays, spreads and ages; stand in it to regrow, call beasts up out of it, then cash it in."),
+                   ("shares_buffs", True)])),
     ("light", OD([("label", "Light"), ("color", "ffd866"),
                   ("desc", "The ranged caster. Light arrives at once along a straight line; whatever it touches is Lit, and a light hit on a Lit target Sears it."),
                   # v2 (light.json sear): a light hit on a target already Lit does this much more and refreshes Lit
@@ -103,7 +106,7 @@ AFFINITIES = OD([
                  ("desc", "The paladin (Light and Life). Wards take blows before your bar, and a ward that breaks pays out its light; it covers you and your summons, and its healing touches only the living."),
                  # holy.json rule_data: when the ward pool is emptied by a blow, this goes off round the bearer
                  ("ward_break_payload", OD([("radius", 3.0), ("damage", 30.0), ("status", "lit")])),
-                 ("shares_living_only", True)])),
+                 ("shares_buffs", True)])),
     ("unholy", OD([("label", "Unholy"), ("color", "a85c8c"),
                    ("desc", "The shadow knight (Dark and Death). Every hit drains part of the harm back to you as health, twice that from the Dying or from anything in the Dark, and banks it as stolen life for your skills."),
                    # unholy.json rule_keys: the drain rule and the stolen store

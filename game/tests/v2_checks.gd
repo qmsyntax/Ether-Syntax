@@ -30,6 +30,7 @@ func run() -> void:
 	await _ground_and_edge()
 	await _storm_and_tide()
 	await _dark_light_dream()
+	await _summons_and_blood()
 
 
 # --- helpers ------------------------------------------------------------------------------------
@@ -696,6 +697,185 @@ func _dark_light_dream() -> void:
 	wn.call("_tick_regen", float(okh["over_s"]) + 0.1)
 	check.call("Withering Needle: a body that dies Withering regrows you %s over %s s" % [str(okh["heal"]), str(okh["over_s"])],
 		(wn.get("body") as Body).hp >= 50.0 + float(okh["heal"]) - 0.5, "hp %f" % (wn.get("body") as Body).hp)
+	_clean()
+
+
+# --- summons (Death's thralls, Nature's beasts, Life's heartseed), shared buffs, Life's and Blood's own -----------
+
+## A corpse at `at` (a body where one fell), for Death's skills.
+func _corpse(at: Vector3) -> Fallen:
+	var f := Fallen.new()
+	f.life = 60.0
+	t.add_child(f)
+	f.global_position = at
+	_keep(f)
+	return f
+
+
+func _summons_and_blood() -> void:
+	var p := _player(Vector3(6400, 0, 0), ["death", "life", "nature", "blood"])
+	for id: String in ["rise_again", "embalm", "grave_mark", "bone_burst", "knit", "heartseed", "call_the_brake", "unleash_the_pack",
+			"overgrowth", "lifeline", "deep_draught", "red_frenzy", "thirsting_glaive"]:
+		p.call("learn", id)
+	await t.get_tree().physics_frame
+	p.set("_facing", Vector3(0, 0, -1))
+	var ra: Dictionary = GameData.ability("rise_again")
+	var cap: int = int(GameData.affinity("death")["thrall_cap"])
+	# thrall cap: at most thrall_cap of your dead stand at once; another pushes out the oldest
+	var first: Node = null
+	for i: int in cap + 1:
+		var spot: Vector3 = p.global_position + Vector3(2.0 * float(i) - 3.0, 0, -4.0)
+		_corpse(spot)
+		p.set("cursor_fixed", spot)
+		_cast(p, "rise_again")
+		if i == 0:
+			var made: Array = p.call("summons_near", p.global_position, 50.0)
+			first = made[0] if not made.is_empty() else null
+	await t.get_tree().process_frame
+	var standing: Array = p.call("summons_near", p.global_position, 50.0)
+	check.call("Death's thrall cap: %d of your dead stand at once; a %s pushes out the oldest" % [cap, ["first", "second", "third", "fourth"][mini(cap, 3)]],
+		standing.size() == cap and not is_instance_valid(first), "%d standing" % standing.size())
+	check.call("a thrall is not living (Life cannot touch it)", standing.all(func(s: Node) -> bool: return not bool(s.get("is_living"))))
+	p.set("cursor_fixed", null)
+	# Grave Mark: your thralls go for the Bidden one, harder
+	var bait := _enemy(p, Vector3(-6.0, 0, -4.0))
+	var marked := _enemy(p, Vector3(8.0, 0, -4.0))
+	p.set("hovered", marked)
+	_cast(p, "grave_mark")
+	p.set("hovered", null)
+	var th: Node = standing[0]
+	check.call("Grave Mark: your thralls go for the Bidden one, not the nearest", th.call("_pick_foe") == marked)
+	# Embalm: its thrall_ keys reach your thralls in its radius (the one shared-buff radius)
+	_cast(p, "embalm")
+	check.call("Embalm's buff is on your thralls within its radius (thrall_incoming_mult, thrall_time_paused)",
+		standing.all(func(s: Node) -> bool: return (s.get("buffs") as Dictionary).has("embalmed")))
+	var life0: float = float(th.get("life"))
+	th.call("tick", 1.0)
+	var took: float = th.call("take_hit", 100.0, false, null)
+	check.call("so their time stands still and they take x%s" % str(GameData.ability("embalm")["thrall_incoming_mult"]),
+		_near(float(th.get("life")), life0) and _near(took, 100.0 * float(GameData.ability("embalm")["thrall_incoming_mult"])))
+	(p.get("buffs") as Dictionary).clear()
+	# Bone Burst spends them all for a burst each
+	var near_t := _enemy(p, Vector3(0, 0, -4.5))
+	var nl0: float = t.call("_lost", near_t)
+	_cast(p, "bone_burst")
+	await t.get_tree().process_frame
+	check.call("Bone Burst: every thrall of yours in range bursts and is gone", (p.call("summons_near", p.global_position, 50.0) as Array).is_empty()
+		and float(t.call("_lost", near_t)) > nl0, "lost %f" % (float(t.call("_lost", near_t)) - nl0))
+	# Heartseed: a living seed that keeps beside you and heals you
+	var body: Body = p.get("body")
+	body.hp = 40.0
+	_cast(p, "heartseed")
+	var seeds: Array = p.call("summons_near", p.global_position, 10.0)
+	var seed: Node = seeds[0] if not seeds.is_empty() else null
+	check.call("Heartseed: a living summon that follows you and does not attack", seed != null and bool(seed.get("is_living")) and str(seed.get("behaviour")) == "follow")
+	if seed != null:
+		for i: int in 60:
+			seed.call("tick", STEP)
+	check.call("and it regrows you", body.hp > 40.0, "hp %f" % body.hp)
+	# Knit is shared with your living summons
+	body.hp = 40.0
+	_cast(p, "knit")
+	check.call("Knit is shared with your living summons near you", seed != null and (seed.get("buffs") as Dictionary).has("knit"))
+	(p.get("buffs") as Dictionary).clear()
+	if seed != null:
+		seed.queue_free()                  # its own heal_per_hit would add to the hits below
+	await t.get_tree().process_frame
+	# Call the Brake: beasts out of your growth - two from a bloom
+	var cb: Dictionary = GameData.ability("call_the_brake")
+	var patch: Node3D = p.call("plant_growth", p.global_position + Vector3(3.0, 0, 3.0), {"kind": "bramble"})
+	patch.set("age_t", 99.0)
+	p.set("cursor_fixed", patch.global_position)
+	var before: int = (p.call("summons_near", p.global_position, 50.0) as Array).size()
+	_cast(p, "call_the_brake")
+	var hounds: Array = (p.call("summons_near", p.global_position, 50.0) as Array).filter(func(s: Node) -> bool: return str(s.get("skill")) == str(cb["name"]))
+	check.call("Call the Brake: a bloom patch calls up %d beasts, stronger for its age, and is cut back" % int(cb["bloom_count"]),
+		hounds.size() == int(cb["bloom_count"]) and _near(float(hounds[0].get("hp")), float(cb["thrall"]["hp"]) * float(cb["age_scales"]["bloom"]))
+		and int(patch.call("age")) == 0, "%d hounds" % hounds.size())
+	p.set("cursor_fixed", Vector3(9999, 0, 9999))
+	var refused_e: float = 0.0
+	_ready_to_cast(p)
+	refused_e = float(p.get("essence"))
+	t.call("_cast", p, "call_the_brake")
+	check.call("and is refused, with nothing spent, where you have no growth", _near(float(p.get("essence")), refused_e))
+	p.set("cursor_fixed", null)
+	# Unleash the Pack: they leap to the target and are Unleashed
+	var quarry := _enemy(p, Vector3(-3.0, 0, 8.0))
+	p.set("hovered", quarry)
+	_cast(p, "unleash_the_pack")
+	p.set("hovered", null)
+	check.call("Unleash the Pack: your beasts leap to the target, Unleashed, and it is their Quarry", bool(quarry.call("has_status", "quarry"))
+		and hounds.all(func(h: Node) -> bool: return (h as Node3D).global_position.distance_to(quarry.global_position) < 2.5 and (h.get("buffs") as Dictionary).has("unleashed")))
+	# Overgrowth: you and your beasts hit harder, and every hit regrows the one that lands it
+	_cast(p, "overgrowth")
+	body.hp = 40.0
+	var og: Dictionary = GameData.ability("overgrowth")
+	var oh: HitContext = p.call("deal_damage", quarry, 100.0, ["test"])
+	check.call("Overgrowth: x%s damage and +%s health for each hit you land" % [str(og["damage_mult"]), str(og["heal_per_hit"])],
+		_near(oh.applied, 100.0 * float(og["damage_mult"]), 0.5) and _near(body.hp, 40.0 + float(og["heal_per_hit"]), 0.05), "%f hp %f" % [oh.applied, body.hp])
+	check.call("and the beasts near you have it too", hounds.all(func(h: Node) -> bool: return (h.get("buffs") as Dictionary).has("overgrown")))
+	(p.get("buffs") as Dictionary).clear()
+	# In the Green: on your growth you regrow, and shoves move you half as far
+	var home: Node3D = p.call("plant_growth", p.global_position, {"kind": "bramble", "radius": 2.0})
+	body.hp = 40.0
+	for i: int in 60:
+		p.call("_tick_roles", STEP)
+	var green: Dictionary = GameData.affinity("nature")["in_the_green"]
+	check.call("In the Green: on your own growth you regrow %s a second" % str(green["heal_per_s"]), _near(body.hp, 40.0 + float(green["heal_per_s"]), 0.1), "hp %f" % body.hp)
+	p.call("shove", Vector3(1, 0, 0), 4.0)
+	check.call("and a shove moves you x%s" % str(green["shove_mult"]), _near(float(p.get("_shoved_left")), 4.0 * float(green["shove_mult"])))
+	p.set("_shoved_left", 0.0)
+	home.queue_free()
+	await t.get_tree().process_frame
+	# Lifeline: a drain - you are healed half the harm (Life's healing order)
+	body.hp = 40.0
+	var ll := _enemy(p, Vector3(0, 0, -3.0))
+	var dl: HitContext = p.call("apply_hit", ll, (GameData.ability("lifeline")["on_hit"] as Dictionary), ["ability", "life"])
+	check.call("Lifeline's drain: you regrow %d%% of what it deals" % int(float(GameData.ability("lifeline")["on_hit"]["drain_frac"]) * 100.0),
+		_near(body.hp - 40.0, dl.applied * float(GameData.ability("lifeline")["on_hit"]["drain_frac"]), 0.05))
+	body.hp = body.total_max()
+	# Deep Draught drinks the pools and the bleeders near you
+	var dd: Dictionary = GameData.ability("deep_draught")
+	p.set("held_blood", 0)
+	p.call("spill_blood", p.global_position + Vector3(1.0, 0, 0), 2)
+	var bleeder := _enemy(p, Vector3(-2.0, 0, 0))
+	bleeder.call("add_status", "bleeding", 3, p)
+	_cast(p, "deep_draught")
+	check.call("Deep Draught: it drinks the pools near you and a stack from every bleeder, into held blood",
+		int(p.get("held_blood")) >= 2 and int(bleeder.call("status_stacks", "bleeding")) == 2, "held %d" % int(p.get("held_blood")))
+	# Red Frenzy: faster strikes, further, and it drinks your blood to keep going
+	var rf: Dictionary = GameData.ability("red_frenzy")
+	p.set("held_blood", 2)
+	var reach0: float = float(p.call("reach_now"))
+	_cast(p, "red_frenzy")
+	check.call("Red Frenzy: strikes x%s as fast and %s m further" % [str(rf["attack_rate_mult"]), str(rf["strike_reach_bonus"])],
+		_near(float(p.call("strike_rate_mult")), float(rf["attack_rate_mult"])) and _near(float(p.call("reach_now")), reach0 + float(rf["strike_reach_bonus"])))
+	p.call("_tick_roles", float(rf["upkeep_grace_s"]) + 2.0 / float(rf["upkeep_blood_per_s"]) + 0.5)
+	check.call("after its grace it drinks your held blood, and with none left it ends", int(p.get("held_blood")) == 0 and not (p.get("buffs") as Dictionary).has("red_frenzy"))
+	# the conjured weapon: Thirsting Glaive puts a blade in your hand that your bare strikes use
+	var tg: Dictionary = GameData.ability("thirsting_glaive")
+	var cw: Dictionary = tg["conjure_weapon"]
+	var plain: float = float(p.call("strike_damage"))
+	_cast(p, "thirsting_glaive")
+	check.call("Thirsting Glaive: a conjured blade - strikes x%s, reach %s m, for %s s" % [str(cw["melee_damage_mult"]), str(cw["melee_range"]), str(cw["lasts"])],
+		_near(float(p.call("strike_damage")), plain * float(cw["melee_damage_mult"])) and _near(float(p.call("reach_now")), float(cw["melee_range"]))
+		and _near(float((p.call("conjured") as Dictionary).get("t", 0.0)), float(cw["lasts"])))
+	var drink := _enemy(p, Vector3(2.5, 0, 0))
+	drink.call("add_status", "bleeding", 2, p)
+	p.set("held_blood", 0)
+	p.call("deal_damage", drink, 5.0, ["melee"])
+	check.call("and each strike drinks a Bleeding stack into held blood", int(drink.call("status_stacks", "bleeding")) == 1 and int(p.get("held_blood")) == 1)
+	p.call("_tick_buffs", float(cw["lasts"]) + 0.1)
+	check.call("when it ends your own weapon is back", (p.call("conjured") as Dictionary).is_empty() and _near(float(p.call("strike_damage")), plain))
+	# Bloodrush: every measure of blood you hold makes every hit you deal harder
+	var per: float = float(GameData.affinity("blood")["damage_per_held_blood"])
+	var rush_t := _enemy(p, Vector3(0, 0, 3.0))
+	p.set("held_blood", 10)
+	var full: HitContext = p.call("deal_damage", rush_t, 100.0, ["test"])
+	p.set("held_blood", 0)
+	var none: HitContext = p.call("deal_damage", rush_t, 100.0, ["test"])
+	check.call("Bloodrush: holding 10 blood, a hit of any affinity is x%s" % str(1.0 + 10.0 * per),
+		_near(full.applied, none.applied * (1.0 + 10.0 * per), 0.5), "%f vs %f" % [full.applied, none.applied])
 	_clean()
 
 

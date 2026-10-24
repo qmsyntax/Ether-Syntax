@@ -209,6 +209,7 @@
       "heal_mult_after_hit": 1.5,
       "after_hit_s": 2.0,
       "shares_living_only": true,
+      "shares_buffs": true,
       "kit": [
         "withering_needle",
         "wearying_sweep",
@@ -227,6 +228,7 @@
       "dying_mult": 1.3,
       "corpse_lie_s": 20.0,
       "thrall_cap": 3,
+      "shares_buffs": true,
       "kit": [
         "rotting_bolt",
         "endstroke",
@@ -242,6 +244,7 @@
       "label": "Nature",
       "color": "4fae5a",
       "desc": "The druid (Earth's ground, Life's growth). Plant growth that stays, spreads and ages; stand in it to regrow, call beasts up out of it, then cash it in.",
+      "shares_buffs": true,
       "kit": [
         "thornburst",
         "reaping_sweep",
@@ -380,7 +383,7 @@
         "damage": 30.0,
         "status": "lit"
       },
-      "shares_living_only": true,
+      "shares_buffs": true,
       "kit": [
         "condemning_ray",
         "rebuke",
