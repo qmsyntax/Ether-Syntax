@@ -1,0 +1,3287 @@
+{
+  "_note": "DRAFT talent pool v2 (2026-10-24, Brent's request: expand the prime talent pool using the affinity roles as a clustering guide). NOT loaded by the game; game/data/talents.json is untouched. Clusters come from the 18 affinity roles in design/affinities/framework.md [B: roles and parents] merged where they overlap [MODEL]. A talent's cluster and roles say what playstyle it serves best; they do NOT tie it to an affinity: talent and affinities are still rolled independently (Brent 2026-10-11) [B]. The 40 existing talents keep every field unchanged and only gain 'cluster' and 'roles'. New talents carry status 'new', provenance [MODEL] (all names, verses, rules and numbers are ours), evolve_2..evolve_4 plus evolve_onward (how it continues; every star ascends, Brent 2026-10-24), and a 'build' note: the existing TalentEffect hooks it uses and the new hooks it needs (see talents-v2.md 'New hooks'). 'roles' use the role ids listed in each cluster; holy and unholy roles belong to affinities listed but not yet in the game. No book text, no canon talent names.",
+  "categories": [
+    "sustain",
+    "offense",
+    "defense",
+    "mobility",
+    "perception",
+    "trade",
+    "bond",
+    "netherecho",
+    "body"
+  ],
+  "roles": {
+    "area_tank": {
+      "affinity": "earth",
+      "role": "Area tank - walls, terrain, immovable"
+    },
+    "bruiser": {
+      "affinity": "water",
+      "role": "Bruiser - heavy hits, shoves, crushes"
+    },
+    "burst_caster": {
+      "affinity": "fire",
+      "role": "Burst caster - big hits, spreading burns"
+    },
+    "ranged_caster": {
+      "affinity": "light",
+      "role": "Ranged caster - reveal, smite"
+    },
+    "control": {
+      "affinity": "ice",
+      "role": "Control - flow made still"
+    },
+    "healer": {
+      "affinity": "life",
+      "role": "Healer - regrowth, the living only"
+    },
+    "paladin_support": {
+      "affinity": "holy",
+      "role": "Paladin / support (Holy: listed, not in the game yet)"
+    },
+    "assassin": {
+      "affinity": "dark",
+      "role": "Assassin - stealth, rear hits, darkness"
+    },
+    "necromancer": {
+      "affinity": "death",
+      "role": "Necromancer - corpses, thralls, the dying"
+    },
+    "druid": {
+      "affinity": "nature",
+      "role": "Druid - growth, buffs"
+    },
+    "berserker": {
+      "affinity": "blood",
+      "role": "Berserker - spilled life, never your own"
+    },
+    "enchanter": {
+      "affinity": "dream",
+      "role": "Enchanter - twilight"
+    },
+    "spellblade": {
+      "affinity": "lightning",
+      "role": "Spellblade - burst and speed"
+    },
+    "evasive_monk": {
+      "affinity": "wind",
+      "role": "Evasive monk - positioning, rear hits, speed"
+    },
+    "armoured_duellist": {
+      "affinity": "metal",
+      "role": "Armoured duellist - ground and forge"
+    },
+    "shadow_knight": {
+      "affinity": "unholy",
+      "role": "Shadow knight (Unholy: listed, not in the game yet)"
+    },
+    "coating": {
+      "affinity": "poison",
+      "role": "Coating - tainted water that pays out later"
+    },
+    "plague": {
+      "affinity": "disease",
+      "role": "Plague - rot"
+    }
+  },
+  "clusters": [
+    {
+      "id": "bulwark",
+      "name": "Bulwark (tank / area control)",
+      "roles": [
+        "area_tank"
+      ],
+      "affinities": [
+        "earth"
+      ],
+      "summary": "Taking hits and owning ground: damage thresholds, delays, immunity, and claimed space enemies must cross."
+    },
+    {
+      "id": "bruiser",
+      "name": "Bruiser",
+      "roles": [
+        "bruiser"
+      ],
+      "affinities": [
+        "water"
+      ],
+      "summary": "Heavy blows, shoves, Crushes, poise and trading hits up close."
+    },
+    {
+      "id": "burst",
+      "name": "Burst and ranged caster",
+      "roles": [
+        "burst_caster",
+        "ranged_caster"
+      ],
+      "affinities": [
+        "fire",
+        "light"
+      ],
+      "summary": "Big numbers from skills: openers, essence and reflux spent hard, echoes. Fire's burst and Light's ranged smite merge here; both are 'one big cast' players."
+    },
+    {
+      "id": "control",
+      "name": "Control caster",
+      "roles": [
+        "control"
+      ],
+      "affinities": [
+        "ice"
+      ],
+      "summary": "Stops, interrupts, slows and statuses that keep enemies from acting."
+    },
+    {
+      "id": "sustain",
+      "name": "Healer and sustain",
+      "roles": [
+        "healer"
+      ],
+      "affinities": [
+        "life"
+      ],
+      "summary": "Recovery between fights and at a price: wounds, sinks, rest. Never in-fight healing that outpaces damage (design/04 balance rule)."
+    },
+    {
+      "id": "support",
+      "name": "Support / wards",
+      "roles": [
+        "paladin_support"
+      ],
+      "affinities": [
+        "holy"
+      ],
+      "summary": "Wards on the ground, buffs shared with thralls and lures, refusing harm. In a single-player game 'allies' are your thralls and lures."
+    },
+    {
+      "id": "assassin",
+      "name": "Assassin",
+      "roles": [
+        "assassin"
+      ],
+      "affinities": [
+        "dark"
+      ],
+      "summary": "Rear hits, being unseen, darkness, one target marked for death."
+    },
+    {
+      "id": "summoner",
+      "name": "Summoner / necromancer",
+      "roles": [
+        "necromancer"
+      ],
+      "affinities": [
+        "death"
+      ],
+      "summary": "Thralls, lures and corpses: more of them, longer, and hitting with you."
+    },
+    {
+      "id": "druid",
+      "name": "Druid / growth",
+      "roles": [
+        "druid"
+      ],
+      "affinities": [
+        "nature"
+      ],
+      "summary": "Plants, growth patches, clouds and the slow turn of a fight; some foraging."
+    },
+    {
+      "id": "berserker",
+      "name": "Berserker",
+      "roles": [
+        "berserker"
+      ],
+      "affinities": [
+        "blood"
+      ],
+      "summary": "Momentum, kill streaks, pain turned into power, never backing off."
+    },
+    {
+      "id": "enchanter",
+      "name": "Enchanter",
+      "roles": [
+        "enchanter"
+      ],
+      "affinities": [
+        "dream"
+      ],
+      "summary": "Mind statuses (asleep, dazed, terrified, commanded) that turn enemies on each other, and misdirection."
+    },
+    {
+      "id": "spellblade",
+      "name": "Spellblade",
+      "roles": [
+        "spellblade"
+      ],
+      "affinities": [
+        "lightning"
+      ],
+      "summary": "Weaving bare strikes, dashes and skills so each feeds the next."
+    },
+    {
+      "id": "mobility",
+      "name": "Evasive / mobility",
+      "roles": [
+        "evasive_monk"
+      ],
+      "affinities": [
+        "wind"
+      ],
+      "summary": "Movement, dodging, travel and getting out."
+    },
+    {
+      "id": "duellist",
+      "name": "Duellist",
+      "roles": [
+        "armoured_duellist"
+      ],
+      "affinities": [
+        "metal"
+      ],
+      "summary": "One opponent at a time: reading, cutting wind-ups, finding seams, wearing armour well."
+    },
+    {
+      "id": "drain",
+      "name": "Drain / shadow knight",
+      "roles": [
+        "shadow_knight"
+      ],
+      "affinities": [
+        "unholy"
+      ],
+      "summary": "Taking from enemies: essence, strength, healing into sinks, fear as armour. The title talent lives here."
+    },
+    {
+      "id": "affliction",
+      "name": "Damage over time / coating / plague",
+      "roles": [
+        "coating",
+        "plague"
+      ],
+      "affinities": [
+        "poison",
+        "disease"
+      ],
+      "summary": "Damage-over-time that waits, spreads, coats a weapon or grows with every death. Poison's coating and Disease's plague merge here."
+    },
+    {
+      "id": "general",
+      "name": "General / utility / economy",
+      "roles": [],
+      "affinities": [],
+      "summary": "Talents no combat role owns: trade, perception, the Netherecho, the body's oddities. The economy and odd talents the books are known for."
+    }
+  ],
+  "talents": [
+    {
+      "id": "one_percent_lifesteal",
+      "name": "1% Lifesteal",
+      "canon": true,
+      "category": "sustain",
+      "combat": true,
+      "value": "mid",
+      "verse": "Wound the living a hundredfold, and one fold returns to you.",
+      "rule": "Gain heal points equal to 1% of damage dealt to anything alive. 1-star: Supreme quality only (100 pts/HP any layer).",
+      "hidden": [
+        "pays on constructs?",
+        "pays on undead?",
+        "pays on thrown-environment damage?",
+        "pays while unconscious?",
+        "pays on armour bleed?"
+      ],
+      "evolve_2": "Dynamic quality: each wound layer healed at its native price.",
+      "cluster": "drain",
+      "roles": [
+        "shadow_knight",
+        "berserker",
+        "healer"
+      ]
+    },
+    {
+      "id": "borrowed_breath",
+      "name": "Borrowed Breath",
+      "category": "sustain",
+      "combat": true,
+      "value": "high",
+      "verse": "When the last breath leaves, I lend you ten more. I collect.",
+      "rule": "On lethal damage, keep fighting for 10 s. Afterwards take the prevented damage as structural wounds.",
+      "hidden": [
+        "kills in the window reduce the debt?",
+        "debt can kill?",
+        "re-triggers inside its own window?"
+      ],
+      "evolve_2": "Window 15 s; 30% of debt forgiven per kill.",
+      "cluster": "berserker",
+      "roles": [
+        "berserker",
+        "shadow_knight"
+      ]
+    },
+    {
+      "id": "scar_ledger",
+      "name": "Scar Ledger",
+      "category": "sustain",
+      "combat": true,
+      "value": "mid",
+      "verse": "Every mended break is written down, and the page grows thicker.",
+      "rule": "Each structural wound fully healed adds +0.5% max HP to that body region, permanently.",
+      "hidden": [
+        "self-inflicted wounds count?",
+        "cap per region?",
+        "healer-mended wounds count?"
+      ],
+      "evolve_2": "Catastrophic wounds add +3% and harden that region against the damage type that caused them.",
+      "cluster": "sustain",
+      "roles": [
+        "healer",
+        "area_tank",
+        "bruiser"
+      ]
+    },
+    {
+      "id": "hunger_engine",
+      "name": "Hunger Engine",
+      "category": "sustain",
+      "combat": true,
+      "value": "mid",
+      "verse": "What you swallow of the beast, the beast forgives in you.",
+      "rule": "Eating monster flesh heals superficial damage and grants resistance to that monster's affinity for 10 min.",
+      "hidden": [
+        "toxic flesh harms you?",
+        "dungeon-conjured flesh counts?",
+        "stacks across species?"
+      ],
+      "evolve_2": "Also borrow a weak copy of the eaten monster's talent for the duration.",
+      "cluster": "sustain",
+      "roles": [
+        "healer",
+        "druid",
+        "necromancer"
+      ]
+    },
+    {
+      "id": "tenth_strike",
+      "name": "Tenth Strike",
+      "category": "offense",
+      "combat": true,
+      "value": "high",
+      "verse": "Nine knocks are courtesy. The tenth opens the door.",
+      "rule": "Every 10th hit on the same target deals x5 damage.",
+      "hidden": [
+        "DoT ticks count as hits?",
+        "count resets on a miss?",
+        "count shared between weapons?",
+        "summon hits count?"
+      ],
+      "evolve_2": "Every 10th hit also ignores armour; the count survives switching targets once.",
+      "cluster": "duellist",
+      "roles": [
+        "armoured_duellist",
+        "bruiser",
+        "assassin"
+      ]
+    },
+    {
+      "id": "grudge",
+      "name": "Grudge",
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "I remember each hand that touched you, and I weigh it.",
+      "rule": "+2% damage against a specific enemy for every hit that enemy has landed on you. No cap.",
+      "hidden": [
+        "persists between dungeons?",
+        "applies to that enemy's species?",
+        "self-inflicted hits count against yourself?"
+      ],
+      "evolve_2": "Grudges transfer at half value to allies of the grudged enemy.",
+      "cluster": "bruiser",
+      "roles": [
+        "bruiser",
+        "area_tank"
+      ]
+    },
+    {
+      "id": "weight_of_coin",
+      "name": "Weight of Coin",
+      "category": "offense",
+      "combat": true,
+      "value": "low",
+      "verse": "Value is a kind of mass. Throw what you can afford to lose.",
+      "rule": "Thrown currency deals damage proportional to its face value. The money is destroyed.",
+      "hidden": [
+        "foreign or counterfeit currency works?",
+        "bank notes vs coins differ?",
+        "debt instruments count?"
+      ],
+      "evolve_2": "20% of destroyed value is refunded on a kill.",
+      "cluster": "general",
+      "roles": [
+        "ranged_caster"
+      ]
+    },
+    {
+      "id": "glass_hour",
+      "name": "Glass Hour",
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "The first grains fall fastest. After that, you are only sand.",
+      "rule": "For the first 6 s of any fight you deal x3 damage and take x3 damage.",
+      "hidden": [
+        "what starts a 'fight'?",
+        "ambushing resets it?",
+        "applies to DoTs applied in the window?"
+      ],
+      "evolve_2": "Each kill inside the window extends it by 1 s.",
+      "cluster": "burst",
+      "roles": [
+        "burst_caster",
+        "assassin",
+        "berserker"
+      ]
+    },
+    {
+      "id": "echo_hand",
+      "name": "Echo Hand",
+      "category": "offense",
+      "combat": true,
+      "value": "high",
+      "verse": "What you do, you do again, smaller, a moment late.",
+      "rule": "Every ability repeats once at 25% power after 1 s, from where you stood.",
+      "hidden": [
+        "echo generates reflux?",
+        "echoes echo?",
+        "echo repeats spirit-ability costs?"
+      ],
+      "evolve_2": "Echo at 40%, cast from your current position.",
+      "cluster": "burst",
+      "roles": [
+        "burst_caster",
+        "control",
+        "spellblade"
+      ]
+    },
+    {
+      "id": "stubborn_bone",
+      "name": "Stubborn Bone",
+      "category": "defense",
+      "combat": true,
+      "value": "mid",
+      "verse": "Small insults I do not hear.",
+      "rule": "Structural damage below a threshold per hit is ignored entirely.",
+      "hidden": [
+        "DoTs bypass the threshold?",
+        "threshold scales with tempering?",
+        "applies to self-damage?"
+      ],
+      "evolve_2": "Threshold doubles while below half HP.",
+      "cluster": "bulwark",
+      "roles": [
+        "area_tank",
+        "bruiser"
+      ]
+    },
+    {
+      "id": "last_inch",
+      "name": "The Last Inch",
+      "category": "defense",
+      "combat": true,
+      "value": "mid",
+      "verse": "You may have all of him but the end of him.",
+      "rule": "The final 10% of each wound layer takes 90% less damage.",
+      "hidden": [
+        "applies per limb or whole body?",
+        "soul damage has a last inch?",
+        "applies in the Netherecho?"
+      ],
+      "evolve_2": "Final 20%.",
+      "cluster": "bulwark",
+      "roles": [
+        "area_tank",
+        "berserker"
+      ]
+    },
+    {
+      "id": "debt_of_pain",
+      "name": "Debt of Pain",
+      "category": "defense",
+      "combat": true,
+      "value": "high",
+      "verse": "Not now. Later. And a little less.",
+      "rule": "Incoming damage is delayed 5 s, then arrives at 80%.",
+      "hidden": [
+        "healing in the window pre-empts it?",
+        "killing the source cancels its pending damage?",
+        "leaving the dungeon voids it?"
+      ],
+      "evolve_2": "Delay 8 s; pending damage from a dead source is halved.",
+      "cluster": "bulwark",
+      "roles": [
+        "area_tank",
+        "berserker",
+        "shadow_knight"
+      ]
+    },
+    {
+      "id": "salt_skin",
+      "name": "Salt Skin",
+      "category": "defense",
+      "combat": true,
+      "value": "mid",
+      "verse": "Nothing festers in salt. Nothing grows there either.",
+      "rule": "Immune to damage-over-time. Healing received from others is halved.",
+      "hidden": [
+        "own talent healing counts as 'others'?",
+        "environmental hazards are DoTs?",
+        "blocks beneficial over-time effects?"
+      ],
+      "evolve_2": "Reflect 25% of prevented DoT back at its source.",
+      "cluster": "bulwark",
+      "roles": [
+        "area_tank",
+        "armoured_duellist"
+      ]
+    },
+    {
+      "id": "doorframe",
+      "name": "Doorframe",
+      "category": "mobility",
+      "combat": true,
+      "value": "high",
+      "verse": "Every threshold you have crossed is one threshold.",
+      "rule": "Step between any two doorways you have touched in the current dungeon.",
+      "hidden": [
+        "sealed entrance counts as a door?",
+        "enemies can follow?",
+        "works across the halfway gate?",
+        "what counts as a doorway?"
+      ],
+      "evolve_2": "Carry one other person or one corpse through.",
+      "cluster": "mobility",
+      "roles": [
+        "evasive_monk",
+        "assassin"
+      ]
+    },
+    {
+      "id": "long_step",
+      "name": "Long Step",
+      "category": "mobility",
+      "combat": true,
+      "value": "low",
+      "verse": "Six paces are yours. The seventh is mine, and I walk further.",
+      "rule": "Every 7th step covers 5 m instantly in the direction of travel.",
+      "hidden": [
+        "backward steps count?",
+        "passes through enemies?",
+        "works while carrying a corpse?"
+      ],
+      "evolve_2": "You choose which step is the long one, once per count.",
+      "cluster": "mobility",
+      "roles": [
+        "evasive_monk"
+      ]
+    },
+    {
+      "id": "unfalling",
+      "name": "Unfalling",
+      "category": "mobility",
+      "combat": true,
+      "value": "low",
+      "verse": "Down is an opinion.",
+      "rule": "No fall damage. Walk on walls for up to 3 s.",
+      "hidden": [
+        "ceilings allowed?",
+        "thrown or launched damage is 'falling'?",
+        "works in the Netherecho?"
+      ],
+      "evolve_2": "Wall-time refreshes on a kill.",
+      "cluster": "mobility",
+      "roles": [
+        "evasive_monk",
+        "assassin"
+      ]
+    },
+    {
+      "id": "ledger_eyes",
+      "name": "Ledger Eyes",
+      "category": "perception",
+      "combat": false,
+      "value": "mid",
+      "verse": "Everything alive keeps accounts. I can read them.",
+      "rule": "See exact HP, by layer, of anything alive.",
+      "hidden": [
+        "shows reflux?",
+        "shows a hint of latent aura?",
+        "reads dungeon-conjured beings?"
+      ],
+      "evolve_2": "Also shows the target's next intended action half a second early.",
+      "cluster": "general",
+      "roles": [
+        "assassin",
+        "armoured_duellist"
+      ]
+    },
+    {
+      "id": "yesterday_sight",
+      "name": "Yesterday Sight",
+      "category": "perception",
+      "combat": false,
+      "value": "mid",
+      "verse": "I show you the room as it was. What it is, you must learn yourself.",
+      "rule": "Overlay of the room as it was 60 s ago: patrol paths, sprung traps, who was here.",
+      "hidden": [
+        "works across a dungeon reset?",
+        "shows Netherecho layer?",
+        "reveals invisible beings?"
+      ],
+      "evolve_2": "Choose any moment in the last 10 minutes.",
+      "cluster": "general",
+      "roles": [
+        "assassin"
+      ]
+    },
+    {
+      "id": "price_sense",
+      "name": "Price Sense",
+      "category": "perception",
+      "combat": false,
+      "value": "high",
+      "verse": "All things are worth something to someone. I know the someone.",
+      "rule": "See the true market value of any item, and who would pay it.",
+      "hidden": [
+        "works on people?",
+        "works on dungeon tickets?",
+        "works on prime vestiges?",
+        "shows value of information?"
+      ],
+      "evolve_2": "See what an item will be worth in 30 days.",
+      "cluster": "general",
+      "roles": []
+    },
+    {
+      "id": "wrongness",
+      "name": "Wrongness",
+      "category": "perception",
+      "combat": false,
+      "value": "mid",
+      "verse": "When the pattern breaks, your teeth will ache.",
+      "rule": "Sense deviants nearby and hidden clauses on a dungeon's rule card.",
+      "hidden": [
+        "senses liars?",
+        "senses soul damage?",
+        "triggers on your own hidden flags?"
+      ],
+      "evolve_2": "Identify the deviant's talent category before engaging.",
+      "cluster": "general",
+      "roles": []
+    },
+    {
+      "id": "super_farmer",
+      "name": "Super Farmer",
+      "canon": true,
+      "category": "trade",
+      "combat": false,
+      "value": "low",
+      "verse": "What you plant, prospers.",
+      "rule": "Crops you tend yield far more.",
+      "hidden": [
+        "monster-realm flora counts?",
+        "elixir ingredients count?",
+        "living scenery you plant counts as yours?"
+      ],
+      "evolve_2": "Tended plants mature in a tenth of the time.",
+      "cluster": "general",
+      "roles": [
+        "druid"
+      ]
+    },
+    {
+      "id": "clean_cut",
+      "name": "Clean Cut",
+      "category": "trade",
+      "combat": false,
+      "value": "mid",
+      "verse": "Nothing is wasted that passes under your knife.",
+      "rule": "Corpses you butcher yield double materials.",
+      "hidden": [
+        "works on dungeon-conjured corpses?",
+        "works on constructs' residue?",
+        "quality as well as quantity?"
+      ],
+      "evolve_2": "Harvest materials from wounds on living targets.",
+      "cluster": "general",
+      "roles": [
+        "necromancer"
+      ]
+    },
+    {
+      "id": "packmule",
+      "name": "Packmule",
+      "category": "trade",
+      "combat": false,
+      "value": "mid",
+      "verse": "Load is a number. I have changed the number.",
+      "rule": "Carry capacity x5; hauled weight never slows you.",
+      "hidden": [
+        "wielded weapons count as load?",
+        "living passengers count?",
+        "applies to storage rings?"
+      ],
+      "evolve_2": "Carried corpses do not decay.",
+      "cluster": "general",
+      "roles": []
+    },
+    {
+      "id": "fine_print",
+      "name": "Fine Print",
+      "category": "trade",
+      "combat": false,
+      "value": "high",
+      "verse": "There is always another clause. I will show it to you.",
+      "rule": "Hidden clauses in contracts, auction terms and rule cards are visible to you.",
+      "hidden": [
+        "shows clauses the other party doesn't know about?",
+        "works on verbal deals?",
+        "works on your own vestige's verse?"
+      ],
+      "evolve_2": "Once per contract, strike one clause before signing; the other party may not notice.",
+      "cluster": "general",
+      "roles": []
+    },
+    {
+      "id": "mender",
+      "name": "Mender",
+      "category": "trade",
+      "combat": false,
+      "value": "mid",
+      "verse": "Broken is a direction. I know the way back.",
+      "rule": "Spend essence to restore gear durability.",
+      "hidden": [
+        "restores consumed charges?",
+        "works on unique items' growth?",
+        "works on bodies?"
+      ],
+      "evolve_2": "Mend other people's wounds at first-aid grade.",
+      "cluster": "general",
+      "roles": [
+        "armoured_duellist"
+      ]
+    },
+    {
+      "id": "loyal_dead",
+      "name": "Loyal Dead",
+      "category": "bond",
+      "combat": true,
+      "value": "high",
+      "verse": "The last to fall rises first, and rises yours.",
+      "rule": "The last thing you killed fights for you for 30 s at half strength.",
+      "hidden": [
+        "its kills count as your kills?",
+        "bosses eligible?",
+        "works on dungeon-conjured beings?",
+        "it keeps its talent?"
+      ],
+      "evolve_2": "Duration lasts until it dies or you kill something else.",
+      "cluster": "summoner",
+      "roles": [
+        "necromancer"
+      ]
+    },
+    {
+      "id": "swarm_keeper",
+      "name": "Swarm Keeper",
+      "category": "bond",
+      "combat": true,
+      "value": "low",
+      "verse": "The small ones were always listening. Now they answer.",
+      "rule": "Vermin and insects in the environment obey simple commands.",
+      "hidden": [
+        "monster-realm vermin count?",
+        "can they carry things?",
+        "their deaths matter to other talents?"
+      ],
+      "evolve_2": "See through any one of them.",
+      "cluster": "summoner",
+      "roles": [
+        "necromancer",
+        "druid"
+      ]
+    },
+    {
+      "id": "borrowed_hands",
+      "name": "Borrowed Hands",
+      "category": "bond",
+      "combat": true,
+      "value": "mid",
+      "verse": "Two more hands, and neither of them yours.",
+      "rule": "A pair of spectral hands holds and uses one extra item.",
+      "hidden": [
+        "can they be wounded?",
+        "can they cast?",
+        "do they count as limbs for limb-cost abilities?"
+      ],
+      "evolve_2": "Four hands.",
+      "cluster": "general",
+      "roles": [
+        "armoured_duellist",
+        "spellblade"
+      ]
+    },
+    {
+      "id": "thick_soul",
+      "name": "Thick Soul",
+      "category": "netherecho",
+      "combat": false,
+      "value": "high",
+      "verse": "There, where others are paper, you are hide.",
+      "rule": "Your Netherecho projection has ten times the durability.",
+      "hidden": [
+        "resists soul damage in reality too?",
+        "slows entering/leaving?",
+        "constructs notice you sooner?"
+      ],
+      "evolve_2": "Projection regenerates while stationary.",
+      "cluster": "general",
+      "roles": []
+    },
+    {
+      "id": "concept_tongue",
+      "name": "Concept Tongue",
+      "category": "netherecho",
+      "combat": false,
+      "value": "mid",
+      "verse": "Each of them is one word. I can pronounce it.",
+      "rule": "See a construct's concept and tier before it notices you. Binding is more likely to succeed.",
+      "hidden": [
+        "works on items' concepts?",
+        "works on people's fates?",
+        "naming a concept aloud provokes it?"
+      ],
+      "evolve_2": "Preview the named upgrade a construct would give an ability.",
+      "cluster": "general",
+      "roles": []
+    },
+    {
+      "id": "anchor",
+      "name": "Anchor",
+      "category": "netherecho",
+      "combat": false,
+      "value": "high",
+      "verse": "You need not lie down to leave.",
+      "rule": "Project into the Netherecho while your body keeps walking on simple orders.",
+      "hidden": [
+        "body can fight?",
+        "body damage pulls you back?",
+        "range limit from the body?"
+      ],
+      "evolve_2": "Body defends itself with your most-used ability.",
+      "cluster": "general",
+      "roles": []
+    },
+    {
+      "id": "rat_tail",
+      "name": "Rat Tail",
+      "canon": true,
+      "category": "body",
+      "combat": false,
+      "value": "junk",
+      "verse": "A tail. Like a rat has.",
+      "rule": "You grow a prehensile tail. Holds one light item; improves balance.",
+      "hidden": [
+        "counts as a limb for limb-cost abilities?",
+        "regrows?",
+        "wields a weapon?"
+      ],
+      "evolve_2": "Tail is strong enough to hang from and strike with.",
+      "cluster": "general",
+      "roles": []
+    },
+    {
+      "id": "furnace_gut",
+      "name": "Furnace Gut",
+      "category": "body",
+      "combat": true,
+      "value": "mid",
+      "verse": "Your waste heat is mine. I will find a use for it.",
+      "rule": "Reflux never locks an affinity. At 100 it vents as a damaging burst around you and drops to 50, wounding you.",
+      "hidden": [
+        "vent damage is affinity-typed?",
+        "vent counts as your damage for other talents?",
+        "meditation vents safely?"
+      ],
+      "evolve_2": "Vent on command at 60+.",
+      "cluster": "burst",
+      "roles": [
+        "burst_caster",
+        "spellblade"
+      ]
+    },
+    {
+      "id": "slow_blood",
+      "name": "Slow Blood",
+      "category": "body",
+      "combat": true,
+      "value": "low",
+      "verse": "What hurries in others, strolls in you.",
+      "rule": "Damage-over-time on you ticks at quarter speed for the same total.",
+      "hidden": [
+        "beneficial over-time effects also slowed?",
+        "applies to drugs?",
+        "applies to debt-style delayed damage?"
+      ],
+      "evolve_2": "The total is also reduced by a third.",
+      "cluster": "bulwark",
+      "roles": [
+        "area_tank",
+        "healer"
+      ]
+    },
+    {
+      "id": "twin_clock",
+      "name": "Twin Clock",
+      "category": "body",
+      "combat": false,
+      "value": "mid",
+      "verse": "You rest twice in the time of once.",
+      "rule": "Sleep need halved. Meditation purges reflux twice as fast.",
+      "hidden": [
+        "soul exhaustion also halved?",
+        "ageing doubled?",
+        "works inside time-dilated dungeons?"
+      ],
+      "evolve_2": "Meditate while walking slowly.",
+      "cluster": "general",
+      "roles": []
+    },
+    {
+      "id": "spare_parts",
+      "name": "Spare Parts",
+      "category": "body",
+      "combat": true,
+      "value": "mid",
+      "verse": "What is cut from you is slow to understand it has left.",
+      "rule": "Your severed limbs obey you for 60 s: crawl, grab, hold a door.",
+      "hidden": [
+        "limbs can cast?",
+        "limbs sacrificed to abilities count?",
+        "limb can be reattached inside the window?"
+      ],
+      "evolve_2": "Severed limbs last until you regrow the replacement.",
+      "cluster": "general",
+      "roles": [
+        "necromancer",
+        "berserker"
+      ]
+    },
+    {
+      "id": "heavy_name",
+      "name": "Heavy Name",
+      "category": "body",
+      "combat": false,
+      "value": "mid",
+      "verse": "They will feel you arrive before they see you.",
+      "rule": "Your aura presses as if you were one star higher. Does nothing else.",
+      "hidden": [
+        "fools auditors and badges?",
+        "provokes stronger monsters?",
+        "can be suppressed?"
+      ],
+      "evolve_2": "Weak-willed enemies a star below you may flee on sight.",
+      "cluster": "general",
+      "roles": []
+    },
+    {
+      "id": "lucky_floor",
+      "name": "Lucky Floor",
+      "category": "body",
+      "combat": false,
+      "value": "low",
+      "verse": "The first snare is always asleep.",
+      "rule": "The first trap you trigger fails.",
+      "hidden": [
+        "first per room, per dungeon, or per day?",
+        "ambushes are traps?",
+        "contract traps count?"
+      ],
+      "evolve_2": "You learn how the failed trap works.",
+      "cluster": "general",
+      "roles": []
+    },
+    {
+      "id": "coupon",
+      "name": "Coupon",
+      "category": "trade",
+      "combat": false,
+      "value": "low",
+      "verse": "Sometimes the price is waived. Do not ask why.",
+      "rule": "10% chance a consumable is not used up.",
+      "hidden": [
+        "works on dungeon tickets?",
+        "works on binding gems?",
+        "works on thrown currency?"
+      ],
+      "evolve_2": "20%, and you know in advance when the next free one is.",
+      "cluster": "general",
+      "roles": []
+    },
+    {
+      "id": "clean_channel",
+      "name": "Clean Channel",
+      "category": "body",
+      "combat": true,
+      "value": "high",
+      "verse": "What flows to you freely leaves no stain.",
+      "rule": "Essence supplied by your satellite generates no reflux.",
+      "hidden": [
+        "tank essence spent alongside it is also clean?",
+        "applies to raw manipulation?",
+        "applies to spirit abilities?"
+      ],
+      "evolve_2": "Satellite throughput +1 unit/s.",
+      "cluster": "burst",
+      "roles": [
+        "burst_caster",
+        "ranged_caster",
+        "enchanter"
+      ]
+    },
+    {
+      "id": "held_ground",
+      "name": "Held Ground",
+      "status": "new",
+      "cluster": "bulwark",
+      "roles": [
+        "area_tank",
+        "control"
+      ],
+      "category": "defense",
+      "combat": true,
+      "value": "mid",
+      "verse": "Stand long enough and the floor forgets it was ever anyone else's.",
+      "rule": "Stand still for 1.5 s to claim a 4 m circle around you; it lasts until you step out of it. An enemy entering the circle is Slowed for 2 s (once per enemy per 10 s), and your hits on enemies inside deal +30% poise damage.",
+      "hidden": [
+        "a stone you raise inside widens the circle?",
+        "the circle holds when you are shoved inside it?",
+        "enemies staggered inside cannot leave it?",
+        "enemies inside also hit you harder?"
+      ],
+      "evolve_2": "Claimed in 1 s; 5 m; it holds for 3 s after you step out.",
+      "evolve_3": "Two circles may stand at once; the older one stays where you left it.",
+      "evolve_4": "An enemy staggered inside a circle cannot leave it until the stagger ends.",
+      "evolve_onward": "+0.5 m radius per star; a third circle at 7 stars; at 10 stars enemies inside cannot Brace.",
+      "build": {
+        "hooks": [
+          "on_tick",
+          "on_outgoing"
+        ],
+        "needs": [
+          "adjust:poise_out"
+        ],
+        "note": "Stillness timer and circle in on_tick (owner position). Draw it as a GroundZone circle with a slowed payload (existing world script). The poise bonus needs adjust('poise_out') where deal_damage applies strike poise."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "rebound",
+      "name": "Rebound",
+      "status": "new",
+      "cluster": "bruiser",
+      "roles": [
+        "bruiser",
+        "area_tank"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "What you throw against the wall, the wall throws a little of back.",
+      "rule": "Each Crush you cause refunds 10% of the essence the shoving skill cost, and your next hit within 3 s counts as heavy.",
+      "hidden": [
+        "an enemy crushed against another enemy pays twice?",
+        "Crushes from your thralls' shoves count?",
+        "the refund also takes back the reflux?",
+        "the heavy hit staggers you a little too?"
+      ],
+      "evolve_2": "Refund 20%; the heavy hit's poise damage doubles.",
+      "evolve_3": "A Crush also nudges the nearest other enemy within 2 m 1 m away, which can Crush in turn (one link).",
+      "evolve_4": "Crushing an enemy against your own raised stone does not crack the stone.",
+      "evolve_onward": "+5% refund per star, to 50%; the chain gains a link at 6 and 9 stars.",
+      "build": {
+        "hooks": [
+          "on_outgoing"
+        ],
+        "needs": [
+          "on_event:crush",
+          "on_event:cast"
+        ],
+        "note": "Player.on_crush already exists: broadcast it. The refund needs the shoving cast's cost (cast event). ctx.heavy is set in on_outgoing."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "weight_kept",
+      "name": "Weight Kept",
+      "status": "new",
+      "cluster": "bruiser",
+      "roles": [
+        "bruiser",
+        "area_tank",
+        "armoured_duellist"
+      ],
+      "category": "body",
+      "combat": true,
+      "value": "high",
+      "verse": "The world has tried to move you. It is learning not to.",
+      "rule": "You cannot be shoved, knocked Aloft or dragged. An enemy shoved into you is Crushed against you as if you were a wall (you lose a little poise). You walk 10% slower.",
+      "hidden": [
+        "you count as Braced for skills that care?",
+        "a heavy blow still staggers you?",
+        "Crushes against you count as yours for other talents?",
+        "thin floors and ice give way under you?"
+      ],
+      "evolve_2": "The slowness is gone.",
+      "evolve_3": "Your dashes no longer stop at bodies: they push them 1.5 m aside.",
+      "evolve_4": "While you stand still, your heavy blows deal +25% poise damage.",
+      "evolve_onward": "+5% poise damage per star; at 8 stars an enemy crushed against you is also Dazed 1 s.",
+      "build": {
+        "hooks": [
+          "on_incoming"
+        ],
+        "needs": [
+          "adjust:shove_in",
+          "adjust:move_speed",
+          "adjust:crush_surface",
+          "on_event:crush"
+        ],
+        "note": "Player.shove() and the Aloft status read adjust('shove_in') (0 = immune). Being a Crush surface: the shove's swept check must treat the player's body as a wall when adjust('crush_surface') says so."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "bell_ring",
+      "name": "Bell Ring",
+      "status": "new",
+      "cluster": "bruiser",
+      "roles": [
+        "bruiser",
+        "control"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "low",
+      "verse": "Strike the bent one, and the whole room hears it.",
+      "rule": "A hit on a Staggered enemy rings it: every other enemy within 5 m loses 15 poise. A killing hit rings twice.",
+      "hidden": [
+        "it rings through walls?",
+        "it wakes sleeping camps?",
+        "it rings your own thralls?",
+        "enemies that stagger from the ring ring in turn?"
+      ],
+      "evolve_2": "7 m and 20 poise.",
+      "evolve_3": "Rung enemies that are winding up a flagged attack are interrupted (and so staggered).",
+      "evolve_4": "An enemy staggered by the ring also rings, once per hit.",
+      "evolve_onward": "+3 poise per star; the cascade goes one step deeper at 6 and 9 stars.",
+      "build": {
+        "hooks": [
+          "on_dealt"
+        ],
+        "needs": [],
+        "note": "Buildable today: on_dealt checks target.has_status('staggered'), then take_poise on _enemies_near. If the 'wakes camps' flag is rolled, call the camp's wake."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "change_given",
+      "name": "Change Given",
+      "status": "new",
+      "cluster": "bruiser",
+      "roles": [
+        "bruiser",
+        "berserker",
+        "armoured_duellist"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "You were handed something. Hand it back while it is still warm.",
+      "rule": "For 1.5 s after an enemy hits you in melee, your next bare strike on that enemy adds, as flat damage, what its hit took from you.",
+      "hidden": [
+        "counts the part your armour stopped?",
+        "a delayed or swallowed hit still counts?",
+        "the change can be handed to a different enemy?",
+        "missing the window costs you poise?"
+      ],
+      "evolve_2": "2.5 s window, and skills can return it too.",
+      "evolve_3": "The returned blow is heavy.",
+      "evolve_4": "Unreturned change is kept: up to two hits' worth for your next strike.",
+      "evolve_onward": "+0.5 s window per star; at 7 stars the return is 125%.",
+      "build": {
+        "hooks": [
+          "on_incoming",
+          "on_outgoing"
+        ],
+        "needs": [],
+        "note": "Buildable today: record (source, ctx.amount()) in on_incoming (already after armour), add ctx.flat in on_outgoing for a bare strike (melee tag, no ability tag) on that source inside the window."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "last_drop",
+      "name": "Last Drop",
+      "status": "new",
+      "cluster": "burst",
+      "roles": [
+        "burst_caster",
+        "ranged_caster"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "low",
+      "verse": "Pour out the cup and I will set the dregs alight.",
+      "rule": "A skill whose cost leaves you under 10% essence deals x2.5 damage. Once per 10 s.",
+      "hidden": [
+        "burns and statuses it leaves are multiplied too?",
+        "your satellite refilling you mid-cast spoils it?",
+        "measured across all your stars, or the casting star alone?",
+        "running dry leaves you Dazed?"
+      ],
+      "evolve_2": "Under 15%; once per 8 s.",
+      "evolve_3": "The skill's recovery is halved when it triggers.",
+      "evolve_4": "x3.",
+      "evolve_onward": "+0.25x per star; the cooldown shortens 1 s per star, to 3 s.",
+      "build": {
+        "hooks": [
+          "on_outgoing"
+        ],
+        "needs": [
+          "on_event:cast",
+          "HitContext.cast_serial"
+        ],
+        "note": "The cast event carries essence before and after and a cast serial; on_outgoing multiplies every hit carrying that serial."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "remainder",
+      "name": "Remainder",
+      "status": "new",
+      "cluster": "control",
+      "roles": [
+        "control",
+        "enchanter"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "What you did not use, I keep for you.",
+      "rule": "When a stopping status you applied (stunned, frozen, pinned, asleep, stilled) ends early, its unused seconds are banked, up to 6 s. Your next stopping status on any enemy is lengthened by the whole bank.",
+      "hidden": [
+        "a kill counts as ending it early?",
+        "the bank empties when the fight ends?",
+        "banked time works on commanders and bosses?",
+        "the bank also lengthens stops put on you?"
+      ],
+      "evolve_2": "Bank up to 9 s, kept between fights.",
+      "evolve_3": "You may split the bank: each stop takes up to half of it.",
+      "evolve_4": "Banked time also Slows the enemy for the same length after the stop ends.",
+      "evolve_onward": "+2 s bank per star; at 8 stars the bank also adds stacks, +1 per 3 s spent.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "on_event:status_out",
+          "adjust:status_time_out"
+        ],
+        "note": "The status engine's _expire knows whether a status ended early: broadcast it with the seconds left. Lengthening goes through adjust('status_time_out') before add_status."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "crowd_sum",
+      "name": "Crowd Sum",
+      "status": "new",
+      "cluster": "control",
+      "roles": [
+        "control",
+        "burst_caster",
+        "area_tank"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "Count them. Every third one pays for the others.",
+      "rule": "In a skill that hits several enemies, from the third enemy struck on, each is given +1 stack of every status the skill carries (+2 from the sixth).",
+      "hidden": [
+        "scenery and corpses count toward the three?",
+        "your thralls' hits count?",
+        "stacks past a status's cap spill to the next enemy?",
+        "it counts your thralls caught in the area?"
+      ],
+      "evolve_2": "Counts from the second enemy struck.",
+      "evolve_3": "The skill also deals +5% per enemy beyond the third (at most +25%).",
+      "evolve_4": "The extra stacks land before the payload, so a status that triggers at a threshold triggers sooner.",
+      "evolve_onward": "+1 to the extra-stack cap per star past 4; at 9 stars each enemy struck counts double.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "HitContext.cast_serial",
+          "adjust:status_stacks_out"
+        ],
+        "note": "apply_hit is the one place statuses land: a per-cast hit count (cast serial) lets adjust('status_stacks_out') add stacks to the third target on. A simplification of 'per three caught': it needs no look-ahead."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "broken_sentence",
+      "name": "Broken Sentence",
+      "status": "new",
+      "cluster": "control",
+      "roles": [
+        "control",
+        "spellblade",
+        "armoured_duellist"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "high",
+      "verse": "Stop a word halfway and the speaker forgets the language.",
+      "rule": "An enemy you interrupt is Dazed for 1.5 s and its interrupted attack goes on its full cooldown. Each further interrupt within 10 s adds 1 s to the daze.",
+      "hidden": [
+        "works on enemies that cannot be staggered?",
+        "the cooldown also delays its next attack?",
+        "Dazed enemies call for help louder?",
+        "interrupts by your thralls count?"
+      ],
+      "evolve_2": "Dazed 2 s; the chain window is 15 s.",
+      "evolve_3": "An interrupted support enemy (censer, drummer) also loses the aura or beat it was keeping.",
+      "evolve_4": "The third interrupt in a chain Stuns for 1 s.",
+      "evolve_onward": "+0.25 s per star; at 7 stars the chain never resets inside a fight.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "on_event:interrupt"
+        ],
+        "note": "enemy.interrupt() / interrupt_attack() raise an event naming the interrupter; add_status('dazed') and the attack cooldown are enemy-side calls that exist."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "tangle",
+      "name": "Tangle",
+      "status": "new",
+      "cluster": "control",
+      "roles": [
+        "control",
+        "enchanter",
+        "plague"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "low",
+      "verse": "One rope is a nuisance. Three is a knot.",
+      "rule": "An enemy carrying two or more different statuses from you moves and attacks 10% slower for each beyond the first (at most 30%).",
+      "hidden": [
+        "statuses from your thralls count?",
+        "damage-over-time counts as a rope?",
+        "it slows their wind-ups too?",
+        "it also slows the statuses' own clocks (they tick slower)?"
+      ],
+      "evolve_2": "15% each, at most 45%.",
+      "evolve_3": "A tangled enemy cannot dash or pounce.",
+      "evolve_4": "Statuses from anyone count, not just yours.",
+      "evolve_onward": "+2% per rope per star; at 8 stars the third rope also pins for 0.5 s, once.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "on_event:status_out"
+        ],
+        "note": "Recount on each status event and keep one generated status on the enemy with a time_mult (the status engine already reads time_mult). No enemy code change; StatusText needs its description."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "quiet_room",
+      "name": "Quiet Room",
+      "status": "new",
+      "cluster": "control",
+      "roles": [
+        "control",
+        "assassin"
+      ],
+      "category": "perception",
+      "combat": true,
+      "value": "low",
+      "verse": "Those you have stilled do not speak of it.",
+      "rule": "Enemies under a stopping status from you cannot call for reinforcements or wake their camp, and their allies do not notice them being hit.",
+      "hidden": [
+        "it hides kills too?",
+        "a commander's horn still sounds?",
+        "a stopped enemy remembers you when it recovers?",
+        "it works on Netherecho constructs?"
+      ],
+      "evolve_2": "Also while Slowed or Dazed by you.",
+      "evolve_3": "An enemy killed while stopped makes no sound: its camp stays asleep.",
+      "evolve_4": "Enemies recovering from your stops lose you for 3 s (they hunt as if you were unseen).",
+      "evolve_onward": "At 6 stars it covers enemies within 3 m of the stopped one; +1 m per star after.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "adjust:alert"
+        ],
+        "note": "The enemy 'reinforcements' signal and the camp's wake check pass through adjust('alert', 1.0, {enemy}); 0 silences."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "after_storm",
+      "name": "After the Storm",
+      "status": "new",
+      "cluster": "sustain",
+      "roles": [
+        "healer",
+        "bruiser",
+        "area_tank"
+      ],
+      "category": "sustain",
+      "combat": true,
+      "value": "low",
+      "verse": "When the noise stops, I give back a third of what it took.",
+      "rule": "When a fight ends, you receive talent healing equal to 30% of the damage you took in it.",
+      "hidden": [
+        "delayed or swallowed damage counts?",
+        "a fight you ran from counts as ended?",
+        "the healing is graded as if Dynamic?",
+        "starting a fight within 10 s of the last cancels the payment?"
+      ],
+      "evolve_2": "40%.",
+      "evolve_3": "Paid at Dynamic quality (bar to half, then sinks, then bar).",
+      "evolve_4": "Damage taken in a fight's first 5 s counts double.",
+      "evolve_onward": "+5% per star, to 70%.",
+      "build": {
+        "hooks": [
+          "on_incoming"
+        ],
+        "needs": [
+          "on_event:fight_end"
+        ],
+        "note": "Tally ctx.amount() in on_incoming; pay through owner._spend_heal_points when in_combat turns false. Pays only between fights, inside design/04's balance rule."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "night_surgeon",
+      "name": "Night Surgeon",
+      "status": "new",
+      "cluster": "sustain",
+      "roles": [
+        "healer"
+      ],
+      "category": "sustain",
+      "combat": false,
+      "value": "high",
+      "verse": "Sleep, and I will sew. Do not ask with what.",
+      "rule": "Each night's rest fully closes your oldest wound, even one that never closes on its own (a lost arm included). You wake with 10% of one tempering technique's progress gone.",
+      "hidden": [
+        "the technique taken is the one you trained least?",
+        "a rest in the field counts as a night?",
+        "it closes wounds left by cursed items?",
+        "sometimes it takes a skill's bar progress instead?"
+      ],
+      "evolve_2": "The toll is 5%.",
+      "evolve_3": "Two wounds a night.",
+      "evolve_4": "No toll unless the wound was a lost limb.",
+      "evolve_onward": "One more wound a night at 6 and 9 stars.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "on_event:rest"
+        ],
+        "note": "The night's rest (inn, main.gd) raises 'rest'; Body holds the wound list; tempering state is on the player."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "graft",
+      "name": "Graft",
+      "status": "new",
+      "cluster": "sustain",
+      "roles": [
+        "healer",
+        "druid",
+        "area_tank"
+      ],
+      "category": "sustain",
+      "combat": true,
+      "value": "mid",
+      "verse": "Nothing given to you is wasted. I fold the extra and keep it under the skin.",
+      "rule": "While your health bar is full, natural healing keeps running into a hidden graft (up to 20% of max health). A new wound takes its sink from the graft first, and when your bar falls below half the graft pours back in at 2% of max health per second.",
+      "hidden": [
+        "healing from others fills it too?",
+        "the graft is lost when you leave a passage?",
+        "a hit that wounds also empties the graft?",
+        "drain enemies can eat it?"
+      ],
+      "evolve_2": "Up to 30%; pours at 3% per second.",
+      "evolve_3": "Pours from 60% health.",
+      "evolve_4": "Talent healing past the top of the bar fills it too.",
+      "evolve_onward": "+5% cap per star; +0.5% per second pour per star.",
+      "build": {
+        "hooks": [
+          "on_tick"
+        ],
+        "needs": [
+          "adjust:natural_heal_overflow",
+          "on_event:wound_opened"
+        ],
+        "note": "Natural healing in body.gd clamps at the bar's top: hand the excess to the effects. The graft is never drawn as a number (like a sink); status_lines says it in words. A 2%/s pour stays under the balance rule."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "chalk_line",
+      "name": "Chalk Line",
+      "status": "new",
+      "cluster": "support",
+      "roles": [
+        "paladin_support",
+        "area_tank",
+        "ranged_caster"
+      ],
+      "category": "defense",
+      "combat": true,
+      "value": "mid",
+      "verse": "Draw the line once. Inside it, they owe you courtesy.",
+      "rule": "The first skill you cast in a fight draws a 3 m ward at your feet for 12 s. Inside it you take 20% less damage and lose 20% less poise, and enemies inside are Lit.",
+      "hidden": [
+        "the ward goes where the skill lands, not where you stand?",
+        "thralls inside are warded too?",
+        "enemies inside are warded too?",
+        "casting again moves it?"
+      ],
+      "evolve_2": "A ward for each of the first two skills.",
+      "evolve_3": "4 m, 16 s.",
+      "evolve_4": "Enemies on the line when it is drawn are pushed out (3 m).",
+      "evolve_onward": "One more ward per fight at 6 and 9 stars; -2% damage taken per star.",
+      "build": {
+        "hooks": [
+          "on_incoming",
+          "on_tick"
+        ],
+        "needs": [
+          "on_event:fight_start",
+          "on_event:cast",
+          "adjust:poise_in"
+        ],
+        "note": "GroundZone circle for the ward; on_incoming checks the owner is inside; 'lit' status exists. Poise loss in take_hit reads adjust('poise_in')."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "planted_standard",
+      "name": "Planted Standard",
+      "status": "new",
+      "cluster": "support",
+      "roles": [
+        "paladin_support",
+        "druid",
+        "necromancer"
+      ],
+      "category": "bond",
+      "combat": true,
+      "value": "low",
+      "verse": "What you wear for yourself, I plant for whoever stands near.",
+      "rule": "Each self-buff you cast is also planted on the ground for 6 s in a 4 m circle; you and your thralls inside have it while it stands, even after yours ends.",
+      "hidden": [
+        "enemies inside get it too?",
+        "the planted copy stacks with yours?",
+        "one buff can be planted twice?",
+        "lures count as standing in it?"
+      ],
+      "evolve_2": "8 s.",
+      "evolve_3": "The standard follows you at walking pace.",
+      "evolve_4": "Planting a second buff on the first makes both last 4 s longer.",
+      "evolve_onward": "+1 s and +0.5 m per star.",
+      "build": {
+        "hooks": [
+          "on_tick"
+        ],
+        "needs": [
+          "on_event:cast",
+          "world:thralls read buffs"
+        ],
+        "note": "player.buffs is the buff store; the circle re-applies the buff to whoever is inside each tick. Thralls do not read buffs today: until they do it helps only you (outlasting the buff)."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "stand_in",
+      "name": "Stand-In",
+      "status": "new",
+      "cluster": "support",
+      "roles": [
+        "paladin_support",
+        "necromancer"
+      ],
+      "category": "bond",
+      "combat": true,
+      "value": "low",
+      "verse": "Give me the blow meant for the small one. I will carry it half the way.",
+      "rule": "A blow that would kill one of your thralls or lures is moved to you at 50%. Once every 15 s.",
+      "hidden": [
+        "the moved blow ignores your armour?",
+        "it moves the stagger too?",
+        "it saves one whose time has simply run out?",
+        "it can kill you?"
+      ],
+      "evolve_2": "40%, once every 10 s.",
+      "evolve_3": "The saved one strikes back at once.",
+      "evolve_4": "The moved blow cannot wound you; it only touches the bar.",
+      "evolve_onward": "-5% per star, to 10%; -1 s cooldown per star.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "on_event:ally_lethal"
+        ],
+        "note": "Thrall.take_hit and Lure.take_hit ask the owner's effects before dying (the same shape as the player's own on_lethal); the moved blow goes through owner.take_hit."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "unwelcome",
+      "name": "Unwelcome",
+      "status": "new",
+      "cluster": "support",
+      "roles": [
+        "paladin_support",
+        "healer",
+        "shadow_knight"
+      ],
+      "category": "defense",
+      "combat": true,
+      "value": "mid",
+      "verse": "What is pressed on you without leave, I refuse at the door and send home.",
+      "rule": "Every 20 s, the first harmful status put on you is refused and put on whoever sent it, at the same stacks.",
+      "hidden": [
+        "it refuses statuses from the ground (clouds, zones)?",
+        "it refuses your own skills' self-statuses?",
+        "a refused status is stronger on the way back?",
+        "the timer restarts even when one gets through?"
+      ],
+      "evolve_2": "Every 15 s.",
+      "evolve_3": "Two refusals held.",
+      "evolve_4": "A refusal also clears one other status from you.",
+      "evolve_onward": "-1 s per star, to 6 s.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "on_event:status_in"
+        ],
+        "note": "Statuses on the player are still few (_take_state and the enemy statuses that reach you). This needs one cancellable entry point for a status landing on the player, with its sender."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "watch_fire",
+      "name": "Watch Fire",
+      "status": "new",
+      "cluster": "support",
+      "roles": [
+        "paladin_support",
+        "ranged_caster"
+      ],
+      "category": "perception",
+      "combat": true,
+      "value": "low",
+      "verse": "Sit by me a while. Nothing creeps up on a fire.",
+      "rule": "While you stand still, the ground within 8 m counts as lit and enemies inside it are Lit. It goes out 1 s after you move.",
+      "hidden": [
+        "it lights the Netherecho too?",
+        "the light also weakens your own Dark skills?",
+        "beasts are drawn to it?",
+        "it keeps burning while you meditate?"
+      ],
+      "evolve_2": "10 m; it stays 3 s after you move.",
+      "evolve_3": "Enemies entering it are Exposed for 2 s (once each).",
+      "evolve_4": "It burns while you walk, at half the radius.",
+      "evolve_onward": "+1 m per star; at 7 stars your thralls carry a small one each.",
+      "build": {
+        "hooks": [
+          "on_tick"
+        ],
+        "needs": [
+          "world:Light.add_source"
+        ],
+        "note": "Light.level_at exists (Dark's light_mult reads it); it needs a temporary light source a talent can add. 'lit' and 'exposed' statuses exist. A Dark holder trades their own darkness bonus for it."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "quiet_tally",
+      "name": "Quiet Tally",
+      "status": "new",
+      "cluster": "assassin",
+      "roles": [
+        "assassin"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "low",
+      "verse": "I keep a book of the ones nobody saw you take.",
+      "rule": "Each kill that no other living enemy could see adds +1% to your damage from behind, permanently, up to +10% per star.",
+      "hidden": [
+        "sleeping witnesses count as unseeing?",
+        "kills by your thralls count?",
+        "the tally is lost when you die?",
+        "the bonus is for bare strikes only?"
+      ],
+      "evolve_2": "Cap +15% per star.",
+      "evolve_3": "Unseen kills also pay 25% more latent aura.",
+      "evolve_4": "Terrified or Dazed witnesses do not count.",
+      "evolve_onward": "+5% cap per star at 6 and 9 stars.",
+      "build": {
+        "hooks": [
+          "on_dealt",
+          "on_outgoing"
+        ],
+        "needs": [
+          "save:talent_state"
+        ],
+        "note": "on_dealt with ctx.killed, then a sight check from each nearby enemy (facing plus a ray, as enemies already see). The bonus applies in on_outgoing when target.is_behind(). The tally is saved talent state."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "any_side",
+      "name": "Any Side",
+      "status": "new",
+      "cluster": "assassin",
+      "roles": [
+        "assassin",
+        "evasive_monk",
+        "armoured_duellist"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "high",
+      "verse": "Every side of them is the back, if you ask politely.",
+      "rule": "Once every 8 s, your next hit counts as from behind wherever you stand.",
+      "hidden": [
+        "it works on things with no back?",
+        "the charge can be wasted on scenery?",
+        "it also counts for your thralls' hits?",
+        "a skill that strikes many spends it on all of them?"
+      ],
+      "evolve_2": "Every 6 s.",
+      "evolve_3": "Two charges.",
+      "evolve_4": "A kill refills a charge at once.",
+      "evolve_onward": "-0.5 s per star, to 3 s; a third charge at 8 stars.",
+      "build": {
+        "hooks": [
+          "on_outgoing",
+          "on_tick"
+        ],
+        "needs": [],
+        "note": "Buildable today: deal_damage reads ctx.has_tag('rear') after on_outgoing runs, so the effect appends 'rear'."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "clean_exit",
+      "name": "Clean Exit",
+      "status": "new",
+      "cluster": "assassin",
+      "roles": [
+        "assassin",
+        "evasive_monk"
+      ],
+      "category": "mobility",
+      "combat": true,
+      "value": "mid",
+      "verse": "When the work is done, no one remembers the door.",
+      "rule": "A kill from behind makes you unseen for 2 s: enemies lose you, and those winding up at you lose their target.",
+      "hidden": [
+        "a kill by a skill counts?",
+        "attacking ends it early?",
+        "it works in full daylight?",
+        "enemies that lose you go back to their camp?"
+      ],
+      "evolve_2": "3 s.",
+      "evolve_3": "Any kill on an enemy that had not hit you counts.",
+      "evolve_4": "Your first hit out of it is an Opening.",
+      "evolve_onward": "+0.5 s per star.",
+      "build": {
+        "hooks": [
+          "on_dealt"
+        ],
+        "needs": [
+          "world:timed unseen"
+        ],
+        "note": "Player.unseen_from is the one unseen rule: it needs a timed 'unseen' a talent can set. Enemy _pick_target already drops a target it cannot see."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "appointment",
+      "name": "Appointment",
+      "status": "new",
+      "cluster": "assassin",
+      "roles": [
+        "assassin",
+        "armoured_duellist"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "One name in the book is underlined. The rest can wait.",
+      "rule": "The first enemy you hit in a fight is your appointment: you deal +60% to it and -20% to everything else. Killing it refunds 25% of your max essence, and the next enemy you hit becomes the appointment.",
+      "hidden": [
+        "the appointment survives you leaving the fight?",
+        "a commander can be one?",
+        "your thralls share the penalty?",
+        "if anything else kills it you lose the bonus for the rest of the fight?"
+      ],
+      "evolve_2": "-10% to everything else.",
+      "evolve_3": "You see the appointment through walls.",
+      "evolve_4": "Your thralls' hits on the appointment get your bonus too.",
+      "evolve_onward": "+10% bonus and +5% refund per star.",
+      "build": {
+        "hooks": [
+          "on_outgoing",
+          "on_dealt"
+        ],
+        "needs": [
+          "on_event:fight_start",
+          "reveals"
+        ],
+        "note": "Pure pipeline: keep the instance id, reset at fight start. Seeing it through walls is a reveals() outline."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "soft_dark",
+      "name": "Soft Dark",
+      "status": "new",
+      "cluster": "assassin",
+      "roles": [
+        "assassin",
+        "enchanter"
+      ],
+      "category": "body",
+      "combat": false,
+      "value": "low",
+      "verse": "In the dark, your feet forget how to make a sound.",
+      "rule": "Where it is unlit, sleeping enemies do not wake at your approach and camps notice you at half their range.",
+      "hidden": [
+        "it works in the Netherecho?",
+        "your own light skills break it?",
+        "beasts that hunt by smell ignore it?",
+        "a first hit from the dark is an Opening?"
+      ],
+      "evolve_2": "A third of their range.",
+      "evolve_3": "Also in dim light.",
+      "evolve_4": "Your first hit from the dark on a sleeping enemy is x2.",
+      "evolve_onward": "At 6 stars your thralls share it.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "adjust:aggro_radius"
+        ],
+        "note": "FieldCamps reads zones.json aggro_radius: pass it through adjust('aggro_radius', r, {at}) and use Light.level_at for 'unlit'."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "spare_room",
+      "name": "Spare Room",
+      "status": "new",
+      "cluster": "summoner",
+      "roles": [
+        "necromancer"
+      ],
+      "category": "bond",
+      "combat": true,
+      "value": "high",
+      "verse": "There is always room for one more at the table. The oldest guest leaves loudly.",
+      "rule": "You may keep one more thrall than any skill allows. When a new one pushes the oldest out, the oldest bursts for 50% of its remaining health on enemies within 3 m.",
+      "hidden": [
+        "lures count as guests?",
+        "the burst hurts you?",
+        "the extra one keeps its own timer?",
+        "the burst leaves a corpse?"
+      ],
+      "evolve_2": "Burst 75%.",
+      "evolve_3": "Two extra.",
+      "evolve_4": "Burst thralls leave a corpse you can raise again.",
+      "evolve_onward": "One more extra at 7 and 10 stars; +5% burst per star.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "adjust:thrall_cap",
+          "on_event:thrall_died"
+        ],
+        "note": "The summon kind's cap reads adjust('thrall_cap'); the eviction raises thrall_died with reason 'evicted'; the burst uses _burst_at."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "second_shift",
+      "name": "Second Shift",
+      "status": "new",
+      "cluster": "summoner",
+      "roles": [
+        "necromancer",
+        "plague"
+      ],
+      "category": "bond",
+      "combat": true,
+      "value": "mid",
+      "verse": "The dead work two shifts. Nobody asked them.",
+      "rule": "A thrall of yours that dies leaves a corpse that can be raised again for half the cost. A twice-raised thrall cannot be raised a third time.",
+      "hidden": [
+        "the second shift is stronger?",
+        "it rots faster?",
+        "the corpse can be butchered?",
+        "an enemy necromancer can raise it?"
+      ],
+      "evolve_2": "Raised again for a quarter of the cost.",
+      "evolve_3": "Three shifts.",
+      "evolve_4": "The next shift keeps any statuses it carried (a burning thrall burns on).",
+      "evolve_onward": "-5% cost per star; a fourth shift at 8 stars.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "on_event:thrall_died",
+          "adjust:essence_cost"
+        ],
+        "note": "Fallen bodies exist (Death's corpses); a dying thrall lays one marked with its shift count; the raise cost reads adjust('essence_cost')."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "chorus",
+      "name": "Chorus",
+      "status": "new",
+      "cluster": "summoner",
+      "roles": [
+        "necromancer",
+        "druid",
+        "paladin_support"
+      ],
+      "category": "bond",
+      "combat": true,
+      "value": "mid",
+      "verse": "When you strike, the ones who follow you strike too, a little late, a little weaker.",
+      "rule": "Each bare strike you land makes every thrall and lure of yours within 6 m strike its nearest enemy for 30% of that strike's damage.",
+      "hidden": [
+        "their strikes count for your counters (every Nth hit)?",
+        "lures can strike at all?",
+        "the chorus can kill?",
+        "it draws enemies onto them?"
+      ],
+      "evolve_2": "40%.",
+      "evolve_3": "Skills also start the chorus, at 15%.",
+      "evolve_4": "10 m.",
+      "evolve_onward": "+5% per star.",
+      "build": {
+        "hooks": [
+          "on_dealt"
+        ],
+        "needs": [],
+        "note": "Buildable today: on_dealt for a bare strike iterates your thralls and calls apply_hit through the owner with a 'thrall' tag, the path thralls already use. Chorus hits are tagged 'chorus' and never start a chorus."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "turning_year",
+      "name": "Turning Year",
+      "status": "new",
+      "cluster": "druid",
+      "roles": [
+        "druid",
+        "healer"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "high",
+      "verse": "Every fight is a year, if you wait long enough.",
+      "rule": "Every 10 s of a fight the season turns: spring (natural healing works in the fight, at half rate), summer (+15% damage), autumn (kills roll their remains twice), winter (15% less damage taken). Each fight starts in spring.",
+      "hidden": [
+        "the year carries over between fights?",
+        "the season shows in the sky?",
+        "winter also slows you?",
+        "a long fight's second year is stronger?"
+      ],
+      "evolve_2": "8 s seasons.",
+      "evolve_3": "Each season's effect is +50%.",
+      "evolve_4": "The season before lingers at half strength.",
+      "evolve_onward": "+10% to every season per star.",
+      "build": {
+        "hooks": [
+          "on_tick",
+          "on_outgoing",
+          "on_incoming"
+        ],
+        "needs": [
+          "adjust:natural_heal_in_combat",
+          "adjust:loot_rolls"
+        ],
+        "note": "fight_time already exists (Glass Hour reads it). Spring needs natural healing to ask adjust('natural_heal_in_combat'); autumn needs the remains roll to ask adjust('loot_rolls')."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "weedheart",
+      "name": "Weedheart",
+      "status": "new",
+      "cluster": "druid",
+      "roles": [
+        "druid",
+        "control"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "low",
+      "verse": "Cut a weed and two come back. I made sure of it.",
+      "rule": "Each plant you cut or burn seeds a 2 m patch of growth for 5 s; enemies in it are Slowed.",
+      "hidden": [
+        "plants your fires burn without you count?",
+        "patches grow into each other?",
+        "the growth catches your thralls?",
+        "it grows cuttable plants back?"
+      ],
+      "evolve_2": "3 m, 8 s.",
+      "evolve_3": "An enemy standing in it for 2 s is Pinned for 1 s.",
+      "evolve_4": "Kills inside growth seed a patch too.",
+      "evolve_onward": "+1 s per star.",
+      "build": {
+        "hooks": [
+          "on_dealt"
+        ],
+        "needs": [],
+        "note": "Buildable today: on_dealt with ctx.is_scenery and ctx.killed lays a GrowthPatch (Nature's world script) with a slowed payload."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "pollen",
+      "name": "Pollen",
+      "status": "new",
+      "cluster": "druid",
+      "roles": [
+        "druid",
+        "paladin_support",
+        "plague"
+      ],
+      "category": "defense",
+      "combat": true,
+      "value": "low",
+      "verse": "Breathe in. Some of what you breathe out is mine.",
+      "rule": "Every 5 s in a fight you shed a 3 m cloud for 3 s. Living enemies in it are Dulled; you regain 5 poise a second while in it.",
+      "hidden": [
+        "unliving enemies breathe it too?",
+        "it carries your poisons?",
+        "wind skills blow it at enemies?",
+        "it makes beasts sneeze (interrupts)?"
+      ],
+      "evolve_2": "Every 4 s.",
+      "evolve_3": "4 m; your thralls in it take 20% less damage.",
+      "evolve_4": "Enemies leaving it are Slowed for 2 s.",
+      "evolve_onward": "-0.25 s interval per star; +1 m at 7 stars.",
+      "build": {
+        "hooks": [
+          "on_tick"
+        ],
+        "needs": [
+          "adjust:poise_regen"
+        ],
+        "note": "lay_cloud exists (a cloud GroundZone) and 'dulled' exists (blows do 35% less and cannot stagger you, 6 s; the cloud applies it for its own short time). The poise refill reads adjust('poise_regen')."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "wild_pantry",
+      "name": "Wild Pantry",
+      "status": "new",
+      "cluster": "druid",
+      "roles": [
+        "druid"
+      ],
+      "category": "trade",
+      "combat": false,
+      "value": "low",
+      "verse": "The wild keeps a cupboard for you. You must find it each time.",
+      "rule": "Each passage wall you clear grows one forageable plant somewhere in the level; cutting it drops a crafting material of the level's band.",
+      "hidden": [
+        "it grows in town?",
+        "a burned plant drops nothing?",
+        "the plants are still there next visit?",
+        "a rare plant now and then?"
+      ],
+      "evolve_2": "Two plants per wall.",
+      "evolve_3": "You see them on the minimap.",
+      "evolve_4": "Overland camps you clear grow one too.",
+      "evolve_onward": "+1 band roll per 3 stars.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "on_event:wall_cleared"
+        ],
+        "note": "main's wall logic knows a wall is cleared; main._spawn_cuttable exists; the drop table is a new loot row."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "grass_remembers",
+      "name": "Grass Remembers",
+      "status": "new",
+      "cluster": "druid",
+      "roles": [
+        "druid",
+        "control",
+        "area_tank"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "Stand still on my ground and the ground will hold you to it.",
+      "rule": "An enemy within 6 m that stays still for 2 s is Pinned for 1 s. Each enemy at most once every 8 s.",
+      "hidden": [
+        "archers standing to shoot count?",
+        "it pins you?",
+        "it works on stone floors?",
+        "it pins sleeping enemies?"
+      ],
+      "evolve_2": "8 m; 1.5 s.",
+      "evolve_3": "Pinned enemies take +20% from your hits.",
+      "evolve_4": "Once every 5 s.",
+      "evolve_onward": "+0.25 s per star.",
+      "build": {
+        "hooks": [
+          "on_tick"
+        ],
+        "needs": [],
+        "note": "Buildable today: on_tick tracks enemy positions in range; add_status('pinned') (rooted is its alias)."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "fever_count",
+      "name": "Fever Count",
+      "status": "new",
+      "cluster": "berserker",
+      "roles": [
+        "berserker",
+        "bruiser"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "Each one sooner than the last. I count; you burn.",
+      "rule": "Each kill within 4 s of the last adds one to a streak (max 10): +4% damage and +3% move speed a step. When the streak lapses you are slowed for 0.5 s a step.",
+      "hidden": [
+        "kills by your thralls keep it going?",
+        "unstarred beasts count?",
+        "the streak survives a level change?",
+        "the comedown also slows your skills?"
+      ],
+      "evolve_2": "5 s window; max 12.",
+      "evolve_3": "A lapsing streak drops to half, not to zero.",
+      "evolve_4": "The comedown is gone.",
+      "evolve_onward": "+1 max per star; +0.5% damage a step every 2 stars.",
+      "build": {
+        "hooks": [
+          "on_dealt",
+          "on_outgoing",
+          "on_tick"
+        ],
+        "needs": [
+          "adjust:move_speed"
+        ],
+        "note": "Kills through on_dealt; damage through on_outgoing; speed through adjust('move_speed')."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "spent_pain",
+      "name": "Spent Pain",
+      "status": "new",
+      "cluster": "berserker",
+      "roles": [
+        "berserker",
+        "shadow_knight"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "Keep what they gave you. Spend it all at once.",
+      "rule": "Damage you take fills a pain gauge (one point per 1% of max health, up to 60). Your next skill spends it all: +1% damage a point.",
+      "hidden": [
+        "delayed damage fills it when it arrives?",
+        "the gauge drains out of combat?",
+        "a skill that misses still spends it?",
+        "self-harm fills it?"
+      ],
+      "evolve_2": "Up to 80.",
+      "evolve_3": "A bare strike may spend a third of it.",
+      "evolve_4": "Spending 50 or more refunds the skill's essence.",
+      "evolve_onward": "+10 cap per star.",
+      "build": {
+        "hooks": [
+          "on_incoming",
+          "on_outgoing"
+        ],
+        "needs": [
+          "on_event:cast",
+          "HitContext.cast_serial"
+        ],
+        "note": "Fill in on_incoming; the cast event empties the gauge into that cast's serial; on_outgoing multiplies its hits."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "forward_only",
+      "name": "Forward Only",
+      "status": "new",
+      "cluster": "berserker",
+      "roles": [
+        "berserker",
+        "bruiser",
+        "armoured_duellist"
+      ],
+      "category": "defense",
+      "combat": true,
+      "value": "low",
+      "verse": "I hold you up while you go forward. Turn, and I let go.",
+      "rule": "While moving toward an enemy you take 15% less damage; while moving away from the nearest enemy you take 25% more.",
+      "hidden": [
+        "dashing counts as moving?",
+        "standing still counts as away?",
+        "it cares where you face, not where you go?",
+        "toward a corpse counts?"
+      ],
+      "evolve_2": "20% less, 20% more.",
+      "evolve_3": "Charging also gives +10% poise.",
+      "evolve_4": "No penalty while you are below half health.",
+      "evolve_onward": "+2% less per star, to 40%.",
+      "build": {
+        "hooks": [
+          "on_incoming"
+        ],
+        "needs": [],
+        "note": "Buildable today: on_incoming compares the owner's velocity with the direction to ctx.source (or the nearest enemy)."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "butchers_floor",
+      "name": "Butcher's Floor",
+      "status": "new",
+      "cluster": "berserker",
+      "roles": [
+        "berserker",
+        "bruiser"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "low",
+      "verse": "Spill enough and the floor learns to help.",
+      "rule": "Each kill by a bare strike leaves a pool of blood. Standing in a pool, your bare strikes come 30% faster.",
+      "hidden": [
+        "Blood holders can gather the pools?",
+        "enemies slip in them?",
+        "unliving kills leave pools?",
+        "your own blood pools count?"
+      ],
+      "evolve_2": "Skills' recovery is 15% shorter in a pool.",
+      "evolve_3": "Any kill leaves a pool.",
+      "evolve_4": "Pools last twice as long.",
+      "evolve_onward": "+3% strike speed per star.",
+      "build": {
+        "hooks": [
+          "on_dealt"
+        ],
+        "needs": [
+          "adjust:strike_interval"
+        ],
+        "note": "BloodPool exists (Blood's world script); the strike interval in Player reads adjust('strike_interval')."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "wrong_waking",
+      "name": "Wrong Waking",
+      "status": "new",
+      "cluster": "enchanter",
+      "roles": [
+        "enchanter",
+        "control"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "They wake from you mistaken about who they hate.",
+      "rule": "An enemy that wakes from an Asleep you put on it, or comes out of your Dazed, attacks the nearest other enemy once before it remembers you.",
+      "hidden": [
+        "it may pick your thrall?",
+        "a woken commander turns its squad?",
+        "its blow counts as yours?",
+        "beasts of one herd refuse?"
+      ],
+      "evolve_2": "Twice.",
+      "evolve_3": "Also after Terrified.",
+      "evolve_4": "For 3 s after, it treats you as unseen.",
+      "evolve_onward": "+1 attack per 3 stars.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "on_event:status_out",
+          "world:forced target"
+        ],
+        "note": "Enemy _pick_target already retargets to lures; it needs a one-attack forced target (or a short variant of 'commanded' that attacks)."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "toll_of_sleep",
+      "name": "Toll of Sleep",
+      "status": "new",
+      "cluster": "enchanter",
+      "roles": [
+        "enchanter",
+        "control"
+      ],
+      "category": "sustain",
+      "combat": true,
+      "value": "low",
+      "verse": "Every dreamer pays the door a coin. I hold the door.",
+      "rule": "The first time each enemy suffers a mind status from you (asleep, dazed, terrified, dread, commanded) you regain 4% of your max essence.",
+      "hidden": [
+        "the same enemy pays again after a night?",
+        "beasts with little mind pay?",
+        "it also takes reflux?",
+        "constructs pay?"
+      ],
+      "evolve_2": "6%.",
+      "evolve_3": "Each new kind of mind status on the same enemy pays again.",
+      "evolve_4": "It also lowers the casting affinity's reflux by 3.",
+      "evolve_onward": "+1% per star.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "on_event:status_out"
+        ],
+        "note": "The status engine raises a status event with `by`; essence is on the owner."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "passed_along",
+      "name": "Passed Along",
+      "status": "new",
+      "cluster": "enchanter",
+      "roles": [
+        "enchanter",
+        "necromancer"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "high",
+      "verse": "When the puppet breaks, the strings look for new hands.",
+      "rule": "When an enemy under a mind status from you dies, the nearest enemy within 6 m is Commanded for 2 s.",
+      "hidden": [
+        "the commanded one stands, or wanders where you aim?",
+        "it can pass to a commander?",
+        "a passed command can pass again?",
+        "it can pass to your own thrall and free it?"
+      ],
+      "evolve_2": "3 s.",
+      "evolve_3": "It passes on once more.",
+      "evolve_4": "8 m, and the two nearest.",
+      "evolve_onward": "+0.5 s per star.",
+      "build": {
+        "hooks": [
+          "on_outgoing",
+          "on_dealt"
+        ],
+        "needs": [],
+        "note": "Buildable today: note the target's mind status in on_outgoing (before it dies), act in on_dealt when ctx.killed; 'commanded' exists."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "rumour",
+      "name": "Rumour",
+      "status": "new",
+      "cluster": "enchanter",
+      "roles": [
+        "enchanter",
+        "control",
+        "assassin"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "low",
+      "verse": "Fear is a story. Each one who runs tells it to another.",
+      "rule": "A Terrified enemy of yours that passes within 2 m of another enemy gives it Dread.",
+      "hidden": [
+        "the dread spreads again?",
+        "it spreads to your thralls?",
+        "a whole herd bolts?",
+        "it spreads through walls?"
+      ],
+      "evolve_2": "3 m.",
+      "evolve_3": "Dread spreads one step further.",
+      "evolve_4": "The second-hand enemies are Terrified instead.",
+      "evolve_onward": "+0.5 m per star.",
+      "build": {
+        "hooks": [
+          "on_tick"
+        ],
+        "needs": [],
+        "note": "Buildable today: on_tick scans enemies with 'terrified' by the owner, checks neighbours, add_status('dread')."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "left_behind",
+      "name": "Left Behind",
+      "status": "new",
+      "cluster": "enchanter",
+      "roles": [
+        "enchanter",
+        "evasive_monk",
+        "assassin"
+      ],
+      "category": "mobility",
+      "combat": true,
+      "value": "mid",
+      "verse": "Leave quickly enough and a little of you stays to argue.",
+      "rule": "Each dash leaves an image of you where it began for 2 s. Enemies treat it as a lure and turn to it.",
+      "hidden": [
+        "the image can be hit, and costs you essence?",
+        "the image strikes back?",
+        "fooled enemies learn?",
+        "ranged enemies waste shots on it?"
+      ],
+      "evolve_2": "3 s.",
+      "evolve_3": "When the image fades it Dazes enemies within 2 m.",
+      "evolve_4": "Two images at once.",
+      "evolve_onward": "+0.5 s per star.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "on_event:dash_start"
+        ],
+        "note": "Lure (scripts/lure.gd) exists and enemies retarget to it in _pick_target."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "lent_edge",
+      "name": "Lent Edge",
+      "status": "new",
+      "cluster": "spellblade",
+      "roles": [
+        "spellblade",
+        "armoured_duellist"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "What the spell was, the blade remembers for a moment.",
+      "rule": "For 3 s after a skill, your bare strikes carry its affinity (and so its affinity rules) and add 20% of its essence cost as flat damage.",
+      "hidden": [
+        "the carried affinity builds its reflux too?",
+        "the skill's status rides along?",
+        "each new skill refreshes the window?",
+        "ranged shots carry it?"
+      ],
+      "evolve_2": "4 s and 30%.",
+      "evolve_3": "The first carried strike applies one stack of the skill's first status.",
+      "evolve_4": "Carried strikes count as abilities for talents that care.",
+      "evolve_onward": "+5% per star.",
+      "build": {
+        "hooks": [
+          "on_outgoing"
+        ],
+        "needs": [
+          "on_event:cast"
+        ],
+        "note": "Appending the affinity tag in on_outgoing is enough: Heat, Lee and the other affinity rules read ctx tags after the effects run."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "weave",
+      "name": "Weave",
+      "status": "new",
+      "cluster": "spellblade",
+      "roles": [
+        "spellblade",
+        "evasive_monk"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "Blade, word, blade, word. I like the rhythm; I pay for it.",
+      "rule": "Each time you alternate a bare strike and a skill, your next skill costs 15% less essence, stacking three times. Two skills in a row, or 2 s without a strike, undoes it.",
+      "hidden": [
+        "ranged shots count as strikes?",
+        "a skill that misses keeps the weave?",
+        "it lowers reflux too?",
+        "breaking the weave costs essence?"
+      ],
+      "evolve_2": "Four stacks.",
+      "evolve_3": "The weave's third skill has no wind-up.",
+      "evolve_4": "3 s grace.",
+      "evolve_onward": "+1 stack per 3 stars; +2% per stack per star.",
+      "build": {
+        "hooks": [
+          "on_dealt"
+        ],
+        "needs": [
+          "on_event:cast",
+          "adjust:essence_cost"
+        ],
+        "note": "Count bare strikes in on_dealt and casts from the cast event; the cost check in cast_ability reads adjust('essence_cost') BEFORE essence is spent (the existing rule for checks)."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "out_of_the_step",
+      "name": "Out of the Step",
+      "status": "new",
+      "cluster": "spellblade",
+      "roles": [
+        "spellblade",
+        "evasive_monk",
+        "assassin"
+      ],
+      "category": "mobility",
+      "combat": true,
+      "value": "high",
+      "verse": "The step and the spell were one word. Say them together.",
+      "rule": "The first skill you cast within 1 s of a dash ending has no wind-up and half its recovery.",
+      "hidden": [
+        "dash skills chain off each other?",
+        "a dash skill's own wind-up counts?",
+        "it ignores the Winded penalty?",
+        "braced skills lose their brace?"
+      ],
+      "evolve_2": "1.5 s.",
+      "evolve_3": "That skill also costs 20% less.",
+      "evolve_4": "It also clears Winded.",
+      "evolve_onward": "+0.25 s window per star.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "on_event:dash_end",
+          "adjust:windup_s",
+          "adjust:recovery_s"
+        ],
+        "note": "_perform_cast reads windup and recovery from the ability; both pass through adjust before use."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "fifth_leap",
+      "name": "Fifth Leap",
+      "status": "new",
+      "cluster": "spellblade",
+      "roles": [
+        "spellblade",
+        "burst_caster",
+        "control"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "Four times it stays put. The fifth time it gets restless.",
+      "rule": "Every 5th skill hit you land jumps to another enemy within 6 m at 50% damage.",
+      "hidden": [
+        "the leap can leap?",
+        "damage-over-time ticks count?",
+        "it can leap to scenery?",
+        "the leap carries statuses?"
+      ],
+      "evolve_2": "60%.",
+      "evolve_3": "Every 4th.",
+      "evolve_4": "The leap also carries the hit's statuses.",
+      "evolve_onward": "+5% per star.",
+      "build": {
+        "hooks": [
+          "on_dealt"
+        ],
+        "needs": [],
+        "note": "Buildable today: on_dealt counts ability hits and calls deal_damage on the next target with a 'leap' tag (not counted)."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "banked_blow",
+      "name": "Banked Blow",
+      "status": "new",
+      "cluster": "spellblade",
+      "roles": [
+        "spellblade",
+        "bruiser",
+        "armoured_duellist"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "low",
+      "verse": "I take a tenth of every blow and keep it for your next word.",
+      "rule": "10% of the damage your bare strikes deal is banked (up to 100); your next skill adds the bank to its first hit as flat damage.",
+      "hidden": [
+        "the bank survives the fight?",
+        "it pays into a damage-over-time?",
+        "hits on scenery bank?",
+        "a skill that misses wastes it?"
+      ],
+      "evolve_2": "15%, up to 150.",
+      "evolve_3": "The bank is split across every target of the skill.",
+      "evolve_4": "Strikes on Staggered enemies bank double.",
+      "evolve_onward": "+2% per star; +50 cap per star.",
+      "build": {
+        "hooks": [
+          "on_dealt",
+          "on_outgoing"
+        ],
+        "needs": [
+          "HitContext.cast_serial"
+        ],
+        "note": "Bank in on_dealt; the first hit carrying the next cast's serial takes it as ctx.flat."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "close_shave",
+      "name": "Close Shave",
+      "status": "new",
+      "cluster": "mobility",
+      "roles": [
+        "evasive_monk",
+        "assassin",
+        "armoured_duellist"
+      ],
+      "category": "mobility",
+      "combat": true,
+      "value": "mid",
+      "verse": "Missed by an inch is paid by the inch.",
+      "rule": "When an enemy's telegraphed attack lands within 1 m of you and misses, you gain +30% move speed and your next hit counts as from behind, for 2 s.",
+      "hidden": [
+        "dashing through it counts?",
+        "ranged shots count?",
+        "the haste stacks?",
+        "a miss on your thrall counts?"
+      ],
+      "evolve_2": "2 m.",
+      "evolve_3": "It also clears Winded.",
+      "evolve_4": "It also refunds 5% essence.",
+      "evolve_onward": "+0.5 s per star.",
+      "build": {
+        "hooks": [
+          "on_outgoing"
+        ],
+        "needs": [
+          "on_event:near_miss",
+          "adjust:move_speed"
+        ],
+        "note": "The enemy's attack resolution (slam circle, aim line; enemy.gd telegraph) reports a miss that passed within range of the player."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "stored_stride",
+      "name": "Stored Stride",
+      "status": "new",
+      "cluster": "mobility",
+      "roles": [
+        "evasive_monk",
+        "spellblade",
+        "ranged_caster"
+      ],
+      "category": "mobility",
+      "combat": true,
+      "value": "low",
+      "verse": "Walk now, run later. I keep the difference.",
+      "rule": "Every 60 m you walk outside a fight stores a stride (up to 3). A dash in a fight spends one: it costs no essence and never leaves you Winded.",
+      "hidden": [
+        "walking in town fills it?",
+        "strides keep overnight?",
+        "it fills while you carry a heavy load?",
+        "unspent strides give speed?"
+      ],
+      "evolve_2": "4 strides.",
+      "evolve_3": "A stride's dash goes 50% further.",
+      "evolve_4": "Strides fill in fights too, at a quarter of the rate.",
+      "evolve_onward": "+1 stride per 3 stars.",
+      "build": {
+        "hooks": [
+          "on_tick"
+        ],
+        "needs": [
+          "on_event:dash_start",
+          "adjust:essence_cost",
+          "adjust:winded"
+        ],
+        "note": "Distance from position deltas in on_tick (out of combat); the dash's cost and Winded check pass through adjust."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "narrow_room",
+      "name": "Narrow Room",
+      "status": "new",
+      "cluster": "duellist",
+      "roles": [
+        "armoured_duellist",
+        "assassin"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "Two is a conversation. Three is a crowd, and I leave.",
+      "rule": "While exactly one enemy is within 8 m, you deal 25% more to it and take 15% less from it.",
+      "hidden": [
+        "sleeping enemies count?",
+        "your thralls count as a third?",
+        "a ranged enemy beyond 8 m counts?",
+        "scenery counts?"
+      ],
+      "evolve_2": "10 m.",
+      "evolve_3": "With two enemies near, half the bonus.",
+      "evolve_4": "Killing the one gives talent healing of 3% of max health.",
+      "evolve_onward": "+3% per star.",
+      "build": {
+        "hooks": [
+          "on_outgoing",
+          "on_incoming"
+        ],
+        "needs": [],
+        "note": "Buildable today: _enemies_near exists."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "cut_the_word",
+      "name": "Cut the Word",
+      "status": "new",
+      "cluster": "duellist",
+      "roles": [
+        "armoured_duellist",
+        "spellblade",
+        "control"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "high",
+      "verse": "Strike while they are still saying it.",
+      "rule": "A bare strike that lands while its target is winding up interrupts it, as an interrupting skill would (a flagged attack is staggered).",
+      "hidden": [
+        "it works on unflagged (red) attacks?",
+        "only early in the wind-up?",
+        "it costs you poise?",
+        "ranged shots cut too?"
+      ],
+      "evolve_2": "The stagger lasts 50% longer.",
+      "evolve_3": "Ranged shots cut too.",
+      "evolve_4": "A cut enemy's next wind-up is 30% slower.",
+      "evolve_onward": "+5% Opening damage after a cut per star.",
+      "build": {
+        "hooks": [
+          "on_dealt"
+        ],
+        "needs": [],
+        "note": "Buildable today: on_dealt checks the target's telegraph and calls interrupt_attack()."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "seam_finder",
+      "name": "Seam Finder",
+      "status": "new",
+      "cluster": "duellist",
+      "roles": [
+        "armoured_duellist",
+        "assassin",
+        "bruiser"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "All armour is made of pieces. I can find where they meet.",
+      "rule": "After three hits in a row on the same enemy without being hit, your hits on it pass its front guard and deal 20% more poise damage.",
+      "hidden": [
+        "a hit on its shield breaks the count?",
+        "it works on constructs?",
+        "a found seam stays after you are hit?",
+        "your thralls use the seam?"
+      ],
+      "evolve_2": "Two hits.",
+      "evolve_3": "A found seam stays 5 s after you are hit.",
+      "evolve_4": "It also ignores the 'metal' class's resistance.",
+      "evolve_onward": "+5% poise per star.",
+      "build": {
+        "hooks": [
+          "on_outgoing",
+          "on_incoming"
+        ],
+        "needs": [
+          "adjust:poise_out"
+        ],
+        "note": "Passing the front guard is the existing 'through' tag (enemy.take_hit skips guards_front for it): append it in on_outgoing."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "second_skin",
+      "name": "Second Skin",
+      "status": "new",
+      "cluster": "duellist",
+      "roles": [
+        "armoured_duellist",
+        "area_tank",
+        "bruiser"
+      ],
+      "category": "defense",
+      "combat": true,
+      "value": "low",
+      "verse": "Wear it long enough and it stops being clothing.",
+      "rule": "Worn gear's armour counts 50% more, but you can change what you wear only in town or at a rest.",
+      "hidden": [
+        "it counts in the Netherecho?",
+        "broken gear is stuck on you?",
+        "the satellite counts as worn?",
+        "weight stops mattering?"
+      ],
+      "evolve_2": "60%.",
+      "evolve_3": "Gear worn through a whole passage gains +1% armour, permanently (at most +10%).",
+      "evolve_4": "You may swap one slot in the field once a day.",
+      "evolve_onward": "+5% per star.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "adjust:armour",
+          "adjust:can_equip"
+        ],
+        "note": "Player.armour() and Inventory.equip read adjust. The armour cap in balance.json 'gear' still holds."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "small_change",
+      "name": "Small Change",
+      "status": "new",
+      "cluster": "drain",
+      "roles": [
+        "shadow_knight",
+        "necromancer",
+        "assassin"
+      ],
+      "category": "sustain",
+      "combat": true,
+      "value": "low",
+      "verse": "The dying drop things. I pick them up for you.",
+      "rule": "Each hit on a Dying enemy (below half its health) returns 0.5% of your max essence.",
+      "hidden": [
+        "damage-over-time ticks pay?",
+        "Dying beasts pay?",
+        "it also takes the target's poise?",
+        "a kill pays 5%?"
+      ],
+      "evolve_2": "0.75%.",
+      "evolve_3": "It also takes 1 reflux off the hit's affinity.",
+      "evolve_4": "1%.",
+      "evolve_onward": "+0.1% per star.",
+      "build": {
+        "hooks": [
+          "on_dealt"
+        ],
+        "needs": [],
+        "note": "Buildable today: Dying is derived (has_status('dying'))."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "hollowing",
+      "name": "Hollowing",
+      "status": "new",
+      "cluster": "drain",
+      "roles": [
+        "shadow_knight",
+        "bruiser",
+        "berserker"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "Each touch takes a little of their strength and lends it to your arm.",
+      "rule": "Each hit weakens its target's blows by 2% (stacking to 20%) and strengthens yours by 1% (stacking to 10%), for 6 s.",
+      "hidden": [
+        "the strength is counted per target, or shared?",
+        "it hollows commanders?",
+        "your thralls hollow too?",
+        "the strength wears off all at once?"
+      ],
+      "evolve_2": "To 30% and 15%.",
+      "evolve_3": "Hollowed enemies refill poise half as fast.",
+      "evolve_4": "8 s.",
+      "evolve_onward": "+2% to both caps per star.",
+      "build": {
+        "hooks": [
+          "on_dealt",
+          "on_outgoing",
+          "on_tick"
+        ],
+        "needs": [
+          "world:status deals_mult per stack"
+        ],
+        "note": "The weakness is a status with deals_mult (the key exists on Dulled and Sapped); it needs to scale with stacks."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "slow_sip",
+      "name": "Slow Sip",
+      "status": "new",
+      "cluster": "drain",
+      "roles": [
+        "shadow_knight",
+        "coating",
+        "plague"
+      ],
+      "category": "sustain",
+      "combat": true,
+      "value": "mid",
+      "verse": "Little by little, what bleeds out of them seeps into you, only where it does not show.",
+      "rule": "2% of the damage your damage-over-time deals goes into your wounds' hidden sinks. It never fills the bar.",
+      "hidden": [
+        "it fills the sinks of wounds that never close?",
+        "fires and bleeds on plants count?",
+        "it stops in combat?",
+        "with no wounds, it does nothing at all?"
+      ],
+      "evolve_2": "3%.",
+      "evolve_3": "With no open wound, it fills the bar, outside fights only.",
+      "evolve_4": "5%.",
+      "evolve_onward": "+0.5% per star.",
+      "build": {
+        "hooks": [
+          "on_dealt"
+        ],
+        "needs": [],
+        "note": "Buildable today: on_dealt with the 'dot' tag; Body's sink API. Inside the balance rule: sinks only, never the bar in a fight."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "feared_company",
+      "name": "Feared Company",
+      "status": "new",
+      "cluster": "drain",
+      "roles": [
+        "shadow_knight",
+        "enchanter",
+        "area_tank"
+      ],
+      "category": "defense",
+      "combat": true,
+      "value": "low",
+      "verse": "Those who fear you hit softly, as if apologising.",
+      "rule": "You take 10% less damage for each Terrified or Dread enemy within 5 m (at most 30%).",
+      "hidden": [
+        "Dazed counts as afraid?",
+        "afraid enemies further away count?",
+        "your thralls feel it?",
+        "fear makes them call for help?"
+      ],
+      "evolve_2": "7 m.",
+      "evolve_3": "At most 40%.",
+      "evolve_4": "An afraid enemy that hits you anyway is Slowed for 1 s.",
+      "evolve_onward": "+2% per enemy per star.",
+      "build": {
+        "hooks": [
+          "on_incoming"
+        ],
+        "needs": [],
+        "note": "Buildable today: on_incoming counts _enemies_near with the statuses."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "withheld",
+      "name": "Withheld",
+      "status": "new",
+      "cluster": "affliction",
+      "roles": [
+        "coating",
+        "plague",
+        "burst_caster"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "high",
+      "verse": "Let it wait in them. Interest accrues.",
+      "rule": "Your damage-over-time deals nothing for its first 4 s, then everything it would have dealt lands at once, at x1.5.",
+      "hidden": [
+        "a kill before the 4 s loses it all?",
+        "the lump is heavy?",
+        "the lump spreads as the status does?",
+        "topping up the status restarts the wait?"
+      ],
+      "evolve_2": "x1.75.",
+      "evolve_3": "The lump staggers flagged attacks.",
+      "evolve_4": "If the target dies first, the lump lands on the nearest enemy.",
+      "evolve_onward": "+0.1x per star.",
+      "build": {
+        "hooks": [
+          "on_outgoing",
+          "on_tick"
+        ],
+        "needs": [
+          "adjust:dot_delay"
+        ],
+        "note": "Pipeline-only version: on_outgoing sets mult 0 on 'dot' hits and stores the amount per target; on_tick releases it. Cleaner if the status engine holds the delay (adjust('dot_delay'))."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "inheritance",
+      "name": "Inheritance",
+      "status": "new",
+      "cluster": "affliction",
+      "roles": [
+        "plague",
+        "coating",
+        "necromancer"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "mid",
+      "verse": "The dead leave their sickness to the nearest relative.",
+      "rule": "When an enemy carrying 3 or more stacks of your damage-over-time dies, half the stacks pass to each of the two nearest enemies within 5 m.",
+      "hidden": [
+        "it passes to your thralls?",
+        "unliving enemies inherit?",
+        "an inheritance can be inherited again?",
+        "it passes into a corpse you can raise?"
+      ],
+      "evolve_2": "7 m.",
+      "evolve_3": "The three nearest.",
+      "evolve_4": "Inherited stacks are fresh (full duration).",
+      "evolve_onward": "+0.5 m per star.",
+      "build": {
+        "hooks": [
+          "on_outgoing",
+          "on_dealt"
+        ],
+        "needs": [],
+        "note": "Buildable today: read status_stacks in on_outgoing, pass them in on_dealt when ctx.killed (add_status with `by`). Fire's Alight already jumps on death; this does it for every damage-over-time."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "stained_edge",
+      "name": "Stained Edge",
+      "status": "new",
+      "cluster": "affliction",
+      "roles": [
+        "coating",
+        "assassin",
+        "armoured_duellist"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "low",
+      "verse": "What you last spilled is still on the blade.",
+      "rule": "For 10 s after you apply a damage-over-time status, each bare strike applies one stack of it.",
+      "hidden": [
+        "shots and thrown things are stained too?",
+        "the stain dries when you change weapons?",
+        "the stain burns your own hand?",
+        "a stained strike counts as a dose for Poison's clock?"
+      ],
+      "evolve_2": "15 s.",
+      "evolve_3": "Every second strike applies two.",
+      "evolve_4": "The stain survives a level change.",
+      "evolve_onward": "+1 s per star.",
+      "build": {
+        "hooks": [
+          "on_dealt"
+        ],
+        "needs": [
+          "on_event:status_out"
+        ],
+        "note": "Remember the last damage-over-time status from the status event; add_status on bare-strike on_dealt."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "census",
+      "name": "Census",
+      "status": "new",
+      "cluster": "affliction",
+      "roles": [
+        "plague",
+        "coating"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "low",
+      "verse": "Every one the sickness takes, I count. The count is a kind of strength.",
+      "rule": "Each enemy killed by your damage-over-time adds +0.5% to all your damage-over-time, permanently, up to +10% per star.",
+      "hidden": [
+        "unstarred beasts count?",
+        "the count is lost when you die?",
+        "the count also lengthens your statuses?",
+        "plants killed by it count?"
+      ],
+      "evolve_2": "Cap +15% per star.",
+      "evolve_3": "A kill counts if any damage-over-time of yours was on it, whatever struck last.",
+      "evolve_4": "Every 50 counted kills, your damage-over-time statuses hold one more stack.",
+      "evolve_onward": "+5% cap per star at 6 and 9 stars.",
+      "build": {
+        "hooks": [
+          "on_outgoing",
+          "on_dealt"
+        ],
+        "needs": [
+          "save:talent_state",
+          "adjust:status_stack_cap"
+        ],
+        "note": "Kills with the 'dot' tag in on_dealt; the bonus in on_outgoing on 'dot' hits; the count is saved talent state."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "bad_air",
+      "name": "Bad Air",
+      "status": "new",
+      "cluster": "affliction",
+      "roles": [
+        "plague",
+        "area_tank",
+        "druid"
+      ],
+      "category": "offense",
+      "combat": true,
+      "value": "low",
+      "verse": "Nobody wants to stand close to you. They are right.",
+      "rule": "Enemies within 2 m of you for 3 s become Sick.",
+      "hidden": [
+        "it sickens your thralls?",
+        "townsfolk keep their distance?",
+        "Sick enemies pass it on?",
+        "it withers plants near you?"
+      ],
+      "evolve_2": "3 m.",
+      "evolve_3": "2 s.",
+      "evolve_4": "Sick enemies near you take +10% from your hits.",
+      "evolve_onward": "+0.5 m every 2 stars.",
+      "build": {
+        "hooks": [
+          "on_tick"
+        ],
+        "needs": [],
+        "note": "Buildable today: add_status('sick') exists (living only)."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "homing_things",
+      "name": "Homing Things",
+      "status": "new",
+      "cluster": "general",
+      "roles": [],
+      "category": "trade",
+      "combat": false,
+      "value": "junk",
+      "verse": "What you lose wanders home. It is slow, but it knows the way.",
+      "rule": "Once per passage, the first item you drop or lose to death is waiting on your bed at the inn when you next sleep.",
+      "hidden": [
+        "it works on things enemies take?",
+        "it brings back the corpse's whole pack?",
+        "it can bring back something someone else lost?",
+        "it comes back worn?"
+      ],
+      "evolve_2": "Twice per passage.",
+      "evolve_3": "Overland too.",
+      "evolve_4": "It comes to wherever you sleep.",
+      "evolve_onward": "+1 item per 3 stars.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "on_event:item_lost",
+          "on_event:rest"
+        ],
+        "note": "die_to_corpse and drops raise item_lost; the inn's rest returns it."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "lodestone_head",
+      "name": "Lodestone Head",
+      "status": "new",
+      "cluster": "general",
+      "roles": [
+        "evasive_monk"
+      ],
+      "category": "perception",
+      "combat": false,
+      "value": "junk",
+      "verse": "You will always know which way is out. Not why you would want to go.",
+      "rule": "You always know the direction of the nearest way out of a level, and the minimap shows its arrow.",
+      "hidden": [
+        "it points to sealed exits?",
+        "it points out of the Netherecho?",
+        "it points to hidden ways?",
+        "it points to your corpse?"
+      ],
+      "evolve_2": "Also the nearest doorway you have not been through.",
+      "evolve_3": "Also the nearest rune stone.",
+      "evolve_4": "Also, in the Netherecho, the nearest construct of the tier your next lock needs.",
+      "evolve_onward": "One more kind of thing every 2 stars.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "reveals"
+        ],
+        "note": "minimap_info() feeds the HUD; reveals() adds arrows."
+      },
+      "provenance": "[MODEL]"
+    },
+    {
+      "id": "taste_of_iron",
+      "name": "Taste of Iron",
+      "status": "new",
+      "cluster": "general",
+      "roles": [],
+      "category": "perception",
+      "combat": false,
+      "value": "junk",
+      "verse": "Bite it. Your teeth will tell you what it is worth to you.",
+      "rule": "Tasting an item tells you its band and one thing about it the description does not say. Tasting a consumable uses it up.",
+      "hidden": [
+        "tasting a scroll tells you the skill?",
+        "tasting a cursed item curses you?",
+        "it works on corpses?",
+        "it works on runes?"
+      ],
+      "evolve_2": "Two things.",
+      "evolve_3": "Consumables are only half used.",
+      "evolve_4": "Tasting a rune stone tells you its rune before you read it.",
+      "evolve_onward": "One more thing every 3 stars.",
+      "build": {
+        "hooks": [],
+        "needs": [
+          "reveals"
+        ],
+        "note": "An inventory action plus reveals(item). Needs items to have something undisclosed to reveal (cursed tolls, hidden properties) - see open questions."
+      },
+      "provenance": "[MODEL]"
+    }
+  ]
+}
