@@ -8395,8 +8395,7 @@
       },
       "verse": "",
       "icon": "mote:DIS-2b",
-      "simplified": "when Contained ends, the stacks above five do not fall away",
-      "summary": "A clot that sticks to one enemy: 45 and 3 Infected, and for 10 s the sickness is sealed in - it can climb to 10 stacks and burns half again as hard, but never leaves that body. (simplified)",
+      "summary": "A clot that sticks to one enemy: 45 and 3 Infected, and for 10 s the sickness is sealed in - it can climb to 10 stacks and burns half again as hard, but never leaves that body.",
       "good_modifiers": [
         "Fester",
         "Infect",

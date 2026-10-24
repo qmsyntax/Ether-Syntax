@@ -127,7 +127,6 @@ NOTES = OD([
     ("changeling_mask", "its friends attack the masked one, but it does not fight back"),
     ("glancing_ray", "it glances off walls and stone, not off raised shields"),
     ("bell_jar", "Overload arcs are not kept inside the jar"),
-    ("sealing_clot", "when Contained ends, the stacks above five do not fall away"),
     ("false_spring", "a thawed body does not keep the two Chill that Frozen leaves"),
     ("fever_break", "the player carries no enemy statuses yet: it clears stagger, Winded and a shove"),
     ("heavy_heart", "blood pools in the circle do not go still"),

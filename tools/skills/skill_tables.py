@@ -333,7 +333,7 @@ NEW_STATUSES = OD([
     ("quarry", OD([("label", "Quarry"), ("stacks", 1), ("lasts", 6.0), ("color", "7fbf6a"), ("summons_target", True),
                    ("summon_damage_mult", 1.3)])),
     # dream (Sweet Lie, the Charm rune): it fights for you a while
-    ("charmed", OD([("label", "Charmed"), ("stacks", 1), ("lasts", 5.0), ("color", "f0a8e8"), ("fights_for_source", True),
+    ("charmed", OD([("label", "Charmed"), ("stacks", 1), ("lasts", 5.0), ("color", "f0a8e8"), ("fights_for_source", True), ("lure_radius", 8.0),
                     ("ends_on_source_hit", True), ("heavy_lasts_mult", 0.5), ("elite_status", "dazed")])),
     # dream (Misgiving, the Doubt rune): slow to commit and half-hearted; elites keep it at half time too
     ("doubting", OD([("label", "Doubting"), ("stacks", 1), ("lasts", 6.0), ("color", "c8a8e0"), ("windup_mult", 1.5), ("deals_mult", 0.7),

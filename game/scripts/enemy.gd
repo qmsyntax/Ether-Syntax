@@ -265,6 +265,9 @@ func take_hit(amount: float, _heavy: bool, source: Node, tags: Array = []) -> fl
 		hurt.emit(self, source)                 # its camp wakes; a herd answers (FieldCamps)
 	if applied > 0.0 and not body.is_dead():
 		_after_hurt(applied, winding)
+		for id: String in statuses.keys():
+			if statuses.has(id) and bool(_sdef(id).get("ends_on_source_hit", false)) and (statuses[id] as Dictionary).get("by") == source and source != null:
+				statuses.erase(id)                     # Charmed: a hit from whoever charmed it snaps it out
 	if body.is_dead():
 		_release_slot()
 		telegraph = {}
@@ -405,6 +408,8 @@ func add_status(id: String, stacks: int = 1, by: Node = null, opts: Dictionary =
 		return 0
 	if bool(def.get("living_only", false)) and not is_living:
 		return 0
+	if bool(def.get("elites_immune", false)) and bool(_def.get("elite", false)):
+		return 0                                   # Exiled: an elite only takes the hit's shove
 	# what is on it, or the ground it stands on, may refuse the status
 	for other: String in statuses:
 		if (_sdef(other).get("blocks", []) as Array).has(id):
@@ -445,6 +450,16 @@ func add_status(id: String, stacks: int = 1, by: Node = null, opts: Dictionary =
 	if had.has("taken"):
 		entry["taken"] = had["taken"]
 	statuses[id] = entry
+	if had.is_empty():
+		# the first time only: it changes another status's clock (Steeped: the dose clock runs longer, once)
+		var more: Dictionary = def.get("adds_time", {})
+		for other_id: String in more:
+			if statuses.has(_canon(other_id)):
+				var o: Dictionary = statuses[_canon(other_id)]
+				o["t"] = float(o["t"]) + float(more[other_id])
+		# turned round, its back to whoever did it (Turning Palm, Blowout, Deflect)
+		if bool(def.get("turn_away", false)) and who is Node3D and is_instance_valid(who):
+			turn_away_from((who as Node3D).global_position, float(entry["t"]))
 	for gone: Variant in def.get("ends", []):
 		if str(gone) != id:
 			clear_status(str(gone))
@@ -490,6 +505,35 @@ func has_status(id: String) -> bool:
 
 func clear_status(id: String) -> void:
 	statuses.erase(_canon(id))
+	_end_with(_canon(id))
+
+
+## Statuses that end with `id` (ends_with: a barb pulled when its doses are spent or paid).
+func _end_with(id: String) -> void:
+	for other: String in statuses.keys():
+		if (_sdef(other).get("ends_with", []) as Array).has(id):
+			statuses.erase(other)
+
+
+## The sum of number `key` over the statuses on it that `who` put there (Tithed's heal, Leeched's drain for
+## whoever applied it); 0 if none.
+func status_sum_by(key: String, who: Node) -> float:
+	var out := 0.0
+	for id: String in statuses:
+		var s: Dictionary = statuses[id]
+		if s.get("by") == who and is_instance_valid(who):
+			out += float(_sdef(id).get(key, 0.0))
+	return out
+
+
+## A status of its put there by `who` (or by a summon of theirs) carrying `key`, as [id, entry], or [].
+func status_from(key: String, who: Node) -> Array:
+	for id: String in statuses:
+		var s: Dictionary = statuses[id]
+		var by: Variant = s.get("by")
+		if _sdef(id).has(key) and by != null and is_instance_valid(by) and (by == who or (who != null and who.get("caster") == by)):
+			return [id, s]
+	return []
 
 
 ## The data a skill left with a status (Dripping's nudge, a Commanded walk's goal), or {}.
@@ -638,6 +682,9 @@ func _expire(id: String) -> void:
 		add_status(str(ex["status"]), int(ex.get("stacks", 1)), who)
 	if ex.has("damage_per_stack"):
 		var dmg: float = float(ex["damage_per_stack"]) * float(int(s.get("stacks", 1)))
+		for other: String in statuses:
+			dmg *= float((_sdef(other).get("bill_mult", {}) as Dictionary).get(id, 1.0))     # Steeped: a bigger bill
+		dmg *= float((s.get("data", {}) as Dictionary).get("bill_mult", 1.0))      # Venom Spur: this bill only
 		if who != null and who.has_method("deal_damage"):
 			who.call("deal_damage", self, dmg, ex.get("tags", ["dot"]))
 		else:
@@ -648,6 +695,14 @@ func _expire(id: String) -> void:
 	if float(data.get("release_shove", 0.0)) > 0.0 and who is Node3D:
 		shover = who
 		shove(global_position - (who as Node3D).global_position, float(data["release_shove"]))
+	_end_with(id)
+	# a status that raised another's cap is gone: what is above the plain cap falls away (Contained's Infected)
+	for other: String in statuses.keys():
+		var cap: int = int(_sdef(other).get("stacks", 1))
+		for o2: String in statuses:
+			cap = maxi(cap, int((_sdef(o2).get("cap_raise", {}) as Dictionary).get(other, 0)))
+		if int((statuses[other] as Dictionary).get("stacks", 1)) > cap:
+			(statuses[other] as Dictionary)["stacks"] = cap
 
 
 ## What its statuses leave when it dies: a burning that jumps, a pool of blood, a sick cloud.
@@ -795,13 +850,17 @@ func is_shoved() -> bool:
 ## there, spreading to whoever stands close, nudging, dripping blood, retching.
 func _tick_statuses(delta: float) -> void:
 	var frozen_by: Array = []
+	var frozen_all := ""
 	for id: String in statuses:
-		frozen_by.append_array(_sdef(id).get("freezes", []))
+		var fz: Array = _sdef(id).get("freezes", [])
+		frozen_by.append_array(fz)
+		if fz.has("all"):
+			frozen_all = id                       # Stasis: nothing else on it runs down
 	for id: String in statuses.keys():
 		if not statuses.has(id):
 			continue
 		var s: Dictionary = statuses[id]
-		if frozen_by.has(id) or _in_zone_banking(id):
+		if frozen_by.has(id) or _in_zone_banking(id) or (frozen_all != "" and id != frozen_all):
 			continue                              # Arrested, or banked in a pall of smoke: it does not run down
 		s["t"] = float(s["t"]) - delta
 		if float(s["t"]) <= 0.0:
@@ -853,13 +912,23 @@ func _tick_status(id: String, delta: float) -> void:
 			for other: String in statuses:
 				dmg *= float((_sdef(other).get("dps_mult", {}) as Dictionary).get(id, 1.0))
 			if who != null and who.has_method("deal_damage"):
-				who.call("deal_damage", self, dmg, def.get("dot_tags", ["dot"]))
+				var dot: Variant = who.call("deal_damage", self, dmg, def.get("dot_tags", ["dot"]))
+				# Tormented: part of every tick feeds whoever put it there
+				if float(def.get("drain_frac", 0.0)) > 0.0 and dot is HitContext and who.has_method("drain_heal"):
+					who.call("drain_heal", (dot as HitContext).applied * float(def["drain_frac"]), self, false)
 			else:
 				take_hit(dmg, false, null, def.get("dot_tags", ["dot"]))
 		if id == "alight":
 			_burn_t = float(s.get("acc", 0.0))
 	if body.is_dead() or not statuses.has(id):
 		return
+	# Barbed: it works another status in every so often, in the name of whoever put it there
+	var adds: Variant = def.get("adds_status")
+	if adds is Dictionary:
+		s["add_t"] = float(s.get("add_t", 0.0)) + delta
+		if float(s["add_t"]) >= float((adds as Dictionary).get("every", 1.0)):
+			s["add_t"] = 0.0
+			add_status(str((adds as Dictionary).get("status", "")), int((adds as Dictionary).get("stacks", 1)), who)
 	# Bleeding drips a pool every so often
 	if def.has("drips_pool_s") and who != null and who.has_method("spill_blood"):
 		s["drip"] = float(s.get("drip", 0.0)) + delta
@@ -995,6 +1064,7 @@ func _physics_process(delta: float) -> void:
 	velocity = Vector3.ZERO
 	_walk_dir = _route_dir(dir, delta)
 
+	var winding_before: bool = _windup >= 0.0
 	if _st_any("cannot_act") or _kneeling():
 		telegraph = {}
 	elif _stuck_t > 0.0:
@@ -1004,7 +1074,7 @@ func _physics_process(delta: float) -> void:
 	elif _flee(delta) or _walk_to_goal(delta):
 		telegraph = {}                          # running from you, or walking where it was told
 	else:
-		match behaviour:
+		match "melee" if _st_any("closes_in") else behaviour:       # Taunted: an archer or a drummer walks in to fight
 			"ranged":
 				_think_ranged(delta, dir, dist)
 			"pouncer":
@@ -1019,7 +1089,26 @@ func _physics_process(delta: float) -> void:
 	velocity *= pace
 	if _leap_left <= 0.0 and _charge_left <= 0.0:
 		move_and_slide()
+	_keep_leash()
+	if not winding_before and _windup >= 0.0:
+		_attack_started()
 	_look(delta)
+
+
+## Leashed: it cannot go further than leash_m from whoever leashed it - a step beyond is undone, as a wall would
+## stop it (the leash length may come from the skill, status data "leash_m").
+func _keep_leash() -> void:
+	for id: String in statuses:
+		var s: Dictionary = statuses[id]
+		var m: float = float((s.get("data", {}) as Dictionary).get("leash_m", _sdef(id).get("leash_m", 0.0)))
+		var by: Variant = s.get("by")
+		if m <= 0.0 or not (by is Node3D) or not is_instance_valid(by):
+			continue
+		var off: Vector3 = global_position - (by as Node3D).global_position
+		off.y = 0.0
+		if off.length() > m:
+			var back: Vector3 = (by as Node3D).global_position + off.normalized() * m
+			global_position = Vector3(back.x, global_position.y, back.z)
 
 
 ## Who it goes for: the player, unless a lure stands within its reach (a phantom, a death mask, a
@@ -1030,6 +1119,29 @@ func _pick_target() -> void:
 		return
 	if not _lured and target == null:
 		return
+	# Taunted: whoever taunted it, and nobody else (no lure, decoy or thrall draws it)
+	var forced: Node3D = _forced_target()
+	if forced != null:
+		if target != forced:
+			interrupt()
+		target = forced
+		_lured = forced != _player
+		return
+	# Charmed: it fights for whoever charmed it - the nearest of its old friends
+	if _st_any("fights_for_source"):
+		var foe: Node3D = null
+		for node2: Node in get_tree().get_nodes_in_group("enemies"):
+			var o := node2 as Node3D
+			if o == null or o == self or bool(o.call("is_dead")) or bool(o.call("_charmed")):
+				continue
+			if foe == null or o.global_position.distance_to(global_position) < foe.global_position.distance_to(global_position):
+				foe = o
+		if foe != null:
+			if target != foe:
+				interrupt()
+			target = foe
+			_lured = true
+			return
 	var best: Node3D = null
 	var best_d := INF
 	for node: Node in get_tree().get_nodes_in_group("lures"):
@@ -1041,12 +1153,14 @@ func _pick_target() -> void:
 			best = l
 			best_d = d
 	if best == null:
+		# a friend that draws it (Masked wears your face; a Charmed one has turned on them): any status with lure_radius
 		for node: Node in get_tree().get_nodes_in_group("enemies"):
 			var m := node as Node3D
-			if m == null or m == self or not bool(m.call("has_status", "masked")):
+			if m == null or m == self:
 				continue
+			var draw: float = float(m.call("lure_reach"))
 			var d2: float = m.global_position.distance_to(global_position)
-			if d2 <= float(GameData.status("masked").get("lure_radius", 8.0)) and d2 < best_d:
+			if draw > 0.0 and d2 <= draw and d2 < best_d:
 				best = m
 				best_d = d2
 	if best != null:
@@ -1058,6 +1172,37 @@ func _pick_target() -> void:
 		_lured = false
 		target = _player if is_instance_valid(_player) else null
 		interrupt()
+
+
+## Whoever a forced_target status on it names (Taunted: whoever put it there), if they still stand; else null.
+func _forced_target() -> Node3D:
+	for id: String in statuses:
+		if str(_sdef(id).get("forced_target", "")) != "source":
+			continue
+		var by: Variant = (statuses[id] as Dictionary).get("by")
+		if by is Node3D and is_instance_valid(by) and not _gone(by as Node):
+			return by as Node3D
+	return null
+
+
+## True if a body (an enemy, a thrall, a lure: is_dead(); the player: dead) is down or gone.
+static func _gone(n: Node) -> bool:
+	if not is_instance_valid(n):
+		return true
+	return bool(n.call("is_dead")) if n.has_method("is_dead") else bool(n.get("dead"))
+
+
+## True while it fights for someone else (Charmed).
+func _charmed() -> bool:
+	return _st_any("fights_for_source")
+
+
+## How far its friends are drawn to it (Masked, Charmed: the largest lure_radius on it), 0 if none.
+func lure_reach() -> float:
+	var r := 0.0
+	for id: String in statuses:
+		r = maxf(r, float(_sdef(id).get("lure_radius", 0.0)))
+	return r
 
 
 ## Spared and Dying: it kneels and does nothing.
@@ -1073,6 +1218,17 @@ func _kneeling() -> bool:
 ## attack. Returns true while it is running.
 func _flee(_delta: float) -> bool:
 	for id: String in statuses:
+		# Exiled: it will not come within keeps_away of whoever cast it out (outside it, it fights - and shoots - as it will)
+		var keep: float = float(_sdef(id).get("keeps_away", 0.0))
+		var kby: Variant = (statuses[id] as Dictionary).get("by")
+		if keep > 0.0 and kby is Node3D and is_instance_valid(kby):
+			var off: Vector3 = global_position - (kby as Node3D).global_position
+			off.y = 0.0
+			if off.length() < keep:
+				_windup = -1.0
+				facing = (off if off.length() > 0.05 else -facing).normalized()
+				velocity = facing * speed
+				return true
 		var how: String = str(_sdef(id).get("flees", ""))
 		if how == "":
 			continue
@@ -1134,7 +1290,26 @@ func _blow(amount: float) -> float:
 
 ## Hit whoever it is fighting. Dulled blows do not stagger you.
 func _strike(amount: float, is_heavy: bool) -> void:
-	target.take_hit(_blow(amount), is_heavy and not _st_any("no_poise_damage"), self)
+	var mult := 1.0
+	for id: String in statuses:
+		var by: Variant = (statuses[id] as Dictionary).get("by")
+		if _sdef(id).has("deals_mult_vs_source") and by != null and is_instance_valid(by) and (target == by or target.get("caster") == by):
+			mult *= float(_sdef(id)["deals_mult_vs_source"])          # Penitent: softer on you and yours
+	target.take_hit(_blow(amount) * mult, is_heavy and not _st_any("no_poise_damage"), self)
+
+
+## It has just started an attack: a status that punishes that answers (Penitent's on_attack_damage, through
+## whoever put it there).
+func _attack_started() -> void:
+	for id: String in statuses.keys():
+		if not statuses.has(id):
+			continue
+		var hurt_by: float = float(_sdef(id).get("on_attack_damage", 0.0))
+		var by: Variant = (statuses[id] as Dictionary).get("by")
+		if hurt_by > 0.0 and by != null and is_instance_valid(by) and (by as Node).has_method("deal_damage"):
+			(by as Node).call("deal_damage", self, hurt_by, ["ability", "holy", "through", "penance"])
+			if body.is_dead():
+				return
 
 
 ## The direction to walk in order to reach the player: along its path on the level's navigation

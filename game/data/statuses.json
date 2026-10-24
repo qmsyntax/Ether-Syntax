@@ -795,6 +795,7 @@
       "lasts": 5.0,
       "color": "f0a8e8",
       "fights_for_source": true,
+      "lure_radius": 8.0,
       "ends_on_source_hit": true,
       "heavy_lasts_mult": 0.5,
       "elite_status": "dazed"

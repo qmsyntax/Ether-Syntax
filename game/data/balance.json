@@ -489,6 +489,16 @@
     "_note": "Braced (design/05 2.3): during the wind-up of a skill marked braced you take damage_taken_mult of every blow and cannot be staggered. You are also rooted and committed to where you aimed. [MODEL]",
     "damage_taken_mult": 0.6
   },
+  "ward": {
+    "_note": "The ward pool (v2 build 2026-10-24: one pool, one cap - Holy's wards, Water's Crush ward, Ice Shell, Unholy's Black Shroud; holy.json Dawnward defines it). A pool on the body taken before health, after armour and tempering and before talents; a blow it wholly stops opens no wound and costs no poise. Every ward fills the one pool up to cap (Holy's ward_cap 60 = Water's crush cap); each amount keeps its own clock (default_lasts when a skill gives none) and the oldest is spent first. A summon's ward has the same cap. [MODEL, holy.json / water.json numbers]",
+    "cap": 60.0,
+    "default_lasts": 8.0
+  },
+  "life_healing": {
+    "_note": "Life's healing order (life.json v2, Knit): heal points go to the bar up to the ceiling wounds allow, then sink_frac of what is left into the oldest wound's sink; never a lost arm. A heal over time (heal_over) ticks every tick_s. [MODEL]",
+    "sink_frac": 0.25,
+    "tick_s": 0.25
+  },
   "minimap": {
     "_note": "Brent 2026-10-18: a minimap with fog of war in overland zones. The zone is cut into fog_cell_m squares; a square is seen once you stand within sight_m of it, and stays seen (saved per character). size_px is the map's width on screen; its height follows the zone's shape.",
     "fog_cell_m": 4.0,

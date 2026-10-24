@@ -170,6 +170,11 @@ var _shoved_left := 0.0              # metres still to slide from an enemy's sho
 var _shoved_dir := Vector3.ZERO
 ## Skills that sit on you for a while: buff id -> {"t": seconds left, ...its own numbers}.
 var buffs: Dictionary = {}
+## The ward pool (v2: Holy, Water's Crush, Ice Shell, Black Shroud - one pool, balance.json "ward" cap): each part
+## {amount, t, from, on_break, expire_heal_frac, no_stagger}, the oldest first. See add_ward / _ward_takes.
+var ward_parts: Array = []
+var _regen: Array = []                  # heals over time [{per_s, t}] (life healing order; Life's after-hit rule)
+var _hit_recent_t := 0.0                # since you last landed a hit (Life: heals run faster just after)
 ## Bodies you died in and have not recovered: {id, where, chamber, pos, equipped, bag}.
 var corpses: Array = []
 var _corpse_seq := 0
@@ -523,6 +528,8 @@ func _physics_process(delta: float) -> void:
 	_rear_window_t -= delta
 	_unseen_reveal_t -= delta
 	_tick_buffs(delta)
+	_tick_ward(delta)
+	_tick_regen(delta)
 	_tick_stores(delta)
 	_stagger_t -= delta
 	_meditate_block -= delta
@@ -757,6 +764,23 @@ func deal_damage(target: Node, base: float, tags: Array = []) -> HitContext:
 			FloatText.spawn(get_parent(), pos + Vector3.UP * 0.5, "OPENING", Color(1, 0.86, 0.45))
 		elif from_behind:
 			FloatText.spawn(get_parent(), pos + Vector3.UP * 0.5, "back", Color(0.75, 0.95, 1.0))
+	_hit_recent_t = _after_hit_s()
+	if target.has_method("status_sum_by"):
+		# what the target carries in your name pays you back on every hit you land (Tithed heals, Leeched drains)
+		var tithe: float = float(target.call("status_sum_by", "heals_attacker_frac", self))
+		if tithe > 0.0:
+			life_heal(ctx.applied * tithe)
+		var leech: float = float(target.call("status_sum_by", "drain_to_source", self))
+		if leech > 0.0:
+			drain_heal(ctx.applied * leech, target, true)
+		# Condemned: every hit on it from you or yours adds to your ward, at most ward_from_one from one body
+		var cond: Array = target.call("status_from", "ward_to_attacker", self)
+		if not cond.is_empty() and not ctx.has_tag("dot"):
+			var cdef: Dictionary = GameData.status(str(cond[0]))
+			var entry: Dictionary = cond[1]
+			var room: float = float(cdef.get("ward_from_one", INF)) - float(entry.get("warded", 0.0))
+			var got: float = add_ward(minf(float(cdef["ward_to_attacker"]), room), -1.0, {"from": "condemned"})
+			entry["warded"] = float(entry.get("warded", 0.0)) + got
 	ctx.killed = bool(target.call("is_dead"))
 	if bare_strike and not ctx.is_scenery:
 		# working it off: every strike that lands bleeds a little heat from your hottest affinity
@@ -829,6 +853,14 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 				if rcoat is Dictionary and is_instance_valid(melee_from) and not bool(melee_from.call("is_dead")):
 					apply_hit(melee_from, _coat_payload(rcoat as Dictionary), ["coat", str(rb.get("affinity", ""))])
 	ctx.heavy = heavy
+	# the ward takes the blow first (after armour and tempering, before talents); a blow it wholly stops opens no
+	# wound and costs no poise
+	var shrouded: bool = _ward_flag("no_stagger")
+	if ward() > 0.0 and ctx.base > 0.0:
+		ctx.base = _ward_takes(ctx.base)
+		if ctx.base <= 0.0:
+			_float("warded", Color(1.0, 0.95, 0.75))
+			return 0.0
 	if projecting:
 		disturbed.emit()             # pain drags the soul back before the blow is even counted
 	_meditate_block = 1.0
@@ -839,20 +871,7 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 		e.on_incoming(ctx)
 	if ctx.cancelled:
 		return 0.0
-	# a shell of ice takes the blow first; when it is used up it bursts
-	for bid: String in buffs.keys():
-		var shell: Dictionary = buffs[bid]
-		if float(shell.get("absorb", 0.0)) <= 0.0:
-			continue
-		var took: float = minf(float(shell["absorb"]), ctx.amount())
-		shell["absorb"] = float(shell["absorb"]) - took
-		ctx.base = maxf(0.0, ctx.base - took / maxf(ctx.mult, 0.0001))
-		if float(shell["absorb"]) <= 0.0:
-			buffs.erase(bid)
-			_burst_at(global_position, shell.get("on_break", {}), ["ability", str(shell.get("affinity", "")), "shell"])
-		if ctx.amount() <= 0.0:
-			return 0.0
-	if heavy and not braced:                 # set for an earth skill: nothing knocks you off it
+	if heavy and not braced and not shrouded:   # set for an earth skill (or shrouded): nothing knocks you off it
 		var combat: Dictionary = GameData.balance["combat"]
 		poise -= float(combat["heavy_poise_damage"]) * buff_num("poise_loss_mult") / maxf(0.01, buff_num("poise_mult"))
 		if poise <= 0.0:
@@ -881,7 +900,7 @@ func _tick_buffs(delta: float) -> void:
 		b["t"] = float(b["t"]) - delta
 		# Knit: health a second, up to the ceiling your wounds allow; then a trickle into the oldest wound
 		if float(b.get("heal_per_s", 0.0)) > 0.0 and not _heal_blocked():
-			var pts: float = float(b["heal_per_s"]) * delta
+			var pts: float = float(b["heal_per_s"]) * delta * heal_rate_mult()       # Life: faster just after you land a hit
 			var used: float = body.heal(pts)
 			if pts - used > 0.0:
 				var filled: Dictionary = body.fill_sinks((pts - used) * float(b.get("overflow_to_sink", 0.0)))
@@ -900,6 +919,20 @@ func _take_buff(ab: Dictionary) -> void:
 	b.erase("coat")
 	buffs[bid] = b
 	_put_coat(ab, bid)
+	# a buff's ward (Dawnward, Ice Shell, Black Shroud): into the one pool; ward_from spends a store of yours into it
+	if float(ab.get("ward", 0.0)) > 0.0 or str(ab.get("ward_from", "")) != "":
+		var amount: float = float(ab.get("ward", 0.0))
+		if str(ab.get("ward_from", "")) != "":
+			amount += float(store_take(str(ab["ward_from"])))
+		if ab.has("ward_max"):
+			amount = minf(amount, float(ab["ward_max"]))
+		var opts: Dictionary = {"from": bid}
+		for k: String in ["on_break", "expire_heal_frac", "no_stagger"]:
+			if ab.has(k):
+				opts[k] = ab[k]
+		if opts.has("on_break"):
+			opts["on_break_tags"] = ["ability", str(ab.get("affinity", "")), "ward"]
+		add_ward(amount, float(ab.get("duration", -1.0)), opts)
 	if float(ab.get("add_reflux", 0.0)) > 0.0:
 		var aff: String = str(ab.get("affinity", ""))
 		reflux_by[aff] = reflux_of(aff) + float(ab["add_reflux"])
@@ -915,6 +948,139 @@ func _take_buff(ab: Dictionary) -> void:
 		_winded_t = 0.0
 		_shoved_left = 0.0
 	_float(str(ab.get("name", "")).to_lower(), GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3))
+
+
+# --- the ward pool (v2, one mechanic: holy.json Dawnward, water.json crush_ward, ice.json Ice Shell, unholy.json Black Shroud) ---
+
+## What the pool holds now.
+func ward() -> float:
+	var w := 0.0
+	for p: Dictionary in ward_parts:
+		w += float(p["amount"])
+	return w
+
+
+## Add up to `amount` of ward lasting `lasts` s (default balance.json ward.default_lasts), never above the one cap;
+## `opts`: from (who gave it), source_cap (the most this source may hold at once: Water's Crush ward), on_break
+## (a payload round you when a blow empties the pool), expire_heal_frac, no_stagger. Returns what was added.
+func add_ward(amount: float, lasts: float = -1.0, opts: Dictionary = {}) -> float:
+	var room: float = GameData.num("ward", "cap") - ward()
+	if opts.has("source_cap"):
+		var mine := 0.0
+		for p: Dictionary in ward_parts:
+			if str(p.get("from", "")) == str(opts.get("from", "")):
+				mine += float(p["amount"])
+		room = minf(room, float(opts["source_cap"]) - mine)
+	var add: float = minf(amount, room)
+	if add <= 0.0:
+		return 0.0
+	var part: Dictionary = opts.duplicate()
+	part["amount"] = add
+	part["t"] = lasts if lasts > 0.0 else GameData.num("ward", "default_lasts")
+	ward_parts.append(part)
+	return add
+
+
+## True if a part of the pool carries flag `key` (Black Shroud's no_stagger).
+func _ward_flag(key: String) -> bool:
+	for p: Dictionary in ward_parts:
+		if bool(p.get(key, false)):
+			return true
+	return false
+
+
+## The pool takes `amount`, oldest part first; returns what is left for the bar. A blow that empties it sets off
+## the spent parts' own on_break, or else your affinities' ward_break_payload (Holy's rule).
+func _ward_takes(amount: float) -> float:
+	var left: float = amount
+	var breaks: Array = []
+	while left > 0.0 and not ward_parts.is_empty():
+		var p: Dictionary = ward_parts[0]
+		var took: float = minf(left, float(p["amount"]))
+		p["amount"] = float(p["amount"]) - took
+		left -= took
+		if float(p["amount"]) <= 0.0001:
+			ward_parts.pop_front()
+			if p.has("on_break"):
+				breaks.append(p)
+	if ward_parts.is_empty():
+		if breaks.is_empty():
+			for aff: String in affinities:
+				var rule: Dictionary = GameData.affinity(aff).get("ward_break_payload", {})
+				if not rule.is_empty():
+					breaks.append({"on_break": rule, "on_break_tags": ["ability", aff, "ward"]})
+		for b: Dictionary in breaks:
+			FloatText.spawn(get_parent(), global_position + Vector3.UP * 1.2, "WARD BREAKS", Color(1.0, 0.95, 0.7))
+			_burst_at(global_position, b["on_break"], b.get("on_break_tags", ["ability", "ward"]))
+	return left
+
+
+## Ward parts run out; one that runs out unspent may give part of itself back as health (Dawnward).
+func _tick_ward(delta: float) -> void:
+	for p: Dictionary in ward_parts.duplicate():
+		p["t"] = float(p["t"]) - delta
+		if float(p["t"]) <= 0.0:
+			ward_parts.erase(p)
+			if float(p.get("expire_heal_frac", 0.0)) > 0.0:
+				life_heal(float(p["amount"]) * float(p["expire_heal_frac"]))
+
+
+## Heal by Life's order (balance.json life_healing): the bar up to what wounds allow, then a share of the rest into
+## the oldest natural wound. Nothing while healing is refused. Returns what reached the bar.
+func life_heal(points: float) -> float:
+	if points <= 0.0 or _heal_blocked():
+		return 0.0
+	var used: float = body.heal(points)
+	if points - used > 0.0:
+		var filled: Dictionary = body.fill_sinks((points - used) * GameData.num("life_healing", "sink_frac"), true)
+		_wounds_closed(filled["closed"])
+	return used
+
+
+## Regrow `points` over `seconds` (Life's heals over time; faster just after you land a hit, Life's rule).
+func heal_over(points: float, seconds: float) -> void:
+	if points > 0.0 and seconds > 0.0:
+		_regen.append({"per_s": points / seconds, "t": seconds})
+
+
+## How much faster a heal over time runs now: Life's heal_mult_after_hit for after_hit_s after you land a hit.
+func heal_rate_mult() -> float:
+	if _hit_recent_t <= 0.0:
+		return 1.0
+	var m := 1.0
+	for aff: String in affinities:
+		m = maxf(m, float(GameData.affinity(aff).get("heal_mult_after_hit", 1.0)))
+	return m
+
+
+func _after_hit_s() -> float:
+	var s := 0.0
+	for aff: String in affinities:
+		s = maxf(s, float(GameData.affinity(aff).get("after_hit_s", 0.0)))
+	return s
+
+
+func _tick_regen(delta: float) -> void:
+	_hit_recent_t -= delta
+	for r: Dictionary in _regen.duplicate():
+		var step: float = minf(delta, float(r["t"]))
+		r["t"] = float(r["t"]) - delta
+		life_heal(float(r["per_s"]) * step * heal_rate_mult())
+		if float(r["t"]) <= 0.0:
+			_regen.erase(r)
+
+
+## A drain (Unholy's rule, Leeched, Torment's ticks): heals the bar only - never a wound's sink, so it is not talent
+## healing - and banks every point it heals or would have healed as stolen life (the affinity's "stolen" store).
+func drain_heal(amount: float, _from: Node = null, _capped: bool = true) -> float:
+	if amount <= 0.0:
+		return 0.0
+	var healed: float = 0.0 if _heal_blocked() else body.heal(amount)
+	for aff: String in affinities:
+		var st: Dictionary = GameData.affinity(aff).get("stolen", {})
+		if not st.is_empty():
+			store_add("stolen", int(round(amount)), int(st.get("max", 100)), float(st.get("fade_s", 12.0)))
+	return healed
 
 
 # --- the weapon coat (v2, one mechanic: fire.json Stoke's coat, poison.json Venom Edge's strike_payload) ---------
@@ -2665,6 +2831,7 @@ func store_take(id: String) -> int:
 func on_crush(enemy: Node, metres_left: float, hit: Node) -> void:
 	var cfg: Dictionary = GameData.balance["shove"]
 	var dmg: float = float(cfg["crush_base"]) + float(cfg["crush_per_m"]) * metres_left
+	_crush_ward()
 	if is_instance_valid(enemy) and not bool(enemy.call("is_dead")):
 		FloatText.spawn(get_parent(), (enemy as Node3D).global_position + Vector3.UP * 0.4, "CRUSH", Color(0.55, 0.8, 1.0))
 		deal_damage(enemy, dmg, ["crush", "water"])
@@ -2674,6 +2841,14 @@ func on_crush(enemy: Node, metres_left: float, hit: Node) -> void:
 		deal_damage(hit, dmg * float(cfg["crush_other_frac"]), ["crush", "water"])
 		if is_instance_valid(hit) and not bool(hit.call("is_dead")):
 			hit.call("interrupt")
+
+
+## Water's rule (v2 crush_ward): each Crush you cause shores you up - per_crush Ward, at most cap from Crushes.
+func _crush_ward() -> void:
+	for aff: String in affinities:
+		var cw: Dictionary = GameData.affinity(aff).get("crush_ward", {})
+		if not cw.is_empty():
+			add_ward(float(cw.get("per_crush", 15.0)), float(cw.get("lasts", 6.0)), {"from": "crush", "source_cap": float(cw.get("cap", 60.0))})
 
 
 ## Lightning's Live marks. The third is an Overload. A hit on a Soaked target also marks every
