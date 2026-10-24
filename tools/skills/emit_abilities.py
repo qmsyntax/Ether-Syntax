@@ -52,19 +52,19 @@ GENERIC = {"cost", "cost_per_s", "cost_note", "reflux_per_cost", "windup", "brac
            "coat", "weapon", "needs_status"}
 BY_KIND = {
     # crushes (Floe Drive): every shove you cause already ends in a Crush against a wall, stone or body (enemy.gd _tick_shove)
-    "projectile": {"speed", "life", "pierce", "width", "trail", "hits_corpses", "corpse_burst", "zone", "shot", "crushes"},
+    "projectile": {"speed", "life", "pierce", "width", "trail", "hits_corpses", "corpse_burst", "zone", "shot", "crushes", "split"},
     "beam": {"width", "pierce", "jumps", "jump_radius", "bounces", "bounce_off", "frozen_counts_as"},
     "melee_burst": {"arc_deg", "reach_bonus", "pull", "pull_before_blast", "spall", "patch_bonus", "patch_bonus_max",
                     "per_patch_essence", "zone", "douses", "clears_clouds", "damage_from_heat", "heat_floor", "spend_blood",
                     "pools_per_two_spent", "consume", "daze_at", "essence_per_hit", "essence_max_hits", "swallow_per_hit",
                     "pip_shove", "elite_stun_mult"},
     "targeted_strike": {"range_bonus", "burst", "burst_always", "through", "through_dist", "pip_mult", "force_rear",
-                        "waterlogged_stacks", "burst_zone", "spall"},
+                        "waterlogged_stacks", "burst_zone", "spall", "swallow_per_hit", "zone"},
     "dash": {"dash_speed", "dash_time", "on_pass", "pass_radius", "stops_at_bodies", "trail", "on_stop", "heavy_poise",
              "gain_pips", "no_recovery", "after_speed_mult", "passes_bodies", "pass_through", "pool_bonus_m", "pool_bonus_max",
              "clears_winded", "never_winds", "pass_armoured", "leave_decoy", "on_arrive", "arrive_radius", "leap", "range"},
     "blink": {"arrive_radius", "on_arrive", "corpse_range", "needs_shadow", "arrive_behind", "rear_window"},
-    "ground_zone": {"zone", "at", "needs", "recent_death_s", "spends_corpse"},
+    "ground_zone": {"zone", "at", "needs", "recent_death_s", "spends_corpse", "drops_aggro"},
     "self_buff": {"buff", "move_speed_mult", "add_reflux", "strike_status", "hits", "melee_taken_mult", "radius", "retaliate",
                   "strikes_per_mark", "absorb", "on_break", "unaware_mult", "incoming_mult", "attacker_status",
                   "attacker_status_s", "blood_per_wound", "spend_blood", "shed_per_blood", "poise_mult", "shed_mult",
@@ -75,8 +75,9 @@ BY_KIND = {
                   # v2: auras and end payloads, a millstone, Edge Heat, the counter window, shots turned aside
                   "aura", "on_end", "immovable", "set_focus", "attacker_reach", "deflect_radius", "gain_pips_per_deflect",
                   "window_s", "move_factor", "counter_reach", "counter", "counter_ward", "patience_ward", "behind_dist",
-                  "force_rear", "gain_pips", "refund_unused", "burst", "burst_radius", "focus_gain", "refuses_shots"},
-    "delayed_blast": {"radius", "delay", "leave_prop", "bonus_also_vs"},
+                  "force_rear", "gain_pips", "refund_unused", "burst", "burst_radius", "focus_gain", "refuses_shots",
+                  "hush_radius", "status_time_mult"},
+    "delayed_blast": {"radius", "delay", "leave_prop", "bonus_also_vs", "follows_lit"},
     "detonate": {"refund_per_stack", "consume_zone", "per_target_damage", "ray_damage", "gather_radius", "gather_into",
                  "gather_cap", "needs_status", "consume", "beats", "beat_s", "pool_per_beat", "after_status",
                  "bonus_vs_asleep", "decoy_burst", "per_stack_burst", "overload_fracs", "clock_to", "bill_mult", "stagger_at"},
@@ -84,7 +85,7 @@ BY_KIND = {
     "displace": {"mode", "radius", "pull", "keep", "turn_s", "throw", "on_land"},
     "prop": {"min_range", "width", "thickness", "height", "rise_time", "life", "on_rise", "hp", "hp_per_s", "spread_every",
              "spread_kind", "max_count", "shape", "light_radius", "tick_s", "payload", "blocks_movement", "blocks_shots",
-             "radius", "blocks", "collapse_radius", "length", "shatter_burst"},
+             "radius", "blocks", "collapse_radius", "length", "shatter_burst", "lure_radius", "turn_s", "crack_radius", "sear_bonus"},
     "rod": {"life", "relay_radius", "relay_range", "relay_hit"},
     "smite": {"delay", "nearest_to_point", "lure_radius", "elite_ok", "stand_s", "on_death_growth", "from_above",
               "spread_stacks", "spread_radius", "spread_max"},
@@ -106,7 +107,7 @@ PAYLOAD_KEYS = {"damage", "damage_mult", "status", "stacks", "statuses", "status
                 "shove_dir", "marks", "bonus_vs", "bonus_flat_vs", "poise_vs", "through", "jumps", "consume", "consume_stacks",
                 "execute_below", "execute_excludes", "unliving_mult", "stun_per_mark", "stun_min", "turn_s", "needs_facing",
                 "quells_censer", "release_shove", "status_s_if_not", "dark_status_s", "blind_if_dark", "shatter_radius",
-                "burst_radius", "elite_stun_mult", "heat_scale", "jump_radius", "against_wall_mult"}
+                "burst_radius", "elite_stun_mult", "heat_scale", "jump_radius", "against_wall_mult", "on_kill", "execute_needs"}
 ZONE_KEYS = {"shape", "radius", "length", "width", "life", "tick_s", "payload", "extra_status", "shove_mult", "push_per_s",
              "caster_speed_mult", "pip_gain_mult", "bright", "blocks_sight", "banks", "life_per_heat", "life_max", "on_enter",
              "pull_per_s", "drift_speed", "drift", "drift_dir", "dark", "dark_extra_ticks", "kill_projectiles", "freeze_pips",
@@ -290,7 +291,7 @@ def normalise(aid, aff, s, nums, kind):
     if "stripped_s" in nums and isinstance(nums.get("on_pass"), dict):
         nums["on_pass"]["status_s"] = nums.pop("stripped_s")
     for k in ("status_s_per_heat", "status_s_max", "needs_facing", "release_shove", "dark_status_s", "blind_if_dark",
-              "execute_below", "execute_excludes", "unliving_mult", "quells_censer"):
+              "execute_below", "execute_excludes", "unliving_mult", "quells_censer", "execute_needs"):
         if k in nums and isinstance(on_hit, dict):
             on_hit[k] = nums.pop(k)
     if "status_s" in nums and isinstance(on_hit, dict):
@@ -389,6 +390,25 @@ def normalise(aid, aff, s, nums, kind):
     # Cataract: the hit on a body already against something rides on the hit
     if "against_wall_mult" in nums:
         nums.setdefault("on_hit", OD())["against_wall_mult"] = nums.pop("against_wall_mult")
+    # what a skill pays when its hit kills (on_kill): Hungry Dark's essence, swallow and Vanish, Last Draught's held
+    # blood (kill_blood, kill_blood_per_stack), Reaping Blow's stolen life (kill_steals)
+    kill = OD(nums.pop("on_kill")) if isinstance(nums.get("on_kill"), dict) else OD()
+    if "kill_blood" in nums:
+        kill["blood"] = nums.pop("kill_blood")
+    if "kill_blood_per_stack" in nums:
+        kill["blood_per_stack"] = nums.pop("kill_blood_per_stack")
+    if nums.pop("kill_steals", False):
+        kill["steals"] = True
+    if kill:
+        nums.setdefault("on_hit", OD())["on_kill"] = kill
+    # Withering Needle: what you regrow if the body dies carrying its Withering rides on the status
+    if isinstance(nums.get("on_kill_heal"), dict) and isinstance(nums.get("on_hit"), dict):
+        okh = nums.pop("on_kill_heal")
+        okh.pop("needs_status", None)
+        nums["on_hit"].setdefault("status_data", OD())["on_kill_heal"] = okh
+    # a skill's own bonus on the Dying (Last Draught's dying_mult, as Death's rule does for every Death skill)
+    if "dying_mult" in nums and isinstance(nums.get("on_hit"), dict):
+        nums["on_hit"].setdefault("bonus_vs", OD())["dying"] = round(nums.pop("dying_mult") - 1.0, 4)
     if "dose_clock" in nums:
         nums["status_lasts"] = OD([("dosed", nums.pop("dose_clock"))])      # read generically: a buff that sets a status's clock
     if "times_flesh" in nums:

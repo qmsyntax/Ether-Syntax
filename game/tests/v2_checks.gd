@@ -29,6 +29,7 @@ func run() -> void:
 	await _coat_and_fire()
 	await _ground_and_edge()
 	await _storm_and_tide()
+	await _dark_light_dream()
 
 
 # --- helpers ------------------------------------------------------------------------------------
@@ -551,6 +552,150 @@ func _storm_and_tide() -> void:
 	check.call("and whoever it lands among takes %d" % int(ob["on_land"]["damage"]), float(t.call("_lost", among)) >= float(ob["on_land"]["damage"]) - 0.5, "lost %f" % float(t.call("_lost", among)))
 	p.set("hovered", null)
 	p.set("cursor_fixed", null)
+	_clean()
+
+
+# --- Dark's ambush and vanish, Light's sear and lines, Dream's twilight --------------------------------------------
+
+## A zone of Dark (or bright light) under `at`, as Dark's skills lay it.
+func _dark_at(p: Node, at: Vector3, r: float = 4.0) -> GroundZone:
+	var z := GroundZone.new()
+	z.shape = "circle"
+	z.caster = p
+	z.dark = true
+	z.kind = "dark_ground"
+	z.bright = false
+	z.radius = r
+	z.life = 99.0
+	z.from = at
+	z.to = at
+	t.add_child(z)
+	z.global_position = at
+	_keep(z)
+	return z
+
+
+func _dark_light_dream() -> void:
+	var p := _player(Vector3(6000, 0, 0), ["dark", "light", "dream"])
+	for id: String in ["muffle", "still_lamp", "burning_glass", "prism_bolt", "pall", "lucid"]:
+		p.call("learn", id)
+	await t.get_tree().physics_frame
+	p.set("_facing", Vector3(0, 0, -1))
+	# Ambush: standing in Dark you are Unseen; your first hit out of it counts as from behind and does x1.5
+	var dz := _dark_at(p, p.global_position)
+	var foe := _enemy(p, Vector3(0, 0, -1.6))
+	foe.set("facing", Vector3(0, 0, 1))                   # it faces you: not from behind
+	p.set("_unseen_reveal_t", 0.0)
+	var amb: float = float(GameData.affinity("dark")["ambush_mult"])
+	var rear: float = float(GameData.balance["combat"]["rear_mult"])
+	var h1: HitContext = p.call("deal_damage", foe, 100.0, ["test"])
+	var h2: HitContext = p.call("deal_damage", foe, 100.0, ["test"])
+	check.call("Ambush: the first hit out of the Dark is from behind and x%s (%.0f); the next is plain (%.0f)" % [str(amb), h1.applied, h2.applied],
+		_near(h1.applied, 100.0 * amb * rear, 0.5) and _near(h2.applied, 100.0, 0.5))
+	# Muffle: striking does not show you, so every hit can be an Ambush - and a kill raises no alarm
+	_cast(p, "muffle")
+	p.set("_unseen_reveal_t", 0.0)
+	var m1: HitContext = p.call("deal_damage", foe, 100.0, ["test"])
+	var m2: HitContext = p.call("deal_damage", foe, 100.0, ["test"])
+	var mf: float = float(GameData.ability("muffle")["unaware_mult"])
+	check.call("Muffled, every hit is an Ambush", m1.applied >= 100.0 * amb * rear - 0.5 and _near(m2.applied, m1.applied, 0.5), "%f %f" % [m1.applied, m2.applied])
+	var bystander := _enemy(p, Vector3(3.0, 0, -1.6))
+	var heard := [false]
+	foe.connect("hurt", func(_e: Node, _s: Node) -> void: heard[0] = true)
+	(foe.get("body") as Body).hp = 1.0
+	p.call("deal_damage", foe, 50.0, ["test"])
+	check.call("and a Muffled kill raises no alarm: nobody wakes, and those near it cannot call for help", not bool(heard[0]) and bool(bystander.call("has_status", "muted")))
+	(p.get("buffs") as Dictionary).clear()
+	dz.life = 0.0
+	dz.call("tick", 0.1)
+	# Hungry Dark: a kill Vanishes you - unseen anywhere until your next hit, which is an Ambush
+	var hd: Dictionary = GameData.ability("hungry_dark")
+	var prey := _enemy(p, Vector3(0, 0, -1.6))
+	(prey.get("body") as Body).hp = 1.0
+	p.set("hovered", prey)
+	_cast(p, "hungry_dark")
+	p.set("hovered", null)
+	var vanished: bool = (p.get("buffs") as Dictionary).has("vanished")
+	check.call("Hungry Dark: a kill Vanishes you for %s s" % str(hd["on_hit"]["on_kill"]["self_unseen_s"]), vanished and bool(p.call("_hidden")) is bool)
+	var watcher := _enemy(p, Vector3(0, 0, -6.0))
+	watcher.set("facing", Vector3(0, 0, 1))
+	p.set("_unseen_reveal_t", 0.0)
+	p.set("_cast_hidden_t", 0.0)
+	check.call("Vanished, no enemy past %s m sees you, in the light as in the dark" % str(GameData.affinity("dark")["unseen_beyond"]),
+		bool(p.call("unseen_from", watcher.global_position)))
+	var v1: HitContext = p.call("deal_damage", watcher, 100.0, ["test"])
+	check.call("and the hit that ends it is an Ambush", _near(v1.applied, 100.0 * amb * rear, 0.5) and not (p.get("buffs") as Dictionary).has("vanished"), "%f" % v1.applied)
+	# Sear: a light hit on a Lit target does +25% and lights it afresh; a lamp's light adds its own
+	var lt := _enemy(p, Vector3(4.0, 0, -3.0))
+	lt.call("add_status", "lit", 1, p)
+	(lt.get("statuses") as Dictionary)["lit"]["t"] = 0.5
+	var sear: float = float(GameData.affinity("light")["sear_vs_lit"])
+	var s1: HitContext = p.call("deal_damage", lt, 100.0, ["ability", "light"])
+	check.call("Light's Sear: on a Lit target a light hit does x%s and lights it afresh" % str(1.0 + sear),
+		_near(s1.applied, 100.0 * (1.0 + sear), 0.5) and float((lt.get("statuses") as Dictionary)["lit"]["t"]) > 1.0, "%f" % s1.applied)
+	p.set("cursor_fixed", lt.global_position)
+	_cast(p, "still_lamp")
+	var s2: HitContext = p.call("deal_damage", lt, 100.0, ["ability", "light"])
+	check.call("in your Still Lamp's light the Sear is +%s more" % str(GameData.ability("still_lamp")["sear_bonus"]),
+		_near(s2.applied, 100.0 * (1.0 + sear + float(GameData.ability("still_lamp")["sear_bonus"])), 0.5), "%f" % s2.applied)
+	# Burning Glass follows a Lit enemy
+	var bg: Dictionary = GameData.ability("burning_glass")
+	var moving := _enemy(p, Vector3(-4.0, 0, -6.0))
+	moving.call("add_status", "lit", 1, p)
+	p.set("cursor_fixed", moving.global_position)
+	_cast(p, "burning_glass")
+	moving.global_position += Vector3(2.5, 0, 0)
+	var blasts: Array = t.get_tree().get_nodes_in_group("blasts")
+	for b: Node in blasts:
+		b.call("tick", float(bg["delay"]) + 0.05)
+	check.call("Burning Glass on a Lit enemy lands where it has gone", float(t.call("_lost", moving)) > 0.0, "lost %f" % float(t.call("_lost", moving)))
+	p.set("cursor_fixed", null)
+	# Prism Bolt splits where it ends into lines that strike past it
+	var pb: Dictionary = GameData.ability("prism_bolt")
+	p.global_position = Vector3(6000, 0, 30.0)          # clear ground: nothing else in the bolt's way
+	var first := _enemy(p, Vector3(0, 0, -8.0))
+	var behind := _enemy(p, Vector3(0.7, 0, -12.0))     # on the line 10 degrees off the flight
+	p.set("_facing", Vector3(0, 0, -1))
+	_cast(p, "prism_bolt")
+	var bolt: Node3D = t.call("_bolt_of", p)
+	if bolt != null:
+		t.call("_fly", bolt)
+	check.call("Prism Bolt: it ends on the first and splits into %d lines, one of which strikes the one behind" % int(pb["split"]["count"]),
+		float(t.call("_lost", first)) > 0.0 and float(t.call("_lost", behind)) >= float(pb["split"]["damage"]) - 0.5, "first %f behind %f" % [float(t.call("_lost", first)), float(t.call("_lost", behind))])
+	# twilight: a Dream status lasts x1.25 on a target in Dim light (neither Lit nor Dark)
+	var dim := _enemy(p, Vector3(8.0, 0, 6.0))
+	var lvl: String = Light.level_at(t.get_tree(), dim.global_position)
+	p.call("apply_hit", dim, {"status": "dazed"}, ["ability", "dream"])
+	var want: float = float(GameData.status("dazed")["lasts"]) * (float(GameData.affinity("dream")["status_time_dim"]) if lvl == "dim" else 1.0)
+	check.call("Dream's twilight: in Dim light its statuses last x%s (here: %s)" % [str(GameData.affinity("dream")["status_time_dim"]), lvl],
+		lvl == "dim" and _near(float((dim.get("statuses") as Dictionary)["dazed"]["t"]), want, 0.01), str(dim.get("statuses")))
+	# Lucid: statuses you lay last longer while it lasts
+	_cast(p, "lucid")
+	dim.call("clear_status", "dazed")
+	p.call("apply_hit", dim, {"status": "dazed"}, ["ability", "dream"])
+	check.call("Lucid: your statuses last x%s on top" % str(GameData.ability("lucid")["status_time_mult"]),
+		_near(float((dim.get("statuses") as Dictionary)["dazed"]["t"]), want * float(GameData.ability("lucid")["status_time_mult"]), 0.01))
+	(p.get("buffs") as Dictionary).clear()
+	# Pall: everyone coming for you loses you
+	var hunter := _enemy(p, Vector3(2.0, 0, 2.0))
+	hunter.set("target", p)
+	hunter.set("_windup", 0.3)
+	p.set("cursor_fixed", p.global_position)
+	_cast(p, "pall")
+	check.call("Pall: whoever was coming for you loses the swing it was winding up", float(hunter.get("_windup")) < 0.0)
+	p.set("cursor_fixed", null)
+	hunter.set("target", null)
+	# Withering Needle: a body that dies Withering regrows you
+	var wn := _player(Vector3(6200, 0, 0), ["life"])
+	var vic := _enemy(wn, Vector3(0, 0, -3.0))
+	var okh: Dictionary = (GameData.ability("withering_needle")["on_hit"] as Dictionary)["status_data"]["on_kill_heal"]
+	wn.call("apply_hit", vic, GameData.ability("withering_needle")["on_hit"], ["ability", "life"])
+	(vic.get("body") as Body).hp = 1.0
+	(wn.get("body") as Body).hp = 50.0
+	wn.call("deal_damage", vic, 10.0, ["ability", "life"])
+	wn.call("_tick_regen", float(okh["over_s"]) + 0.1)
+	check.call("Withering Needle: a body that dies Withering regrows you %s over %s s" % [str(okh["heal"]), str(okh["over_s"])],
+		(wn.get("body") as Body).hp >= 50.0 + float(okh["heal"]) - 0.5, "hp %f" % (wn.get("body") as Body).hp)
 	_clean()
 
 

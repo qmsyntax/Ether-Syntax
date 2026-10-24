@@ -175,6 +175,8 @@ var buffs: Dictionary = {}
 var ward_parts: Array = []
 var _regen: Array = []                  # heals over time [{per_s, t}] (life healing order; Life's after-hit rule)
 var _hit_recent_t := 0.0                # since you last landed a hit (Life: heals run faster just after)
+## Ambush (Dark's rule): the cast you started while Unseen keeps that for its own hits a moment (casting shows you).
+var _cast_hidden_t := 0.0
 ## Edge Heat (Metal's rule): stacks on the one enemy your metal blows keep landing on; see _edge_heat.
 var focus := 0
 var _focus_target: Node = null
@@ -536,6 +538,7 @@ func _physics_process(delta: float) -> void:
 	_tick_ward(delta)
 	_tick_regen(delta)
 	_focus_t -= delta
+	_cast_hidden_t -= delta
 	if _focus_t <= 0.0 and focus > 0:
 		focus = 0                                # Edge Heat cools when no metal blow lands for focus_cools_s
 	_tick_stores(delta)
@@ -758,6 +761,21 @@ func deal_damage(target: Node, base: float, tags: Array = [], opts: Dictionary =
 		for aff: String in affinities:
 			if ctx.has_tag(aff):
 				ctx.mult *= 1.0 + float(GameData.affinity(aff).get("rear_bonus", 0.0))
+	# Ambush (Dark's rule, ambush_mult): your first hit out of Unseen counts as from behind and past the guard, and more
+	if not ctx.has_tag("dot") and not ctx.is_scenery and (_hidden() or _cast_hidden_t > 0.0):
+		var amb := 1.0
+		for aff2: String in affinities:
+			amb = maxf(amb, float(GameData.affinity(aff2).get("ambush_mult", 1.0)))
+		if amb > 1.0:
+			ctx.mult *= amb
+			from_behind = true
+			if not ctx.has_tag("through"):
+				ctx.tags.append("through")
+			FloatText.spawn(get_parent(), (target as Node3D).global_position + Vector3.UP * 0.9, "AMBUSH", GameData.affinity_color("dark").lightened(0.4))
+			_cast_hidden_t = 0.0
+			for vid: String in buffs.keys():
+				if bool((buffs[vid] as Dictionary).get("ends_on_hit", false)) and bool((buffs[vid] as Dictionary).get("unseen_anywhere", false)):
+					buffs.erase(vid)              # Vanished: your hit ends it
 	var opening: bool = bare_strike and target.has_method("has_status") and bool(target.call("has_status", "staggered"))
 	if from_behind:
 		ctx.mult *= float(combat["rear_mult"])           # where you stand matters, for every affinity
@@ -775,6 +793,8 @@ func deal_damage(target: Node, base: float, tags: Array = [], opts: Dictionary =
 		elif from_behind:
 			FloatText.spawn(get_parent(), pos + Vector3.UP * 0.5, "back", Color(0.75, 0.95, 1.0))
 	_hit_recent_t = _after_hit_s()
+	if ctx.has_meta("seared") and target.has_method("add_status") and not bool(target.call("is_dead")):
+		target.call("add_status", "lit", 1, self)          # the Sear refreshes the Lit
 	if _edge_counts(ctx):
 		_edge_heat(target)
 	if target.has_method("status_sum_by"):
@@ -1029,6 +1049,17 @@ func _take_buff(ab: Dictionary) -> void:
 		_winded_t = 0.0
 		_shoved_left = 0.0
 	_float(str(ab.get("name", "")).to_lower(), GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3))
+
+
+## The sear_bonus of lamps of yours whose light reaches `at` (Still Lamp).
+func _lamp_sear(at: Vector3) -> float:
+	var b := 0.0
+	if not is_inside_tree():
+		return b
+	for l: Node in get_tree().get_nodes_in_group("lamps"):
+		if l.get("caster") == self and float(l.get("sear_bonus")) > 0.0 and Vector2(at.x - (l as Node3D).global_position.x, at.z - (l as Node3D).global_position.z).length() <= float(l.get("light_radius")):
+			b += float(l.get("sear_bonus"))
+	return b
 
 
 # --- Edge Heat (metal.json, Metal's rule; a player-side count like Slipstream's pips) -----------------------
@@ -1768,6 +1799,11 @@ func _start_blast(point: Vector3, ab: Dictionary, stage_mult: float, tags: Array
 	blast.color = GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3)
 	get_parent().add_child(blast)
 	blast.global_position = Vector3(point.x, global_position.y, point.z)
+	if bool(ab.get("follows_lit", false)):
+		# Burning Glass: cast on a Lit enemy it tracks it, landing where that enemy is when the delay ends
+		var lit_t: Node3D = _nearest_enemy_to(point, 1.5)
+		if lit_t != null and bool(lit_t.call("has_status", "lit")):
+			blast.follow = lit_t
 	_strike_t = 0.2
 
 
@@ -2600,11 +2636,17 @@ func apply_hit(target: Node, payload: Dictionary, tags: Array = [], stage_mult: 
 		ctx = deal_damage(target, (strike_damage() * float(payload["damage_mult"]) + flat) * stage_mult * bonus, tags, dopts)
 	elif flat > 0.0:
 		ctx = deal_damage(target, flat * stage_mult * bonus, tags, dopts)
+	if ctx != null and ctx.killed and payload.get("on_kill") is Dictionary:
+		_kill_reward(payload["on_kill"], target, ctx)
 	if not is_instance_valid(target) or bool(target.call("is_dead")) or not target.has_method("add_status"):
 		return ctx
 	if payload.has("execute_below") and target.get("body") is Body:
 		var b: Body = target.get("body")
 		var excluded: bool = (payload.get("execute_excludes", []) as Array).has("elite") and target.has_method("is_elite") and bool(target.call("is_elite"))
+		# Last Draught (execute_needs): the execute only if it carried that status when the blow landed (before the
+		# strike drank it: execute_had)
+		if str(payload.get("execute_needs", "")) != "" and not bool(payload.get("execute_had", false)) and not bool(target.call("has_status", str(payload["execute_needs"]))):
+			excluded = true
 		if not excluded and b.total() < b.total_max() * float(payload["execute_below"]):
 			FloatText.spawn(get_parent(), (target as Node3D).global_position + Vector3.UP * 0.7, "ENDED", Color(0.9, 0.86, 0.72))
 			deal_damage(target, b.total() * 10.0 + 1.0, tags + ["execute"])
@@ -2723,6 +2765,24 @@ func _against_something(t: Node3D) -> bool:
 	return false
 
 
+## What a skill pays you when its hit kills (on_kill: Hungry Dark, Last Draught, Reaping Blow): essence back (never
+## more than the cost), swallowed light, a Vanish, held blood (per stack the hit spent too), the life it had (stolen).
+func _kill_reward(k: Dictionary, target: Node, ctx: HitContext) -> void:
+	if float(k.get("essence", 0.0)) > 0.0:
+		essence = minf(essence_max, essence + float(k["essence"]))
+	if int(k.get("swallow", 0)) > 0:
+		store_add("swallowed", int(k["swallow"]), 5, 12.0)
+	if float(k.get("self_unseen_s", 0.0)) > 0.0:
+		_take_state("vanished", float(k["self_unseen_s"]))
+	if int(k.get("blood", 0)) > 0:
+		gain_blood(int(k["blood"]))
+	if bool(k.get("steals", false)):
+		for aff: String in affinities:
+			var st: Dictionary = GameData.affinity(aff).get("stolen", {})
+			if not st.is_empty():
+				store_add("stolen", int(round(ctx.applied)), int(st.get("max", 100)), float(st.get("fade_s", 12.0)))
+
+
 ## One status's own timing on a hit (2026-10-23, rune strength): the payload's `status_time_of`
 ## {id: multiple} lengthens that status alone; a `statuses` entry with its own "lasts" lasts exactly
 ## that (a silence's seconds), whatever the payload's other statuses do. Data only - no ids here.
@@ -2783,10 +2843,13 @@ func _status_opts(target: Node, payload: Dictionary, tags: Array) -> Dictionary:
 		var cond: Dictionary = payload["status_s_if_not"]
 		if not bool(target.call("has_status", str(cond.get("status", "")))):
 			opts["lasts"] = float(opts.get("lasts", GameData.status(str(payload.get("status", ""))).get("lasts", 1.0))) * float(cond.get("frac", 1.0))
-	var mult: float = float(payload.get("status_time_mult", 1.0))
+	var mult: float = float(payload.get("status_time_mult", 1.0)) * buff_num("status_time_mult")      # Lucid: yours last longer
 	for aff2: String in affinities:
 		if not tags.has(aff2):
 			continue
+		# twilight (Dream's rule): its statuses last status_time_dim longer on a target standing in Dim light
+		if GameData.affinity(aff2).has("status_time_dim") and is_inside_tree() and Light.level_at(get_tree(), (target as Node3D).global_position) == "dim":
+			mult *= float(GameData.affinity(aff2)["status_time_dim"])
 		var vs: Dictionary = GameData.affinity(aff2).get("status_time_vs", {})
 		for st: String in vs:
 			if bool(target.call("has_status", st)):
@@ -2922,6 +2985,10 @@ func _affinity_rules(ctx: HitContext, target: Node) -> void:
 			ctx.mult *= float(a["hale_mult"])
 		if a.has("dying_mult") and target.has_method("has_status") and bool(target.call("has_status", "dying")):
 			ctx.mult *= float(a["dying_mult"])
+		if a.has("sear_vs_lit") and target.has_method("has_status") and bool(target.call("has_status", "lit")):
+			# Sear: a light hit on a target already Lit does more (a lamp of yours lighting it adds its sear_bonus)
+			ctx.mult *= 1.0 + float(a["sear_vs_lit"]) + _lamp_sear(at)
+			ctx.set_meta("seared", true)
 		if a.has("focus_max") and target == _focus_target and _edge_counts(ctx):
 			ctx.mult *= 1.0 + float(a.get("focus_mult", 0.08)) * float(focus)
 		if bool(a.get("times_flesh", false)) and target.has_method("flesh"):
@@ -2978,6 +3045,29 @@ func _after_landing(ctx: HitContext, target: Node) -> void:
 		_unseen_reveal_t = float(cfg.get("reveal_s", 1.0))
 
 
+## True while you are Unseen for an Ambush (Dark's rule): you have not struck or cast a moment ago, and you stand in
+## Dark holding Dark, or a buff of yours hides you (Vanished, unseen_beyond). [The Unseen rule's 4 m is for being
+## seen; an Ambush reads the state, as Dark's rule text says: "your first hit out of Unseen".]
+func _hidden() -> bool:
+	if _unseen_reveal_t > 0.0 or not is_inside_tree():
+		return false
+	for bid: String in buffs:
+		if bool((buffs[bid] as Dictionary).get("unseen_anywhere", false)) or (buffs[bid] as Dictionary).has("unseen_beyond"):
+			return true
+	for aff: String in affinities:
+		if bool(GameData.affinity(aff).get("unseen_in_dark", false)) and Light.is_dark(get_tree(), global_position):
+			return true
+	return false
+
+
+## Muffle (hush_radius): while it lasts a kill of yours raises no alarm - nobody within the radius is woken or calls.
+func hush_radius() -> float:
+	var r := 0.0
+	for bid: String in buffs:
+		r = maxf(r, float((buffs[bid] as Dictionary).get("hush_radius", 0.0)))
+	return r
+
+
 ## True if no enemy at `from` can see you: Bent Light hides you beyond its reach; Dark hides you
 ## beyond its own while you stand in the Dark - unless you struck or cast a moment ago.
 func unseen_from(from: Vector3) -> bool:
@@ -2987,6 +3077,8 @@ func unseen_from(from: Vector3) -> bool:
 	for bid: String in buffs:
 		if (buffs[bid] as Dictionary).has("unseen_beyond") and d > float(buffs[bid]["unseen_beyond"]):
 			return true
+		if bool((buffs[bid] as Dictionary).get("unseen_anywhere", false)) and d > float(GameData.affinity("dark").get("unseen_beyond", 4.0)):
+			return true                           # Vanished: unseen anywhere, with the Unseen rule's reach
 	for aff: String in affinities:
 		var a: Dictionary = GameData.affinity(aff)
 		if bool(a.get("unseen_in_dark", false)) and d > float(a.get("unseen_beyond", 4.0)) and Light.is_dark(get_tree(), global_position):
@@ -3765,6 +3857,8 @@ func cast_ability(index: int) -> void:
 			_winded_t = 0.0
 		if not bool(ab.get("never_winds", false)):
 			_winded_t = GameData.num("combat", "winded_s")
+	if _hidden():
+		_cast_hidden_t = GameData.num("skills", "ambush_cast_window_s")             # this cast's hits come out of Unseen
 	if not _cast_is_quiet():
 		_unseen_reveal_t = float(GameData.affinity("dark").get("reveal_s", 1.0))     # casting shows you for a moment
 
@@ -3934,6 +4028,8 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 				has_move_goal = false
 				attack_target = null
 			var spent: int = 0
+			if str(strike_payload.get("execute_needs", "")) != "":
+				strike_payload["execute_had"] = bool(strike_target.call("has_status", str(strike_payload["execute_needs"])))
 			if ab.has("consume_status") and strike_target.has_method("status_stacks"):
 				# cash in what is already on the target: each stack spent adds to the blow, and it bursts
 				spent = int(strike_target.call("status_stacks", str(ab["consume_status"]))) if bool(strike_target.call("has_status", str(ab["consume_status"]))) else 0
@@ -3946,6 +4042,10 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 					deal_damage(strike_target, float(ab.get("per_stack_damage", 0.0)) * float(spent) * stage_mult, tags + ["melee", "burst"])
 			var sp_metal: int = int(strike_target.call("metal_class")) if strike_target.has_method("metal_class") else 0
 			var sp_at: Vector3 = strike_target.global_position
+			if spent > 0 and strike_payload.get("on_kill") is Dictionary and int((strike_payload["on_kill"] as Dictionary).get("blood_per_stack", 0)) > 0:
+				var ok2: Dictionary = (strike_payload["on_kill"] as Dictionary).duplicate()
+				ok2["blood"] = int(ok2.get("blood", 0)) + int(ok2["blood_per_stack"]) * spent     # Last Draught: more for every stack it drank
+				strike_payload["on_kill"] = ok2
 			if is_instance_valid(strike_target) and not bool(strike_target.call("is_dead")):
 				apply_hit(strike_target, strike_payload, strike_tags, stage_mult)
 			if ab.get("spall") is Dictionary and sp_metal > 0:
@@ -3954,6 +4054,10 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 				for o: Node3D in _enemies_near(sp_at, float(spl.get("radius", 2.5))):
 					if o != strike_target:
 						deal_damage(o, float(spl.get("damage_per_class", 30.0)) * float(sp_metal) * stage_mult, tags + ["spall"])
+			if int(ab.get("swallow_per_hit", 0)) > 0:
+				store_add("swallowed", int(ab["swallow_per_hit"]), 5, 12.0)       # Hungry Dark swallows the light it strikes
+			if ab.get("zone") is Dictionary:
+				_lay_ground(ab["zone"], 2.0, ab, tags)                            # and leaves dark ground at your feet
 			if (spent > 0 or bool(ab.get("burst_always", false))) and ab.has("burst"):
 				var centre: Vector3 = strike_target.global_position if is_instance_valid(strike_target) else global_position + _facing * 1.5
 				for node: Node in get_tree().get_nodes_in_group("enemies"):
@@ -3978,6 +4082,12 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 			_detonate(ab, stage_mult, tags, strike_target)
 		"ground_zone":
 			_lay_zone(blink_to, ab, stage_mult, tags)
+			if bool(ab.get("drops_aggro", false)):
+				# Pall: everyone coming for you loses you (as when Unseen begins) and gives up its place at your side
+				for node: Node in get_tree().get_nodes_in_group("enemies"):
+					if node.get("target") == self:
+						node.call("interrupt")
+						release_slot(node)
 		"self_buff":
 			_take_buff(ab)
 		"rod":
@@ -6254,6 +6364,15 @@ func _home_ray(from: Vector3, skip: Node3D, damage: float, tags: Array) -> void:
 ## prop: a slab of stone (raise_stone), or a lamp, or a likeness of you that draws enemies.
 func _raise_prop(at: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	match str(ab.get("shape", "")):
+		"echo":
+			# Stray Echo: an unseen sound - every enemy within lure_radius turns to it and walks to it (a Lure); it cracks
+			# on those right beside it as it is set
+			var echo: Lure = _leave_lure(at, {"life": float(ab.get("turn_s", ab.get("life", 3.0))), "hp": 9999.0,
+				"lure_radius": float(ab.get("lure_radius", 8.0)), "breaks_on_hits": 1}, str(ab.get("affinity", "")), tags)
+			echo.visible = false
+			for e: Node3D in _enemies_near(at, float(ab.get("crack_radius", 1.5))):
+				apply_hit(e, _payload(ab, "on_hit"), tags, stage_mult)
+			return
 		"lamp":
 			for l: Node in get_tree().get_nodes_in_group("lamps"):
 				if l.get("caster") == self:
@@ -6264,6 +6383,7 @@ func _raise_prop(at: Vector3, ab: Dictionary, stage_mult: float, tags: Array) ->
 			lamp.light_radius = float(ab.get("light_radius", 5.0))
 			lamp.tick_s = float(ab.get("tick_s", 0.5))
 			lamp.payload = ab.get("payload", {})
+			lamp.sear_bonus = float(ab.get("sear_bonus", 0.0))
 			lamp.tags = tags
 			lamp.color = GameData.affinity_color(str(ab.get("affinity", "")))
 			get_parent().add_child(lamp)
@@ -6328,6 +6448,20 @@ func _lay_ground(cfg: Dictionary, reach: float, ab: Dictionary, tags: Array) -> 
 func projectile_landed(from: Vector3, at: Vector3, ab: Dictionary, tags: Array) -> void:
 	if not is_inside_tree() or ab.is_empty():
 		return
+	if ab.get("split") is Dictionary:
+		# Prism Bolt: where it ends it splits into count straight lines of light fanned over arc_deg round its flight
+		var sp: Dictionary = ab["split"]
+		var fly: Vector3 = at - from
+		fly.y = 0.0
+		fly = fly.normalized() if fly.length() > 0.05 else _facing
+		var n: int = int(sp.get("count", 3))
+		var arc: float = deg_to_rad(float(sp.get("arc_deg", 60.0)))
+		var line: Dictionary = {"width": float(sp.get("width", 0.4)), "on_hit": (sp.get("on_hit", {}) as Dictionary).duplicate(), "affinity": ab.get("affinity", "")}
+		(line["on_hit"] as Dictionary)["damage"] = float(sp.get("damage", 20.0))
+		var origin: Vector3 = Vector3(at.x, global_position.y + 0.9, at.z) + fly * 0.9
+		for i: int in n:
+			var ang: float = -arc * 0.5 + arc * (float(i) / maxf(1.0, float(n - 1)))
+			_beam_leg(origin, fly.rotated(Vector3.UP, ang), float(sp.get("range", 7.0)), line, 1.0, GameData.affinity_color(str(ab.get("affinity", ""))), tags + ["split"])
 	if ab.has("trail"):
 		var cfg: Dictionary = ab["trail"]
 		var zone := GroundZone.new()

@@ -261,8 +261,14 @@ func take_hit(amount: float, _heavy: bool, source: Node, tags: Array = []) -> fl
 	if _rig != null:
 		_rig.flash(0.12)
 	_refresh_label()
-	if applied > 0.0:
+	var hushed: bool = body.is_dead() and source != null and is_instance_valid(source) and source.has_method("hush_radius") and float(source.call("hush_radius")) > 0.0
+	if applied > 0.0 and not hushed:
 		hurt.emit(self, source)                 # its camp wakes; a herd answers (FieldCamps)
+	if hushed:
+		# Muffle: a kill raises no alarm - those near it cannot call for help a while
+		for node: Node in get_tree().get_nodes_in_group("enemies"):
+			if node != self and (node as Node3D).global_position.distance_to(global_position) <= float(source.call("hush_radius")):
+				node.call("add_status", "muted", 1, source)
 	if applied > 0.0 and not body.is_dead():
 		_after_hurt(applied, winding)
 		for id: String in statuses.keys():
@@ -740,6 +746,10 @@ func _death_effects() -> void:
 		var s: Dictionary = statuses[id]
 		var by: Variant = s.get("by")
 		var who: Node = by if (by != null and is_instance_valid(by)) else null
+		# a skill may leave word with its status of what its applier regrows if the body dies carrying it (Withering Needle)
+		var okh: Variant = (s.get("data", {}) as Dictionary).get("on_kill_heal")
+		if okh is Dictionary and who != null and who.has_method("heal_over"):
+			who.call("heal_over", float((okh as Dictionary).get("heal", 0.0)), float((okh as Dictionary).get("over_s", 2.0)))
 		if bool(def.get("jumps_on_death", false)):
 			var heir: Node3D = _nearest_enemy_within(float(def.get("spread_radius", 1.2)))
 			if heir != null:

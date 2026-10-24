@@ -11,6 +11,8 @@ var tick_s := 0.5
 var payload: Dictionary = {}
 var tags: Array = []
 var color := Color(1.0, 0.85, 0.4)
+## v2 (light.json Still Lamp): the Sear on your light hits against enemies in its light is this much more
+var sear_bonus := 0.0
 
 var _t := 0.0
 

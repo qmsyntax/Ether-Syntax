@@ -3616,8 +3616,7 @@
       ],
       "verse": "",
       "icon": "pool:DRK-2a",
-      "simplified": "'drops_aggro' is not built",
-      "summary": "Darkness pours out of you: a pall 3.5 m across at your feet for 6 s. Every enemy that had you in its sights loses you at once and goes to where it last saw you. Nothing sees into it or through it, those inside are Blinded, and you are Unseen in it - so your first hit out is an Ambush. (simplified)",
+      "summary": "Darkness pours out of you: a pall 3.5 m across at your feet for 6 s. Every enemy that had you in its sights loses you at once and goes to where it last saw you. Nothing sees into it or through it, those inside are Blinded, and you are Unseen in it - so your first hit out is an Ambush.",
       "good_modifiers": [
         "Persist",
         "Expand",
@@ -3774,8 +3773,7 @@
       ],
       "verse": "",
       "icon": "coat_static:DRK-4a",
-      "simplified": "'hush_radius' is not built",
-      "summary": "For 6 s you make no sound. Striking no longer reveals you while you are Unseen, so every hit can be an Ambush; an enemy you hit that was not facing you takes +50%; and anything you kill raises no alarm - no call for help, and nobody within 10 m wakes. (simplified)",
+      "summary": "For 6 s you make no sound. Striking no longer reveals you while you are Unseen, so every hit can be an Ambush; an enemy you hit that was not facing you takes +50%; and anything you kill raises no alarm - no call for help, and nobody within 10 m wakes.",
       "good_modifiers": [
         "Persist",
         "Self",
@@ -3822,8 +3820,7 @@
       ],
       "verse": "",
       "icon": "wall:DRK-4b",
-      "simplified": "'lure_radius' is not built; 'turn_s' is not built; 'crack_radius' is not built",
-      "summary": "Throw a sound into the dark - a footstep, a dropped blade - at a spot up to 14 m away. For 3 s every enemy within 8 m of it that is not in melee with you turns to face it and goes to look, its back to you. Anything within 1.5 m of the spot is interrupted. It is heard, not seen: it needs no sight line. (simplified)",
+      "summary": "Throw a sound into the dark - a footstep, a dropped blade - at a spot up to 14 m away. For 3 s every enemy within 8 m of it that is not in melee with you turns to face it and goes to look, its back to you. Anything within 1.5 m of the spot is interrupted. It is heard, not seen: it needs no sight line.",
       "good_modifiers": [
         "Far",
         "Persist",
@@ -3858,12 +3855,12 @@
       "swallow_per_hit": 1,
       "on_hit": {
         "poise": 20.0,
-        "execute_below": 0.2
-      },
-      "on_kill": {
-        "essence": 4.0,
-        "swallow": 1,
-        "self_unseen_s": 1.5
+        "execute_below": 0.2,
+        "on_kill": {
+          "essence": 4.0,
+          "swallow": 1,
+          "self_unseen_s": 1.5
+        }
       },
       "zone": {
         "shape": "circle",
@@ -3873,8 +3870,7 @@
       },
       "verse": "",
       "icon": "fist:DRK-5a",
-      "simplified": "'swallow_per_hit' is not built; 'on_kill' is not built; 'zone' is not built",
-      "summary": "One enemy in reach: the dark bites. 2.2x strike damage (more from behind, and an Ambush out of Unseen), and it swallows 1 light. If the bite leaves it under 20% health it is swallowed whole: it dies, you get 4 essence back and a second light, and the dark closes over you - Unseen for 1.5 s wherever you stand. The ground under it goes Dark for 4 s. (simplified)",
+      "summary": "One enemy in reach: the dark bites. 2.2x strike damage (more from behind, and an Ambush out of Unseen), and it swallows 1 light. If the bite leaves it under 20% health it is swallowed whole: it dies, you get 4 essence back and a second light, and the dark closes over you - Unseen for 1.5 s wherever you stand. The ground under it goes Dark for 4 s.",
       "good_modifiers": [
         "Near",
         "One",
@@ -4706,12 +4702,16 @@
       "damage_mult": 1.2,
       "strike_reach_bonus": 0.4,
       "poise_loss_mult": 0.5,
-      "kill_blood": 2,
       "upkeep_blood_per_s": 0.5,
       "upkeep_grace_s": 3,
+      "on_hit": {
+        "on_kill": {
+          "blood": 2
+        }
+      },
       "verse": "",
       "icon": "coat_static:BLD-4a",
-      "simplified": "'attack_rate_mult' is not built; 'strike_reach_bonus' is not built; 'kill_blood' is not built; 'upkeep_blood_per_s' is not built; 'upkeep_grace_s' is not built",
+      "simplified": "'attack_rate_mult' is not built; 'strike_reach_bonus' is not built; 'upkeep_blood_per_s' is not built; 'upkeep_grace_s' is not built",
       "summary": "Your heart pounds: for 8 s you strike 25% faster, move 25% faster, hit 20% harder and reach 0.4 m further, and light blows cannot stagger you. Every kill gives you 2 held blood. The first 3 s are free; after that it burns 1 held blood every 2 s, and it ends early when you run dry - never on your health. (simplified)",
       "good_modifiers": [
         "Fury",
@@ -4926,21 +4926,24 @@
       "range_bonus": 1.0,
       "consume_status": "bleeding",
       "per_stack_damage": 20,
-      "dying_mult": 1.3,
-      "execute_needs": "bleeding",
-      "kill_blood": 3,
-      "kill_blood_per_stack": 1,
       "on_hit": {
         "poise": 30,
         "execute_below": 0.15,
         "execute_excludes": [
           "elite"
-        ]
+        ],
+        "execute_needs": "bleeding",
+        "on_kill": {
+          "blood": 3,
+          "blood_per_stack": 1
+        },
+        "bonus_vs": {
+          "dying": 0.3
+        }
       },
       "verse": "",
       "icon": "fist:BLD-6b",
-      "simplified": "'dying_mult' is not built; 'execute_needs' is not built; 'kill_blood' is not built; 'kill_blood_per_stack' is not built",
-      "summary": "One enemy in reach: 2.2x strike damage and +20 for each Bleeding stack on it (spent), 30% more if it is Dying. One left under 15% of its health dies outright if it was Bleeding (not elites). If it dies, its blood is yours: its stacks plus 3 as held blood. (simplified)",
+      "summary": "One enemy in reach: 2.2x strike damage and +20 for each Bleeding stack on it (spent), 30% more if it is Dying. One left under 15% of its health dies outright if it was Bleeding (not elites). If it dies, its blood is yours: its stacks plus 3 as held blood.",
       "good_modifiers": [
         "Pulse",
         "Drink",
@@ -5015,17 +5018,17 @@
       "recovery": 0.1,
       "on_hit": {
         "status": "withering",
-        "stacks": 1
-      },
-      "on_kill_heal": {
-        "heal": 10,
-        "over_s": 2,
-        "needs_status": "withering"
+        "stacks": 1,
+        "status_data": {
+          "on_kill_heal": {
+            "heal": 10,
+            "over_s": 2
+          }
+        }
       },
       "verse": "",
       "icon": "mote:LIF-1b",
-      "simplified": "'on_kill_heal' is not built",
-      "summary": "A needle of life turned inward. The first enemy hit takes 45 and 1 Withering (7 a second for 6 s, up to 3 stacks), past shields and armour. If it dies while Withering, its last life comes back to you: you regrow 10 health over 2 s. (simplified)",
+      "summary": "A needle of life turned inward. The first enemy hit takes 45 and 1 Withering (7 a second for 6 s, up to 3 stacks), past shields and armour. If it dies while Withering, its last life comes back to you: you regrow 10 health over 2 s.",
       "good_modifiers": [
         "Tithe",
         "Within",
@@ -6702,8 +6705,7 @@
       ],
       "verse": "",
       "icon": "wall:LGT-2b",
-      "simplified": "'sear_bonus' is not built",
-      "summary": "Point, 9 m: hang a steady lamp for 12 s. Every enemy within 5 m of it is Lit while it stays: it cannot hide and its armour's gaps show, and your Sears on anyone in its light are 10% heavier. One lamp at a time; it blocks nothing. (simplified)",
+      "summary": "Point, 9 m: hang a steady lamp for 12 s. Every enemy within 5 m of it is Lit while it stays: it cannot hide and its armour's gaps show, and your Sears on anyone in its light are 10% heavier. One lamp at a time; it blocks nothing.",
       "good_modifiers": [
         "Persist",
         "Expand",
@@ -6953,8 +6955,7 @@
       },
       "verse": "",
       "icon": "pillar:LGT-5b",
-      "simplified": "'follows_lit' is not built",
-      "summary": "Bend the light through a lens onto one spot up to 14 m away: a bright point for 0.8 s, then it burns through - 130 to everything within 1.2 m, and 40 poise. Put it on a Lit enemy and the point follows it; anyone it burns that was Lit is Seared. Needs a clear line from you. (simplified)",
+      "summary": "Bend the light through a lens onto one spot up to 14 m away: a bright point for 0.8 s, then it burns through - 130 to everything within 1.2 m, and 40 poise. Put it on a Lit enemy and the point follows it; anyone it burns that was Lit is Seared. Needs a clear line from you.",
       "good_modifiers": [
         "Clarity",
         "Focus",
@@ -7049,8 +7050,7 @@
       ],
       "verse": "",
       "icon": "mote:LGT-6b",
-      "simplified": "'split' is not built",
-      "summary": "A shard of light: 50 to the first enemy it hits, and there it breaks into four rays fanned 60 degrees on through it, 7 m each, 30 and Lit to the first body each finds. Into a crowd it lights the whole pack for the Sears that follow. (simplified)",
+      "summary": "A shard of light: 50 to the first enemy it hits, and there it breaks into four rays fanned 60 degrees on through it, 7 m each, 30 and Lit to the first body each finds. Into a crowd it lights the whole pack for the Sears that follow.",
       "good_modifiers": [
         "Many",
         "Clarity",
@@ -7142,7 +7142,7 @@
       ],
       "verse": "",
       "icon": "coat_static:DRM-1b",
-      "simplified": "'buff_targets' is not built; 'status_time_mult' is not built; 'summon_deals_mult' is not built; 'phantom_extra_hits' is not built",
+      "simplified": "'buff_targets' is not built; 'summon_deals_mult' is not built; 'phantom_extra_hits' is not built",
       "summary": "For 6 s you are wide awake while they dream: your Dream statuses last 30% longer and your casts recover 30% faster. Your phantoms and every mind you have turned within 12 m share it: they deal 30% more, and a phantom takes one more blow to break. (simplified)",
       "good_modifiers": [
         "Persist",
@@ -9563,13 +9563,15 @@
       "range_bonus": 1.0,
       "drain_frac": 0.3,
       "drain_cap": 30,
-      "kill_steals": true,
       "on_hit": {
-        "poise": 30
+        "poise": 30,
+        "on_kill": {
+          "steals": true
+        }
       },
       "verse": "",
       "icon": "fist:UNH-4a",
-      "simplified": "'drain_frac' is not built; 'drain_cap' is not built; 'kill_steals' is not built",
+      "simplified": "'drain_frac' is not built; 'drain_cap' is not built",
       "summary": "One enemy in reach: a slow, heavy blow, 2.4x, that drains 30% of what it deals (60% from the Dying), up to 30. If it kills, all the health it had left before the blow is stolen. (simplified)",
       "good_modifiers": [
         "Hold",
