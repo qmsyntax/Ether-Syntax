@@ -1350,6 +1350,14 @@ func _run(e: Node, seconds: float, step: float = 1.0 / 60.0) -> void:
 		t += step
 
 
+## Run an enemy's thinking by hand until `done` is true, at most `max_s` of game time.
+func _run_until(e: Node, done: Callable, max_s: float, step: float = 1.0 / 60.0) -> void:
+	var t := 0.0
+	while t < max_s and not bool(done.call()) and is_instance_valid(e) and not e.is_queued_for_deletion():
+		e.call("_physics_process", step)
+		t += step
+
+
 func _test_combat_rules() -> void:
 	print("combat rules (design/05 step 2):")
 	var cfg: Dictionary = GameData.balance["combat"]
@@ -1456,7 +1464,10 @@ func _test_combat_rules() -> void:
 	(p.get("body") as Body).hp = 100.0
 	var b2 := _fighter(p, Vector3(0, 0, -2.6), "brute")
 	b2.set("_attack_cd", 0.0)
-	_run(b2, 0.2)
+	# until it commits: since the Stubble build (89532c4) a brute set down 2.6 m off steps in a little
+	# before it winds up (about 0.25 s), so a fixed 0.2 s caught it before the slam began (2026-10-24)
+	_run_until(b2, func() -> bool: return float(b2.get("_windup")) >= 0.0, 1.0)
+	_run(b2, 0.05)
 	var facing_then: Vector3 = b2.get("facing")
 	p.global_position = b2.global_position + Vector3(1.2, 0, 2.2)   # a sidestep - still 2.5 m from it, inside the 3 m circle
 	_run(b2, 0.6)
