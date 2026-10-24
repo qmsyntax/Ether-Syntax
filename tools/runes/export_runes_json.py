@@ -83,6 +83,27 @@ RING_RULES = OrderedDict([
     ("seal_needs_closed", True),
 ])
 
+# The keystone (Brent 2026-10-24, design/14 section 12: "Every slot should be filled to be fully
+# formed. Then a vestige is placed over the top with its effect being worth more than a regular
+# rune...and that locks the level"). NOT IN THE WORKBOOK YET: Brent adds these rows to Bond Rules by
+# hand (Excel open, Excel COM only); until then they live here. When they are in the sheet, read
+# them from it like the rings and on/off rows and drop this table. game/scripts/runes/ring_rules.gd
+# reads them (keystone_weight, keystone_effect).
+KEYSTONE_RULES = OrderedDict([
+    ("_note", "Brent 2026-10-24 (design/14 section 12): once every place of the forming ring holds a rune, the chosen construct "
+              "(vestige at lock 1, remnant at 2, then spirit, eidolon, asura) is set over that ring as its keystone and sealed with "
+              "the word. Its concept's effect counts for more than a regular rune's: every multiplier of the concept (constructs.json "
+              "concepts.mods, or its fallback) has its distance from 1 scaled by the tier's weight, weight = weight_base + "
+              "weight_per_tier x the tier's place (vestige 0 ... asura 4), so a vestige of Acceleration's speed x1.5 becomes "
+              "x(1 + 0.5 x 1.25) = x1.625. A regular rune works at its strength, at most 1.0 before conversion. No multiplier goes "
+              "below mult_floor. 'parts' are the hit payloads a concept's field is also looked for in. The concept is applied only "
+              "through the keystone (the ability's 'bound' list is a record). [MODEL numbers, B rule; not in the workbook yet]"),
+    ("weight_base", 1.25),
+    ("weight_per_tier", 0.25),
+    ("mult_floor", 0.1),
+    ("parts", ["on_hit", "on_pass", "on_arrive", "on_rise"]),
+])
+
 # [MODEL] the generic "repeat once" a great ring gives: how long after the cast, and which kinds of
 # skill cannot repeat (moving you, held, or lasting things) - for those the great ring's 40% lands
 # as power through the fallback instead.
@@ -108,6 +129,7 @@ NATURE_WORDS = OrderedDict([("power", "force"), ("reach", "reach"), ("speed", "s
 
 BOND_V2_NOTES = [
     "Runes are sealed when a vestige (or a later construct) is bound into the skill; the word changes the skill only once sealed.",
+    "A level locks only when every place of every ring up to it holds a rune; the construct is set over the full ring as its keystone, and counts for more than any rune.",
     "Strength = the ring's fade x every bond's transmission on the strongest path to the skill.",
     "An ionic bond hands the weaker rune's whole effect to the stronger one, and what it gives up becomes the stronger rune's strength.",
     "A status lasts longer, and an interrupt also silences, the stronger the rune that adds it.",
@@ -589,6 +611,7 @@ def main():
                 ("lock_needs_closed", lock_needs_closed),
                 ("rings", rings),
             ] + list(RING_RULES.items()) + [
+                ("keystone", KEYSTONE_RULES),
                 ("structure", structure_text),
                 ("interactions", ["effects_v2"]),
                 ("interaction_params", OrderedDict([

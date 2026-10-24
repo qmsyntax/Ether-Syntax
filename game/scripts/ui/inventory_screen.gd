@@ -610,26 +610,29 @@ func _build_soul(box: VBoxContainer) -> void:
 		var need: String = str(player.call("pending_tier", st))
 		col.add_child(UiWidgets.Bar.new(float(st["progress"]) / 100.0, UiTheme.GOLD if need != "" else UiTheme.ESSENCE,
 			("FULL - needs a %s" % need) if need != "" else "%d%%   costs %d essence" % [int(float(st["progress"])), int(round(float(ab.get("cost", 0.0))))], 22.0))
-		var bound: Array = st.get("bound", [])
-		if not bound.is_empty():
+		var keys: Array[Dictionary] = RuneWord.keystones(st.get("word", {}))
+		if not keys.is_empty():
 			var names: Array[String] = []
-			for up: Dictionary in bound:
-				names.append("%s of %s" % [str(up["tier"]), str(GameData.concept(str(up["concept"])).get("label", up["concept"]))])
-			col.add_child(UiTheme.body("Bound: " + ", ".join(names), 12, UiTheme.STAR))
+			for ks: Dictionary in keys:
+				names.append("ring %d: %s of %s" % [int(ks["ring"]), str(ks["tier"]), str(GameData.concept(str(ks["concept"])).get("label", ks["concept"]))])
+			col.add_child(UiTheme.body("Keystones: " + ", ".join(names), 12, UiTheme.STAR))
 		var rune_fx: Array = player.call("rune_summary", ai)
 		if not rune_fx.is_empty():
 			col.add_child(UiTheme.body("Sealed word: " + ", ".join(PackedStringArray(rune_fx.map(func(v: Variant) -> String: return str(v)))), 12, UiTheme.GOLD))
 		var asc: String = str(player.call("ascension_summary", ai))
 		if asc != "":
 			col.add_child(UiTheme.body(asc, 12, UiTheme.STAR))
-		if need != "":
+		var lock: Dictionary = player.call("can_open_seal", ai)
+		if bool(lock["ok"]):
 			# no binding here (Brent 2026-10-23: "only with the runes"): the level lock is formed on the
-			# skill's seal screen, where the ring is built and the construct chosen
+			# skill's seal screen, where the ring is filled and the keystone set
 			var open_b: Button = UiWidgets.small_button("Open the seal  -  level %d lock" % (int(st["stage"]) + 1), func() -> void:
 				game.call("open_seal", ai))
 			open_b.name = "OpenSealButton_%d" % ai
 			open_b.add_theme_font_size_override("font_size", UiTheme.FS_SMALL + 1)
 			col.add_child(open_b)
+		elif need != "":
+			col.add_child(UiTheme.body(str(lock["text"]), 12, UiTheme.BAD.lightened(0.2)))      # the bar is full: what else the lock needs
 		list.add_child(UiTheme.rule())
 
 	box.add_child(UiTheme.heading("Constructs carried", 18))

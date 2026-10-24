@@ -3437,29 +3437,20 @@ func pending_tier(state: Dictionary) -> String:
 	return GameData.tier_for_stage(int(state["stage"]))
 
 
-## An ability's numbers after every bound construct's concept has shaped it.
-func ability_stats(state: Dictionary) -> Dictionary:
+## An ability's numbers after its sealed word has shaped it: the runes and, folded in with them, the
+## keystone set over each sealed ring - the construct bound at that lock, whose concept now reaches the
+## skill only through the word (Brent 2026-10-24, design/14 section 12; RingRules.keystone_effect).
+## The state's "bound" list is a record of the binds and changes nothing here, so a concept is never
+## counted twice. `draft_word` (code and previews only): use that word's effects as if it were sealed.
+func ability_stats(state: Dictionary, draft_word: Dictionary = {}) -> Dictionary:
 	var ab: Dictionary = GameData.ability(str(state["id"])).duplicate(true)      # deep: payloads are changed below
 	if ab.is_empty():
 		return ab
-	var damage_all := 1.0
-	for up: Dictionary in state.get("bound", []):
-		var c: Dictionary = GameData.concept(str(up["concept"]))
-		var mods: Dictionary = c.get("mods", {})
-		var applied := false
-		for key: String in mods:
-			if ab.has(key):
-				ab[key] = float(ab[key]) * float(mods[key])
-				applied = true
-			for part: String in ["on_hit", "on_pass", "on_arrive", "on_rise"]:
-				if ab.has(part) and (ab[part] as Dictionary).has(key):
-					(ab[part] as Dictionary)[key] = float((ab[part] as Dictionary)[key]) * float(mods[key])
-					applied = true
-		if not applied:
-			damage_all *= float((c.get("fallback", {}) as Dictionary).get("damage_all", 1.0))
-	ab["damage_all"] = damage_all
-	# a locked rune word reshapes the skill (design/14 section 7; the rule set's effects patch)
-	if state.has("word"):
+	ab["damage_all"] = 1.0
+	# the sealed word reshapes the skill (design/14 sections 7 and 12; the rule set's effects patch)
+	if not draft_word.is_empty():
+		apply_rune_patch(ab, Runes.active().effects(draft_word, RuneContext.of(state, affinities)).get("patch", []))
+	elif state.has("word"):
 		apply_rune_patch(ab, Runes.active().locked_effects(state["word"], RuneContext.of(state, affinities)).get("patch", []))
 	# ascension boosts (Brent 2026-10-24) come AFTER the word: the word's patch can SET a field (the
 	# default recovery, a status time) that a boost laid first would lose, and a boost should also
@@ -3528,20 +3519,25 @@ static func apply_rune_patch(ab: Dictionary, patch: Array) -> void:
 				(holder[last] as Array).append(p["value"])
 
 
-## What binding a construct of `concept` into this ability would change, for showing before the
-## (irreversible) bind: [{"label", "before", "after", "better"}], numbers already formatted.
+## What setting a construct of `concept` over the forming ring as its keystone would change, for
+## showing before the (irreversible) bind: [{"label", "before", "after", "better"}], numbers already
+## formatted. The keystone and the stage step: the level lock's word (the draft while it is open, else
+## the sealed word) without the keystone and with it, so the runes' own changes are in neither side.
 func preview_bind(state: Dictionary, concept: String) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	var now: Dictionary = ability_stats(state)
+	var index: int = abilities.find(state)
+	var stage: int = int(state["stage"])
+	var base: Dictionary = (seal_draft["word"] as Dictionary).duplicate(true) if index >= 0 and index == sealing_index() \
+		else (_sealed_word(index) if index >= 0 else RuneWord.make(GameData.skill_anchor(str(state["id"])))).duplicate(true)
 	var trial: Dictionary = state.duplicate(true)
-	if not trial.has("bound"):
-		trial["bound"] = []
-	(trial["bound"] as Array).append({"concept": concept, "tier": "", "stage": int(state["stage"])})
-	var then: Dictionary = ability_stats(trial)
+	trial["stage"] = stage + 1
+	var tier: String = GameData.tier_for_stage(stage)
+	var now: Dictionary = ability_stats(trial, base)
+	var then: Dictionary = ability_stats(trial, RuneWord.with_keystone(base, stage + 1, tier, concept))
 	if now.is_empty():
 		return out
 	var strike: float = float(_p["melee_damage"]) * weapon_stat("melee_damage_mult", true)
-	var stage: int = int(state["stage"])
+	# the stage step comes with every keystone: the damage rows carry it too
 	var mult_now: float = ability_damage_mult(stage) * float(now.get("damage_all", 1.0))
 	var mult_then: float = ability_damage_mult(stage + 1) * float(then.get("damage_all", 1.0))
 	out.append({"label": "Stage", "before": str(stage), "after": str(stage + 1), "better": true})
@@ -3627,6 +3623,8 @@ func _bind_construct(ability_index: int, construct_index: int, roll: float = -1.
 		note("The %s of %s tears free. The bind fails and it is gone." % [con["tier"], label])
 		_check_death()
 		return "failed"
+	# a record of the bind only: the concept reaches the skill as the keystone the seal sets over its
+	# ring (bind_seal; RingRules.keystone_effect), never from this list
 	var bound: Array = state.get("bound", [])
 	bound.append({"stage": int(state["stage"]), "tier": con["tier"], "concept": con["concept"]})
 	state["bound"] = bound
@@ -3645,14 +3643,18 @@ func _bind_construct(ability_index: int, construct_index: int, roll: float = -1.
 # A level lock is one act on the seal screen: the forming ring is built, the construct of the right
 # tier is chosen there, and the bind locks ring and construct together. The draft (seal_draft) is a
 # copy of the sealed word - inner rings may be reworked - and becomes the skill's word only if the
-# bind takes; a failed bind forms no seal. Rings are built from the skill outward (RingRules
-# .ring_formed): never a rune on ring k while ring k-1 is unformed, and the lock needs every ring up
-# to the new one formed. Test characters follow the same rule (no free edit any more).
-#
-# OLD SAVES (binds made under the earlier flow, which let a skill bind with its draft untouched): a
-# skill may be at stage N with no word, or with fewer sealed rings than N. Its next level lock opens
-# rings 1..N+1 as usual, but they are still built inside out: it forms every missing inner ring, in
-# order, plus the new one, and the bind needs all of them formed. Nothing is taken from the skill.
+# bind takes; a failed bind changes nothing in the word. Rings are built from the skill outward
+# (RingRules.ring_formed): never a rune on ring k while ring k-1 is unformed.
+# Brent 2026-10-24 (design/14 section 12): "Every slot should be filled to be fully formed. Then a
+# vestige is placed over the top with its effect being worth more than a regular rune...and that
+# locks the level ... You have to be able to lock the current level (have a proper construct for it)
+# before you can reform. Its all or nothing at each level." So: a ring is formed only when FULL; the
+# lock opens only when the bar is full AND a construct of the tier is carried (can_open_seal); the
+# chosen construct is the keystone set over the forming ring (seal_keystone; drawn waiting until the
+# rings are full); the bind needs every ring up to the new one full, the word closed and the keystone
+# chosen, and locks all of it - or, if the roll fails, nothing. Test characters follow the same rule.
+# A skill from an older save at stage N whose word has fewer full rings (or no word) is not supported;
+# it loads as it is, and its next lock simply starts from what it has: every ring 1..N+1 must be full.
 # Whether a change is allowed, and what the word is, is asked of the rule set in force
 # (Runes.active()).
 
@@ -3767,28 +3769,71 @@ func draft_redo() -> bool:
 	return true
 
 
-## Open the next level lock of ability `index` (its bar full): the draft starts as the sealed word,
-## with room for the next ring. The construct is chosen on the seal screen (choose_seal_construct);
-## `construct_index` < 0 picks the first carried one of the tier needed, if any - with none the ring
-## can still be laid out, but not bound. Returns {ok, reason, text}.
-func open_seal(index: int, construct_index: int = -1) -> Dictionary:
+## May ability `index`'s next level lock be opened? Only with its bar full AND a construct of the
+## tier carried (Brent 2026-10-24: "You have to be able to lock the current level (have a proper
+## construct for it) before you can reform"). {ok, reason ("no_skill", "at_cap", "bar", "no_construct"),
+## text (what is missing, for the main page), tier, stage}.
+func can_open_seal(index: int) -> Dictionary:
 	if index < 0 or index >= abilities.size():
 		return RuneRules.no("no_skill", "No such skill.")
-	var need: String = pending_tier(abilities[index])
-	if need == "":
-		return RuneRules.no("not_ready", "%s is not ready for its level lock: its bar is not full." % str(GameData.ability(str(abilities[index]["id"])).get("name", "?")))
+	var st: Dictionary = abilities[index]
+	var stage: int = int(st["stage"])
+	var tier: String = GameData.tier_for_stage(stage)
+	var r: Dictionary = RuneRules.ok()
+	if stage >= stars + 1 or tier == "":
+		r = RuneRules.no("at_cap", "Level %d is as far as it goes at %d star%s: no lock is left until you ascend." % [stage, stars, "" if stars == 1 else "s"])
+	elif float(st["progress"]) < 100.0:
+		r = RuneRules.no("bar", "Its level %d lock needs its bar full first (%d%%): it fills as you use the skill." % [stage + 1, int(float(st["progress"]))])
+	elif construct_groups(tier).is_empty():
+		r = RuneRules.no("no_construct", "The bar is full, but its level %d lock needs a %s and you carry none: subdue one in the Netherecho, then open the seal." % [stage + 1, tier])
+	r["tier"] = tier
+	r["stage"] = stage
+	return r
+
+
+## Open the next level lock of ability `index`: its bar full and a construct of the tier carried
+## (can_open_seal), else it does not open. The draft starts as the sealed word, with room for the next
+## ring. The keystone - which carried construct this lock binds - is chosen on the seal screen
+## (choose_seal_construct); `construct_index` >= 0 chooses it at once (code and tests). Returns
+## {ok, reason, text}.
+func open_seal(index: int, construct_index: int = -1) -> Dictionary:
+	var can: Dictionary = can_open_seal(index)
+	if not bool(can["ok"]):
+		return can
+	var need: String = str(can["tier"])
 	var ci: int = construct_index
 	if ci >= 0 and (ci >= constructs.size() or str(constructs[ci]["tier"]) != need):
 		return RuneRules.no("wrong_tier", "It needs a %s." % need)
-	if ci < 0:
-		var groups: Array[Dictionary] = construct_groups(need)
-		ci = int(groups[0]["index"]) if not groups.is_empty() else -1
 	seal_draft = {"index": index, "construct": ci, "mode": "bind", "word": _draft_from(index)}
 	return RuneRules.ok()
 
 
-## Choose, on the seal screen, which carried construct this level lock binds: one of the tier the
-## skill needs. Returns {ok, reason, text}.
+## The keystone this level lock will set over its forming ring: {ring, tier, concept, construct,
+## set (every ring up to it full, so it sits over the ring), label}; {} when none is chosen yet.
+func seal_keystone() -> Dictionary:
+	var c: int = seal_construct()
+	if seal_mode() != "bind" or c < 0 or c >= constructs.size():
+		return {}
+	var ctx: RuneContext = rune_context(sealing_index())
+	var rr: RingRules = Runes.active() as RingRules
+	var con: Dictionary = constructs[c]
+	return {"ring": ctx.forming, "tier": str(con["tier"]), "concept": str(con["concept"]), "construct": c,
+		"set": rr == null or rr.first_unformed(seal_draft["word"], ctx.forming) == 0,
+		"label": "%s of %s" % [str(con["tier"]), str(GameData.concept(str(con["concept"])).get("label", con["concept"]))]}
+
+
+## The draft as it would be sealed: with the chosen keystone over its forming ring (a copy).
+func draft_with_keystone() -> Dictionary:
+	if seal_draft.is_empty():
+		return {}
+	var ks: Dictionary = seal_keystone()
+	if ks.is_empty():
+		return (seal_draft["word"] as Dictionary).duplicate(true)
+	return RuneWord.with_keystone(seal_draft["word"], int(ks["ring"]), str(ks["tier"]), str(ks["concept"]))
+
+
+## Choose, on the seal screen, which carried construct this level lock binds - the keystone set over
+## the forming ring: one of the tier the skill needs. Returns {ok, reason, text}.
 func choose_seal_construct(construct_index: int) -> Dictionary:
 	if seal_mode() != "bind":
 		return RuneRules.no("not_sealing", "No level lock is being formed.")
@@ -3820,9 +3865,9 @@ func draft_changed() -> bool:
 	return RuneWord.shape_key(seal_draft["word"]) != RuneWord.shape_key(_draft_from(sealing_index()))
 
 
-## May the level lock be bound? A construct of the right tier chosen, and the draft a seal the rules
-## accept - closed, and every ring up to the new one formed from the skill outward (the forming ring
-## cannot be left empty: ring and construct lock together). {ok, reason, text}.
+## May the level lock be bound? All or nothing (Brent 2026-10-24): every ring up to the new one full,
+## the word a seal the rules accept (closed, every bond valid), and the keystone - a construct of the
+## right tier - chosen. The reasons come in that order. {ok, reason, text}.
 func can_bind_seal() -> Dictionary:
 	if seal_mode() != "bind":
 		return RuneRules.no("not_sealing", "No level lock is being formed.")
@@ -3830,13 +3875,14 @@ func can_bind_seal() -> Dictionary:
 
 
 func _can_bind(ctx: RuneContext) -> Dictionary:
+	var r: Dictionary = Runes.active().can_seal(seal_draft["word"], ctx)
+	if not bool(r["ok"]):
+		return r
 	var need: String = pending_tier(abilities[sealing_index()])
 	var c: int = seal_construct()
 	if c < 0 or c >= constructs.size() or need != str(constructs[c]["tier"]):
-		if construct_groups(need).is_empty():
-			return RuneRules.no("no_construct", "You carry no %s: the ring can be laid out, but it cannot lock until you carry one (they are subdued in the Netherecho)." % need)
-		return RuneRules.no("no_construct", "Choose the %s to bind." % need)
-	return Runes.active().can_seal(seal_draft["word"], ctx)
+		return RuneRules.no("no_keystone", "Every ring is full and the word is closed: choose the %s to set over ring %d as its keystone, then bind." % [need, ctx.forming])
+	return r
 
 
 ## Bind the chosen construct and, if the bind takes, seal the draft as the skill's word: one ring per
@@ -3866,7 +3912,9 @@ func _bind_seal(roll: float, waive_closure: bool) -> String:
 	var check: Dictionary = _can_bind(ctx)
 	if not bool(check["ok"]):
 		return str(check["text"])
-	var draft: Dictionary = (seal_draft["word"] as Dictionary).duplicate(true)
+	# the whole level as it will lock: every reworked ring, the new ring full, the keystone over it
+	var draft: Dictionary = draft_with_keystone()
+	var ks: Dictionary = seal_keystone()
 	var result: String = _bind_construct(index, seal_construct(), roll)
 	close_seal()
 	var st: Dictionary = abilities[index]
@@ -3877,7 +3925,8 @@ func _bind_seal(roll: float, waive_closure: bool) -> String:
 		var r: Dictionary = Runes.active().seal(draft, after, int(st["stage"]))
 		if bool(r["ok"]):
 			st["word"] = draft
-			note("The level lock holds: %s is sealed through %d ring%s." % [skill, int(st["stage"]), "" if int(st["stage"]) == 1 else "s"])
+			note("The level lock holds: %s is sealed through %d ring%s, the %s set over ring %d." % [skill, int(st["stage"]),
+				"" if int(st["stage"]) == 1 else "s", str(ks.get("label", "construct")), int(ks.get("ring", int(st["stage"])))])
 		else:
 			push_error("bind_seal: the bind took but the seal was refused: %s" % str(r["text"]))
 		# TEST OVERRIDE (balance.json skills.test_refill_after_bind): a test character's next lock is open at once
@@ -3977,11 +4026,14 @@ func word_remove(index: int, node: int) -> Dictionary:
 	return r
 
 
-## Clear the draft back to the skill's own rune alone (a step that can be undone).
+## Clear the draft back to the skill's own rune alone (a step that can be undone). The keystones of
+## the sealed rings stay: the constructs bound at earlier locks are not given back.
 func word_clear(index: int) -> void:
 	if sealing_index() == index:
 		var before: Dictionary = _before_change()
 		var w: Dictionary = RuneWord.make(GameData.skill_anchor(str(abilities[index]["id"])), Runes.active().id)
+		if (seal_draft["word"] as Dictionary).has("keystones"):
+			w["keystones"] = (seal_draft["word"]["keystones"] as Array).duplicate(true)
 		seal_draft["word"] = w
 		_changed(before)
 
@@ -4002,7 +4054,8 @@ func rune_preview(index: int) -> Dictionary:
 	bare.erase("word")
 	bare.erase("ascension")                  # laid after the word below, as ability_stats does
 	var before: Dictionary = ability_stats(bare)
-	var word: Dictionary = ability_word(index).duplicate(true)
+	# while a lock is open: the draft with the chosen keystone over its forming ring, as it would seal
+	var word: Dictionary = draft_with_keystone() if sealing_index() == index else ability_word(index).duplicate(true)
 	var fx: Dictionary = Runes.active().effects(word, rune_context(index))
 	var after: Dictionary = before.duplicate(true)
 	apply_rune_patch(after, fx.get("patch", []))
@@ -4017,7 +4070,7 @@ func rune_preview(index: int) -> Dictionary:
 			"changed": true, "better": true})
 	return {"rows": rows, "lines": fx.get("lines", []), "runes": fx.get("runes", []), "anchor": fx.get("anchor", {}),
 		"groups": fx.get("groups", {}), "traits": fx.get("traits", []), "effect_lines": fx.get("effect_lines", fx.get("lines", [])), "transfers": fx.get("transfers", []),
-		"conversions": fx.get("conversions", []), "before": before, "after": after}
+		"conversions": fx.get("conversions", []), "keystones": fx.get("keystones", []), "before": before, "after": after}
 
 
 ## Labelled rows for `fields` (the rule set's field list), `before` beside `after`: [{label, group,
@@ -4123,6 +4176,7 @@ func skill_details(index: int) -> Dictionary:
 		rows.append({"label": str(d["label"]), "group": "derived", "path": "", "before": _stat_text(float(d["b"]), fd), "after": _stat_text(float(d["a"]), fd),
 			"changed": absf(float(d["a"]) - float(d["b"])) > 0.0001, "better": (float(d["a"]) < float(d["b"])) == bool(d.get("lower", false))})
 	return {"rows": rows, "statuses": StatusText.compare(before, after), "works_on": StatusText.read_by(after),
+		"keystones": fx.get("keystones", []) if word_locked(index) else [],
 		"sealed": word_locked(index), "boosted": ascension_summary(index) != "", "before": before, "after": after}
 
 
@@ -4508,6 +4562,9 @@ func from_save(d: Dictionary) -> void:
 					w["sealed"] = int(a["stage"])
 				if RuneWord.sealed(w) <= 0:
 					w.erase("sealed")
+				# a keystone sits only over a sealed ring
+				if w.has("keystones"):
+					w["keystones"] = RuneWord.keystones(w).filter(func(ks: Dictionary) -> bool: return int(ks["ring"]) <= RuneWord.sealed(w))
 				a["word"] = w
 			abilities.append(a)
 	var saved_hotbar: Array = d.get("hotbar", [])

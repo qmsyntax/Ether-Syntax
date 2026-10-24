@@ -810,9 +810,15 @@ func _test_abilities() -> void:
 	cons.append({"tier": "vestige", "concept": "acceleration"})
 	_check("a vestige binds into stage 0 and advances it", str(p.call("_bind_construct", 0, 0, 0.0)) == "bound" and int(ab[0]["stage"]) == 1 and _near(float(ab[0]["progress"]), 0.0))
 	var stats: Dictionary = p.call("ability_stats", ab[0])
-	_check("the concept shapes the skill (acceleration: bolt speed x1.5)", _near(float(stats["speed"]), 30.0), "speed %f" % float(stats["speed"]))
-	_check("and reaches into what the skill does on a hit (acceleration doubles the shove)", _near(float((stats["on_hit"] as Dictionary)["shove"]), 3.0)
-		and _near(float((GameData.ability("water_bolt")["on_hit"] as Dictionary)["shove"]), 1.5))
+	_check("the bind's own arithmetic shapes nothing: a concept reaches a skill only as the keystone of a sealed ring (Brent 2026-10-24)",
+		_near(float(stats["speed"]), float(GameData.ability("water_bolt")["speed"])) and (ab[0]["bound"] as Array).size() == 1, "speed %f" % float(stats["speed"]))
+	var ks_rules: RingRules = Runes.active() as RingRules
+	var ks_word: Dictionary = RuneWord.with_keystone(RuneWord.make(GameData.skill_anchor("water_bolt"), "bond_v2"), 1, "vestige", "acceleration")
+	var ks_stats: Dictionary = p.call("ability_stats", ab[0], ks_word)
+	var ks_m: float = ks_rules.keystone_mult(float((GameData.concept("acceleration")["mods"] as Dictionary)["shove"]), ks_rules.keystone_weight("vestige"))
+	_check("as a keystone the concept reaches into what the skill does on a hit (acceleration's shove x2, weighted: x%s)" % RingRules._x(ks_m),
+		_near(float((ks_stats["on_hit"] as Dictionary)["shove"]), 1.5 * ks_m) and _near(float((GameData.ability("water_bolt")["on_hit"] as Dictionary)["shove"]), 1.5),
+		str(ks_stats["on_hit"]))
 	_check("stage 1 full now needs a remnant", (func() -> bool:
 		ab[0]["progress"] = 100.0
 		return str(p.call("pending_tier", ab[0])) == "remnant").call())
@@ -1172,7 +1178,11 @@ func _test_playtest_1011() -> void:
 	var by := {}
 	for r: Dictionary in rows:
 		by[str(r["label"])] = r
-	_check("preview: acceleration makes the bolt faster and reach further", by.has("Bolt speed") and str(by["Bolt speed"]["before"]) == "20" and str(by["Bolt speed"]["after"]) == "30"
+	var kr: RingRules = Runes.active() as RingRules
+	var acc_m: float = kr.keystone_mult(float((GameData.concept("acceleration")["mods"] as Dictionary)["speed"]), kr.keystone_weight("vestige"))
+	var want_speed: String = "%d" % int(round(20.0 * acc_m))
+	_check("preview: acceleration as the vestige keystone makes the bolt faster (20 -> %s: x1.5 weighted to x%s) and reach further" % [want_speed, RingRules._x(acc_m)],
+		by.has("Bolt speed") and str(by["Bolt speed"]["before"]) == "20" and str(by["Bolt speed"]["after"]) == want_speed
 		and by.has("Range") and bool(by["Range"]["better"]), str(rows))
 	_check("preview: the stage and its damage step are shown", by.has("Stage") and str(by["Stage"]["after"]) == "1" and by.has("Damage") and bool(by["Damage"]["better"]))
 	_check("preview: numbers that do not move are left out", not by.has("Essence cost"))
@@ -1180,7 +1190,9 @@ func _test_playtest_1011() -> void:
 	by.clear()
 	for r: Dictionary in rows:
 		by[str(r["label"])] = r
-	_check("preview: compression lowers the cost, shown as an improvement", by.has("Essence cost") and str(by["Essence cost"]["before"]) == "8" and str(by["Essence cost"]["after"]) == "6" and bool(by["Essence cost"]["better"]))
+	var want_cost: String = "%d" % int(round(8.0 * kr.keystone_mult(float((GameData.concept("compression")["mods"] as Dictionary)["cost"]), kr.keystone_weight("vestige"))))
+	_check("preview: compression lowers the cost (8 -> %s), shown as an improvement" % want_cost, by.has("Essence cost") and str(by["Essence cost"]["before"]) == "8"
+		and str(by["Essence cost"]["after"]) == want_cost and bool(by["Essence cost"]["better"]), str(rows))
 	rows = q.call("preview_bind", (q.get("abilities") as Array)[1], "tension")
 	by.clear()
 	for r: Dictionary in rows:
@@ -1190,11 +1202,23 @@ func _test_playtest_1011() -> void:
 	q.call("_preview_row", costly, "Harm to yourself", 2.0, 3.0, "%.1f", false)
 	_check("preview: a number that gets worse is marked as worse", costly.size() == 1 and not bool(costly[0]["better"]))
 	_check("previewing changes nothing", not bolt.has("bound") and int(bolt["stage"]) == 0)
-	# the preview must agree with what binding then does
+	# the preview must agree with what the level lock then does
 	bolt["progress"] = 100.0
 	(q.get("constructs") as Array).append({"tier": "vestige", "concept": "acceleration"})
-	q.call("_bind_construct", 0, 0, 0.0)
-	_check("the bind does what the preview said", _near(float((q.call("ability_stats", bolt) as Dictionary)["speed"]), 30.0) and int(bolt["stage"]) == 1)
+	for rid: String in _runes_of("water", -1, []):
+		q.call("discover_rune", rid, "")          # the runes for a closed, full ring 1 (what a new character can do is checked apart)
+	var res: String = _lock_full(q, 0, 0.0)
+	var speed_after: float = float((q.call("ability_stats", bolt) as Dictionary)["speed"])
+	var word_patch: Array = (Runes.active().locked_effects(bolt["word"], RuneContext.of(bolt, q.get("affinities"))).get("patch", []) as Array) if bolt.has("word") else []
+	var all_speed := 1.0                   # every speed change in the sealed word: the keystone's and the runes'
+	var keystone_ops := 0
+	for op: Dictionary in word_patch:
+		if str(op["path"]) == "speed" and str(op["op"]) == "mul":
+			all_speed *= float(op["value"])
+			if _near(float(op["value"]), acc_m, 0.00001):
+				keystone_ops += 1
+	_check("the level lock does what the preview said: the keystone's speed x%s, once, under the runes' (speed %.2f)" % [RingRules._x(acc_m), speed_after],
+		res == "bound" and int(bolt["stage"]) == 1 and keystone_ops == 1 and _near(speed_after, 20.0 * all_speed), "%s %f %s" % [res, speed_after, str(word_patch)])
 	q.queue_free()
 
 
@@ -1342,6 +1366,14 @@ func _run(e: Node, seconds: float, step: float = 1.0 / 60.0) -> void:
 		t += step
 
 
+## Run an enemy's thinking by hand until `done` is true, at most `max_s` of game time.
+func _run_until(e: Node, done: Callable, max_s: float, step: float = 1.0 / 60.0) -> void:
+	var t := 0.0
+	while t < max_s and not bool(done.call()) and is_instance_valid(e) and not e.is_queued_for_deletion():
+		e.call("_physics_process", step)
+		t += step
+
+
 func _test_combat_rules() -> void:
 	print("combat rules (design/05 step 2):")
 	var cfg: Dictionary = GameData.balance["combat"]
@@ -1448,13 +1480,10 @@ func _test_combat_rules() -> void:
 	(p.get("body") as Body).hp = 100.0
 	var b2 := _fighter(p, Vector3(0, 0, -2.6), "brute")
 	b2.set("_attack_cd", 0.0)
-	# it walks the last 0.3 m before it can swing; run it until the slam starts. Called outside a
-	# physics frame, move_and_slide steps by the IDLE frame time, so a fixed 0.2 s of steps was
-	# frame-rate dependent (it missed whenever the machine was busy) - 2026-10-24
-	var walk_t := 0.0
-	while float(b2.get("_windup")) < 0.0 and walk_t < 1.0:
-		_run(b2, 1.0 / 60.0)
-		walk_t += 1.0 / 60.0
+	# until it commits: since the Stubble build (89532c4) a brute set down 2.6 m off steps in a little
+	# before it winds up (about 0.25 s), so a fixed 0.2 s caught it before the slam began (2026-10-24)
+	_run_until(b2, func() -> bool: return float(b2.get("_windup")) >= 0.0, 1.0)
+	_run(b2, 0.05)
 	var facing_then: Vector3 = b2.get("facing")
 	p.global_position = b2.global_position + Vector3(1.2, 0, 2.2)   # a sidestep - still 2.5 m from it, inside the 3 m circle
 	_run(b2, 0.6)
@@ -5362,22 +5391,29 @@ func _test_runes() -> void:
 	(p.get("constructs") as Array).append_array([{"tier": "vestige", "concept": "reach"}, {"tier": "remnant", "concept": "reach"}])
 	p.call("open_seal", 0)
 	var adds: Array = [p.call("word_add", 0, hub, 0)]
+	adds.append_array(_fill_places(p, 0, caps))           # every place of ring 1 (Brent 2026-10-24: full rings)
+	_choose_keystone(p, 0)
 	var lock1: String = str(p.call("test_bind_unclosed", 0.0))
 	p.call("open_seal", 0)                     # the bar was refilled (a test character's override)
 	adds.append_array([p.call("word_add", 0, _runes_of("fire")[0], 1), p.call("word_add", 0, expand, 1), p.call("word_add", 0, caps[0])])
-	_check("a word is built through the player, lock by lock: four runes set", lock1 == "bound" and adds.all(func(r: Dictionary) -> bool: return bool(r["ok"])), "%s %s" % [lock1, str(adds)])
+	adds.append_array(_fill_places(p, 0, [expand]))
+	_check("a word is built through the player, lock by lock, every ring full", lock1 == "bound" and adds.all(func(r: Dictionary) -> bool: return bool(r["ok"])), "%s %s" % [lock1, str(adds)])
 	if BondRules.valence(hub) >= 4:
 		p.call("word_toggle_link", 0, 1, 4)
-	_check("and sealed through two rings (the test hook: the second level lock, closure waived)",
-		str(p.call("test_bind_unclosed", 0.0)) == "bound" and RuneWord.sealed(p.call("ability_word", 0)) == 2 and int(pst["stage"]) == 2)
+	_choose_keystone(p, 0)
+	_check("and sealed through two rings, a keystone over each (the test hook: the second level lock, closure waived)",
+		str(p.call("test_bind_unclosed", 0.0)) == "bound" and RuneWord.sealed(p.call("ability_word", 0)) == 2 and int(pst["stage"]) == 2
+		and RuneWord.keystones(p.call("ability_word", 0)).size() == 2)
 	var saved: Dictionary = p.call("ability_word", 0)
 	var save_text: String = JSON.stringify(p.call("to_save"))
 	var q: Node = _new_player()
 	q.call("from_save", JSON.parse_string(save_text))
 	var loaded: Dictionary = q.call("ability_word", 0)
-	_check("a word survives save and load: the same runes, rings and links, still sealed",
-		RuneWord.nodes(loaded) == RuneWord.nodes(saved) and RuneWord.links(loaded) == RuneWord.links(saved) and RuneWord.size(loaded) == 5
-		and RuneWord.rings(loaded) == RuneWord.rings(saved) and RuneWord.sealed(loaded) == RuneWord.sealed(saved) and RuneWord.sealed(loaded) > 0, "%s vs %s" % [str(loaded), str(saved)])
+	var full_n: int = 1 + (Runes.active() as RingRules).ring_capacity(1) + (Runes.active() as RingRules).ring_capacity(2)
+	_check("a word survives save and load: the same runes, rings, links and keystones, still sealed",
+		RuneWord.nodes(loaded) == RuneWord.nodes(saved) and RuneWord.links(loaded) == RuneWord.links(saved) and RuneWord.size(loaded) == full_n
+		and RuneWord.rings(loaded) == RuneWord.rings(saved) and RuneWord.sealed(loaded) == RuneWord.sealed(saved) and RuneWord.sealed(loaded) > 0
+		and str(RuneWord.keystones(loaded)) == str(RuneWord.keystones(saved)), "%s vs %s" % [str(loaded), str(saved)])
 	_check("its links come back as whole numbers", typeof((RuneWord.links(loaded)[0] as Dictionary)["a"]) == TYPE_INT)
 	_check("and the rules read it the same", str(bond.word_state(loaded, q.call("rune_context", 0))) == str(bond.word_state(saved, p.call("rune_context", 0))))
 	q.set("stars", 3)
@@ -5387,7 +5423,7 @@ func _test_runes() -> void:
 	q.call("word_clear", 0)
 	_check("a draft can be cleared back to its anchor", RuneWord.nodes(q.call("ability_word", 0)) == [anchor])
 	q.call("close_seal")
-	_check("closing the draft leaves the sealed word as it was", RuneWord.size(q.call("ability_word", 0)) == 5)
+	_check("closing the draft leaves the sealed word as it was", RuneWord.size(q.call("ability_word", 0)) == full_n)
 
 	# another rule set in force: the same player methods and save path
 	var free: RuneRules = FreeRules.new()
@@ -5404,6 +5440,7 @@ func _test_runes() -> void:
 		bool(fa[0]["ok"]) and bool(fa[1]["ok"]) and str(f3["reason"]) == "capacity")
 	_check("under them a rune joins anything", bool((f.call("word_toggle_link", 0, 1, 2) as Dictionary)["ok"]) and RuneWord.degree(f.call("ability_word", 0), 1) == 2)
 	var fw: Dictionary = f.call("ability_word", 0)
+	_choose_keystone(f, 0)
 	f.call("test_bind_unclosed", 0.0)
 	var fdata: Dictionary = JSON.parse_string(JSON.stringify(f.call("to_save")))
 	Runes.use(null)
@@ -5427,8 +5464,8 @@ func _test_runes() -> void:
 	var h: Node = _new_player()
 	h.call("from_save", JSON.parse_string(save_text))          # a fresh read: loading keeps the save's dictionaries
 	var hs: Dictionary = free.word_state(h.call("ability_word", 0), h.call("rune_context", 0))
-	_check("a bond_v2 word with five runes loads under the three-rune rules, reported as over capacity",
-		RuneWord.size(h.call("ability_word", 0)) == 5 and str(hs["problems"]).contains("room for 3"), str(hs))
+	_check("a bond_v2 word with %d runes loads under the three-rune rules, reported as over capacity" % full_n,
+		RuneWord.size(h.call("ability_word", 0)) == full_n and str(hs["problems"]).contains("room for 3"), str(hs))
 	Runes.use(null)
 	_check("the test rules' word was untouched by the swap", RuneWord.size(fw) == 3 and RuneWord.links(fw).size() == 3)
 	for n: Node in [p, q, f, g, h]:
@@ -5659,11 +5696,13 @@ func _test_rune_effects() -> void:
 	(q.get("constructs") as Array).append({"tier": "vestige", "concept": "tension"})
 	_check("a full bar and a vestige carried: the seal opens, forming ring 1", bool((q.call("open_seal", 0, 0) as Dictionary)["ok"]) and (q.call("rune_context", 0) as RuneContext).forming == 1)
 	q.call("word_add", 0, fast_r, 0)
-	_check("an open word cannot be sealed", str((q.call("can_bind_seal") as Dictionary)["reason"]) == "not_closed")
+	_check("a ring with empty places cannot be sealed, and that is said before anything else (Brent 2026-10-24: full rings)",
+		str((q.call("can_bind_seal") as Dictionary)["reason"]) == "ring_unformed")
 	q.call("word_add", 0, cap_status, 0)
 	q.call("word_add", 0, cap_any, 1)
 	var st0: Dictionary = (q.get("abilities") as Array)[0]
-	_check("the word is closed", bool(Runes.active().word_state(q.call("ability_word", 0), q.call("rune_context", 0))["closed"]))
+	_check("the word is closed, ring 1 full", bool(Runes.active().word_state(q.call("ability_word", 0), q.call("rune_context", 0))["closed"])
+		and (Runes.active() as RingRules).ring_formed(q.call("ability_word", 0), 1))
 	_check("a draft does not touch the skill", _near(float(q.call("ability_stats", st0)["speed"]), speed0))
 	var bound: String = str(q.call("bind_seal", 0.0))
 	var locked_ab: Dictionary = q.call("ability_stats", st0)
@@ -5733,7 +5772,8 @@ func _rework(s: Node) -> void:
 	s.call("word_add", 0, "WAT-4b", 4)       # Drown off Settle, ring 2
 	s.call("word_add", 0, "WAT-8b", 4)       # Slack off Settle, ring 2
 	s.call("word_add", 0, "UNI-05a", 1)      # Expand off Flood, ring 2
-	s.call("word_toggle_link", 0, 4, 7)      # Expand and Settle
+	s.call("word_add", 0, "UNI-05a", 7)      # a second Expand off the first: ring 2's fifth place (full rings, Brent 2026-10-24)
+	s.call("word_toggle_link", 0, 4, 8)      # it and Settle: the word closes
 
 
 func _rings_ctx(ability_id: String, rings: int) -> RuneContext:
@@ -5944,11 +5984,15 @@ func _test_seals() -> void:
 	(g.get("constructs") as Array).append_array([{"tier": "vestige", "concept": "reach"}, {"tier": "remnant", "concept": "reach"}])
 	g.call("open_seal", gi)
 	var steps: Array = [g.call("word_add", gi, "WAT-5a", 0)]
+	steps.append_array(_fill_places(g, gi, ["WAT-6b", "WAT-3a"]))          # ring 1 full (Brent 2026-10-24)
+	_choose_keystone(g, gi)
 	var g_lock1: String = str(g.call("test_bind_unclosed", 0.0))
 	g.call("open_seal", gi)
-	steps.append_array([g.call("word_add", gi, "WAT-1a", 1), g.call("word_add", gi, "UNI-19a", 2),
-		g.call("word_add", gi, "UNI-28a", 3), g.call("word_add", gi, "UNI-26b", 4), g.call("word_add", gi, "UNI-27b", 5), g.call("word_toggle_link", gi, 6, 2)])
-	_check("a great ring is built lock by lock (Gush on ring 1 at the first; Flood and four universal runes round ring 2 at the second)",
+	# ring 1 holds Gush (1) and two more (2, 3): Flood is 4, the universal runes 5-8
+	steps.append_array([g.call("word_add", gi, "WAT-1a", 1), g.call("word_add", gi, "UNI-19a", 4),
+		g.call("word_add", gi, "UNI-28a", 5), g.call("word_add", gi, "UNI-26b", 6), g.call("word_add", gi, "UNI-27b", 7), g.call("word_toggle_link", gi, 8, 4)])
+	_choose_keystone(g, gi)
+	_check("a great ring is built lock by lock (Gush and two more filling ring 1 at the first; Flood and four universal runes round ring 2 at the second)",
 		g_lock1 == "bound" and steps.all(func(r: Dictionary) -> bool: return bool(r["ok"])) and _trait_ids(Runes.active(), g.call("ability_word", gi)).has("great_ring"), str(steps))
 	_check("and the second lock binds it", str(g.call("test_bind_unclosed", 0.0)) == "bound" and RuneWord.sealed(g.call("ability_word", gi)) == 2)
 	await get_tree().physics_frame
@@ -5999,7 +6043,7 @@ func _test_seals() -> void:
 	var w2: Dictionary = s.call("ability_word", 0)
 	_check("the level 2 seal reworks ring 1 (Dry out, Slack in, Flood and Gush parted) and adds ring 2",
 		second == "bound" and RuneWord.sealed(w2) == 2 and RuneWord.shape_key(w2) == RuneWord.shape_key(reworked) and not RuneWord.nodes(w2).has("WAT-3b")
-		and RuneWord.ring_nodes(w2, 2).size() == 4 and not RuneWord.linked(w2, 1, 2), str(w2))
+		and RuneWord.ring_nodes(w2, 2).size() == 5 and not RuneWord.linked(w2, 1, 2), str(w2))
 	st["progress"] = 100.0
 	(s.get("constructs") as Array).append({"tier": "spirit", "concept": "reach"})
 	s.set("stars", 3)
@@ -6023,35 +6067,76 @@ func _test_seals() -> void:
 	await _test_level_locks()
 
 
-## A closed word for level lock `k` on skill `index` of `p`'s open draft, built from the skill outward:
-## the skill's own rune joined to caps on ring 1 and, from lock 2 on, to a chain of links running out
-## ring by ring to a cap on ring k. Cleared first (a rework of every sealed ring is allowed at a lock).
-## Returns every word_add's answer.
-func _closed_chain(p: Node, index: int, k: int, cap: String, link: String) -> Array:
-	p.call("word_clear", index)
+## Every rune `p` can set and knows (the known part of its palette).
+func _known_pool(p: Node) -> Array:
+	return (p.call("rune_palette") as Array).filter(func(id: String) -> bool: return bool(p.call("knows_rune", id)))
+
+
+## Choose, on `p`'s open level lock of ability `index`, the first carried construct of the tier as the
+## keystone. Returns choose_seal_construct's answer.
+func _choose_keystone(p: Node, index: int) -> Dictionary:
+	var need: String = str(p.call("pending_tier", (p.get("abilities") as Array)[index]))
+	var groups: Array = p.call("construct_groups", need)
+	if groups.is_empty():
+		return {"ok": false, "reason": "no_construct", "text": "none of the tier carried"}
+	return p.call("choose_seal_construct", int((groups[0] as Dictionary)["index"]))
+
+
+## Fill every empty place of rings 1..forming of `p`'s open draft with `fillers` (in turn), unbonded -
+## for the test hook's open words. Returns every word_add's answer.
+func _fill_places(p: Node, index: int, fillers: Array) -> Array:
 	var out: Array = []
-	var need: int = (Runes.active() as RingRules).anchor_needs(p.call("ability_word", index))
-	var caps_on_1: int = need
-	if k >= 2:
-		var prev := 0
-		for ring: int in range(1, k):
-			var r: Dictionary = p.call("word_add", index, link, prev, ring)
+	var ctx: RuneContext = p.call("rune_context", index)
+	var rr: RingRules = Runes.active() as RingRules
+	if rr == null:
+		return out
+	var j := 0
+	for k: int in range(1, ctx.forming + 1):
+		while RuneWord.ring_nodes(p.call("ability_word", index), k).size() < rr.ring_capacity(k):
+			var r: Dictionary = p.call("word_add", index, str(fillers[j % fillers.size()]), -1, k)
 			out.append(r)
-			prev = int(r.get("node", prev))
-		out.append(p.call("word_add", index, cap, prev, k))
-		caps_on_1 = need - 1
-	for j: int in caps_on_1:
-		out.append(p.call("word_add", index, cap, 0, 1))
+			j += 1
+			if not bool(r["ok"]):
+				break
 	return out
 
 
-## The level lock (Brent 2026-10-23: "you should have to build out to in ... You should not be able to
-## build level 2 until level 1 is fully formed with construct. The levels all LOCK together. No binding
-## the constructs on the main page, only with the runes."): the rules refuse ring k before ring k-1 is
-## formed; a bind forms ring and construct together; nothing binds outside the seal screen; a test
-## character walks 0 -> 5 through five real locks; an old save forms its missing inner rings in order.
+## A level lock all the way through, as a player would: the lock opened, a CLOSED word with every ring
+## up to the new one full (FullRings.pattern, from the runes `p` knows) set through the real word_add /
+## word_link, the first carried construct of the tier set as the keystone, and bind_seal(roll).
+## Returns the bind's result, or why it never got that far.
+func _lock_full(p: Node, index: int, roll: float = 0.0) -> String:
+	var o: Dictionary = p.call("open_seal", index)
+	if not bool(o["ok"]):
+		return "not opened: " + str(o["text"])
+	var ctx: RuneContext = p.call("rune_context", index)
+	var w: Dictionary = FullRings.pattern(ctx.anchor, ctx.forming, _known_pool(p), Runes.active() as RingRules)
+	if w.is_empty() and ctx.forming <= 2:
+		w = FullRings.solve(ctx.anchor, ctx.forming, _known_pool(p), Runes.active() as RingRules)
+	if w.is_empty():
+		p.call("close_seal")
+		return "no closed word with full rings from the runes known"
+	for r: Dictionary in FullRings.replay(p, index, w):
+		if not bool(r["ok"]):
+			p.call("close_seal")
+			return "refused: " + str(r["text"])
+	var ch: Dictionary = _choose_keystone(p, index)
+	if not bool(ch["ok"]):
+		p.call("close_seal")
+		return "no keystone: " + str(ch["text"])
+	return str(p.call("bind_seal", roll))
+
+
+## The level lock (Brent 2026-10-23, design/14 section 11, and 2026-10-24, section 12: "Every slot
+## should be filled to be fully formed. Then a vestige is placed over the top with its effect being
+## worth more than a regular rune...and that locks the level ... You have to be able to lock the current
+## level (have a proper construct for it) before you can reform. Its all or nothing at each level."):
+## a ring is formed only when full; ring N+1 is refused until ring N is; the lock opens only with the
+## bar full and the construct carried; the keystone's effect is the concept's times the tier weight,
+## counted once; a failed bind changes nothing in the word; nothing binds outside the seal screen; a
+## test character walks 0 -> 5 through five real locks, every ring full and every word closed.
 func _test_level_locks() -> void:
-	print("the level lock: ring and construct together, built from the skill outward (Brent 2026-10-23):")
+	print("the level lock: full rings, the keystone, all or nothing (Brent 2026-10-23 and 2026-10-24):")
 	var rules: RingRules = Runes.active() as RingRules
 	var bolt: String = "water_bolt"
 	var anchor: String = GameData.skill_anchor(bolt)
@@ -6062,7 +6147,8 @@ func _test_level_locks() -> void:
 			cap = rid
 		if link == "" and BondRules.valence(rid) == 2 and rules.alignment_state(anchor, rid) == "ok" and rules.alignment_state(rid, rid) == "ok":
 			link = rid
-	# ---- the rules: ring 2 is refused before ring 1 is formed
+	var n1: int = rules.ring_capacity(1)
+	# ---- the rules: a ring with an empty place is not formed, and ring N+1 waits for ring N to be full
 	var ctx3: RuneContext = _rctx(bolt, 2)
 	ctx3.rings = 3
 	ctx3.forming = 3
@@ -6070,46 +6156,153 @@ func _test_level_locks() -> void:
 	var r2: Dictionary = rules.can_add(w, link, ctx3, -1, 2)
 	_check("the rules refuse a rune on ring 2 while ring 1 is empty, and say why (\"%s\")" % str(r2.get("text", "")),
 		not bool(r2["ok"]) and str(r2["reason"]) == "ring_unformed" and str(r2["text"]).contains("ring 1 is not formed"))
-	rules.add(w, link, ctx3, -1, 1)
+	rules.add(w, link, ctx3, 0, 1)
 	var r2b: Dictionary = rules.can_add(w, link, ctx3, -1, 2)
-	_check("a rune on ring 1 that is not joined to the skill does not form it: ring 2 still refused", not bool(r2b["ok"]) and str(r2b["reason"]) == "ring_unformed")
-	rules.link(w, 0, 1, ctx3)
-	_check("joined to the skill, ring 1 is formed: ring 2 is open, ring 3 still refused (ring 2 is not formed)",
+	_check("one rune on ring 1, joined to the skill, no longer forms it (1 of %d places): ring 2 still refused" % n1,
+		not rules.ring_formed(w, 1) and not bool(r2b["ok"]) and str(r2b["reason"]) == "ring_unformed" and str(r2b["text"]).contains("1 of %d" % n1), str(r2b))
+	while RuneWord.ring_nodes(w, 1).size() < n1 - 1:
+		rules.add(w, cap, ctx3, -1, 1)
+	_check("with one place of ring 1 still empty it is not formed, and ring 2 is still refused",
+		not rules.ring_formed(w, 1) and str(rules.can_add(w, link, ctx3, -1, 2)["reason"]) == "ring_unformed")
+	rules.add(w, cap, ctx3, -1, 1)
+	_check("every place of ring 1 filled (bonded or not), it is formed: ring 2 opens, ring 3 is still refused (ring 2 is not full)",
 		rules.ring_formed(w, 1) and bool(rules.can_add(w, link, ctx3, -1, 2)["ok"]) and str(rules.can_add(w, link, ctx3, -1, 3)["reason"]) == "ring_unformed")
 	_check("placing without a ring picks the innermost ring that may take it", int(rules.can_add(w, cap, ctx3, -1, -1)["ring"]) <= 2)
+	# a CLOSED word whose ring 1 has an empty place: the anchor's bonds all filled by fewer runes than ring 1 holds
+	var a_need: int = rules.anchor_needs(RuneWord.make(anchor))
+	if a_need < n1:
+		var wc: Dictionary = RuneWord.make(anchor)
+		var ctx1: RuneContext = _rctx(bolt, 0)
+		ctx1.rings = 1
+		ctx1.forming = 1
+		for k: int in a_need:
+			rules.add(wc, cap, ctx1, 0, 1)
+		var sc: Dictionary = rules.can_seal(wc, ctx1)
+		_check("a closed word with an empty place on its ring is not formed and cannot be sealed (\"%s\")" % str(sc["text"]),
+			bool(rules.word_state(wc, ctx1)["closed"]) and not rules.ring_formed(wc, 1) and not bool(sc["ok"]) and str(sc["reason"]) == "ring_unformed")
+	else:
+		print("    (the skill's own rune needs every place of ring 1: no closed word with an empty place exists to check)")
 
-	# ---- the same refusal through the player, with the reason the board shows
+	# ---- the keystone's weight, as data
+	var kp: Dictionary = rules.keystone_params()
+	var weights: Array[String] = []
+	var w_ok := true
+	for ti: int in GameData.construct_tiers.size():
+		var tier: String = str(GameData.construct_tiers[ti])
+		var wt: float = rules.keystone_weight(tier)
+		weights.append("%s x%s" % [tier, RingRules._x(wt)])
+		w_ok = w_ok and _near(wt, float(kp["weight_base"]) + float(kp["weight_per_tier"]) * float(ti)) and wt > 1.0
+	print("    keystone weights: %s (a rune works at its strength, at most 1.0 before conversion)" % ", ".join(weights))
+	_check("each tier's keystone weight is weight_base + weight_per_tier x its place, and every one is above a rune's full strength (1.0)", w_ok and kp.has("_note"))
+	_check("a weighted multiplier is its distance from 1 times the weight: x1.5 at x1.25 is x1.625, x0.75 at x1.25 is x0.6875",
+		_near(rules.keystone_mult(1.5, 1.25), 1.625) and _near(rules.keystone_mult(0.75, 1.25), 0.6875) and rules.keystone_mult(0.01, 50.0) >= float(kp["mult_floor"]) - 0.000001)
+
+	# ---- through the player: the lock opens only with the bar full and the construct carried
 	var p: Node = _new_player()
 	p.call("set_affinities", ["water"])
 	var st: Dictionary = (p.get("abilities") as Array)[0]
-	for rid: String in [cap, link]:
-		p.call("discover_rune", rid, "")
+	for rid2: String in _runes_of("water", -1, []):
+		p.call("discover_rune", rid2, "")
+	st["progress"] = 99.0
+	(p.get("constructs") as Array).append({"tier": "vestige", "concept": "reach"})
+	var o_bar: Dictionary = p.call("open_seal", 0)
+	_check("the lock cannot be opened while the bar is not full (\"%s\")" % str(o_bar["text"]), not bool(o_bar["ok"]) and str(o_bar["reason"]) == "bar" and int(p.call("sealing_index")) < 0)
 	st["progress"] = 100.0
+	(p.get("constructs") as Array).clear()
+	var o_none: Dictionary = p.call("open_seal", 0)
+	_check("nor with the bar full but no construct of the tier carried (\"%s\")" % str(o_none["text"]),
+		not bool(o_none["ok"]) and str(o_none["reason"]) == "no_construct" and int(p.call("sealing_index")) < 0 and str(o_none["text"]).contains("vestige"))
+	(p.get("constructs") as Array).append({"tier": "remnant", "concept": "reach"})
+	_check("a construct of another tier does not open it either", str((p.call("open_seal", 0) as Dictionary)["reason"]) == "no_construct")
+	(p.get("constructs") as Array).clear()
 	(p.get("constructs") as Array).append({"tier": "vestige", "concept": "reach"})
 	(p.get("constructs") as Array).append({"tier": "vestige", "concept": "tension"})
-	p.call("open_seal", 0)
+	var o_ok: Dictionary = p.call("open_seal", 0)
 	var ctx: RuneContext = p.call("rune_context", 0)
-	_check("the first lock opens ring 1 only and chooses a carried vestige", ctx.forming == 1 and ctx.rings == 1
-		and str(((p.get("constructs") as Array)[int(p.call("seal_construct"))] as Dictionary)["tier"]) == "vestige")
-	_check("the construct is chosen on the seal screen: another concept of the tier can be chosen, a wrong tier cannot",
-		bool((p.call("choose_seal_construct", 1) as Dictionary)["ok"]) and int(p.call("seal_construct")) == 1
-		and (func() -> bool:
-			(p.get("constructs") as Array).append({"tier": "remnant", "concept": "reach"})
-			var bad: Dictionary = p.call("choose_seal_construct", 2)
-			(p.get("constructs") as Array).pop_back()
-			return not bool(bad["ok"]) and str(bad["reason"]) == "wrong_tier").call())
+	_check("bar full and a vestige carried: the first lock opens ring 1 only, no keystone set yet (the player sets it)",
+		bool(o_ok["ok"]) and ctx.forming == 1 and ctx.rings == 1 and int(p.call("seal_construct")) < 0 and (p.call("seal_keystone") as Dictionary).is_empty())
 	var empty_bind: Dictionary = p.call("can_bind_seal")
 	_check("with ring 1 empty the lock cannot bind (\"%s\")" % str(empty_bind["text"]), not bool(empty_bind["ok"]) and str(empty_bind["reason"]) == "ring_unformed")
-	var built: Array = _closed_chain(p, 0, 1, cap, link)
-	var held_before: int = (p.get("constructs") as Array).size()
-	var chosen: Dictionary = (p.get("constructs") as Array)[int(p.call("seal_construct"))]
-	var result: String = str(p.call("bind_seal", 0.0))
+	if a_need < n1:
+		for k2: int in a_need:
+			p.call("word_add", 0, cap, 0, 1)
+		var part: Dictionary = p.call("can_bind_seal")
+		_check("closed but with an empty place, the bind is refused and says how full the ring is (\"%s\")" % str(part["text"]),
+			not bool(part["ok"]) and str(part["reason"]) == "ring_unformed" and str(part["text"]).contains("%d of %d" % [a_need, n1]))
+		while RuneWord.ring_nodes(p.call("ability_word", 0), 1).size() < n1:
+			p.call("word_add", 0, link, -1, 1)              # unbonded: full, but no longer closed
+		_check("full but open, it is refused as open", str((p.call("can_bind_seal") as Dictionary)["reason"]) == "not_closed")
+	var plan1: Dictionary = FullRings.pattern(anchor, 1, _known_pool(p), rules)
+	var made1: Array = FullRings.replay(p, 0, plan1)
+	var nokey: Dictionary = p.call("can_bind_seal")
+	_check("full and closed, the bind still waits for the keystone (\"%s\")" % str(nokey["text"]),
+		not plan1.is_empty() and made1.all(func(r: Dictionary) -> bool: return bool(r["ok"])) and str(nokey["reason"]) == "no_keystone" and rules.ring_formed(p.call("ability_word", 0), 1))
+	var bad_tier: Dictionary = (func() -> Dictionary:
+		(p.get("constructs") as Array).append({"tier": "remnant", "concept": "reach"})
+		var r3: Dictionary = p.call("choose_seal_construct", 2)
+		(p.get("constructs") as Array).pop_back()
+		return r3).call()
+	_check("a construct of the wrong tier cannot be the keystone", not bool(bad_tier["ok"]) and str(bad_tier["reason"]) == "wrong_tier")
+	p.call("choose_seal_construct", 1)
+	var ks: Dictionary = p.call("seal_keystone")
+	_check("the vestige of Tension is set over the full ring 1 as its keystone, and now the bind may go",
+		str(ks.get("concept", "")) == "tension" and int(ks.get("ring", 0)) == 1 and bool(ks.get("set", false)) and bool((p.call("can_bind_seal") as Dictionary)["ok"]))
+	# ---- all or nothing: a failed bind changes nothing in the word
+	var before_word: String = JSON.stringify(p.call("_sealed_word", 0))
+	var held0: int = (p.get("constructs") as Array).size()
+	var wounds0: int = (p.get("body") as Body).wounds.size()
+	var failed: String = str(p.call("bind_seal", 0.99))
+	_check("a failed bind (the existing 80% roll) changes nothing in the word: no seal, no keystone, stage 0; the construct is lost and it wounds (the existing rules)",
+		failed == "failed" and JSON.stringify(p.call("_sealed_word", 0)) == before_word and not st.has("word") and int(st["stage"]) == 0
+		and (p.get("constructs") as Array).size() == held0 - 1 and (p.get("body") as Body).wounds.size() == wounds0 + 1, failed)
+	var res1: String = _lock_full(p, 0, 0.0)
 	var w1: Dictionary = p.call("ability_word", 0)
-	var bound: Array = st.get("bound", [])
-	_check("binding forms ring and construct together: stage 1, ring 1 sealed, the chosen vestige bound and used up",
-		built.all(func(r: Dictionary) -> bool: return bool(r["ok"])) and result == "bound" and int(st["stage"]) == 1 and RuneWord.sealed(w1) == 1
-		and RuneWord.ring_nodes(w1, 1).size() > 0 and bound.size() == 1 and str((bound[0] as Dictionary)["concept"]) == str(chosen["concept"])
-		and (p.get("constructs") as Array).size() == held_before - 1 and _near(float(st["progress"]), 0.0), "%s %s" % [result, str(built)])
+	var ks1: Dictionary = RuneWord.keystone(w1, 1)
+	_check("the bind locks the whole level: stage 1, ring 1 full and sealed, the vestige of Reach set over it as its keystone, and used up",
+		res1 == "bound" and int(st["stage"]) == 1 and RuneWord.sealed(w1) == 1 and rules.ring_formed(w1, 1) and str(ks1.get("concept", "")) == "reach"
+		and str(ks1.get("tier", "")) == "vestige" and (p.get("constructs") as Array).is_empty() and _near(float(st["progress"]), 0.0), res1)
+	# ---- the keystone's effect: the concept's times the tier weight, counted once
+	var bare_w: Dictionary = RuneWord.make(anchor, rules.id)
+	var with_k: Dictionary = p.call("ability_stats", st, RuneWord.with_keystone(bare_w, 1, "vestige", "reach"))
+	var without_k: Dictionary = p.call("ability_stats", st, bare_w)
+	var mods: Dictionary = GameData.concept("reach")["mods"]
+	var wv: float = rules.keystone_weight("vestige")
+	var checked: Array[String] = []
+	var eff_ok := true
+	for key: String in mods:
+		if without_k.has(key) and typeof(without_k[key]) in [TYPE_FLOAT, TYPE_INT] and float(without_k[key]) != 0.0:
+			var ratio: float = float(with_k[key]) / float(without_k[key])
+			checked.append("%s x%s (the concept's x%s)" % [key, RingRules._x(ratio), RingRules._x(float(mods[key]))])
+			eff_ok = eff_ok and _near(ratio, 1.0 + (float(mods[key]) - 1.0) * wv, 0.0001)
+	_check("the keystone's effect is the concept's effect times the tier weight (Reach as a vestige keystone, x%s: %s)" % [RingRules._x(wv), ", ".join(checked)],
+		eff_ok and not checked.is_empty(), "%s vs %s" % [str(with_k), str(without_k)])
+	_check("and it is counted once: the sealed skill's numbers are its sealed word's alone - the bind's own record (\"bound\") adds nothing on top",
+		JSON.stringify(p.call("ability_stats", st)) == JSON.stringify(p.call("ability_stats", st, w1)) and (st.get("bound", []) as Array).size() == 1
+		and (Runes.active().locked_effects(w1, RuneContext.of(st, p.get("affinities")))["patch"] as Array).filter(func(o: Dictionary) -> bool:
+			return str(o["path"]) in mods.keys() and _near(float(o["value"]), rules.keystone_mult(float(mods[str(o["path"])]), wv))).size()
+			== mods.keys().filter(func(k4: String) -> bool: return without_k.has(k4)).size())
+	var det: Dictionary = p.call("skill_details", 0)
+	_check("the ethercosm's skill details carry the keystone and what it does", (det.get("keystones", []) as Array).size() == 1
+		and str((det["keystones"] as Array)[0]["label"]).contains("Reach"))
+
+	# ---- lock 2: ring 1 may be reworked but must stay full; ring 2 is refused until it is; a failed bind keeps the sealed word exactly
+	st["progress"] = 100.0
+	(p.get("constructs") as Array).append({"tier": "remnant", "concept": "acceleration"})
+	p.call("open_seal", 0)
+	var one: int = RuneWord.ring_nodes(p.call("ability_word", 0), 1)[0]
+	p.call("word_remove", 0, one)
+	var r_on2: Dictionary = p.call("word_add", 0, link, -1, 2)
+	_check("at lock 2, ring 1 reworked with a place left empty: ring 2 is refused until ring 1 is full again (\"%s\")" % str(r_on2["text"]),
+		not bool(r_on2["ok"]) and str(r_on2["reason"]) == "ring_unformed")
+	var plan2: Dictionary = FullRings.pattern(anchor, 2, _known_pool(p), rules)
+	var made2: Array = FullRings.replay(p, 0, plan2)
+	_choose_keystone(p, 0)
+	var sealed_before: String = JSON.stringify(p.call("_sealed_word", 0))
+	var stats_before: String = JSON.stringify(p.call("ability_stats", st))
+	var f2: String = str(p.call("bind_seal", 0.99))
+	_check("a failed bind at lock 2, with ring 1 reworked and ring 2 full: the sealed word (runes, bonds, keystone) and the skill are exactly as before",
+		f2 == "failed" and made2.all(func(r: Dictionary) -> bool: return bool(r["ok"])) and JSON.stringify(p.call("_sealed_word", 0)) == sealed_before
+		and JSON.stringify(p.call("ability_stats", st)) == stats_before and int(st["stage"]) == 1, f2)
 	p.queue_free()
 
 	# ---- no bind entry point outside the seal screen: the code, and the main page's UI tree
@@ -6157,9 +6350,28 @@ func _test_level_locks() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	es = main.get("screen")
-	_check("its button opens the seal screen at the level lock, with the vestiges carried to choose from",
+	_check("its button opens the seal screen at the level lock, the vestiges carried offered as the keystone",
 		str(es.call("seal_view")) == "bind" and es.find_child("LockConstruct_tension", true, false) is Button and es.find_child("LockConstruct_reach", true, false) is Button
-		and es.find_child("ChosenConstruct", true, false) != null)
+		and es.find_child("KeystoneHead", true, false) != null and es.find_child("NoConstruct", true, false) == null)
+	main.call("close_screen")
+	(mp.get("constructs") as Array).clear()
+	main.call("open_ethercosm")
+	await get_tree().process_frame
+	es = main.get("screen")
+	es.call("select", 0)
+	await get_tree().process_frame
+	var miss: Node = es.find_child("LockMissing", true, false)
+	_check("with the bar full and no vestige carried the main page says what is missing and there is no way into the lock",
+		miss is Label and (miss as Label).text.contains("carry none") and es.find_child("OpenSealButton", true, false) == null and es.find_child("LockReady", true, false) == null,
+		(miss as Label).text if miss is Label else "no LockMissing")
+	es.call("open_seal")
+	await get_tree().process_frame
+	_check("and opening it from code is refused too: the screen stays on the main page", str(main.get("screen").call("seal_view")) != "bind" and int(mp.call("sealing_index")) < 0)
+	main.call("open_seal_first_ready")
+	await get_tree().process_frame
+	_check("the B key opens nothing and says what is missing", int(mp.call("sealing_index")) < 0 and str((mp.get("log_lines") as Array).back()).contains("carry none"),
+		str((mp.get("log_lines") as Array).back()))
+	(mp.get("constructs") as Array).append({"tier": "vestige", "concept": "tension"})
 	main.call("close_screen")
 	main.call("open_inventory")
 	await get_tree().process_frame
@@ -6174,7 +6386,7 @@ func _test_level_locks() -> void:
 	main.queue_free()
 	await get_tree().process_frame
 
-	# ---- a test character walks every lock in order: 0 -> 1 -> 2 -> 3 -> 4 -> 5
+	# ---- a test character walks every lock in order, every ring full and every word closed: 0 -> 5
 	var tc: Node = _new_player()
 	tc.call("make_test_character", "water")
 	var ti := -1
@@ -6184,49 +6396,48 @@ func _test_level_locks() -> void:
 	var tst: Dictionary = (tc.get("abilities") as Array)[ti]
 	var walk: Array[String] = []
 	var walk_ok: bool = int(tst["stage"]) == 0 and GameData.inum("skills", "test_stage") == 0 and int(tc.get("stars")) == GameData.inum("skills", "test_stars")
-	for k: int in range(1, 6):
-		var o: Dictionary = tc.call("open_seal", ti)
-		var tier: String = str(((tc.get("constructs") as Array)[int(tc.call("seal_construct"))] as Dictionary)["tier"]) if bool(o["ok"]) else "?"
-		var tctx: RuneContext = tc.call("rune_context", ti)
-		var made: Array = _closed_chain(tc, ti, k, cap, link)
-		var res: String = str(tc.call("bind_seal", 0.0))
-		walk.append("%d:%s:%s" % [k, tier, res])
-		walk_ok = (walk_ok and bool(o["ok"]) and tctx.forming == k and tier == GameData.tier_for_stage(k - 1) and res == "bound"
-			and made.all(func(r: Dictionary) -> bool: return bool(r["ok"])) and int(tst["stage"]) == k and RuneWord.sealed(tc.call("ability_word", ti)) == k
-			and RuneWord.ring_nodes(tc.call("ability_word", ti), k).size() > 0)
-		if k < 5:
+	for k3: int in range(1, 6):
+		var tier3: String = GameData.tier_for_stage(k3 - 1)
+		var res: String = _lock_full(tc, ti, 0.0)
+		var wk: Dictionary = tc.call("ability_word", ti)
+		var full_all := true
+		for kk: int in range(1, k3 + 1):
+			full_all = full_all and rules.ring_formed(wk, kk)
+		walk.append("%d:%s:%s:%d runes" % [k3, tier3, res, RuneWord.size(wk) - 1])
+		walk_ok = (walk_ok and res == "bound" and int(tst["stage"]) == k3 and RuneWord.sealed(wk) == k3 and full_all
+			and RuneWord.keystones(wk).size() == k3 and str(RuneWord.keystone(wk, k3).get("tier", "")) == tier3
+			and bool(rules.word_state(wk, RuneContext.of(tst, tc.get("affinities")))["closed"]))
+		if k3 < 5:
 			walk_ok = walk_ok and _near(float(tst["progress"]), 100.0)      # the test override: the next lock is open at once
-	_check("a test character starts at stage 0 and walks Water Bolt through five real locks, vestige to asura, one ring each (%s)" % ", ".join(walk), walk_ok)
+	_check("a test character starts at stage 0 and walks Water Bolt through five real locks, vestige to asura, every ring full, every word closed, a keystone over each ring (%s)" % ", ".join(walk), walk_ok)
 	_check("after the asura lock (stage 5 = stars + 1) no lock is left", str(tc.call("pending_tier", tst)) == "" and not bool((tc.call("open_seal", ti) as Dictionary)["ok"]))
 	tc.queue_free()
 
-	# ---- an old save: stage 2, no word (bound twice under the old flow, the draft left untouched)
-	var o_p: Node = _new_player()
-	o_p.call("set_affinities", ["water"])
-	o_p.set("stars", 3)
-	for rid2: String in [cap, link]:
-		o_p.call("discover_rune", rid2, "")
-	var ost: Dictionary = (o_p.get("abilities") as Array)[0]
-	ost["stage"] = 2
-	ost["progress"] = 100.0
-	ost["bound"] = [{"stage": 0, "tier": "vestige", "concept": "reach"}, {"stage": 1, "tier": "remnant", "concept": "reach"}]
-	(o_p.get("constructs") as Array).append({"tier": "spirit", "concept": "tension"})
-	o_p.call("open_seal", 0)
-	var octx: RuneContext = o_p.call("rune_context", 0)
-	var on2: Dictionary = o_p.call("word_add", 0, link, -1, 2)
-	var on3: Dictionary = o_p.call("word_add", 0, link, -1, 3)
-	_check("an old save's next lock (stage 2, no word) opens rings 1-3, but ring 2 and ring 3 are refused while ring 1 is unformed",
-		octx.forming == 3 and octx.rings == 3 and str(on2["reason"]) == "ring_unformed" and str(on3["reason"]) == "ring_unformed" and RuneWord.size(o_p.call("ability_word", 0)) == 1)
-	var on1: Dictionary = o_p.call("word_add", 0, link, 0, 1)
-	var on2b: Dictionary = o_p.call("word_add", 0, link, int(on1.get("node", 0)), 2)
-	var cut: Dictionary = o_p.call("can_bind_seal")
-	_check("formed in order - ring 1 joined to the skill, then ring 2 - and still the lock will not bind until ring 3, its own ring, is formed too",
-		bool(on1["ok"]) and bool(on2b["ok"]) and not bool(cut["ok"]) and str(cut["reason"]) == "ring_unformed")
-	var oc: Array = _closed_chain(o_p, 0, 3, cap, link)
-	var ores: String = str(o_p.call("bind_seal", 0.0))
-	_check("with every missing inner ring formed, in order, plus the new one, it binds: stage 3, sealed through three rings",
-		oc.all(func(r: Dictionary) -> bool: return bool(r["ok"])) and ores == "bound" and int(ost["stage"]) == 3 and RuneWord.sealed(o_p.call("ability_word", 0)) == 3, ores)
-	o_p.queue_free()
+	# ---- an older save is not supported (Brent 2026-10-24: "dont worry about old saves at all"), but it
+	# loads safely: stage 2 with one rune sealed on ring 1 and no keystones; its next lock starts from it
+	var old: Node = _new_player()
+	old.call("set_affinities", ["water"])
+	var od: Dictionary = JSON.parse_string(JSON.stringify(old.call("to_save")))
+	var oa: Dictionary = (od["abilities"] as Array)[0]
+	oa["stage"] = 2
+	oa["progress"] = 100.0
+	oa["bound"] = [{"stage": 0, "tier": "vestige", "concept": "reach"}, {"stage": 1, "tier": "remnant", "concept": "reach"}]
+	oa["word"] = {"nodes": [anchor, cap], "rings": [0, 1], "links": [{"a": 0, "b": 1}], "made_under": "bond_v2", "sealed": 2,
+		"keystones": [{"ring": 1, "tier": "vestige", "concept": "reach"}, {"ring": 3, "tier": "spirit", "concept": "reach"}, {"ring": 2, "tier": "nonsense"}]}
+	od["stars"] = 3
+	var errs_before: int = _errors.count()
+	var ol: Node = _new_player()
+	ol.call("from_save", od)
+	var ost: Dictionary = (ol.get("abilities") as Array)[0]
+	var o_stats: Dictionary = ol.call("ability_stats", ost)
+	(ol.get("constructs") as Array).append({"tier": "spirit", "concept": "tension"})
+	var oo: Dictionary = ol.call("open_seal", 0)
+	var ob: Dictionary = ol.call("can_bind_seal")
+	_check("an older save loads without an error: its word as it was, only the keystone over a sealed ring kept, and its next lock starts from what it has - every ring 1-3 must be full",
+		_errors.count() == errs_before and not o_stats.is_empty() and RuneWord.keystones(ost["word"]).size() == 1 and bool(oo["ok"])
+		and (ol.call("rune_context", 0) as RuneContext).forming == 3 and str(ob["reason"]) == "ring_unformed" and str(ob["text"]).contains("Ring 1"), str(ob))
+	for n2: Node in [old, ol]:
+		n2.queue_free()
 	await get_tree().process_frame
 
 
@@ -6476,6 +6687,8 @@ func _test_seal_editing() -> void:
 	for k0: int in [1, 2]:
 		p.call("open_seal", 0)
 		prev = int((p.call("word_add", 0, links2[0], prev, k0) as Dictionary).get("node", prev))
+		_fill_places(p, 0, links2)              # every place full (Brent 2026-10-24)
+		_choose_keystone(p, 0)
 		p.call("test_bind_unclosed", 0.0)
 	var sealed_key: String = RuneWord.shape_key(p.call("ability_word", 0))
 	main.call("open_ethercosm")
@@ -6504,12 +6717,12 @@ func _test_seal_editing() -> void:
 	_bclick(b, _local(b, b.empty_slot_global(1, 0)))
 	_check("with a rune selected, a new rune is set alone - never bonded to the selection (bug 1)",
 		RuneWord.size(w.call()) == 3 and RuneWord.degree(w.call(), 2) == 0 and RuneWord.links(w.call()).is_empty(), str(w.call()))
-	# ring 2 is refused while ring 1 is not formed (Brent 2026-10-23: built from the skill outward)
+	# ring 2 is refused while ring 1 is not formed - full (Brent 2026-10-23 and 2026-10-24)
 	var early_g: Vector2 = b.empty_slot_global(2, 2)
 	s.call("carry_move", links2[2], early_g)
 	var early: Dictionary = s.call("place_check", links2[2], 2)
 	s.call("carry_end", links2[2], early_g)
-	_check("ring 2 refused while ring 1 is not formed: no rune on it is joined to the skill (\"%s\")" % RuneBoard.short_reason(early),
+	_check("ring 2 refused while ring 1 has an empty place (\"%s\")" % RuneBoard.short_reason(early),
 		str(early["reason"]) == "ring_unformed" and RuneWord.size(w.call()) == 3 and str(s.get("_rune_msg")).contains("ring 1 is not formed"), str(s.get("_rune_msg")))
 
 	# ---- bond by dragging (and the stale-pick bug 2: clicks only select)
@@ -6527,18 +6740,19 @@ func _test_seal_editing() -> void:
 		if b.node_global(i2).distance_to(before_pos[i2]) > 0.5:
 			moved = true
 	_check("bonding moves nothing on the board (bug 5: runes jumped to sit by their partners)", not moved)
+	s.call("place_rune", links2[2], 1, -1)          # ring 1's last place: now it is full (node 3)
 	# a palette rune carried to a place and let go there (the chip hands the cursor to the screen):
-	# ring 1 is formed now, so ring 2 takes it
+	# ring 1 is formed now, so ring 2 takes it (node 4)
 	var drop_g: Vector2 = b.empty_slot_global(2, 2)
 	var drop_j: int = b.empty_place(2, 2)
 	s.call("carry_move", links2[2], drop_g + Vector2(30, 10))
 	var carrying: bool = b.is_carrying()
 	s.call("carry_move", links2[2], drop_g)
 	s.call("carry_end", links2[2], drop_g)
-	_check("with ring 1 formed, a palette rune carried to an empty place of ring 2 and let go is set there", carrying and not b.is_carrying() and RuneWord.size(w.call()) == 4
-		and RuneWord.ring(w.call(), 3) == 2 and RuneWord.places(w.call())[3] == drop_j, str(s.get("_rune_msg")))
-	_bdrag(b, _local(b, b.node_global(1)), _local(b, b.node_global(3)))
-	_check("a rune on ring 1 dragged to one on ring 2: bonded", RuneWord.linked(w.call(), 1, 3))
+	_check("with ring 1 full, a palette rune carried to an empty place of ring 2 and let go is set there", carrying and not b.is_carrying() and RuneWord.size(w.call()) == 5
+		and RuneWord.ring(w.call(), 4) == 2 and RuneWord.places(w.call())[4] == drop_j, str(s.get("_rune_msg")))
+	_bdrag(b, _local(b, b.node_global(1)), _local(b, b.node_global(4)))
+	_check("a rune on ring 1 dragged to one on ring 2: bonded", RuneWord.linked(w.call(), 1, 4))
 	_bclick(b, _local(b, b.node_global(0)))
 	_bclick(b, _local(b, b.node_global(1)))
 	_check("clicking two bonded runes, one then the other, leaves their bond alone (bug 3: it was parted)", RuneWord.linked(w.call(), 0, 1) and int(s.get("picked")) == 1)
@@ -6546,7 +6760,9 @@ func _test_seal_editing() -> void:
 	var n_links: int = RuneWord.links(w.call()).size()
 	_bdrag(b, _local(b, b.node_global(2)), Vector2(b.size.x - 24.0, b.size.y * 0.5 + 40.0))
 	_check("a drag let go on empty space makes no bond", RuneWord.links(w.call()).size() == n_links and not b.is_dragging())
-	# a refused drag: ring 3 is not next to ring 1
+	# a refused drag: ring 3 is not next to ring 1 (ring 2 filled first: ring 3 waits for it)
+	while RuneWord.ring_nodes(w.call(), 2).size() < (Runes.active() as RingRules).ring_capacity(2):
+		s.call("place_rune", links2[3], 2, -1)
 	s.call("place_rune", links2[3], 3, -1)
 	var far: int = RuneWord.size(w.call()) - 1
 	_bpress(b, _local(b, b.node_global(2)))
@@ -6559,32 +6775,32 @@ func _test_seal_editing() -> void:
 	_check("and letting go on it makes no bond, and says why", not RuneWord.linked(w.call(), 2, far) and str(s.get("_rune_msg")).contains("cannot bond"), str(s.get("_rune_msg")))
 
 	# ---- select a bond along its curve, delete it three ways
-	_bclick(b, _local(b, b.bond_global(1, 3)))
-	_check("a click on a bond's curve selects it", s.get("picked_bond") == Vector2i(1, 3), str(s.get("picked_bond")))
+	_bclick(b, _local(b, b.bond_global(1, 4)))
+	_check("a click on a bond's curve selects it", s.get("picked_bond") == Vector2i(1, 4), str(s.get("picked_bond")))
 	_key(s, "seal_delete")
-	_check("Delete parts the selected bond", not RuneWord.linked(w.call(), 1, 3) and s.get("picked_bond") == Vector2i(-1, -1))
-	_bdrag(b, _local(b, b.node_global(1)), _local(b, b.node_global(3)))
-	_bclick(b, _local(b, b.bond_global(1, 3)))
+	_check("Delete parts the selected bond", not RuneWord.linked(w.call(), 1, 4) and s.get("picked_bond") == Vector2i(-1, -1))
+	_bdrag(b, _local(b, b.node_global(1)), _local(b, b.node_global(4)))
+	_bclick(b, _local(b, b.bond_global(1, 4)))
 	var cross: Vector2 = b.cross_global()
 	_bclick(b, _local(b, cross))
-	_check("a selected bond shows an x, and clicking it parts the bond", cross.x >= 0.0 and not RuneWord.linked(w.call(), 1, 3))
-	_bdrag(b, _local(b, b.node_global(1)), _local(b, b.node_global(3)))
-	_bclick(b, _local(b, b.bond_global(1, 3)), MOUSE_BUTTON_RIGHT)
-	_check("right-clicking a bond parts it", not RuneWord.linked(w.call(), 1, 3))
-	_bdrag(b, _local(b, b.node_global(1)), _local(b, b.node_global(3)))
-	_bclick(b, _local(b, b.bond_global(1, 3)))
+	_check("a selected bond shows an x, and clicking it parts the bond", cross.x >= 0.0 and not RuneWord.linked(w.call(), 1, 4))
+	_bdrag(b, _local(b, b.node_global(1)), _local(b, b.node_global(4)))
+	_bclick(b, _local(b, b.bond_global(1, 4)), MOUSE_BUTTON_RIGHT)
+	_check("right-clicking a bond parts it", not RuneWord.linked(w.call(), 1, 4))
+	_bdrag(b, _local(b, b.node_global(1)), _local(b, b.node_global(4)))
+	_bclick(b, _local(b, b.bond_global(1, 4)))
 	_key(s, "seal_delete_alt")
-	_check("Backspace parts the selected bond too", not RuneWord.linked(w.call(), 1, 3))
+	_check("Backspace parts the selected bond too", not RuneWord.linked(w.call(), 1, 4))
 
 	# ---- a full rune selected does not stop a placement (bug 7)
-	s.call("place_rune", caps[0], 1, -1)
+	s.call("place_rune", caps[0], 3, -1)
 	var cap_i: int = RuneWord.size(w.call()) - 1
-	_bdrag(b, _local(b, b.node_global(cap_i)), _local(b, b.node_global(2)))
+	_bdrag(b, _local(b, b.node_global(cap_i)), _local(b, b.node_global(4)))
 	_bclick(b, _local(b, b.node_global(cap_i)))
 	var size_before: int = RuneWord.size(w.call())
 	var full: bool = RuneWord.degree(w.call(), cap_i) == 1 and int(s.get("picked")) == cap_i
 	s.call("arm_rune", links2[4])
-	_bclick(b, _local(b, b.empty_slot_global(2, 0)))
+	_bclick(b, _local(b, b.empty_slot_global(3, 0)))
 	_check("with a full rune selected, a new rune is still set (bug 7: refused because it would have bonded to the selection)",
 		full and RuneWord.size(w.call()) == size_before + 1, "%s %s" % [str(full), str(s.get("_rune_msg"))])
 
@@ -6603,6 +6819,7 @@ func _test_seal_editing() -> void:
 	var steps: Array[Callable] = [
 		func() -> void: s.call("place_rune", links2[0], 1, 0),
 		func() -> void: s.call("place_rune", links2[1], 1, 2),
+		func() -> void: s.call("place_rune", links2[3], 1, 1),          # ring 1 full: ring 2 opens
 		func() -> void: _bdrag(b, _local(b, b.node_global(0)), _local(b, b.node_global(1))),
 		func() -> void: _bdrag(b, _local(b, b.node_global(1)), _local(b, b.node_global(2))),
 		func() -> void: s.call("place_rune", links2[2], 2, 1),
@@ -6638,19 +6855,20 @@ func _test_seal_editing() -> void:
 
 	# ---- the board's geometry (bugs 6 and 10)
 	p.call("word_clear", 0)
-	s.call("place_rune", links2[3], 1, 0)            # ring 1 first, joined to the skill: ring 2 is open
+	for j0: int in 3:
+		s.call("place_rune", links2[3], 1, j0)       # ring 1 first, every place: ring 2 is open
 	s.call("finish_bond", 0, 1)
 	for j: int in 3:
-		s.call("place_rune", links2[j], 2, j)
-	s.call("finish_bond", 2, 4)
+		s.call("place_rune", links2[j], 2, j)        # nodes 4, 5, 6
+	s.call("finish_bond", 4, 6)
 	await get_tree().process_frame
-	var pts: PackedVector2Array = b._bond_points(2, 4)
-	var mid_pos: Vector2 = (b.get("_pos") as Array)[3]
+	var pts: PackedVector2Array = b._bond_points(4, 6)
+	var mid_pos: Vector2 = (b.get("_pos") as Array)[5]
 	var nearest := INF
 	for q: Vector2 in pts:
 		nearest = minf(nearest, q.distance_to(mid_pos))
 	_check("two runes of ring 2 with one between them: their bond is drawn across, %.0f px clear of the middle rune (bug 6: along the ring, through it)" % nearest,
-		RuneWord.size(w.call()) == 5 and RuneWord.linked(w.call(), 2, 4) and nearest > RuneBoard.SEAL_R + 2.0, str(w.call()))
+		RuneWord.size(w.call()) == 7 and RuneWord.linked(w.call(), 4, 6) and nearest > RuneBoard.SEAL_R + 2.0, str(w.call()))
 	var saved_pos: Array = (b.get("_pos") as Array).duplicate()
 	var c0: Vector2 = saved_pos[0]
 	b.set("_pos", [c0, c0 + Vector2(200, 0), c0 + Vector2(240, 0)] as Array[Vector2])
