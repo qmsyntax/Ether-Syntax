@@ -8,8 +8,15 @@ const PATH := "user://save.json"
 const VERSION := 1
 const SLOTS := 5
 
+## Set by a click test so its saves go to a folder of their own, never over the real ones
+## ("" = the real files). Ends with a slash, e.g. "user://probe_saves/".
+static var test_dir := ""
+
 
 static func slot_path(slot: int) -> String:
+	if test_dir != "":
+		DirAccess.make_dir_recursive_absolute(test_dir)
+		return test_dir + ("save.json" if slot <= 0 else "save_slot_%d.json" % slot)
 	return PATH if slot <= 0 else "user://save_slot_%d.json" % slot
 
 
@@ -32,11 +39,13 @@ static func describe(data: Dictionary) -> String:
 		"   -   hardcore" if bool(data.get("hardcore", false)) else ""]
 
 
-static func exists(path: String = PATH) -> bool:
-	return FileAccess.file_exists(path)
+static func exists(path: String = "") -> bool:
+	return FileAccess.file_exists(slot_path(0) if path == "" else path)
 
 
-static func write(data: Dictionary, path: String = PATH) -> bool:
+static func write(data: Dictionary, path: String = "") -> bool:
+	if path == "":
+		path = slot_path(0)
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		return false
@@ -46,7 +55,9 @@ static func write(data: Dictionary, path: String = PATH) -> bool:
 
 
 ## Returns {} if there is no save, it cannot be parsed, or it is from another version.
-static func read(path: String = PATH) -> Dictionary:
+static func read(path: String = "") -> Dictionary:
+	if path == "":
+		path = slot_path(0)
 	if not FileAccess.file_exists(path):
 		return {}
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -58,6 +69,8 @@ static func read(path: String = PATH) -> Dictionary:
 	return parsed
 
 
-static func delete(path: String = PATH) -> void:
+static func delete(path: String = "") -> void:
+	if path == "":
+		path = slot_path(0)
 	if FileAccess.file_exists(path):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))

@@ -95,6 +95,17 @@ func framed(root: Control, left: float, top: float, right: float, bottom: float)
 	return box
 
 
+## Do `action` (labelled `yes_label`) now, or first ask over this screen when it would lose the
+## character in play (main.gd `leave_warning`: a real character; a test character is never saved,
+## so it is left without asking).
+func confirm_leave(yes_label: String, action: Callable) -> void:
+	var warning: String = str(game.call("leave_warning"))
+	if warning == "":
+		action.call()
+		return
+	add_child(UiWidgets.ConfirmDialog.new("Leave %s?" % str(game.call("character_label")), warning, yes_label, action))
+
+
 ## A scrolling vertical list that fills the remaining height of its parent.
 func scroller(parent: Control) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
