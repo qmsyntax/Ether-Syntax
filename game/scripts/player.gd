@@ -4843,8 +4843,6 @@ func end_fight() -> void:
 
 func aura_read() -> String:
 	var frac: float = _latent_aura / _aura_threshold
-	if stars >= 2:
-		return "Two stars turn in the dark."
 	if frac < 0.25:
 		return "The star is quiet."
 	if frac < 0.6:
@@ -4862,12 +4860,13 @@ func _rig_action(motion: String) -> void:
 
 func try_ascend() -> void:
 	var full: bool = star_pct.back() >= GameData.num("stars", "max_pct")
-	if stars >= 2 or not full or _latent_aura < _aura_threshold:
+	if not full or _latent_aura < _aura_threshold:            # every star ascends (Brent 2026-10-24: no cap)
 		note("Nothing happens. The star is not ready.")
 		return
-	var asc: Dictionary = GameData.balance["ascension_2"]
+	# the body grows by the new star's "ascension_<n>" block, else by the second star's
+	var asc: Dictionary = GameData.balance.get("ascension_%d" % (stars + 1), GameData.balance["ascension_2"])
 	_latent_aura -= _aura_threshold
-	stars = 2
+	stars += 1
 	# A new star is born tiny (Brent 2026-09-23) and grows from here.
 	star_pct.append(GameData.num("stars", "new_star_start_pct"))
 	_recompute_essence_max()
@@ -4879,8 +4878,9 @@ func try_ascend() -> void:
 		e.on_ascend(stars)
 	_begin_ascension()
 	_rig_action("power_up")
-	note("ASCENDED. A second star splits off - tiny, for now.")
-	note("Talent evolves: %s" % str(talent.get("evolve_2", "?")))
+	note("ASCENDED. Star %d splits off - tiny, for now." % stars)
+	if talent.has("evolve_%d" % stars):
+		note("Talent evolves: %s" % str(talent["evolve_%d" % stars]))
 	if talent_id != "one_percent_lifesteal":
 		note("(this talent's evolution is not wired into the prototype yet)")
 	ascended.emit(stars)

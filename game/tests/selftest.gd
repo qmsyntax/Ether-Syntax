@@ -892,6 +892,14 @@ func _test_stars() -> void:
 	_check("the tank is 99% of one star plus 1% of another", _near(float(p.get("essence_max")), 100.0), "got %f" % float(p.get("essence_max")))
 	p.call("grow_star", 20.0)
 	_check("only the newest star grows after ascension", _near(float(pcts[0]), 99.0) and _near(float(pcts[1]), 21.0))
+	p.call("try_ascend")
+	_check("a second star not yet full does not ascend", int(p.get("stars")) == 2)
+	p.call("grow_star", 500.0)
+	p.set("_latent_aura", GameData.num("player", "aura_threshold") + 1.0)
+	p.set("ascension_pending", {})
+	p.call("try_ascend")
+	_check("every star ascends (Brent 2026-10-24: no two-star cap): a third star at 1%", int(p.get("stars")) == 3 and (p.get("star_pct") as Array).size() == 3
+		and _near(float((p.get("star_pct") as Array)[2]), 1.0), "stars %d" % int(p.get("stars")))
 	p.queue_free()
 
 
@@ -3646,7 +3654,8 @@ func _test_ascension() -> void:
 		seen_second[o[1]] = true
 	_check("holding Fire, one choice is always a hybrid with Fire as a parent (Lightning or Metal)", hybrid_first)
 	_check("the offer is offer_count (2) different affinities, none held", right_size and never_held)
-	_check("the other choice is random: over 300 rolls it ranges widely, bases included", seen_second.size() >= 10 and seen_second.has("water") and seen_second.has("death"), str(seen_second.keys()))
+	_check("the other choice is a random BASE not held (Brent 2026-10-24: never a random hybrid): over 300 rolls all seven others appear, nothing else",
+		seen_second.size() == 7 and seen_second.keys().all(func(k: Variant) -> bool: return str(GameData.affinity(str(k)).get("kind", "")) == "base"), str(seen_second.keys()))
 	var water_h := true
 	for s2: int in 100:
 		rng.seed = 5000 + s2
@@ -3657,8 +3666,9 @@ func _test_ascension() -> void:
 	for s3: int in 100:
 		rng.seed = 7000 + s3
 		var o3: Array[String] = Ascension.offer(["fire", "lightning", "metal"], rng)
-		all_random = all_random and o3.size() == 2 and not o3.has("fire") and not o3.has("lightning") and not o3.has("metal")
-	_check("with no hybrid left to grow into, both choices are random affinities not held", all_random)
+		all_random = all_random and o3.size() == 2 and not o3.has("fire") and not o3.has("lightning") and not o3.has("metal") \
+			and o3.all(func(id: String) -> bool: return str(GameData.affinity(id).get("kind", "")) == "base")
+	_check("with no hybrid left to grow into, both choices are random bases not held", all_random)
 	# never an affinity the game lacks: Holy (Light + Life) without skills is never offered, even to Light
 	var affs: Dictionary = GameData.get("_affinities")
 	affs["holy"] = {"label": "Holy", "kind": "hybrid", "parents": ["light", "life"], "kit": []}

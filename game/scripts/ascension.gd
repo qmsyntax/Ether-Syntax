@@ -20,7 +20,8 @@ static func cfg() -> Dictionary:
 
 ## The affinities offered to a character holding `held`: offer_count of them, none held and none
 ## the game lacks (GameData.affinity_playable). One is a hybrid with a parent in `held` when any
-## such exists; the rest are drawn from every other affinity not held. Order: the hybrid first.
+## such exists; the rest are drawn from the BASES not held (Brent 2026-10-24: a hybrid only ever
+## comes through a base you hold). Order: the hybrid first.
 static func offer(held: Array, rng: RandomNumberGenerator) -> Array[String]:
 	var count: int = int(cfg().get("offer_count", 2))
 	var pool: Array[String] = []
@@ -34,7 +35,7 @@ static func offer(held: Array, rng: RandomNumberGenerator) -> Array[String]:
 	if not hybrids.is_empty() and count > 0:
 		var h: String = hybrids[rng.randi() % hybrids.size()]
 		out.append(h)
-		pool.erase(h)
+	pool.assign(pool.filter(func(id: String) -> bool: return str(GameData.affinity(id).get("kind", "")) == "base"))
 	while out.size() < count and not pool.is_empty():
 		var r: String = pool[rng.randi() % pool.size()]
 		out.append(r)
