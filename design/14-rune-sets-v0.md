@@ -465,4 +465,70 @@ levels all LOCK together. No binding the constructs on the main page, only with 
 Not built: a separate cost or ritual for reworking a sealed ring at a lock; keeping a failed bind's draft (a failed
 bind reopens the lock on the sealed word). Open for Brent: whether a ring must be *full* (every place used) to count as
 formed, rather than reaching the skill; whether an old save should instead lose the stages its word never had. Feel is
-untested - needs Brent.
+untested - needs Brent. [Both answered by section 12: a ring is formed only when full; old saves are not supported.]
+
+**Superseded by section 12** (2026-10-24): "a ring counts as formed when at least one rune on it is joined to the skill"
+(now: every place filled); "with none carried the ring can be laid out but not bound" (now: the lock does not open
+without the construct); the old-save rule (removed); the construct being chosen for the player when the seal opens (now
+the player sets the keystone). The rest of section 11 stands.
+
+
+## 12. Ruling and build (2026-10-24): full rings, the keystone, all or nothing
+
+Brent, 2026-10-24 [B]: "dont worry about old saves at all. Every slot should be filled to be fully formed. Then a
+vestige is placed over the top with its effect being worth more than a regular rune...and that locks the level. At
+each level you can redo all levels available. But once locked, you have to wait until the next full level. You have to
+be able to lock the current level (have a proper construct for it) before you can reform. Its all or nothing at each
+level."
+
+- **Fully formed means full** [B]. A ring is formed only when every one of its places holds a rune (ring capacity 3, 5,
+  7, 9, 11 under the "grows" reading of section 9). Ring N+1 cannot be started until ring N is full
+  (`RingRules.ring_formed`, `unformed_below`, `first_unformed`; reason `ring_unformed`). The word's own rules still
+  apply on top at the bind: closed, every bond valid, no alignment refused. Repeats are allowed (params
+  `allow_repeats`, as before) [MODEL, unchanged].
+- **The keystone** [B rule, MODEL numbers]. Once the forming ring is full, the chosen construct - vestige at lock 1,
+  remnant at 2, then spirit, eidolon, asura - is set over the ring as its keystone and sealed with the word
+  (`RuneWord.keystones`: one per ring, {ring, tier, concept}). Its concept's effect counts for more than a regular rune's:
+  every multiplier of the concept (constructs.json `mods`, or its `fallback` when the skill has none of those fields)
+  has its distance from 1 scaled by the tier's weight: m' = max(floor, 1 + (m - 1) x w), w = weight_base +
+  weight_per_tier x the tier's place (vestige 0 ... asura 4). Numbers in `runes.json` bond_v2 `keystone` (with a
+  `_note`): weight_base 1.25, weight_per_tier 0.25 (vestige 1.25, remnant 1.5, spirit 1.75, eidolon 2.0, asura 2.25),
+  mult_floor 0.1 [MODEL]. A regular rune works at its strength, at most 1.0 before ionic conversion, so every keystone
+  outweighs any unconverted rune. Example: a vestige of Acceleration over Water Bolt's ring 1 takes its speed x1.5 to
+  x1.625. These are not in the workbook yet (Brent adds them; the exporter carries them as `KEYSTONE_RULES` until then).
+- **Folded, not counted twice** [MODEL]. A construct's concept now reaches a skill ONLY as the keystone of a sealed
+  ring, through the word's effects (`RingRules.effects` puts the keystones' patch ahead of the runes', as the concept
+  was applied before the runes before). The ability's `bound` list is kept as a record of the binds and changes nothing.
+  So a skill shows its keystones on the seal screen (the board draws each as a wedge crowning its ring; the panel's
+  KEYSTONE choice and "Keystones" list; the construct buttons' tooltips), on the ethercosm's "What it does" (the numbers
+  hold them, with a line per keystone), in the HUD tooltip and on the inventory's soul tab.
+- **No lock without the construct** [B]. The seal screen of a skill opens only when its bar is full AND a construct of
+  the tier is carried (`Player.can_open_seal`). Otherwise the ethercosm's main page says what is missing ("LockMissing")
+  and offers no way into the lock; the inventory and the HUD say the same; the B key opens nothing and says it. The
+  old "the ring can be laid out, not bound" state is gone.
+- **Redo everything up to the current ring at a lock; nothing between locks** [B]. As section 11: at a lock every sealed
+  ring may be reworked (it must stay full); between locks the word cannot be changed. The keystones of sealed rings stay
+  (the constructs bound earlier are not given back).
+- **All or nothing** [B]. The bind locks the whole level - every reworked inner ring, the new ring full, the construct
+  set as its keystone - or changes nothing. Bind is enabled only when every ring up to the current one is full, the
+  word is closed and the keystone is chosen, and says which is missing, in that order. The existing bind roll is kept
+  (80% takes, balance "binding"); on a failure the word stays exactly as it was before the lock opened, and the
+  existing loss and wound rules apply (the construct is used up, a Soul-burn wound). **Open for Brent: whether a failed
+  bind should cost the construct and wound at all under all-or-nothing, or be kept as it is.**
+- **Old saves are not supported** [B: "dont worry about old saves at all"]. The section 11 old-save rule, its shot and
+  its test are removed. Loading stays safe: a skill at stage N whose word has fewer full rings (or none) loads as it is,
+  and its next lock simply starts from what it has - every ring 1..N+1 must be full to bind. Its earlier binds' concepts
+  (which lived in `bound`) no longer apply until it has keystones [MODEL: the simplest safe choice]. Keystones load only
+  over sealed rings.
+- **Test characters** as before: stage 0, four stars, a full bar, three of every construct tier and concept, the bar
+  refilled after a bind. The self-test walks one through all five locks with every ring full and every word closed
+  (35 runes by lock 5), and cast_every_skill seals every skill through two locks with full rings.
+- **A new character's starting runes** [check, `tests/full_ring_check.tscn`]: for every single-affinity start (16
+  affinities x 3 pairs of root skills), the exhaustive search finds a closed word with ring 1 full and with rings 1-2
+  full for 47 of the 48 starting skills. **Set Solid (Ice) cannot lock even its first level** with the runes it starts
+  knowing (Freeze 4 bonds, Thaw 2, Frost or Glaze 2; ice has no one-bond rune): with the skill's own rune needing three
+  bonds, ring 1's three runes have an odd number of bonds left, so no closed word exists. The starting runes were not
+  changed; open for Brent.
+
+Not built: a separate cost for reworking; a choice of where on the ring the keystone sits (it always crowns the top);
+the keystone's own animation or sound. Feel is untested - needs Brent.
