@@ -12,6 +12,7 @@ const ShopScreen := preload("res://scripts/ui/shop_screen.gd")
 const InventoryScreen := preload("res://scripts/ui/inventory_screen.gd")
 const MessageScreen := preload("res://scripts/ui/message_screen.gd")
 const EthercosmScreen := preload("res://scripts/ui/ethercosm_screen.gd")
+const AscensionScreen := preload("res://scripts/ui/ascension_screen.gd")
 
 const CAMERA_OFFSET := Vector3(12.0, 12.0, 12.0)
 const TALENT_CHOICES: Array[String] = [
@@ -257,6 +258,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if state == "select" or state == "dead":
 		return
+	if screen is AscensionScreen:
+		return                          # the ascension is settled on its screen before anything else
 	if event.is_action_pressed("inventory"):
 		open_inventory()
 		return
@@ -1358,6 +1361,7 @@ func load_slot(slot: int) -> bool:
 	hardcore = bool(data.get("hardcore", false))
 	if not _resume_place(data.get("place", {})):
 		_enter_town()
+	open_ascension()                       # an ascension left unsettled when it was saved
 	return true
 
 
@@ -2098,7 +2102,64 @@ func _build_player() -> void:
 	player.connect("died", _on_player_died)
 	player.connect("disturbed", _on_body_disturbed)
 	player.connect("rune_discovered", _on_rune_discovered)
+	player.connect("ascended", _on_ascended)
 	nether.player = player
+
+
+## The ascension shots: "ascend-offer" (step 1), "ascend-boost" (step 2, an affinity chosen, one
+## skill set to Reach), "ascend-ethercosm" (settled; the boosted skill selected in the ethercosm).
+func _shot_ascension(which: String) -> void:
+	_select_talent(0)
+	player.call("set_affinities", ["fire"])
+	var abilities: Array = player.get("abilities")
+	if abilities.size() < 4:
+		for id: String in GameData.skill_tree_of("fire"):
+			if abilities.size() >= 4:
+				break
+			player.call("learn", id)
+	var stages: Array[int] = [2, 1, 1, 0]
+	for i: int in mini(stages.size(), abilities.size()):
+		(abilities[i] as Dictionary)["stage"] = stages[i]
+	(player.get("rng") as RandomNumberGenerator).seed = 20261024
+	_enter_town()
+	player.call("grow_star", 99.0)
+	player.set("_latent_aura", 100000.0)
+	player.call("try_ascend")                  # opens the ascension screen (_on_ascended)
+	get_tree().paused = false                  # it pauses; the shot countdown has to tick
+	if which == "ascend-offer":
+		return
+	var offer: Array = (player.get("ascension_pending") as Dictionary).get("offer", [])
+	screen.call("choose", str(offer[0]) if not offer.is_empty() else "")
+	screen.call("set_aspect", 1, "reach")
+	if which == "ascend-boost":
+		return
+	screen.call("confirm")
+	open_ethercosm()
+	screen.call("select", 1)
+
+
+## A star ascended (Brent 2026-10-24): the ascension screen offers its affinities and boosts.
+func _on_ascended(_star: int) -> void:
+	open_ascension()
+
+
+## Show the pending ascension's screen (an affinity to choose, then each skill's boost). It pauses
+## and holds the keys until it is settled; a save made meanwhile keeps it, and loading reopens it.
+func open_ascension() -> void:
+	if (player.get("ascension_pending") as Dictionary).is_empty() or state == "select" or state == "dead":
+		return
+	_show_screen(AscensionScreen.new(self), true)
+
+
+## Settle the pending ascension with the screen's choices (Player.resolve_ascension), then save and
+## close. Returns "" or why not.
+func resolve_ascension(affinity: String, aspects: Dictionary) -> String:
+	var why: String = str(player.call("resolve_ascension", affinity, aspects))
+	if why != "":
+		return why
+	save_now()
+	close_screen()
+	return ""
 
 
 ## A rune became known: the HUD shows it (design/14 section 8).
@@ -2569,6 +2630,11 @@ func _setup_ui_shot(which: String) -> void:
 			known["bedrock_bones"] = {"stage": 2, "progress": 0.0}
 			(player.get("body") as Body).add_wound("temper_strain", "Tempering strain", 20.0, 20.0, true, true)
 			open_tempering()
+		"ascend-offer", "ascend-boost", "ascend-ethercosm":
+			# the ascension (Brent 2026-10-24): a fire character with four skills at stages 2/1/1/0
+			# ascends; the offer (a hybrid with fire as a parent, and a random one), then the boosts,
+			# then the ethercosm showing a boosted skill, base in brackets
+			_shot_ascension(which)
 		"hud-dual":
 			# a two-affinity character mid-fight: both kits on the bar, one affinity running hot
 			player.call("set_talent", "furnace_gut")

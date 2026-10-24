@@ -619,6 +619,9 @@ func _build_soul(box: VBoxContainer) -> void:
 		var rune_fx: Array = player.call("rune_summary", ai)
 		if not rune_fx.is_empty():
 			col.add_child(UiTheme.body("Sealed word: " + ", ".join(PackedStringArray(rune_fx.map(func(v: Variant) -> String: return str(v)))), 12, UiTheme.GOLD))
+		var asc: String = str(player.call("ascension_summary", ai))
+		if asc != "":
+			col.add_child(UiTheme.body(asc, 12, UiTheme.STAR))
 		if need != "":
 			# no binding here (Brent 2026-10-23: "only with the runes"): the level lock is formed on the
 			# skill's seal screen, where the ring is built and the construct chosen
