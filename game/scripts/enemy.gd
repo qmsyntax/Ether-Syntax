@@ -456,7 +456,7 @@ func add_status(id: String, stacks: int = 1, by: Node = null, opts: Dictionary =
 		for other_id: String in more:
 			if statuses.has(_canon(other_id)):
 				var o: Dictionary = statuses[_canon(other_id)]
-				o["t"] = float(o["t"]) + float(more[other_id])
+				o["t"] = float(o["t"]) + float(data.get("clock_add", more[other_id]))
 		# turned round, its back to whoever did it (Turning Palm, Blowout, Deflect)
 		if bool(def.get("turn_away", false)) and who is Node3D and is_instance_valid(who):
 			turn_away_from((who as Node3D).global_position, float(entry["t"]))
@@ -617,6 +617,29 @@ func _blinded() -> Dictionary:
 	return {}
 
 
+## The product of the ground zones under it that tick status `id` harder (dps_mult {id: x}).
+func _zone_dps_mult(id: String) -> float:
+	var m := 1.0
+	if not is_inside_tree():
+		return m
+	for z: Node in get_tree().get_nodes_in_group("ground_zones"):
+		var dm: Variant = z.get("dps_mult")
+		if dm is Dictionary and (dm as Dictionary).has(id) and bool(z.call("has_point", global_position, radius)):
+			m *= float((dm as Dictionary)[id])
+	return m
+
+
+## The largest bill bonus of the ground zones under it (Clean Air's dose_bonus).
+func _zone_bill_bonus() -> float:
+	var b := 0.0
+	if not is_inside_tree():
+		return b
+	for z: Node in get_tree().get_nodes_in_group("ground_zones"):
+		if float(z.get("bill_bonus")) > 0.0 and bool(z.call("has_point", global_position, radius)):
+			b = maxf(b, float(z.get("bill_bonus")))
+	return b
+
+
 ## A ground zone of the caster's under it carries this flag (no_heal: Clean Air).
 func _in_zone_flag(key: String) -> bool:
 	if not is_inside_tree():
@@ -683,7 +706,12 @@ func _expire(id: String) -> void:
 	if ex.has("damage_per_stack"):
 		var dmg: float = float(ex["damage_per_stack"]) * float(int(s.get("stacks", 1)))
 		for other: String in statuses:
-			dmg *= float((_sdef(other).get("bill_mult", {}) as Dictionary).get(id, 1.0))     # Steeped: a bigger bill
+			var os: Dictionary = statuses[other]
+			# Steeped: a bigger bill (the skill's own bill_mult, in its data, else the status's)
+			var bm: Dictionary = _sdef(other).get("bill_mult", {})
+			if bm.has(id):
+				dmg *= float((os.get("data", {}) as Dictionary).get("bill_mult", bm[id]))
+		dmg *= 1.0 + _zone_bill_bonus()                  # Clean Air: a bill paid inside costs more
 		dmg *= float((s.get("data", {}) as Dictionary).get("bill_mult", 1.0))      # Venom Spur: this bill only
 		if who != null and who.has_method("deal_damage"):
 			who.call("deal_damage", self, dmg, ex.get("tags", ["dot"]))
@@ -911,6 +939,7 @@ func _tick_status(id: String, delta: float) -> void:
 				dmg *= flesh()
 			for other: String in statuses:
 				dmg *= float((_sdef(other).get("dps_mult", {}) as Dictionary).get(id, 1.0))
+			dmg *= _zone_dps_mult(id)                    # Smokepall: the burning ticks harder in the smoke
 			if who != null and who.has_method("deal_damage"):
 				var dot: Variant = who.call("deal_damage", self, dmg, def.get("dot_tags", ["dot"]))
 				# Tormented: part of every tick feeds whoever put it there
@@ -926,7 +955,7 @@ func _tick_status(id: String, delta: float) -> void:
 	var adds: Variant = def.get("adds_status")
 	if adds is Dictionary:
 		s["add_t"] = float(s.get("add_t", 0.0)) + delta
-		if float(s["add_t"]) >= float((adds as Dictionary).get("every", 1.0)):
+		if float(s["add_t"]) >= float(data.get("every", (adds as Dictionary).get("every", 1.0))):
 			s["add_t"] = 0.0
 			add_status(str((adds as Dictionary).get("status", "")), int((adds as Dictionary).get("stacks", 1)), who)
 	# Bleeding drips a pool every so often

@@ -2422,11 +2422,14 @@ func _test_step5b() -> void:
 	var lit := _facing_foe(m, Vector3(0, 0, -2.0))
 	_cast(m, "stoke")
 	_check("Stoke adds 25 heat at once", _near(float(m.call("reflux_of", "fire")), 25.0))
+	# v2: Stoke flares round you as it starts (on_cast: the 2 m foe is lit at once), and its coat lights every strike
+	var flared: int = int(lit.call("status_stacks", "alight"))
+	_check("Stoke's flare lights whoever stands close as it starts", flared == 1)
 	m.call("deal_damage", lit, 1.0, ["melee"])
-	_check("and its coat sets what your bare strikes hit Alight", int(lit.call("status_stacks", "alight")) == 1)
+	_check("and its coat sets what your bare strikes hit Alight", int(lit.call("status_stacks", "alight")) == flared + 1)
 	m.call("_tick_buffs", float(GameData.ability("stoke")["duration"]) + 0.1)
 	m.call("deal_damage", lit, 1.0, ["melee"])
-	_check("for %d s" % int(GameData.ability("stoke")["duration"]), int(lit.call("status_stacks", "alight")) == 1 and not (m.get("buffs") as Dictionary).has("stoke"))
+	_check("for %d s" % int(GameData.ability("stoke")["duration"]), int(lit.call("status_stacks", "alight")) == flared + 1 and not (m.get("buffs") as Dictionary).has("stoke"))
 	lit.free()
 
 	# Stonehide

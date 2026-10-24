@@ -47,9 +47,11 @@ GENERIC = {"cost", "cost_per_s", "cost_note", "reflux_per_cost", "windup", "brac
            "spend_all_pips", "gain_pips_per_hit", "gain_pips_max", "leave_zone", "leave_growth", "breaks_aim",
            "frees_caster", "on_hit", "shatters_stone", "shatters_all_stone", "needs_clear_line", "not_melee",
            "consume_status", "per_stack_damage", "per_stack_poise", "burst_radius", "bonus_vs_status", "bonus_damage",
-           "inside", "times_flesh", "lobbed", "needs_seen", "damage", "damage_mult", "status_s", "duration"}
+           "inside", "times_flesh", "lobbed", "needs_seen", "damage", "damage_mult", "status_s", "duration",
+           # v2 (2026-10-24): the weapon coat and what carries it; a target that must carry a status
+           "coat", "weapon", "needs_status"}
 BY_KIND = {
-    "projectile": {"speed", "life", "pierce", "width", "trail", "hits_corpses", "corpse_burst", "zone"},
+    "projectile": {"speed", "life", "pierce", "width", "trail", "hits_corpses", "corpse_burst", "zone", "shot"},
     "beam": {"width", "pierce", "jumps", "jump_radius", "bounces", "bounce_off", "frozen_counts_as"},
     "melee_burst": {"arc_deg", "reach_bonus", "pull", "pull_before_blast", "spall", "patch_bonus", "patch_bonus_max",
                     "per_patch_essence", "zone", "douses", "clears_clouds", "damage_from_heat", "heat_floor", "spend_blood",
@@ -68,18 +70,19 @@ BY_KIND = {
                   "heal_per_s", "overflow_to_sink", "strike_mult", "strike_poise_mult", "poise_loss_mult", "cleanse",
                   "new_status_mult", "floor_health", "blocks_healing", "reveal_radius", "lit_front_armour_mult",
                   "unseen_beyond", "first_hit_rear", "ends_on_hit", "recovery_mult", "status_lasts", "on_infected_hit",
-                  "dr_per_infected", "dr_max"},
+                  "dr_per_infected", "dr_max", "on_cast", "shot_range_mult", "coat_free"},
     "delayed_blast": {"radius", "delay", "leave_prop", "bonus_also_vs"},
     "detonate": {"refund_per_stack", "consume_zone", "per_target_damage", "ray_damage", "gather_radius", "gather_into",
                  "gather_cap", "needs_status", "consume", "beats", "beat_s", "pool_per_beat", "after_status",
-                 "bonus_vs_asleep", "decoy_burst", "per_stack_burst", "overload_fracs"},
+                 "bonus_vs_asleep", "decoy_burst", "per_stack_burst", "overload_fracs", "clock_to", "bill_mult", "stagger_at"},
     "chain": {"jumps", "jump_radius", "fan", "depth", "first_hit"},
     "displace": {"mode", "radius", "pull", "keep", "turn_s"},
     "prop": {"min_range", "width", "thickness", "height", "rise_time", "life", "on_rise", "hp", "hp_per_s", "spread_every",
              "spread_kind", "max_count", "shape", "light_radius", "tick_s", "payload", "blocks_movement", "blocks_shots",
              "radius", "blocks", "collapse_radius"},
     "rod": {"life", "relay_radius", "relay_range", "relay_hit"},
-    "smite": {"delay", "nearest_to_point", "lure_radius", "elite_ok", "stand_s", "on_death_growth", "from_above"},
+    "smite": {"delay", "nearest_to_point", "lure_radius", "elite_ok", "stand_s", "on_death_growth", "from_above",
+              "spread_stacks", "spread_radius", "spread_max"},
     "channel": {"shape", "tick", "move_factor", "pip_cost_per_s", "radius", "pools_per_tick", "blood_per_take", "sink_per_s",
                 "arm_rate", "breaks_on_hit", "break_range", "arc_deg", "width"},
     "charge_release": {"charge_max", "move_factor", "release", "radius", "damage_full", "leave_prop", "line_width", "pierce",
@@ -97,12 +100,12 @@ PAYLOAD_KEYS = {"damage", "damage_mult", "status", "stacks", "statuses", "status
                 "shove_dir", "marks", "bonus_vs", "bonus_flat_vs", "poise_vs", "through", "jumps", "consume", "consume_stacks",
                 "execute_below", "execute_excludes", "unliving_mult", "stun_per_mark", "stun_min", "turn_s", "needs_facing",
                 "quells_censer", "release_shove", "status_s_if_not", "dark_status_s", "blind_if_dark", "shatter_radius",
-                "burst_radius", "elite_stun_mult"}
+                "burst_radius", "elite_stun_mult", "heat_scale", "jump_radius"}
 ZONE_KEYS = {"shape", "radius", "length", "width", "life", "tick_s", "payload", "extra_status", "shove_mult", "push_per_s",
              "caster_speed_mult", "pip_gain_mult", "bright", "blocks_sight", "banks", "life_per_heat", "life_max", "on_enter",
              "pull_per_s", "drift_speed", "drift", "drift_dir", "dark", "dark_extra_ticks", "kill_projectiles", "freeze_pips",
              "shed_standing", "ends_if_left", "hides", "lit_shows", "no_heal", "ends_status", "blocks_status", "overrun_at",
-             "kind", "at"}
+             "kind", "at", "dps_mult", "dose_bonus", "lit_bonus"}
 
 KEY_WORDS = {
     "carry": "the wave does not carry bodies along; it hits each once",
@@ -179,7 +182,7 @@ def relocate(e, path):
             return alt
     if path.startswith("payload."):
         return relocate(e, "on_hit." + path[len("payload."):])
-    for pre in ("on_hit.", "on_hit.status_data.", "on_hit.consume.", "zone."):
+    for pre in ("on_hit.", "on_hit.status_data.", "on_hit.consume.", "zone.", "coat.payload."):
         if getp(e, pre + path) is not None:
             return pre + path
     return path
@@ -346,6 +349,26 @@ def normalise(aid, aff, s, nums, kind):
         nums["keep_stacks"] = True
     if aid == "night_spill":
         nums["consume"] = "swallowed"
+    # White Heat: the Heat bonus on its hit counts heat_scale times (read by deal_damage through the payload)
+    if "heat_scale" in nums and isinstance(nums.get("on_hit"), dict):
+        nums["on_hit"]["heat_scale"] = nums.pop("heat_scale")
+    # Sting Dart's barb: how often it doses and how long it lasts ride on the hit (status data, the status's lasts)
+    if "barb_every" in nums and isinstance(nums.get("on_hit"), dict):
+        nums["on_hit"].setdefault("status_data", OD())["every"] = nums.pop("barb_every")
+        for st in nums["on_hit"].get("statuses", []):
+            if st.get("id") == "barbed" and "barb_s" in nums:
+                st["lasts"] = nums.pop("barb_s")
+    # Steeped Blade: its clock and bill numbers are Steeped's (status data, read by the status engine)
+    if aid != "venom_spur" and "clock_add" in nums and isinstance(nums.get("on_hit"), dict):
+        data = nums["on_hit"].setdefault("status_data", OD())
+        data["clock_add"] = nums.pop("clock_add")
+        if "bill_mult" in nums:
+            data["bill_mult"] = nums.pop("bill_mult")
+    # Static Coat: the reach of its coat's arcs rides on the coat's payload
+    if "jump_radius" in nums and isinstance(nums.get("coat"), dict) and kind == "self_buff":
+        pl = nums["coat"].get("payload", nums["coat"].get("strike_payload"))
+        if isinstance(pl, dict):
+            pl["jump_radius"] = nums.pop("jump_radius")
     if "dose_clock" in nums:
         nums["status_lasts"] = OD([("dosed", nums.pop("dose_clock"))])      # read generically: a buff that sets a status's clock
     if "times_flesh" in nums:

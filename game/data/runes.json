@@ -173,7 +173,8 @@
 							"strike_reach_bonus",
 							"conjure_weapon.melee_range",
 							"split.range",
-							"shot_range_mult"
+							"shot_range_mult",
+							"coat.payload.jump_radius"
 						],
 						"speed": [
 							"speed",
@@ -724,7 +725,8 @@
 							"strike_reach_bonus",
 							"conjure_weapon.melee_range",
 							"split.range",
-							"shot_range_mult"
+							"shot_range_mult",
+							"coat.payload.jump_radius"
 						],
 						"speed": [
 							"speed",

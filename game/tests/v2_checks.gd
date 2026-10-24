@@ -26,6 +26,7 @@ func run() -> void:
 	await t.get_tree().physics_frame
 	_data()
 	await _statuses()
+	await _coat_and_fire()
 
 
 # --- helpers ------------------------------------------------------------------------------------
@@ -237,6 +238,101 @@ func _statuses() -> void:
 	co.call("_tick_statuses", 0.01)
 	check.call("Contained raises Infected's cap, and when it ends the stacks above five fall away",
 		int(co.call("status_stacks", "infected")) == int(GameData.status("infected")["stacks"]), str(co.get("statuses")))
+	_clean()
+
+
+## Ready to cast: a full tank, nothing finishing.
+func _ready_to_cast(p: Node) -> void:
+	p.set("star_pct", [99.0] as Array[float])
+	p.call("_recompute_essence_max")
+	p.set("essence", 99.0)
+	p.call("clear_reflux")
+	t.call("_rested", p)
+	p.set("_windup", {})
+	p.set("_windup_t", 0.0)
+
+
+func _cast(p: Node, id: String) -> void:
+	_ready_to_cast(p)
+	t.call("_cast", p, id)
+	if float(p.get("_windup_t")) > 0.0:
+		p.call("_tick_windup", float(p.get("_windup_t")) + 0.01)
+
+
+# --- the weapon coat (one mechanic: Fire's Stoke, Poison's Venom Edge, Metal's Red Iron, Static Coat) and Fire ---
+
+func _coat_and_fire() -> void:
+	var p := _player(Vector3(5400, 0, 0), ["poison", "fire"])
+	for id: String in ["steeped_blade", "stoke", "white_heat", "brushfire", "venom_spur", "clean_air"]:
+		p.call("learn", id)
+	await t.get_tree().physics_frame
+	p.set("_facing", Vector3(0, 0, -1))
+	var foe := _enemy(p, Vector3(0, 0, -1.6))
+	var edge: Dictionary = GameData.ability("venom_edge")
+	_cast(p, "venom_edge")
+	var coat: Dictionary = ((p.get("buffs") as Dictionary).get("coat_poison", {}) as Dictionary).get("coat", {})
+	check.call("Venom Edge: its blow doses, and the cast leaves a poison coat on your weapon with %d charges" % int(edge["coat"]["charges"]),
+		int(foe.call("status_stacks", "dosed")) == int(edge["on_hit"]["stacks"]) and int(coat.get("charges_left", 0)) == int(edge["coat"]["charges"]), str(p.get("buffs")))
+	var d0: int = int(foe.call("status_stacks", "dosed"))
+	p.call("deal_damage", foe, 1.0, ["melee"])
+	check.call("every bare strike carries the coat (one more dose) and spends a charge", int(foe.call("status_stacks", "dosed")) == d0 + 1
+		and int(coat.get("charges_left", 0)) == int(edge["coat"]["charges"]) - 1)
+	_cast(p, "stoke")
+	check.call("a Fire coat (Stoke) sits beside the Poison one: one coat per affinity", (p.get("buffs") as Dictionary).has("coat_poison")
+		and ((p.get("buffs") as Dictionary).get("stoke", {}) as Dictionary).has("coat"))
+	p.call("deal_damage", foe, 1.0, ["melee"])
+	check.call("and a strike carries both", int(foe.call("status_stacks", "alight")) >= 1 and int(foe.call("status_stacks", "dosed")) == d0 + 2)
+	_cast(p, "steeped_blade")
+	var sb: Dictionary = GameData.ability("steeped_blade")
+	var coat2: Dictionary = ((p.get("buffs") as Dictionary).get("coat_poison", {}) as Dictionary).get("coat", {})
+	check.call("a new Poison coat (Steeped Blade) replaces the old one", int(coat2.get("charges_left", 0)) == int(sb["coat"]["charges"]) and coat2 != coat)
+	for i: int in int(sb["coat"]["charges"]):
+		p.call("deal_damage", foe, 1.0, ["melee"])
+	check.call("and when its charges are spent it is gone", not (p.get("buffs") as Dictionary).has("coat_poison"))
+	# a ranged shot carries the coat too (the ranged weapon's own shot)
+	_cast(p, "venom_edge")
+	foe.call("clear_status", "dosed")
+	var before: int = int(foe.call("status_stacks", "dosed"))
+	p.call("deal_damage", foe, 1.0, ["ranged"])
+	check.call("a ranged-weapon shot carries the coat as a strike does", int(foe.call("status_stacks", "dosed")) == before + 1)
+	# Venom Spur: the clock comes due now, at a reduced bill
+	foe.call("add_status", "dosed", 2, p)
+	var spur: Dictionary = GameData.ability("venom_spur")
+	_cast(p, "venom_spur")
+	var dz: Dictionary = (foe.get("statuses") as Dictionary).get("dosed", {})
+	check.call("Venom Spur cuts every dose clock in reach to %s s" % str(spur["clock_to"]), not dz.is_empty() and float(dz["t"]) <= float(spur["clock_to"]) + 0.001
+		and _near(float((dz.get("data", {}) as Dictionary).get("bill_mult", 0.0)), float(spur["bill_mult"])), str(dz))
+	# White Heat: the Heat bonus counts heat_scale times
+	(foe.get("body") as Body).hp = 5000.0
+	foe.call("clear_status", "dosed")
+	foe.call("clear_status", "alight")
+	(p.get("buffs") as Dictionary).clear()
+	var wh: Dictionary = GameData.ability("white_heat")
+	var heat: float = 50.0
+	_ready_to_cast(p)
+	(p.get("reflux_by") as Dictionary)["fire"] = heat
+	var l0: float = t.call("_lost", foe)
+	var bonus: float = float(p.call("heat_mult", "fire")) - 1.0
+	t.call("_cast", p, "white_heat")
+	p.call("_tick_windup", float(wh.get("windup", 0.0)) + 0.01)
+	var heat_now: float = float(p.call("reflux_of", "fire"))
+	var want: float = float(wh["damage"]) * (1.0 + (float(p.call("heat_mult", "fire")) - 1.0) * float(wh["on_hit"]["heat_scale"]))
+	check.call("White Heat: its Heat bonus counts x%s" % str(wh["on_hit"]["heat_scale"]), _near(float(t.call("_lost", foe)) - l0, want, 1.0),
+		"lost %f want %f (bonus %f, heat %f)" % [float(t.call("_lost", foe)) - l0, want, bonus, heat_now])
+	# Brushfire: refused on a target that is not burning; on a burning one, its stacks spread
+	var near := _enemy(p, Vector3(1.5, 0, -1.6))
+	p.set("hovered", foe)
+	var ess0: float = 0.0
+	_ready_to_cast(p)
+	ess0 = float(p.get("essence"))
+	t.call("_cast", p, "brushfire")
+	check.call("Brushfire needs a burning target, and is refused before anything is spent", _near(float(p.get("essence")), ess0) and not bool(near.call("has_status", "alight")))
+	foe.call("add_status", "alight", 3, p)
+	_cast(p, "brushfire")
+	var bf: Dictionary = GameData.ability("brushfire")
+	check.call("on a burning one, everyone near it catches as many stacks as it carries (at most %d)" % int(bf["spread_max"]),
+		int(near.call("status_stacks", "alight")) == mini(3, int(bf["spread_max"])), str(near.get("statuses")))
+	p.set("hovered", null)
 	_clean()
 
 

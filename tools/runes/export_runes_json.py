@@ -172,7 +172,7 @@ EFFECTS_V1 = OrderedDict([
                    # 2026-10-24 (v2 drafts' ascension maps: every skill's reach must reach a real number)
                    "throw", "dash_time@dash", "spread_radius", "aura.radius", "deflect_radius", "counter_reach", "length@prop",
                    "on_break.burst_radius", "on_break.radius", "hush_radius", "lure_radius", "spall.radius", "attacker_reach",
-                   "pool_radius", "strike_reach_bonus", "conjure_weapon.melee_range", "split.range", "shot_range_mult"]),
+                   "pool_radius", "strike_reach_bonus", "conjure_weapon.melee_range", "split.range", "shot_range_mult", "coat.payload.jump_radius"]),
         ("speed", ["speed", "dash_speed"]),
         ("cost", ["cost", "cost_per_s", "heat_cost"]),
         ("reflux", ["reflux_per_cost"]),

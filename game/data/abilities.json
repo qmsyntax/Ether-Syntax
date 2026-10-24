@@ -881,8 +881,7 @@
       ],
       "verse": "Feed it. It was going to eat anyway.",
       "icon": "stoke",
-      "simplified": "'on_cast' is not built; 'coat' is not built",
-      "summary": "At once, +25 heat, and a gust of it: everything within 2.5 m takes 20 and catches. For 6 s every bare strike you land sets its target Alight. (simplified)",
+      "summary": "At once, +25 heat, and a gust of it: everything within 2.5 m takes 20 and catches. For 6 s every bare strike you land sets its target Alight.",
       "good_modifiers": [
         "Persist",
         "Self",
@@ -1107,8 +1106,7 @@
       ],
       "verse": "",
       "icon": "pool:FIR-5b",
-      "simplified": "'zone.dps_mult' is not built",
-      "summary": "Lobbed to a point, 9 m: a pall of smoke 3 m across. Enemies in it are Slowed, ranged enemies cannot see into or through it, and burns inside neither run down nor go easy: Alight on them ticks 25% harder. Lasts 4 s, plus 1 s for every 20 heat you carry (up to 9 s). (simplified)",
+      "summary": "Lobbed to a point, 9 m: a pall of smoke 3 m across. Enemies in it are Slowed, ranged enemies cannot see into or through it, and burns inside neither run down nor go easy: Alight on them ticks 25% harder. Lasts 4 s, plus 1 s for every 20 heat you carry (up to 9 s).",
       "good_modifiers": [
         "Persist",
         "Expand",
@@ -1139,14 +1137,13 @@
       "windup": 0.6,
       "range": 14.0,
       "damage": 150.0,
-      "heat_scale": 2.0,
       "on_hit": {
-        "poise": 60.0
+        "poise": 60.0,
+        "heat_scale": 2.0
       },
       "verse": "",
       "icon": "sigil:FIR-6b",
-      "simplified": "'heat_scale' is not built",
-      "summary": "Dear and slow: a 0.6 s wind-up, then one enemy within 14 m is struck by a point of white heat: 150 damage and 60 poise, and your Heat bonus counts twice on it. Cold it is a good hit; at full heat it is the biggest single blow fire has. (simplified)",
+      "summary": "Dear and slow: a 0.6 s wind-up, then one enemy within 14 m is struck by a point of white heat: 150 damage and 60 poise, and your Heat bonus counts twice on it. Cold it is a good hit; at full heat it is the biggest single blow fire has.",
       "good_modifiers": [
         "Blaze",
         "One",
@@ -1186,8 +1183,7 @@
       "spread_max": 3,
       "verse": "",
       "icon": "sigil:FIR-6a",
-      "simplified": "'needs_status' is not built; 'spread_stacks' is not built; 'spread_radius' is not built; 'spread_max' is not built",
-      "summary": "One burning enemy within 10 m: its fire leaps to everything within 4 m of it. Each takes 30 and as many Alight stacks as the target carries, up to 3. Light one well, then let it catch. (simplified)",
+      "summary": "One burning enemy within 10 m: its fire leaps to everything within 4 m of it. Each takes 30 and as many Alight stacks as the target carries, up to 3. Light one well, then let it catch.",
       "good_modifiers": [
         "Expand",
         "Blaze",
@@ -2508,7 +2504,7 @@
       ],
       "ascension_fields": {
         "power": "retaliate",
-        "reach": "jump_radius",
+        "reach": "coat.payload.jump_radius",
         "speed": "duration",
         "cost": "cost"
       },
@@ -2522,10 +2518,10 @@
         "duration": 6,
         "payload": {
           "marks": 1,
-          "jumps": 1
+          "jumps": 1,
+          "jump_radius": 3.0
         }
       },
-      "jump_radius": 3.0,
       "magnitude": [
         {
           "path": "retaliate",
@@ -2535,8 +2531,7 @@
       ],
       "verse": "Touch me and learn what I am carrying.",
       "icon": "coat_static",
-      "simplified": "'coat' is not built; 'jump_radius' is not built",
-      "summary": "6 s: every bare strike you land adds a Live mark and sparks on to the nearest other enemy within 3 m, marking it too; an enemy that hits you in melee takes 25 and a mark. (simplified)",
+      "summary": "6 s: every bare strike you land adds a Live mark and sparks on to the nearest other enemy within 3 m, marking it too; an enemy that hits you in melee takes 25 and a mark.",
       "good_modifiers": [
         "Persist",
         "Self",
@@ -4120,7 +4115,7 @@
       ],
       "verse": "",
       "icon": "coat_static:MET-1a",
-      "simplified": "'set_focus' is not built; 'on_cast' is not built; 'coat' is not built",
+      "simplified": "'set_focus' is not built",
       "summary": "You draw the iron red-hot: your Edge Heat is full on the next enemy you strike, everything within 2 m takes 20 as the heat comes off you, and for 6 s every bare strike you land sets its target Alight. (simplified)",
       "good_modifiers": [
         "Persist",
@@ -6636,8 +6631,7 @@
       ],
       "verse": "",
       "icon": "pool:LGT-1b",
-      "simplified": "'zone.lit_bonus' is not built",
-      "summary": "Point, 10 m: a pool of dusk 4 m across for 7 s. Nothing outside can see or shoot into it, and nothing inside can see out - but Lit enemies stay in plain view, and against the dusk they stand out: your light does 20% more to a Lit enemy inside it. (simplified)",
+      "summary": "Point, 10 m: a pool of dusk 4 m across for 7 s. Nothing outside can see or shoot into it, and nothing inside can see out - but Lit enemies stay in plain view, and against the dusk they stand out: your light does 20% more to a Lit enemy inside it.",
       "good_modifiers": [
         "Persist",
         "Expand",
@@ -7672,8 +7666,7 @@
       },
       "verse": "",
       "icon": "backdraft:POI-1a",
-      "simplified": "'weapon' is not built; 'coat' is not built",
-      "summary": "Wet the blade and cut across the front: 1.6x and 2 doses to everything in a 100-degree arc. The blade stays coated for 8 s or 8 hits: every weapon hit and ranged shot gives a dose. (simplified)",
+      "summary": "Wet the blade and cut across the front: 1.6x and 2 doses to everything in a 100-degree arc. The blade stays coated for 8 s or 8 hits: every weapon hit and ranged shot gives a dose.",
       "good_modifiers": [
         "Steep",
         "Corrode",
@@ -7711,8 +7704,7 @@
       "weapon": true,
       "verse": "",
       "icon": "fist:POI-1b",
-      "simplified": "'weapon' is not built",
-      "summary": "One enemy in reach: a heavy weapon blow that drives every dose in it through at once - the whole bill now, at half again (30 a dose) - and interrupts. Your coat goes in after the purge, so the next bill starts at once. (simplified)",
+      "summary": "One enemy in reach: a heavy weapon blow that drives every dose in it through at once - the whole bill now, at half again (30 a dose) - and interrupts. Your coat goes in after the purge, so the next bill starts at once.",
       "good_modifiers": [
         "Hold",
         "Once",
@@ -7757,8 +7749,7 @@
       ],
       "verse": "",
       "icon": "dash:POI-2a",
-      "simplified": "'weapon' is not built",
-      "summary": "Slide 5 m straight through enemies with your blade out, fouling each one you brush: 2 doses each, and your coat as well. (simplified)",
+      "summary": "Slide 5 m straight through enemies with your blade out, fouling each one you brush: 2 doses each, and your coat as well.",
       "good_modifiers": [
         "Envenom",
         "Corrode",
@@ -7808,8 +7799,7 @@
       ],
       "verse": "",
       "icon": "pool:POI-2b",
-      "simplified": "'zone.dose_bonus' is not built",
-      "summary": "Point, 9 m: air 4 m across for 8 s that nothing foul can use. Enemies in it cannot be healed or Frenzied, a Censer-Bearer that dies inside bursts for nothing, and bills paid inside it are 20% larger. (simplified)",
+      "summary": "Point, 9 m: air 4 m across for 8 s that nothing foul can use. Enemies in it cannot be healed or Frenzied, a Censer-Bearer that dies inside bursts for nothing, and bills paid inside it are 20% larger.",
       "good_modifiers": [
         "Persist",
         "Expand",
@@ -7854,8 +7844,7 @@
       "weapon": true,
       "verse": "",
       "icon": "backdraft:POI-3a",
-      "simplified": "'weapon' is not built",
-      "summary": "Your weapon dripping with acid, a wide sweep in front of you, 3.1 m: a solid hit, a dose, and Corroded - each stack takes a third off their armour, shields included. It carries your coat. (simplified)",
+      "summary": "Your weapon dripping with acid, a wide sweep in front of you, 3.1 m: a solid hit, a dose, and Corroded - each stack takes a third off their armour, shields included. It carries your coat.",
       "good_modifiers": [
         "Expand",
         "Envenom",
@@ -7903,8 +7892,7 @@
       ],
       "verse": "",
       "icon": "mote:POI-3b",
-      "simplified": "'shot' is not built; 'weapon' is not built",
-      "summary": "A shot of counter-agent from your ranged weapon (or thrown, without one): 45, and the target's doses are cancelled - no bill - while its body seizes for 0.3 s a dose (2.5 s at most), interrupting whatever it was doing. (simplified)",
+      "summary": "A shot of counter-agent from your ranged weapon (or thrown, without one): 45, and the target's doses are cancelled - no bill - while its body seizes for 0.3 s a dose (2.5 s at most), interrupting whatever it was doing.",
       "good_modifiers": [
         "Motion",
         "Straight",
@@ -7943,18 +7931,19 @@
           },
           {
             "id": "barbed",
-            "stacks": 1
+            "stacks": 1,
+            "lasts": 4.5
           }
-        ]
+        ],
+        "status_data": {
+          "every": 1.5
+        }
       },
       "shot": true,
       "weapon": true,
-      "barb_every": 1.5,
-      "barb_s": 4.5,
       "verse": "",
       "icon": "mote:POI-4a",
-      "simplified": "'shot' is not built; 'weapon' is not built; 'barb_every' is not built; 'barb_s' is not built",
-      "summary": "A barbed dart from your ranged weapon (or thrown, without one): 50 and a dose, and the barb stays in - a dose every 1.5 s for 4.5 s more. The first dose starts the 6 s clock; when it runs out, every dose in the body is paid at once, 20 each. (simplified)",
+      "summary": "A barbed dart from your ranged weapon (or thrown, without one): 50 and a dose, and the barb stays in - a dose every 1.5 s for 4.5 s more. The first dose starts the 6 s clock; when it runs out, every dose in the body is paid at once, 20 each.",
       "good_modifiers": [
         "Envenom",
         "Persist",
@@ -8110,8 +8099,7 @@
       ],
       "verse": "",
       "icon": "coat_static:POI-5b",
-      "simplified": "'shot_range_mult' is not built; 'coat_free' is not built",
-      "summary": "Drink it: for 8 s you move 15% faster, recover from skills a quarter sooner, your weapon hits 15% harder and your shots fly 15% further, and your coat is not worn off by hits (its time still runs). (simplified)",
+      "summary": "Drink it: for 8 s you move 15% faster, recover from skills a quarter sooner, your weapon hits 15% harder and your shots fly 15% further, and your coat is not worn off by hits (its time still runs).",
       "good_modifiers": [
         "Persist",
         "Self",
@@ -8131,7 +8119,7 @@
         "clock_add"
       ],
       "ascension_fields": {
-        "power": "bill_mult",
+        "power": "on_hit.status_data.bill_mult",
         "reach": "range_bonus",
         "speed": "coat.duration",
         "cost": "cost"
@@ -8152,10 +8140,12 @@
             "id": "steeped",
             "stacks": 1
           }
-        ]
+        ],
+        "status_data": {
+          "clock_add": 3.0,
+          "bill_mult": 1.5
+        }
       },
-      "bill_mult": 1.5,
-      "clock_add": 3.0,
       "coat": {
         "duration": 20.0,
         "charges": 15,
@@ -8174,15 +8164,14 @@
       },
       "magnitude": [
         {
-          "path": "bill_mult",
+          "path": "on_hit.status_data.bill_mult",
           "as": "mult",
           "dir": "up"
         }
       ],
       "verse": "",
       "icon": "fist:POI-6a",
-      "simplified": "'weapon' is not built; 'bill_mult' is not built; 'clock_add' is not built; 'coat' is not built",
-      "summary": "A slow thrust with a blade left to steep: one enemy in reach takes 1.8x and 2 doses and is Steeped - its clock runs 3 s longer and its bill pays 30 a dose instead of 20. The blade keeps the slow venom for 20 s or 15 hits: each one doses and Steeps. (simplified)",
+      "summary": "A slow thrust with a blade left to steep: one enemy in reach takes 1.8x and 2 doses and is Steeped - its clock runs 3 s longer and its bill pays 30 a dose instead of 20. The blade keeps the slow venom for 20 s or 15 hits: each one doses and Steeps.",
       "good_modifiers": [
         "Envenom",
         "Hold",
@@ -8222,8 +8211,7 @@
       ],
       "verse": "",
       "icon": "short:POI-6b",
-      "simplified": "'clock_to' is not built; 'bill_mult' is not built",
-      "summary": "Spur the venom on. Every Dosed enemy within 8 m has its clock cut to half a second: every bill comes due at once, at 80% (16 a dose). No blow, no line of sight needed. (simplified)",
+      "summary": "Spur the venom on. Every Dosed enemy within 8 m has its clock cut to half a second: every bill comes due at once, at 80% (16 a dose). No blow, no line of sight needed.",
       "good_modifiers": [
         "Expand",
         "Purge",
@@ -8305,8 +8293,7 @@
       },
       "verse": "",
       "icon": "short:DIS-1b",
-      "simplified": "'stagger_at' is not built",
-      "summary": "Every Infected enemy within 10 m has its fever broken at once: 30 a stack, all now, and the stacks are gone. Armour still cuts it. A body broken at 5 stacks is Staggered as well. (simplified)",
+      "summary": "Every Infected enemy within 10 m has its fever broken at once: 30 a stack, all now, and the stacks are gone. Armour still cuts it. A body broken at 5 stacks is Staggered as well.",
       "good_modifiers": [
         "Far",
         "Once",

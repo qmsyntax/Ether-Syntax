@@ -51,6 +51,15 @@ var freeze_pips := false
 var shed_standing := false
 var ends_if_left := false
 var overrun_at := 0
+## v2 (2026-10-24): a status's damage over time ticks this much harder on enemies inside ({status: x}, Smokepall);
+## a bill (an on_expire damage) paid on an enemy inside is x(1 + bill_bonus) (Clean Air's dose_bonus); the caster's
+## hits on an enemy inside carrying a status do this much more ({status: fraction}, Dusk Well's lit_bonus).
+var dps_mult: Dictionary = {}
+var bill_bonus := 0.0
+var bonus_vs: Dictionary = {}
+## v2: what it does each tick to you and your summons inside it (Hallowed Ground's ally_payload: ward_per_s up to
+## ward_max from this zone, damage_taken_mult while inside)
+var ally_payload: Dictionary = {}
 
 var _tick := 0.0
 var _mesh: MeshInstance3D
