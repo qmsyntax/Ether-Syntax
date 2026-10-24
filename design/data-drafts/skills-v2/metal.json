@@ -1,0 +1,860 @@
+{
+ "affinity": "metal",
+ "parents": [
+  "earth",
+  "fire"
+ ],
+ "role": "Armoured duellist - Earth's ground forged by Fire [B]",
+ "reflux_tier": "high",
+ "rule": "Metal is worn and wielded: its hits ignore front armour and do +25% per metal class the target wears, and every metal blow on the same enemy heats your edge (Edge Heat, up to 5, +8% each); strike another, or go 3 s without a metal blow, and it cools.",
+ "new_mechanics": [
+  {
+   "name": "Edge Heat (focus)",
+   "kind": "behaviour",
+   "definition": "Metal rule, player-side like Slipstream's pips: a metal hit on the same enemy as your last metal hit adds 1 Edge Heat (up to focus_max 5); each stack makes metal hits focus_mult (+8%) harder. A metal hit on another enemy starts again at 1 on that one; focus_cools_s (3 s) with no metal hit drops it to 0. Area side-effects (spall, bursts) neither add nor reset it. Keys on the affinity: focus_max, focus_mult, focus_cools_s. It is Fire's heat (a multiplier you build) narrowed to one opponent."
+  }
+ ],
+ "skills": [
+  {
+   "id": "spot_weld",
+   "name": "Weld Line",
+   "affinity": "metal",
+   "base_rune": "MET-2a",
+   "rune": "Fuse",
+   "status": "changed",
+   "starter": true,
+   "starter_slot": "ranged",
+   "serves": "role",
+   "kind": "projectile",
+   "targeting": "aimed",
+   "summary": "A line of molten iron thrown at one enemy, 9 m: 30 damage, it is dragged 3 m toward you, and for 5 s it is welded to you and Taunted - it fights you, and if you walk away it comes along, out of its pack.",
+   "verb_fit": "Fuse is \"weld two into one piece\": you and one enemy, joined. Fire's heat makes the weld; Earth's hold keeps it on your ground. The duel starts here.",
+   "numbers": {
+    "cost": 8,
+    "reflux_per_cost": 1.4,
+    "damage": 30,
+    "speed": 26,
+    "life": 0.35,
+    "on_hit": {
+     "pull": 3.0,
+     "statuses": [
+      {
+       "id": "fused",
+       "lasts": 5.0
+      },
+      {
+       "id": "taunted",
+       "lasts": 5.0
+      }
+     ]
+    },
+    "tether_to_caster": true,
+    "tether_m": 5.0
+   },
+   "signature": [
+    "on_hit.statuses",
+    "tether_m"
+   ],
+   "ascension": {
+    "power": "damage",
+    "reach": "life",
+    "speed": "speed",
+    "cost": "cost"
+   },
+   "new_mechanics": [
+    {
+     "name": "tether_to_caster",
+     "kind": "field",
+     "definition": "The Fused status's partner is the caster: the enemy is held within tether_m of you while it lasts. Walk away and it is dragged after you, out of its pack; you are not held. A stone or wall between you breaks it."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Weld: holds longer"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Line: reaches farther"
+    },
+    {
+     "rune": "Seal",
+     "word": "Clasping Weld: it cannot attack anyone but you - Shackled for a moment"
+    },
+    {
+     "rune": "Forge",
+     "word": "Heavy Weld: hits harder"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Sunder",
+     "why": "its own opposite: split apart what you are joining. The two cancel"
+    },
+    {
+     "rune": "Many",
+     "why": "a duel with many is not a duel: the jump welds a second enemy you did not choose"
+    },
+    {
+     "rune": "Within",
+     "why": "a line that passes through cannot hold what it hits; pierce fights the pull"
+    }
+   ],
+   "change_note": "Was Spot Weld (two enemies welded together, a chain). Now one enemy welded to you, pulled in and Taunted: the duellist's ranged starter. Same rune, same verb (two into one piece). Renamed; id kept. Cost 12 -> 8 (starter tier); 45 -> 30 damage."
+  },
+  {
+   "id": "splitting_blow",
+   "name": "Splitting Blow",
+   "affinity": "metal",
+   "base_rune": "MET-2b",
+   "rune": "Sunder",
+   "status": "changed",
+   "starter": true,
+   "starter_slot": "close",
+   "serves": "role",
+   "kind": "targeted_strike",
+   "targeting": "target",
+   "summary": "One enemy in reach: a cleaving blow, 2.4x strike damage and 60 poise. If it wears metal, its armour splits open and the pieces fly on behind it: 30 per metal class to everyone within 2.5 m.",
+   "verb_fit": "Sunder is \"split it apart\": Earth's Crumble (break the guard) forged, and the spall is Earth's stone shrapnel in steel - but aimed at the one in front of you.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.4,
+    "damage_mult": 2.4,
+    "range_bonus": 1.0,
+    "on_hit": {
+     "poise": 60
+    },
+    "spall": {
+     "radius": 2.5,
+     "damage_per_class": 30
+    }
+   },
+   "signature": [
+    "on_hit.poise",
+    "spall"
+   ],
+   "ascension": {
+    "power": "damage_mult",
+    "reach": "spall.radius",
+    "speed": "on_hit.poise",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Hone",
+     "word": "Keen Split: a harder cut"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Spall: the pieces fly farther"
+    },
+    {
+     "rune": "Fall",
+     "word": "Felling Split: more poise"
+    },
+    {
+     "rune": "Strip",
+     "word": "Stripping Split: its armour is torn off too"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Fuse",
+     "why": "its own opposite: join what you are splitting. The two cancel"
+    },
+    {
+     "rune": "Plate",
+     "why": "armouring the one you are splitting; it should not act"
+    },
+    {
+     "rune": "Within",
+     "why": "a blow in reach already lands; pierce is wasted"
+    }
+   ],
+   "change_note": "One target now (was a 120-degree cleave): the duellist's close starter. 1.8x -> 2.4x, 50 -> 60 poise; the spall still reaches the pack behind it."
+  },
+  {
+   "id": "breakthrough",
+   "name": "Breakthrough",
+   "affinity": "metal",
+   "base_rune": "MET-3b",
+   "rune": "Breach",
+   "status": "existing",
+   "starter": true,
+   "starter_slot": "movement",
+   "serves": "role",
+   "kind": "dash",
+   "targeting": "aimed",
+   "summary": "Drive forward 5 m, point first. A bare enemy in the way stops you and is knocked back 1.5 m. One that wears metal is punched through: 40 damage, you carry on past it, and it is Stripped for 4 s.",
+   "verb_fit": "Breach is \"break a seal; punch through plate\": Earth's Bedrock Shove made a lunge - point first, through the armour, onto the one you want.",
+   "numbers": {
+    "cost": 8,
+    "reflux_per_cost": 1.4,
+    "dash_speed": 20,
+    "dash_time": 0.25,
+    "stops_at_bodies": true,
+    "pass_armoured": true,
+    "recovery": 0.25,
+    "on_stop": {
+     "shove": 1.5,
+     "poise": 40
+    },
+    "on_pass": {
+     "damage": 40,
+     "status": "stripped"
+    },
+    "stripped_s": 4
+   },
+   "signature": [
+    "on_stop.poise",
+    "pass_armoured"
+   ],
+   "ascension": {
+    "power": "on_pass.damage",
+    "reach": "dash_time",
+    "speed": "dash_speed",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Motion",
+     "word": "Quick Breakthrough: faster"
+    },
+    {
+     "rune": "Fall",
+     "word": "Felling Breakthrough: more poise"
+    },
+    {
+     "rune": "Haste",
+     "word": "Sudden Breakthrough: less recovery"
+    },
+    {
+     "rune": "Hone",
+     "word": "Keen Breakthrough: the pass cuts harder"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Seal",
+     "why": "its own opposite: close what you are breaking through. It should not act"
+    },
+    {
+     "rune": "Persist",
+     "why": "a lunge has nothing that lasts but the strip; falls back"
+    },
+    {
+     "rune": "Elsewhere",
+     "why": "a lunge onto the one in front, somewhere else; falls back"
+    }
+   ]
+  },
+  {
+   "id": "red_iron",
+   "name": "Red Iron",
+   "affinity": "metal",
+   "base_rune": "MET-1a",
+   "rune": "Forge",
+   "status": "new",
+   "starter": false,
+   "serves": "role",
+   "kind": "self_buff",
+   "targeting": "self",
+   "summary": "You draw the iron red-hot: your Edge Heat is full on the next enemy you strike, everything within 2 m takes 20 as the heat comes off you, and for 6 s every bare strike you land sets its target Alight.",
+   "verb_fit": "Forge is \"shape and harden metal\": Fire's Stoke in iron - the forge's heat put straight into the edge you fight with.",
+   "numbers": {
+    "cost": 10,
+    "reflux_per_cost": 1.4,
+    "buff": "red_iron",
+    "duration": 6.0,
+    "set_focus": "max",
+    "radius": 2.0,
+    "on_cast": {
+     "damage": 20
+    },
+    "coat": {
+     "duration": 6.0,
+     "payload": {
+      "status": "alight"
+     }
+    }
+   },
+   "signature": [
+    "set_focus",
+    "coat.payload.status"
+   ],
+   "ascension": {
+    "power": "on_cast.damage",
+    "reach": "radius",
+    "speed": "duration",
+    "cost": "cost"
+   },
+   "new_mechanics": [
+    {
+     "name": "set_focus",
+     "kind": "field",
+     "definition": "A skill with set_focus 'max' fills Edge Heat to focus_max on the next enemy you hit with metal."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Iron: stays red longer"
+    },
+    {
+     "rune": "Self",
+     "word": "it acts on you: longer"
+    },
+    {
+     "rune": "Hone",
+     "word": "Keen Iron: the burn and the edge harder"
+    },
+    {
+     "rune": "Essence",
+     "word": "Cheap Iron: costs less"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Rust",
+     "why": "its own opposite: corrode the edge you are forging. It should not act"
+    },
+    {
+     "rune": "Far",
+     "why": "your blade has no range; falls back to a cost cut"
+    },
+    {
+     "rune": "Many",
+     "why": "the heat is for one opponent; nothing to copy. Falls back"
+    }
+   ]
+  },
+  {
+   "id": "whetted_cut",
+   "name": "Whetted Cut",
+   "affinity": "metal",
+   "base_rune": "MET-4a",
+   "rune": "Hone",
+   "status": "changed",
+   "starter": false,
+   "serves": "role",
+   "kind": "charge_release",
+   "targeting": "aimed",
+   "summary": "Hold to draw your weapon's edge keen, up to 1.5 s, walking at 45%. Let go for one cut across 60 degrees and 3.3 m: 1.6x strike damage at a tap, up to 3.2x at a full hold - and it spends your Edge Heat for +0.3x a stack.",
+   "verb_fit": "Hone is \"sharpen\": the edge the whole duel has been heating, spent in one cut - Fire's burst (Hiss cashes a burn; this cashes the edge).",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.4,
+    "charge_max": 1.5,
+    "move_factor": 0.45,
+    "arc_deg": 60,
+    "reach_bonus": 1.0,
+    "damage_mult": 3.2,
+    "damage_mult_min": 1.6,
+    "on_hit": {
+     "poise": 20
+    },
+    "focus_spend": true,
+    "per_focus_mult": 0.3
+   },
+   "signature": [
+    "damage_mult",
+    "per_focus_mult"
+   ],
+   "ascension": {
+    "power": "damage_mult",
+    "reach": "reach_bonus",
+    "speed": "charge_max",
+    "cost": "cost"
+   },
+   "new_mechanics": [
+    {
+     "name": "focus_spend",
+     "kind": "field",
+     "definition": "The skill spends all Edge Heat when it lands: + per_focus_mult x the stacks spent to its damage_mult."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Focus",
+     "word": "Fine Edge: harder, narrower"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Cut: a broader arc"
+    },
+    {
+     "rune": "Strip",
+     "word": "Stripping Cut: the cut tears armour off"
+    },
+    {
+     "rune": "Sunder",
+     "word": "Splitting Cut: more poise and reach"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Dull",
+     "why": "its own opposite: blunt the edge you are honing. It should not act"
+    },
+    {
+     "rune": "Persist",
+     "why": "a cut has nothing that lasts; falls back"
+    },
+    {
+     "rune": "Within",
+     "why": "a cut in reach already lands; pierce is wasted"
+    }
+   ],
+   "change_note": "Spends Edge Heat for +0.3x a stack (five stacks: +1.5x): the duel's finisher."
+  },
+  {
+   "id": "turn_the_edge",
+   "name": "Turn the Edge",
+   "affinity": "metal",
+   "base_rune": "MET-4b",
+   "rune": "Dull",
+   "status": "changed",
+   "starter": false,
+   "serves": "role",
+   "kind": "self_buff",
+   "targeting": "self",
+   "summary": "A 0.5 s guard, Braced. The first blow aimed at you from within 2.5 m is taken on your blade and does nothing: the attacker is Dulled for 6 s, Staggered (your next strike on it is an Opening), and becomes your Edge Heat target with 2 stacks. The ringing Dulls anyone else within 2 m. If nothing comes, half the essence comes back.",
+   "verb_fit": "Dull is \"blunt edges, theirs included: take a blow on your blade\": Earth's Root (stand and take it) in steel - you do not move, the blow does.",
+   "numbers": {
+    "cost": 10,
+    "reflux_per_cost": 1.4,
+    "buff": "turn_the_edge",
+    "window_s": 0.5,
+    "move_factor": 0.0,
+    "counter_reach": 2.5,
+    "braced": true,
+    "counter": {
+     "statuses": [
+      {
+       "id": "dulled",
+       "lasts": 6.0
+      },
+      {
+       "id": "staggered"
+      }
+     ],
+     "poise": 40
+    },
+    "burst_radius": 2.0,
+    "burst": {
+     "status": "dulled"
+    },
+    "focus_gain": 2,
+    "refund_unused": 0.5
+   },
+   "signature": [
+    "counter.statuses",
+    "burst"
+   ],
+   "ascension": {
+    "power": "counter.poise",
+    "reach": "counter_reach",
+    "speed": "window_s",
+    "cost": "cost"
+   },
+   "new_mechanics": [
+    {
+     "name": "focus_gain",
+     "kind": "field",
+     "definition": "On a counter, the attacker becomes your Edge Heat target with this many stacks added."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Plate",
+     "word": "Plated Guard: the guard lasts longer"
+    },
+    {
+     "rune": "Fall",
+     "word": "Felling Guard: more poise"
+    },
+    {
+     "rune": "Persist",
+     "word": "Patient Guard: waits longer"
+    },
+    {
+     "rune": "Sunder",
+     "word": "Splitting Guard: the ring reaches farther"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Hone",
+     "why": "its own opposite: sharpen the edge you are turning dull. It should not act"
+    },
+    {
+     "rune": "Motion",
+     "why": "a guard you move out of is a dodge, and that is Wind's; held still it works, moving it fails"
+    },
+    {
+     "rune": "Far",
+     "why": "a guard only works on what reaches you; falls back"
+    }
+   ],
+   "change_note": "Was a 360-degree sweep (it sat too near Earth's Tremor). Now a parry on the counter key set (Holy's Abiding Guard, with Wind's refund_unused): Wind slips behind, Metal stands and takes it on the blade."
+  },
+  {
+   "id": "plating",
+   "name": "Plating",
+   "affinity": "metal",
+   "base_rune": "MET-5a",
+   "rune": "Plate",
+   "status": "changed",
+   "starter": false,
+   "serves": "role",
+   "kind": "self_buff",
+   "targeting": "self",
+   "summary": "For 8 s the metal you wear thickens: every blow on you does 30% less, and a blade that lands on you from within 2.5 m is Dulled for 3 s. You move at full speed.",
+   "verb_fit": "Plate is \"armour up\": Earth's Stonehide worn instead of grown - less of it, but you keep your feet and your speed for the duel.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.4,
+    "buff": "plating",
+    "duration": 8,
+    "incoming_mult": 0.7,
+    "attacker_status": "dulled",
+    "attacker_status_s": 3,
+    "attacker_reach": 2.5,
+    "move_speed_mult": 1.0
+   },
+   "signature": [
+    "duration",
+    "incoming_mult"
+   ],
+   "ascension": {
+    "power": "incoming_mult",
+    "reach": "attacker_reach",
+    "speed": "duration",
+    "cost": "cost"
+   },
+   "new_mechanics": [
+    {
+     "name": "attacker_reach",
+     "kind": "field",
+     "definition": "A self_buff's attacker_status lands only on melee attackers within this distance of you (a long reach weapon from farther does not get it)."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Plate: lasts longer"
+    },
+    {
+     "rune": "Self",
+     "word": "it acts on you: longer"
+    },
+    {
+     "rune": "Essence",
+     "word": "Thin Plate: costs less"
+    },
+    {
+     "rune": "Dull",
+     "word": "Blunting Plate: attackers are Dulled longer"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Strip",
+     "why": "its own opposite: tear off the armour you are putting on. It should not act"
+    },
+    {
+     "rune": "Far",
+     "why": "your armour has no range; falls back to a cost cut"
+    },
+    {
+     "rune": "Within",
+     "why": "a shell is the opposite of within; falls back"
+    }
+   ],
+   "change_note": "25% -> 30% less, and no longer slows you (was 10% slower): the armoured duellist moves; the area tank (Stonehide, 40% less, 25% slower) does not. attacker_reach (2.5 m) is now a number."
+  },
+  {
+   "id": "wrench",
+   "name": "Wrench",
+   "affinity": "metal",
+   "base_rune": "MET-5b",
+   "rune": "Strip",
+   "status": "existing",
+   "starter": false,
+   "serves": "role",
+   "kind": "targeted_strike",
+   "targeting": "target",
+   "summary": "One enemy in reach: you get a grip on its armour and wrench it off. 1.6x strike damage, interrupted, and Stripped for 8 s: no front armour, and it takes 20% more from everything. It no longer counts as armoured, so metal loses its own bonus on it.",
+   "verb_fit": "Strip is \"tear armour off\": Earth's Crumble (break the guard) done by hand, to the one in front of you.",
+   "numbers": {
+    "cost": 10,
+    "reflux_per_cost": 1.4,
+    "damage_mult": 1.6,
+    "range_bonus": 1.0,
+    "duration": 8,
+    "on_hit": {
+     "status": "stripped",
+     "interrupts": true,
+     "poise": 30
+    }
+   },
+   "signature": [
+    "on_hit.status",
+    "duration"
+   ],
+   "ascension": {
+    "power": "damage_mult",
+    "reach": "range_bonus",
+    "speed": "duration",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Near",
+     "word": "Close Wrench: harder"
+    },
+    {
+     "rune": "Persist",
+     "word": "Long Wrench: stays stripped longer"
+    },
+    {
+     "rune": "Sunder",
+     "word": "Splitting Wrench: more poise and the pieces fly"
+    },
+    {
+     "rune": "Hone",
+     "word": "Keen Wrench: a harder blow"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Plate",
+     "why": "its own opposite: armour what you are stripping. It should not act"
+    },
+    {
+     "rune": "Within",
+     "why": "already in reach; pierce is wasted"
+    },
+    {
+     "rune": "Haste",
+     "why": "no wind-up to cut; falls back to a little power"
+    }
+   ]
+  },
+  {
+   "id": "iron_slug",
+   "name": "Iron Slug",
+   "affinity": "metal",
+   "base_rune": "MET-1a",
+   "rune": "Forge",
+   "status": "changed",
+   "starter": false,
+   "serves": "utility",
+   "kind": "projectile",
+   "targeting": "aimed",
+   "summary": "You hammer a slug out of the iron you carry and hurl it: 70 damage and 35 poise. Like every metal hit it ignores a raised shield and hits plate hardest: 105 on a plated enemy.",
+   "verb_fit": "Forge is \"shape and harden metal\": Earth's Slingstone (a heavy thrown thing), forged in Fire. Metal's plain reach to a runner it does not want to weld.",
+   "numbers": {
+    "cost": 7,
+    "reflux_per_cost": 1.4,
+    "damage": 70,
+    "speed": 22,
+    "life": 1.2,
+    "on_hit": {
+     "poise": 35
+    }
+   },
+   "signature": [
+    "damage"
+   ],
+   "ascension": {
+    "power": "damage",
+    "reach": "life",
+    "speed": "speed",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Hone",
+     "word": "Keen Slug: harder"
+    },
+    {
+     "rune": "Breach",
+     "word": "Piercing Slug: punches through one"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Slug: flies farther"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Haste",
+     "why": "no wind-up to cut; falls back to a little power"
+    },
+    {
+     "rune": "Persist",
+     "why": "a slug in flight has nothing that lasts; falls back"
+    },
+    {
+     "rune": "Rust",
+     "why": "its own opposite: corrode the slug you forged. It should not act"
+    }
+   ],
+   "change_note": "No longer the ranged starter (Weld Line is). Numbers unchanged; it keeps metal's plain ranged hit."
+  },
+  {
+   "id": "iron_clasp",
+   "name": "Iron Clasp",
+   "affinity": "metal",
+   "base_rune": "MET-3a",
+   "rune": "Seal",
+   "status": "existing",
+   "starter": false,
+   "serves": "utility",
+   "kind": "smite",
+   "targeting": "target",
+   "summary": "One enemy within 9 m: a band of iron snaps shut round its arms. 25 damage, interrupted, and Shackled for 2.5 s: it can still walk, but cannot attack. Each metal class it wears adds 1 s.",
+   "verb_fit": "Seal is \"close and lock with metal\": Earth's Bury (one body held fast), by the arms. The duellist shackles the second foe so the first stays a duel.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.4,
+    "range": 9,
+    "damage": 25,
+    "duration": 2.5,
+    "duration_per_class": 1.0,
+    "on_hit": {
+     "status": "shackled",
+     "interrupts": true
+    }
+   },
+   "signature": [
+    "on_hit.status",
+    "duration"
+   ],
+   "ascension": {
+    "power": "damage",
+    "reach": "range",
+    "speed": "duration",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Clasp: holds longer"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Reach: reaches farther"
+    },
+    {
+     "rune": "Rust",
+     "word": "Rusting Clasp: the band corrodes it too"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Breach",
+     "why": "its own opposite: break the seal you are closing. It should not act"
+    },
+    {
+     "rune": "Within",
+     "why": "nothing to pierce; falls back"
+    },
+    {
+     "rune": "Motion",
+     "why": "a band on its arms does not travel; falls back"
+    }
+   ]
+  },
+  {
+   "id": "rust_bloom",
+   "name": "Rust Bloom",
+   "affinity": "metal",
+   "base_rune": "MET-1b",
+   "rune": "Rust",
+   "status": "changed",
+   "starter": false,
+   "serves": "utility",
+   "kind": "ground_zone",
+   "targeting": "point",
+   "summary": "Point, 9 m: rust blooms over a circle 3.5 m across for 7 s. Anything inside that wears metal is Rusting: 6 damage a second per metal class, and its front armour is halved. Bare skin does not care.",
+   "verb_fit": "Rust is \"corrode it\": Fire's Slag Pool (ground that keeps eating what stands on it), for iron.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.4,
+    "range": 9,
+    "zone": {
+     "shape": "circle",
+     "radius": 3.5,
+     "life": 7.0,
+     "tick_s": 1.0,
+     "payload": {
+      "status": "rusting",
+      "dps_per_class": 6.0
+     }
+    }
+   },
+   "signature": [
+    "zone.payload.status"
+   ],
+   "ascension": {
+    "power": "zone.payload.dps_per_class",
+    "reach": "zone.radius",
+    "speed": "zone.life",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Bloom: lasts longer"
+    },
+    {
+     "rune": "Elsewhere",
+     "word": "Far Bloom: cast farther"
+    },
+    {
+     "rune": "Essence",
+     "word": "Cheap Bloom: costs less"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Bloom: a bigger circle"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Forge",
+     "why": "its own opposite: forge what you are corroding. It should not act"
+    },
+    {
+     "rune": "Within",
+     "why": "nothing to pierce; falls back"
+    },
+    {
+     "rune": "Motion",
+     "why": "a bloom does not travel; falls back"
+    }
+   ],
+   "change_note": "No change in play: Rusting's 6 a second per class is written on the payload so power has a field."
+  }
+ ],
+ "effects": {
+  "Forge": "power x1.2; windup x1.1",
+  "Rust": "status rusting",
+  "Fuse": "status fused",
+  "Sunder": "poise x1.3; reach x1.1",
+  "Seal": "status shackled",
+  "Breach": "pierce +1; poise x1.25",
+  "Hone": "power x1.2; poise x0.85",
+  "Dull": "status dulled; poise x1.2",
+  "Plate": "braced; duration x1.25",
+  "Strip": "status stripped"
+ }
+}

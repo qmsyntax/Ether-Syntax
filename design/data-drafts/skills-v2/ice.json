@@ -1,0 +1,938 @@
+{
+ "affinity": "ice",
+ "parents": [
+  "water",
+  "dark"
+ ],
+ "role": "control - flow and stillness",
+ "reflux_tier": "low",
+ "rule": "Cold stays: every ice hit adds Chill, which never wears off by itself (Dark's stillness); at 5 Chill the target freezes solid, and a frozen thing is Brittle, so the next hard hit Shatters it. Wet freezes fast (Water's flow): an ice hit on a Soaked target adds one more Chill and ends the Soak.",
+ "new_mechanics": [
+  {
+   "name": "wet_freezes",
+   "kind": "field",
+   "definition": "Affinity key 'chill_bonus_vs' {soaked: 1}: an ice hit on a target that counts as Soaked (Waterlogged included) adds that many more Chill, and the Soak ends (the water is now ice). Chilled, Frozen, Brittle and Shatter are built and unchanged."
+  }
+ ],
+ "skills": [
+  {
+   "id": "set_solid",
+   "name": "Set Solid",
+   "affinity": "ice",
+   "base_rune": "ICE-1a",
+   "rune": "Freeze",
+   "status": "existing",
+   "starter": true,
+   "role_fit": "role",
+   "parent_trait": "Dark",
+   "kind": "melee_burst",
+   "targeting": "self",
+   "summary": "The air around you sets. Everything within 3.5 m takes 30 damage and 3 Chill: two more and it freezes solid.",
+   "verb_fit": "Freeze is 'lock solid'. Ice's lock is the fifth Chill, and this puts three on everything around you: the air goes still and sets (Dark's stillness, made cold).",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 0.7,
+    "windup": 0.2,
+    "arc_deg": 360,
+    "reach_bonus": 1.2,
+    "on_hit": {
+     "damage": 30,
+     "status": "chilled",
+     "stacks": 3,
+     "poise": 15
+    }
+   },
+   "ascension": {
+    "power": "on_hit.stacks",
+    "reach": "reach_bonus",
+    "speed": "windup",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.status",
+    "on_hit.stacks"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Expand",
+     "word": "The air sets farther out: 30% wider, a little less damage."
+    },
+    {
+     "rune": "Haste",
+     "word": "Sets at once: the 0.2 s wind-up drops by a quarter."
+    },
+    {
+     "rune": "Rime",
+     "word": "The ring grows spikes: harder, and more poise damage."
+    },
+    {
+     "rune": "Brittle",
+     "word": "Sets them brittle as well: a bare strike Shatters what Set Solid only chilled."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Within",
+     "why": "Not a shot; nothing to pierce. Falls back."
+    },
+    {
+     "rune": "Persist",
+     "why": "The ring is a moment; the Chill it leaves already stays. No duration field; falls back."
+    },
+    {
+     "rune": "Motion",
+     "why": "The air sets where you stand; it does not travel. No speed field; falls back."
+    }
+   ],
+   "starter_slot": "close"
+  },
+  {
+   "id": "false_spring",
+   "name": "False Spring",
+   "affinity": "ice",
+   "base_rune": "ICE-1b",
+   "rune": "Thaw",
+   "status": "existing",
+   "starter": false,
+   "role_fit": "role",
+   "parent_trait": "Water",
+   "kind": "detonate",
+   "targeting": "self",
+   "summary": "Every Frozen enemy within 10 m thaws at once, and the cold it held pours out: 50 damage and 3 Chill to every other enemy within 3 m of it. It frees what you froze, to freeze the ones beside it.",
+   "verb_fit": "Thaw is 'release, melt free'. It frees your frozen enemies on purpose, and the cold that held them flows into their neighbours (Water's flow: the cold runs on).",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 0.7,
+    "range": 10,
+    "consume_status": "frozen",
+    "burst_radius": 3.0,
+    "recovery": 0.3,
+    "on_hit": {
+     "damage": 50,
+     "status": "chilled",
+     "stacks": 3
+    }
+   },
+   "ascension": {
+    "power": "on_hit.stacks",
+    "reach": "burst_radius",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "signature": [
+    "burst_radius",
+    "range"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Expand",
+     "word": "The thaw spreads wider: 30% more room, a little less damage."
+    },
+    {
+     "rune": "Far",
+     "word": "Reaches frozen bodies 14 m away."
+    },
+    {
+     "rune": "Brittle",
+     "word": "What the thaw pours over is left Brittle: strike it."
+    },
+    {
+     "rune": "Haste",
+     "word": "A quicker spring: recovery a quarter shorter."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Freeze",
+     "why": "Freeze is Thaw's opposite: locking what you are releasing. The 2 Chill it adds lands on bodies the burst already chills; maths lets it act, the word makes no sense."
+    },
+    {
+     "rune": "Within",
+     "why": "Not a shot. Falls back."
+    },
+    {
+     "rune": "Motion",
+     "why": "The thaw happens where the frozen bodies are; nothing travels. Falls back."
+    }
+   ]
+  },
+  {
+   "id": "hoarline",
+   "name": "Hoarline",
+   "affinity": "ice",
+   "base_rune": "ICE-2a",
+   "rune": "Frost",
+   "status": "existing",
+   "starter": true,
+   "role_fit": "role",
+   "parent_trait": "Dark",
+   "kind": "projectile",
+   "targeting": "aimed",
+   "summary": "A line of frost races 10 m along the ground: 45 damage and 2 Chill to everything on it. The line stays frosted for 4 s, adding a Chill a second to anyone standing on it. Walls stop it.",
+   "verb_fit": "Frost is 'creeping cold on the ground that grips and slows'. The floor grips them along a line, the way Dark's Pin holds a shadow, and keeps gripping for 4 s.",
+   "numbers": {
+    "cost": 7,
+    "reflux_per_cost": 0.7,
+    "damage": 45,
+    "speed": 18,
+    "life": 0.56,
+    "pierce": true,
+    "on_hit": {
+     "status": "chilled",
+     "stacks": 2
+    },
+    "trail": {
+     "life": 4.0,
+     "width": 1.0,
+     "tick_s": 1.0,
+     "payload": {
+      "status": "chilled"
+     }
+    },
+    "recovery": 0.12
+   },
+   "ascension": {
+    "power": "on_hit.stacks",
+    "reach": "life",
+    "speed": "speed",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.status",
+    "trail.life"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Far",
+     "word": "The frost runs 14 m, a little weaker."
+    },
+    {
+     "rune": "Persist",
+     "word": "The frosted line lingers 6 s."
+    },
+    {
+     "rune": "Brittle",
+     "word": "Everything on the line is left Brittle: a strike Shatters the first one you reach."
+    },
+    {
+     "rune": "Straight",
+     "word": "A true, fast line: quicker and a little longer."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Within",
+     "why": "It already passes everything on the line. Falls back."
+    },
+    {
+     "rune": "Haste",
+     "why": "There is no wind-up to shorten; it leaves the hand at once. Falls back."
+    }
+   ],
+   "starter_slot": "ranged"
+  },
+  {
+   "id": "black_ice",
+   "name": "Black Ice",
+   "affinity": "ice",
+   "base_rune": "ICE-2b",
+   "rune": "Glaze",
+   "status": "changed",
+   "starter": true,
+   "role_fit": "role",
+   "parent_trait": "Water",
+   "kind": "dash",
+   "targeting": "aimed",
+   "summary": "Lay a strip of glaze 6 m ahead and slide the length of it. The glaze stays 5 s: you move 30% faster on it; enemies on it keep slipping, losing poise every half second, and a shove that starts on it goes twice as far.",
+   "verb_fit": "Glaze is 'glazed ice: fast and slippery'. You are the fast, they are the slippery - a standing pool frozen over (Water's flow, set: shoves on it go twice as far, as in Water's pool).",
+   "numbers": {
+    "cost": 7,
+    "reflux_per_cost": 0.7,
+    "dash_speed": 20,
+    "dash_time": 0.3,
+    "stops_at_bodies": true,
+    "recovery": 0.2,
+    "trail": {
+     "life": 5.0,
+     "width": 1.5,
+     "tick_s": 0.5,
+     "payload": {
+      "poise": 12
+     },
+     "caster_speed_mult": 1.3,
+     "shove_mult": 2.0
+    }
+   },
+   "ascension": {
+    "power": "trail.payload.poise",
+    "reach": "dash_time",
+    "speed": "dash_speed",
+    "cost": "cost"
+   },
+   "signature": [
+    "dash_speed",
+    "trail.caster_speed_mult"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "The glaze stays 7.5 s."
+    },
+    {
+     "rune": "Haste",
+     "word": "Off the slide and acting sooner: recovery a quarter shorter."
+    },
+    {
+     "rune": "Motion",
+     "word": "A faster slide."
+    },
+    {
+     "rune": "Brittle",
+     "word": "Whoever slips on it goes Brittle: a strike Shatters them."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Frost",
+     "why": "Frost is Glaze's opposite and pulls harder (2.9 vs 2.0, polar): Glaze keeps only half its speed bonus, and the strip grips (Chill) instead of making them slip. Grip and slide cancel."
+    },
+    {
+     "rune": "Within",
+     "why": "A dash that stops at bodies has nothing to pierce. Falls back."
+    },
+    {
+     "rune": "One",
+     "why": "A slide has no single target and does no damage; the op has nowhere to land but a cost cut."
+    }
+   ],
+   "change_note": "the strip doubles shoves that start on it (Standing Pool's shove_mult, reused): Water's parent trait, and control by sliding.",
+   "starter_slot": "movement"
+  },
+  {
+   "id": "whiteout",
+   "name": "Whiteout",
+   "affinity": "ice",
+   "base_rune": "ICE-3a",
+   "rune": "Snow",
+   "status": "existing",
+   "starter": false,
+   "role_fit": "role",
+   "parent_trait": "Water + Dark",
+   "kind": "ground_zone",
+   "targeting": "point",
+   "summary": "Point, 10 m: snow falls over a circle 3.5 m across for 6 s. Enemies inside cannot see past 2 m (Blinded) and gain a Chill every second. Archers inside lose you.",
+   "verb_fit": "Snow is 'a fall of snow that blinds and buries'. It blinds like Dark's Obscure (Blinded) and it falls and buries like Water's Flood (Chill builds the longer they stand in it).",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 0.7,
+    "range": 10,
+    "zone": {
+     "shape": "circle",
+     "radius": 3.5,
+     "life": 6.0,
+     "tick_s": 1.0,
+     "payload": {
+      "status": "blinded",
+      "statuses": [
+       {
+        "id": "chilled",
+        "stacks": 1
+       }
+      ]
+     }
+    }
+   },
+   "ascension": {
+    "power": "zone.payload.statuses",
+    "reach": "zone.radius",
+    "speed": "zone.life",
+    "cost": "cost"
+   },
+   "signature": [
+    "zone.radius",
+    "zone.payload.status"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "A long fall: 9 s of snow."
+    },
+    {
+     "rune": "Elsewhere",
+     "word": "Lands farther and covers more."
+    },
+    {
+     "rune": "Brittle",
+     "word": "Buried and brittle: everyone in the snow can be Shattered by a strike."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Rime",
+     "why": "Snow has no edge to sharpen and no blow to make heavier: no damage, no poise. Falls back."
+    },
+    {
+     "rune": "Melt",
+     "why": "Melt is Snow's opposite and pulls harder: melted snow is slush, not a blind, and its damage bonus has no damage to add to."
+    },
+    {
+     "rune": "Within",
+     "why": "Not a shot. Falls back."
+    }
+   ]
+  },
+  {
+   "id": "runoff",
+   "name": "Runoff",
+   "affinity": "ice",
+   "base_rune": "ICE-3b",
+   "rune": "Melt",
+   "status": "existing",
+   "starter": false,
+   "role_fit": "utility",
+   "parent_trait": "Water",
+   "kind": "beam",
+   "targeting": "aimed",
+   "summary": "An instant line 8 m long melts the cold out of everything on it: 25 damage plus 30 for every Chill it carried, and the Chill is gone. A Frozen one counts as 5 and is freed. All of them are left Soaked.",
+   "verb_fit": "Melt is 'turn ice and snow to water'. The Chill in a body becomes damage all at once, and the water stays as Soaked (Water's Soak): the cash-out, which leaves them ready to be chilled fast again.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 0.7,
+    "range": 8,
+    "width": 1.0,
+    "pierce": true,
+    "damage": 25,
+    "consume_status": "chilled",
+    "per_stack_damage": 30,
+    "frozen_counts_as": 5,
+    "on_hit": {
+     "status": "soaked",
+     "poise": 20
+    },
+    "recovery": 0.2
+   },
+   "ascension": {
+    "power": "per_stack_damage",
+    "reach": "range",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "signature": [
+    "per_stack_damage",
+    "on_hit.status"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Far",
+     "word": "A longer runoff: 11 m, a little weaker."
+    },
+    {
+     "rune": "Focus",
+     "word": "A narrow, hard line: 30% more damage, shorter."
+    },
+    {
+     "rune": "Shatter",
+     "word": "Breaks the frozen ones as it melts them: +50% against Frozen, and more poise."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Within",
+     "why": "A beam is not a shot, and it already passes through everything. Falls back."
+    },
+    {
+     "rune": "Persist",
+     "why": "Nothing of an instant line stays. Falls back."
+    },
+    {
+     "rune": "Toughen",
+     "why": "Cold-hardening the thing that melts: no duration to lengthen, nothing to slow. Falls back."
+    }
+   ]
+  },
+  {
+   "id": "rime_wall",
+   "name": "Rime Wall",
+   "affinity": "ice",
+   "base_rune": "ICE-4a",
+   "rune": "Rime",
+   "status": "new",
+   "starter": false,
+   "role_fit": "role",
+   "parent_trait": "Water",
+   "kind": "prop",
+   "targeting": "point",
+   "summary": "Point, 10 m: a wall of rime 5 m long rises across your aim in a quarter second and stands 6 s. It blocks walking and every shot, as standing stone does. Anyone it rises under is shoved 1 m clear and gains 2 Chill; a body shoved into it is Crushed, as against stone. A hard hit (yours or theirs) shatters it early: 40 and a Chill to everyone within 2.5 m. Two at a time.",
+   "verb_fit": "Rime is 'build ice: walls, armour, spikes' - the wall. It is water built up and set (Water's parent trait): the shove that clears it and the Crush against it are Water's.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.7,
+    "range": 10.0,
+    "shape": "ice_wall",
+    "length": 5.0,
+    "thickness": 0.6,
+    "height": 1.6,
+    "life": 6.0,
+    "rise_time": 0.25,
+    "max_count": 2,
+    "on_rise": {
+     "status": "chilled",
+     "stacks": 2,
+     "shove": 1.0
+    },
+    "shatter_burst": {
+     "damage": 40.0,
+     "radius": 2.5,
+     "status": "chilled"
+    }
+   },
+   "ascension": {
+    "power": "on_rise.stacks + shatter_burst.damage",
+    "reach": "length",
+    "speed": "life",
+    "cost": "cost"
+   },
+   "signature": [
+    "length",
+    "life"
+   ],
+   "new_mechanics": [
+    {
+     "name": "ice_wall (prop shape)",
+     "kind": "behaviour",
+     "definition": "A Stone (scripts/stone.gd: blocks walking, rays and shots; enemies go round by Stone.way_round) with material ice, a 'life' after which it melts, and 'shatter_burst' when a hard hit (40+ poise, a bare strike, a Crush into it) breaks it early. on_rise hits what it rises under, as Raise Slab's does."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "A wall that stands 9 s"
+    },
+    {
+     "rune": "Expand",
+     "word": "A longer wall: 6.5 m, across a whole doorway"
+    },
+    {
+     "rune": "Frost",
+     "word": "A gripping wall: those it rises under take more Chill and lose more of their pace"
+    },
+    {
+     "rune": "Toughen",
+     "word": "A cold-hardened wall: it stands longer and is slower to rise"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Shatter",
+     "why": "its own opposite: a wall that breaks as it rises. Its bonus vs Frozen has no hit to ride; the poise op makes it easier to shatter. Maths lets it act; it undoes the skill"
+    },
+    {
+     "rune": "Motion",
+     "why": "a wall does not travel; no speed field. Falls back"
+    },
+    {
+     "rune": "Within",
+     "why": "not a shot; nothing to pierce. Falls back"
+    }
+   ]
+  },
+  {
+   "id": "fracture",
+   "name": "Fracture",
+   "affinity": "ice",
+   "base_rune": "ICE-4b",
+   "rune": "Shatter",
+   "status": "existing",
+   "starter": false,
+   "role_fit": "utility",
+   "parent_trait": "Water",
+   "kind": "targeted_strike",
+   "targeting": "target",
+   "summary": "One enemy in reach: a hammer blow, 2.0x strike damage and 60 poise. If it is Frozen or Brittle it Shatters for +120 more, and the shards fly 4 m instead of 2.5.",
+   "verb_fit": "Shatter is 'break ice; brittle things burst'. Fracture is the hard hit built to Shatter; the shards burst outward on contact, as Water's Splash does.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 0.7,
+    "damage_mult": 2.0,
+    "range_bonus": 1.0,
+    "on_hit": {
+     "poise": 60
+    },
+    "bonus_vs_status": "frozen",
+    "bonus_also_vs": "brittle",
+    "bonus_damage": 120,
+    "shard_radius": 4.0,
+    "recovery": 0.3
+   },
+   "ascension": {
+    "power": "bonus_damage",
+    "reach": "range_bonus",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "signature": [
+    "bonus_damage",
+    "on_hit.poise"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Near",
+     "word": "Up close and harder: +20% damage, a little less reach."
+    },
+    {
+     "rune": "Brittle",
+     "word": "What it does not break, it leaves Brittle: the bare strike after it Shatters."
+    },
+    {
+     "rune": "Freeze",
+     "word": "A cold hammer: 2 Chill on whatever it fails to break."
+    },
+    {
+     "rune": "Fall",
+     "word": "Brings it down: 30% more poise damage."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Rime",
+     "why": "Rime is Shatter's opposite and pulls harder (2.62 vs 1.87, polar): the hammer grows spikes but its shatter bonus is halved. Building ice on the thing that breaks it."
+    },
+    {
+     "rune": "Within",
+     "why": "Not a shot. Falls back."
+    },
+    {
+     "rune": "Persist",
+     "why": "A blow has no duration. Falls back."
+    }
+   ]
+  },
+  {
+   "id": "craze",
+   "name": "Craze",
+   "affinity": "ice",
+   "base_rune": "ICE-5a",
+   "rune": "Brittle",
+   "status": "existing",
+   "starter": false,
+   "role_fit": "role",
+   "parent_trait": "Dark",
+   "kind": "delayed_blast",
+   "targeting": "point",
+   "summary": "Point, 9 m: fine cracks race through a 3 m circle for half a second, then everything in it is Brittle for 5 s: its next hard hit Shatters it, frozen or not. The way to break what will not freeze.",
+   "verb_fit": "Brittle is 'make a thing fragile'. Cracks run unseen through what will not freeze (Dark's Expose: a hidden weakness made to stand out), so heavies and elites can be Shattered.",
+   "numbers": {
+    "cost": 10,
+    "reflux_per_cost": 0.7,
+    "range": 9,
+    "radius": 3.0,
+    "delay": 0.5,
+    "on_hit": {
+     "status": "brittle",
+     "status_s": 5.0
+    }
+   },
+   "ascension": {
+    "power": "on_hit.status_s",
+    "reach": "radius",
+    "speed": "delay",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.status"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Elsewhere",
+     "word": "Craze a spot farther off, and a wider one."
+    },
+    {
+     "rune": "Haste",
+     "word": "The cracks run faster: the half-second mark drops by a quarter."
+    },
+    {
+     "rune": "Freeze",
+     "word": "Cracks and cold together: 2 Chill as well."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Toughen",
+     "why": "Toughen is Brittle's opposite and pulls harder: hardening what you make fragile. No duration or speed field here; falls back."
+    },
+    {
+     "rune": "Rime",
+     "why": "Craze does no damage and no poise; there is nothing for the spikes to add. Falls back."
+    },
+    {
+     "rune": "Within",
+     "why": "Not a shot. Falls back."
+    }
+   ]
+  },
+  {
+   "id": "ice_shell",
+   "name": "Ice Shell",
+   "affinity": "ice",
+   "base_rune": "ICE-5b",
+   "rune": "Toughen",
+   "status": "changed",
+   "starter": false,
+   "role_fit": "utility",
+   "parent_trait": "Water",
+   "kind": "self_buff",
+   "targeting": "self",
+   "summary": "A shell of ice closes over you for 8 s: a 60 Ward (the shared cap). When it is broken it bursts: 40 damage and 2 Chill to everything within 2.5 m.",
+   "verb_fit": "Toughen is 'cold-harden it'. You harden your own skin with cold; broken, it bursts off you onto those close, as Water's Backwash splashes off its wearer.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 0.7,
+    "duration": 8,
+    "ward": 60,
+    "on_break": {
+     "burst_radius": 2.5,
+     "damage": 40,
+     "status": "chilled",
+     "stacks": 2
+    }
+   },
+   "ascension": {
+    "power": "ward",
+    "reach": "on_break.burst_radius",
+    "speed": "duration",
+    "cost": "cost"
+   },
+   "signature": [
+    "duration"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "A shell that holds 12 s."
+    },
+    {
+     "rune": "Self",
+     "word": "Worn closer, lasts 30% longer."
+    },
+    {
+     "rune": "Essence",
+     "word": "Carried on clean essence: 15% cheaper."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Brittle",
+     "why": "Brittle is Toughen's opposite: a brittle shell is no shell. The buff has no hit to carry the status; falls back."
+    },
+    {
+     "rune": "Far",
+     "why": "A shell is worn, not thrown: no range or area. Falls back."
+    },
+    {
+     "rune": "Within",
+     "why": "Nothing it shoots. Falls back."
+    }
+   ],
+   "change_note": "'absorb' 80 becomes the shared Ward (holy.json / water.json), 60 to fit its ward_cap: one shield rule for every affinity."
+  },
+  {
+   "id": "dead_calm",
+   "name": "Dead Calm",
+   "affinity": "ice",
+   "base_rune": "new:ICE-6a",
+   "rune": "Stasis",
+   "status": "new",
+   "starter": false,
+   "role_fit": "role",
+   "parent_trait": "Water + Dark",
+   "kind": "smite",
+   "targeting": "target",
+   "summary": "One enemy within 10 m goes utterly still for 2.5 s: it cannot move or act, whatever it was winding up is lost, and every status on it stops running down. It gains 2 Chill, and when the calm breaks it is Stilled - the next shove or drag on it goes twice as far. Heavy enemies hold half as long; an elite is only Stilled.",
+   "verb_fit": "Stasis is 'deep cold that halts everything' - everything, including the clocks on it. Dark's stillness (Pin, Hush: nothing moves, nothing sounds) with Water's slack tide after it: it comes out Stilled, Water's own status.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.7,
+    "range": 10.0,
+    "recovery": 0.2,
+    "on_hit": {
+     "interrupts": true,
+     "status": "stasis",
+     "status_s": 2.5,
+     "statuses": [
+      {
+       "id": "chilled",
+       "stacks": 2
+      }
+     ]
+    }
+   },
+   "ascension": {
+    "power": "on_hit.statuses",
+    "reach": "range",
+    "speed": "on_hit.status_s",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.status",
+    "on_hit.status_s"
+   ],
+   "new_mechanics": [
+    {
+     "name": "stasis",
+     "kind": "status",
+     "definition": "1 stack, 2.5 s: cannot_act, control, and 'freezes': 'all' (no other status on it runs down while it lasts); heavy_lasts_mult 0.5; elite_status 'stilled'; on_expire {status: 'stilled'} (Water's Stilled: 60% slower, the next shove or pull x2, once)."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "A longer calm"
+    },
+    {
+     "rune": "Far",
+     "word": "Calm the one at the back, 14 m away"
+    },
+    {
+     "rune": "Freeze",
+     "word": "A deeper calm: 2 more Chill, so a chilled one freezes the moment the calm breaks"
+    },
+    {
+     "rune": "Brittle",
+     "word": "It breaks out of the calm Brittle: the first hard hit Shatters it"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Floe",
+     "why": "its own opposite: a sheet that slides off with the body you are holding still. The shove waits on the hold; maths lets it act, it should not"
+    },
+    {
+     "rune": "Motion",
+     "why": "nothing travels; the calm is instant. No speed field; falls back"
+    },
+    {
+     "rune": "Haste",
+     "why": "there is no wind-up to shorten. Falls back"
+    }
+   ]
+  },
+  {
+   "id": "floe_drive",
+   "name": "Floe Drive",
+   "affinity": "ice",
+   "base_rune": "new:ICE-6b",
+   "rune": "Floe",
+   "status": "new",
+   "starter": false,
+   "role_fit": "role",
+   "parent_trait": "Water",
+   "kind": "projectile",
+   "targeting": "aimed",
+   "summary": "A sheet of ice 3 m wide slides out 9 m along the floor: everything it meets takes 30 and 2 Chill and is shoved 3 m along with it. A body it drives into a wall, stone or another body is Crushed, as water's are.",
+   "verb_fit": "Floe is 'drifting ice carried by the current': the ice carries them. Water's Surge and Sweep (the shove, the carry, the Crush), set in ice (the Chill).",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.7,
+    "damage": 30.0,
+    "speed": 14.0,
+    "life": 0.65,
+    "width": 3.0,
+    "pierce": true,
+    "crushes": true,
+    "on_hit": {
+     "statuses": [
+      {
+       "id": "chilled",
+       "stacks": 2
+      }
+     ],
+     "shove": 3.0,
+     "poise": 20.0
+    }
+   },
+   "ascension": {
+    "power": "damage + on_hit.shove",
+    "reach": "life",
+    "speed": "speed",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.shove",
+    "width"
+   ],
+   "new_mechanics": [
+    {
+     "name": "crushes",
+     "kind": "field",
+     "definition": "A skill of any affinity with crushes: true uses Water's Crush rule (Player.on_crush, balance.json 'shove') for its shoves: a body it shoves into a wall, stone or body is Crushed. The Ward from crush_ward stays Water's."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Far",
+     "word": "A longer floe: 12.6 m"
+    },
+    {
+     "rune": "Motion",
+     "word": "A faster floe, harder to step out of"
+    },
+    {
+     "rune": "Frost",
+     "word": "A gripping floe: more Chill on everything it carries"
+    },
+    {
+     "rune": "Expand",
+     "word": "A wider sheet, a little lighter"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Stasis",
+     "why": "its own opposite: holding still what the floe is carrying. The interrupt is fine; the Stilled it adds doubles a shove already under way. Maths lets it act; it should not"
+    },
+    {
+     "rune": "Within",
+     "why": "it already passes everything it meets. Falls back"
+    },
+    {
+     "rune": "Self",
+     "why": "nothing lasts on you. Falls back"
+    }
+   ]
+  },
+  {
+   "id": "icicle",
+   "name": "Icicle",
+   "affinity": "ice",
+   "base_rune": "ICE-4a",
+   "rune": "Rime",
+   "status": "dropped",
+   "starter": false,
+   "kind": "projectile",
+   "dropped_why": "A heavy damage bolt is a burst caster's; Ice is control. Its rune Rime now builds the wall (Rime Wall). Ranged Shatters come from any hard hit, and Fracture up close."
+  }
+ ],
+ "effects": {
+  "Freeze": "status chilled 2",
+  "Thaw": "reach x1.2; windup x0.85",
+  "Frost": "status chilled; duration x1.2",
+  "Glaze": "speed x1.3; windup x0.9",
+  "Snow": "reach x1.2; status blinded",
+  "Melt": "bonus chilled +0.3; status soaked",
+  "Rime": "power x1.15; poise x1.2",
+  "Shatter": "bonus frozen +0.5; poise x1.25",
+  "Brittle": "status brittle",
+  "Toughen": "duration x1.4; speed x0.9",
+  "Stasis": "interrupts; status stilled",
+  "Floe": "shove +1.5; status chilled"
+ }
+}

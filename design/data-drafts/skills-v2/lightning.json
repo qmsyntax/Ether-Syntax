@@ -1,0 +1,912 @@
+{
+ "affinity": "lightning",
+ "parents": [
+  "fire",
+  "wind"
+ ],
+ "role": "Spellblade - Fire's burst with Wind's speed [B]",
+ "reflux_tier": "middling",
+ "rule": "Lightning marks a target and overloads it: every lightning hit leaves Live marks, and the third mark is an Overload - a burst that stuns the target and arcs to every other marked enemy within 12 m - that leaves you Quickened for 1.5 s.",
+ "new_mechanics": [
+  {
+   "name": "quicken_on_overload",
+   "kind": "field",
+   "definition": "Affinity rule key: each Overload the caster causes leaves them Quickened (the existing player state) for this many seconds (1.5); a new Overload refreshes it."
+  }
+ ],
+ "skills": [
+  {
+   "id": "arc_lash",
+   "name": "Arc Lash",
+   "affinity": "lightning",
+   "base_rune": "LIG-3a",
+   "rune": "Arc",
+   "status": "existing",
+   "starter": true,
+   "starter_slot": "ranged",
+   "serves": "role",
+   "kind": "beam",
+   "targeting": "aimed",
+   "summary": "Instant and short: it cannot miss what it points at. 85 damage and a Live mark, then it arcs to one more enemy within 4 m for the same. Walls stop it.",
+   "verb_fit": "Arc is \"jump between targets\": the hit leaps on, as Fire's burn catches from body to body, but in an instant (Wind's speed).",
+   "numbers": {
+    "cost": 8,
+    "reflux_per_cost": 1.0,
+    "damage": 85,
+    "range": 9,
+    "width": 0.7,
+    "recovery": 0.12,
+    "on_hit": {
+     "marks": 1
+    },
+    "jumps": 1,
+    "jump_radius": 4
+   },
+   "signature": [
+    "jumps",
+    "jump_radius"
+   ],
+   "ascension": {
+    "power": "damage",
+    "reach": "range",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Charge",
+     "word": "Charged Lash: two marks a hit"
+    },
+    {
+     "rune": "Discharge",
+     "word": "Shorting Lash: harder on the marked"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Lash: reaches farther"
+    },
+    {
+     "rune": "Contract",
+     "word": "Tight Lash: a harder, shorter line"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Insulate",
+     "why": "its own opposite: isolate the target it is meant to jump from. The jump is cancelled"
+    },
+    {
+     "rune": "Within",
+     "why": "a beam that cannot miss has nothing to pierce for; falls back"
+    },
+    {
+     "rune": "Persist",
+     "why": "an instant beam has nothing that lasts; falls back"
+    }
+   ],
+   "change_note": "No change in play; its recovery (the default 0.12 s) is written out for the speed aspect."
+  },
+  {
+   "id": "thunderclap_palm",
+   "name": "Thunderclap Palm",
+   "affinity": "lightning",
+   "base_rune": "LIG-5a",
+   "rune": "Thunder",
+   "status": "existing",
+   "starter": true,
+   "starter_slot": "close",
+   "serves": "role",
+   "kind": "targeted_strike",
+   "targeting": "target",
+   "summary": "One enemy in reach: a heavy blow, 2 Live marks, and it stops whatever it was doing. The crack Dazes and staggers everyone within 2.5 m of it, the target too.",
+   "verb_fit": "Thunder is \"a deafening crack that staggers\": the blade-hand strike is Fire's Kiln Fist (a heavy blow that bursts on the neighbours), with Wind's Drop in the crack of air.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.0,
+    "damage_mult": 2.2,
+    "range_bonus": 1.0,
+    "recovery": 0.12,
+    "on_hit": {
+     "marks": 2,
+     "interrupts": true,
+     "status": "dazed"
+    },
+    "burst_radius": 2.5,
+    "burst": {
+     "statuses": [
+      {
+       "id": "dazed"
+      },
+      {
+       "id": "staggered"
+      }
+     ]
+    }
+   },
+   "signature": [
+    "on_hit.status",
+    "burst"
+   ],
+   "ascension": {
+    "power": "damage_mult",
+    "reach": "burst_radius",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Charge",
+     "word": "Charged Palm: three marks, an Overload in one blow"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Palm: the crack reaches farther"
+    },
+    {
+     "rune": "Discharge",
+     "word": "Shorting Palm: harder on the marked"
+    },
+    {
+     "rune": "Quicken",
+     "word": "Snap Palm: a faster recovery"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Silence",
+     "why": "its own opposite: silence a thunderclap. It should not act"
+    },
+    {
+     "rune": "Within",
+     "why": "a palm strike already lands; pierce does nothing"
+    },
+    {
+     "rune": "Persist",
+     "why": "a blow has nothing that lasts but the daze; falls back"
+    }
+   ],
+   "change_note": "No change in play; its recovery (the default 0.12 s) is written out for the speed aspect."
+  },
+  {
+   "id": "stepped_leader",
+   "name": "Stepped Leader",
+   "affinity": "lightning",
+   "base_rune": "LIG-4a",
+   "rune": "Quicken",
+   "status": "changed",
+   "starter": true,
+   "starter_slot": "movement",
+   "serves": "role",
+   "kind": "blink",
+   "targeting": "point",
+   "summary": "You are simply there, up to 6 m away: over enemies and gaps, not through walls or stone. Everything beside where you land takes 30 and a Live mark, and you are Quickened for 2 s after.",
+   "verb_fit": "Quicken is \"nerves in overdrive\": Wind's Tailwind made instant, and you arrive with the blade already moving.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.0,
+    "range": 6,
+    "arrive_radius": 1.5,
+    "recovery": 0.3,
+    "on_arrive": {
+     "damage": 30,
+     "marks": 1
+    },
+    "self_status": "quickened",
+    "self_status_s": 2.0
+   },
+   "signature": [
+    "recovery",
+    "self_status"
+   ],
+   "ascension": {
+    "power": "on_arrive.damage",
+    "reach": "range",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Elsewhere",
+     "word": "Far Leader: you land farther away"
+    },
+    {
+     "rune": "Charge",
+     "word": "Charged Leader: two marks on landing"
+    },
+    {
+     "rune": "Haste",
+     "word": "Quick Leader: less recovery"
+    },
+    {
+     "rune": "Thunder",
+     "word": "Cracking Leader: the landing Dazes"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Stillness",
+     "why": "its own opposite in spirit: held in place, you cannot blink. Falls back"
+    },
+    {
+     "rune": "Within",
+     "why": "nothing to pierce; falls back"
+    },
+    {
+     "rune": "Persist",
+     "why": "a blink has nothing that lasts but the Quickened; falls back"
+    }
+   ],
+   "change_note": "The landing now strikes (30) as well as marking: the spellblade arrives cutting."
+  },
+  {
+   "id": "static_coat",
+   "name": "Static Coat",
+   "affinity": "lightning",
+   "base_rune": "LIG-2a",
+   "rune": "Charge",
+   "status": "changed",
+   "starter": false,
+   "serves": "role",
+   "kind": "self_buff",
+   "targeting": "self",
+   "summary": "6 s: every bare strike you land adds a Live mark and sparks on to the nearest other enemy within 3 m, marking it too; an enemy that hits you in melee takes 25 and a mark.",
+   "verb_fit": "Charge is \"build up marks\": Fire's Stoke coats your hands in flame; this coats your blade in charge, so every strike builds toward the Overload.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.0,
+    "buff": "static_coat",
+    "duration": 6,
+    "retaliate": 25,
+    "coat": {
+     "duration": 6,
+     "payload": {
+      "marks": 1,
+      "jumps": 1
+     }
+    },
+    "jump_radius": 3.0
+   },
+   "signature": [
+    "coat.payload.marks",
+    "retaliate"
+   ],
+   "ascension": {
+    "power": "retaliate",
+    "reach": "jump_radius",
+    "speed": "duration",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Coat: lasts longer"
+    },
+    {
+     "rune": "Self",
+     "word": "it acts on you: longer"
+    },
+    {
+     "rune": "Arc",
+     "word": "Leaping Coat: the spark jumps once more"
+    },
+    {
+     "rune": "Fury",
+     "word": "Raging Coat: the retaliation hits harder"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Discharge",
+     "why": "its own opposite: spend the marks the coat is for building. It should not act"
+    },
+    {
+     "rune": "Far",
+     "why": "your blade has no range; falls back to a cost cut"
+    },
+    {
+     "rune": "Elsewhere",
+     "why": "a coat on you, somewhere else; falls back"
+    }
+   ],
+   "change_note": "Every bare strike marks (was every second one), and sparks on to a second enemy within 3 m: the spellblade's imbue, on the coat key Fire's Stoke and Poison use (strikes_per_mark is gone)."
+  },
+  {
+   "id": "stored_bolt",
+   "name": "Stored Bolt",
+   "affinity": "lightning",
+   "base_rune": "LIG-2a",
+   "rune": "Charge",
+   "status": "changed",
+   "starter": false,
+   "serves": "role",
+   "kind": "charge_release",
+   "targeting": "aimed",
+   "summary": "Hold up to 1.2 s, walking slowly; let go and you are the bolt: you cross 4 m at a tap, 8 m at a full hold, through everything in the way. Each body you pass takes 80 to 220 and 1 to 3 Live marks by how long you held. A full charge Overloads the whole line.",
+   "verb_fit": "Charge is \"build up marks\": Fire's burst (hold it, then spend it all) carried by Wind's speed (Crosscut's cut through the line).",
+   "numbers": {
+    "cost": 20,
+    "reflux_per_cost": 1.4,
+    "charge_max": 1.2,
+    "move_factor": 0.45,
+    "release": "streak",
+    "range_min": 4.0,
+    "range": 8.0,
+    "pass_radius": 1.1,
+    "damage": 220,
+    "damage_min": 80,
+    "on_pass": {
+     "marks": 3
+    },
+    "marks_by_charge": [
+     1,
+     2,
+     3
+    ]
+   },
+   "signature": [
+    "on_pass.marks",
+    "marks_by_charge"
+   ],
+   "ascension": {
+    "power": "damage",
+    "reach": "range",
+    "speed": "charge_max",
+    "cost": "cost"
+   },
+   "new_mechanics": [
+    {
+     "name": "release streak",
+     "kind": "field",
+     "definition": "A charge_release may release as a streak (the built Glint kind): you cross range (range_min at a tap, range at a full hold) in an instant, through bodies, applying on_pass to each one within pass_radius."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Far",
+     "word": "Long Bolt: you go farther"
+    },
+    {
+     "rune": "Ground",
+     "word": "Earthed Bolt: it leaves less reflux"
+    },
+    {
+     "rune": "Contract",
+     "word": "Narrow Bolt: a tighter, harder line"
+    },
+    {
+     "rune": "Quicken",
+     "word": "Snap Bolt: it charges faster"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Insulate",
+     "why": "its own opposite in use: isolating one target on a line through many. It should not act"
+    },
+    {
+     "rune": "Arc",
+     "why": "the line already hits everything it crosses; a jump off it is wasted"
+    },
+    {
+     "rune": "Stillness",
+     "why": "a bolt you ride, held in place; falls back"
+    }
+   ],
+   "change_note": "Released as a streak that carries you (it was a beam from where you stood): the spellblade's charged lunge."
+  },
+  {
+   "id": "dead_short",
+   "name": "Dead Short",
+   "affinity": "lightning",
+   "base_rune": "LIG-2b",
+   "rune": "Discharge",
+   "status": "existing",
+   "starter": false,
+   "serves": "role",
+   "kind": "detonate",
+   "targeting": "self",
+   "summary": "Every marked enemy within 12 m Overloads now: 40% of the full blow and stun at 1 mark, 70% at 2, all of it at 3. It grounds no reflux.",
+   "verb_fit": "Discharge is \"release them as an overload\": Fire's Pyre Call (every burn blown out at once), with marks for burns.",
+   "numbers": {
+    "cost": 18,
+    "reflux_per_cost": 1.4,
+    "range": 12,
+    "recovery": 0.12,
+    "consume_status": "live",
+    "overload_fracs": [
+     0.4,
+     0.7,
+     1.0
+    ]
+   },
+   "signature": [
+    "overload_fracs"
+   ],
+   "ascension": {
+    "power": "overload_fracs",
+    "reach": "range",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Elsewhere",
+     "word": "Far Short: reaches farther"
+    },
+    {
+     "rune": "Essence",
+     "word": "Cheap Short: costs less"
+    },
+    {
+     "rune": "Ground",
+     "word": "Earthed Short: leaves less reflux"
+    },
+    {
+     "rune": "Thunder",
+     "word": "Cracking Short: each Overload Dazes"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Charge",
+     "why": "its own opposite: build marks while spending them. It should not act"
+    },
+    {
+     "rune": "Insulate",
+     "why": "isolates the bodies it means to set off; it should not act"
+    },
+    {
+     "rune": "Within",
+     "why": "nothing to pierce; falls back"
+    }
+   ],
+   "change_note": "No change in play; recovery written out for the speed aspect."
+  },
+  {
+   "id": "forked_path",
+   "name": "Forked Path",
+   "affinity": "lightning",
+   "base_rune": "LIG-3a",
+   "rune": "Arc",
+   "status": "changed",
+   "starter": false,
+   "serves": "role",
+   "kind": "chain",
+   "targeting": "target",
+   "summary": "One enemy within 9 m, then up to three more within 5 m of each other: you flash from one to the next, striking each from behind for 1.2x strike damage and a Live mark, and stop behind the last. Never the same body twice.",
+   "verb_fit": "Arc is \"jump between targets\": the arc carries you with it - Wind's Crosscut (through and behind) made a chain, Fire's spreading made a path.",
+   "numbers": {
+    "cost": 14,
+    "reflux_per_cost": 1.0,
+    "range": 9,
+    "jumps": 3,
+    "jump_radius": 5,
+    "carries_caster": true,
+    "force_rear": true,
+    "recovery": 0.25,
+    "on_hit": {
+     "damage_mult": 1.2,
+     "marks": 1
+    }
+   },
+   "signature": [
+    "jumps",
+    "carries_caster"
+   ],
+   "ascension": {
+    "power": "on_hit.damage_mult",
+    "reach": "jump_radius",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "new_mechanics": [
+    {
+     "name": "carries_caster",
+     "kind": "field",
+     "definition": "A chain that takes the caster with it: you appear behind each target as it is struck (a hit from behind), and stay behind the last one. A wall or stone between two targets ends the chain there."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Many",
+     "word": "Wide Path: one more jump"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Path: start farther off"
+    },
+    {
+     "rune": "Discharge",
+     "word": "Shorting Path: harder on the marked"
+    },
+    {
+     "rune": "Charge",
+     "word": "Charged Path: two marks each"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Insulate",
+     "why": "its own opposite: block the jump it is made of. The path ends at once"
+    },
+    {
+     "rune": "Stillness",
+     "why": "a path that holds you in place cannot carry you; falls back"
+    },
+    {
+     "rune": "Persist",
+     "why": "a run of strikes has nothing that lasts; falls back"
+    }
+   ],
+   "change_note": "It now carries you and strikes with your weapon (1.2x strike damage, from behind) instead of a flat 50 sent from where you stand. Cost 12 -> 14."
+  },
+  {
+   "id": "seize_up",
+   "name": "Seize Up",
+   "affinity": "lightning",
+   "base_rune": "LIG-4b",
+   "rune": "Stun",
+   "status": "existing",
+   "starter": false,
+   "serves": "role",
+   "kind": "melee_burst",
+   "targeting": "self",
+   "summary": "Everything within 3 m locks up: 30 damage, and Stunned for 0.4 s for every Live mark it carries (0.2 s if none). It spends no marks.",
+   "verb_fit": "Stun is \"nerves locked\": Fire's Backdraft cashes in the heat that is there; this cashes in the marks that are there, as stun, at blade's reach.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.0,
+    "arc_deg": 360,
+    "reach_bonus": 0.7,
+    "on_hit": {
+     "damage": 30,
+     "status": "stunned",
+     "poise": 20,
+     "interrupts": true,
+     "stun_per_mark": 0.4,
+     "stun_min": 0.2
+    },
+    "elite_stun_mult": 0.5
+   },
+   "signature": [
+    "on_hit.status",
+    "on_hit.stun_per_mark"
+   ],
+   "ascension": {
+    "power": "on_hit.damage",
+    "reach": "reach_bonus",
+    "speed": "on_hit.stun_per_mark",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Charge",
+     "word": "Charged Seize: a mark first, so it stuns longer"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Seize: reaches farther"
+    },
+    {
+     "rune": "Thunder",
+     "word": "Cracking Seize: Dazes as well"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Quicken",
+     "why": "its own opposite: nerves in overdrive on a skill that locks them. It should not act"
+    },
+    {
+     "rune": "Within",
+     "why": "a ring round you has nothing to pierce; falls back"
+    },
+    {
+     "rune": "Persist",
+     "why": "a lock has its own time; falls back"
+    }
+   ]
+  },
+  {
+   "id": "plumb_bolt",
+   "name": "Plumb Bolt",
+   "affinity": "lightning",
+   "base_rune": "LIG-1a",
+   "rune": "Strike",
+   "status": "existing",
+   "starter": false,
+   "serves": "utility",
+   "kind": "smite",
+   "targeting": "target",
+   "summary": "One enemy within 14 m is struck from straight above: 100 damage, 30 poise and a Live mark. Bodies, shields and low walls between you do not stop it.",
+   "verb_fit": "Strike is \"a bolt that hits one target\": Fire's one big single blow (Sear), from the sky. The spellblade's reach to a runner.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.0,
+    "range": 14,
+    "damage": 100,
+    "from_above": true,
+    "recovery": 0.12,
+    "on_hit": {
+     "marks": 1,
+     "poise": 30
+    }
+   },
+   "signature": [
+    "damage"
+   ],
+   "ascension": {
+    "power": "damage",
+    "reach": "range",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Charge",
+     "word": "Charged Plumb: two marks"
+    },
+    {
+     "rune": "Thunder",
+     "word": "Cracking Plumb: Dazes and more poise"
+    },
+    {
+     "rune": "One",
+     "word": "Single Plumb: harder"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Plumb: reaches farther"
+    },
+    {
+     "rune": "Discharge",
+     "word": "Shorting Plumb: harder on the marked"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Arc",
+     "why": "a bolt from straight above has nothing to jump from on the way; the jump is wasted"
+    },
+    {
+     "rune": "Within",
+     "why": "it already ignores what is between; falls back"
+    },
+    {
+     "rune": "Persist",
+     "why": "an instant bolt; falls back"
+    }
+   ],
+   "change_note": "No change in play; recovery written out for the speed aspect."
+  },
+  {
+   "id": "ground_rod",
+   "name": "Ground Rod",
+   "affinity": "lightning",
+   "base_rune": "LIG-1b",
+   "rune": "Ground",
+   "status": "existing",
+   "starter": false,
+   "serves": "utility",
+   "kind": "rod",
+   "targeting": "point",
+   "summary": "Point, 8 m: a rod for 10 s that blocks nothing. Each lightning skill you cast within 8 m of it also arcs from the rod to the nearest enemy within 5 m: 40 and a mark. One rod at a time.",
+   "verb_fit": "Ground is \"earth a charge away; draw strikes to a point\": a point that keeps striking for you, as Fire's Slag Pool keeps burning where you left it.",
+   "numbers": {
+    "cost": 6,
+    "reflux_per_cost": 0.4,
+    "range": 8,
+    "life": 10,
+    "relay_radius": 8,
+    "relay_range": 5,
+    "relay_hit": {
+     "damage": 40,
+     "marks": 1
+    }
+   },
+   "signature": [
+    "reflux_per_cost",
+    "relay_hit"
+   ],
+   "ascension": {
+    "power": "relay_hit.damage",
+    "reach": "relay_range",
+    "speed": "life",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Lasting Rod: stands longer"
+    },
+    {
+     "rune": "Charge",
+     "word": "Charged Rod: two marks a relay"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Rod: relays farther"
+    },
+    {
+     "rune": "Discharge",
+     "word": "Shorting Rod: harder on the marked"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Motion",
+     "why": "a rod planted in the ground does not travel; falls back"
+    },
+    {
+     "rune": "Quicken",
+     "why": "nothing about a rod is nerves; falls back"
+    },
+    {
+     "rune": "Within",
+     "why": "nothing to pierce; falls back"
+    }
+   ]
+  },
+  {
+   "id": "bell_jar",
+   "name": "Bell Jar",
+   "affinity": "lightning",
+   "base_rune": "LIG-3b",
+   "rune": "Insulate",
+   "status": "existing",
+   "starter": false,
+   "serves": "utility",
+   "kind": "smite",
+   "targeting": "target",
+   "summary": "One enemy within 12 m is sealed under a jar of still air for 6 s: 30 damage and a Live mark. Nothing passes in or out of it: no auras, no death burst, no arcs. Overload it and the whole arc stays inside: +60 for every other marked enemy within 12 m.",
+   "verb_fit": "Insulate is \"block a jump, isolate a target\": Wind's Dead Air (a bubble of still air) put over one body.",
+   "numbers": {
+    "cost": 10,
+    "reflux_per_cost": 1.0,
+    "range": 12,
+    "damage": 30,
+    "duration": 6,
+    "on_hit": {
+     "status": "insulated",
+     "marks": 1
+    }
+   },
+   "signature": [
+    "on_hit.status",
+    "duration"
+   ],
+   "ascension": {
+    "power": "damage",
+    "reach": "range",
+    "speed": "duration",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Charge",
+     "word": "Charged Jar: two marks"
+    },
+    {
+     "rune": "Persist",
+     "word": "Long Jar: seals longer"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Reach: reaches farther"
+    },
+    {
+     "rune": "Ground",
+     "word": "Earthed Jar: leaves less reflux"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Arc",
+     "why": "its own opposite: jump out of the jar it seals. The seal is lost"
+    },
+    {
+     "rune": "Quicken",
+     "why": "nothing about a jar is nerves; falls back"
+    },
+    {
+     "rune": "Within",
+     "why": "nothing to pierce; falls back"
+    }
+   ]
+  },
+  {
+   "id": "dead_line",
+   "name": "Dead Line",
+   "affinity": "lightning",
+   "base_rune": "LIG-5b",
+   "rune": "Silence",
+   "status": "changed",
+   "starter": false,
+   "serves": "utility",
+   "kind": "ground_zone",
+   "targeting": "point",
+   "summary": "Point, 9 m: a ring 3 m across hums for 6 s. Enemies inside cannot cast, drum or call for help. Each takes 20, a Live mark and an interrupt once, on entering.",
+   "verb_fit": "Silence is \"dead quiet: casting and calls fail\": Wind's Lull (dead air, where shots drop) for sound instead.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.0,
+    "range": 9,
+    "zone": {
+     "shape": "circle",
+     "radius": 3.0,
+     "life": 6.0,
+     "tick_s": 0.5,
+     "payload": {
+      "status": "muted"
+     },
+     "on_enter": {
+      "damage": 20,
+      "interrupts": true,
+      "marks": 1
+     }
+    }
+   },
+   "signature": [
+    "zone.payload.status",
+    "zone.on_enter"
+   ],
+   "ascension": {
+    "power": "zone.on_enter.damage",
+    "reach": "zone.radius",
+    "speed": "zone.life",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Line: hums longer"
+    },
+    {
+     "rune": "Elsewhere",
+     "word": "Far Line: cast farther"
+    },
+    {
+     "rune": "Insulate",
+     "word": "Sealed Line: those inside are Insulated too"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Charge",
+     "why": "a mark every tick, not once: it turns a ring of silence into a mark engine. It should not act"
+    },
+    {
+     "rune": "Thunder",
+     "why": "its own opposite: a crack in the silence. It should not act"
+    },
+    {
+     "rune": "Within",
+     "why": "nothing to pierce; falls back"
+    }
+   ],
+   "change_note": "Entering now also costs 20 (it only marked and interrupted), so power has a number."
+  }
+ ],
+ "effects": {
+  "Strike": "power x1.2; speed x1.2",
+  "Ground": "reflux x0.75",
+  "Charge": "marks +1",
+  "Discharge": "bonus live +0.4",
+  "Arc": "jumps +1",
+  "Insulate": "status insulated",
+  "Quicken": "windup x0.7; speed x1.2",
+  "Stun": "status stunned",
+  "Thunder": "poise x1.3; status dazed",
+  "Silence": "interrupts"
+ }
+}

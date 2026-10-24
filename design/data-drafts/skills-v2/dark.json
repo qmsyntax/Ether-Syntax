@@ -1,0 +1,750 @@
+{
+ "affinity": "dark",
+ "parents": [],
+ "role": "assassin - stealth, rear hits, darkness",
+ "reflux_tier": "middling",
+ "rule": "Dark is strongest where the light is weakest: every spot is Lit, Dim or Dark; dark hits do +25% to a target standing in Dark and -20% in Lit; you are Unseen while you stand in Dark, and your first hit out of Unseen is an Ambush - it counts as from behind and does +50%.",
+ "new_mechanics": [
+  {
+   "name": "ambush",
+   "kind": "field",
+   "definition": "Affinity key 'ambush_mult' (Dark 1.5): the caster's first hit while Unseen (standing in Dark, Vanished, or any other unseen rule) counts as a rear hit (rear_mult, frontal block ignored) and is multiplied by ambush_mult; the hit then reveals you as now (1 s), unless Muffled. Light level, dark ground and Unseen are already built (2026-10-22 drafts) and are not redefined."
+  }
+ ],
+ "skills": [
+  {
+   "id": "blot",
+   "name": "Blot",
+   "affinity": "dark",
+   "base_rune": "DRK-1a",
+   "rune": "Darken",
+   "status": "existing",
+   "starter": true,
+   "role_fit": "role",
+   "kind": "projectile",
+   "targeting": "aimed",
+   "summary": "A blot of darkness, thrown: 60 damage, and where it lands the ground goes Dark in a circle 2.5 m across for 6 s. Hit them again while they stand in it.",
+   "verb_fit": "Darken is 'make it darker'. The bolt is the delivery; what it does is put a patch of Dark exactly where the fight is - ground you can stand in Unseen and strike out of as an Ambush.",
+   "numbers": {
+    "cost": 8,
+    "reflux_per_cost": 1.0,
+    "damage": 60,
+    "speed": 18,
+    "life": 1.4,
+    "on_hit": {},
+    "zone": {
+     "shape": "circle",
+     "radius": 2.5,
+     "life": 6.0,
+     "dark": true
+    },
+    "recovery": 0.12
+   },
+   "ascension": {
+    "power": "damage",
+    "reach": "zone.radius",
+    "speed": "speed",
+    "cost": "cost"
+   },
+   "signature": [
+    "damage",
+    "zone.life"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Expand",
+     "word": "A wider blot: the dark patch and the flight both grow, a little less damage."
+    },
+    {
+     "rune": "Persist",
+     "word": "The patch stays Dark 9 s."
+    },
+    {
+     "rune": "Obscure",
+     "word": "A blot in the eyes: what it hits is Blinded, and the patch lasts longer."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Lighten",
+     "why": "Lighten is Darken's opposite: a blot that lets the light in. Darken keeps the pull, so the daze it would add sits at the edge of taking hold, and there is no wind-up for its other half."
+    },
+    {
+     "rune": "Haste",
+     "why": "No wind-up to shorten; it leaves the hand at once. Falls back."
+    }
+   ],
+   "starter_slot": "ranged"
+  },
+  {
+   "id": "daybreak",
+   "name": "Daybreak",
+   "affinity": "dark",
+   "base_rune": "DRK-1b",
+   "rune": "Lighten",
+   "status": "existing",
+   "starter": false,
+   "role_fit": "utility",
+   "kind": "detonate",
+   "targeting": "self",
+   "summary": "Every pool of your darkness within 12 m lifts at once. Each enemy standing in one is caught in the sudden light: Dazed for 1.5 s and Exposed for 4 s. You lose the dark you made.",
+   "verb_fit": "Lighten is 'let the light back in'. The assassin's opener: what stood in your shadows is suddenly lit and outlined - Dazed and Exposed, every hit on it from behind.",
+   "numbers": {
+    "cost": 10,
+    "reflux_per_cost": 1.0,
+    "range": 12,
+    "consume_zone": "dark_ground",
+    "recovery": 0.25,
+    "on_hit": {
+     "status": "dazed",
+     "statuses": [
+      {
+       "id": "exposed"
+      }
+     ],
+     "status_s": 4.0
+    }
+   },
+   "ascension": {
+    "power": "on_hit.status_s",
+    "reach": "range",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.status"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Elsewhere",
+     "word": "Lifts pools farther away."
+    },
+    {
+     "rune": "Haste",
+     "word": "Light floods in sooner: recovery a quarter shorter."
+    },
+    {
+     "rune": "Essence",
+     "word": "Cheaper to throw away your own dark: 15% less essence."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Darken",
+     "why": "Darken is Lighten's opposite and pulls harder: lifting the dark and deepening it at once. Daybreak has no damage or duration for its ops; falls back."
+    },
+    {
+     "rune": "Expose",
+     "why": "Daybreak already Exposes everything it catches; the status op does not stack. Falls back."
+    },
+    {
+     "rune": "Within",
+     "why": "Not a shot. Falls back."
+    }
+   ]
+  },
+  {
+   "id": "pall",
+   "name": "Pall",
+   "affinity": "dark",
+   "base_rune": "DRK-2a",
+   "rune": "Obscure",
+   "status": "changed",
+   "starter": false,
+   "role_fit": "role",
+   "kind": "ground_zone",
+   "targeting": "feet",
+   "summary": "Darkness pours out of you: a pall 3.5 m across at your feet for 6 s. Every enemy that had you in its sights loses you at once and goes to where it last saw you. Nothing sees into it or through it, those inside are Blinded, and you are Unseen in it - so your first hit out is an Ambush.",
+   "verb_fit": "Obscure is 'hide a thing in darkness'. The thing is you: this is the assassin's vanish.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.0,
+    "zone": {
+     "shape": "circle",
+     "radius": 3.5,
+     "life": 6.0,
+     "tick_s": 0.5,
+     "payload": {
+      "status": "blinded",
+      "status_s": 3.0
+     },
+     "blocks_sight": true,
+     "dark": true
+    },
+    "drops_aggro": true,
+    "recovery": 0.2
+   },
+   "ascension": {
+    "power": "zone.payload.status_s",
+    "reach": "zone.radius",
+    "speed": "zone.life",
+    "cost": "cost"
+   },
+   "signature": [
+    "zone.payload.status",
+    "zone.blocks_sight"
+   ],
+   "new_mechanics": [
+    {
+     "name": "drops_aggro",
+     "kind": "field",
+     "definition": "On cast, every enemy whose target is the caster loses it and goes to the last place it saw you (as when Unseen begins); melee enemies give up their slot."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "The pall hangs 9 s."
+    },
+    {
+     "rune": "Expand",
+     "word": "A wider pall: room to work inside it."
+    },
+    {
+     "rune": "Hush",
+     "word": "A silent pall: it falls sooner and lasts longer."
+    },
+    {
+     "rune": "Essence",
+     "word": "15% cheaper."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Expose",
+     "why": "Expose is Obscure's opposite: outlining what you are hiding. Obscure keeps the pull, but the Expose status would still land on every tick, undoing the cover."
+    },
+    {
+     "rune": "Motion",
+     "why": "The pall stays where it falls; nothing travels. Falls back."
+    },
+    {
+     "rune": "Within",
+     "why": "Not a shot. Falls back."
+    }
+   ],
+   "change_note": "cast at your feet (was a point 10 m away) and drops every enemy's aim on you: the vanish."
+  },
+  {
+   "id": "silhouette",
+   "name": "Silhouette",
+   "affinity": "dark",
+   "base_rune": "DRK-2b",
+   "rune": "Expose",
+   "status": "existing",
+   "starter": false,
+   "role_fit": "role",
+   "kind": "new:smite",
+   "targeting": "target",
+   "summary": "One enemy within 12 m is outlined against the dark for 6 s: every hit on it counts as from behind (+30%, and a raised shield does not help). If it stands in Dark it is Blinded as well.",
+   "verb_fit": "Expose is 'make a hidden target stand out'. The assassin's mark: outlined, it cannot hide behind its shield or its friends, and every hit on it counts as from behind.",
+   "numbers": {
+    "cost": 8,
+    "reflux_per_cost": 1.0,
+    "range": 12,
+    "damage": 20,
+    "duration": 6,
+    "on_hit": {
+     "status": "exposed"
+    },
+    "blind_if_dark": true
+   },
+   "ascension": {
+    "power": "damage",
+    "reach": "range",
+    "speed": "duration",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.status",
+    "duration"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "The outline holds 9 s."
+    },
+    {
+     "rune": "Far",
+     "word": "Outline something 16.8 m away."
+    },
+    {
+     "rune": "Darken",
+     "word": "A darker outline: lasts longer, and the touch bites harder."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Obscure",
+     "why": "Obscure is Expose's opposite and pulls harder (2.62 vs 1.9): hiding the thing you are outlining. The maths would Blind it and leave Expose's own status only just taking hold."
+    },
+    {
+     "rune": "Within",
+     "why": "Not a shot. Falls back."
+    },
+    {
+     "rune": "Haste",
+     "why": "Nothing to quicken; it is instant. Falls back."
+    }
+   ]
+  },
+  {
+   "id": "shadow_slip",
+   "name": "Shadow Slip",
+   "affinity": "dark",
+   "base_rune": "DRK-3a",
+   "rune": "Shadowstep",
+   "status": "existing",
+   "starter": true,
+   "role_fit": "role",
+   "kind": "blink",
+   "targeting": "point",
+   "summary": "Sink into the dark and rise from another shadow up to 10 m away: a Dark spot, or the shadow behind an enemy, which puts you at its back. Your first hit within 1 s counts as from behind. It cannot take you into the light.",
+   "verb_fit": "Shadowstep is 'move through shadows'. You can only arrive in one, and every enemy carries one behind it.",
+   "numbers": {
+    "cost": 10,
+    "reflux_per_cost": 1.0,
+    "range": 10,
+    "recovery": 0.25,
+    "needs_shadow": true,
+    "arrive_behind": true,
+    "rear_window": 1.0
+   },
+   "ascension": {
+    "power": "rear_window",
+    "reach": "range",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "signature": [
+    "range",
+    "needs_shadow"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Haste",
+     "word": "Out of the shadow sooner: recovery a quarter shorter."
+    },
+    {
+     "rune": "Elsewhere",
+     "word": "A longer step through the dark: 13 m."
+    },
+    {
+     "rune": "Essence",
+     "word": "15% cheaper."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Pin",
+     "why": "Pin is Shadowstep's opposite and pulls far harder (3.85 vs 2.2): nailing your own shadow as you step. The step's reach is halved, and the status has no hit to ride on."
+    },
+    {
+     "rune": "Within",
+     "why": "Nothing to pierce. Falls back."
+    },
+    {
+     "rune": "Stillness",
+     "why": "A step held still is not a step. No duration, no speed field; falls back."
+    }
+   ],
+   "starter_slot": "movement"
+  },
+  {
+   "id": "shadownail",
+   "name": "Shadownail",
+   "affinity": "dark",
+   "base_rune": "DRK-3b",
+   "rune": "Pin",
+   "status": "existing",
+   "starter": false,
+   "role_fit": "utility",
+   "kind": "delayed_blast",
+   "targeting": "point",
+   "summary": "Point, 9 m: a black nail is driven into the shadows in a circle 1.5 m across. Whatever stands there after a quarter second takes 50 and is Shadowbound for 2.5 s (4 s in Dark): rooted where it stands, though it can still turn and swing.",
+   "verb_fit": "Pin is 'nail a target's shadow, and the target with it'. You aim at the ground, because it is the shadow you nail. The assassin's way to stop a runner it has not reached yet.",
+   "numbers": {
+    "cost": 10,
+    "reflux_per_cost": 1.0,
+    "range": 9,
+    "radius": 1.5,
+    "delay": 0.25,
+    "on_hit": {
+     "damage": 50,
+     "status": "shadowbound",
+     "poise": 15
+    },
+    "dark_status_s": 4.0
+   },
+   "ascension": {
+    "power": "on_hit.damage",
+    "reach": "radius",
+    "speed": "delay",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.status"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Expand",
+     "word": "A wider nail: the circle and the throw grow 30%, a little less damage."
+    },
+    {
+     "rune": "Haste",
+     "word": "Driven in at once: the quarter-second mark shortens."
+    },
+    {
+     "rune": "Fall",
+     "word": "Nailed and knocked down a peg: 30% more poise damage."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Shadowstep",
+     "why": "Shadowstep is Pin's opposite: moving the thing you nail down. The maths would lengthen its reach; the sense is gone."
+    },
+    {
+     "rune": "Motion",
+     "why": "A nail does not travel. No speed field; falls back."
+    },
+    {
+     "rune": "Within",
+     "why": "Not a shot. Falls back."
+    }
+   ]
+  },
+  {
+   "id": "muffle",
+   "name": "Muffle",
+   "affinity": "dark",
+   "base_rune": "DRK-4a",
+   "rune": "Hush",
+   "status": "changed",
+   "starter": false,
+   "role_fit": "role",
+   "kind": "self_buff",
+   "targeting": "self",
+   "summary": "For 6 s you make no sound. Striking no longer reveals you while you are Unseen, so every hit can be an Ambush; an enemy you hit that was not facing you takes +50%; and anything you kill raises no alarm - no call for help, and nobody within 10 m wakes.",
+   "verb_fit": "Hush is 'smother sound'. Your own: the dark already hides you from sight, and Muffle takes away the noise that gives you away.",
+   "numbers": {
+    "cost": 10,
+    "reflux_per_cost": 1.0,
+    "duration": 6,
+    "recovery": 0.15,
+    "unaware_mult": 1.5,
+    "hush_radius": 10.0
+   },
+   "ascension": {
+    "power": "unaware_mult",
+    "reach": "hush_radius",
+    "speed": "duration",
+    "cost": "cost"
+   },
+   "signature": [
+    "duration"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Silent for 9 s."
+    },
+    {
+     "rune": "Self",
+     "word": "Worn closer, lasts 30% longer."
+    },
+    {
+     "rune": "Haste",
+     "word": "Hushed at once: recovery a quarter shorter."
+    },
+    {
+     "rune": "Darken",
+     "word": "A deeper hush: longer, and the unaware take more."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Resound",
+     "why": "Resound is Hush's opposite: a thrown noise from the one who wants silence. Hush keeps the pull; the interrupt has no hit to ride. Falls back."
+    },
+    {
+     "rune": "Within",
+     "why": "Nothing it shoots. Falls back."
+    }
+   ],
+   "change_note": "'wakes no one nearby' given a number (hush_radius 10 m) so the skill has a reach to ascend."
+  },
+  {
+   "id": "stray_echo",
+   "name": "Stray Echo",
+   "affinity": "dark",
+   "base_rune": "DRK-4b",
+   "rune": "Resound",
+   "status": "new",
+   "starter": false,
+   "role_fit": "role",
+   "kind": "prop",
+   "targeting": "point",
+   "summary": "Throw a sound into the dark - a footstep, a dropped blade - at a spot up to 14 m away. For 3 s every enemy within 8 m of it that is not in melee with you turns to face it and goes to look, its back to you. Anything within 1.5 m of the spot is interrupted. It is heard, not seen: it needs no sight line.",
+   "verb_fit": "Resound, re-meant: 'a sound thrown into the dark that draws every ear'. Only the sound does anything, and it is where you are not - which is how an assassin makes a back to strike.",
+   "numbers": {
+    "cost": 8.0,
+    "reflux_per_cost": 1.0,
+    "range": 14.0,
+    "shape": "echo",
+    "life": 3.0,
+    "lure_radius": 8.0,
+    "turn_s": 3.0,
+    "crack_radius": 1.5,
+    "recovery": 0.2,
+    "on_hit": {
+     "interrupts": true
+    }
+   },
+   "ascension": {
+    "power": "turn_s",
+    "reach": "lure_radius",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "signature": [
+    "lure_radius",
+    "turn_s"
+   ],
+   "new_mechanics": [
+    {
+     "name": "echo",
+     "kind": "behaviour",
+     "definition": "Prop shape 'echo': an unseen Lure (the existing Lure, read in enemy._pick_target) that is heard: every enemy within lure_radius that does not hold a melee slot on the caster faces it and walks to it for turn_s, then resumes; a hit on one ends it for that one. on_hit lands once on enemies within crack_radius when it is set."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Far",
+     "word": "Distant Echo: thrown 19.6 m, to the far side of the room."
+    },
+    {
+     "rune": "Persist",
+     "word": "Long Echo: they search for 4.5 s."
+    },
+    {
+     "rune": "Expand",
+     "word": "Carrying Echo: more ears hear it."
+    },
+    {
+     "rune": "Darken",
+     "word": "An echo in deeper dark: they search longer, and the first blow on a searcher bites harder."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Hush",
+     "why": "its own opposite: a hushed noise. Hush out-pulls Resound (3.1 vs 2.15); the lure shrinks to nothing and a quicker cast is all that is left."
+    },
+    {
+     "rune": "Motion",
+     "why": "a sound at a spot does not travel; no speed field. Falls back."
+    },
+    {
+     "rune": "Within",
+     "why": "not a shot; nothing to pierce. Falls back."
+    }
+   ]
+  },
+  {
+   "id": "hungry_dark",
+   "name": "Hungry Dark",
+   "affinity": "dark",
+   "base_rune": "DRK-5a",
+   "rune": "Devour",
+   "status": "changed",
+   "starter": true,
+   "role_fit": "role",
+   "kind": "targeted_strike",
+   "targeting": "target",
+   "summary": "One enemy in reach: the dark bites. 2.2x strike damage (more from behind, and an Ambush out of Unseen), and it swallows 1 light. If the bite leaves it under 20% health it is swallowed whole: it dies, you get 4 essence back and a second light, and the dark closes over you - Unseen for 1.5 s wherever you stand. The ground under it goes Dark for 4 s.",
+   "verb_fit": "Devour is 'swallow light and energy': one body's light, and when it is low enough, the body's life with it. The kill feeds the next Ambush.",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 1.0,
+    "damage_mult": 2.2,
+    "range_bonus": 0.8,
+    "recovery": 0.3,
+    "swallow_per_hit": 1,
+    "on_hit": {
+     "poise": 20.0,
+     "execute_below": 0.2
+    },
+    "on_kill": {
+     "essence": 4.0,
+     "swallow": 1,
+     "self_unseen_s": 1.5
+    },
+    "zone": {
+     "shape": "circle",
+     "radius": 2.0,
+     "life": 4.0,
+     "dark": true
+    }
+   },
+   "ascension": {
+    "power": "damage_mult",
+    "reach": "range_bonus",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.execute_below",
+    "on_kill.self_unseen_s"
+   ],
+   "new_mechanics": [
+    {
+     "name": "on_kill",
+     "kind": "field",
+     "definition": "A payload applied to the caster when the skill's hit kills: 'essence' back (never more than the cost), 'swallow' added to the swallowed store, 'self_unseen_s' of Vanish."
+    },
+    {
+     "name": "vanish",
+     "kind": "status",
+     "definition": "On the player, 'self_unseen_s' long: Unseen anywhere (not only in Dark), with the Unseen rule's 4 m; ends on your next hit (that hit is an Ambush) unless Muffled."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Near",
+     "word": "A closer, harder bite."
+    },
+    {
+     "rune": "One",
+     "word": "All of it into one body: 25% harder."
+    },
+    {
+     "rune": "Darken",
+     "word": "A darker bite: harder, and the dark it leaves lasts longer."
+    },
+    {
+     "rune": "Hush",
+     "word": "A silent bite: quicker, and the vanish lasts longer."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Disgorge",
+     "why": "Disgorge is Devour's opposite and the bond is ionic (4.0 vs 1.8): Devour takes the whole pull and Disgorge does nothing at all. Swallowing and spitting at once."
+    },
+    {
+     "rune": "Expand",
+     "why": "a single bite has no area worth growing: a longer arm for 10% less damage makes it worse."
+    },
+    {
+     "rune": "Motion",
+     "why": "the bite travels nowhere; no speed field. Falls back."
+    }
+   ],
+   "change_note": "was a 3 m ring around you (1.6x, essence per body hit, douses fire). An area feed is not an assassin's; now one body, heavier, with an execute and a vanish on the kill. 'douses' dropped.",
+   "starter_slot": "close"
+  },
+  {
+   "id": "night_spill",
+   "name": "Night Spill",
+   "affinity": "dark",
+   "base_rune": "DRK-5b",
+   "rune": "Disgorge",
+   "status": "changed",
+   "starter": false,
+   "role_fit": "role",
+   "kind": "melee_burst",
+   "targeting": "aimed",
+   "summary": "Let out what the dark swallowed in a narrow gout 6 m long: 30, plus 35 for each light swallowed, to everything in it. At 3 or more they are Dazed; one left under 15% health is finished. The ground it covers goes Dark for 5 s.",
+   "verb_fit": "Disgorge is 'release what was swallowed'. It is Hungry Dark's other half: worth little on its own, everything after a feed.",
+   "numbers": {
+    "cost": 10,
+    "reflux_per_cost": 1.0,
+    "arc_deg": 40,
+    "reach_bonus": 3.7,
+    "damage": 30,
+    "consume": "swallowed",
+    "per_stack_damage": 35,
+    "daze_at": 3,
+    "on_hit": {
+     "poise": 20,
+     "execute_below": 0.15
+    },
+    "zone": {
+     "shape": "cone",
+     "life": 5.0,
+     "dark": true
+    }
+   },
+   "ascension": {
+    "power": "per_stack_damage",
+    "reach": "reach_bonus",
+    "speed": "zone.life",
+    "cost": "cost"
+   },
+   "signature": [
+    "per_stack_damage",
+    "damage"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Focus",
+     "word": "A narrow gout: 30% harder, a shorter cone."
+    },
+    {
+     "rune": "Expand",
+     "word": "A wide spill: more ground made Dark, each a little less."
+    },
+    {
+     "rune": "Darken",
+     "word": "Spill it darker: harder, and the Dark it leaves lasts longer."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Devour",
+     "why": "Devour is Disgorge's opposite and the bond is ionic (4.0 vs 1.8): it eats the spill. Disgorge's own hold on the skill drops to nothing; what is left is a cheaper, cooler cast."
+    },
+    {
+     "rune": "Within",
+     "why": "Not a shot. Falls back."
+    },
+    {
+     "rune": "Haste",
+     "why": "No wind-up to shorten. Falls back."
+    }
+   ],
+   "change_note": "narrower (70 -> 40 deg), 30 -> 35 per light, finishes the nearly dead: the assassin's finisher."
+  },
+  {
+   "id": "knell",
+   "name": "Knell",
+   "affinity": "dark",
+   "base_rune": "DRK-4b",
+   "rune": "Resound",
+   "status": "dropped",
+   "starter": false,
+   "kind": "ground_zone",
+   "dropped_why": "A tolling area-damage zone is not an assassin's, and Resound is re-meant as a thrown sound that turns heads (Stray Echo). Area damage in Dark is Night Spill's."
+  }
+ ],
+ "effects": {
+  "Darken": "power x1.15; duration x1.2",
+  "Lighten": "status dazed; windup x0.85",
+  "Obscure": "status blinded; duration x1.2",
+  "Expose": "status exposed",
+  "Shadowstep": "reach x1.35; windup x0.9",
+  "Pin": "status shadowbound",
+  "Hush": "windup x0.8; duration x1.2",
+  "Resound": "interrupts; reach x1.15",
+  "Devour": "cost x0.85; reflux x0.85",
+  "Disgorge": "power x1.25; reflux x1.15"
+ }
+}

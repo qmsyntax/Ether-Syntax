@@ -1,0 +1,324 @@
+{
+  "affinity": "blood",
+  "parents": ["life", "death"],
+  "role": "Berserker: conjured blood weapons, fuelled by bleeding enemies and held blood; never pays in the caster's own health.",
+  "reflux_tier": "low",
+  "reflux_per_cost": 0.7,
+  "reflux_why": "Unchanged. The blood that is out does the work and essence only steers it; what limits a berserker is how much blood is out, not how hot it runs. Between Life's 1.0 and Death's 1.4 it would be hot; it is low because the fuel is the enemy's blood, not the caster's essence.",
+  "rule": "Blood works blood that is already out: its hits open Bleeding, bleeders spill pools, and you hold what you drink (up to 10 measures); every measure you hold makes your blows 2% harder (Bloodrush), and blood skills spend Bleeding, pools or held blood - never your health. Blood never heals.",
+  "rule_data": {"held_blood_max": 10, "damage_per_held_blood": 0.02, "pays_in_health": false, "heals": false},
+  "rule_why": "The 2026-10-22 rule kept, plus Bloodrush: the berserker's meter is the blood it holds. Holding blood makes you hit harder; spending it buys the big moves (longer blood weapons, Outpour, Red Frenzy). That tension - hold or spend - is the role. Brent's ruling stands: nothing spends the caster's health, and blood never heals (healing is Life's; Blood is what Life loses).",
+  "band_shift": "Strikes on the heavy side for a melee role (weapon strikes 1.3-1.5x every swing, finisher 2.2x plus 20 a stack), costs cheap to mid (7-12) because held blood is the second fuel. Ranged damage stays light (lancet 50).",
+  "skills": [
+    {
+      "id": "red_lancet", "name": "Red Lancet", "affinity": "blood", "base_rune": "BLD-1a", "rune": "Bleed",
+      "status": "existing", "starter": true, "starter_slot": "ranged",
+      "kind": "projectile", "targeting": "aimed",
+      "summary": "A thin blade of essence thrown along your aim. The first enemy it hits takes 50 and starts Bleeding (2 stacks).",
+      "verb_fit": "It opens a cut; the Bleeding it leaves is where every other blood skill gets its blood. Parent: Life (the living body opened; only what lives bleeds).",
+      "numbers": {"cost": 7, "reflux_per_cost": 0.7, "damage": 50, "speed": 26, "life": 1.15, "recovery": 0.1, "on_hit": {"status": "bleeding", "stacks": 2}},
+      "ascension": {"power": "damage", "reach": "life", "speed": "speed", "cost": "cost"},
+      "signature": ["on_hit.status", "on_hit.stacks"],
+      "new_mechanics": [
+        {"name": "bleeding, blood_pool, held_blood", "kind": "status", "definition": "Unchanged from the 2026-10-22 draft (blood.json red_lancet), already in statuses.json and the world scripts."},
+        {"name": "bloodrush", "kind": "behaviour", "definition": "Affinity rule key damage_per_held_blood 0.02: every hit the player deals is x (1 + 0.02 x held blood), read at the moment of impact like fire's heat_mult; +20% at 10 held. Shown as the held-blood beads glowing."}
+      ],
+      "good_modifiers": [
+        {"rune": "Thin", "word": "a quicker, longer lancet"},
+        {"rune": "Within", "word": "it cuts through the whole line"},
+        {"rune": "Drink", "word": "a second cut into an open one: +25% against a bleeder"},
+        {"rune": "Choke", "word": "a cut across the throat: interrupts and Chokes"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Staunch", "why": "closing wounds on the skill that opens them; only the reflux cut lands."},
+        {"rune": "Self", "why": "a lancet thrown at yourself; it falls back to a small damage bonus."}
+      ]
+    },
+    {
+      "id": "tourniquet", "name": "Tourniquet", "affinity": "blood", "base_rune": "BLD-1b", "rune": "Staunch",
+      "status": "changed", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "For 6 s no blow opens a wound on you: each one that would have spends 2 blood instead - from a pool within 3 m of you first, then from what you hold. The blow still takes health from the bar; with no blood to spend, the wound opens as usual.",
+      "verb_fit": "Staunching stops the flow before it starts, paid for with blood already spilled. It keeps the berserker in the fight. Parent: Life (the body's own wounds closed).",
+      "change": "Pools within 3 m pay first (pool_radius), so the berserker standing in the blood of the fight keeps its held blood for attacks.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "duration": 6, "buff": "tourniquet", "blood_per_wound": 2, "pool_radius": 3},
+      "ascension": {"power": "blood_per_wound", "power_dir": "down", "reach": "pool_radius", "speed": "duration", "cost": "cost"},
+      "signature": ["duration", "blood_per_wound"],
+      "new_mechanics": [
+        {"name": "pool_radius", "kind": "behaviour", "definition": "A skill key: when the skill spends blood, blood pools within pool_radius of the caster are drunk first (one measure each, as Drink), then held blood."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a tourniquet that holds half as long again"},
+        {"rune": "Clot", "word": "a bind of hardened blood: Braced as you tie it"},
+        {"rune": "Breathe", "word": "a steadier bind: 20% less reflux"},
+        {"rune": "Essence", "word": "cheaper to tie"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Spill", "why": "spilling is the opposite of staunching; it only makes the buff dearer."},
+        {"rune": "Choke", "why": "a self buff hits nobody; both halves fall back to a small cost cut."}
+      ]
+    },
+    {
+      "id": "deep_draught", "name": "Deep Draught", "affinity": "blood", "base_rune": "BLD-2a", "rune": "Drink",
+      "status": "changed", "starter": false,
+      "kind": "field_pulse", "targeting": "self",
+      "summary": "Drink it in at once, without stopping: one Bleeding stack is drawn out of every bleeding enemy within 6 m (12 damage each) and every blood pool within 4 m is drunk. Each stack or pool becomes 1 held blood (up to 6 from one cast).",
+      "verb_fit": "Drink is taking blood in: this fills held blood from what is already out. Parents: Life (the blood of the living, drawn out of their cuts) and Death (the dead's pools, spilled blood that stays useful).",
+      "change": "Was a 4 s channel at 60% walking speed; a berserker refuels between swings, so it is now an instant pulse.",
+      "numbers": {"cost": 8, "reflux_per_cost": 0.7, "radius": 6, "pool_radius": 4, "max_take": 6, "blood_per_take": 1, "recovery": 0.15,
+        "on_hit": {"damage": 12, "consume_stacks": {"bleeding": 1}}},
+      "ascension": {"power": "on_hit.damage", "reach": "radius", "speed": "recovery", "cost": "cost"},
+      "signature": ["radius", "on_hit.consume_stacks"],
+      "new_mechanics": [
+        {"name": "field_pulse on pools and bleeders", "kind": "behaviour", "definition": "death.json's field_pulse on the caster's own field pieces, here blood pools (any pool counts; the floor's blood is nobody's) within pool_radius, plus on_hit to every enemy within radius carrying the consumed status; each piece or stack taken gives blood_per_take held blood, at most max_take."}
+      ],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "a wider draw"},
+        {"rune": "Attract", "word": "drawing the blood draws the body: bleeders dragged 1.5 m in"},
+        {"rune": "Thirst", "word": "a thirstier draw: quicker, further"},
+        {"rune": "Take", "word": "it comes cleanly: 15% less reflux"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Spill", "why": "giving blood out while drinking it in; the word contradicts itself."},
+        {"rune": "Clot", "why": "clotted blood cannot be drunk; only a small damage bump lands."}
+      ]
+    },
+    {
+      "id": "outpour", "name": "Outpour", "affinity": "blood", "base_rune": "BLD-2b", "rune": "Spill",
+      "status": "existing", "starter": false,
+      "kind": "melee_burst", "targeting": "aimed",
+      "summary": "Pour every measure of held blood out in a cone 6 m long: 30 damage plus 18 for each measure spent (210 with all ten), 1 Bleeding, and the floor where it lands runs with fresh pools.",
+      "verb_fit": "Spill is giving blood out as a weapon: the whole reserve, thrown, landing as more spilled blood. It is the berserker's choice to give up Bloodrush for one blow. Parent: Death (a killing flood, and the blood it leaves stays useful).",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.7, "windup": 0.2, "arc_deg": 70, "reach_bonus": 4.5, "damage": 30,
+        "spend_blood": "all", "per_stack_damage": 18, "pools_per_two_spent": 1, "on_hit": {"status": "bleeding", "stacks": 1}},
+      "ascension": {"power": "per_stack_damage", "reach": "reach_bonus", "speed": "windup", "cost": "cost"},
+      "signature": ["per_stack_damage", "spend_blood"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "a broader wash"},
+        {"rune": "Focus", "word": "a jet instead of a wave"},
+        {"rune": "Repel", "word": "a flood that knocks them back"},
+        {"rune": "Sate", "word": "a flood that finishes the dying: +30% on the Dying"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Drink", "why": "drinking back what you pour out; contradicts itself."},
+        {"rune": "Staunch", "why": "a closed wound spills nothing; only the reflux cut lands."}
+      ]
+    },
+    {
+      "id": "clotblade", "name": "Clotblade", "affinity": "blood", "base_rune": "BLD-3a", "rune": "Clot",
+      "status": "changed", "starter": true, "starter_slot": "close",
+      "kind": "melee_burst", "targeting": "aimed",
+      "summary": "A wide sweep as cleavers of hardened blood form in your hands: 1.8x strike damage in front of you, and every Bleeding stack on a target sets hard in the cut for +22 damage and +12 poise (those stacks are spent). Then you keep the clotblades for 8 s - 1 s more for each held blood you spend, up to 4: your strikes do 1.5x and half again the poise damage, and each strike opens 1 Bleeding.",
+      "verb_fit": "Clot is blood hardening into blades: the conjured weapon is clotted blood. Parents: Life (the living's blood, hardened) and Death (a cleaver that turns open cuts into killing wounds).",
+      "change": "Role shaping: the sweep now conjures a blood weapon (8 s, longer with held blood) that your strikes use. Kept the sweep, so it is still the close starter.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "windup": 0.15, "damage_mult": 1.8, "reach_bonus": 0.8, "arc_deg": 140,
+        "consume_status": "bleeding", "per_stack_damage": 22, "per_stack_poise": 12, "on_hit": {"poise": 25},
+        "conjure_weapon": {"weapon": "clotblades", "lasts": 8, "extend_per_blood": 1, "spend_blood_max": 4,
+          "melee_damage_mult": 1.5, "melee_poise_mult": 1.5, "on_strike": {"status": "bleeding", "stacks": 1}}},
+      "ascension": {"power": "damage_mult", "reach": "reach_bonus", "speed": "conjure_weapon.lasts", "cost": "cost"},
+      "signature": ["conjure_weapon", "per_stack_damage"],
+      "new_mechanics": [
+        {"name": "conjure_weapon", "kind": "behaviour", "definition": "A skill key: for lasts seconds (plus extend_per_blood per held blood spent at cast, up to spend_blood_max) the player's bare strikes use the conjured weapon instead of the main hand: melee damage, range, arc and poise multiplied or replaced by its melee_* keys, and on_strike added to each strike's payload. The worn weapon is hidden (ModelRig.set_weapon) and comes back when it ends. One conjured weapon at a time; a new one replaces the old. Only Blood conjures weapons."},
+        {"name": "melee_burst consume_status", "kind": "behaviour", "definition": "Unchanged from the 2026-10-22 draft."}
+      ],
+      "good_modifiers": [
+        {"rune": "Bleed", "word": "the sweep leaves a fresh cut: 1 Bleeding on everything hit"},
+        {"rune": "Pulse", "word": "the heart drives the swing: quicker and harder"},
+        {"rune": "Persist", "word": "the blades hold half as long again"},
+        {"rune": "Sever", "word": "blades that cut through guard"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Staunch", "why": "it closes the cuts the blade is meant to harden; only the reflux cut lands."},
+        {"rune": "Thin", "why": "thinning the blood you are hardening: lighter blades for a little reach. The words fight."}
+      ]
+    },
+    {
+      "id": "thinblood_rush", "name": "Thinblood Rush", "affinity": "blood", "base_rune": "BLD-3b", "rune": "Thin",
+      "status": "changed", "starter": true, "starter_slot": "movement",
+      "kind": "dash", "targeting": "aimed",
+      "summary": "A fast 4.8 m dash that slips between bodies, cutting each one you pass for 15 and 1 Bleeding. Every blood pool you cross carries you 1.5 m further (up to +3 m), and you move 20% faster for 2 s after.",
+      "verb_fit": "Thin is blood running quick: you run as thin blood runs, and spilled blood is road for you. Parents: Life (vigour, speed) and Death (the dead's pools carry you).",
+      "change": "Role shaping: each body you pass is cut (15 and 1 Bleeding), so the berserker's dash opens the fight.",
+      "numbers": {"cost": 7, "reflux_per_cost": 0.7, "dash_speed": 28, "dash_time": 0.17, "passes_bodies": true, "pass_radius": 1.0,
+        "on_pass": {"damage": 15, "status": "bleeding", "stacks": 1},
+        "pool_bonus_m": 1.5, "pool_bonus_max": 2, "after_speed_mult": 1.2, "duration": 2},
+      "ascension": {"power": "on_pass.damage", "reach": "dash_time", "speed": "dash_speed", "cost": "cost"},
+      "signature": ["dash_speed", "pool_bonus_m"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Motion", "word": "faster still"},
+        {"rune": "Clot", "word": "you rush inside a shell of hardened blood: Braced"},
+        {"rune": "Bleed", "word": "deeper cuts on the way through: 1 more Bleeding"},
+        {"rune": "Essence", "word": "a cheaper rush"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Still", "why": "a slowed heart on a rush; Sluggish lands on what you pass, but the word fights itself."},
+        {"rune": "Focus", "why": "no damage worth concentrating and no reach field to shorten; it falls back."}
+      ]
+    },
+    {
+      "id": "red_frenzy", "name": "Red Frenzy", "affinity": "blood", "base_rune": "BLD-4a", "rune": "Pulse",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "Your heart pounds: for 8 s you strike 25% faster, move 25% faster, hit 20% harder and reach 0.4 m further, and light blows cannot stagger you. Every kill gives you 2 held blood. The first 3 s are free; after that it burns 1 held blood every 2 s, and it ends early when you run dry - never on your health.",
+      "verb_fit": "Pulse is the heart pounding: here it is your own heart, and the frenzy is the berserker's core. Parents: Life (the body driven past itself) and Death (each kill feeds it).",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "duration": 8, "buff": "red_frenzy",
+        "attack_rate_mult": 1.25, "move_speed_mult": 1.25, "damage_mult": 1.2, "strike_reach_bonus": 0.4, "poise_loss_mult": 0.5,
+        "kill_blood": 2, "upkeep_blood_per_s": 0.5, "upkeep_grace_s": 3},
+      "ascension": {"power": "damage_mult", "reach": "strike_reach_bonus", "speed": "duration", "cost": "cost"},
+      "signature": ["attack_rate_mult", "duration"],
+      "new_mechanics": [
+        {"name": "red_frenzy", "kind": "status", "definition": "A buff on the player: attack_rate_mult on bare strikes (their cooldown and a conjured weapon's), move_speed_mult, damage_mult, strike_reach_bonus metres on bare strikes, poise_loss_mult; each kill gives kill_blood held blood."},
+        {"name": "upkeep_blood_per_s", "kind": "behaviour", "definition": "A self_buff key: after upkeep_grace_s the buff spends held blood at this rate; when held blood is 0 it ends at once. It never touches health."}
+      ],
+      "good_modifiers": [
+        {"rune": "Fury", "word": "a frenzy in rage: 20% harder"},
+        {"rune": "Persist", "word": "the heart keeps pounding half as long again"},
+        {"rune": "Sate", "word": "a frenzy that finishes the dying"},
+        {"rune": "Breathe", "word": "a steadier frenzy: 20% less reflux"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Still", "why": "a slowed heart cannot pound; the verbs cancel and the word should not form."},
+        {"rune": "Calm", "why": "a calm frenzy is no frenzy; the reflux cut lands and the word says nothing."}
+      ]
+    },
+    {
+      "id": "heavy_heart", "name": "Heavy Heart", "affinity": "blood", "base_rune": "BLD-4b", "rune": "Still",
+      "status": "changed", "starter": false,
+      "kind": "ground_zone", "targeting": "point",
+      "summary": "Point, 9 m: a 3 m circle for 6 s where hearts slow. Enemies in it are Sluggish (30% slower, wind-ups half again as long, bleeding slower) and take 8 a second. Every blood pool the circle touches goes still too and does the same for its 6 s.",
+      "verb_fit": "Still is the heart slowing; the spilled blood it touches carries the slowing out. Utility: crowd control for a melee fighter. Parent: Death (the heart slowing toward its end).",
+      "change": "8 damage a second inside, so the ascension power aspect has a field.",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.7, "range": 9,
+        "zone": {"shape": "circle", "radius": 3.0, "life": 6.0, "tick_s": 0.5, "payload": {"status": "sluggish", "damage": 4}, "stills_pools": true}},
+      "ascension": {"power": "zone.payload.damage", "reach": "zone.radius", "speed": "zone.life", "cost": "cost"},
+      "signature": ["zone.payload.status", "zone.life"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "the stillness lingers"},
+        {"rune": "Expand", "word": "a wider circle"},
+        {"rune": "Choke", "word": "slow hearts and stopped breath"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Pulse", "why": "a pounding heart in a field of slow ones; only the extra reflux lands."},
+        {"rune": "Haste", "why": "hurrying a skill whose point is slowness; it falls back."}
+      ]
+    },
+    {
+      "id": "gullet_knot", "name": "Gullet Knot", "affinity": "blood", "base_rune": "BLD-5a", "rune": "Choke",
+      "status": "existing", "starter": false,
+      "kind": "smite", "targeting": "target",
+      "summary": "One enemy within 10 m: its own blood knots in its throat. 30 damage and interrupted. If it is Bleeding it is Choked for 2.5 s (1 s if not): it cannot attack, shoot, cast or call for help, and walks at half speed.",
+      "verb_fit": "Choke cuts off breath through an open cut. Utility: the berserker's answer to an archer or a drummer it cannot reach. Parent: Death (breath stopped).",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "range": 10, "duration": 2.5, "clean_duration_frac": 0.4,
+        "on_hit": {"damage": 30, "interrupts": true, "status": "choked"}},
+      "ascension": {"power": "on_hit.damage", "reach": "range", "speed": "duration", "cost": "cost"},
+      "signature": ["on_hit.status", "on_hit.interrupts"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Far", "word": "a knot tied from 40% further"},
+        {"rune": "Persist", "word": "the knot holds half as long again"},
+        {"rune": "Still", "word": "Choked and Sluggish together"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Breathe", "why": "giving breath to the throat you close."},
+        {"rune": "Many", "why": "one throat at a time; the damage loss lands."}
+      ]
+    },
+    {
+      "id": "long_breath", "name": "Long Breath", "affinity": "blood", "base_rune": "BLD-5b", "rune": "Breathe",
+      "status": "changed", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "Breathe out up to 4 blood - pools within 3 m first, then what you hold: each takes 6 off your hottest reflux at once. Then for 6 s your poise is refilled and doubled, and reflux sheds twice as fast.",
+      "verb_fit": "Breathe steadies the body: the berserker's second wind between frenzies. Parent: Life (breath, a steadied body).",
+      "change": "Pools within 3 m pay first (pool_radius, as Tourniquet).",
+      "numbers": {"cost": 8, "reflux_per_cost": 0.7, "duration": 6, "buff": "long_breath", "spend_blood": 4, "pool_radius": 3, "shed_per_blood": 6, "poise_mult": 2.0, "shed_mult": 2.0},
+      "ascension": {"power": "shed_per_blood", "reach": "pool_radius", "speed": "duration", "cost": "cost"},
+      "signature": ["duration", "shed_per_blood"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a breath held half as long again"},
+        {"rune": "Calm", "word": "a calm breath: 20% less reflux"},
+        {"rune": "Essence", "word": "cheaper"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Choke", "why": "cutting off the breath the skill gives; nobody to land on."},
+        {"rune": "Fury", "why": "a frenzy is the opposite of a long breath; the cost rise lands."}
+      ]
+    },
+    {
+      "id": "thirsting_glaive", "name": "Thirsting Glaive", "affinity": "blood", "base_rune": "BLD-6a", "rune": "Thirst",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "Blood draws out into a long glaive in your hands for 10 s: your strikes reach 3.6 m in a 70 degree sweep at 1.3x, and each strike that lands on a bleeder draws 1 stack out of it into held blood. It swings faster the emptier you are: up to 30% faster with nothing held.",
+      "verb_fit": "Thirst is the hunger for blood, and the glaive is that hunger in your hands: it drinks with every strike, and hungers hardest when you hold least. Parents: Life (the living's blood drawn out) and Death (a reaping reach).",
+      "numbers": {"cost": 8, "reflux_per_cost": 0.7, "duration": 10, "buff": "thirsting_glaive",
+        "conjure_weapon": {"weapon": "thirsting_glaive", "lasts": 10, "melee_range": 3.6, "melee_arc_deg": 70, "melee_damage_mult": 1.3,
+          "on_strike": {"consume_stacks": {"bleeding": 1}, "blood_per_take": 1}, "empty_rate_bonus": 0.3}},
+      "ascension": {"power": "conjure_weapon.melee_damage_mult", "reach": "conjure_weapon.melee_range", "speed": "conjure_weapon.lasts", "cost": "cost"},
+      "signature": ["conjure_weapon.on_strike", "conjure_weapon.melee_range"],
+      "new_mechanics": [
+        {"name": "empty_rate_bonus", "kind": "behaviour", "definition": "A conjure_weapon key: strike rate x (1 + empty_rate_bonus x (1 - held / held_max)), so the bonus is full at 0 held blood and gone at 10. It pulls against Bloodrush: the glaive likes you empty, Bloodrush likes you full."}
+      ],
+      "good_modifiers": [
+        {"rune": "Thin", "word": "a longer, quicker glaive"},
+        {"rune": "Persist", "word": "the glaive holds half as long again"},
+        {"rune": "Bleed", "word": "each strike opens a cut as it drinks"},
+        {"rune": "Expand", "word": "a wider sweep"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Sate", "why": "a thirst that is already slaked; the bonuses are on the Dying and the bleeding, which the glaive drinks dry. The words fight."},
+        {"rune": "Spill", "why": "giving out the blood the glaive takes; the word contradicts itself."}
+      ]
+    },
+    {
+      "id": "last_draught", "name": "Last Draught", "affinity": "blood", "base_rune": "BLD-6b", "rune": "Sate",
+      "status": "new", "starter": false,
+      "kind": "targeted_strike", "targeting": "target",
+      "summary": "One enemy in reach: 2.2x strike damage and +20 for each Bleeding stack on it (spent), 30% more if it is Dying. One left under 15% of its health dies outright if it was Bleeding (not elites). If it dies, its blood is yours: its stacks plus 3 as held blood.",
+      "verb_fit": "Sate is drinking a body to the dregs: the finisher that ends a bleeder and takes all its blood. Parents: Death's Kill (finish the dying, execute below 15%) and Life (the body's blood taken whole).",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.7, "windup": 0.2, "damage_mult": 2.2, "range_bonus": 1.0,
+        "consume_status": "bleeding", "per_stack_damage": 20, "dying_mult": 1.3, "execute_below": 0.15, "execute_needs": "bleeding", "execute_excludes": ["elite"],
+        "kill_blood": 3, "kill_blood_per_stack": 1, "on_hit": {"poise": 30}},
+      "ascension": {"power": "damage_mult", "reach": "range_bonus", "speed": "windup", "cost": "cost"},
+      "signature": ["per_stack_damage", "execute_below"],
+      "new_mechanics": [
+        {"name": "execute_needs", "kind": "behaviour", "definition": "A strike key beside death.json's execute_below: the execute only applies if the target carries that status when the blow lands (read before consume_status takes it)."},
+        {"name": "kill_blood", "kind": "behaviour", "definition": "A skill key: if the hit kills, the caster gains kill_blood held blood, plus kill_blood_per_stack for each stack the skill consumed."},
+        {"name": "dying_mult", "kind": "behaviour", "definition": "A skill key: x dying_mult against a Dying target (statuses.json derived below_half), as Death's affinity rule does for every Death skill."}
+      ],
+      "good_modifiers": [
+        {"rune": "Pulse", "word": "a pounding finish: quicker and harder"},
+        {"rune": "Drink", "word": "+25% on a bleeder, a little more reach"},
+        {"rune": "Sever", "word": "it cuts through guard"},
+        {"rune": "Hold", "word": "a slower, deeper finish"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Staunch", "why": "closing the cuts you mean to drain; only the reflux cut lands."},
+        {"rune": "Thirst", "why": "a thirst on the skill that slakes it; the words fight."}
+      ]
+    },
+    {
+      "id": "hammering_heart", "name": "Hammering Heart", "affinity": "blood", "base_rune": "BLD-4a", "rune": "Pulse",
+      "status": "dropped", "starter": false,
+      "kind": "detonate", "targeting": "self",
+      "drop_reason": "Pulse now beats in the caster's own heart (Red Frenzy), the berserker's core. Hammering Heart was a 10 m caster detonation; paying out Bleeding belongs to the berserker's reach (Clotblade and Last Draught spend stacks in melee, Outpour spends held blood). Pulse could carry it as a second skill, but it would pull Blood back toward a ranged caster.",
+      "summary": "Every Bleeding enemy within 10 m: three beats, 8 per stack each (2026-10-22 draft)."
+    }
+  ],
+  "effects": {
+    "Bleed": "status bleeding 1",
+    "Staunch": "duration x1.3; reflux x0.9",
+    "Drink": "reach x1.15; bonus bleeding +0.25",
+    "Spill": "reach x1.25; cost x1.1",
+    "Clot": "power x1.1; poise x1.2; braced",
+    "Thin": "speed x1.25; reach x1.1; power x0.9",
+    "Pulse": "windup x0.8; power x1.1; reflux x1.1",
+    "Still": "status sluggish",
+    "Choke": "interrupts; status choked",
+    "Breathe": "reflux x0.8; windup x0.9",
+    "Thirst": "speed x1.15; reach x1.1",
+    "Sate": "bonus dying +0.3; bonus bleeding +0.15"
+  }
+}

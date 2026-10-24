@@ -1,0 +1,122 @@
+[
+  {
+    "id": "new",
+    "name": "Leech",
+    "meaning": "draw the life out of what you strike, into yourself",
+    "opposite": "Outpour",
+    "role": "link",
+    "draw": 0.8,
+    "electronegativity": 3.3,
+    "effect": "status leeched",
+    "change": "new",
+    "why": "The shadow knight's own verb. From Dark's Devour (swallow) and Death's ending. A Link (it takes in from the target and passes on to you), draw +0.8 because it pulls inward."
+  },
+  {
+    "id": "new",
+    "name": "Outpour",
+    "meaning": "let out what you took, as harm",
+    "opposite": "Leech",
+    "role": "branch",
+    "draw": -0.8,
+    "electronegativity": 1.94,
+    "effect": "power x1.2; reach x1.15",
+    "change": "new",
+    "why": "Spends the stolen store. From Dark's Disgorge. A Branch (it spreads into a cone), draw -0.8: it gives outward; opposite Leech, so the pair bonds ionically."
+  },
+  {
+    "id": "new",
+    "name": "Daunt",
+    "meaning": "fear that drives them back from you",
+    "opposite": "Beckon",
+    "role": "branch",
+    "draw": -0.6,
+    "electronegativity": 2.08,
+    "effect": "status terrified; power x0.85",
+    "change": "new",
+    "why": "Fear is in the role. From Death's Haunt and Dark's fear of the dark. Named Daunt, not Dread, because Dread is Dream's rune. A Branch (it spreads to all round you), draw -0.6: it pushes outward. It applies Dream's existing Terrified rather than a new fear status."
+  },
+  {
+    "id": "new",
+    "name": "Beckon",
+    "meaning": "the dark calls them in, and does not let them go",
+    "opposite": "Daunt",
+    "role": "link",
+    "draw": 0.7,
+    "electronegativity": 3.2,
+    "effect": "pull +1.5; status leashed",
+    "change": "new",
+    "why": "A tank's way to reach a runner. From Dark's Pin (the shadow holds). A Link, draw +0.7: it draws inward."
+  },
+  {
+    "id": "new",
+    "name": "Gloom",
+    "meaning": "darkness that hangs about you and goes where you go",
+    "opposite": "Shroud",
+    "role": "branch",
+    "draw": -0.4,
+    "electronegativity": 2.22,
+    "effect": "reach x1.15; duration x1.2",
+    "change": "new",
+    "why": "Dark auras are in the role. From Dark's Darken and Obscure. A Branch (it spreads round you), draw -0.4: outward, but gently."
+  },
+  {
+    "id": "new",
+    "name": "Shroud",
+    "meaning": "darkness drawn tight onto your own body",
+    "opposite": "Gloom",
+    "role": "frame",
+    "draw": 0.5,
+    "electronegativity": 2.7,
+    "effect": "braced; duration x1.15",
+    "change": "new",
+    "why": "The ward. From Dark's Obscure and Death's Preserve. A Frame (it holds the structure, and you, together), draw +0.5: it holds inward. Gloom and Shroud are one dark, spread out or drawn in."
+  },
+  {
+    "id": "new",
+    "name": "Reave",
+    "meaning": "tear out the last of a failing life and keep it",
+    "opposite": "Torment",
+    "role": "cap",
+    "draw": 1.0,
+    "electronegativity": 4.0,
+    "effect": "bonus dying +0.3; status leeched",
+    "change": "new",
+    "why": "From Death's Kill. A Cap (it ends: a killing blow), draw +1.0 like Kill and Devour, the two runes it comes from: it takes everything inward."
+  },
+  {
+    "id": "new",
+    "name": "Torment",
+    "meaning": "keep a life failing slowly",
+    "opposite": "Reave",
+    "role": "link",
+    "draw": -0.3,
+    "electronegativity": 2.2,
+    "effect": "status tormented",
+    "change": "new",
+    "why": "From Death's Spare, turned cruel. A Link (it passes the life on to you a little at a time), draw -0.3: it lets the life go slowly rather than taking it."
+  },
+  {
+    "id": "new",
+    "name": "Stalk",
+    "meaning": "come at your prey through the dark and do not let it go",
+    "opposite": "Forsake",
+    "role": "link",
+    "draw": 0.4,
+    "electronegativity": 2.9,
+    "effect": "reach x1.3; speed x1.15",
+    "change": "new",
+    "why": "Movement for a melee fighter: in, not away. From Dark's Shadowstep. A Link, draw +0.4: it closes inward."
+  },
+  {
+    "id": "new",
+    "name": "Forsake",
+    "meaning": "break away, and leave dread on the ground behind you",
+    "opposite": "Stalk",
+    "role": "link",
+    "draw": -0.6,
+    "electronegativity": 1.9,
+    "effect": "status dread; windup x0.85",
+    "change": "new",
+    "why": "The disengage, still in role (it leaves fear). From Death's Haunt and Vanish. A Link, draw -0.6: it goes outward, away."
+  }
+]

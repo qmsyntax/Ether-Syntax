@@ -1,0 +1,906 @@
+{
+ "affinity": "dream",
+ "parents": [
+  "light",
+  "dark"
+ ],
+ "role": "enchanter - twilight",
+ "reflux_tier": "middling",
+ "rule": "A Dream skill takes hold only of a mind that can see it (Light's half: you, or the thing you made, in its front arc with a clear line) or that is asleep (Dark's half); it ignores armour and shields, does +30% to the Dazed and the Asleep, its statuses last half again as long on them and a quarter longer on a target standing in Dim light - the twilight. Mindless things never feel it.",
+ "new_mechanics": [
+  {
+   "name": "twilight",
+   "kind": "field",
+   "definition": "Affinity key 'status_time_dim' (Dream 1.25): a status a Dream skill applies lasts that much longer on a target standing in Dim light (Light.level_at, neither Lit nor Dark); it multiplies with status_time_vs. needs_seen, bonus_vs_status and status_time_vs are built and unchanged."
+  }
+ ],
+ "skills": [
+  {
+   "id": "dozing_mote",
+   "name": "Dozing Mote",
+   "affinity": "dream",
+   "base_rune": "DRM-1a",
+   "rune": "Sleep",
+   "status": "existing",
+   "starter": true,
+   "role_fit": "role",
+   "parent_trait": "Dark",
+   "kind": "projectile",
+   "targeting": "aimed",
+   "summary": "A slow, drifting mote: 45, and the target nods. The first mote Dazes it; a second on a Dazed target puts it to sleep for 4 s. It must see the mote coming.",
+   "verb_fit": "Sleep is to put to sleep: every mote pushes the target one step further down - awake, Dazed, asleep. The night's half of the twilight (Dark).",
+   "numbers": {
+    "cost": 7,
+    "reflux_per_cost": 1.0,
+    "damage": 45,
+    "speed": 12,
+    "life": 1.5,
+    "on_hit": {
+     "status": "asleep"
+    },
+    "recovery": 0.12
+   },
+   "ascension": {
+    "power": "damage",
+    "reach": "life",
+    "speed": "speed",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.status"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "A deep sleep: 6 s instead of 4."
+    },
+    {
+     "rune": "Motion",
+     "word": "A quicker mote, harder to step out of the way of."
+    },
+    {
+     "rune": "Conjure",
+     "word": "A second, dreamt mote leaps on to one more target."
+    },
+    {
+     "rune": "Soothe",
+     "word": "What it does not drop, it calms: the target stops starting attacks for a moment."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Wake",
+     "why": "Its own opposite: a sleep bolt that rudely wakes its sleepers. The fallback adds +50% against Asleep targets, which this skill's own hit then wakes and cannot re-sleep (Wakeful)."
+    },
+    {
+     "rune": "Dread",
+     "why": "Terror and sleep fight each other: the fallback makes the target flee instead of nodding, so the second mote never lands."
+    },
+    {
+     "rune": "Repel",
+     "why": "Shoving a body you are lulling makes no sense; the fallback knocks the target out of your pools and out of reach of the second mote."
+    }
+   ],
+   "starter_slot": "ranged"
+  },
+  {
+   "id": "lucid",
+   "name": "Lucid",
+   "affinity": "dream",
+   "base_rune": "DRM-1b",
+   "rune": "Wake",
+   "status": "new",
+   "starter": false,
+   "role_fit": "role",
+   "parent_trait": "Light",
+   "kind": "self_buff",
+   "targeting": "self",
+   "summary": "For 6 s you are wide awake while they dream: your Dream statuses last 30% longer and your casts recover 30% faster. Your phantoms and every mind you have turned within 12 m share it: they deal 30% more, and a phantom takes one more blow to break.",
+   "verb_fit": "Wake is 'rouse; break a trance' - your own mind, and the minds you lead. The dawn's half of the twilight (Light: the clear morning mind).",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 1.0,
+    "buff": "lucid",
+    "duration": 6.0,
+    "buff_targets": [
+     "self",
+     "summons"
+    ],
+    "radius": 12.0,
+    "status_time_mult": 1.3,
+    "recovery_mult": 0.7,
+    "summon_deals_mult": 1.3,
+    "phantom_extra_hits": 1
+   },
+   "ascension": {
+    "power": "status_time_mult + summon_deals_mult",
+    "reach": "radius",
+    "speed": "duration",
+    "cost": "cost"
+   },
+   "signature": [
+    "status_time_mult",
+    "buff_targets"
+   ],
+   "new_mechanics": [
+    {
+     "name": "buff_targets",
+     "kind": "field",
+     "definition": "A self_buff with buff_targets ['self', 'summons'] also applies to the caster's summons within 'radius' (and any that come within it while it lasts): Thralls, phantoms (leave_decoy) and Charmed enemies. Keys that mean nothing on a summon are ignored; summon_deals_mult and phantom_extra_hits are read only on summons."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Lucid for 9 s"
+    },
+    {
+     "rune": "Self",
+     "word": "It stays with you 30% longer"
+    },
+    {
+     "rune": "Soothe",
+     "word": "A calm waking: less reflux"
+    },
+    {
+     "rune": "Far",
+     "word": "Your turned minds share it from 16.8 m"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Sleep",
+     "why": "its own opposite: putting yourself to sleep. The buff has no hit to carry Asleep; falls back"
+    },
+    {
+     "rune": "Within",
+     "why": "nothing it shoots. Falls back"
+    },
+    {
+     "rune": "Repel",
+     "why": "a buff has no hit to carry a shove; falls back"
+    }
+   ]
+  },
+  {
+   "id": "doubling_step",
+   "name": "Doubling Step",
+   "affinity": "dream",
+   "base_rune": "DRM-2a",
+   "rune": "Conjure",
+   "status": "existing",
+   "starter": true,
+   "role_fit": "role",
+   "parent_trait": "Light",
+   "kind": "dash",
+   "targeting": "aimed",
+   "summary": "Step 5 m aside and leave a phantom of yourself behind for 3 s. Enemies that were watching you go for the phantom instead; it breaks at the first blow.",
+   "verb_fit": "Conjure makes an illusion. The step only gets you out of the picture; the skill is the double left standing in it - Light's bent light (false images are Dream's now).",
+   "numbers": {
+    "cost": 8,
+    "reflux_per_cost": 1.0,
+    "dash_speed": 25,
+    "dash_time": 0.2,
+    "stops_at_bodies": true,
+    "recovery": 0.25,
+    "leave_decoy": {
+     "life": 3.0,
+     "breaks_on_hits": 1,
+     "fools": "enemies that see you as you cast"
+    }
+   },
+   "ascension": {
+    "power": "leave_decoy.breaks_on_hits",
+    "reach": "dash_time",
+    "speed": "leave_decoy.life",
+    "cost": "cost"
+   },
+   "signature": [
+    "leave_decoy.life"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "A phantom that holds them for 4.5 s."
+    },
+    {
+     "rune": "Elsewhere",
+     "word": "A 6.5 m step, farther from the trap."
+    },
+    {
+     "rune": "Haste",
+     "word": "Out of the step a quarter sooner, free to act while they swing at nothing."
+    },
+    {
+     "rune": "Remember",
+     "word": "They keep believing it 30% longer."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Dispel",
+     "why": "Its own opposite: breaks the illusion it makes. The dash has no hit for its interrupt, so the fallback does nothing but undo the phantom."
+    },
+    {
+     "rune": "Unmask",
+     "why": "Reveals the disguise you just put up; the dash has no hit to carry Read."
+    },
+    {
+     "rune": "Bind",
+     "why": "The step touches nobody, so there is no one to pin; the fallback does nothing."
+    }
+   ],
+   "starter_slot": "movement"
+  },
+  {
+   "id": "shattered_dream",
+   "name": "Shattered Dream",
+   "affinity": "dream",
+   "base_rune": "DRM-2b",
+   "rune": "Dispel",
+   "status": "existing",
+   "starter": false,
+   "role_fit": "role",
+   "parent_trait": "Light",
+   "kind": "detonate",
+   "targeting": "self",
+   "summary": "Every enemy within 10 m under one of your Dream spells wakes from it at once: 50 each, 100 to sleepers, and all of them are Dazed for 2 s. Your phantoms burst for 40.",
+   "verb_fit": "Dispel breaks illusions. Every spell you laid on the room is broken at once, and the breaking is the damage - Light's clarity, turned on your own dreams.",
+   "numbers": {
+    "cost": 14,
+    "reflux_per_cost": 1.0,
+    "range": 10,
+    "consume_status": [
+     "asleep",
+     "terrified",
+     "soothed",
+     "masked",
+     "read",
+     "commanded",
+     "shut"
+    ],
+    "per_target_damage": 50,
+    "bonus_vs_asleep": 50,
+    "after_status": "dazed",
+    "decoy_burst": {
+     "damage": 40,
+     "radius": 2.0
+    },
+    "recovery": 0.25
+   },
+   "ascension": {
+    "power": "per_target_damage",
+    "reach": "range",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "signature": [
+    "consume_status",
+    "per_target_damage"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Far",
+     "word": "Break every dream within 14 m."
+    },
+    {
+     "rune": "Wake",
+     "word": "A rude waking for the whole room: +50% on sleepers and more poise."
+    },
+    {
+     "rune": "Once",
+     "word": "All of it, once: 20% harder."
+    },
+    {
+     "rune": "Fall",
+     "word": "They wake on the floor: 30% more poise damage."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Conjure",
+     "why": "Its own opposite: conjuring while breaking illusions. A detonate has no chain, so the fallback's extra jump does nothing."
+    },
+    {
+     "rune": "Sleep",
+     "why": "It wakes them and then tries to put them back - and they are Wakeful, so the fallback only Dazes the already Dazed."
+    },
+    {
+     "rune": "Motion",
+     "why": "Nothing travels; the fallback has no speed to raise."
+    }
+   ]
+  },
+  {
+   "id": "night_terror",
+   "name": "Night Terror",
+   "affinity": "dream",
+   "base_rune": "DRM-3a",
+   "rune": "Dread",
+   "status": "existing",
+   "starter": true,
+   "role_fit": "role",
+   "parent_trait": "Dark",
+   "kind": "melee_burst",
+   "targeting": "self",
+   "summary": "For a moment you are the thing under the bed: everything within 4 m that sees you takes a blow and is Terrified for 2 s - it turns, runs, and will not attack.",
+   "verb_fit": "Dread is terror - fear of the dark (Dark's old Dread): the blow is small, the fear is the point.",
+   "numbers": {
+    "cost": 10,
+    "reflux_per_cost": 1.0,
+    "damage_mult": 1.6,
+    "reach_bonus": 1.7,
+    "arc_deg": 360,
+    "on_hit": {
+     "status": "terrified",
+     "status_s": 2.0
+    },
+    "recovery": 0.2
+   },
+   "ascension": {
+    "power": "on_hit.status_s",
+    "reach": "reach_bonus",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.status"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Expand",
+     "word": "A wider terror, 5.2 m: the whole slot ring breaks."
+    },
+    {
+     "rune": "Persist",
+     "word": "They run for 3 s."
+    },
+    {
+     "rune": "Remember",
+     "word": "The fear sticks 30% longer."
+    },
+    {
+     "rune": "Fall",
+     "word": "They fall over themselves: 30% more poise damage."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Soothe",
+     "why": "Its own opposite: calm and terror cancel. The fallback Soothes them, which ends at once because the burst just hit them."
+    },
+    {
+     "rune": "Attract",
+     "why": "Pulling in the very enemies you are sending running is a contradiction; the fallback drags them 1.5 m closer as they flee."
+    },
+    {
+     "rune": "Fury",
+     "why": "Enraging what you are terrifying makes no sense (and frenzy is the enemy's tool); the fallback is just +20% damage for more essence."
+    }
+   ],
+   "starter_slot": "close"
+  },
+  {
+   "id": "quiet_hour",
+   "name": "Quiet Hour",
+   "affinity": "dream",
+   "base_rune": "DRM-3b",
+   "rune": "Soothe",
+   "status": "existing",
+   "starter": false,
+   "role_fit": "role",
+   "parent_trait": "Light + Dark",
+   "kind": "ground_zone",
+   "targeting": "point",
+   "summary": "Point, 9 m: a hush 3.5 m across for 7 s. Enemies in it that see it are Soothed: they move 30% slower and start no attacks. Hitting one snaps it out.",
+   "verb_fit": "Soothe is calm and bliss: a steady soft light (Light's Glow) and a hush (Dark's Hush) - a patch of the fight where nobody wants to fight.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.0,
+    "range": 9,
+    "zone": {
+     "shape": "circle",
+     "radius": 3.5,
+     "life": 7.0,
+     "tick_s": 0.5,
+     "payload": {
+      "status": "soothed",
+      "status_s": 1.0
+     }
+    }
+   },
+   "ascension": {
+    "power": "zone.payload.status_s",
+    "reach": "zone.radius",
+    "speed": "zone.life",
+    "cost": "cost"
+   },
+   "signature": [
+    "zone.payload.status"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "A hush that lasts 10.5 s."
+    },
+    {
+     "rune": "Expand",
+     "word": "A wider hush, 4.5 m."
+    },
+    {
+     "rune": "Sleep",
+     "word": "In the quiet the Dazed drop off: Soothed enemies that are Dazed fall Asleep."
+    },
+    {
+     "rune": "Calm",
+     "word": "The hush settles you as well: 20% less reflux."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Dread",
+     "why": "Its own opposite: terror in a zone of calm. The fallback sends everyone in it running, out of the zone."
+    },
+    {
+     "rune": "Fury",
+     "why": "Enrage and soothe cancel; the zone deals no damage, so the fallback's +20% does nothing."
+    },
+    {
+     "rune": "Repel",
+     "why": "A shove every tick is a hit that breaks Soothed, so the zone would undo itself."
+    }
+   ]
+  },
+  {
+   "id": "changeling_mask",
+   "name": "Changeling Mask",
+   "affinity": "dream",
+   "base_rune": "DRM-4a",
+   "rune": "Mimic",
+   "status": "existing",
+   "starter": false,
+   "role_fit": "role",
+   "parent_trait": "Dark",
+   "kind": "new:gaze",
+   "targeting": "target",
+   "summary": "One enemy within 10 m that sees you wears your face for 4 s. Its friends within 8 m that see it take it for you and attack it, and it fights back.",
+   "verb_fit": "Mimic is to take another's look. The look taken is yours, laid over an enemy in the half-light: Dark's Obscure, hiding one thing inside another's shape.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.0,
+    "range": 10,
+    "on_hit": {
+     "status": "masked",
+     "status_s": 4.0
+    },
+    "lure_radius": 8,
+    "recovery": 0.2
+   },
+   "ascension": {
+    "power": "on_hit.status_s",
+    "reach": "range",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.status"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "The mask holds for 6 s: a proper brawl."
+    },
+    {
+     "rune": "Far",
+     "word": "Mask the one at the back, 14 m away."
+    },
+    {
+     "rune": "Expand",
+     "word": "Fooling allies up to 10.4 m away."
+    },
+    {
+     "rune": "Remember",
+     "word": "The likeness sticks 30% longer."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Unmask",
+     "why": "Its own opposite: revealing the disguise you are laying. The fallback (Read) ends the mask on the same target."
+    },
+    {
+     "rune": "Repel",
+     "why": "Shoving the masked one away from the allies you want to fight it defeats the skill."
+    },
+    {
+     "rune": "Within",
+     "why": "A gaze has no projectile to pierce, and Dream already ignores armour; the fallback does nothing."
+    }
+   ]
+  },
+  {
+   "id": "read_the_tell",
+   "name": "Read the Tell",
+   "affinity": "dream",
+   "base_rune": "DRM-4b",
+   "rune": "Unmask",
+   "status": "existing",
+   "starter": false,
+   "role_fit": "utility",
+   "parent_trait": "Light",
+   "kind": "new:gaze",
+   "targeting": "target",
+   "summary": "One enemy within 12 m that sees you shows its hand for 8 s: every attack it starts can be interrupted, and any hit during its wind-up staggers it. Works on elites.",
+   "verb_fit": "Unmask reveals a disguise - the enemy's poker face. Light's half: what is hidden is shown.",
+   "numbers": {
+    "cost": 10,
+    "reflux_per_cost": 1.0,
+    "range": 12,
+    "on_hit": {
+     "status": "read",
+     "status_s": 8.0
+    },
+    "elite_ok": true,
+    "recovery": 0.2
+   },
+   "ascension": {
+    "power": "on_hit.status_s",
+    "reach": "range",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.status"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "12 s of its hand on the table: a whole Commander phase."
+    },
+    {
+     "rune": "Remember",
+     "word": "You keep reading it 30% longer."
+    },
+    {
+     "rune": "Far",
+     "word": "Read it from 16.8 m, before it closes."
+    },
+    {
+     "rune": "Many",
+     "word": "Read two of them at once."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Mimic",
+     "why": "Its own opposite: putting a mask on the face you are unmasking; the fallback Masks the target and the two statuses cancel."
+    },
+    {
+     "rune": "Fade",
+     "why": "A short read (4.8 s) often ends before the attack comes; the gaze has no damage for the +25%."
+    },
+    {
+     "rune": "Repel",
+     "why": "A gaze has no force; the fallback is a free shove that moves the target out of the reach you want to punish it in."
+    }
+   ]
+  },
+  {
+   "id": "errand",
+   "name": "Errand",
+   "affinity": "dream",
+   "base_rune": "DRM-5a",
+   "rune": "Whisper",
+   "status": "existing",
+   "starter": false,
+   "role_fit": "role",
+   "parent_trait": "Dark",
+   "kind": "new:gaze",
+   "targeting": "point",
+   "summary": "Point, 10 m: the enemy nearest that spot that can see you (or is asleep) walks to it and stands there 2 s without attacking - into your pool, out of the line, away from the Drummer. A hit breaks it.",
+   "verb_fit": "Whisper plants a command: one order, 'go there', spoken in the quiet (Dark's Hush) and carried out as if it were the enemy's own idea.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.0,
+    "range": 10,
+    "nearest_to_point": true,
+    "on_hit": {
+     "status": "commanded"
+    },
+    "stand_s": 2.0,
+    "recovery": 0.2
+   },
+   "ascension": {
+    "power": "stand_s",
+    "reach": "range",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.status"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Far",
+     "word": "Send it to a spot 14 m away."
+    },
+    {
+     "rune": "Persist",
+     "word": "It stands there 3 s."
+    },
+    {
+     "rune": "Many",
+     "word": "The two nearest walk."
+    },
+    {
+     "rune": "Shut",
+     "word": "It walks off without calling for help."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Sleep",
+     "why": "Putting it to sleep (or Dazing it) at the moment of the order means it never walks; the two words fight."
+    },
+    {
+     "rune": "Dread",
+     "why": "A Terrified enemy runs away from you, not to your spot; the fallback overrides the errand."
+    },
+    {
+     "rune": "Repel",
+     "why": "A shove is a hit, and a hit breaks the command; the fallback undoes the skill."
+    }
+   ]
+  },
+  {
+   "id": "shutter",
+   "name": "Shutter",
+   "affinity": "dream",
+   "base_rune": "DRM-5b",
+   "rune": "Shut",
+   "status": "existing",
+   "starter": false,
+   "role_fit": "utility",
+   "parent_trait": "Dark",
+   "kind": "delayed_blast",
+   "targeting": "point",
+   "summary": "Point, 10 m: minds within 3.5 m that see it close up: 25, and for 8 s they cannot be Drummed or Roused, and cannot call for help or answer a call.",
+   "verb_fit": "Shut closes the mind to others: each one shut in its own dark (Dark's Obscure), cut off from the drum, the order and the cry for help.",
+   "numbers": {
+    "cost": 12,
+    "reflux_per_cost": 1.0,
+    "range": 10,
+    "radius": 3.5,
+    "delay": 0.2,
+    "on_hit": {
+     "damage": 25,
+     "status": "shut"
+    }
+   },
+   "ascension": {
+    "power": "on_hit.damage",
+    "reach": "radius",
+    "speed": "delay",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.status"
+   ],
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Expand",
+     "word": "Shut a 4.5 m circle: the whole drummed line."
+    },
+    {
+     "rune": "Persist",
+     "word": "Closed for 12 s."
+    },
+    {
+     "rune": "Far",
+     "word": "Drop it on the Drummer 14 m back."
+    },
+    {
+     "rune": "Will",
+     "word": "A shut mind drops what it was about to do: it interrupts."
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Whisper",
+     "why": "Its own opposite: planting a command in a mind you are closing; the fallback pulls them toward you."
+    },
+    {
+     "rune": "Motion",
+     "why": "Nothing travels; the fallback has no speed to raise."
+    },
+    {
+     "rune": "Rise",
+     "why": "Lifting bodies has nothing to do with the mind; the fallback is a free Updraft."
+    }
+   ]
+  },
+  {
+   "id": "sweet_lie",
+   "name": "Sweet Lie",
+   "affinity": "dream",
+   "base_rune": "new:DRM-6a",
+   "rune": "Charm",
+   "status": "new",
+   "starter": false,
+   "role_fit": "role",
+   "parent_trait": "Light + Dark",
+   "kind": "smite",
+   "targeting": "target",
+   "summary": "One enemy within 10 m that sees you believes, for 5 s, that it is on your side. It turns on the nearest of its friends, and they answer it. It counts as your summon (Lucid reaches it); hit it yourself and the lie ends. Heavy enemies believe half as long; an elite is only Dazed.",
+   "verb_fit": "Charm is 'win a mind over': for a while it is yours. The warm light that draws the eye (Light's Glow) and the lie told in the half-light (Dark).",
+   "numbers": {
+    "cost": 14.0,
+    "reflux_per_cost": 1.0,
+    "range": 10.0,
+    "recovery": 0.25,
+    "on_hit": {
+     "status": "charmed",
+     "status_s": 5.0
+    }
+   },
+   "ascension": {
+    "power": "on_hit.status_s",
+    "reach": "range",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.status"
+   ],
+   "new_mechanics": [
+    {
+     "name": "charmed",
+     "kind": "status",
+     "definition": "1 stack, 5 s: it fights for the caster - targets the nearest of its former allies, and they treat it as an enemy (Masked's lure, turned round); it counts as the caster's summon (buff_targets); it ends if the caster hits it; heavy_lasts_mult 0.5; elite_status 'dazed'. Uses the gaze check (sees_caster)."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "A longer lie: 7.5 s"
+    },
+    {
+     "rune": "Far",
+     "word": "Turn the one at the back, 14 m away"
+    },
+    {
+     "rune": "Remember",
+     "word": "It goes on believing 30% longer"
+    },
+    {
+     "rune": "Soothe",
+     "word": "A gentle lie: cooler on your reflux"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Doubt",
+     "why": "its own opposite: planting doubt in the mind you are winning. The two statuses fight on one target; maths lets it act, it should not"
+    },
+    {
+     "rune": "Repel",
+     "why": "a gaze has no force; the fallback is a free shove away from the friends you want it to fight"
+    },
+    {
+     "rune": "Within",
+     "why": "a gaze has no projectile to pierce, and Dream already ignores armour; falls back"
+    }
+   ]
+  },
+  {
+   "id": "misgiving",
+   "name": "Misgiving",
+   "affinity": "dream",
+   "base_rune": "new:DRM-6b",
+   "rune": "Doubt",
+   "status": "new",
+   "starter": false,
+   "role_fit": "role",
+   "parent_trait": "Light + Dark",
+   "kind": "melee_burst",
+   "targeting": "aimed",
+   "summary": "A cone 7 m long of things half-seen: every enemy in it that sees you takes 15 and is Doubting for 6 s - its wind-ups take half again as long and its blows land 30% softer. Heavy enemies and elites doubt for half as long.",
+   "verb_fit": "Doubt is 'plant doubt'. Twilight itself, both parents at once: in half-light nothing is certain, so nothing is done with conviction.",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 1.0,
+    "damage": 15.0,
+    "reach_bonus": 5.7,
+    "arc_deg": 60.0,
+    "not_melee": true,
+    "recovery": 0.2,
+    "on_hit": {
+     "status": "doubting",
+     "status_s": 6.0
+    }
+   },
+   "ascension": {
+    "power": "on_hit.status_s",
+    "reach": "reach_bonus",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "signature": [
+    "on_hit.status"
+   ],
+   "new_mechanics": [
+    {
+     "name": "doubting",
+     "kind": "status",
+     "definition": "1 stack, 6 s: windup_mult 1.5, deals_mult 0.7 (both existing keys); heavy_lasts_mult 0.5, and elites keep it at half time too (no elite_status), so the enchanter has a slow for big enemies."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Doubting for 9 s"
+    },
+    {
+     "rune": "Scatter",
+     "word": "A wider cone, a little softer"
+    },
+    {
+     "rune": "Dread",
+     "word": "Doubt turned to dread: they are Terrified as well, and run"
+    },
+    {
+     "rune": "Far",
+     "word": "A longer cone, for the archers at the back"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Charm",
+     "why": "its own opposite: winning over the minds you are souring. Maths lets it act, it should not"
+    },
+    {
+     "rune": "Soothe",
+     "why": "a soothed mind is calm, not doubting, and Soothed ends on the cone's own hit; the fallback does nothing"
+    },
+    {
+     "rune": "Within",
+     "why": "a cone has no projectile to pierce; falls back"
+    }
+   ]
+  },
+  {
+   "id": "rousing_blow",
+   "name": "Rousing Blow",
+   "affinity": "dream",
+   "base_rune": "DRM-1b",
+   "rune": "Wake",
+   "status": "dropped",
+   "starter": false,
+   "kind": "targeted_strike",
+   "dropped_why": "A heavy melee strike is a bruiser's; the enchanter does not hit hard. The sleeper payoff is Shattered Dream (100 to sleepers) and the rule's +30%; Wake now rouses your own mind and your summons (Lucid)."
+  }
+ ],
+ "effects": {
+  "Sleep": "status asleep",
+  "Wake": "bonus asleep +0.5; poise x1.2",
+  "Conjure": "jumps +1; cost x0.9",
+  "Dispel": "interrupts; bonus dazed +0.2",
+  "Dread": "status terrified",
+  "Soothe": "status soothed; reflux x0.85",
+  "Mimic": "status masked; cost x1.15",
+  "Unmask": "status read",
+  "Whisper": "pull +2; interrupts",
+  "Shut": "status shut",
+  "Charm": "status charmed; cost x1.15",
+  "Doubt": "status doubting"
+ }
+}

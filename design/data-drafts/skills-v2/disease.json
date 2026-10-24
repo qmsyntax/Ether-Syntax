@@ -1,0 +1,1042 @@
+{
+  "affinity": "disease",
+  "parents": [
+    "earth",
+    "death"
+  ],
+  "role": "Plague caster: spreading attrition, built from Earth's rot.",
+  "reflux_tier": "high",
+  "reflux_per_cost": 1.4,
+  "reflux_why": "High (1.4), unchanged: Death's tier, not Earth's low. Disease casts keep working long after you stop paying (clouds, barrows, touch-spread), so high reflux is what stops a plague caster carpeting the room.",
+  "rule": "Disease spreads through flesh: Infected ticks (times flesh, so armour cuts it and stone and constructs ignore it), passes a stack to any enemy that stays within 1.5 m of a carrier for 1 s, and rises as clouds from the ground and from the bodies it kills.",
+  "rule_why": "The 2026-10-22 rule (clouds, flesh) said Disease 'moves from body to body', but only skills moved it. Now the status does: Infected gains spread_radius 1.5 / spread_time 1.0 (the same keys Alight uses), so a packed wall makes itself sick. That is the sharpest line against Poison, which never spreads. Data keys: times_flesh, through, and the changed Infected below.",
+  "rule_keys": {
+    "times_flesh": true,
+    "through": true
+  },
+  "status_changes": [
+    {
+      "name": "infected",
+      "change": "add spread_radius 1.5, spread_time 1.0, spread_stacks 1",
+      "why": "Body-to-body spread is now the status's own rule, not only Contagion's. A cap of 5 stacks still holds; a carrier passes 1 stack, never more, however many it has."
+    }
+  ],
+  "parent_traits": {
+    "earth": "Rot in the ground: the sickness heaves up from the floor (Plaguebloom, Exhume), stays where it is put Braced (Plague Barrow), breaks poise the way Earth does (Overrun, Fever Break, Plaguebloom), hardens you (Inured Blood), and is lobbed like thrown stone (Fever Flask).",
+    "death": "What dies feeds the next: corpses and death-sites are its material (Exhume, the Infected corpse cloud), the Dying pass on more (Contagion), wounds rot (Fester), and a full fever ends all at once (Fever Break)."
+  },
+  "role_count": "10 of 12 skills spread or feed the sickness; Sealing Clot (one big target) and Inured Blood (your own defence) are the utility. Fever Flask, Contagion and Plague Barrow reach 9-12 m.",
+  "affinity_mechanics": [
+    {
+      "name": "infected spreads",
+      "kind": "status",
+      "definition": "Infected (changed): an enemy within 1.5 m of an Infected one for 1 s catches 1 stack in the carrier's name (once a second, whatever the number of carriers); times flesh as every Disease tick."
+    }
+  ],
+  "skills": [
+    {
+      "id": "fever_flask",
+      "name": "Fever Flask",
+      "affinity": "disease",
+      "base_rune": "DIS-1a",
+      "rune": "Infect",
+      "status": "existing",
+      "starter": true,
+      "kind": "delayed_blast",
+      "targeting": "point",
+      "summary": "Lob a flask up to 12 m: it bursts over shields and heads for 45 and 2 Infected, and leaves a sick cloud 2.5 m across that hangs 6 s and drifts slowly away from you.",
+      "verb_fit": "Infect is to give a disease. The flask gives it twice: to whoever it bursts over, and to whoever walks into the cloud it leaves. Earth's Dig: it is lobbed like a thrown stone, over shields and heads, and the sickness it carries spreads from there.",
+      "numbers": {
+        "cost": 8,
+        "reflux_per_cost": 1.4,
+        "range": 12,
+        "radius": 2.5,
+        "delay": 0.45,
+        "lobbed": true,
+        "on_hit": {
+          "damage": 45,
+          "status": "infected",
+          "stacks": 2
+        },
+        "leave_zone": {
+          "kind": "cloud",
+          "radius": 2.5,
+          "life": 6.0,
+          "drift_speed": 0.5,
+          "drift_dir": "away"
+        }
+      },
+      "signature": [
+        "on_hit.stacks",
+        "leave_zone"
+      ],
+      "new_mechanics": [
+        {
+          "name": "flesh",
+          "kind": "field",
+          "definition": "New enemy key flesh (0-1): the share of the body not under worn armour. Every Disease hit and tick is multiplied by it. Proposed: Skirmisher, Archer, Harrier, Censer-Bearer, Drummer 1.0; Brute 0.8 (hide); Pavise Bearer 0.6 (mail behind the shield, which a cloud goes round); Wall Commander 0.3 (plate); constructs 0. Corroded raises it toward 1."
+        },
+        {
+          "name": "infected",
+          "kind": "status",
+          "definition": "Infected (up to 5 stacks, 6 s, refreshed by any new stack): 6 damage a second per stack, times flesh, dealt every 0.5 s through whoever infected it (tags disease, dot). When an Infected body dies it leaves a corpse cloud 2 m across for 4 s that does not drift."
+        },
+        {
+          "name": "cloud",
+          "kind": "behaviour",
+          "definition": "A cloud is a ground_zone that gives 1 Infected a second to every enemy inside (no faster, however many clouds overlap), drifts at drift_speed (away from the caster, along the aim, or not at all), stops against walls and stone, and ignores shields, facing and armour except through flesh."
+        },
+        {
+          "name": "lobbed",
+          "kind": "field",
+          "definition": "A lobbed delayed_blast flies over bodies and shields to its point; only walls and stone taller than 1.8 m stop it."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Billow",
+          "word": "A bigger burst and a 3.4 m cloud."
+        },
+        {
+          "rune": "Persist",
+          "word": "The cloud hangs 9 s."
+        },
+        {
+          "rune": "Far",
+          "word": "Lobbed 16.8 m, over the shield line onto the archers."
+        },
+        {
+          "rune": "Fester",
+          "word": "A fouler flask: an extra stack, and the sickness lasts 30% longer."
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Disinfect",
+          "why": "Its own opposite: a flask that kills the disease it carries. The fallback is a bonus against Infected targets on a skill whose job is to infect them."
+        },
+        {
+          "rune": "Straight",
+          "why": "A lob is an arc, and a straight lob cannot clear a shield; the flask's speed is not a stat, so the fallback is 10% reach."
+        },
+        {
+          "rune": "Within",
+          "why": "There is no projectile to pierce; a burst has no line, so the fallback does nothing."
+        }
+      ],
+      "ascension": {
+        "power": "on_hit.damage",
+        "reach": "range",
+        "speed": "leave_zone.life",
+        "cost": "cost"
+      },
+      "starter_slot": "ranged",
+      "role_note": "Plague: starts the sickness where the pack stands, and the pack passes it on."
+    },
+    {
+      "id": "fever_break",
+      "name": "Fever Break",
+      "affinity": "disease",
+      "base_rune": "DIS-1b",
+      "rune": "Disinfect",
+      "status": "changed",
+      "starter": false,
+      "kind": "detonate",
+      "targeting": "self",
+      "summary": "Every Infected enemy within 10 m has its fever broken at once: 30 a stack, all now, and the stacks are gone. Armour still cuts it. A body broken at 5 stacks is Staggered as well.",
+      "verb_fit": "Disinfect is to kill the disease. Killing it all at once is violent, and the body it was living in pays. Earth's Crumble: a body that breaks a full fever breaks its guard with it. Death's Kill: it is the end of a long sickness, all at once.",
+      "numbers": {
+        "cost": 18,
+        "reflux_per_cost": 1.4,
+        "range": 10,
+        "consume_status": "infected",
+        "per_stack_damage": 30,
+        "times_flesh": true,
+        "recovery": 0.12,
+        "stagger_at": 5
+      },
+      "signature": [
+        "per_stack_damage"
+      ],
+      "new_mechanics": [
+        {
+          "name": "stagger_at",
+          "kind": "field",
+          "definition": "A consume_status key: a target that held at least this many stacks when they were consumed is Staggered (the existing status)."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Far",
+          "word": "Break every fever within 14 m."
+        },
+        {
+          "rune": "Once",
+          "word": "All of it at once, 20% harder."
+        },
+        {
+          "rune": "Fall",
+          "word": "The fever breaks them: 30% more poise damage."
+        },
+        {
+          "rune": "Focus",
+          "word": "A tighter, harder break: 8 m, 30% more."
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Infect",
+          "why": "Its own opposite: giving the disease you are killing. The fallback re-infects every target straight after its stacks are spent."
+        },
+        {
+          "rune": "Persist",
+          "why": "An instant breaking has nothing to make last; the fallback does nothing."
+        },
+        {
+          "rune": "Billow",
+          "why": "Spreading a cloud on the skill that ends the sickness contradicts it; the fallback widens it and takes 10% off."
+        }
+      ],
+      "ascension": {
+        "power": "per_stack_damage",
+        "reach": "range",
+        "speed": "recovery",
+        "cost": "cost"
+      },
+      "role_note": "Attrition's end: the cash-in for a room that has been sick a while (dear, 18)."
+    },
+    {
+      "id": "contagion",
+      "name": "Contagion",
+      "affinity": "disease",
+      "base_rune": "DIS-2a",
+      "rune": "Spread",
+      "status": "changed",
+      "starter": false,
+      "kind": "chain",
+      "targeting": "target",
+      "summary": "One enemy within 9 m catches it (2 Infected); then every enemy within 3 m of it catches it, and every enemy within 3 m of those - up to 8 bodies, 20 and 1 Infected each. A Dying body passes 2 stacks instead of 1.",
+      "verb_fit": "Spread is the sickness jumping body to body. The skill is that jump, in every direction at once, as far as bodies stand close enough to pass it on. Death's Dying: a failing body passes on more of what it has.",
+      "numbers": {
+        "cost": 12,
+        "reflux_per_cost": 1.4,
+        "range": 9,
+        "jumps": 7,
+        "jump_radius": 3,
+        "fan": true,
+        "depth": 2,
+        "first_hit": {
+          "status": "infected",
+          "stacks": 2
+        },
+        "on_hit": {
+          "damage": 20,
+          "status": "infected",
+          "stacks": 1
+        },
+        "recovery": 0.12,
+        "dying_stacks": 2
+      },
+      "signature": [
+        "jumps",
+        "jump_radius"
+      ],
+      "new_mechanics": [
+        {
+          "name": "fan",
+          "kind": "field",
+          "definition": "A chain with fan jumps from each body hit to every not-yet-hit enemy within jump_radius of it, for depth generations, up to jumps bodies in all (Forked Path jumps to one at a time)."
+        },
+        {
+          "name": "dying_stacks",
+          "kind": "field",
+          "definition": "A chain key: a jump that starts from a Dying body (below half health) carries this many stacks of on_hit's status instead of its own."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Expand",
+          "word": "Bodies 3.9 m apart still pass it on."
+        },
+        {
+          "rune": "Many",
+          "word": "One more body catches it."
+        },
+        {
+          "rune": "Billow",
+          "word": "The spread reaches 4 m between bodies."
+        },
+        {
+          "rune": "Fester",
+          "word": "A nastier catch: 2 stacks each, lasting longer."
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Contain",
+          "why": "Its own opposite: keeping the sickness in one body. The fallback shrinks the jump radius to 2.3 m so the spread mostly stops."
+        },
+        {
+          "rune": "One",
+          "why": "One body taking all of it is the opposite of a spread; the fallback adds damage the 20-a-body hit hardly has."
+        },
+        {
+          "rune": "Focus",
+          "why": "Concentrating on a point shrinks the jump radius to 2.4 m; the spread chokes."
+        }
+      ],
+      "ascension": {
+        "power": "on_hit.damage",
+        "reach": "jump_radius",
+        "speed": "recovery",
+        "cost": "cost"
+      },
+      "role_note": "Plague, spreading: the purest Disease skill."
+    },
+    {
+      "id": "sealing_clot",
+      "name": "Sealing Clot",
+      "affinity": "disease",
+      "base_rune": "DIS-2b",
+      "rune": "Contain",
+      "status": "existing",
+      "starter": false,
+      "kind": "projectile",
+      "targeting": "aimed",
+      "summary": "A clot that sticks to one enemy: 45 and 3 Infected, and for 10 s the sickness is sealed in - it can climb to 10 stacks and burns half again as hard, but never leaves that body.",
+      "verb_fit": "Contain keeps the sickness in one body. The clot seals it in and lets it grow there, which is how a plague caster kills a single big target. Earth's Bury: the sickness is sealed in like a body under a cairn.",
+      "numbers": {
+        "cost": 12,
+        "reflux_per_cost": 1.4,
+        "damage": 45,
+        "speed": 16,
+        "life": 0.9,
+        "on_hit": {
+          "statuses": [
+            {
+              "id": "infected",
+              "stacks": 3
+            },
+            {
+              "id": "contained",
+              "stacks": 1
+            }
+          ]
+        }
+      },
+      "signature": [
+        "on_hit.statuses.contained"
+      ],
+      "new_mechanics": [
+        {
+          "name": "contained",
+          "kind": "status",
+          "definition": "Contained (1 stack, 10 s): its Infected cap is 10 and its ticks are x1.5; nothing spreads from it and it leaves no corpse cloud; when Contained ends, stacks above 5 fall away."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Fester",
+          "word": "A rotten clot: an extra stack and a longer seal."
+        },
+        {
+          "rune": "Infect",
+          "word": "2 more stacks sealed in at once."
+        },
+        {
+          "rune": "Persist",
+          "word": "Sealed for 15 s: room for all 10 stacks to burn."
+        },
+        {
+          "rune": "Motion",
+          "word": "A quicker clot."
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Spread",
+          "why": "Its own opposite: a sickness that jumps on a skill that seals it in one body. The fallback's jump puts it in a second body."
+        },
+        {
+          "rune": "Billow",
+          "why": "A cloud from a sealed clot contradicts it; there is no area to widen, so the fallback only takes 10% off."
+        },
+        {
+          "rune": "Many",
+          "why": "Sealing it in many bodies is not containing it; the fallback hits a second target for less."
+        }
+      ],
+      "ascension": {
+        "power": "damage",
+        "reach": "life",
+        "speed": "speed",
+        "cost": "cost"
+      },
+      "role_note": "Utility: the single-target answer, against a Brute or a Commander's open flank."
+    },
+    {
+      "id": "festering_hands",
+      "name": "Festering Hands",
+      "affinity": "disease",
+      "base_rune": "DIS-3a",
+      "rune": "Fester",
+      "status": "changed",
+      "starter": false,
+      "kind": "self_buff",
+      "targeting": "self",
+      "summary": "For 8 s every hit you land on an Infected enemy - bare strikes too - adds a stack, its poise stops refilling while the wound festers, and the nearest other enemy within 2 m catches a stack from it.",
+      "verb_fit": "Fester is wounds rotting. Every wound you open on a sick body rots, and a rotting wound does not heal - its poise least of all - and what rots in one body reaches the next. Death's Rot: it is decay in the living.",
+      "numbers": {
+        "cost": 10,
+        "reflux_per_cost": 1.4,
+        "buff": "festering_hands",
+        "duration": 8.0,
+        "on_infected_hit": {
+          "statuses": [
+            {
+              "id": "infected",
+              "stacks": 1
+            },
+            {
+              "id": "festering",
+              "stacks": 1
+            }
+          ]
+        },
+        "spread_radius": 2.0,
+        "spread_stacks": 1
+      },
+      "signature": [
+        "duration",
+        "on_infected_hit"
+      ],
+      "new_mechanics": [
+        {
+          "name": "festering",
+          "kind": "status",
+          "definition": "Festering (1 stack, 3 s, refreshed): its poise does not refill."
+        },
+        {
+          "name": "on_infected_hit spread",
+          "kind": "field",
+          "definition": "A self_buff key pair: with spread_radius, each on_infected_hit also gives spread_stacks Infected to the nearest other enemy within spread_radius of the target."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Persist",
+          "word": "12 s of rot in every touch."
+        },
+        {
+          "rune": "Self",
+          "word": "It stays on your hands 30% longer."
+        },
+        {
+          "rune": "Remember",
+          "word": "The rot lasts 30% longer."
+        },
+        {
+          "rune": "Essence",
+          "word": "A cheaper cast: 15% less essence."
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Lance",
+          "why": "Its own opposite: draining the wounds you are rotting. A self-buff has nothing to pierce, so the fallback does nothing."
+        },
+        {
+          "rune": "Repel",
+          "why": "No hit of its own to carry a shove; the fallback does nothing."
+        },
+        {
+          "rune": "Many",
+          "why": "A buff on you has no targets to jump between; the fallback does nothing."
+        }
+      ],
+      "ascension": {
+        "power": "on_infected_hit.statuses.infected.stacks",
+        "reach": "spread_radius",
+        "speed": "duration",
+        "cost": "cost"
+      },
+      "role_note": "Plague, spreading by touch: what you hit passes it on."
+    },
+    {
+      "id": "lancing_cut",
+      "name": "Lancing Cut",
+      "affinity": "disease",
+      "base_rune": "DIS-3b",
+      "rune": "Lance",
+      "status": "existing",
+      "starter": false,
+      "kind": "targeted_strike",
+      "targeting": "target",
+      "summary": "One enemy in reach: a cut that lances its sickness - +25 a stack, the stacks drained - and what drains out hangs around it as a 2.5 m cloud for 5 s.",
+      "verb_fit": "Lance is to open and drain a festering wound. The cut is the opening; the drained sickness does not vanish, it becomes the next cloud. Earth's Dig: opened like dug ground, and what comes up hangs in the air.",
+      "numbers": {
+        "cost": 12,
+        "reflux_per_cost": 1.4,
+        "damage_mult": 2.0,
+        "range_bonus": 1.0,
+        "consume_status": "infected",
+        "per_stack_damage": 25,
+        "times_flesh": true,
+        "burst_zone": {
+          "kind": "cloud",
+          "radius": 2.5,
+          "life": 5.0,
+          "drift_speed": 0.0
+        }
+      },
+      "signature": [
+        "consume_status",
+        "burst_zone"
+      ],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {
+          "rune": "Hold",
+          "word": "A deliberate cut: 30% more on a full wound."
+        },
+        {
+          "rune": "Billow",
+          "word": "The drained sickness spreads wider: a 3.4 m cloud."
+        },
+        {
+          "rune": "Persist",
+          "word": "The drained cloud hangs 7.5 s."
+        },
+        {
+          "rune": "Focus",
+          "word": "A precise lance: 30% harder, a smaller cloud."
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Fester",
+          "why": "Its own opposite: rotting the wound you are draining; the fallback adds a stack straight after the lance spent them."
+        },
+        {
+          "rune": "Contain",
+          "why": "Lancing lets the sickness out; sealing it in contradicts that, and the fallback shrinks the cloud the drain makes."
+        },
+        {
+          "rune": "Rise",
+          "why": "A lancing cut does not lift; the fallback is a free Aloft."
+        }
+      ],
+      "ascension": {
+        "power": "per_stack_damage",
+        "reach": "range_bonus",
+        "speed": "burst_zone.life",
+        "cost": "cost"
+      },
+      "role_note": "Plague: the one body's sickness becomes the room's."
+    },
+    {
+      "id": "plaguebloom",
+      "name": "Plaguebloom",
+      "affinity": "disease",
+      "base_rune": "DIS-4a",
+      "rune": "Billow",
+      "status": "changed",
+      "starter": true,
+      "kind": "melee_burst",
+      "targeting": "self",
+      "summary": "A sick cloud heaves up out of the ground round you: everything within 3.5 m takes a blow, 25 poise damage and 1 Infected, and the cloud stays 6 s, drifting the way you face.",
+      "verb_fit": "Billow is to spread the cloud. The burst is the cloud rolling up out of the ground round you, and it keeps rolling after the blow has landed. Earth's Quake: it heaves up from the floor, and what it hits is rocked off balance.",
+      "numbers": {
+        "cost": 10,
+        "reflux_per_cost": 1.4,
+        "damage_mult": 1.6,
+        "reach_bonus": 1.2,
+        "arc_deg": 360,
+        "on_hit": {
+          "status": "infected",
+          "stacks": 1,
+          "poise": 25
+        },
+        "leave_zone": {
+          "kind": "cloud",
+          "radius": 3.0,
+          "life": 6.0,
+          "drift_speed": 0.6,
+          "drift_dir": "aim"
+        }
+      },
+      "signature": [
+        "leave_zone"
+      ],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {
+          "rune": "Expand",
+          "word": "A 4.5 m bloom and a bigger cloud."
+        },
+        {
+          "rune": "Persist",
+          "word": "The cloud rolls on for 9 s."
+        },
+        {
+          "rune": "Infect",
+          "word": "A thicker bloom: 3 stacks on everyone it touches."
+        },
+        {
+          "rune": "Overrun",
+          "word": "The bloom knocks them off balance: 40% more poise damage."
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Clear",
+          "why": "Its own opposite: dispersing the cloud it makes. The fallback shoves everyone out of the cloud."
+        },
+        {
+          "rune": "Contain",
+          "why": "A billowing cloud kept in one body is a contradiction; the fallback shrinks the bloom to 2.6 m."
+        },
+        {
+          "rune": "Straight",
+          "why": "A cloud rolling out in a line is not a bloom; the burst has no speed, so the fallback is only 10% reach."
+        }
+      ],
+      "ascension": {
+        "power": "damage_mult",
+        "reach": "reach_bonus",
+        "speed": "leave_zone.life",
+        "cost": "cost"
+      },
+      "starter_slot": "close",
+      "role_note": "Plague: the close starter is a cloud, not a blow."
+    },
+    {
+      "id": "dispersal",
+      "name": "Dispersal",
+      "affinity": "disease",
+      "base_rune": "DIS-4b",
+      "rune": "Clear",
+      "status": "existing",
+      "starter": true,
+      "kind": "dash",
+      "targeting": "aimed",
+      "summary": "Come apart into fog and gather again 5.5 m away, straight through enemies: each one you pass catches 1 Infected, and a little cloud hangs where you stood for 4 s.",
+      "verb_fit": "Clear is to disperse the cloud. The cloud here is you: you disperse, and the clearing carries you across the room. Death's Vanish: you pass out of sight and come back together elsewhere, and everyone you pass through catches it.",
+      "numbers": {
+        "cost": 7,
+        "reflux_per_cost": 1.4,
+        "dash_speed": 27.5,
+        "dash_time": 0.2,
+        "pass_through": true,
+        "pass_radius": 1.1,
+        "on_pass": {
+          "status": "infected",
+          "stacks": 1
+        },
+        "leave_zone": {
+          "kind": "cloud",
+          "at": "start",
+          "radius": 2.0,
+          "life": 4.0,
+          "drift_speed": 0.0
+        }
+      },
+      "signature": [
+        "pass_through"
+      ],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {
+          "rune": "Elsewhere",
+          "word": "Gather again 7 m away."
+        },
+        {
+          "rune": "Motion",
+          "word": "Faster through the fog."
+        },
+        {
+          "rune": "Infect",
+          "word": "Everyone you pass through catches 2 more stacks."
+        },
+        {
+          "rune": "Persist",
+          "word": "The cloud you leave hangs 6 s."
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Stillness",
+          "why": "Held in place is the opposite of dispersing; the fallback slows the dash by 20%."
+        },
+        {
+          "rune": "Hold",
+          "why": "A charged dissolve is a different skill; the dash has no damage, so the fallback only adds wind-up."
+        },
+        {
+          "rune": "Contain",
+          "why": "Keeping it in one body when you are coming apart is a contradiction; the fallback shrinks your step and the cloud."
+        }
+      ],
+      "ascension": {
+        "power": "on_pass.stacks",
+        "reach": "dash_time",
+        "speed": "dash_speed",
+        "cost": "cost"
+      },
+      "starter_slot": "movement",
+      "role_note": "Plague: the movement starter infects the line it crosses."
+    },
+    {
+      "id": "teeming_fog",
+      "name": "Teeming Fog",
+      "affinity": "disease",
+      "base_rune": "DIS-5a",
+      "rune": "Overrun",
+      "status": "existing",
+      "starter": false,
+      "kind": "ground_zone",
+      "targeting": "point",
+      "summary": "Point, 10 m: a thick fog 5 m across for 8 s, drifting slowly away from you. Flesh in it catches a stack every second, and anything that reaches 5 stacks inside it is overrun: its poise breaks once.",
+      "verb_fit": "Overrun is to overwhelm the body's defences. The fog keeps coming until the sickness is too much, and then the body's guard simply gives out. Earth's Quake and Crumble: in the end it breaks poise, the way Earth does.",
+      "numbers": {
+        "cost": 20,
+        "reflux_per_cost": 1.4,
+        "range": 10,
+        "zone": {
+          "kind": "cloud",
+          "shape": "circle",
+          "radius": 5.0,
+          "life": 8.0,
+          "tick_s": 1.0,
+          "drift_speed": 0.4,
+          "drift_dir": "away",
+          "payload": {
+            "status": "infected",
+            "stacks": 1
+          },
+          "overrun_at": 5
+        }
+      },
+      "signature": [
+        "zone.overrun_at",
+        "zone.radius"
+      ],
+      "new_mechanics": [
+        {
+          "name": "overrun_at",
+          "kind": "field",
+          "definition": "A cloud with overrun_at staggers (poise broken, the existing Staggered) each enemy whose Infected reaches that many stacks while inside it, once per enemy per cast."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Expand",
+          "word": "A 6.5 m fog that swallows a whole wall."
+        },
+        {
+          "rune": "Persist",
+          "word": "It teems for 12 s."
+        },
+        {
+          "rune": "Far",
+          "word": "Set it 14 m off and let it drift onto them."
+        },
+        {
+          "rune": "Infect",
+          "word": "A thicker fog: 2 more stacks a second, overrun in two seconds."
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Immunise",
+          "why": "Its own opposite: building their resistance in the fog meant to overwhelm it. The fallback braces you for a cast that has no wind-up, and costs more."
+        },
+        {
+          "rune": "Clear",
+          "why": "Dispersing the fog contradicts it; the fallback shoves bodies out of it every tick."
+        },
+        {
+          "rune": "Fade",
+          "why": "A 4.8 s fog rarely gets anyone to 5 stacks; the zone has no direct damage for the +25%."
+        }
+      ],
+      "ascension": {
+        "power": "zone.payload.stacks",
+        "reach": "zone.radius",
+        "speed": "zone.life",
+        "cost": "cost"
+      },
+      "role_note": "Attrition: the dear zone that holds a whole wall."
+    },
+    {
+      "id": "inured_blood",
+      "name": "Inured Blood",
+      "affinity": "disease",
+      "base_rune": "DIS-5b",
+      "rune": "Immunise",
+      "status": "existing",
+      "starter": false,
+      "kind": "self_buff",
+      "targeting": "self",
+      "summary": "For 8 s you take 5% less damage for each Infected enemy within 8 m, up to 30%. Stand in the sick crowd you made.",
+      "verb_fit": "Immunise is to build resistance. The disease all round you hardens you to everything they can do. Earth's Harden: resistance as armour, earned by standing among the sick.",
+      "numbers": {
+        "cost": 10,
+        "reflux_per_cost": 1.4,
+        "buff": "inured_blood",
+        "duration": 8.0,
+        "radius": 8.0,
+        "dr_per_infected": 0.05,
+        "dr_max": 0.3
+      },
+      "signature": [
+        "dr_per_infected"
+      ],
+      "new_mechanics": [
+        {
+          "name": "dr_per_infected",
+          "kind": "field",
+          "definition": "While the buff lasts, damage taken is cut by dr_per_infected for each Infected enemy within radius, up to dr_max; counted when each hit lands."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Persist",
+          "word": "12 s of borrowed resistance."
+        },
+        {
+          "rune": "Self",
+          "word": "It stays in your blood 30% longer."
+        },
+        {
+          "rune": "Expand",
+          "word": "Counts the sick out to 10.4 m."
+        },
+        {
+          "rune": "Essence",
+          "word": "A cheaper cast."
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Overrun",
+          "why": "Its own opposite: overwhelming defences on the skill that builds yours. There is no hit for the poise, so the fallback does nothing."
+        },
+        {
+          "rune": "Infect",
+          "why": "No hit to carry Infected (and skills never hurt their caster); the fallback does nothing."
+        },
+        {
+          "rune": "Repel",
+          "why": "No hit to carry a shove; the fallback does nothing."
+        }
+      ],
+      "ascension": {
+        "power": "dr_per_infected",
+        "reach": "radius",
+        "speed": "duration",
+        "cost": "cost"
+      },
+      "role_note": "Utility: lets a plague caster stand in the crowd it made."
+    },
+    {
+      "id": "plague_barrow",
+      "name": "Plague Barrow",
+      "affinity": "disease",
+      "base_rune": "new:DIS-6a",
+      "rune": "Inter",
+      "status": "new",
+      "starter": false,
+      "kind": "delayed_blast",
+      "targeting": "point",
+      "summary": "Point, 9 m, 0.4 s wind-up (Braced): grave-earth heaves up over a 2.5 m circle. Everything there takes 40, 2 Infected and is Mired. A barrow stays for 10 s: nothing walks through it (shots pass over), and every 2 s it breathes out a 2.5 m puff that gives 1 Infected.",
+      "verb_fit": "Inter is to bury the sick. The earth that comes up over them is sick earth, and a barrow of it goes on breathing out what is buried in it. Earth's Raise and Root: a mound that stays where you put it, raised Braced. Death's Lay: it is a burial.",
+      "role_note": "Plague from the ground: attrition that stays, and Earth's wall for a caster who needs one.",
+      "numbers": {
+        "cost": 14,
+        "reflux_per_cost": 1.4,
+        "windup": 0.4,
+        "braced": true,
+        "range": 9,
+        "radius": 2.5,
+        "delay": 0.4,
+        "on_hit": {
+          "damage": 40,
+          "statuses": [
+            {
+              "id": "infected",
+              "stacks": 2
+            },
+            {
+              "id": "mired",
+              "stacks": 1
+            }
+          ]
+        },
+        "leave_prop": {
+          "width": 2.0,
+          "thickness": 2.0,
+          "height": 1.0,
+          "life": 10.0,
+          "hp": 150,
+          "blocks_shots": false,
+          "vents": {
+            "every": 2.0,
+            "radius": 2.5,
+            "payload": {
+              "status": "infected",
+              "stacks": 1
+            }
+          }
+        }
+      },
+      "ascension": {
+        "power": "on_hit.damage",
+        "reach": "radius",
+        "speed": "leave_prop.life",
+        "cost": "cost"
+      },
+      "signature": [
+        "leave_prop.vents",
+        "on_hit.statuses.infected"
+      ],
+      "new_mechanics": [
+        {
+          "name": "vents",
+          "kind": "field",
+          "definition": "A prop key: every 'every' seconds the prop applies payload to every enemy within radius of it, flesh and the cloud rules applying (no faster than 1 Infected a second in all, as for clouds)."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Expand",
+          "word": "a wider barrow and a wider breath: 30% more reach"
+        },
+        {
+          "rune": "Persist",
+          "word": "it stands half as long again"
+        },
+        {
+          "rune": "Infect",
+          "word": "thicker grave-earth: 2 more stacks on the heave"
+        },
+        {
+          "rune": "Fall",
+          "word": "it knocks them flat as it comes up: 30% more poise damage"
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Exhume",
+          "why": "its own opposite: digging up what you are burying. The burst lands on a mound that is meant to stay; the word contradicts itself."
+        },
+        {
+          "rune": "Clear",
+          "why": "dispersing the breath the barrow gives out; the fallback shoves everyone off the mound it should hold them by."
+        },
+        {
+          "rune": "Motion",
+          "why": "a barrow does not move; it has no speed, so the fallback does nothing."
+        }
+      ]
+    },
+    {
+      "id": "exhume",
+      "name": "Exhume",
+      "affinity": "disease",
+      "base_rune": "new:DIS-6b",
+      "rune": "Exhume",
+      "status": "new",
+      "starter": false,
+      "kind": "detonate",
+      "targeting": "self",
+      "summary": "Every corpse within 10 m, and every spot where an Infected enemy died in the last 15 s, bursts up out of the ground (up to 4): 50 and 2 Infected to everything within 2.5 m, and a cloud 2.5 m across that hangs 6 s. The corpses are spent.",
+      "verb_fit": "Exhume is to dig up what was buried, and grave-rot comes up with it. Every body and every place the sick died is a store of plague; the skill opens them all. Earth's Dig: torn up out of the floor. Death's corpses: the dead are its material.",
+      "role_note": "Plague: the sickness that killed one body rises to take the next.",
+      "numbers": {
+        "cost": 12,
+        "reflux_per_cost": 1.4,
+        "range": 10,
+        "max_sites": 4,
+        "spends_corpse": true,
+        "recent_infected_death_s": 15,
+        "burst_radius": 2.5,
+        "recovery": 0.12,
+        "on_hit": {
+          "damage": 50,
+          "status": "infected",
+          "stacks": 2
+        },
+        "leave_zone": {
+          "kind": "cloud",
+          "radius": 2.5,
+          "life": 6.0,
+          "drift_speed": 0.0
+        }
+      },
+      "ascension": {
+        "power": "on_hit.damage",
+        "reach": "range",
+        "speed": "leave_zone.life",
+        "cost": "cost"
+      },
+      "signature": [
+        "max_sites",
+        "leave_zone"
+      ],
+      "new_mechanics": [
+        {
+          "name": "grave sites",
+          "kind": "behaviour",
+          "definition": "A detonate key set: every corpse within range (spent if spends_corpse) and every point where an Infected enemy died within recent_infected_death_s count as sites, nearest first, up to max_sites; each bursts on_hit within burst_radius and leaves leave_zone. Refused before essence is spent when there is no site."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Expand",
+          "word": "every grave reaches 30% further"
+        },
+        {
+          "rune": "Persist",
+          "word": "the clouds hang half as long again"
+        },
+        {
+          "rune": "Fester",
+          "word": "fouler rot: a stack more, lasting longer"
+        },
+        {
+          "rune": "Many",
+          "word": "one more grave opens"
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Inter",
+          "why": "its own opposite: burying what you dig up. Mired lands on bodies the burst should be throwing back; the word contradicts itself."
+        },
+        {
+          "rune": "Contain",
+          "why": "keeping in one body what you are letting out of every grave; the fallback shrinks the bursts by a quarter."
+        },
+        {
+          "rune": "Straight",
+          "why": "graves open where they are, not in a line; the burst has no speed, so the fallback is 10% reach."
+        }
+      ]
+    }
+  ],
+  "effects": {
+    "Infect": "status infected 2",
+    "Disinfect": "bonus infected +0.4",
+    "Spread": "jumps +1; status infected",
+    "Contain": "reach x0.75; power x1.3",
+    "Fester": "status infected; duration x1.3",
+    "Lance": "pierce +1; power x1.1",
+    "Billow": "reach x1.35; power x0.9",
+    "Clear": "shove +1; reach x1.15",
+    "Overrun": "poise x1.4; through",
+    "Immunise": "braced; cost x1.1",
+    "Inter": "status mired; status infected",
+    "Exhume": "poise x1.2; status infected"
+  }
+}

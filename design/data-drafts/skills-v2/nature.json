@@ -1,0 +1,330 @@
+{
+  "affinity": "nature",
+  "parents": ["earth", "life"],
+  "role": "Druid: plants growth that stays and ages, calls beasts out of it, and buffs you and your beasts.",
+  "reflux_tier": "low",
+  "reflux_per_cost": 0.5,
+  "reflux_why": "Unchanged. The plants and the beasts do the work after the cast; the price is time and place (growth is slow to pay out and does not spread on stone). Between Earth's 0.4 and Life's 1.0, nearer Earth: what Nature makes stays, like stone.",
+  "rule": "Nature's growth stays in the ground and ages (sprout, grown, bloom), spreading on open ground; you and your beasts standing in your growth are In the Green - regrowing 1.5 health a second and hard to move - and any patch can be called up as a beast.",
+  "rule_data": {"growth_ages": {"sprout": [0, 5, 1.0], "grown": [5, 15, 1.5], "bloom": [15, null, 2.0]}, "growth_cap": 12, "in_the_green": {"heal_per_s": 1.5, "shove_mult": 0.5, "poise_loss_mult": 0.5}},
+  "rule_why": "The old rule (growth that stays, spreads and ages) was all Earth: ground that stays. The role adds Life's half: the growth is alive, it heals what stands in it, and it bears beasts. In the Green is one place-based buff that carries both parents at once: Life's regrowth and Earth's footing. It also gives the druid a reason to fight on its own ground.",
+  "band_shift": "Direct hits on the low side (Thornburst 60, sweep 1.8x): the druid's damage is in growth over time and in its beasts. Costs at the bands; summons and buffs mid (10-14).",
+  "skills": [
+    {
+      "id": "overgrowth", "name": "Overgrowth", "affinity": "nature", "base_rune": "NAT-1a", "rune": "Grow",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "For 8 s you and every beast of yours within 8 m grow larger and stronger: 20% more damage, half the poise loss, and every blow you land regrows you 2 health.",
+      "verb_fit": "Grow is making a thing larger and stronger; here the thing is you and your pack. Parents: Life's Strengthen (the body grows, and the blows it lands feed it) and Earth's footing (half the poise loss, hard to knock down).",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.5, "duration": 8, "buff": "overgrown", "radius": 8, "damage_mult": 1.2, "poise_loss_mult": 0.5, "heal_per_hit": 2},
+      "ascension": {"power": "damage_mult", "reach": "radius", "speed": "duration", "cost": "cost"},
+      "signature": ["damage_mult", "duration"],
+      "new_mechanics": [
+        {"name": "overgrown", "kind": "status", "definition": "A buff on the player or a summon (shared buff, life.json): damage it deals x damage_mult, poise it loses x poise_loss_mult, and each hit it lands regrows heal_per_hit to the bearer (a beast heals itself; you heal you)."},
+        {"name": "in the green", "kind": "status", "definition": "Affinity rule, a state, never applied by a skill: while the player or a summon of theirs stands on one of the caster's growth patches it regrows 1.5 health a second (life healing order for the player), shoves on it go x0.5 as far and it loses x0.5 poise. Not stacked by overlapping patches. Shown as a leaf on the HUD."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a long season of growth: half as long again"},
+        {"rune": "Flourish", "word": "thriving: 30% longer, 10% stronger"},
+        {"rune": "Expand", "word": "the growth reaches beasts 30% further off"},
+        {"rune": "Unleash", "word": "grown and let loose: quicker to cast, 10% harder"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Shrink", "why": "making smaller what you grow; the verbs cancel and the word should not form."},
+        {"rune": "Wilt", "why": "a growth that dies back: 30% shorter, and the damage half has no hit to raise. The word kills what it grows."}
+      ]
+    },
+    {
+      "id": "dwindling_gall", "name": "Dwindling Gall", "affinity": "nature", "base_rune": "NAT-1b", "rune": "Shrink",
+      "status": "existing", "starter": false,
+      "kind": "smite", "targeting": "target",
+      "summary": "A gall-vine takes root in one enemy within 9 m and shrinks it for 8 s: 20 damage, it counts one weight class lighter, and its reach is cut by 30%. When it dies, the gall falls and grows a bramble patch.",
+      "verb_fit": "Shrink makes a thing smaller, and a plant does it. Utility: the druid's answer to a brute. Parents: Life (it feeds on a living host) and Earth (what is left is growth in the ground).",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.5, "range": 9, "duration": 8, "on_hit": {"damage": 20, "status": "dwindled"}, "on_death_growth": "bramble"},
+      "ascension": {"power": "on_hit.damage", "reach": "range", "speed": "duration", "cost": "cost"},
+      "signature": ["on_hit.status", "duration"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a slow gall: half as long again"},
+        {"rune": "Far", "word": "rooted from 40% further away"},
+        {"rune": "Herd", "word": "the gall calls your beasts: Quarry as well"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Grow", "why": "making larger the thing you shrink; the verbs cancel."},
+        {"rune": "Within", "why": "a smite is not a shot; pierce falls back to a small damage bonus."}
+      ]
+    },
+    {
+      "id": "thornburst", "name": "Thornburst", "affinity": "nature", "base_rune": "NAT-2a", "rune": "Sprout",
+      "status": "existing", "starter": true, "starter_slot": "ranged",
+      "kind": "delayed_blast", "targeting": "point",
+      "summary": "Point, 9 m: after 0.35 s thorns burst up. 60 and Slowed to everything within 1.5 m, and the thorns stay as a bramble patch that spreads and thickens the longer it stands - ground you can stand in, and a beast you can call.",
+      "verb_fit": "Sprout is growing plants from the ground. The hit is the plants coming up; what stays is the plants. Parents: Earth (it comes up out of the floor and stays) and Life (it is alive and keeps growing).",
+      "numbers": {"cost": 8, "reflux_per_cost": 0.5, "range": 9, "radius": 1.5, "delay": 0.35,
+        "on_hit": {"damage": 60, "status": "slowed"}, "leave_growth": {"kind": "bramble", "radius": 1.0}},
+      "ascension": {"power": "on_hit.damage", "reach": "range", "speed": "delay", "cost": "cost"},
+      "signature": ["on_hit.status", "leave_growth"],
+      "new_mechanics": [
+        {"name": "growth, bramble, leave_growth", "kind": "field", "definition": "Unchanged from the 2026-10-22 draft (heartwood and thornburst there): patches of the caster's plants, 2 m, three ages, spread every 5 s once grown, 12 per caster, no spreading on stone, burned by fire. Bramble slows and does 6 a second to enemies moving in it."}
+      ],
+      "good_modifiers": [
+        {"rune": "Tangle", "word": "the shoots grab: Rooted as well"},
+        {"rune": "Grow", "word": "a bigger burst: 20% wider and 10% harder"},
+        {"rune": "Haste", "word": "it comes up sooner"},
+        {"rune": "Expand", "word": "a wider bed of thorns"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Wilt", "why": "killing the plants the skill grows; the word contradicts itself."},
+        {"rune": "Within", "why": "a burst from the ground is not a shot; pierce falls back."}
+      ]
+    },
+    {
+      "id": "heartwood", "name": "Heartwood", "affinity": "nature", "base_rune": "NAT-2a", "rune": "Sprout",
+      "status": "changed", "starter": false,
+      "kind": "prop", "targeting": "point",
+      "summary": "Point, 8 m: a sapling bursts up into a trunk in 0.6 s, shoving anyone there aside for 25. For its first 6 s every enemy within 5 m turns on it instead of you. It blocks walking and shots for 30 s, toughens every second, and every 5 s spreads a bramble patch at its foot. One at a time.",
+      "verb_fit": "A tree sprouted from the ground. Parents: Earth (a wall that stays and takes the blows - the area tank's stone, here drawing the pack onto itself) and Life (it grows tougher every second it stands).",
+      "change": "Moved from Grow to Sprout (Grow now carries Overgrowth, the buff; a tree is a plant grown from the ground). It draws enemies for its first 6 s.",
+      "numbers": {"cost": 14, "reflux_per_cost": 0.5, "windup": 0.3, "range": 8, "min_range": 1.5,
+        "width": 1.2, "thickness": 1.2, "height": 2.5, "rise_time": 0.6, "life": 30, "hp": 300, "hp_per_s": 10,
+        "spread_every": 5, "spread_kind": "bramble", "max_count": 1, "decoy_radius": 5, "decoy_s": 6,
+        "on_rise": {"damage": 25, "shove": 1.0}},
+      "ascension": {"power": "on_rise.damage", "reach": "range", "speed": "life", "cost": "cost"},
+      "signature": ["life", "spread_every"],
+      "new_mechanics": [
+        {"name": "decoy_radius / decoy_s", "kind": "behaviour", "definition": "The decoy key of death.json's Death Mask, on any prop: for decoy_s after it rises, enemies within decoy_radius take it as their target instead of the player."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "an old tree: half as long again"},
+        {"rune": "Flourish", "word": "a thriving trunk: 30% longer"},
+        {"rune": "Sow", "word": "planted deep: a slower rise, a harder shove, a longer life"},
+        {"rune": "Expand", "word": "a broader trunk that draws from further"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Shrink", "why": "making smaller the thing you raise; the verbs cancel."},
+        {"rune": "Wilt", "why": "a wilting tree lives 30% shorter; the word kills what it grows."}
+      ]
+    },
+    {
+      "id": "sere_ground", "name": "Sere Ground", "affinity": "nature", "base_rune": "NAT-2b", "rune": "Wilt",
+      "status": "existing", "starter": false,
+      "kind": "field_pulse", "targeting": "point",
+      "summary": "Point, 10 m: every patch of your growth within 4 m dies at once, and everything standing in one takes 30 (45 if grown, 60 in bloom). The ground is clear again.",
+      "verb_fit": "Wilt is killing plants and clearing ground; you give up growth and its dying is the damage. Parents: Earth (the ground cleared) and Life (a life ended pays out).",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.5, "range": 10, "radius": 4, "per_stack_damage": 30, "age_scales": true, "recovery": 0.12, "on_hit": {}},
+      "numbers_note": "recovery is the default cast recovery made explicit, so the ascension speed aspect has a field.",
+      "ascension": {"power": "per_stack_damage", "reach": "radius", "speed": "recovery", "cost": "cost"},
+      "signature": ["per_stack_damage", "radius"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "a wider clearing"},
+        {"rune": "Once", "word": "all of it at once: 20% harder"},
+        {"rune": "Blight", "word": "it dies of a blight that jumps to them: Blighted on everyone caught"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Sprout", "why": "growing what you are killing; the word contradicts itself."},
+        {"rune": "Flourish", "why": "strengthening growth as you kill it; contradicts itself."}
+      ]
+    },
+    {
+      "id": "greening", "name": "Greening", "affinity": "nature", "base_rune": "NAT-3a", "rune": "Flourish",
+      "status": "changed", "starter": false,
+      "kind": "field_pulse", "targeting": "self",
+      "summary": "Every patch of your growth within 12 m grows one age at once and puts out a new patch. For 6 s all of it works 50% harder, and you and your beasts In the Green regrow twice as fast and hit 15% harder.",
+      "verb_fit": "Flourish strengthens what grows - the patches and, now, the living things standing in them. Parents: Life (the regrowth doubled) and Earth (the ground itself grows stronger).",
+      "change": "Role shaping: it buffs you and your beasts while you stand In the Green, not only the patches.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.5, "radius": 12, "duration": 6, "ages_added": 1, "spreads": 1, "effect_mult": 1.5, "green_heal_mult": 2.0, "green_damage_mult": 1.15},
+      "ascension": {"power": "effect_mult", "reach": "radius", "speed": "duration", "cost": "cost"},
+      "signature": ["radius", "duration"],
+      "new_mechanics": [
+        {"name": "green_heal_mult / green_damage_mult", "kind": "behaviour", "definition": "Field-pulse keys: for duration, In the Green's regrowth is x green_heal_mult and bodies of the caster's In the Green deal x green_damage_mult."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a long season: half as long again"},
+        {"rune": "Expand", "word": "the greening reaches 30% further"},
+        {"rune": "Remember", "word": "the ground remembers: 30% longer"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Wilt", "why": "killing what you make thrive; contradicts itself."},
+        {"rune": "Blight", "why": "a sickness of growing things on the skill that makes them thrive; nobody to land on, it falls back."}
+      ]
+    },
+    {
+      "id": "heartrot", "name": "Heartrot", "affinity": "nature", "base_rune": "NAT-3b", "rune": "Blight",
+      "status": "existing", "starter": false,
+      "kind": "chain", "targeting": "target",
+      "summary": "One enemy within 9 m, then two more within 5 m of each other: 40 each and Blighted for 8 s - their wooden shields and bows rot (shield half, aim slower) and Nature hits them 20% harder.",
+      "verb_fit": "Blight is a sickness of growing things: it rots the wood in their hands. Utility: the druid's reach into a shield line. Parents: Life (a sickness that spreads body to body) and Earth (rot, what the ground does to wood).",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.5, "range": 9, "jumps": 2, "jump_radius": 5, "duration": 8, "on_hit": {"damage": 40, "status": "blighted"}},
+      "ascension": {"power": "on_hit.damage", "reach": "jump_radius", "speed": "duration", "cost": "cost"},
+      "signature": ["on_hit.status", "jumps"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Many", "word": "it spreads to one more"},
+        {"rune": "Persist", "word": "the rot lasts half as long again"},
+        {"rune": "Herd", "word": "the rot calls the pack: Quarry on each"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Flourish", "why": "making thrive the wood you are rotting; the verbs cancel."},
+        {"rune": "Unravel", "why": "the shove lands, but the word says nothing about blight."}
+      ]
+    },
+    {
+      "id": "reaping_sweep", "name": "Reaping Sweep", "affinity": "nature", "base_rune": "NAT-4a", "rune": "Harvest",
+      "status": "changed", "starter": true, "starter_slot": "close",
+      "kind": "melee_burst", "targeting": "aimed",
+      "summary": "A wide scything sweep through 180 degrees: 1.8x strike damage. Each patch of your growth in the arc is cut back to a sprout and adds 15% to the blow (up to 60%), 1 essence and 3 health to you; the roots stay and regrow.",
+      "verb_fit": "Harvest is taking what has grown and its yield. Parents: Earth (the ground's yield, cut and left to regrow) and Life (the yield feeds your body).",
+      "change": "Role shaping: each patch reaped also regrows you 3 health.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.5, "windup": 0.15, "damage_mult": 1.8, "reach_bonus": 1.2, "arc_deg": 180,
+        "patch_bonus": 0.15, "patch_bonus_max": 0.6, "per_patch_essence": 1, "per_patch_heal": 3, "on_hit": {"poise": 20}},
+      "ascension": {"power": "damage_mult", "reach": "reach_bonus", "speed": "windup", "cost": "cost"},
+      "signature": ["damage_mult", "patch_bonus"],
+      "new_mechanics": [
+        {"name": "per_patch_heal", "kind": "behaviour", "definition": "A harvest key: each growth patch reaped regrows the caster this much (over 2 s)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "a wider swathe"},
+        {"rune": "Grow", "word": "a bigger scythe: longer and harder"},
+        {"rune": "Tangle", "word": "the cut stalks catch their legs: Rooted"},
+        {"rune": "Sever", "word": "a cutting stroke: 30% more poise damage"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Sow", "why": "planting and reaping in one stroke; the verbs cancel."},
+        {"rune": "Within", "why": "pierce means nothing on a sweep."}
+      ]
+    },
+    {
+      "id": "scatter_seed", "name": "Scatter Seed", "affinity": "nature", "base_rune": "NAT-4b", "rune": "Sow",
+      "status": "existing", "starter": false,
+      "kind": "seed", "targeting": "point",
+      "summary": "Throw five seeds over a 2.5 m spread within 9 m. Each lies hidden until an enemy steps on it (or for 6 s), then bursts: 35 and Rooted for 1 s, and a snarevine patch that stays and spreads.",
+      "verb_fit": "Sow is planting a thing to act later. Parents: Earth (hidden in the ground, waiting) and Life (it grows when its time comes).",
+      "numbers": {"cost": 7, "reflux_per_cost": 0.5, "range": 9, "seeds": 5, "radius": 2.5, "delay": 6, "duration": 20, "trigger_radius": 0.6,
+        "on_hit": {"damage": 35, "status": "rooted"}, "burst_radius": 1.2, "leave_growth": {"kind": "snarevine", "radius": 1.0}},
+      "ascension": {"power": "on_hit.damage", "reach": "radius", "speed": "delay", "cost": "cost"},
+      "signature": ["delay", "seeds"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Scatter", "word": "seed flung wider"},
+        {"rune": "Persist", "word": "seeds that wait half as long again"},
+        {"rune": "Haste", "word": "quick seed: they sprout on their own sooner"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Harvest", "why": "reaping seed before it has grown; the verbs cancel."},
+        {"rune": "Wilt", "why": "seeds that die in the ground; the word kills what it plants."}
+      ]
+    },
+    {
+      "id": "vine_reach", "name": "Vine Reach", "affinity": "nature", "base_rune": "NAT-5a", "rune": "Tangle",
+      "status": "changed", "starter": true, "starter_slot": "movement",
+      "kind": "grapple", "targeting": "point",
+      "summary": "A vine lashes to a point within 9 m and hauls you there. Enemies within 1.5 m of where you land take 20 and are Rooted for 1 s, and a snarevine patch takes root on the spot, so you land In the Green.",
+      "verb_fit": "Tangle is vines binding: the vine binds to a point and pulls you to it, then binds what is there. Parents: Earth (rooted in place, the ground holds them) and Life (a living vine).",
+      "change": "20 damage on landing, so the ascension power aspect has a field; the summary says you land In the Green.",
+      "numbers": {"cost": 8, "reflux_per_cost": 0.5, "range": 9, "dash_speed": 24, "arrive_radius": 1.5,
+        "on_arrive": {"damage": 20, "status": "rooted"}, "leave_growth": {"kind": "snarevine", "radius": 1.0}},
+      "ascension": {"power": "on_arrive.damage", "reach": "range", "speed": "dash_speed", "cost": "cost"},
+      "signature": ["on_arrive.status", "leave_growth"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Far", "word": "a longer vine: 40% further"},
+        {"rune": "Motion", "word": "a faster haul"},
+        {"rune": "Sprout", "word": "shoots come up where you land: Slowed as well"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Unravel", "why": "the shove pushes them out of the hold the vine is meant to put on them."},
+        {"rune": "Stillness", "why": "held in place, on the skill that moves you; it slows the haul."}
+      ]
+    },
+    {
+      "id": "unwinding", "name": "Unwinding", "affinity": "nature", "base_rune": "NAT-5b", "rune": "Unravel",
+      "status": "existing", "starter": false,
+      "kind": "detonate", "targeting": "self",
+      "summary": "Every enemy your vines hold within 10 m is let go at once and whipped 3 m away from you for 40 (a Crush if it hits something). Anything holding you lets go too.",
+      "verb_fit": "Unravel is freeing what is bound; the unwinding is the throw. Utility: the druid's way out of a crowd. Parents: Life (the vines let go) and Earth (thrown against walls and stone).",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.5, "range": 10, "consume_status": "rooted", "frees_caster": true, "recovery": 0.12,
+        "on_hit": {"damage": 40, "shove": 3.0}},
+      "numbers_note": "recovery is the default cast recovery made explicit, so the ascension speed aspect has a field.",
+      "ascension": {"power": "on_hit.damage", "reach": "range", "speed": "recovery", "cost": "cost"},
+      "signature": ["consume_status", "on_hit.shove"],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {"rune": "Repel", "word": "a harder whip"},
+        {"rune": "Rise", "word": "flung up as well as out: Aloft"},
+        {"rune": "Fury", "word": "a violent unwinding"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Tangle", "why": "binding again what you release; the verbs cancel."},
+        {"rune": "Attract", "why": "pulling in what you fling out; contradicts itself."}
+      ]
+    },
+    {
+      "id": "call_the_brake", "name": "Call the Brake", "affinity": "nature", "base_rune": "NAT-6a", "rune": "Herd",
+      "status": "new", "starter": false,
+      "kind": "summon", "targeting": "point",
+      "summary": "Point at a patch of your growth within 10 m: the thicket gives up a briar hound that runs with you for 20 s - 90 health, a bite of 12 every 0.9 s that Slows. A grown patch gives a hound a quarter stronger, a bloom patch two hounds half as strong again. The patch goes back to a sprout. Up to three hounds; with no patch in range nothing happens and nothing is spent.",
+      "verb_fit": "Herd gathers beasts to you, called up out of the growth, and drives them onto your quarry. Parents: Earth (the ground gives them up, as it gives up stone) and Life (they are alive: Life heals them, and they stand In the Green with you).",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.5, "range": 10, "duration": 20, "needs": "growth", "max_count": 3, "spends_patch_age": true,
+        "age_scales": {"grown": 1.25, "bloom": 1.5}, "bloom_count": 2,
+        "thrall": {"hp": 90, "damage": 12, "attack_s": 0.9, "speed": 7.5, "living": true, "behaviour": "fight", "model": "beast:briar_hound", "on_hit": {"status": "slowed"}}},
+      "ascension": {"power": "thrall.damage", "reach": "range", "speed": "duration", "cost": "cost"},
+      "signature": ["thrall.damage", "duration"],
+      "new_mechanics": [
+        {"name": "needs growth", "kind": "behaviour", "definition": "A summon key: the point must be on one of the caster's growth patches (checked before essence is spent). The thrall's hp and damage scale by the patch's age (age_scales); a bloom patch gives bloom_count thralls; spends_patch_age resets the patch to sprout."},
+        {"name": "briar hound", "kind": "behaviour", "definition": "A beast thrall: living, fast, fights the nearest enemy or the caster's Quarry first; its bite carries on_hit. Model is a procedural stand-in until there is a creature rig source, like the Stubble's beasts."},
+        {"name": "quarry", "kind": "status", "definition": "Enemy status, 1 stack, 6 s: the caster's summons switch to it and deal x1.3 to it. The Herd rune's effect."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "the hounds stay half as long again"},
+        {"rune": "Grow", "word": "bigger hounds: 10% harder"},
+        {"rune": "Flourish", "word": "a thriving pack: 30% longer"},
+        {"rune": "Far", "word": "call from a patch 40% further off"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Wilt", "why": "killing the growth the beast comes from; the hounds would live 30% shorter. The word cuts its own root."},
+        {"rune": "Within", "why": "a summon is not a shot; pierce falls back to a small damage bonus."}
+      ]
+    },
+    {
+      "id": "unleash_the_pack", "name": "Unleash the Pack", "affinity": "nature", "base_rune": "NAT-6b", "rune": "Unleash",
+      "status": "new", "starter": false,
+      "kind": "smite", "targeting": "target",
+      "summary": "Point at one enemy within 12 m: it becomes your Quarry (20 damage) and every beast of yours within 12 m leaps on it at once, each landing 30 poise damage. For 6 s they run wild: 40% more damage and 30% faster attacks. With no beasts out it only marks the Quarry.",
+      "verb_fit": "Unleash lets the bound go: the pack let off its leash. Parents: Life (beasts roused to fury) and Earth (each leap lands heavy, for poise).",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.5, "range": 12, "command_radius": 12, "leap_speed": 18,
+        "on_hit": {"damage": 20, "status": "quarry"}, "summon_hit": {"poise": 30},
+        "summon_buff": {"buff": "unleashed", "duration": 6, "damage_mult": 1.4, "attack_rate_mult": 1.3}},
+      "ascension": {"power": "summon_buff.damage_mult", "reach": "range", "speed": "summon_buff.duration", "cost": "cost"},
+      "signature": ["summon_buff.damage_mult", "command_radius"],
+      "new_mechanics": [
+        {"name": "command", "kind": "behaviour", "definition": "A smite key set: every summon of the caster within command_radius leaps to the target (moved by exact distance at leap_speed, stopping at walls), each landing summon_hit; then each takes summon_buff."},
+        {"name": "unleashed", "kind": "status", "definition": "A buff on a summon: damage x damage_mult, attack rate x attack_rate_mult, for duration."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a long hunt: half as long again"},
+        {"rune": "Fury", "word": "a frenzied pack: 20% harder"},
+        {"rune": "Far", "word": "loosed on prey 40% further off"},
+        {"rune": "Tangle", "word": "the quarry is held for them: Rooted"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Herd", "why": "calling back the pack you loose; the verbs cancel and the word should not form."},
+        {"rune": "Calm", "why": "a calm hunt is no unleashing; the reflux cut lands, the word says nothing."}
+      ]
+    }
+  ],
+  "effects": {
+    "Grow": "reach x1.2; power x1.1; cost x1.1",
+    "Shrink": "status dwindled",
+    "Sprout": "status slowed; duration x1.3",
+    "Wilt": "power x1.15; duration x0.7",
+    "Flourish": "power x1.1; duration x1.3",
+    "Blight": "status blighted",
+    "Harvest": "power x1.1; cost x0.85",
+    "Sow": "windup x1.3; power x1.25; duration x1.2",
+    "Tangle": "status rooted",
+    "Unravel": "shove +1; windup x0.9",
+    "Herd": "status quarry",
+    "Unleash": "windup x0.8; power x1.1"
+  }
+}

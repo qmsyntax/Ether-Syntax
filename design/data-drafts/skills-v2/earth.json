@@ -1,0 +1,1036 @@
+{
+ "affinity": "earth",
+ "parents": [],
+ "role": "Area tank - walls, terrain, immovable [B]",
+ "reflux_tier": "low",
+ "rule": "Earth holds its ground: its skills raise, use or break your stone, wind up Braced, break poise, and call the enemy onto you.",
+ "new_mechanics": [],
+ "skills": [
+  {
+   "id": "slingstone",
+   "name": "Slingstone",
+   "affinity": "earth",
+   "base_rune": "EAR-4a",
+   "rune": "Dig",
+   "status": "changed",
+   "starter": true,
+   "starter_slot": "ranged",
+   "serves": "role",
+   "kind": "projectile",
+   "targeting": "aimed",
+   "summary": "A slow, heavy stone thrown Braced: 70 damage, 45 poise, it stops what it hits mid-swing, and it Taunts it for 4 s - it drops what it was doing and comes for you. Thrown into your own stone, it shatters it.",
+   "verb_fit": "Dig is \"tear into the ground and bring stone up to throw\": a stone torn up and thrown, and for the tank the throw is a challenge: the archer at the back now walks to you.",
+   "numbers": {
+    "cost": 8.0,
+    "reflux_per_cost": 0.4,
+    "windup": 0.3,
+    "braced": true,
+    "damage": 70.0,
+    "speed": 14.0,
+    "life": 1.7143,
+    "shatters_stone": true,
+    "on_hit": {
+     "poise": 45.0,
+     "interrupts": true,
+     "status": "taunted",
+     "status_s": 4.0
+    }
+   },
+   "signature": [
+    "damage",
+    "on_hit.status"
+   ],
+   "ascension": {
+    "power": "damage",
+    "reach": "life",
+    "speed": "speed",
+    "cost": "cost"
+   },
+   "new_mechanics": [
+    {
+     "name": "taunted",
+     "kind": "status",
+     "definition": "1 stack, the skill's status_s (elites half, heavy_lasts_mult 0.5): it comes for whoever taunted it and attacks only them. A ranged or support enemy walks in to strike in melee instead of keeping its distance or tending its friends, and lures, decoys and thralls do not draw it. Keys: forced_target 'source', closes_in. Applying it again refreshes it. Used by Earth (many at once) and Metal (one)."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Weigh",
+     "word": "Heavy Stone: more poise, and the taunt holds"
+    },
+    {
+     "rune": "Harden",
+     "word": "Hard Stone: hits harder"
+    },
+    {
+     "rune": "Crumble",
+     "word": "Breaking Stone: more poise damage"
+    },
+    {
+     "rune": "Haste",
+     "word": "Quick Sling: a shorter wind-up"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Root",
+     "why": "Braced already; and a thrown stone cannot be rooted. Falls back to a little power"
+    },
+    {
+     "rune": "Persist",
+     "why": "a stone in flight has nothing that lasts but the taunt; it only stretches that"
+    },
+    {
+     "rune": "Self",
+     "why": "it acts on the enemy; falls back to a cost cut"
+    }
+   ],
+   "change_note": "The tank's ranged starter is now a taunt: 120 -> 70 damage, cost 12 -> 8, and it Taunts for 4 s. Its reach to the back rank is its point, not its damage."
+  },
+  {
+   "id": "landslide_blow",
+   "name": "Landslide Blow",
+   "affinity": "earth",
+   "base_rune": "EAR-2b",
+   "rune": "Crumble",
+   "status": "changed",
+   "starter": true,
+   "starter_slot": "close",
+   "serves": "role",
+   "kind": "melee_burst",
+   "targeting": "aimed",
+   "summary": "A broad, slow, crushing blow across 100 degrees, Braced: 2x strike damage and 60 poise to everything in it, and each one is Taunted for 4 s. It moves nobody, and shatters every stone of yours in its arc.",
+   "verb_fit": "Crumble is \"break stone and guard\": the blow breaks guards across a whole front, and everything whose guard you broke turns on you.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.4,
+    "windup": 0.5,
+    "braced": true,
+    "damage_mult": 2.0,
+    "reach_bonus": 1.2,
+    "arc_deg": 100.0,
+    "shatters_stone": true,
+    "on_hit": {
+     "poise": 60.0,
+     "status": "taunted",
+     "status_s": 4.0
+    }
+   },
+   "signature": [
+    "on_hit.poise"
+   ],
+   "ascension": {
+    "power": "damage_mult",
+    "reach": "reach_bonus",
+    "speed": "windup",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Hold",
+     "word": "Heavy Landslide: hold it for a harder blow"
+    },
+    {
+     "rune": "Quake",
+     "word": "Shaking Landslide: wider, more poise"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Landslide: a broader arc"
+    },
+    {
+     "rune": "Weigh",
+     "word": "Weighted Landslide: more poise, and the taunt holds"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Tunnel",
+     "why": "a blow cannot go underground; through on a sweep does nothing. Falls back"
+    },
+    {
+     "rune": "Persist",
+     "why": "a blow has nothing that lasts but the taunt; falls back to a little power"
+    },
+    {
+     "rune": "Motion",
+     "why": "a planted, Braced blow does not travel; falls back"
+    }
+   ],
+   "change_note": "Lighter and wider for the tank: 3.2x -> 2x, 80 -> 60 poise, arc 60 -> 100 degrees, wind-up 0.6 -> 0.5 s, cost 16 -> 12, and everything it hits is Taunted."
+  },
+  {
+   "id": "bedrock_shove",
+   "name": "Bedrock Shove",
+   "affinity": "earth",
+   "base_rune": "EAR-3a",
+   "rune": "Root",
+   "status": "changed",
+   "starter": true,
+   "starter_slot": "movement",
+   "serves": "role",
+   "kind": "dash",
+   "targeting": "aimed",
+   "summary": "Shoulder first, 3.5 m, Braced throughout. The first enemy you meet is thrown 2 m and loses 50 poise (a heavy one stops you dead and loses 60), and everything within 3 m of where you stop is Taunted for 4 s.",
+   "verb_fit": "Root is \"anchor, stand firm\": you move as the ground moves, unstoppable and Braced, and where you stop is where you stand - and they come to you there.",
+   "numbers": {
+    "cost": 8.0,
+    "reflux_per_cost": 0.4,
+    "dash_speed": 11.667,
+    "dash_time": 0.3,
+    "stops_at_bodies": true,
+    "braced": true,
+    "on_stop": {
+     "shove": 2.0,
+     "poise": 50.0
+    },
+    "heavy_poise": 60.0,
+    "arrive_radius": 3.0,
+    "on_arrive": {
+     "status": "taunted",
+     "status_s": 4.0
+    }
+   },
+   "signature": [
+    "braced",
+    "on_stop.poise"
+   ],
+   "ascension": {
+    "power": "on_stop.poise",
+    "reach": "arrive_radius",
+    "speed": "dash_speed",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Crumble",
+     "word": "Breaking Shove: more poise"
+    },
+    {
+     "rune": "Motion",
+     "word": "Running Shove: faster"
+    },
+    {
+     "rune": "Weigh",
+     "word": "Heavy Shove: the taunt reaches and holds"
+    },
+    {
+     "rune": "Quake",
+     "word": "Shaking Shove: the stop shakes a wider ring"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Tunnel",
+     "why": "under the floor you cannot shoulder anyone; it should not act"
+    },
+    {
+     "rune": "Persist",
+     "why": "a dash has nothing that lasts but the taunt; falls back"
+    },
+    {
+     "rune": "Haste",
+     "why": "it has no wind-up to cut; falls back to a little power"
+    }
+   ],
+   "change_note": "Now the movement starter (Raise Slab was the third kit skill, but it does not move you). Cost 12 -> 8 (cheap tier), shove 3 -> 2 m, and it Taunts everything within 3 m of where you stop."
+  },
+  {
+   "id": "raise_slab",
+   "name": "Raise Slab",
+   "affinity": "earth",
+   "base_rune": "EAR-1a",
+   "rune": "Raise",
+   "status": "changed",
+   "starter": false,
+   "serves": "role",
+   "kind": "prop",
+   "targeting": "point",
+   "summary": "A wall of stone across your aim, up to 8 m away. It blocks movement and shots - theirs and yours - for 12 s. Three at a time.",
+   "verb_fit": "Raise is \"stone up\": the wall the area tank holds its ground behind.",
+   "numbers": {
+    "cost": 6.0,
+    "reflux_per_cost": 0.4,
+    "windup": 0.35,
+    "braced": true,
+    "range": 8.0,
+    "min_range": 1.5,
+    "width": 3.0,
+    "thickness": 0.6,
+    "height": 1.8,
+    "rise_time": 0.35,
+    "life": 12.0,
+    "on_rise": {
+     "damage": 20.0,
+     "shove": 1.0
+    }
+   },
+   "signature": [
+    "width",
+    "life"
+   ],
+   "ascension": {
+    "power": "on_rise.damage",
+    "reach": "range",
+    "speed": "life",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Lasting Slab: stands longer"
+    },
+    {
+     "rune": "Expand",
+     "word": "Long Slab: a wider wall"
+    },
+    {
+     "rune": "Far",
+     "word": "Distant Slab: raise it farther off"
+    },
+    {
+     "rune": "Harden",
+     "word": "Hard Slab: it takes more to wear down"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Crumble",
+     "why": "breaks the stone it is raising. The two cancel"
+    },
+    {
+     "rune": "Tunnel",
+     "why": "a wall that lets you pass through; falls back"
+    },
+    {
+     "rune": "Motion",
+     "why": "a wall that travels; falls back"
+    }
+   ],
+   "change_note": "No longer a starter (Bedrock Shove is the movement starter). Numbers unchanged."
+  },
+  {
+   "id": "pillar",
+   "name": "Pillar",
+   "affinity": "earth",
+   "base_rune": "EAR-1a",
+   "rune": "Raise",
+   "status": "changed",
+   "starter": false,
+   "serves": "role",
+   "kind": "delayed_blast",
+   "targeting": "point",
+   "summary": "Point, 9 m: a circle is marked for half a second, then a column punches up - 90, 60 poise, interrupts - and stays as stone.",
+   "verb_fit": "Raise is \"stone up\": stone comes up under them and stays, more ground that is yours.",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 0.4,
+    "windup": 0.3,
+    "braced": true,
+    "range": 9.0,
+    "radius": 1.2,
+    "delay": 0.5,
+    "on_hit": {
+     "damage": 90.0,
+     "poise": 60.0,
+     "interrupts": true
+    },
+    "leave_prop": {
+     "width": 1.2,
+     "thickness": 1.2,
+     "height": 1.8,
+     "rise_time": 0.05,
+     "life": 12.0
+    }
+   },
+   "signature": [
+    "on_hit.poise",
+    "leave_prop.life"
+   ],
+   "ascension": {
+    "power": "on_hit.damage",
+    "reach": "range",
+    "speed": "delay",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Haste",
+     "word": "Sudden Pillar: comes up sooner"
+    },
+    {
+     "rune": "Contract",
+     "word": "Narrow Pillar: smaller and harder"
+    },
+    {
+     "rune": "Persist",
+     "word": "Lasting Pillar: the stone stays longer"
+    },
+    {
+     "rune": "Collapse",
+     "word": "Toppling Pillar: it falls on them"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Sink",
+     "why": "its own opposite: a column that is a pit. The two cancel"
+    },
+    {
+     "rune": "Tunnel",
+     "why": "nothing to pass under; falls back"
+    },
+    {
+     "rune": "Motion",
+     "why": "a column does not travel; falls back"
+    }
+   ],
+   "change_note": "Tank tier: 120 -> 90, cost 12 -> 10."
+  },
+  {
+   "id": "sinkhole",
+   "name": "Sinkhole",
+   "affinity": "earth",
+   "base_rune": "EAR-1b",
+   "rune": "Sink",
+   "status": "changed",
+   "starter": false,
+   "serves": "role",
+   "kind": "prop",
+   "targeting": "point",
+   "summary": "Point, 9 m, 0.5 s wind-up (Braced): the floor drops into a pit 2.5 m across for 10 s. Enemies standing there fall in for 30 damage and 40 poise. Inside they are Mired and need 1.5 s to climb out; enemies walk round it, and shots fly over it. It counts as one of your three stones.",
+   "verb_fit": "Sink is \"ground down, pits\": terrain that takes a piece of the floor away from them.",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 0.4,
+    "windup": 0.5,
+    "braced": true,
+    "shape": "pit",
+    "range": 9.0,
+    "radius": 2.5,
+    "rise_time": 0.3,
+    "life": 10.0,
+    "climb_out_s": 1.5,
+    "on_rise": {
+     "damage": 30.0,
+     "status": "mired"
+    },
+    "on_hit": {
+     "poise": 40.0
+    }
+   },
+   "signature": [
+    "on_rise.status",
+    "climb_out_s"
+   ],
+   "ascension": {
+    "power": "on_rise.damage",
+    "reach": "radius",
+    "speed": "life",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Lasting Pit: stays open longer"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Pit: a bigger hole"
+    },
+    {
+     "rune": "Collapse",
+     "word": "Caving Pit: the edges fall in on them"
+    },
+    {
+     "rune": "Crumble",
+     "word": "Crumbling Pit: more poise as they fall"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Raise",
+     "why": "its own opposite: a pit that is a wall. The two cancel"
+    },
+    {
+     "rune": "Tunnel",
+     "why": "a hole to go through; falls back"
+    },
+    {
+     "rune": "Motion",
+     "why": "a hole does not travel; falls back"
+    }
+   ],
+   "change_note": "Tank tier: cost 12 -> 10."
+  },
+  {
+   "id": "stonehide",
+   "name": "Stonehide",
+   "affinity": "earth",
+   "base_rune": "EAR-2a",
+   "rune": "Harden",
+   "status": "changed",
+   "starter": false,
+   "serves": "role",
+   "kind": "self_buff",
+   "targeting": "self",
+   "summary": "8 s Braced: 40% less damage, and nothing staggers or shoves you. You move 25% slower, and the ground within 2.5 m of you thickens: enemies in it are Mired.",
+   "verb_fit": "Harden is \"solidify, armour\": your skin turns to stone, and the ground round your feet with it.",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 0.4,
+    "buff": "stonehide",
+    "duration": 8.0,
+    "incoming_mult": 0.6,
+    "move_speed_mult": 0.75,
+    "aura": {
+     "radius": 2.5,
+     "tick_s": 0.5,
+     "payload": {
+      "status": "mired"
+     }
+    }
+   },
+   "signature": [
+    "duration",
+    "incoming_mult"
+   ],
+   "ascension": {
+    "power": "incoming_mult",
+    "reach": "aura.radius",
+    "speed": "duration",
+    "cost": "cost"
+   },
+   "new_mechanics": [
+    {
+     "name": "aura",
+     "kind": "behaviour",
+     "definition": "A self_buff's aura {radius, tick_s, payload, pull_per_s} applies its payload every tick_s to each enemy within radius of the caster (a hold lands once per target per cast, as zones do) and drags them toward the caster at pull_per_s. It moves with you."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Hide: lasts longer"
+    },
+    {
+     "rune": "Self",
+     "word": "it acts on you: longer"
+    },
+    {
+     "rune": "Essence",
+     "word": "Cheap Hide: costs less"
+    },
+    {
+     "rune": "Root",
+     "word": "Rooted Hide: you are Braced harder"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Hide: the thick ground reaches farther"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Crumble",
+     "why": "its own opposite: breaking the stone you wear. The two cancel"
+    },
+    {
+     "rune": "Tunnel",
+     "why": "a buff cannot go underground; falls back"
+    },
+    {
+     "rune": "Far",
+     "why": "your skin has no range; falls back to a cost cut"
+    }
+   ],
+   "change_note": "Cost 12 -> 10, its 40% made explicit as incoming_mult, and a 2.5 m aura that Mires enemies beside you (the area tank's ground; it gives reach a field)."
+  },
+  {
+   "id": "tremor",
+   "name": "Tremor",
+   "affinity": "earth",
+   "base_rune": "EAR-3b",
+   "rune": "Quake",
+   "status": "changed",
+   "starter": false,
+   "serves": "role",
+   "kind": "melee_burst",
+   "targeting": "self",
+   "summary": "Everything within 5 m takes 50, is interrupted and Slowed for 3 s - and every stone you have standing shatters outward at once.",
+   "verb_fit": "Quake is \"shake, unbalance\": the whole area you stand in is shaken, and your stone with it.",
+   "numbers": {
+    "cost": 14.0,
+    "reflux_per_cost": 0.4,
+    "windup": 0.5,
+    "braced": true,
+    "arc_deg": 360.0,
+    "reach_bonus": 2.7,
+    "shatters_all_stone": true,
+    "on_hit": {
+     "damage": 50.0,
+     "interrupts": true,
+     "status": "slowed"
+    }
+   },
+   "signature": [
+    "reach_bonus"
+   ],
+   "ascension": {
+    "power": "on_hit.damage",
+    "reach": "reach_bonus",
+    "speed": "windup",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Expand",
+     "word": "Wide Tremor: shakes farther"
+    },
+    {
+     "rune": "Bury",
+     "word": "Burying Tremor: what it shakes is Pinned"
+    },
+    {
+     "rune": "Haste",
+     "word": "Sudden Tremor: a shorter wind-up"
+    },
+    {
+     "rune": "Weigh",
+     "word": "Heavy Tremor: what it shakes is Taunted"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Root",
+     "why": "its own opposite: stand firm while shaking. Braced already; falls back"
+    },
+    {
+     "rune": "Tunnel",
+     "why": "a ring round you has nothing to pass through; falls back"
+    },
+    {
+     "rune": "Motion",
+     "why": "a quake where you stand does not travel; falls back"
+    }
+   ],
+   "change_note": "Tank tier: 60 -> 50, cost 18 -> 14."
+  },
+  {
+   "id": "cave_in",
+   "name": "Cave-In",
+   "affinity": "earth",
+   "base_rune": "EAR-5b",
+   "rune": "Collapse",
+   "status": "changed",
+   "starter": false,
+   "serves": "role",
+   "kind": "delayed_blast",
+   "targeting": "point",
+   "summary": "Point, 10 m, 0.4 s wind-up (Braced): rock comes down on a 3 m circle a full second later. Everything still under it takes 100 and 70 poise and is Stunned for 1 s, elites included. The rubble stays for 15 s: nothing can walk through it, but shots pass over. It counts as one of your three stones.",
+   "verb_fit": "Collapse is \"bring the ground down and close a passage\": a piece of the battlefield shut, with them under it.",
+   "numbers": {
+    "cost": 16.0,
+    "reflux_per_cost": 0.4,
+    "windup": 0.4,
+    "braced": true,
+    "range": 10.0,
+    "radius": 3.0,
+    "delay": 1.0,
+    "on_hit": {
+     "damage": 100.0,
+     "poise": 70.0,
+     "status": "stunned"
+    },
+    "leave_prop": {
+     "shape": "rubble",
+     "radius": 3.0,
+     "life": 15.0,
+     "blocks_shots": false
+    }
+   },
+   "signature": [
+    "on_hit.status",
+    "leave_prop"
+   ],
+   "ascension": {
+    "power": "on_hit.damage",
+    "reach": "radius",
+    "speed": "delay",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Haste",
+     "word": "Sudden Cave-In: it comes down sooner"
+    },
+    {
+     "rune": "Persist",
+     "word": "Lasting Rubble: the heap stays longer"
+    },
+    {
+     "rune": "Contract",
+     "word": "Narrow Cave-In: smaller and harder"
+    },
+    {
+     "rune": "Crumble",
+     "word": "Crushing Cave-In: more poise"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Tunnel",
+     "why": "its own opposite: a passage through the fall it makes. The two cancel"
+    },
+    {
+     "rune": "Motion",
+     "why": "a fall from above does not travel; falls back"
+    },
+    {
+     "rune": "Rise",
+     "why": "lifts what it is burying; it should not act"
+    }
+   ],
+   "change_note": "Tank tier: 130 -> 100, cost 20 -> 16."
+  },
+  {
+   "id": "millstone",
+   "name": "Millstone",
+   "affinity": "earth",
+   "base_rune": "new",
+   "rune": "Weigh",
+   "status": "new",
+   "starter": false,
+   "serves": "role",
+   "kind": "self_buff",
+   "targeting": "self",
+   "summary": "For 6 s you are as heavy as the hill: nothing moves, staggers or throws you, and you walk at 60%. Every enemy within 6 m is drawn toward you, 1 m a second, and Taunted while it stays inside. When it ends the ground settles under you: everything within 3 m takes 60 and 40 poise.",
+   "verb_fit": "Weigh is \"add mass\": you are the heaviest thing in the room, the room leans toward you, and then it settles.",
+   "numbers": {
+    "cost": 14.0,
+    "reflux_per_cost": 0.4,
+    "buff": "millstone",
+    "duration": 6.0,
+    "immovable": true,
+    "move_speed_mult": 0.6,
+    "aura": {
+     "radius": 6.0,
+     "tick_s": 0.5,
+     "pull_per_s": 1.0,
+     "payload": {
+      "status": "taunted",
+      "status_s": 1.0
+     }
+    },
+    "on_end": {
+     "radius": 3.0,
+     "damage": 60.0,
+     "poise": 40.0
+    }
+   },
+   "signature": [
+    "aura.pull_per_s",
+    "aura.payload.status"
+   ],
+   "ascension": {
+    "power": "on_end.damage",
+    "reach": "aura.radius",
+    "speed": "duration",
+    "cost": "cost"
+   },
+   "new_mechanics": [
+    {
+     "name": "on_end",
+     "kind": "field",
+     "definition": "A self_buff's on_end payload hits every enemy within its radius of the caster once, when the buff runs out."
+    },
+    {
+     "name": "immovable (self)",
+     "kind": "field",
+     "definition": "While a self_buff with immovable lasts, the caster cannot be shoved, pulled, staggered, thrown Aloft or knocked down; damage still lands."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Millstone: you stay heavy longer"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Millstone: draws from farther"
+    },
+    {
+     "rune": "Root",
+     "word": "Rooted Millstone: Braced as well"
+    },
+    {
+     "rune": "Quake",
+     "word": "Grinding Millstone: the settling shakes wider"
+    },
+    {
+     "rune": "Harden",
+     "word": "Stone Millstone: the settling hits harder"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Buoy",
+     "why": "its own opposite: lighten what you are making heavy. The two cancel"
+    },
+    {
+     "rune": "Motion",
+     "why": "a weight that moves is no anchor; it fights the whole skill"
+    },
+    {
+     "rune": "Tunnel",
+     "why": "under the floor nothing can see you to come for you; it should not act"
+    }
+   ]
+  },
+  {
+   "id": "quarry_throw",
+   "name": "Quarry Throw",
+   "affinity": "earth",
+   "base_rune": "new",
+   "rune": "Buoy",
+   "status": "changed",
+   "starter": false,
+   "serves": "utility",
+   "kind": "charge_release",
+   "targeting": "point",
+   "summary": "Hold to tear a boulder out of the floor (rooted and Braced, up to 1.5 s), release to lob it at the cursor, up to 14 m. 110 to 280 damage in 2.5 m by how long you held, 80 poise, and it leaves rubble: a stone that also slows enemies within 2 m of it by 40%.",
+   "verb_fit": "Buoy is \"lighten: lift a thing out of the ground to throw it\": the boulder is made light enough to throw, and lands as new ground.",
+   "numbers": {
+    "cost": 18.0,
+    "reflux_per_cost": 0.4,
+    "braced": true,
+    "charge_max": 1.5,
+    "move_factor": 0.0,
+    "release": "delayed_blast",
+    "range": 14.0,
+    "radius": 2.5,
+    "damage": 110.0,
+    "damage_full": 280.0,
+    "on_hit": {
+     "poise": 80.0
+    },
+    "leave_prop": {
+     "shape": "rubble",
+     "life": 12.0,
+     "slow_radius": 2.0,
+     "slow": 0.4
+    }
+   },
+   "signature": [
+    "damage",
+    "damage_full"
+   ],
+   "ascension": {
+    "power": "damage_full",
+    "reach": "range",
+    "speed": "charge_max",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Hold",
+     "word": "Heavy Quarry: a longer, harder hold"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Quarry: lob it farther"
+    },
+    {
+     "rune": "Crumble",
+     "word": "Breaking Quarry: more poise"
+    },
+    {
+     "rune": "Raise",
+     "word": "Standing Quarry: the rubble stands as a full stone"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Weigh",
+     "why": "its own opposite: add weight to what you are lightening to throw. The two cancel"
+    },
+    {
+     "rune": "Root",
+     "why": "you are already rooted to throw it; falls back"
+    },
+    {
+     "rune": "Motion",
+     "why": "you cannot walk while you hold it; falls back"
+    }
+   ],
+   "change_note": "Moved from Dig to the new Buoy rune. Tank tier: 150-400 -> 110-280, cost 22 -> 18, reflux 1.0 -> 0.4 (earth's usual)."
+  },
+  {
+   "id": "cairn",
+   "name": "Cairn",
+   "affinity": "earth",
+   "base_rune": "EAR-4b",
+   "rune": "Bury",
+   "status": "changed",
+   "starter": false,
+   "serves": "utility",
+   "kind": "smite",
+   "targeting": "target",
+   "summary": "One enemy within 8 m, 0.4 s wind-up (Braced): earth heaps over it. It is Buried for 2.5 s - it cannot move or act, and blows land on the stone, not on it. Shatter the cairn and the one inside takes 120 and is Staggered. Elites are Pinned instead. The cairn counts as one of your three stones.",
+   "verb_fit": "Bury is \"cover over with earth\": one enemy taken out of the fight under a heap of it.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.4,
+    "windup": 0.4,
+    "braced": true,
+    "range": 8.0,
+    "duration": 2.5,
+    "on_hit": {
+     "damage": 40.0,
+     "status": "buried",
+     "poise": 30.0
+    },
+    "shatter_bonus": 120.0
+   },
+   "signature": [
+    "on_hit.status",
+    "duration"
+   ],
+   "ascension": {
+    "power": "shatter_bonus",
+    "reach": "range",
+    "speed": "duration",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Cairn: stays heaped longer"
+    },
+    {
+     "rune": "Crumble",
+     "word": "Brittle Cairn: it shatters harder"
+    },
+    {
+     "rune": "Harden",
+     "word": "Hard Cairn: it takes more to break"
+    },
+    {
+     "rune": "Haste",
+     "word": "Quick Cairn: a shorter wind-up"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Dig",
+     "why": "its own opposite: unearth what you bury. The two cancel"
+    },
+    {
+     "rune": "Tunnel",
+     "why": "a passage out of the heap; it should not act"
+    },
+    {
+     "rune": "Motion",
+     "why": "a heap does not travel; falls back"
+    }
+   ],
+   "change_note": "Tank tier: cost 14 -> 12. Kind is smite (as built; the draft's new:seize)."
+  },
+  {
+   "id": "burrow",
+   "name": "Burrow",
+   "affinity": "earth",
+   "base_rune": "EAR-5a",
+   "rune": "Tunnel",
+   "status": "changed",
+   "starter": false,
+   "serves": "utility",
+   "kind": "dash",
+   "targeting": "aimed",
+   "summary": "0.3 s wind-up (Braced), then you go under the floor and come up 6 m on, 0.4 s later, passing beneath enemies, stone and shots. Where you surface the ground heaves: enemies within 1.5 m lose 40 poise and are pushed 1.5 m off.",
+   "verb_fit": "Tunnel is \"pass through the ground\": the tank's way to reach a runner or leave a bad spot, without ever leaving the ground.",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 0.4,
+    "windup": 0.3,
+    "braced": true,
+    "dash_speed": 15.0,
+    "dash_time": 0.4,
+    "under": true,
+    "arrive_radius": 1.5,
+    "on_arrive": {
+     "poise": 40.0,
+     "shove": 1.5
+    },
+    "shatters_stone": true
+   },
+   "signature": [
+    "under",
+    "dash_speed"
+   ],
+   "ascension": {
+    "power": "on_arrive.poise",
+    "reach": "dash_time",
+    "speed": "dash_speed",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Quake",
+     "word": "Heaving Burrow: a wider heave"
+    },
+    {
+     "rune": "Motion",
+     "word": "Fast Burrow: quicker under"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Burrow: the heave reaches farther"
+    },
+    {
+     "rune": "Weigh",
+     "word": "Calling Burrow: what the heave throws comes back for you"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Collapse",
+     "why": "its own opposite: close the passage you are in. It should not act"
+    },
+    {
+     "rune": "Root",
+     "why": "anchored, you cannot tunnel; falls back"
+    },
+    {
+     "rune": "Persist",
+     "why": "a passage has nothing that lasts; falls back"
+    }
+   ],
+   "change_note": "Tank tier: cost 12 -> 10."
+  }
+ ],
+ "effects": {
+  "Raise": "poise x1.3",
+  "Sink": "status mired",
+  "Harden": "power x1.15; speed x0.9",
+  "Crumble": "poise x1.5",
+  "Root": "braced; poise x1.2",
+  "Quake": "reach x1.2; poise x1.3",
+  "Dig": "power x1.15; cost x0.9",
+  "Bury": "status pinned",
+  "Tunnel": "through; reach x1.1",
+  "Collapse": "status pinned; poise x1.3",
+  "Weigh": "status taunted; poise x1.15",
+  "Buoy": "reach x1.25; speed x1.15"
+ }
+}

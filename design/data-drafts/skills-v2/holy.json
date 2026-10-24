@@ -1,0 +1,315 @@
+{
+  "affinity": "holy",
+  "parents": ["light", "life"],
+  "role": "Paladin / support: wards and shields, buffs, cleansing - guarding you and your summons, and judging what threatens them.",
+  "reflux_tier": "low",
+  "reflux_per_cost": 0.7,
+  "reflux_why": "Light's clean power (0.7) rather than Life's body work (1.0): a support casts often and in small amounts and must not lock up. The price is paid in essence instead - wards and blessings sit at mid cost - and in the ward cap.",
+  "rule": "Holy wards what is yours: a ward takes blows before your bar, so a blow it wholly stops opens no wound, and when a ward breaks it pays out its light - 30 and Lit to every enemy within 3 m. Wards cover you and your summons, living or not; Holy's healing touches only the living.",
+  "rule_data": {"ward_cap": 60, "ward_break_payload": {"radius": 3, "damage": 30, "status": "lit"}, "ward_targets": "self_and_summons", "heal_living_only": true},
+  "rule_why": "Light's half: a ward is light held round a body, and like all Holy light it shows and burns what it touches when it breaks (Lit, from Light's Shine). Life's half: it keeps the body whole - here by keeping wounds from opening rather than by closing them, which is Life's job - and its few heals obey Life's living-only rule. A breaking ward that hits back makes guarding a way of fighting in a solo game.",
+  "axis_position_proposed": {"heat": 0.35, "substance": -0.2, "vitality": 0.65, "light": 0.6, "mind_matter": 0.2, "why": "The midpoint of Light [0.4, -0.4, 0.3, 1, 0] and Life [0.3, 0, 1, 0.2, 0.4], as framework.md and design/14 section 7 say hybrids sit between their parents. Not mine to set in the workbook; for Brent."},
+  "band_shift": "Hits lighter than the bands (ray 50, strikes 1.5-2.0x, burst 1.7x): a support's damage comes from what its wards pay out and from judged foes. Wards and blessings at mid cost (10-14); the three starters cheap or mid.",
+  "skills": [
+    {
+      "id": "dawnward", "name": "Dawnward", "affinity": "holy", "base_rune": "HOL-1a", "rune": "Ward",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "A ward of light closes round you for 8 s and takes the next 40 damage; each summon of yours within 6 m gets a 20 ward of its own. A ward a blow breaks bursts outward (30 and Lit, Holy's rule). Whatever is left of yours when the 8 s run out sinks in: half of it comes back to you as health, at once.",
+      "verb_fit": "Ward is raising a guard of light over a body. Parents: Light's Glow (a steady light that stays round you) and Life's Heal (what the ward did not spend sinks into the body).",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.7, "duration": 8, "buff": "warded", "ward": 40, "summon_ward": 20, "radius": 6, "expire_heal_frac": 0.5},
+      "ascension": {"power": "ward", "reach": "radius", "speed": "duration", "cost": "cost"},
+      "signature": ["ward", "duration"],
+      "new_mechanics": [
+        {"name": "ward", "kind": "behaviour", "definition": "The ward of unholy.json (black_shroud) and water.json (a Crush gives 15), one mechanic: a pool on the player - and, new here, on a summon - filled by ward keys (ward, summon_ward, arrive_ward, ward_per_s, ward_per_cleansed...) up to rule ward_cap 60 per body (Water's cap). In take_hit, after armour and tempering and before talents, the ward takes the blow first; only what is left reaches the bar, and the wound rules read only that part (a blow wholly stopped opens no wound). Wards from several skills add into the one pool; each ward amount keeps its own timer and the oldest is spent first. When the pool reaches 0 from a blow, rule ward_break_payload goes off round the bearer. HUD: a pale band over the health bar."},
+        {"name": "expire_heal_frac", "kind": "behaviour", "definition": "A ward key: when this skill's ward runs out of time unspent, the bearer gains expire_heal_frac of what is left as health at once (to the ceiling wounds allow; living bearers only)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a long dawn: the ward holds half as long again"},
+        {"rune": "Bless", "word": "a blessed ward: 15% stronger and longer"},
+        {"rune": "Hallow", "word": "a ward that holds its ground: 30% longer"},
+        {"rune": "Essence", "word": "cheaper: 15% less essence"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Humble", "why": "breaking the guard you are raising. Exposed has nobody to land on; the verbs cancel and the word should not form."},
+        {"rune": "Fade", "why": "a ward that ends early is a worse ward; the +25% has no damage to raise, so it is a straight loss."}
+      ]
+    },
+    {
+      "id": "guardbreaker", "name": "Guardbreaker", "affinity": "holy", "base_rune": "HOL-1b", "rune": "Humble",
+      "status": "new", "starter": false,
+      "kind": "targeted_strike", "targeting": "target",
+      "summary": "One enemy in reach: 2.0x strike damage, and the proud are brought low. Its guard is broken (Exposed for 5 s: every hit counts as from behind and its shield does nothing) and every boon on it - Frenzied, Drummed, Roused - is stripped away.",
+      "verb_fit": "Humble is bringing a guard down. Parents: Light (the gaps in the guard shown - Lit's open armour, taken all the way to Exposed) and Life (the body that was swollen with a Censer's frenzy made ordinary again).",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "windup": 0.25, "damage_mult": 2.0, "range_bonus": 1.0,
+        "on_hit": {"status": "exposed", "status_s": 5, "purge": true, "poise": 35}},
+      "ascension": {"power": "damage_mult", "reach": "range_bonus", "speed": "windup", "cost": "cost"},
+      "signature": ["on_hit.status", "on_hit.purge"],
+      "new_mechanics": [
+        {"name": "purge", "kind": "behaviour", "definition": "A payload key: removes every enemy boon from the target - a list in balance.json 'enemy_boons' (frenzied, drummed, roused, and later ones)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Condemn", "word": "humbled and judged: Condemned too"},
+        {"rune": "Wrath", "word": "a wrathful blow: 20% harder, and Lit"},
+        {"rune": "Sever", "word": "the guard cut through: 30% more poise damage"},
+        {"rune": "Persist", "word": "the guard stays broken half as long again"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Ward", "why": "raising a guard on the foe you are humbling; Braced on your wind-up lands, but the word contradicts itself."},
+        {"rune": "Many", "why": "one foe brought low; a strike does not jump, so the 15% damage loss lands."}
+      ]
+    },
+    {
+      "id": "benediction", "name": "Benediction", "affinity": "holy", "base_rune": "HOL-2a", "rune": "Bless",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "For 8 s you and your summons within 8 m are blessed: 20% more damage, half the poise loss, and every strike Lights what it hits (its armour counts half).",
+      "verb_fit": "Bless gives a boon to a body that is yours. Parents: Light (every blessed blow sheds light: Lit) and Life (Strengthen: the body made stronger).",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.7, "duration": 8, "buff": "blessed", "radius": 8, "damage_mult": 1.2, "poise_loss_mult": 0.5, "strike_status": "lit"},
+      "ascension": {"power": "damage_mult", "reach": "radius", "speed": "duration", "cost": "cost"},
+      "signature": ["damage_mult", "strike_status"],
+      "new_mechanics": [
+        {"name": "blessed", "kind": "status", "definition": "A buff on the player or a summon (shared buff, life.json): damage dealt x damage_mult, poise lost x poise_loss_mult, and its strikes (a summon's blows) apply strike_status (the strike_status key already used by fire)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a lasting blessing: half as long again"},
+        {"rune": "Hallow", "word": "blessed ground: 30% longer"},
+        {"rune": "Expand", "word": "the blessing reaches summons 30% further off"},
+        {"rune": "Zeal", "word": "a zealous blessing: quicker to give"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Condemn", "why": "judging the bodies you bless; Condemned has no foe to land on and the verbs cancel."},
+        {"rune": "Tainted", "why": "a corrupted blessing; a self buff hits nobody, so it falls back to a small cost cut."}
+      ]
+    },
+    {
+      "id": "condemning_ray", "name": "Condemning Ray", "affinity": "holy", "base_rune": "HOL-2b", "rune": "Condemn",
+      "status": "new", "starter": true, "starter_slot": "ranged",
+      "kind": "beam", "targeting": "aimed",
+      "summary": "An instant line of judging light, 14 m: the first thing on it takes 50 and is Condemned for 8 s - Lit, and every hit you or your summons land on it adds 4 to your ward (up to 30 from one Condemned foe). Walls, stone and a raised shield stop it.",
+      "verb_fit": "Condemn marks a foe for judgement. Parents: Light (an instant straight line that stops on the first opaque thing, and Lights its target) and Life (what you take from the judged keeps your body whole - as a ward, Holy's way).",
+      "numbers": {"cost": 7, "reflux_per_cost": 0.7, "damage": 50, "range": 14, "width": 0.5,
+        "on_hit": {"status": "condemned", "status_s": 8}},
+      "ascension": {"power": "damage", "reach": "range", "speed": "on_hit.status_s", "cost": "cost"},
+      "ascension_note": "speed acts on how long Condemned lasts (status_s, the payload key _status_opts already reads).",
+      "signature": ["on_hit.status", "range"],
+      "new_mechanics": [
+        {"name": "condemned", "kind": "status", "definition": "Enemy status, 1 stack, 8 s: counts_as lit and carries Lit's armour_mult 0.5 and light_radius; every hit on it by whoever applied it or their summons adds ward_to_attacker 4 to that player's ward, at most ward_from_one 30 per Condemned body. The Condemn rune's effect."}
+      ],
+      "good_modifiers": [
+        {"rune": "Far", "word": "judgement from 40% further"},
+        {"rune": "Reflect", "word": "the ray glances on to one more"},
+        {"rune": "Persist", "word": "a long sentence: half as long again"},
+        {"rune": "Wrath", "word": "a wrathful ray: 20% harder"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Mercy", "why": "mercy on the one you condemn; the reflux cut lands and the damage drops, and the word contradicts itself."},
+        {"rune": "Curve", "why": "Holy light bends no more than Light's does; on an instant line it only nudges reach."}
+      ]
+    },
+    {
+      "id": "absolution", "name": "Absolution", "affinity": "holy", "base_rune": "HOL-3a", "rune": "Absolve",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "At once, every bind on you and your summons within 8 m is lifted: stagger, holds, slows, stuns, blinding, choking and fear. You gain a 10 ward, and 8 more for each bind lifted (up to 40). For 4 s after, the next bind to reach you is turned away.",
+      "verb_fit": "Absolve lifts what weighs on a body. Parents: Life's Cure (a cleanse, but of binds, not of sickness - Life keeps afflictions) and Light's Clarity (blindness and fear lifted; sight restored).",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "radius": 8, "cleanse": "binds", "ward": 10, "ward_per_cleansed": 8, "ward_cleansed_max": 40, "duration": 4, "buff": "absolved", "turns_away": 1},
+      "ascension": {"power": "ward_per_cleansed", "reach": "radius", "speed": "duration", "cost": "cost"},
+      "signature": ["cleanse", "ward_per_cleansed"],
+      "new_mechanics": [
+        {"name": "absolved", "kind": "status", "definition": "A buff on the player or a summon: the next turns_away statuses from the 'binds' list (life.json, cleanse lists) that would land on it within duration are refused."},
+        {"name": "ward_per_cleansed", "kind": "behaviour", "definition": "A cleanse key: each status removed adds this much ward (up to ward_cleansed_max)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "the absolution holds half as long again"},
+        {"rune": "Ward", "word": "absolved and guarded: Braced as you cast, a little cooler"},
+        {"rune": "Expand", "word": "lifted from summons 30% further off"},
+        {"rune": "Essence", "word": "cheaper: 15% less essence"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Penance", "why": "laying a burden on the bodies you free; Penitent has no foe to land on and the verbs cancel."},
+        {"rune": "Tainted", "why": "corrupting a cleanse; it falls back to a small cost cut."}
+      ]
+    },
+    {
+      "id": "penitent_mark", "name": "Penitent Mark", "affinity": "holy", "base_rune": "HOL-3b", "rune": "Penance",
+      "status": "new", "starter": false,
+      "kind": "smite", "targeting": "target",
+      "summary": "One enemy within 10 m must do penance for 8 s: 15 damage, and every attack it starts burns it for 25 (through you), and its blows on you and yours do 30% less. Lay it on the brute before it swings.",
+      "verb_fit": "Penance lays a burden that the foe pays for itself. Parents: Light (judgement that burns) and Life's Weaken (a body whose blows are wasted).",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "range": 10, "duration": 8, "on_hit": {"damage": 15, "status": "penitent"}},
+      "ascension": {"power": "on_hit.damage", "reach": "range", "speed": "duration", "cost": "cost"},
+      "signature": ["on_hit.status", "duration"],
+      "new_mechanics": [
+        {"name": "penitent", "kind": "status", "definition": "Enemy status, 1 stack, lasts the skill's duration: each attack it starts deals it on_attack_damage 25, through whoever applied it (tags holy, through); deals_mult 0.7 against the applier and the applier's summons only. The Penance rune's effect."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a long penance: half as long again"},
+        {"rune": "Far", "word": "laid from 40% further"},
+        {"rune": "Condemn", "word": "penitent and condemned: its blows feed your ward too"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Absolve", "why": "lifting the burden you lay; the cost and reflux cuts land but the verbs cancel; the word should not form."},
+        {"rune": "Within", "why": "a smite is not a shot; pierce falls back to a small damage bonus."}
+      ]
+    },
+    {
+      "id": "hallowed_ground", "name": "Hallowed Ground", "affinity": "holy", "base_rune": "HOL-4a", "rune": "Hallow",
+      "status": "new", "starter": false,
+      "kind": "ground_zone", "targeting": "point",
+      "summary": "Point, 8 m: a 3.5 m circle is hallowed for 8 s. You and your summons inside take 20% less and gain 5 ward a second (up to 30). Enemies inside are Lit. Stand your ground in it.",
+      "verb_fit": "Hallow makes a place holy, and keeps what is yours in it. Parents: Light (a lamp's steady light given a place: Lit, as Still Lamp) and Life (a place that keeps bodies whole).",
+      "numbers": {"cost": 14, "reflux_per_cost": 0.7, "range": 8,
+        "zone": {"shape": "circle", "radius": 3.5, "life": 8.0, "tick_s": 0.5, "payload": {"status": "lit"},
+          "ally_payload": {"ward_per_s": 5, "ward_max": 30, "damage_taken_mult": 0.8}}},
+      "ascension": {"power": "zone.ally_payload.ward_per_s", "reach": "zone.radius", "speed": "zone.life", "cost": "cost"},
+      "signature": ["zone.ally_payload", "zone.life"],
+      "new_mechanics": [
+        {"name": "ally_payload", "kind": "field", "definition": "A ground_zone key: applied each tick to the player and the player's summons inside it (ward_per_s adds ward up to ward_max from this zone; damage_taken_mult while inside). payload stays for enemies."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "long-hallowed: half as long again"},
+        {"rune": "Expand", "word": "a wider sanctuary: 30% larger"},
+        {"rune": "Bless", "word": "blessed ground: 15% stronger, 15% longer"},
+        {"rune": "Here", "word": "hallowed right where you stand"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Fade", "why": "a sanctuary that ends early: 30% shorter, and the +25% has no damage to raise (the zone's ward is not power). A straight loss."},
+        {"rune": "Motion", "why": "hallowed ground does not travel; the zone has no speed, so it falls back to a small damage bonus."}
+      ]
+    },
+    {
+      "id": "casting_out", "name": "Casting Out", "affinity": "holy", "base_rune": "HOL-4b", "rune": "Exile",
+      "status": "new", "starter": false,
+      "kind": "melee_burst", "targeting": "aimed",
+      "summary": "A wall of light thrust out ahead: everything in a 90 degree cone 4 m deep takes 30, is shoved 3 m away and is Exiled for 4 s: it will not come within 4 m of you (archers still shoot).",
+      "verb_fit": "Exile drives a foe out and keeps it out. Utility: room to breathe for a support with no tank. Parents: Light's Radiate (light poured outward) and Holy's own guard of what is yours.",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "windup": 0.15, "damage": 30, "reach_bonus": 1.7, "arc_deg": 90, "not_melee": true,
+        "on_hit": {"shove": 3.0, "status": "exiled", "poise": 20}},
+      "ascension": {"power": "damage", "reach": "reach_bonus", "speed": "windup", "cost": "cost"},
+      "signature": ["on_hit.status", "on_hit.shove"],
+      "new_mechanics": [
+        {"name": "exiled", "kind": "status", "definition": "Enemy status, 1 stack, 4 s: flees source while within keep_distance 4 m of whoever applied it and will not path closer; it may still shoot and cast. heavy_lasts_mult 0.5; an elite is shoved but not Exiled. The Exile rune's effect."}
+      ],
+      "good_modifiers": [
+        {"rune": "Repel", "word": "cast further: 1.5 m more"},
+        {"rune": "Persist", "word": "a long exile: half as long again"},
+        {"rune": "Scatter", "word": "a wider cone"},
+        {"rune": "Wrath", "word": "cast out in wrath: 20% harder, Lit"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Attract", "why": "pulling in what you cast out; the pull lands against the shove and the word contradicts itself."},
+        {"rune": "Hallow", "why": "keeping a place while driving foes from you; the duration lengthens the exile, which is fine, but the word says nothing new."}
+      ]
+    },
+    {
+      "id": "kind_light", "name": "Kind Light", "affinity": "holy", "base_rune": "HOL-5a", "rune": "Mercy",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "For 6 s a gentle light holds you and your summons within 6 m: every blow is 30% softer, and the light keeps what it softened. When it ends, 60% of that comes back to you as health, all at once.",
+      "verb_fit": "Mercy softens harm and gives back. Holy's one true heal, and a heal in a moment, not over time. Parents: Life's Heal (the body given back) and Light's Glow (a soft light held round you).",
+      "numbers": {"cost": 12, "reflux_per_cost": 0.7, "duration": 6, "buff": "kind_light", "radius": 6, "incoming_mult": 0.7, "softened_return": 0.6},
+      "ascension": {"power": "softened_return", "reach": "radius", "speed": "duration", "cost": "cost"},
+      "signature": ["incoming_mult", "softened_return"],
+      "new_mechanics": [
+        {"name": "kind_light", "kind": "status", "definition": "A buff on the player or a summon: blows taken x incoming_mult (the incoming_mult key already in abilities.json); the amount taken off is banked; when it ends the bearer gains softened_return of the bank as health at once (living bearers only; to the ceiling wounds allow)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "a long kindness: half as long again"},
+        {"rune": "Ward", "word": "kindness and a guard: Braced as you cast"},
+        {"rune": "Expand", "word": "it holds summons 30% further off"},
+        {"rune": "Essence", "word": "cheaper: 15% less essence"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Wrath", "why": "wrath on the skill that is mercy; a self buff has no hit for Lit and the verbs cancel."},
+        {"rune": "Fade", "why": "the light ends early, so less is banked; +25% has no damage to raise. A straight loss."}
+      ]
+    },
+    {
+      "id": "rebuke", "name": "Rebuke", "affinity": "holy", "base_rune": "HOL-5b", "rune": "Wrath",
+      "status": "new", "starter": true, "starter_slot": "close",
+      "kind": "melee_burst", "targeting": "self",
+      "summary": "Light breaks out of you in wrath: everything within 3 m with a clear line to you takes 1.7x strike damage and is Lit. If you are warded it strikes half again as hard, and spends no ward.",
+      "verb_fit": "Wrath is radiant fury poured out. Parents: Light's Radiate (Noonburst's light outward, only to what it can see) and Holy's ward (the guarded paladin hits hardest).",
+      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "windup": 0.2, "damage_mult": 1.7, "reach_bonus": 0.7, "arc_deg": 360, "needs_clear_line": true, "warded_mult": 1.5,
+        "on_hit": {"status": "lit", "poise": 25}},
+      "ascension": {"power": "damage_mult", "reach": "reach_bonus", "speed": "windup", "cost": "cost"},
+      "signature": ["damage_mult", "warded_mult"],
+      "new_mechanics": [
+        {"name": "warded_mult", "kind": "behaviour", "definition": "A skill key: x warded_mult to the cast's damage while the caster's ward is above 0. The ward is not spent."}
+      ],
+      "good_modifiers": [
+        {"rune": "Expand", "word": "a wider wrath: 30% more reach, a little softer"},
+        {"rune": "Humble", "word": "every foe in the ring Exposed"},
+        {"rune": "Flash", "word": "a blinding rebuke: Dazed"},
+        {"rune": "Focus", "word": "a tighter, hotter burst"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Mercy", "why": "mercy in a burst of wrath; the reflux cut lands, the damage drops, and the word contradicts itself."},
+        {"rune": "Within", "why": "pierce means nothing on a burst."}
+      ]
+    },
+    {
+      "id": "zealous_charge", "name": "Zealous Charge", "affinity": "holy", "base_rune": "HOL-6a", "rune": "Zeal",
+      "status": "new", "starter": true, "starter_slot": "movement",
+      "kind": "dash", "targeting": "aimed",
+      "summary": "Charge 6 m behind a shield of light, Braced the whole way, stopping at the first body: it takes 1.5x strike damage and is interrupted. You arrive with a 15 ward.",
+      "verb_fit": "Zeal is driving forward, unafraid. Parents: Light (a straight line, gone in a moment) and Holy's ward carried in with you.",
+      "numbers": {"cost": 8, "reflux_per_cost": 0.7, "dash_speed": 20, "dash_time": 0.3, "stops_at_bodies": true, "braced": true,
+        "on_stop": {"damage_mult": 1.5, "interrupts": true, "poise": 30}, "arrive_ward": 15},
+      "ascension": {"power": "on_stop.damage_mult", "reach": "dash_time", "speed": "dash_speed", "cost": "cost"},
+      "signature": ["arrive_ward", "on_stop.interrupts"],
+      "new_mechanics": [
+        {"name": "arrive_ward", "kind": "behaviour", "definition": "A movement-skill key: when the move ends the caster gains this much ward (8 s)."}
+      ],
+      "good_modifiers": [
+        {"rune": "Far", "word": "a longer charge: 40% further"},
+        {"rune": "Ward", "word": "Braced, and cooler"},
+        {"rune": "Condemn", "word": "the one you crash into is Condemned"},
+        {"rune": "Haste", "word": "out of it sooner"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Patience", "why": "waiting on the skill that will not wait: a 25% longer wind-up on a charge. Contradicts itself."},
+        {"rune": "Stillness", "why": "held in place on a charge; it slows the dash."}
+      ]
+    },
+    {
+      "id": "abiding_guard", "name": "Abiding Guard", "affinity": "holy", "base_rune": "HOL-6b", "rune": "Patience",
+      "status": "new", "starter": false,
+      "kind": "self_buff", "targeting": "self",
+      "summary": "Stand and wait for up to 1 s behind a guard of light. The first blow that lands in that time is stopped whole and answered: if its thrower is within 6 m it takes 2.5x strike damage, is Lit and Staggered, and you gain a 20 ward. If nothing comes, you keep a 10 ward for your patience.",
+      "verb_fit": "Patience waits for its moment and answers. Parents: Light's Reflect (turning back what comes at you) and Life (the body kept whole: no blow lands).",
+      "numbers": {"cost": 8, "reflux_per_cost": 0.7, "buff": "abiding", "window_s": 1.0, "move_factor": 0.0, "counter_reach": 6,
+        "counter": {"damage_mult": 2.5, "status": "staggered", "also_status": "lit"}, "counter_ward": 20, "patience_ward": 10},
+      "ascension": {"power": "counter.damage_mult", "reach": "counter_reach", "speed": "window_s", "cost": "cost"},
+      "signature": ["counter", "window_s"],
+      "new_mechanics": [
+        {"name": "counter", "kind": "behaviour", "definition": "A self_buff key set: for window_s the caster stands (move_factor) and the first blow that would land is refused whole (no damage, no poise loss, no wound). If its attacker is within counter_reach it takes the counter payload at once (a ranged attacker beyond it is not answered). Then the buff ends and counter_ward is given; if the window passes with no blow, patience_ward is given instead."}
+      ],
+      "good_modifiers": [
+        {"rune": "Persist", "word": "you can wait half as long again"},
+        {"rune": "Wrath", "word": "a wrathful answer: 20% harder"},
+        {"rune": "Far", "word": "the answer reaches 40% further"},
+        {"rune": "Reflect", "word": "the answer glances on to one more foe"}
+      ],
+      "bad_modifiers": [
+        {"rune": "Zeal", "why": "rushing the skill that waits: the window has no wind-up, so the speed half falls back. Contradicts itself."},
+        {"rune": "Loose", "why": "let go at once on a skill that is all holding; nothing to cut, and the damage loss lands."}
+      ]
+    }
+  ],
+  "effects": {
+    "Ward": "braced; reflux x0.9",
+    "Humble": "status exposed; poise x1.15",
+    "Bless": "power x1.15; duration x1.15",
+    "Condemn": "status condemned",
+    "Absolve": "cost x0.9; reflux x0.8",
+    "Penance": "status penitent",
+    "Hallow": "duration x1.3",
+    "Exile": "shove +1; status exiled",
+    "Mercy": "reflux x0.75; power x0.9",
+    "Wrath": "power x1.2; status lit",
+    "Zeal": "speed x1.2; windup x0.8",
+    "Patience": "windup x1.25; power x1.25"
+  }
+}

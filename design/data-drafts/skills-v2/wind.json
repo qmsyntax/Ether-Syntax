@@ -1,0 +1,921 @@
+{
+ "affinity": "wind",
+ "parents": [],
+ "role": "Evasive monk - positioning, rear hits, speed [B]",
+ "reflux_tier": "low",
+ "rule": "Wind is paid for by moving: running earns Slipstream pips, every wind skill spends (or earns) pips for its real effect, and wind hits from behind do half again (Lee).",
+ "new_mechanics": [],
+ "skills": [
+  {
+   "id": "cutting_gust",
+   "name": "Cutting Gust",
+   "affinity": "wind",
+   "base_rune": "WIN-2a",
+   "rune": "Lash",
+   "status": "existing",
+   "starter": true,
+   "starter_slot": "ranged",
+   "serves": "role",
+   "kind": "projectile",
+   "targeting": "aimed",
+   "summary": "A short gust that passes through everything in its line. Spends up to 3 pips for +15 each - weak from a standstill.",
+   "verb_fit": "Lash is \"air that strikes and cuts\": a thrown palm of cutting air that is only strong when you have been moving.",
+   "numbers": {
+    "cost": 7.0,
+    "reflux_per_cost": 0.7,
+    "damage": 45.0,
+    "speed": 32.0,
+    "life": 0.375,
+    "pierce": true,
+    "spend_pips": 3,
+    "pip_damage": 15.0,
+    "on_hit": {
+     "poise": 15.0
+    }
+   },
+   "signature": [
+    "damage",
+    "pip_damage"
+   ],
+   "ascension": {
+    "power": "damage",
+    "reach": "life",
+    "speed": "speed",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Far",
+     "word": "Long Gust: a longer reach"
+    },
+    {
+     "rune": "Carry",
+     "word": "Racing Gust: faster and farther"
+    },
+    {
+     "rune": "Lift",
+     "word": "Rising Gust: throws light ones Aloft"
+    },
+    {
+     "rune": "Deflect",
+     "word": "Turning Gust: everything it cuts through is left facing away"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Within",
+     "why": "it already passes through everything; pierce is wasted"
+    },
+    {
+     "rune": "Persist",
+     "why": "a gust has nothing that lasts; falls back to a little power"
+    },
+    {
+     "rune": "Buffer",
+     "why": "its own opposite: cushioning air on a cut. The cushion takes the power out"
+    }
+   ]
+  },
+  {
+   "id": "crosscut",
+   "name": "Crosscut",
+   "affinity": "wind",
+   "base_rune": "WIN-2a",
+   "rune": "Lash",
+   "status": "existing",
+   "starter": true,
+   "starter_slot": "close",
+   "serves": "role",
+   "kind": "targeted_strike",
+   "targeting": "target",
+   "summary": "One enemy within 7 m: you cut through and stop behind it. Always a hit from behind. Spends every pip for +10% each.",
+   "verb_fit": "Lash is \"air that strikes and cuts\": the monk passes through the guard and strikes from the back.",
+   "numbers": {
+    "cost": 7.0,
+    "reflux_per_cost": 0.7,
+    "damage_mult": 1.6,
+    "range": 7.0,
+    "through": true,
+    "through_dist": 2.0,
+    "pip_mult": 0.1,
+    "spend_all_pips": true,
+    "force_rear": true,
+    "recovery": 0.25,
+    "on_hit": {
+     "poise": 15.0
+    }
+   },
+   "signature": [
+    "damage_mult",
+    "pip_mult"
+   ],
+   "ascension": {
+    "power": "damage_mult",
+    "reach": "range",
+    "speed": "recovery",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Hold",
+     "word": "Drawn Cut: hold it for a harder pass"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Crosscut: reach farther"
+    },
+    {
+     "rune": "Drop",
+     "word": "Felling Cut: knocks it flat and interrupts"
+    },
+    {
+     "rune": "Deflect",
+     "word": "Turning Cut: it is left facing away from you, for another rear hit"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Buffer",
+     "why": "its own opposite: a cushion on a cut. The cushion takes the power out"
+    },
+    {
+     "rune": "Persist",
+     "why": "a pass has nothing that lasts; falls back to a little power"
+    },
+    {
+     "rune": "Self",
+     "why": "it acts on the enemy, not on you; falls back to a cost cut"
+    }
+   ]
+  },
+  {
+   "id": "tailwind",
+   "name": "Tailwind",
+   "affinity": "wind",
+   "base_rune": "WIN-4a",
+   "rune": "Carry",
+   "status": "existing",
+   "starter": true,
+   "starter_slot": "movement",
+   "serves": "role",
+   "kind": "dash",
+   "targeting": "aimed",
+   "summary": "The longest dash, +3 pips, and the only one with no recovery: you can strike or cast the instant it ends.",
+   "verb_fit": "Carry is \"be carried along, faster\": the wind takes you, and leaves you running.",
+   "numbers": {
+    "cost": 6.0,
+    "reflux_per_cost": 0.7,
+    "dash_speed": 30.0,
+    "dash_time": 0.22,
+    "stops_at_bodies": true,
+    "gain_pips": 3,
+    "no_recovery": true
+   },
+   "signature": [
+    "dash_speed",
+    "gain_pips"
+   ],
+   "ascension": {
+    "power": "gain_pips",
+    "reach": "dash_time",
+    "speed": "dash_speed",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Motion",
+     "word": "Swift Tailwind: faster still"
+    },
+    {
+     "rune": "Essence",
+     "word": "Light Tailwind: cheaper"
+    },
+    {
+     "rune": "Straight",
+     "word": "True Tailwind: a longer, straighter run"
+    },
+    {
+     "rune": "Lift",
+     "word": "Rising Tailwind: you clear bodies in the way"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Deflect",
+     "why": "its own opposite: turning aside the wind that carries you. Maths lets it act (Turned on nothing); it should not"
+    },
+    {
+     "rune": "Hold",
+     "why": "a dash cannot be held; falls back to a cost cut"
+    },
+    {
+     "rune": "Persist",
+     "why": "a dash has nothing that lasts; falls back to a cost cut"
+    }
+   ]
+  },
+  {
+   "id": "veil",
+   "name": "Crosswind Veil",
+   "affinity": "wind",
+   "base_rune": "WIN-2b",
+   "rune": "Buffer",
+   "status": "changed",
+   "starter": false,
+   "serves": "role",
+   "kind": "self_buff",
+   "targeting": "self",
+   "summary": "5 s: enemy shots that would pass within 1.5 m of you curve away and miss, each one turned gives you a pip, and your Slipstream does not drain. Blades still land.",
+   "verb_fit": "Buffer is \"cushioning air\": a cushion that turns every shot aside, and the monk is paid for each one it turns.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.7,
+    "buff": "veil",
+    "duration": 5.0,
+    "deflect_radius": 1.5,
+    "gain_pips_per_deflect": 1
+   },
+   "signature": [
+    "duration",
+    "deflect_radius"
+   ],
+   "ascension": {
+    "power": "gain_pips_per_deflect",
+    "reach": "deflect_radius",
+    "speed": "duration",
+    "cost": "cost"
+   },
+   "new_mechanics": [
+    {
+     "name": "gain_pips_per_deflect",
+     "kind": "field",
+     "definition": "With deflect_radius: enemy shots that would pass within deflect_radius of you curve away, and each one turned gives you this many pips."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Veil: lasts longer"
+    },
+    {
+     "rune": "Self",
+     "word": "it acts on you: longer"
+    },
+    {
+     "rune": "Essence",
+     "word": "Thin Veil: cheaper"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Veil: turns shots from farther out"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Lash",
+     "why": "its own opposite: a cut on a cushion. Nothing it hits; falls back to a cost cut"
+    },
+    {
+     "rune": "Drop",
+     "why": "slams nothing; a buff has no hit. Falls back to a cost cut"
+    },
+    {
+     "rune": "Within",
+     "why": "a shell is the opposite of within; falls back to a cost cut"
+    }
+   ],
+   "change_note": "Pays a pip for every shot it turns (the evasive monk is paid for evading), and the deflect radius (1.5 m) is now a number, so reach has a field."
+  },
+  {
+   "id": "gale_lane",
+   "name": "Gale Lane",
+   "affinity": "wind",
+   "base_rune": "WIN-1a",
+   "rune": "Blow",
+   "status": "existing",
+   "starter": false,
+   "serves": "role",
+   "kind": "ground_zone",
+   "targeting": "feet",
+   "summary": "A lane 10 m long from your feet, 6 s. In it you move 40% faster and gain pips twice as fast; enemies are pushed down it.",
+   "verb_fit": "Blow is \"moving air pushes\": a lane of it that carries you and shoves them.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.7,
+    "at": "feet",
+    "zone": {
+     "shape": "strip",
+     "length": 10.0,
+     "width": 2.5,
+     "life": 6.0,
+     "tick_s": 1.0,
+     "push_per_s": 3.0,
+     "caster_speed_mult": 1.4,
+     "pip_gain_mult": 2.0
+    }
+   },
+   "signature": [
+    "zone.push_per_s"
+   ],
+   "ascension": {
+    "power": "zone.caster_speed_mult",
+    "reach": "zone.length",
+    "speed": "zone.life",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Far",
+     "word": "Long Lane: a longer lane"
+    },
+    {
+     "rune": "Persist",
+     "word": "Lasting Lane: stays longer"
+    },
+    {
+     "rune": "Carry",
+     "word": "Racing Lane: faster in it"
+    },
+    {
+     "rune": "Whirl",
+     "word": "Eddying Lane: it gathers them to its middle line"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Lull",
+     "why": "its own opposite: dead air in a lane of wind. Maths lets it act; it should not"
+    },
+    {
+     "rune": "Deflect",
+     "why": "turns aside the very foes it is pushing; the two fight"
+    },
+    {
+     "rune": "Within",
+     "why": "a lane has no hit to pierce with; falls back"
+    }
+   ]
+  },
+  {
+   "id": "spindrift",
+   "name": "Spindrift",
+   "affinity": "wind",
+   "base_rune": "WIN-1a",
+   "rune": "Blow",
+   "status": "existing",
+   "starter": false,
+   "serves": "role",
+   "kind": "channel",
+   "targeting": "self",
+   "summary": "Hold while you run: you keep full speed, and every 0.25 s the nearest enemy within 3 m takes 25 (with Lee if you are behind it). Costs 6 essence a second and 1 pip every half second; ends when the pips run out.",
+   "verb_fit": "Blow is \"moving air pushes\": you are the moving air, striking as you pass.",
+   "numbers": {
+    "cost": 6.0,
+    "cost_per_s": true,
+    "reflux_per_cost": 0.7,
+    "shape": "nearest",
+    "radius": 3.0,
+    "tick": 0.25,
+    "on_hit": {
+     "damage": 25.0
+    },
+    "move_factor": 1.0,
+    "pip_cost_per_s": 2.0
+   },
+   "signature": [
+    "on_hit.damage",
+    "pip_cost_per_s"
+   ],
+   "ascension": {
+    "power": "on_hit.damage",
+    "reach": "radius",
+    "speed": "tick",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Lash",
+     "word": "Cutting Drift: harder blows"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Drift: reaches farther"
+    },
+    {
+     "rune": "Many",
+     "word": "Scattering Drift: strikes two at once"
+    },
+    {
+     "rune": "Essence",
+     "word": "Thin Drift: cheaper to hold"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Persist",
+     "why": "a held skill already lasts as long as you hold it; falls back"
+    },
+    {
+     "rune": "Lull",
+     "why": "its own opposite: the dead air stops you running. It should not act"
+    },
+    {
+     "rune": "Here",
+     "why": "a skill you run with, rooted to one spot; falls back"
+    }
+   ]
+  },
+  {
+   "id": "downdraft",
+   "name": "Downdraft",
+   "affinity": "wind",
+   "base_rune": "WIN-3b",
+   "rune": "Drop",
+   "status": "changed",
+   "starter": false,
+   "serves": "role",
+   "kind": "dash",
+   "targeting": "point",
+   "summary": "You spring up and come down on a point up to 7 m away, over bodies and gaps. Everything within 3 m of where you land takes 60, is interrupted and Pinned for 2 s; anything Aloft takes 100 more. Spends up to 3 pips for +15 each.",
+   "verb_fit": "Drop is \"slam down\": the monk is the thing that comes down, a leap from above onto the crowd.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.7,
+    "range": 7.0,
+    "dash_speed": 20.0,
+    "dash_time": 0.35,
+    "leap": true,
+    "arrive_radius": 3.0,
+    "on_arrive": {
+     "damage": 60.0,
+     "interrupts": true,
+     "status": "pinned",
+     "poise": 30.0
+    },
+    "bonus_vs_status": "aloft",
+    "bonus_damage": 100.0,
+    "spend_pips": 3,
+    "pip_damage": 15.0
+   },
+   "signature": [
+    "on_arrive.status",
+    "bonus_damage"
+   ],
+   "ascension": {
+    "power": "on_arrive.damage",
+    "reach": "range",
+    "speed": "dash_speed",
+    "cost": "cost"
+   },
+   "new_mechanics": [
+    {
+     "name": "leap",
+     "kind": "field",
+     "definition": "A dash that goes over bodies, low stone and gaps and lands at the aimed point (not through walls or standing stone taller than you); on_arrive hits everything within arrive_radius of the landing."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Contract",
+     "word": "Point Drop: a smaller, harder landing"
+    },
+    {
+     "rune": "Haste",
+     "word": "Sudden Drop: faster through the air"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Drop: a broader landing"
+    },
+    {
+     "rune": "Far",
+     "word": "Long Drop: leap farther"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Lift",
+     "why": "its own opposite: lifting what you land on, the moment you pin it. The two cancel"
+    },
+    {
+     "rune": "Lull",
+     "why": "dead air under a leap: you would just stop. It should not act"
+    },
+    {
+     "rune": "Self",
+     "why": "it lands on them, not on you; falls back to a cost cut"
+    }
+   ],
+   "change_note": "Was a point-targeted delayed blast (you stayed put); now you leap there and the blast is your landing (positioning, the monk's way). It no longer knocks shots from the air (Dead Air and Veil do that) and it now spends pips, as every wind skill does."
+  },
+  {
+   "id": "turning_palm",
+   "name": "Turning Palm",
+   "affinity": "wind",
+   "base_rune": "WIN-4b",
+   "rune": "Deflect",
+   "status": "new",
+   "starter": false,
+   "serves": "role",
+   "kind": "self_buff",
+   "targeting": "self",
+   "summary": "A 0.6 s stance. The first blow, charge or pounce aimed at you from within 3 m misses: you slip behind the attacker and strike it for 1.8x strike damage from behind, it is left Turned for 1.5 s, and you gain 2 pips. If nothing comes, half the essence comes back.",
+   "verb_fit": "Deflect is \"turn a blow or a rush aside, and the one behind it with it\": you are not where the blow lands, and the one who threw it is facing the wrong way.",
+   "numbers": {
+    "cost": 8.0,
+    "reflux_per_cost": 0.7,
+    "buff": "turning_palm",
+    "window_s": 0.6,
+    "move_factor": 0.0,
+    "counter_reach": 3.0,
+    "behind_dist": 1.5,
+    "counter": {
+     "damage_mult": 1.8,
+     "status": "turned",
+     "status_s": 1.5,
+     "poise": 30.0
+    },
+    "force_rear": true,
+    "gain_pips": 2,
+    "refund_unused": 0.5
+   },
+   "signature": [
+    "counter.status",
+    "behind_dist"
+   ],
+   "ascension": {
+    "power": "counter.damage_mult",
+    "reach": "counter_reach",
+    "speed": "window_s",
+    "cost": "cost"
+   },
+   "new_mechanics": [
+    {
+     "name": "counter (refund_unused)",
+     "kind": "field",
+     "definition": "The counter key set is Holy's (holy.json, Abiding Guard: a self_buff with window_s, counter_reach and a counter payload; the first blow that would land in the window is refused whole and the attacker takes the payload). Wind adds refund_unused: if the window passes with no blow, that share of the essence comes back (in place of Holy's patience_ward). A charge or pounce counts as a blow; a shot does not. Metal's Turn the Edge uses the same keys."
+    },
+    {
+     "name": "behind_dist",
+     "kind": "field",
+     "definition": "On a counter, the caster is moved to this far behind the attacker (a swept move; if the space is blocked, as far as it goes) before the counter payload lands."
+    },
+    {
+     "name": "turned",
+     "kind": "status",
+     "definition": "1 stack, 1 s (heavy enemies half): it is spun to face away from you, so every hit on it counts as from behind (counts_rear) until it turns back. Keys: turn_away, counts_rear, lasts, heavy_lasts_mult. Replaces Blowout's turn_s payload field; Deflect's effect uses it."
+    }
+   ],
+   "good_modifiers": [
+    {
+     "rune": "Lash",
+     "word": "Cutting Palm: a harder counter"
+    },
+    {
+     "rune": "Drop",
+     "word": "Felling Palm: the counter knocks it flat"
+    },
+    {
+     "rune": "Persist",
+     "word": "Patient Palm: the stance waits longer"
+    },
+    {
+     "rune": "Carry",
+     "word": "Racing Palm: you come out of it faster, with more pips"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Stillness",
+     "why": "a stance that moves you is the whole point; held in place it cannot slip behind anyone"
+    },
+    {
+     "rune": "Far",
+     "why": "a counter only works on what reaches you; it does nothing at a distance"
+    }
+   ]
+  },
+  {
+   "id": "updraft",
+   "name": "Updraft",
+   "affinity": "wind",
+   "base_rune": "WIN-3a",
+   "rune": "Lift",
+   "status": "existing",
+   "starter": false,
+   "serves": "utility",
+   "kind": "displace",
+   "targeting": "point",
+   "summary": "Point, 8 m: enemies within 2.5 m are thrown Aloft for 1.2 s (+0.2 s a pip, up to 4) - helpless, and taking 25% more. Heavy ones lose poise instead.",
+   "verb_fit": "Lift is \"raise aloft\": the crowd goes up and is helpless while you pick your angle.",
+   "numbers": {
+    "mode": "aloft_area",
+    "cost": 12.0,
+    "reflux_per_cost": 0.7,
+    "range": 8.0,
+    "radius": 2.5,
+    "on_hit": {
+     "status": "aloft",
+     "status_s": 1.2
+    },
+    "spend_pips": 4,
+    "pip_seconds": 0.2
+   },
+   "signature": [
+    "on_hit.status",
+    "pip_seconds"
+   ],
+   "ascension": {
+    "power": "pip_seconds",
+    "reach": "radius",
+    "speed": "on_hit.status_s",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Whirl",
+     "word": "Spinning Lift: gathers them as they rise"
+    },
+    {
+     "rune": "Blow",
+     "word": "Gusting Lift: throws them farther"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Lift: a bigger circle"
+    },
+    {
+     "rune": "Persist",
+     "word": "Long Lift: they stay up longer"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Drop",
+     "why": "its own opposite: up and down at once. The two cancel"
+    },
+    {
+     "rune": "Within",
+     "why": "nothing to pierce; falls back"
+    },
+    {
+     "rune": "Motion",
+     "why": "a lift at a point does not travel; falls back to a little power"
+    }
+   ],
+   "change_note": "No change in play: Aloft's own 1.2 s is written as on_hit.status_s so the duration aspect has a field."
+  },
+  {
+   "id": "dead_air",
+   "name": "Dead Air",
+   "affinity": "wind",
+   "base_rune": "WIN-1b",
+   "rune": "Lull",
+   "status": "existing",
+   "starter": false,
+   "serves": "utility",
+   "kind": "ground_zone",
+   "targeting": "feet",
+   "summary": "Spend every pip: a 4 m bubble of still air where you stand, lasting 1 s plus 1 s per pip spent. Enemy shots that enter it drop to the floor, your pips do not drain, and your wind reflux sheds while you stand in it. Step out and it ends.",
+   "verb_fit": "Lull is \"dead air; shots drop\": the still centre the monk can stop in.",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 0.7,
+    "at": "feet",
+    "spend_all_pips": true,
+    "pip_seconds": 1.0,
+    "zone": {
+     "shape": "circle",
+     "radius": 4.0,
+     "life": 1.0,
+     "kill_projectiles": true,
+     "freeze_pips": true,
+     "shed_standing": true,
+     "ends_if_left": true
+    }
+   },
+   "signature": [
+    "zone.life",
+    "pip_seconds"
+   ],
+   "ascension": {
+    "power": "pip_seconds",
+    "reach": "zone.radius",
+    "speed": "zone.life",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Calm: lasts longer"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Calm: a bigger bubble"
+    },
+    {
+     "rune": "Calm",
+     "word": "Deep Calm: your reflux sheds faster in it"
+    },
+    {
+     "rune": "Buffer",
+     "word": "Cushioned Calm: lasts longer and costs you less"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Blow",
+     "why": "its own opposite: wind in the dead air. Maths lets it act (a shove on nothing); it should not"
+    },
+    {
+     "rune": "Lash",
+     "why": "a cut in a bubble with no hit; falls back"
+    },
+    {
+     "rune": "Motion",
+     "why": "still air that travels is not still; falls back"
+    }
+   ]
+  },
+  {
+   "id": "dust_devil",
+   "name": "Dust Devil",
+   "affinity": "wind",
+   "base_rune": "WIN-5a",
+   "rune": "Whirl",
+   "status": "existing",
+   "starter": false,
+   "serves": "utility",
+   "kind": "ground_zone",
+   "targeting": "point",
+   "summary": "Point, 9 m: a whirlwind 3 m across that drags enemies toward its middle and cuts them for 15 every half second. It drifts at walking pace the way you were running when you cast it, taking them along. Lasts 1.5 s, plus 1 s per pip spent (up to 4).",
+   "verb_fit": "Whirl is \"spin together\": a spinning wind that gathers a crowd and carries it.",
+   "numbers": {
+    "cost": 12.0,
+    "reflux_per_cost": 0.7,
+    "range": 9.0,
+    "spend_pips": 4,
+    "pip_seconds": 1.0,
+    "zone": {
+     "shape": "circle",
+     "radius": 3.0,
+     "life": 1.5,
+     "tick_s": 0.5,
+     "payload": {
+      "damage": 15.0
+     },
+     "pull_per_s": 2.5,
+     "drift_speed": 2.0,
+     "drift": "caster_motion"
+    }
+   },
+   "signature": [
+    "zone.pull_per_s",
+    "zone.radius"
+   ],
+   "ascension": {
+    "power": "zone.payload.damage",
+    "reach": "zone.radius",
+    "speed": "zone.life",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Persist",
+     "word": "Long Devil: spins longer"
+    },
+    {
+     "rune": "Lash",
+     "word": "Cutting Devil: cuts harder"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Devil: a bigger whirl"
+    },
+    {
+     "rune": "Carry",
+     "word": "Racing Devil: drifts faster"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Disperse",
+     "why": "its own opposite: blow apart what it gathers. The two cancel"
+    },
+    {
+     "rune": "Lift",
+     "why": "throws Aloft what it is dragging; it should not"
+    },
+    {
+     "rune": "Within",
+     "why": "nothing to pierce; falls back"
+    }
+   ]
+  },
+  {
+   "id": "blowout",
+   "name": "Blowout",
+   "affinity": "wind",
+   "base_rune": "WIN-5b",
+   "rune": "Disperse",
+   "status": "changed",
+   "starter": false,
+   "serves": "role",
+   "kind": "melee_burst",
+   "targeting": "self",
+   "summary": "Everything within 4.5 m is blown apart: 30 damage and thrown 2 m outward, and each one lands Turned for 1 s, its back to you. Spends up to 4 pips: +0.5 m and +10 damage each. It also blows smoke and gas away and knocks shots in flight out of the ring.",
+   "verb_fit": "Disperse is \"blow apart\": the ring of foes is scattered and left facing the wrong way, so the monk picks its back to strike.",
+   "numbers": {
+    "cost": 10.0,
+    "reflux_per_cost": 0.7,
+    "arc_deg": 360.0,
+    "reach_bonus": 2.2,
+    "on_hit": {
+     "damage": 30.0,
+     "shove": 2.0,
+     "status": "turned",
+     "status_s": 1.0
+    },
+    "spend_pips": 4,
+    "pip_damage": 10.0,
+    "pip_shove": 0.5,
+    "clears_clouds": true,
+    "kill_projectiles": true
+   },
+   "signature": [
+    "reach_bonus",
+    "on_hit.shove"
+   ],
+   "ascension": {
+    "power": "on_hit.damage",
+    "reach": "reach_bonus",
+    "speed": "on_hit.status_s",
+    "cost": "cost"
+   },
+   "new_mechanics": [],
+   "good_modifiers": [
+    {
+     "rune": "Blow",
+     "word": "Gale Blowout: throws them farther"
+    },
+    {
+     "rune": "Lift",
+     "word": "Lifting Blowout: the light ones go up"
+    },
+    {
+     "rune": "Expand",
+     "word": "Wide Blowout: a bigger ring"
+    },
+    {
+     "rune": "Deflect",
+     "word": "Spinning Blowout: they stay Turned longer"
+    }
+   ],
+   "bad_modifiers": [
+    {
+     "rune": "Whirl",
+     "why": "its own opposite: gather what you blow apart. The two cancel"
+    },
+    {
+     "rune": "Persist",
+     "why": "a burst has nothing that lasts beyond the turn; falls back"
+    },
+    {
+     "rune": "Motion",
+     "why": "a ring round you does not travel; falls back"
+    }
+   ],
+   "change_note": "The 1 s turn is now the Turned status (shared with Turning Palm and the Deflect rune) instead of a payload-only turn_s."
+  },
+  {
+   "id": "headwind",
+   "name": "Headwind",
+   "affinity": "wind",
+   "base_rune": "WIN-4b",
+   "rune": "Stall",
+   "status": "dropped",
+   "starter": false,
+   "dropped_reason": "Stall became Deflect. Headwind stood its ground in a cone, slowed what came and took pips from it: the stand-and-stall job is an area tank's (Earth now has it), and the opposite of an evasive monk. Its one role-shaped part, earning pips from a fight, moved to Turning Palm, which earns them by not being hit."
+  }
+ ],
+ "effects": {
+  "Blow": "shove +1",
+  "Lull": "interrupts; speed x0.85",
+  "Lash": "power x1.2; speed x1.1",
+  "Buffer": "duration x1.2; reflux x0.85",
+  "Lift": "status aloft",
+  "Drop": "poise x1.4; interrupts",
+  "Carry": "speed x1.3; reach x1.15",
+  "Deflect": "status turned",
+  "Whirl": "pull +1; reach x1.1",
+  "Disperse": "reach x1.3; power x0.9"
+ }
+}

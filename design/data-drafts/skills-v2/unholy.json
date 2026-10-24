@@ -1,0 +1,840 @@
+{
+  "affinity": "unholy",
+  "parents": [
+    "dark",
+    "death"
+  ],
+  "role": "Shadow knight: life-drain melee, fear and dark auras. It does not summon (that is Death's).",
+  "reflux_tier": "middling",
+  "reflux_per_cost": 1.0,
+  "reflux_why": "Middling (1.0), between Dark's middling and Death's high. A shadow knight casts often in melee; its staying power comes from the health it drains, not from cheap essence, and high reflux on top of melee range would leave it locked out at the worst moment.",
+  "rule": "Unholy feeds on what it hurts: every Unholy hit drains 10% of the damage it deals to the living back to you as health, twice that from the Dying or from anything standing in Dark, and what it drains is also banked as stolen life for your skills to spend.",
+  "rule_why": "Each parent gives the rule one condition: Death's Dying (below half) and Dark's light level (standing in Dark). Unholy makes its own Dark (Gloom Mantle, Night Charge's trail, Forsaken Ground), so in its aura the doubling is always on, which is the shadow knight's engine. Drain is the enemy losing health and you gaining it; nothing in Unholy costs your health, and the stolen store is a separate number that is never your health. Unholy does not inherit Dark's Unseen or its +25%, or Death's +30% on the Dying: only the drain doubling.",
+  "rule_keys": {
+    "drain_frac": 0.1,
+    "drain_mult_vs": {
+      "dying": 2.0,
+      "in_dark": 2.0
+    },
+    "drain_max_frac": 0.5,
+    "drain_living_only": true,
+    "drain_heals": "bar",
+    "stolen": {
+      "max": 100,
+      "fade_s": 12.0
+    }
+  },
+  "position": {
+    "value": [
+      -0.4,
+      -0.05,
+      -0.6,
+      -0.7,
+      -0.2
+    ],
+    "why": "[MODEL] the midpoint of Dark [-0.3, -0.3, -0.2, -1, -0.4] and Death [-0.5, 0.2, -1, -0.4, 0] on (heat, substance, vitality, light, mind_matter); not yet in runes.json affinity_positions."
+  },
+  "parent_traits": {
+    "dark": "The ground goes Dark round you and behind you (Gloom Mantle, Night Charge, Forsaken Ground); what is swallowed is let out again (Leech and Outpour, from Devour and Disgorge); the shadow holds a target (Beckon, from Pin); fear of the dark lasts longer in it (Dreadcry).",
+    "death": "The Dying give up twice as much; blows that finish the failing (Reave, from Kill); a life kept failing on purpose (Torment, from Spare); dread that lingers where you were (Daunt, Forsake, from Haunt); a body that will not end (Shroud, from Preserve)."
+  },
+  "role_count": "8 of 10 skills are drain melee, fear or dark auras; Grasping Dark (a 12 m pull) and Torment (a 10 m drain) give range, and Forsaken Ground is the way out.",
+  "bands": "Strikes 1.4-2.4x (a shadow knight's blows are middling: it stays by draining, not by hitting hard), costs mostly mid (8-14), nothing dear: its dear resource is the stolen store, not essence.",
+  "affinity_mechanics": [
+    {
+      "name": "leeched",
+      "kind": "status",
+      "definition": "1 stack, 6 s: every hit its applier lands on it drains 15% of the damage to the applier (key drain_to_source), on top of any drain the hit already has, capped as the drain rule is. This is how Leech and Reave work as modifiers on another affinity's skill."
+    },
+    {
+      "name": "Dark ground for Unholy",
+      "kind": "field",
+      "definition": "Unholy reads Dark's light level (Lit / Dim / Dark) only for the drain rule; Unholy's dark zones (aura, trail, leave_zone with dark) are the same dark ground Dark's skills make, so a character holding both gets both rules from them."
+    }
+  ],
+  "skills": [
+    {
+      "id": "reaving_cleave",
+      "name": "Reaving Cleave",
+      "affinity": "unholy",
+      "base_rune": "new:UNH-1a",
+      "rune": "Leech",
+      "status": "new",
+      "starter": true,
+      "starter_slot": "close",
+      "kind": "melee_burst",
+      "targeting": "aimed",
+      "summary": "A wide, heavy cleave in front of you (150 degrees): 1.8x, and it drains - a fifth of the damage it deals comes back to you as health (twice that from the Dying or from anything standing in Dark), up to 20 a swing.",
+      "verb_fit": "Leech is drawing the life out of what you strike and into yourself. The cleave is the strike; what it is for is the life it brings back. Death's ending: the Dying give up twice as much. Dark's Devour: the dark swallows what it touches, and so do you.",
+      "role_note": "Life-drain melee: the shadow knight's bread and butter.",
+      "numbers": {
+        "cost": 10,
+        "reflux_per_cost": 1.0,
+        "windup": 0.15,
+        "damage_mult": 1.8,
+        "reach_bonus": 0.6,
+        "arc_deg": 150,
+        "drain_frac": 0.2,
+        "drain_cap": 20,
+        "on_hit": {
+          "poise": 20
+        }
+      },
+      "ascension": {
+        "power": "damage_mult",
+        "reach": "reach_bonus",
+        "speed": "windup",
+        "cost": "cost"
+      },
+      "signature": [
+        "drain_frac",
+        "drain_cap"
+      ],
+      "new_mechanics": [
+        {
+          "name": "drain_frac",
+          "kind": "behaviour",
+          "definition": "Life's payload key (life.json v2, Lifeline), read the same way, plus drain_cap (the most one cast heals) and the Unholy rule's base 0.1 on every Unholy hit. After the hit, the caster is healed drain_frac x the damage actually dealt (after armour, flesh and every multiplier), up to drain_cap per cast. The rule's doubling (Dying, or standing in Dark) multiplies it, capped at 0.5. Unliving targets give nothing. Unlike Life's, Unholy's drain fills the health bar only (affinity key drain_heals: bar), never a wound's sink, so it is not talent healing and does not compete with 1% Lifesteal."
+        },
+        {
+          "name": "stolen",
+          "kind": "field",
+          "definition": "A player store, like Dark's swallowed light: every point an Unholy drain heals - or would have healed, at full health - is also banked as stolen life, up to 100. It fades 12 s after the last gain. Black Reckoning and Black Shroud spend it. It is never your own health: spending it costs you nothing."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Reave",
+          "word": "a reaping cleave: +30% on the Dying, and each one hit is Leeched"
+        },
+        {
+          "rune": "Gloom",
+          "word": "a cleave that drags the dark with it: 15% more reach"
+        },
+        {
+          "rune": "Near",
+          "word": "point-blank and 20% harder"
+        },
+        {
+          "rune": "Fury",
+          "word": "a furious cleave: 20% harder, 10% dearer"
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Outpour",
+          "why": "its own opposite: giving out what the skill takes in. The 20% power and 15% reach land, but the word reads as a cleave that spends instead of drains; it should not form."
+        },
+        {
+          "rune": "Give",
+          "why": "granting the target what you are taking from it; the fallback is a small cost cut and the word contradicts itself."
+        }
+      ]
+    },
+    {
+      "id": "black_reckoning",
+      "name": "Black Reckoning",
+      "affinity": "unholy",
+      "base_rune": "new:UNH-1b",
+      "rune": "Outpour",
+      "status": "new",
+      "starter": false,
+      "kind": "melee_burst",
+      "targeting": "aimed",
+      "summary": "Let out everything you took. A cone of black 5 m long: 30, plus all your stolen life, to everything in it, and they lose that much poise too (up to 60). Your stolen life is spent.",
+      "verb_fit": "Outpour is letting out what you took, as harm. The cone is the stolen life going back where it came from, all at once. Dark's Disgorge: release what was swallowed. Death: it is spent life, and it ends things.",
+      "role_note": "Life-drain melee: the payoff for a fight's worth of draining.",
+      "numbers": {
+        "cost": 12,
+        "reflux_per_cost": 1.0,
+        "windup": 0.2,
+        "damage": 30,
+        "arc_deg": 60,
+        "reach_bonus": 2.7,
+        "consume": "stolen",
+        "per_stack_damage": 1,
+        "per_stack_poise": 1,
+        "poise_max": 60
+      },
+      "ascension": {
+        "power": "damage",
+        "reach": "reach_bonus",
+        "speed": "windup",
+        "cost": "cost"
+      },
+      "signature": [
+        "consume",
+        "per_stack_damage"
+      ],
+      "new_mechanics": [
+        {
+          "name": "consume stolen",
+          "kind": "behaviour",
+          "definition": "consume 'stolen' spends the whole stolen store: per_stack_damage and per_stack_poise per point, poise up to poise_max (the same rule as Night Spill's consume of swallowed light)."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Expand",
+          "word": "a wider cone: 30% more reach"
+        },
+        {
+          "rune": "Once",
+          "word": "all of it, at once: 20% harder"
+        },
+        {
+          "rune": "Fall",
+          "word": "the black knocks them flat: 30% more poise damage"
+        },
+        {
+          "rune": "Daunt",
+          "word": "what pours out is terror: everything it hits flees, a little softer"
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Leech",
+          "why": "its own opposite: taking in on the skill that pours out. Leeched lands on everything the cone hits, which is harmless but contradicts the word."
+        },
+        {
+          "rune": "Shroud",
+          "why": "drawing tight round you what you are letting go; Braced lands on a cone that needs no bracing, and nothing here lasts for the duration half."
+        },
+        {
+          "rune": "Persist",
+          "why": "an outpouring does not last; the fallback lengthens nothing."
+        }
+      ]
+    },
+    {
+      "id": "dreadcry",
+      "name": "Dreadcry",
+      "affinity": "unholy",
+      "base_rune": "new:UNH-2a",
+      "rune": "Daunt",
+      "status": "new",
+      "starter": false,
+      "kind": "melee_burst",
+      "targeting": "self",
+      "summary": "A cry that carries the dark in it. Everything within 4.5 m takes 25 and is Terrified for 2 s - it turns and runs from you, and cannot attack (heavy enemies 1 s, elites only Dazed). In Dark it runs for 3 s.",
+      "verb_fit": "Daunt is fear that drives them back from you. The cry is the fear; what it buys is room, or backs to hit. Death's Haunt: the dread of what is coming for them. Dark: fear of the dark - it lasts longer where the light is gone.",
+      "role_note": "Fear: the shadow knight's control, and its way out of a swarm.",
+      "numbers": {
+        "cost": 12,
+        "reflux_per_cost": 1.0,
+        "windup": 0.2,
+        "damage": 25,
+        "arc_deg": 360,
+        "reach_bonus": 2.2,
+        "on_hit": {
+          "status": "terrified",
+          "status_s": 2.0
+        },
+        "dark_status_s": 3.0
+      },
+      "ascension": {
+        "power": "damage",
+        "reach": "reach_bonus",
+        "speed": "on_hit.status_s",
+        "cost": "cost"
+      },
+      "signature": [
+        "on_hit.status",
+        "dark_status_s"
+      ],
+      "new_mechanics": [],
+      "good_modifiers": [
+        {
+          "rune": "Gloom",
+          "word": "the dark rolls out with the cry: 15% more reach, the fear 20% longer"
+        },
+        {
+          "rune": "Persist",
+          "word": "they run half as long again"
+        },
+        {
+          "rune": "Expand",
+          "word": "a cry that carries: 30% more reach"
+        },
+        {
+          "rune": "Leech",
+          "word": "fear feeds you: everything that runs is Leeched"
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Beckon",
+          "why": "its own opposite: calling them in on the cry that drives them out. The pull and the flight fight each other; the word contradicts itself."
+        },
+        {
+          "rune": "Attract",
+          "why": "drawing in what you are frightening away; the pull lands and fights Terrified every frame."
+        },
+        {
+          "rune": "Calm",
+          "why": "a soothing terror makes no sense; the reflux cut lands, the word does not."
+        }
+      ]
+    },
+    {
+      "id": "grasping_dark",
+      "name": "Grasping Dark",
+      "affinity": "unholy",
+      "base_rune": "new:UNH-2b",
+      "rune": "Beckon",
+      "status": "new",
+      "starter": true,
+      "starter_slot": "ranged",
+      "kind": "displace",
+      "targeting": "target",
+      "summary": "One enemy within 12 m: a hand of shadow takes it and hauls it to arm's length in front of you: 45, it drains, and it is Leashed to you for 4 s - it cannot get more than 4 m from you.",
+      "verb_fit": "Beckon is the dark calling them in, and not letting them go. The hand brings the archer to you; the leash keeps it there. Dark's Pin: the shadow holds the target. Death: what is claimed comes to you.",
+      "role_note": "Range and utility, shaped by the role: the tank's ranged starter is a pull.",
+      "numbers": {
+        "cost": 10,
+        "reflux_per_cost": 1.0,
+        "range": 12,
+        "mode": "pull_target",
+        "pull": 12,
+        "keep": 1.5,
+        "on_hit": {
+          "damage": 45,
+          "status": "leashed",
+          "status_s": 4.0
+        },
+        "drain_frac": 0.1,
+        "drain_cap": 10,
+        "leash_m": 4.0
+      },
+      "ascension": {
+        "power": "on_hit.damage",
+        "reach": "range",
+        "speed": "on_hit.status_s",
+        "cost": "cost"
+      },
+      "signature": [
+        "on_hit.status",
+        "pull"
+      ],
+      "new_mechanics": [
+        {
+          "name": "leashed",
+          "kind": "status",
+          "definition": "1 stack, the skill's status_s: the target cannot move further than leash_m from whoever applied it (a step beyond is undone, as a wall would stop it); ranged enemies keep shooting, but from inside the leash."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Far",
+          "word": "reach 40% further"
+        },
+        {
+          "rune": "Stalk",
+          "word": "you go to meet it: 30% more reach and a quicker haul"
+        },
+        {
+          "rune": "Reave",
+          "word": "it hauls in the failing hardest: +30% on the Dying, and Leeched"
+        },
+        {
+          "rune": "Persist",
+          "word": "leashed half as long again"
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Daunt",
+          "why": "its own opposite: frightening away what you are hauling in. The haul lands and the flight pulls against the leash; the word contradicts itself."
+        },
+        {
+          "rune": "Repel",
+          "why": "pushing away the body you are pulling to you; both land and cancel."
+        },
+        {
+          "rune": "Elsewhere",
+          "why": "hauling it to somewhere other than you defeats the leash; the fallback puts it beyond the 4 m."
+        }
+      ]
+    },
+    {
+      "id": "gloom_mantle",
+      "name": "Gloom Mantle",
+      "affinity": "unholy",
+      "base_rune": "new:UNH-3a",
+      "rune": "Gloom",
+      "status": "new",
+      "starter": false,
+      "kind": "self_buff",
+      "targeting": "self",
+      "summary": "For 8 s the dark hangs round you, 3.5 m across, and goes where you go. The ground in it counts as Dark, and every enemy in it loses 10 a second - drained to you, like every Unholy hit, and doubled because they stand in Dark.",
+      "verb_fit": "Gloom is darkness that hangs about you and goes where you go. The mantle is that darkness; everything in it is failing, a little, all the time. Dark's Darken: it makes its own Dark. Death: what stands near you wanes.",
+      "role_note": "Dark aura: the shadow knight's engine. Inside it the rule's doubling is always on.",
+      "numbers": {
+        "cost": 14,
+        "reflux_per_cost": 1.0,
+        "duration": 8.0,
+        "buff": "gloom_mantle",
+        "aura": {
+          "radius": 3.5,
+          "tick_s": 1.0,
+          "dark": true,
+          "payload": {
+            "damage": 10
+          }
+        }
+      },
+      "ascension": {
+        "power": "aura.payload.damage",
+        "reach": "aura.radius",
+        "speed": "duration",
+        "cost": "cost"
+      },
+      "signature": [
+        "aura",
+        "duration"
+      ],
+      "new_mechanics": [
+        {
+          "name": "aura dark",
+          "kind": "field",
+          "definition": "Earth's aura key (earth.json v2, Stonehide: {radius, tick_s, payload, pull_per_s}, moving with you), with one key added: dark - the circle counts as Dark ground (Dark's light level) while it lasts. Its payload goes through apply_hit like any hit, so it drains."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Persist",
+          "word": "the gloom hangs half as long again"
+        },
+        {
+          "rune": "Expand",
+          "word": "a wider gloom: 30% more reach"
+        },
+        {
+          "rune": "Daunt",
+          "word": "a dreadful gloom: those in it are Terrified when it first takes them"
+        },
+        {
+          "rune": "Torment",
+          "word": "the gloom torments what it holds: Tormented as well"
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Shroud",
+          "why": "its own opposite: the dark drawn tight onto you on the skill that spreads it round you. Braced lands, the word contradicts itself."
+        },
+        {
+          "rune": "Reveal",
+          "why": "showing what the gloom is for hiding; the word contradicts itself, and the fallback is a small cost cut."
+        },
+        {
+          "rune": "Motion",
+          "why": "the gloom already goes where you go; the speed op has nothing to act on and falls back."
+        }
+      ]
+    },
+    {
+      "id": "black_shroud",
+      "name": "Black Shroud",
+      "affinity": "unholy",
+      "base_rune": "new:UNH-3b",
+      "rune": "Shroud",
+      "status": "new",
+      "starter": false,
+      "kind": "self_buff",
+      "targeting": "self",
+      "summary": "Draw the dark tight round you: a ward of 40, plus all your stolen life (100 at most), that takes blows before your health does, for 8 s. While it holds nothing staggers you. If it breaks, the dark bursts off you: everything within 3 m is Terrified for 1.5 s.",
+      "verb_fit": "Shroud is the dark drawn tight onto your own body. It is armour made of what you have taken; when it is torn off, it frightens whoever tore it. Dark's Obscure: you are hidden inside the dark (but not unseen). Death's Preserve: it keeps your body from ending.",
+      "role_note": "Wards: the shadow knight's defence, paid for with stolen life.",
+      "numbers": {
+        "cost": 12,
+        "reflux_per_cost": 1.0,
+        "duration": 8.0,
+        "buff": "black_shroud",
+        "ward": 40,
+        "ward_from": "stolen",
+        "ward_max": 100,
+        "no_stagger": true,
+        "on_break": {
+          "radius": 3.0,
+          "status": "terrified",
+          "status_s": 1.5
+        }
+      },
+      "ascension": {
+        "power": "ward",
+        "reach": "on_break.radius",
+        "speed": "duration",
+        "cost": "cost"
+      },
+      "signature": [
+        "ward",
+        "ward_from"
+      ],
+      "new_mechanics": [
+        {
+          "name": "ward_from",
+          "kind": "field",
+          "definition": "Holy's ward pool (holy.json v2, Dawnward: Body.ward takes blows before the bar, and a blow wholly stopped opens no wound), filled by the ward key, with three Unholy keys: ward_from spends the named player store into the ward at cast (ward_max in all, Unholy's own cap, not Holy's ward_cap 60); no_stagger, heavy blows do not stagger you while it holds; on_break, this skill's payload round you when a blow empties it (instead of Holy's rule payload, which is Holy's)."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Persist",
+          "word": "the shroud holds half as long again"
+        },
+        {
+          "rune": "Leech",
+          "word": "a shroud that feeds: everything its breaking frightens is Leeched as well"
+        },
+        {
+          "rune": "Self",
+          "word": "all on you: 30% longer"
+        },
+        {
+          "rune": "Essence",
+          "word": "cheaper: 15% less essence"
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Gloom",
+          "why": "its own opposite: spreading round you the dark you draw tight; the reach has nothing to act on but the break, and the word contradicts itself."
+        },
+        {
+          "rune": "Outpour",
+          "why": "letting out what the ward is made of; the fallback is a small damage bonus on a skill that hits nobody until it breaks."
+        }
+      ]
+    },
+    {
+      "id": "reaping_blow",
+      "name": "Reaping Blow",
+      "affinity": "unholy",
+      "base_rune": "new:UNH-4a",
+      "rune": "Reave",
+      "status": "new",
+      "starter": false,
+      "kind": "targeted_strike",
+      "targeting": "target",
+      "summary": "One enemy in reach: a slow, heavy blow, 2.4x, that drains 30% of what it deals (60% from the Dying), up to 30. If it kills, all the health it had left before the blow is stolen.",
+      "verb_fit": "Reave is tearing the last of a failing life out and keeping it. The blow is heavy on anyone; on the Dying it is a harvest. Death's Kill: it finishes the failing. Dark's Devour: what it takes, it swallows whole.",
+      "role_note": "Life-drain melee: the single-target blow for the end of a fight.",
+      "numbers": {
+        "cost": 12,
+        "reflux_per_cost": 1.0,
+        "windup": 0.25,
+        "damage_mult": 2.4,
+        "range_bonus": 1.0,
+        "drain_frac": 0.3,
+        "drain_cap": 30,
+        "kill_steals": true,
+        "on_hit": {
+          "poise": 30
+        }
+      },
+      "ascension": {
+        "power": "damage_mult",
+        "reach": "range_bonus",
+        "speed": "windup",
+        "cost": "cost"
+      },
+      "signature": [
+        "drain_frac",
+        "kill_steals"
+      ],
+      "new_mechanics": [
+        {
+          "name": "kill_steals",
+          "kind": "field",
+          "definition": "A strike key: if the hit kills, the target's health before the hit is added to the caster's stolen store (it heals nothing beyond the hit's own drain)."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Hold",
+          "word": "a drawn-back reaping: 30% harder, 30% longer wind-up"
+        },
+        {
+          "rune": "One",
+          "word": "everything into one body: 25% harder"
+        },
+        {
+          "rune": "Leech",
+          "word": "the target is Leeched as well, for the next blows"
+        },
+        {
+          "rune": "Stalk",
+          "word": "you close the gap first: 30% more reach"
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Torment",
+          "why": "its own opposite: drawing out slowly what the blow takes at once. Tormented lands on a body the blow is meant to finish; the word contradicts itself."
+        },
+        {
+          "rune": "Yield",
+          "why": "a reaping that gives way is no reaping; the softening lands on the blow and the word contradicts itself."
+        },
+        {
+          "rune": "Many",
+          "why": "a reaping is one body's; extra jumps do nothing and the 15% damage loss lands."
+        }
+      ]
+    },
+    {
+      "id": "torment",
+      "name": "Torment",
+      "affinity": "unholy",
+      "base_rune": "new:UNH-4b",
+      "rune": "Torment",
+      "status": "new",
+      "starter": false,
+      "kind": "new:smite",
+      "targeting": "target",
+      "summary": "One enemy within 10 m: 20, and it is Tormented for 8 s - it loses 8 a second, half of which comes to you as health, and its poise does not refill. Nothing spreads; it is one body's slow ending.",
+      "verb_fit": "Torment is keeping a life failing slowly. The mark does not kill; it makes the body give itself up a little at a time, and it gives it to you. Death's Spare turned cruel: a life kept at the edge on purpose. Dark: it works quietly, out of sight.",
+      "role_note": "Range and utility: drain at range, on one body, for the runner you cannot reach.",
+      "numbers": {
+        "cost": 10,
+        "reflux_per_cost": 1.0,
+        "range": 10,
+        "damage": 20,
+        "duration": 8.0,
+        "on_hit": {
+          "status": "tormented",
+          "status_s": 8.0
+        }
+      },
+      "ascension": {
+        "power": "damage",
+        "reach": "range",
+        "speed": "duration",
+        "cost": "cost"
+      },
+      "signature": [
+        "on_hit.status",
+        "duration"
+      ],
+      "new_mechanics": [
+        {
+          "name": "tormented",
+          "kind": "status",
+          "definition": "1 stack, status_s (default 8 s), living only: 8 damage a second every 0.5 s through whoever applied it (tags dot, unholy, tormented); each tick drains half its damage to the applier (status key drain_frac, the drain rule's cap per cast does not apply to ticks); poise does not refill. Never spreads."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Persist",
+          "word": "tormented half as long again"
+        },
+        {
+          "rune": "Far",
+          "word": "torment from 40% further"
+        },
+        {
+          "rune": "Gloom",
+          "word": "the torment hangs about it: 20% longer, and from further"
+        },
+        {
+          "rune": "Remember",
+          "word": "it does not forget the pain: 30% longer"
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Reave",
+          "why": "its own opposite: ending at once the life you are drawing out. The Dying bonus lands on a 20-damage hit; the word contradicts itself."
+        },
+        {
+          "rune": "Once",
+          "why": "a slow torment all at once is not one; the fallback is 20% more on a small hit."
+        },
+        {
+          "rune": "Fade",
+          "why": "cuts the torment short, its whole nature, for +25% on 20 damage."
+        }
+      ]
+    },
+    {
+      "id": "night_charge",
+      "name": "Night Charge",
+      "affinity": "unholy",
+      "base_rune": "new:UNH-5a",
+      "rune": "Stalk",
+      "status": "new",
+      "starter": true,
+      "starter_slot": "movement",
+      "kind": "dash",
+      "targeting": "aimed",
+      "summary": "Charge 6.7 m along your aim through the dark and stop on the first enemy you reach: 1.4x, it drains, and it is Leashed to you for 2 s. The ground you crossed stays Dark for 5 s.",
+      "verb_fit": "Stalk is coming at your prey through the dark and not letting it go. The charge closes the gap; the leash makes sure the gap stays closed. Dark's Shadowstep: you move through shadow and leave it behind. Death: the hunt for the failing.",
+      "role_note": "Life-drain melee needs to reach its target: the movement starter is a gap-closer, not an escape.",
+      "numbers": {
+        "cost": 8,
+        "reflux_per_cost": 1.0,
+        "dash_speed": 24,
+        "dash_time": 0.28,
+        "stops_at_bodies": true,
+        "recovery": 0.25,
+        "on_stop": {
+          "damage_mult": 1.4,
+          "status": "leashed",
+          "status_s": 2.0,
+          "poise": 20
+        },
+        "leash_m": 4.0,
+        "trail": {
+          "width": 1.5,
+          "life": 5.0,
+          "dark": true
+        }
+      },
+      "ascension": {
+        "power": "on_stop.damage_mult",
+        "reach": "dash_time",
+        "speed": "dash_speed",
+        "cost": "cost"
+      },
+      "signature": [
+        "dash_time",
+        "on_stop.status"
+      ],
+      "new_mechanics": [
+        {
+          "name": "dark trail",
+          "kind": "field",
+          "definition": "A dash trail (as Flashover's) with dark: the strip counts as Dark ground for its life; it deals nothing on its own."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Gloom",
+          "word": "the dark trail lasts and spreads: 20% longer, 15% wider"
+        },
+        {
+          "rune": "Haste",
+          "word": "gone sooner: a quarter less recovery"
+        },
+        {
+          "rune": "Beckon",
+          "word": "it hauls them the last step: pull 1.5 m and Leashed"
+        },
+        {
+          "rune": "Fury",
+          "word": "a furious charge: 20% harder, 10% dearer"
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Forsake",
+          "why": "its own opposite: running away on the charge. Dread lands where you stop; the word contradicts itself."
+        },
+        {
+          "rune": "Stillness",
+          "why": "a held, slow charge contradicts it; the fallback cuts its speed by 20%."
+        },
+        {
+          "rune": "Repel",
+          "why": "shoving away what you charge at; the shove lands and the leash pulls against it."
+        }
+      ]
+    },
+    {
+      "id": "forsaken_ground",
+      "name": "Forsaken Ground",
+      "affinity": "unholy",
+      "base_rune": "new:UNH-5b",
+      "rune": "Forsake",
+      "status": "new",
+      "starter": false,
+      "kind": "dash",
+      "targeting": "aimed",
+      "summary": "Break off: leap 5 m back, away from your aim, and leave the ground you stood on forsaken - a Dark circle 3 m across for 4 s. Enemies in it take 10 a second and are Dreading: they back out and will not walk in.",
+      "verb_fit": "Forsake is breaking away and leaving dread behind. You give up the ground; what you leave on it keeps them off it. Death's Haunt: the dread that lingers where you were. Dark's Darken: the ground goes Dark.",
+      "role_note": "Fear and utility: the shadow knight's disengage, which still drains.",
+      "numbers": {
+        "cost": 8,
+        "reflux_per_cost": 1.0,
+        "dash_speed": 25,
+        "dash_time": 0.2,
+        "dir": "back",
+        "recovery": 0.2,
+        "leave_zone": {
+          "at": "start",
+          "shape": "circle",
+          "radius": 3.0,
+          "life": 4.0,
+          "tick_s": 1.0,
+          "dark": true,
+          "payload": {
+            "damage": 10,
+            "status": "dread"
+          }
+        }
+      },
+      "ascension": {
+        "power": "leave_zone.payload.damage",
+        "reach": "leave_zone.radius",
+        "speed": "leave_zone.life",
+        "cost": "cost"
+      },
+      "signature": [
+        "leave_zone",
+        "dir"
+      ],
+      "new_mechanics": [
+        {
+          "name": "dash dir back",
+          "kind": "field",
+          "definition": "A dash key: dir 'back' moves the caster directly away from the aim point instead of toward it (facing kept)."
+        }
+      ],
+      "good_modifiers": [
+        {
+          "rune": "Persist",
+          "word": "the forsaken ground holds half as long again"
+        },
+        {
+          "rune": "Expand",
+          "word": "a wider circle: 30% more reach"
+        },
+        {
+          "rune": "Elsewhere",
+          "word": "you land 30% further away"
+        },
+        {
+          "rune": "Torment",
+          "word": "the ground torments what it holds: Tormented as well"
+        }
+      ],
+      "bad_modifiers": [
+        {
+          "rune": "Stalk",
+          "why": "its own opposite: closing on them while you break away. The reach and speed land on a backward leap; the word contradicts itself."
+        },
+        {
+          "rune": "Beckon",
+          "why": "calling them onto ground they will not enter: the pull fights Dread every tick."
+        },
+        {
+          "rune": "Attract",
+          "why": "the same contradiction as Beckon: pulling them into a circle they flee."
+        }
+      ]
+    }
+  ],
+  "effects": {
+    "Leech": "status leeched",
+    "Outpour": "power x1.2; reach x1.15",
+    "Daunt": "status terrified; power x0.85",
+    "Beckon": "pull +1.5; status leashed",
+    "Gloom": "reach x1.15; duration x1.2",
+    "Shroud": "braced; duration x1.15",
+    "Reave": "bonus dying +0.3; status leeched",
+    "Torment": "status tormented",
+    "Stalk": "reach x1.3; speed x1.15",
+    "Forsake": "status dread; windup x0.85"
+  }
+}
