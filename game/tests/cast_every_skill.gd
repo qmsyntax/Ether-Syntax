@@ -214,14 +214,15 @@ func _try(id: String, runes: Array[String]) -> Dictionary:
 	return {"cast": cast, "why": why, "hit": hits > 0, "hits": hits, "statuses": statuses, "effect": effect, "sealed": sealed, "seal_why": seal_why, "great": great}
 
 
-## The word, lock by lock (no free edit since Brent 2026-10-23): at the first level lock the good
-## runes on ring 1 (joined to the skill's own rune where it has bonds left, else to the first of them;
-## one that can be joined to neither is left out - ring 1 must reach the skill), bound with a vestige;
-## at the second, a great ring on ring 2 - a three-bond rune of the skill's affinity and four
-## universal runes bonded round, the three-bond one joined to a ring-1 rune with a bond to spare - if
-## the rules let it be built, bound with a remnant. Both binds go through the test hook
-## Player.test_bind_unclosed (a sure roll; the closed-word rule waived, everything else the real
-## lock). Returns {ok, text}.
+## The word, lock by lock (no free edit since Brent 2026-10-23), every ring FULL (Brent 2026-10-24:
+## "Every slot should be filled to be fully formed"): at the first level lock the good runes on ring 1
+## (joined to the skill's own rune where it has bonds left, else to the first of them), its other
+## places filled with universal runes, the vestige set over it as the keystone; at the second, a great
+## ring on ring 2 - a three-bond rune of the skill's affinity and four universal runes bonded round,
+## the three-bond one joined to a ring-1 rune with a bond to spare - if the rules let it be built (it
+## fills ring 2's five places), else ring 2 filled rune by rune; the remnant set over it. Both binds go
+## through the test hook Player.test_bind_unclosed (a sure roll; the closed-word rule waived,
+## everything else the real lock). Returns {ok, text}.
 func _seal_word(p: Node, index: int, runes: Array[String]) -> Dictionary:
 	p.call("open_seal", index)
 	var placed: Array[int] = []
@@ -231,6 +232,8 @@ func _seal_word(p: Node, index: int, runes: Array[String]) -> Dictionary:
 			r = p.call("word_add", index, rid, placed[0], 1)
 		if bool(r["ok"]):
 			placed.append(int(r["node"]))
+	_fill_ring(p, index, 1, placed)
+	_set_keystone(p, index)
 	var lock1: String = str(p.call("test_bind_unclosed", 0.0))
 	if lock1 != "bound":
 		p.call("close_seal")
@@ -263,25 +266,55 @@ func _seal_word(p: Node, index: int, runes: Array[String]) -> Dictionary:
 			if ok:
 				p.call("word_toggle_link", index, prev, first)
 	# the second lock forms ring 2: if no great ring could be hung on ring 1 (no rune there with a bond to
-	# spare), one rune out on ring 2 instead - taking the last ring-1 rune out to free a bond if need be
-	if RuneWord.ring_nodes(p.call("ability_word", index), 2).is_empty():
+	# spare), one rune out on ring 2 joined to ring 1 where any bond is free; then every place of ring 2
+	# filled (a great ring already fills it)
+	var word2: Dictionary = p.call("ability_word", index)
+	if RuneWord.ring_nodes(word2, 2).size() < 5:
 		var tries: Array[String] = ["UNI-19a", "UNI-28a", "UNI-26b", "UNI-27b"]
 		tries.append_array(runes)
-		if not _one_on_ring2(p, index, placed, tries) and placed.size() > 1:
-			p.call("word_remove", index, placed.pop_back())
-			_one_on_ring2(p, index, placed, tries)
+		_one_on_ring2(p, index, RuneWord.ring_nodes(word2, 1), tries)
+	_fill_ring(p, index, 2, [])
+	_set_keystone(p, index)
 	var second: String = str(p.call("test_bind_unclosed", 0.0))
 	p.call("close_seal")
 	return {"ok": second == "bound", "text": "the second lock: " + second}
 
 
-## Set one of `tries` on ring 2, joined to one of the ring-1 runes `placed`; true if one took.
-func _one_on_ring2(p: Node, index: int, placed: Array[int], tries: Array[String]) -> bool:
-	for host: int in placed:
+## Set one of `tries` on ring 2, joined to one of the ring-1 runes `hosts`; true if one took.
+func _one_on_ring2(p: Node, index: int, hosts: Array, tries: Array[String]) -> bool:
+	for host: Variant in hosts:
 		for rid: String in tries:
-			if bool((p.call("word_add", index, rid, host, 2) as Dictionary)["ok"]):
+			if bool((p.call("word_add", index, rid, int(host), 2) as Dictionary)["ok"]):
 				return true
 	return false
+
+
+## Fill every empty place of ring k with universal runes, joined to a rune of `hosts` where one has a
+## bond to spare, else set alone (the test hook waives the closed-word rule).
+func _fill_ring(p: Node, index: int, k: int, hosts: Array[int]) -> void:
+	var rr: RingRules = Runes.active() as RingRules
+	var fillers: Array[String] = ["UNI-19a", "UNI-28a", "UNI-26b", "UNI-27b", "UNI-21a"]
+	var j := 0
+	var guard := 0
+	while RuneWord.ring_nodes(p.call("ability_word", index), k).size() < rr.ring_capacity(k) and guard < 40:
+		guard += 1
+		var rid: String = fillers[j % fillers.size()]
+		j += 1
+		var r: Dictionary = {"ok": false}
+		for h: int in hosts:
+			r = p.call("word_add", index, rid, h, k)
+			if bool(r["ok"]):
+				break
+		if not bool(r["ok"]):
+			p.call("word_add", index, rid, -1, k)
+
+
+## Set the first carried construct of the tier as this lock's keystone.
+func _set_keystone(p: Node, index: int) -> void:
+	var need: String = str(p.call("pending_tier", (p.get("abilities") as Array)[index]))
+	var groups: Array = p.call("construct_groups", need)
+	if not groups.is_empty():
+		p.call("choose_seal_construct", int((groups[0] as Dictionary)["index"]))
 
 
 func _start_of(k: int) -> Vector3:

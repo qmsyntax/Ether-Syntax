@@ -8,7 +8,8 @@ extends RefCounted
 ##    "links": [{"a": 0, "b": 1}, {"a": 1, "b": 2, "data": {...}}],
 ##    "made_under": "bond_v2",                             # the rule set it was built under (for reports)
 ##    "sealed": 2,                                         # rings sealed in (0 / absent: no seal yet)
-##    "places": [-1, 0, 2, ...]}                           # where each rune sits on its ring (optional)
+##    "places": [-1, 0, 2, ...],                           # where each rune sits on its ring (optional)
+##    "keystones": [{"ring": 1, "tier": "vestige", "concept": "reach"}, ...]}   # the construct set over each sealed ring
 ##
 ## "places" is layout only (2026-10-23): the index of each rune's place on its ring, so a rune stays
 ## where it was set when bonds change (-1: not chosen - layout_places picks). No rule reads it.
@@ -360,6 +361,47 @@ static func shape_key(word: Dictionary) -> String:
 	return "%s|%s|%s" % [str(nodes(word)), str(rings(word)), str(ls)]
 
 
+# --- keystones (Brent 2026-10-24, design/14 section 12) ----------------------------------------
+# "Every slot should be filled to be fully formed. Then a vestige is placed over the top with its
+# effect being worth more than a regular rune...and that locks the level." Each sealed ring carries
+# the construct bound at its lock, set over it as a keystone: "keystones": [{"ring", "tier",
+# "concept"}], one per ring at most. What a keystone does is the rule set's (RingRules.keystone_effect).
+
+## The word's keystones, innermost ring first: [{ring, tier, concept}].
+static func keystones(word: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for k: Variant in word.get("keystones", []):
+		if typeof(k) == TYPE_DICTIONARY:
+			out.append(k)
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["ring"]) < int(b["ring"]))
+	return out
+
+
+## The keystone over ring k, or {} if it has none.
+static func keystone(word: Dictionary, k: int) -> Dictionary:
+	for ks: Dictionary in keystones(word):
+		if int(ks["ring"]) == k:
+			return ks
+	return {}
+
+
+## Set a construct over ring k as its keystone (any keystone there before is replaced).
+static func set_keystone(word: Dictionary, k: int, tier: String, concept: String) -> void:
+	var kept: Array = []
+	for ks: Dictionary in keystones(word):
+		if int(ks["ring"]) != k:
+			kept.append(ks)
+	kept.append({"ring": k, "tier": tier, "concept": concept})
+	word["keystones"] = kept
+
+
+## A copy of the word with a keystone set over ring k (the word itself is not changed).
+static func with_keystone(word: Dictionary, k: int, tier: String, concept: String) -> Dictionary:
+	var w: Dictionary = word.duplicate(true)
+	set_keystone(w, k, tier, concept)
+	return w
+
+
 ## A word read back from a save, whatever rule set made it: JSON's floats made ints again, links
 ## to nodes that are not there, self-links and repeated pairs dropped, and runes the data no longer
 ## knows taken out. It is NOT checked against any rules - a word that breaks the current rules
@@ -414,4 +456,11 @@ static func normalize(saved: Variant, anchor_id: String) -> Dictionary:
 		out["sealed"] = maxi(1, outer_ring(out))
 	if bool(src.get("closure_waived", src.get("free_edit", false))):      # "free_edit": its name before 2026-10-23
 		out["closure_waived"] = true
+	# keystones: one per ring, of a tier and concept the data knows (anything else is dropped)
+	for ks: Variant in src.get("keystones", []):
+		if typeof(ks) != TYPE_DICTIONARY or not (ks as Dictionary).has("ring"):
+			continue
+		var kd: Dictionary = ks
+		if GameData.construct_tiers.has(str(kd.get("tier", ""))) and not GameData.concept(str(kd.get("concept", ""))).is_empty():
+			set_keystone(out, maxi(1, int(kd["ring"])), str(kd["tier"]), str(kd["concept"]))
 	return out

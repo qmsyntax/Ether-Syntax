@@ -1730,7 +1730,8 @@ func _stone_prompt() -> void:
 
 ## Open the seal screen of ability `ability_index` at its next level lock (design/14 sections 8 and
 ## 11): the ring is built and the construct chosen and bound there - the only place a construct is
-## bound (Brent 2026-10-23). `construct_index` < 0: the screen picks the first one of the tier.
+## bound (Brent 2026-10-23), and only with the bar full and a construct of the tier carried (Brent
+## 2026-10-24). `construct_index` < 0: the keystone is chosen on the screen.
 func open_seal(ability_index: int, construct_index: int = -1) -> void:
 	if not (screen is EthercosmScreen):
 		if state == "select" or state == "dead":
@@ -1740,24 +1741,20 @@ func open_seal(ability_index: int, construct_index: int = -1) -> void:
 	screen.call("open_seal", construct_index)
 
 
-## The B key ("bind"): opens the seal screen of the first skill ready for its level lock - one whose
-## tier you carry first, else any ready one (its ring can be laid out). It binds nothing itself.
+## The B key ("bind"): opens the seal screen of the first skill whose level lock can open - its bar
+## full and a construct of its tier carried (Brent 2026-10-24). With none, it says what the first full
+## skill is missing. It binds nothing itself.
 func open_seal_first_ready() -> void:
 	var abilities: Array = player.get("abilities")
-	var first := -1
+	var missing := ""
 	for ai: int in abilities.size():
-		var need: String = str(player.call("pending_tier", abilities[ai]))
-		if need == "":
-			continue
-		if first < 0:
-			first = ai
-		if not (player.call("construct_groups", need) as Array).is_empty():
+		var lock: Dictionary = player.call("can_open_seal", ai)
+		if bool(lock["ok"]):
 			open_seal(ai)
 			return
-	if first >= 0:
-		open_seal(first)
-		return
-	player.call("note", "No skill is ready for its level lock: a skill's bar fills as you use it.")
+		if missing == "" and str(lock["reason"]) == "no_construct":
+			missing = "%s: %s" % [str(GameData.ability(str(abilities[ai]["id"])).get("name", "?")), str(lock["text"])]
+	player.call("note", missing if missing != "" else "No skill is ready for its level lock: a skill's bar fills as you use it.")
 
 
 # --- shared ---------------------------------------------------------------------
@@ -2731,25 +2728,45 @@ func _shot_lock_word() -> void:
 
 
 ## For screenshots: seal a word on skill `index` as if it had been bound in, lock by lock (the skill
-## is raised to `stage` first). Rows are [rune, joined to node, ring (optional)], inside out;
-## `links` are extra [a, b] bonds. Shot setup only: the rules are asked for every rune and bond (so
-## rings are still built from the skill outward) and the closed-word rule is waived
-## (RuneContext.closure_waived), as the test hook does; no screen reaches this.
-func _shot_seal(index: int, stage: int, rows: Array, links: Array = []) -> void:
+## is raised to `stage` first). Rows are [rune, joined to row (0 = the skill's own rune, 1 = the first
+## row ...), ring (optional)], inside out; `links` are extra [row a, row b] bonds. Every ring is full
+## (Brent 2026-10-24): before a row goes on ring k, the empty places of the rings inside it are filled
+## with SHOT_FILLER runes, set alone (so they change nothing the shot shows), and so are the rings left
+## with empty places at the end; each ring gets a keystone (`concepts`, else the concepts in turn).
+## Shot setup only: the rules are asked for every rune and bond (rings are built from the skill
+## outward) and the closed-word rule is waived (RuneContext.closure_waived), as the test hook does; no
+## screen reaches this.
+const SHOT_FILLER := "UNI-19a"
+
+
+func _shot_seal(index: int, stage: int, rows: Array, links: Array = [], concepts: Array = []) -> void:
 	var st: Dictionary = (player.get("abilities") as Array)[index]
 	st["stage"] = maxi(stage, int(st["stage"]))
 	var w: Dictionary = RuneWord.make(GameData.skill_anchor(str(st["id"])), Runes.active().id)
 	var rules: RuneRules = Runes.active()
+	var rr: RingRules = rules as RingRules
 	var ctx: RuneContext = player.call("rune_context", index)
 	ctx.closure_waived = true
-	for row: Array in rows:
-		var r: Dictionary = rules.add(w, str(row[0]), ctx, int(row[1]), int(row[2]) if row.size() > 2 else -1)
+	var at: Dictionary = {0: 0}               # row -> node
+	for ri: int in rows.size():
+		var row: Array = rows[ri]
+		var to: int = int(at.get(int(row[1]), -1))
+		var k: int = int(row[2]) if row.size() > 2 else _shot_ring(w, ctx, to)
+		_shot_fill(w, ctx, k - 1)
+		var r: Dictionary = rules.add(w, str(row[0]), ctx, to, k)
 		if not bool(r["ok"]):
 			print("shot seal: %s refused: %s" % [str(row[0]), str(r["text"])])
+		else:
+			at[ri + 1] = int(r["node"])
 	for l: Array in links:
-		var r2: Dictionary = rules.link(w, int(l[0]), int(l[1]), ctx)
+		var r2: Dictionary = rules.link(w, int(at.get(int(l[0]), -1)), int(at.get(int(l[1]), -1)), ctx)
 		if not bool(r2["ok"]):
 			print("shot seal: link %s refused: %s" % [str(l), str(r2["text"])])
+	_shot_fill(w, ctx, int(st["stage"]))
+	if rr != null:
+		for k2: int in range(1, int(st["stage"]) + 1):
+			var cid: String = str(concepts[k2 - 1]) if k2 - 1 < concepts.size() else str(GameData.concept_ids()[(k2 - 1) % GameData.concept_ids().size()])
+			RuneWord.set_keystone(w, k2, GameData.tier_for_stage(k2 - 1), cid)
 	var sealed: Dictionary = rules.seal(w, ctx, int(st["stage"]))
 	if bool(sealed["ok"]):
 		st["word"] = w
@@ -2757,6 +2774,31 @@ func _shot_seal(index: int, stage: int, rows: Array, links: Array = []) -> void:
 		print("shot seal: refused: %s" % str(sealed["text"]))
 	for rid: Variant in RuneWord.nodes(w):
 		player.call("_know", str(rid))
+
+
+## The ring a shot row joined to node `to` goes on: one further out where the skill has it and there is
+## room, else the same ring, else the one inside (ring 1 for a rune joined to nothing or the skill).
+func _shot_ring(w: Dictionary, ctx: RuneContext, to: int) -> int:
+	var rr: RingRules = Runes.active() as RingRules
+	if to <= 0 or rr == null:
+		return 1
+	var tr: int = RuneWord.ring(w, to)
+	for k: int in [tr + 1, tr, tr - 1]:
+		if k >= 1 and k <= ctx.rings and RuneWord.ring_nodes(w, k).size() < rr.ring_capacity(k):
+			return k
+	return tr
+
+
+## Fill every empty place of rings 1..`upto` with the shot filler, set alone.
+func _shot_fill(w: Dictionary, ctx: RuneContext, upto: int) -> void:
+	var rr: RingRules = Runes.active() as RingRules
+	if rr == null:
+		return
+	for k: int in range(1, upto + 1):
+		while RuneWord.ring_nodes(w, k).size() < rr.ring_capacity(k):
+			if not bool(rr.add(w, SHOT_FILLER, ctx, -1, k)["ok"]):
+				print("shot seal: ring %d could not be filled" % k)
+				break
 
 
 ## The seal board in the middle of an action, for a shot (the draft of "seal-drag" and friends):
@@ -2812,12 +2854,15 @@ func _shot_skill(id: String) -> int:
 ##   seal-palette       the palette of a new character: what it knows, and the "?" it has yet to find
 ##   seal-lock-main     a water test character's ethercosm (Brent 2026-10-23): Water Bolt's bar full, "ready
 ##                      for its level 1 lock", one "Open the seal" button and no bind buttons
-##   seal-lock-first    its seal at the first lock: ring 1 forming, part-built, the vestige choice
-##   seal-lock-second   the second lock, by the real flow (ring 1 closed and bound with a vestige, the bar
-##                      refilled - a test override): ring 1 sealed, ring 2 forming, the remnant choice
-##   seal-lock-refused  an old save (stage 1, no word - bound before rings locked with each level): ring 2
-##                      refused while ring 1 is unformed, a rune in hand
-##   seal-lock-none     a full skill and no vestige carried: the ring can be laid out, not bound
+##   seal-lock-first    its seal at the first lock: ring 1 part-filled (2 of 3 places), the vestige
+##                      waiting above it, Bind disabled with the reason (Brent 2026-10-24: full rings)
+##   seal-lock-keystone the first lock with every place of ring 1 filled, the word closed and the vestige
+##                      set over it as the keystone: Bind live
+##   seal-lock-second   the second lock, by the real flow (ring 1 full, closed and bound under a vestige,
+##                      the bar refilled - a test override): ring 1 reworked, ring 2 full and closed, the
+##                      remnant set over it
+##   seal-lock-missing  a new character's main page: the bar full, no vestige carried - what is missing,
+##                      and no way into the lock
 func _setup_seal_shot(which: String) -> void:
 	if which.begins_with("seal-lock-"):
 		_setup_lock_shot(which.trim_prefix("seal-lock-"))
@@ -2925,7 +2970,17 @@ func _setup_seal_shot(which: String) -> void:
 			screen.call("set_palette_tab", "universal")
 
 
-## The level lock's shots (design/14 section 11); see _setup_seal_shot.
+## For a shot: set the carried construct of the open lock's tier and `concept` as its keystone.
+func _shot_keystone(concept: String) -> void:
+	var need: String = str(player.call("pending_tier", (player.get("abilities") as Array)[int(player.call("sealing_index"))]))
+	for g: Dictionary in player.call("construct_groups", need):
+		if str(g["concept"]) == concept:
+			screen.call("choose_construct", int(g["index"]))
+			return
+	print("shot: no %s of %s carried" % [need, concept])
+
+
+## The level lock's shots (design/14 sections 11-12); see _setup_seal_shot.
 func _setup_lock_shot(what: String) -> void:
 	forced_biome = "scrubland"
 	match what:
@@ -2934,53 +2989,61 @@ func _setup_lock_shot(what: String) -> void:
 			open_ethercosm()
 			screen.call("select", 0)
 		"first":
+			# ring 1 part-filled (2 of 3 places), the vestige chosen and waiting above it: Bind says why not
 			start_test_character("water")
 			open_seal(0)
 			screen.call("place_rune", "WAT-1a", 1, 0)        # Flood, ring 1
 			screen.call("place_rune", "WAT-5a", 1, 1)        # Gush, ring 1
 			screen.call("finish_bond", 0, 1)                 # Flood joined to the skill
+			screen.call("finish_bond", 0, 2)                 # Gush joined to the skill
+			_shot_keystone("acceleration")
+			screen.call("deselect")
+		"keystone":
+			# every place of ring 1 filled, the word closed, the vestige set over it: ready to bind
+			start_test_character("water")
+			open_seal(0)
+			screen.call("place_rune", "WAT-1a", 1, 0)        # Flood
+			screen.call("place_rune", "WAT-5a", 1, 1)        # Gush
+			screen.call("place_rune", "WAT-3b", 1, 2)        # Dry
+			for pair: Array in [[0, 1], [0, 2], [1, 3], [1, 2]]:
+				screen.call("finish_bond", int(pair[0]), int(pair[1]))
+			_shot_keystone("acceleration")
 			screen.call("deselect")
 		"second":
+			# lock 1 bound by the real flow (ring 1 full and closed, the vestige of Acceleration over it;
+			# the bar refills - a test override), then lock 2: ring 1 reworked, all five places of ring 2
+			# filled and the word closed, the remnant of Reach set over ring 2
 			start_test_character("water")
 			open_seal(0)
 			player.call("word_add", 0, "WAT-1a", 0)          # Flood
 			player.call("word_add", 0, "WAT-5a", 0)          # Gush
 			player.call("word_add", 0, "WAT-3b", 1)          # Dry on Flood
-			player.call("word_toggle_link", 0, 1, 2)         # Flood - Gush: closed
+			player.call("word_toggle_link", 0, 1, 2)         # Flood - Gush: closed, ring 1 full
+			_shot_keystone("acceleration")
 			screen.call("bind_and_seal", 0.0)                # the vestige binds; the bar refills (test override)
 			player.call("word_toggle_link", 0, 1, 2)         # rework ring 1: part Flood and Gush
-			screen.call("place_rune", "WAT-6b", 2, 1)        # Settle, ring 2
-			screen.call("finish_bond", 2, 4)                 # Gush - Settle
+			player.call("word_remove", 0, 3)                 # Dry out
+			player.call("word_add", 0, "WAT-8b", 1, 1)       # Slack in its place, on ring 1, off Flood
+			player.call("word_add", 0, "WAT-6b", 2)          # Settle off Gush, ring 2
+			player.call("word_add", 0, "WAT-4b", 4)          # Drown off Settle, ring 2
+			player.call("word_add", 0, "WAT-8b", 4)          # Slack off Settle, ring 2
+			player.call("word_add", 0, "UNI-05a", 1)         # Expand off Flood, ring 2
+			player.call("word_add", 0, "UNI-05a", 7)         # a second Expand off the first: ring 2 full
+			player.call("word_toggle_link", 0, 4, 8)         # it and Settle: the word closes
+			_shot_keystone("reach")
 			screen.call("deselect")
 			_shot_countdown = 70
-		"refused":
-			_select_talent(0)
-			player.call("set_affinities", ["water"])
-			player.call("start_with_skills", player.call("default_start_skills"))
-			var own: Array = player.get("abilities")
-			own[0]["stage"] = 1                              # bound once under the old flow, no word
-			own[0]["progress"] = 100.0
-			(player.get("constructs") as Array).clear()
-			(player.get("constructs") as Array).append({"tier": "remnant", "concept": "tension"})
-			_enter_town()
-			open_seal(0)
-			var rid: String = str((player.get("known_runes") as Array).filter(func(id: String) -> bool:
-				return id != GameData.skill_anchor(str(own[0]["id"])) and str(GameData.rune(id).get("affinity", "")) == "water")[0])
-			screen.call("arm_rune", rid)
-			screen.call("place_rune", rid, 2, 0)            # refused: ring 1 is not formed
-		"none":
+		"missing":
+			# a new character's full skill and no vestige carried: the main page says what is missing,
+			# and there is no way into the lock
 			_select_talent(0)
 			player.call("set_affinities", ["water"])
 			player.call("start_with_skills", player.call("default_start_skills"))
 			(player.get("abilities") as Array)[0]["progress"] = 100.0
 			(player.get("constructs") as Array).clear()
 			_enter_town()
-			open_seal(0)
-			var mine: Array = (player.get("known_runes") as Array).filter(func(id: String) -> bool:
-				return id != GameData.skill_anchor(str((player.get("abilities") as Array)[0]["id"])) and str(GameData.rune(id).get("affinity", "")) == "water")
-			screen.call("place_rune", str(mine[0]), 1, 0)
-			screen.call("finish_bond", 0, 1)
-			screen.call("deselect")
+			open_ethercosm()
+			screen.call("select", 0)
 
 
 func _tick_bot_report() -> void:

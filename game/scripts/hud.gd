@@ -1350,9 +1350,13 @@ func _draw_tooltip(vs: Vector2) -> void:
 				lines.append(["Sealed word: " + ", ".join(PackedStringArray(rune_fx.map(func(v: Variant) -> String: return str(v)))), body_px, UiTheme.GOLD])
 			var need: String = str(player.call("pending_tier", st))
 			if need != "":
-				lines.append(["Full. Ready for its level %d lock: needs a %s, bound on its seal (%s)." % [int(st["stage"]) + 1, need, Keybinds.binding_text("bind")], body_px, UiTheme.GOLD])
-			for up: Dictionary in st.get("bound", []):
-				lines.append(["Bound: %s of %s" % [str(up["tier"]), str(GameData.concept(str(up["concept"])).get("label", up["concept"]))], body_px, UiTheme.STAR])
+				var lock: Dictionary = player.call("can_open_seal", idx)
+				if bool(lock["ok"]):
+					lines.append(["Full. Ready for its level %d lock: a %s carried, set as the keystone on its seal (%s)." % [int(st["stage"]) + 1, need, Keybinds.binding_text("bind")], body_px, UiTheme.GOLD])
+				else:
+					lines.append([str(lock["text"]), body_px, UiTheme.BAD])
+			for ks: Dictionary in RuneWord.keystones(st.get("word", {})):
+				lines.append(["Keystone, ring %d: %s of %s" % [int(ks["ring"]), str(ks["tier"]), str(GameData.concept(str(ks["concept"])).get("label", ks["concept"]))], body_px, UiTheme.STAR])
 	elif what == "strike":
 		var arm_lost: bool = bool(player.get("arm_right_lost"))
 		var strike: float = float(player.call("strike_damage")) * (GameData.num("player", "off_hand_factor") if arm_lost else 1.0)

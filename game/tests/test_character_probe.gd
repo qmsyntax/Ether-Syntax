@@ -6,11 +6,12 @@ extends Node
 ## marked as a test character, standing in town; then presses the hotbar_page key and checks that
 ## the bar shows the next six skills; then the first level lock, the same as anyone's (Brent
 ## 2026-10-23: no free edit, no binding on the main page): the ethercosm offers only "Open the seal",
-## the seal screen opens at stage 0 forming ring 1 with the vestiges to choose from; caps are set on
-## ring 1 by clicks and bonded to the skill by drags, a vestige of Reach chosen, and Bind and lock
-## clicked with the roll made sure (balance "binding" success_chance 1, put back after): stage 1, ring
-## 1 sealed with the vestige, the bar refilled (the test override) and the level 2 lock open at once
-## with the remnants; then the ethercosm's skill details: click a skill, its numbers and statuses,
+## the seal screen opens at stage 0 forming ring 1 with the vestiges offered as its keystone; every
+## place of ring 1 is filled by clicks and the word closed by drags (Brent 2026-10-24: full rings), a
+## vestige of Reach set as the keystone, and Bind and lock clicked with the roll made sure (balance
+## "binding" success_chance 1, put back after): stage 1, ring 1 full and sealed under the vestige, the
+## bar refilled (the test override) and the level 2 lock open at once with the remnants; then the
+## ethercosm's skill details: click a skill, its numbers and statuses,
 ## click a status name for its definition, the skill slots, the glossary. Prints "TESTCHAR: PASS" /
 ## "TESTCHAR: FAIL" and exits 0/1.
 
@@ -215,56 +216,64 @@ func _process(_delta: float) -> void:
 			var ctx: RuneContext = player.call("rune_context", 0)
 			_expect("it opens the seal screen at the level 1 lock: stage 0, ring 1 forming, no free edit", s != null and str(s.call("seal_view")) == "bind"
 				and ctx.stage == 0 and ctx.forming == 1 and ctx.rings == 1 and str((main.find_child("SealBanner", true, false) as Label).text).begins_with("FORMING RING 1"))
-			_expect("the vestiges carried are offered there, one button per concept", GameData.concept_ids().all(func(c: Variant) -> bool:
-				return main.find_child("LockConstruct_%s" % str(c), true, false) is Button) and main.find_child("ChosenConstruct", true, false) != null)
+			_expect("the vestiges carried are offered there as the keystone, one button per concept, none set yet", GameData.concept_ids().all(func(c: Variant) -> bool:
+				return main.find_child("LockConstruct_%s" % str(c), true, false) is Button) and main.find_child("KeystoneHead", true, false) != null
+				and int(player.call("seal_construct")) < 0)
 			_expect("a test character knows every rune", (player.call("rune_palette") as Array).all(func(id: String) -> bool: return bool(player.call("knows_rune", id))))
 			var anchor: String = GameData.skill_anchor(str(((player.get("abilities") as Array)[0] as Dictionary)["id"]))
 			var rules: RingRules = Runes.active() as RingRules
-			var cap := ""
-			for id: String in (player.call("rune_palette") as Array):
-				if cap == "" and str(GameData.rune(id).get("affinity", "")) == AFF and BondRules.valence(id) == 1 and rules.alignment_state(anchor, id) == "ok":
-					cap = id
+			# a closed word with every place of ring 1 filled (Brent 2026-10-24), planned from the
+			# affinity's own runes (the palette tab shown) and then made by clicks and drags only
+			var mine: Array = (player.call("rune_palette") as Array).filter(func(id: String) -> bool: return str(GameData.rune(id).get("affinity", "")) == AFF)
+			var plan: Dictionary = FullRings.pattern(anchor, 1, mine, rules)
+			if plan.is_empty():
+				plan = FullRings.solve(anchor, 1, mine, rules)
+			_expect("a closed word with ring 1 full can be made from the %s runes" % AFF, not plan.is_empty())
 			_caps.clear()
-			for k: int in rules.anchor_needs(player.call("ability_word", 0)):
-				_caps.append(cap)
-			# each cap: picked in the palette, set on an empty place of ring 1, dragged to from the core
-			for i: int in _caps.size():
-				var rid: String = _caps[i]
-				var node: int = i + 1
+			for i: int in range(1, RuneWord.size(plan)):
+				_caps.append(RuneWord.node_id(plan, i))
+			# each rune: picked in the palette, set on an empty place of ring 1
+			for i2: int in _caps.size():
+				var rid: String = _caps[i2]
 				_queue.append(func() -> void: _click(main.find_child("Rune_" + rid, true, false) as Control))
 				_queue.append(func() -> void: _click_at(_board().empty_slot_global(1, 0)))
+			_queue.append(func() -> void:
+				var sbp: Button = main.find_child("SealBindButton", true, false) as Button
+				_expect("ring 1 full but nothing bonded: Bind is disabled and says why", sbp != null and sbp.disabled and sbp.tooltip_text != "", sbp.tooltip_text if sbp != null else "no button"))
+			# each bond: pressed on one rune and dragged to the other
+			for l: Dictionary in RuneWord.links(plan):
+				var a: int = int(l["a"])
+				var b: int = int(l["b"])
 				_queue.append(func() -> void:
-					_move(_board().node_global(0), false)
-					_mouse(_board().node_global(0), true))
-				_queue.append(func() -> void: _move(_board().node_global(0).lerp(_board().node_global(node), 0.5), true))
-				_queue.append(func() -> void: _move(_board().node_global(node), true))
-				_queue.append(func() -> void: _mouse(_board().node_global(node), false))
+					_move(_board().node_global(a), false)
+					_mouse(_board().node_global(a), true))
+				_queue.append(func() -> void: _move(_board().node_global(a).lerp(_board().node_global(b), 0.5), true))
+				_queue.append(func() -> void: _move(_board().node_global(b), true))
+				_queue.append(func() -> void: _mouse(_board().node_global(b), false))
 			_queue.append(func() -> void:
 				var w: Dictionary = player.call("ability_word", 0)
-				_expect("caps set on ring 1 by clicks and bonded to the skill by drags: the word is closed", RuneWord.size(w) == _caps.size() + 1
+				_expect("every place of ring 1 set by clicks and bonded by drags: the word is closed and the ring full", RuneWord.ring_nodes(w, 1).size() == rules.ring_capacity(1)
 					and bool(Runes.active().word_state(w, player.call("rune_context", 0))["closed"]), str(w))
 				_reveal(main.find_child("LockConstruct_reach", true, false) as Control)
 				_click(main.find_child("LockConstruct_reach", true, false) as Control))
 			_queue.append(func() -> void:
-				var cons: Array = player.get("constructs")
-				var c: Dictionary = cons[int(player.call("seal_construct"))]
-				_expect("clicking a concept chooses that vestige for the lock", str(c["tier"]) == "vestige" and str(c["concept"]) == "reach")
+				var ks: Dictionary = player.call("seal_keystone")
+				_expect("clicking a concept sets that vestige over ring 1 as its keystone", str(ks.get("tier", "")) == "vestige" and str(ks.get("concept", "")) == "reach" and bool(ks.get("set", false)))
 				_chance = GameData.num("binding", "success_chance")
 				(GameData.balance["binding"] as Dictionary)["success_chance"] = 1.0
 				_click(main.find_child("SealBindButton", true, false) as Control))
 			_queue.append(func() -> void:
 				(GameData.balance["binding"] as Dictionary)["success_chance"] = _chance
 				var st: Dictionary = (player.get("abilities") as Array)[0]
-				var bound: Array = st.get("bound", [])
-				_expect("Bind and lock binds the vestige and seals ring 1 together: stage 1, one ring, the vestige of Reach bound",
-					int(st["stage"]) == 1 and RuneWord.sealed(st.get("word", {})) == 1 and bound.size() == 1 and str((bound[0] as Dictionary)["concept"]) == "reach"
-					and str((bound[0] as Dictionary)["tier"]) == "vestige", str(st))
+				var w1: Dictionary = st.get("word", {})
+				_expect("Bind and lock locks the level: stage 1, ring 1 full and sealed, the vestige of Reach its keystone",
+					int(st["stage"]) == 1 and RuneWord.sealed(w1) == 1 and RuneWord.ring_nodes(w1, 1).size() == rules.ring_capacity(1)
+					and str(RuneWord.keystone(w1, 1).get("concept", "")) == "reach" and str(RuneWord.keystone(w1, 1).get("tier", "")) == "vestige", str(st))
 				var s2: Node = main.get("screen")
 				var ctx2: RuneContext = player.call("rune_context", 0)
-				_expect("the bar is refilled (a test override) and the level 2 lock is open at once: ring 1 sealed, ring 2 forming, the remnants to choose",
+				_expect("the bar is refilled (a test override) and the level 2 lock is open at once: ring 1 sealed, ring 2 forming, the remnants offered as its keystone",
 					is_equal_approx(float(st["progress"]), 100.0) and str(s2.call("seal_view")) == "bind" and ctx2.forming == 2 and int(s2.call("sealed_rings")) == 1
-					and main.find_child("LockConstruct_reach", true, false) is Button
-					and str(((player.get("constructs") as Array)[int(player.call("seal_construct"))] as Dictionary)["tier"]) == "remnant")
+					and main.find_child("LockConstruct_reach", true, false) is Button and str(player.call("pending_tier", st)) == "remnant")
 				main.call("close_screen")
 				main.call("open_ethercosm")
 				_lock_done = true)

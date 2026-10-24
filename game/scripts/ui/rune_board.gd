@@ -64,7 +64,7 @@ const SHORT_REASON := {
 	"valence_full": "full", "rings_apart": "not an adjacent ring", "refused": "alignment refuses",
 	"already_linked": "already bonded", "ring_full": "ring full", "ring": "ring not open", "capacity": "word full",
 	"no_rings": "no ring yet", "unknown": "not discovered", "not_yours": "not your affinity", "locked": "sealed",
-	"repeat": "already in the word", "ring_unformed": "inner ring not formed",
+	"repeat": "already in the word", "ring_unformed": "inner ring not full",
 }
 
 var screen: Control
@@ -83,6 +83,8 @@ var _slots: Array[Dictionary] = []
 var _ring_r: Array[float] = [0.0]
 ## [text, colour] per ring, for the list top-left (filled while the rings are drawn).
 var _ring_labels: Array = []
+## The keystones in words, for the list top left: [[text, colour]] (_draw_keystones).
+var _keystone_labels: Array = []
 ## Each bond's drawn curve from the last layout: Vector2i(a, b) (a < b) -> points.
 var _bond_pts: Dictionary = {}
 ## A press on a rune, and the bond being dragged out of it.
@@ -548,6 +550,7 @@ func _draw() -> void:
 		_draw_core(c, ab, aff_col, word, rules.describe_node(word, 0, ctx), picked == 0)
 	for i: int in range(1, n):
 		_draw_seal(word, i, rules.describe_node(word, i, ctx), i == picked)
+	_draw_keystones(c, word, ctx)
 	_draw_branch_marks(traits)
 	if _dragging:
 		_draw_drag(word, rules, ctx)
@@ -571,8 +574,7 @@ func _draw() -> void:
 	var pulse: float = 0.75 + 0.25 * sin(_time * 2.0)
 	var ty := 96.0
 	if mode == "bind":
-		var first_new: int = int(screen.call("sealed_rings")) + 1
-		var forming_t: String = ("F O R M I N G   R I N G   %d" % ctx.forming) if first_new >= ctx.forming else "F O R M I N G   R I N G S   %d - %d" % [first_new, ctx.forming]
+		var forming_t: String = "F O R M I N G   R I N G   %d" % ctx.forming
 		UiDraw.outlined(self, Vector2(16.0, ty), "L E V E L   %d   L O C K   -   %s" % [ctx.stage + 1, forming_t], 18,
 			Color(UiTheme.STAR.lightened(0.2), pulse), HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
 	elif sealed:
@@ -586,6 +588,9 @@ func _draw() -> void:
 	ty += 6.0
 	for rl: Array in _ring_labels:
 		UiDraw.text(self, Vector2(16.0, ty), str(rl[0]), 12, Color(rl[1] as Color, 0.9))
+		ty += 16.0
+	for kl: Array in _keystone_labels:
+		UiDraw.outlined(self, Vector2(16.0, ty), str(kl[0]), 12, kl[1] as Color, HORIZONTAL_ALIGNMENT_LEFT, -1.0)
 		ty += 16.0
 	ty += 8.0
 	for t: Dictionary in traits:
@@ -628,10 +633,10 @@ func _draw_rings(c: Vector2, word_d: Dictionary, ctx: RuneContext, col: Color) -
 	for k: int in range(1, _ring_r.size()):
 		var r: float = _ring_r[k]
 		var is_sealed: bool = k <= sealed_n
-		# the ring this lock forms - and, for an old save bound before rings locked with each level, the
-		# inner rings it must form first (design/14 section 11)
+		# the ring this lock forms (every place filled before the level can lock - Brent 2026-10-24)
 		var forming: bool = mode == "bind" and k > sealed_n and k <= ctx.forming
 		var waits: int = (rules_ring().unformed_below(word_d, k) if rules_ring() != null else 0) if forming else 0
+		var fill: String = rules_ring().ring_fill_text(word_d, k) if rules_ring() != null else ""
 		var label := "ring %d" % k
 		if forming:
 			var shim: float = 0.55 + 0.45 * sin(_time * 3.0)
@@ -648,7 +653,7 @@ func _draw_rings(c: Vector2, word_d: Dictionary, ctx: RuneContext, col: Color) -
 				var am: float = TAU * float(m) / 10.0 + _time * 0.1
 				var rr: float = lerpf(r + 40.0, r, u)
 				draw_circle(c + Vector2(cos(am), sin(am)) * rr, 2.0, Color(UiTheme.STAR.lightened(0.4), 0.7 * sin(PI * u)))
-			label = ("ring %d  -  forming" % k) if waits == 0 else "ring %d  -  waits for ring %d" % [k, waits]
+			label = ("ring %d  -  forming, %s filled" % [k, fill]) if waits == 0 else "ring %d  -  waits for ring %d to be full" % [k, waits]
 		elif is_sealed:
 			var gold: Color = UiTheme.GOLD.lerp(col.lightened(0.3), 0.25)
 			var dim: float = 0.7 if mode == "bind" else 1.0
@@ -659,7 +664,7 @@ func _draw_rings(c: Vector2, word_d: Dictionary, ctx: RuneContext, col: Color) -
 				var at: float = TAU * float(t) / 72.0 - _time * 0.02 * (1.0 if k % 2 == 1 else -1.0)
 				var dir := Vector2(cos(at), sin(at))
 				draw_line(c + dir * (r - 7.0), c + dir * (r - (4.0 if t % 6 == 0 else 5.5)), Color(gold, 0.45 * dim), 1.0, true)
-			label = "ring %d  -  sealed%s" % [k, ", can be reworked" if mode == "bind" else ""]
+			label = "ring %d  -  sealed%s" % [k, (" (%s), may be reworked" % fill) if mode == "bind" else ""]
 		else:
 			var segs2 := 96
 			for s2: int in segs2:
@@ -673,6 +678,126 @@ func _draw_rings(c: Vector2, word_d: Dictionary, ctx: RuneContext, col: Color) -
 		draw_arc(tp, 10.0, 0.0, TAU, 20, Color(tag_col, 0.8), 1.2, true)
 		UiDraw.text(self, tp + Vector2(-10.0, 5.0), str(k), 12, tag_col, HORIZONTAL_ALIGNMENT_CENTER, 20.0, false)
 		_ring_labels.append([label, tag_col])
+
+
+# --- keystones (Brent 2026-10-24: "Then a vestige is placed over the top ... and that locks the level")
+
+## Where ring k's keystone crowns it: at the top. An even ring's places are turned half a step, so its
+## top is a gap and the keystone sits on the ring itself; an odd ring has a place at the top, so the
+## keystone sits over that rune and its name, outward, short of the next ring (whose top is a gap).
+const KEYSTONE_CLEAR := 112.0     # how far out from an odd ring's top rune (and its name) the keystone sits, room allowing
+
+
+func keystone_global(k: int) -> Vector2:
+	return get_global_transform() * _keystone_pos(k)
+
+
+func _keystone_pos(k: int) -> Vector2:
+	var c: Vector2 = _centre()
+	if k < 1 or k >= _ring_r.size():
+		return c
+	var r: float = _ring_r[k]
+	if k % 2 == 1:
+		# short of the next ring's own keystone, which sits on that ring's line
+		r = minf(r + KEYSTONE_CLEAR, _ring_r[k + 1] - 34.0) if k + 1 < _ring_r.size() else r + KEYSTONE_CLEAR
+	return c + Vector2(0.0, -r)
+
+
+## Each sealed ring's keystone, and at a lock the one being set over the forming ring: set (every ring
+## up to it full), waiting above it (chosen, the ring not full yet), or an empty socket (none chosen).
+## What each is and does is written in the list top left (_keystone_labels), never over the rings.
+func _draw_keystones(_c: Vector2, word: Dictionary, ctx: RuneContext) -> void:
+	var mode: String = _mode()
+	_keystone_labels.clear()
+	for ks: Dictionary in RuneWord.keystones(word):
+		var k: int = int(ks["ring"])
+		if k >= _ring_r.size() or (mode == "bind" and k == ctx.forming):
+			continue
+		_draw_keystone(_keystone_pos(k), str(ks["tier"]), "sealed")
+		_keystone_labels.append_array(_keystone_line(k, str(ks["tier"]), str(ks["concept"]), "sealed", ctx, word, 0))
+	if mode != "bind" or ctx.forming < 1 or ctx.forming >= _ring_r.size():
+		return
+	var pending: Dictionary = (screen.get("player") as Node).call("seal_keystone")
+	var rr: RingRules = rules_ring()
+	var gap: int = rr.first_unformed(word, ctx.forming) if rr != null else 0
+	var at: Vector2 = _keystone_pos(ctx.forming)
+	var tier: String = GameData.tier_for_stage(ctx.stage) if pending.is_empty() else str(pending["tier"])
+	var state: String = "socket" if pending.is_empty() else ("set" if bool(pending["set"]) else "waiting")
+	_draw_keystone(at, tier, state)
+	_keystone_labels.append_array(_keystone_line(ctx.forming, tier, "" if pending.is_empty() else str(pending["concept"]), state, ctx, word, gap))
+
+
+func _tier_colour(tier: String) -> Color:
+	var at: int = maxi(0, GameData.construct_tiers.find(tier))
+	return UiTheme.GOLD.lerp(UiTheme.STAR.lightened(0.15), clampf(float(at) / 4.0, 0.0, 1.0))
+
+
+## One keystone: a wedge wider outward, like the stone that locks an arch, its tier written small beside
+## it. `state` is "sealed", "set", "waiting" or "socket".
+func _draw_keystone(at: Vector2, tier: String, state: String) -> void:
+	var col: Color = _tier_colour(tier)
+	var top_w := 40.0
+	var bot_w := 24.0
+	var h := 30.0
+	var pts := PackedVector2Array([at + Vector2(-top_w * 0.5, -h * 0.5), at + Vector2(top_w * 0.5, -h * 0.5),
+		at + Vector2(bot_w * 0.5, h * 0.5), at + Vector2(-bot_w * 0.5, h * 0.5)])
+	var outline := PackedVector2Array(pts)
+	outline.append(pts[0])
+	var pulse: float = 0.5 + 0.5 * sin(_time * 3.0)
+	match state:
+		"sealed", "set":
+			if state == "set":
+				draw_circle(at, 30.0 + 4.0 * pulse, Color(col, 0.10 + 0.08 * pulse))
+			draw_colored_polygon(pts, col.darkened(0.55))
+			var inner := PackedVector2Array([at + Vector2(-top_w * 0.36, -h * 0.34), at + Vector2(top_w * 0.36, -h * 0.34),
+				at + Vector2(bot_w * 0.34, h * 0.34), at + Vector2(-bot_w * 0.34, h * 0.34)])
+			draw_colored_polygon(inner, Color(col.darkened(0.2), 0.55))
+			draw_polyline(outline, UiTheme.GOLD.lightened(0.2) if state == "set" else Color(UiTheme.GOLD, 0.85), 2.0, true)
+			UiDraw.icon(self, "gem", at + Vector2(0.0, -1.0), 15.0, col.lightened(0.35))
+		"waiting":
+			draw_colored_polygon(pts, Color(col.darkened(0.6), 0.45))
+			_dashed(outline, Color(col.lightened(0.2), 0.55 + 0.3 * pulse))
+			UiDraw.icon(self, "gem", at + Vector2(0.0, -1.0), 14.0, Color(col, 0.55))
+		_:
+			draw_colored_polygon(pts, Color(0.0, 0.0, 0.0, 0.5))
+			_dashed(outline, Color(UiTheme.STAR, 0.35 + 0.3 * pulse))
+	UiDraw.outlined(self, at + Vector2(top_w * 0.5 + 6.0, 4.0), tier.to_upper(), 11, Color(col.lightened(0.2), 0.95 if state != "socket" else 0.6),
+		HORIZONTAL_ALIGNMENT_LEFT, -1.0)
+
+
+## The keystone of ring k in words, for the list top left, short lines: [[text, colour], ...].
+func _keystone_line(k: int, tier: String, concept: String, state: String, ctx: RuneContext, word: Dictionary, gap: int) -> Array:
+	var col: Color = _tier_colour(tier).lightened(0.25)
+	var rr: RingRules = rules_ring()
+	var out: Array = []
+	if concept != "" and rr != null:
+		var ab: Dictionary = GameData.ability(ctx.ability_id) if GameData.abilities.has(ctx.ability_id) else {}
+		var ke: Dictionary = rr.keystone_effect(ab, {"ring": k, "tier": tier, "concept": concept})
+		out.append(["%s ring %d  -  %s of %s (x%s)" % ["keystone" if state == "sealed" else "KEYSTONE", k, tier, str(GameData.concept(concept).get("label", concept)),
+			RingRules._x(float(ke["weight"]))], col])
+		out.append(["      " + ", ".join(PackedStringArray(ke["lines"])), Color(col, 0.85)])
+	else:
+		out.append(["KEYSTONE ring %d  -  the %s" % [k, tier], col])
+	match state:
+		"set":
+			out.append(["      set: bind to lock the level", UiTheme.GOOD.lightened(0.15)])
+		"waiting":
+			var g: int = gap if gap > 0 else k
+			out.append(["      waits until ring %d is full (%s)" % [g, rr.ring_fill_text(word, g) if rr != null else "?"], UiTheme.TEXT_DIM])
+		"socket":
+			out.append([("      fill ring %d first (%s)" % [gap, rr.ring_fill_text(word, gap) if rr != null else "?"]) if gap > 0
+				else "      choose it in the panel to set it", UiTheme.TEXT_DIM])
+	return out
+
+
+func _dashed(pts: PackedVector2Array, col: Color) -> void:
+	for i: int in pts.size() - 1:
+		var a: Vector2 = pts[i]
+		var b: Vector2 = pts[i + 1]
+		var n: int = maxi(2, int(a.distance_to(b) / 5.0))
+		for s: int in n:
+			if s % 2 == 0:
+				draw_line(a.lerp(b, float(s) / float(n)), a.lerp(b, float(s + 1) / float(n)), col, 1.6, true)
 
 
 ## Where ring k's number sits: on its left, halfway between the two places nearest the left, so it
