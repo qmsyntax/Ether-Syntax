@@ -1,12 +1,9 @@
-# Affinity framework: bases, hybrids, evolutions (2026-10-24)
+# Affinity framework: 8 bases, 10 hybrids (2026-10-24)
 
-Brent's ruling 2026-10-24 [B]: the base is narrow, and every other affinity is either a **hybrid** of two bases
-or an **evolution** of one. Parents come from the midpoint test (`design/runes-data/hybrid-midpoints.md`,
-`tools/runes/hybrid_midpoints.py`) [MODEL], except where Brent forced them [B]. No new affinities beyond these
-18 (Storm, Twilight, Mist and Grave, which the test also suggested, are not added) [B].
-
-Roles are the 2026-10-24 working table [B/MODEL]; how a hybrid's role, runes and five-axis position derive from
-its parents is still to be designed.
+Brent's ruling 2026-10-24 [B]: a narrow base of eight, and every other affinity is a **hybrid of two bases**,
+its role emerging from its parents'. The parents below are Brent's pick from the proposed table [B]. The
+midpoint test (`design/runes-data/hybrid-midpoints.md`, `tools/runes/hybrid_midpoints.py`) is reference only
+[MODEL]. No new affinities beyond these 18 (Storm, Twilight, Mist and Grave are not added) [B].
 
 ## Bases (8)
 
@@ -21,29 +18,23 @@ its parents is still to be designed.
 | Life | Healer - regrowth, the living only |
 | Death | Necromancer - corpses, thralls, the dying |
 
-## Hybrids (two parents)
+## Hybrids (10)
 
-| Affinity | Parents | Source | Role |
-|---|---|---|---|
-| Lightning | Fire + Wind | midpoint, lift +0.11 | Spellblade - marks in melee, detonates with casts |
-| Ice | Earth + Wind | midpoint, lift +0.07 | Control caster - slow, freeze, shatter |
-| Blood | Life + Death | midpoint, lift +0.07 | Berserker - conjured blood weapons, never your own health |
-| Dream | Dark + Life | midpoint, lift +0.07 | Enchanter - sleep, charm, masks |
-| Poison | Water + Death | **forced** [B] 2026-10-24 | Weapon coater - coatings, poison that pays out later |
-| Disease | Water + Death | midpoint, lift +0.06 [B] kept 2026-10-24 | Plague caster - spreading attrition |
-| Nature | Water + Earth | midpoint, lift +0.04 | Druid - growth, beasts, buffs (Brent: Nature also buffs) |
-| Holy | Light + Life | **forced** [B] | Paladin / support - shields, wards, buffs |
-| Unholy | Dark + Death | **forced** [B] (also the midpoint's pick) | Shadow knight - drain melee, fear, auras |
-
-## Evolutions (one parent)
-
-| Affinity | Parent | Source | Role |
-|---|---|---|---|
-| Metal | Earth | **forced** [B]; the midpoint test found no pair (lift -0.01) | Armoured duellist - armour, reflect, taunt |
-
+| Hybrid | Parents | Role that emerges |
+|---|---|---|
+| Lightning | Fire + Wind | Burst + speed -> spellblade |
+| Metal | Earth + Fire | Ground + forge -> armoured duellist |
+| Nature | Earth + Life | Ground + healing -> druid: growth, buffs |
+| Ice | Water + Dark | Flow + stillness -> control |
+| Blood | Life + Death | Spilled life -> berserker (never your own health) |
+| Holy | Light + Life | Paladin / support |
+| Unholy | Dark + Death | Shadow knight |
+| Dream | Light + Dark | Twilight -> enchanter |
+| Poison | Water + Death | Tainted water -> coating, poison that pays out later |
+| Disease | Earth + Death | Rot -> plague |
 
 ## Open
-- Poison and Disease share parents (Water + Death): one pair yields two hybrids. How a character comes to one rather than the other is open.
-- How a character gets a hybrid or evolution (held both parents? grown into?), and whether any can be rolled at creation.
+- How a character gets a hybrid (holding both parents? grown into?), and whether any can be rolled at creation.
+- How a hybrid's runes and five-axis position derive from its parents.
 - Holy and Unholy do not exist in the game yet: base runes, five-axis positions, skill drafts.
 - No affinity owns bows / thrown weapons yet.
