@@ -27,6 +27,7 @@ func run() -> void:
 	_data()
 	await _statuses()
 	await _coat_and_fire()
+	await _ground_and_edge()
 
 
 # --- helpers ------------------------------------------------------------------------------------
@@ -333,6 +334,131 @@ func _coat_and_fire() -> void:
 	check.call("on a burning one, everyone near it catches as many stacks as it carries (at most %d)" % int(bf["spread_max"]),
 		int(near.call("status_stacks", "alight")) == mini(3, int(bf["spread_max"])), str(near.get("statuses")))
 	p.set("hovered", null)
+	_clean()
+
+
+# --- Earth's ground, Metal's edge, Wind's turn: auras, the millstone, the counter window, Edge Heat, the leap ---
+
+func _ground_and_edge() -> void:
+	var p := _player(Vector3(5600, 0, 0), ["earth", "metal", "wind"])
+	for id: String in ["millstone", "stonehide", "turn_the_edge", "plating", "veil", "downdraft", "turning_palm", "red_iron"]:
+		p.call("learn", id)
+	await t.get_tree().physics_frame
+	p.set("_facing", Vector3(0, 0, -1))
+	# Millstone: an aura that drags them in and keeps them Taunted; nothing moves you; a slam when it ends
+	var ms: Dictionary = GameData.ability("millstone")
+	var near := _enemy(p, Vector3(0, 0, -4.0))
+	_cast(p, "millstone")
+	var d0: float = near.global_position.distance_to(p.global_position)
+	p.call("_tick_buffs", 1.0)
+	check.call("Millstone: its aura Taunts whoever is near and draws them in", bool(near.call("has_status", "taunted"))
+		and near.global_position.distance_to(p.global_position) < d0 - 0.3, "%.2f -> %.2f m" % [d0, near.global_position.distance_to(p.global_position)])
+	p.call("shove", Vector3(1, 0, 0), 3.0)
+	check.call("and while it lasts nothing shoves you", _near(float(p.get("_shoved_left")), 0.0))
+	var l0: float = t.call("_lost", near)
+	near.global_position = p.global_position + Vector3(0, 0, -1.5)
+	p.call("_tick_buffs", float(ms["duration"]))
+	check.call("when it runs out it slams down round you (%d)" % int(ms["on_end"]["damage"]), _near(float(t.call("_lost", near)) - l0, float(ms["on_end"]["damage"]), 0.5)
+		and not (p.get("buffs") as Dictionary).has("millstone"), "lost %f" % (float(t.call("_lost", near)) - l0))
+	# Stonehide's aura of mud
+	_cast(p, "stonehide")
+	p.call("_tick_buffs", 0.6)
+	check.call("Stonehide: an aura of mud round you (Mired)", bool(near.call("has_status", "mired")))
+	(p.get("buffs") as Dictionary).clear()
+	# the counter window (one mechanic for Holy, Wind and Metal): Turn the Edge refuses the first blow whole and answers it
+	var tte: Dictionary = GameData.ability("turn_the_edge")
+	var att := _enemy(p, Vector3(0, 0, -1.6))
+	att.set("facing", Vector3(0, 0, 1))
+	var body: Body = p.get("body")
+	body.hp = body.total_max()
+	_cast(p, "turn_the_edge")
+	check.call("Turn the Edge opens a %s s window and roots you" % str(tte["window_s"]), (p.get("buffs") as Dictionary).has("turn_the_edge") and _near(float(p.call("buff_num", "move_factor")), 0.0))
+	var took: float = p.call("take_hit", 30.0, true, att)
+	check.call("the first blow in it is refused whole - no harm, no wound", _near(took, 0.0) and _near(body.hp, body.total_max()) and body.wounds.is_empty())
+	check.call("and answered: the attacker Dulled and Staggered, and two Edge Heat on it", bool(att.call("has_status", "dulled")) and bool(att.call("has_status", "staggered"))
+		and int(p.get("focus")) == int(tte["focus_gain"]) and p.get("_focus_target") == att, "focus %d" % int(p.get("focus")))
+	check.call("then the window is shut", not (p.get("buffs") as Dictionary).has("turn_the_edge"))
+	took = p.call("take_hit", 10.0, false, att)
+	check.call("so the next blow lands", took > 0.0)
+	body.hp = body.total_max()
+	# a window that passes with no blow gives a share of the essence back (Turning Palm's refund_unused)
+	var tp: Dictionary = GameData.ability("turning_palm")
+	_cast(p, "turning_palm")
+	var e_after: float = float(p.get("essence"))
+	p.call("_tick_buffs", float(tp["window_s"]) + 0.05)
+	check.call("an unused Turning Palm gives back %d%% of its essence" % int(float(tp["refund_unused"]) * 100.0), _near(float(p.get("essence")) - e_after, float(tp["cost"]) * float(tp["refund_unused"]), 0.05))
+	# Turning Palm answers from behind: you end up at the attacker's back, and it is Turned
+	att.call("clear_status", "staggered")
+	att.set("facing", Vector3(0, 0, 1))
+	_cast(p, "turning_palm")
+	p.call("take_hit", 10.0, false, att)
+	check.call("Turning Palm puts you behind the attacker and Turns it", bool(att.call("is_behind", p.global_position)) and bool(att.call("has_status", "turned")))
+	(p.get("buffs") as Dictionary).clear()
+	# Edge Heat: blows on the same enemy heat the edge, each +8%; another enemy starts again; it cools
+	var a1 := _enemy(p, Vector3(4.0, 0, 0))
+	var a2 := _enemy(p, Vector3(-4.0, 0, 0))
+	p.set("focus", 0)
+	p.set("_focus_target", null)
+	var mcfg: Dictionary = GameData.affinity("metal")
+	var h1: HitContext = p.call("deal_damage", a1, 100.0, ["ability", "metal"])
+	var h2: HitContext = p.call("deal_damage", a1, 100.0, ["ability", "metal"])
+	var h3: HitContext = p.call("deal_damage", a1, 100.0, ["ability", "metal"])
+	check.call("Edge Heat: each metal blow on the same enemy adds one, +%d%% each" % int(float(mcfg["focus_mult"]) * 100.0),
+		int(p.get("focus")) == 3 and _near(h2.applied / h1.applied, 1.0 + float(mcfg["focus_mult"]), 0.001) and _near(h3.applied / h1.applied, 1.0 + 2.0 * float(mcfg["focus_mult"]), 0.001),
+		"focus %d, %f %f %f" % [int(p.get("focus")), h1.applied, h2.applied, h3.applied])
+	p.call("deal_damage", a1, 50.0, ["ability", "metal", "spall"])
+	check.call("a side-effect (spall) neither adds nor resets it", int(p.get("focus")) == 3)
+	p.call("deal_damage", a2, 100.0, ["ability", "metal"])
+	check.call("a blow on another enemy starts again at one, on that one", int(p.get("focus")) == 1 and p.get("_focus_target") == a2)
+	for i: int in int(float(mcfg["focus_max"])) + 2:
+		p.call("deal_damage", a2, 1.0, ["ability", "metal"])
+	check.call("it stops at %d" % int(mcfg["focus_max"]), int(p.get("focus")) == int(mcfg["focus_max"]))
+	p.set("_focus_t", 0.0)
+	p.call("_physics_process", STEP)
+	check.call("and %s s without a metal blow cools it to nothing" % str(mcfg["focus_cools_s"]), int(p.get("focus")) == 0)
+	_cast(p, "red_iron")
+	p.call("deal_damage", a1, 1.0, ["ability", "metal"])
+	check.call("Red Iron starts the edge white-hot on the next enemy you hit", int(p.get("focus")) == int(mcfg["focus_max"]) and p.get("_focus_target") == a1)
+	(p.get("buffs") as Dictionary).clear()
+	# Plating answers only the blows from close by
+	var pl: Dictionary = GameData.ability("plating")
+	var far_att := _enemy(p, Vector3(0, 0, 4.0))
+	_cast(p, "plating")
+	p.call("take_hit", 5.0, false, far_att)
+	check.call("Plating: an attacker beyond %s m is not Dulled" % str(pl["attacker_reach"]), not bool(far_att.call("has_status", "dulled")))
+	far_att.global_position = p.global_position + Vector3(0, 0, 1.6)
+	p.call("take_hit", 5.0, false, far_att)
+	check.call("one within it is", bool(far_att.call("has_status", "dulled")))
+	(p.get("buffs") as Dictionary).clear()
+	body.hp = body.total_max()
+	# Crosswind Veil: a shot passing close curves away and pays a pip
+	_cast(p, "veil")
+	var ShotScript: GDScript = load("res://scripts/enemy_shot.gd")
+	var arrow: Node3D = _keep(ShotScript.new())
+	arrow.set("dir", Vector3(0, 0, 1))
+	arrow.set("damage", 18.0)
+	arrow.set("target", p)
+	t.add_child(arrow)
+	arrow.set_physics_process(false)
+	arrow.global_position = p.global_position + Vector3(1.0, 1.0, -8.0)
+	p.set("pips", 0)
+	for i: int in 60:
+		if is_instance_valid(arrow) and not arrow.is_queued_for_deletion():
+			arrow.call("_physics_process", STEP)
+	check.call("Crosswind Veil: a shot within %s m curves away and pays a pip" % str(GameData.ability("veil")["deflect_radius"]),
+		_near(body.hp, body.total_max()) and int(p.get("pips")) == int(GameData.ability("veil")["gain_pips_per_deflect"]), "pips %d hp %f" % [int(p.get("pips")), body.hp])
+	(p.get("buffs") as Dictionary).clear()
+	# Downdraft leaps to the aimed point, no further
+	var dd: Dictionary = GameData.ability("downdraft")
+	var start: Vector3 = p.global_position
+	p.set("cursor_fixed", start + Vector3(0, 0, -4.0))
+	p.set("pips", 0)
+	_cast(p, "downdraft")
+	for i: int in 40:
+		p.call("_physics_process", STEP)
+	check.call("Downdraft leaps to where you aim (4 m), not its full %s m" % str(float(dd["dash_speed"]) * float(dd["dash_time"])),
+		_near(start.distance_to(p.global_position), 4.0, 0.15), "%.2f m" % start.distance_to(p.global_position))
+	p.set("cursor_fixed", null)
 	_clean()
 
 

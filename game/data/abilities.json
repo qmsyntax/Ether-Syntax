@@ -1511,8 +1511,7 @@
       ],
       "verse": "Decide to be somewhere, and be there.",
       "icon": "stonehide",
-      "simplified": "'aura' is not built",
-      "summary": "8 s Braced: 40% less damage, and nothing staggers or shoves you. You move 25% slower, and the ground within 2.5 m of you thickens: enemies in it are Mired. (simplified)",
+      "summary": "8 s Braced: 40% less damage, and nothing staggers or shoves you. You move 25% slower, and the ground within 2.5 m of you thickens: enemies in it are Mired.",
       "good_modifiers": [
         "Persist",
         "Self",
@@ -1654,8 +1653,7 @@
       ],
       "verse": "",
       "icon": "coat_static:EAR-6a",
-      "simplified": "'immovable' is not built; 'aura' is not built; 'on_end' is not built",
-      "summary": "For 6 s you are as heavy as the hill: nothing moves, staggers or throws you, and you walk at 60%. Every enemy within 6 m is drawn toward you, 1 m a second, and Taunted while it stays inside. When it ends the ground settles under you: everything within 3 m takes 60 and 40 poise. (simplified)",
+      "summary": "For 6 s you are as heavy as the hill: nothing moves, staggers or throws you, and you walk at 60%. Every enemy within 6 m is drawn toward you, 1 m a second, and Taunted while it stays inside. When it ends the ground settles under you: everything within 3 m takes 60 and 40 poise.",
       "good_modifiers": [
         "Persist",
         "Expand",
@@ -1973,8 +1971,7 @@
       ],
       "verse": "Nothing thrown at you arrives where you are.",
       "icon": "veil",
-      "simplified": "'deflect_radius' is not built; 'gain_pips_per_deflect' is not built",
-      "summary": "5 s: enemy shots that would pass within 1.5 m of you curve away and miss, each one turned gives you a pip, and your Slipstream does not drain. Blades still land. (simplified)",
+      "summary": "5 s: enemy shots that would pass within 1.5 m of you curve away and miss, each one turned gives you a pip, and your Slipstream does not drain. Blades still land.",
       "good_modifiers": [
         "Persist",
         "Self",
@@ -2114,8 +2111,7 @@
       "pip_damage": 15.0,
       "verse": "Bring the sky down.",
       "icon": "downdraft",
-      "simplified": "'leap' is not built",
-      "summary": "You spring up and come down on a point up to 7 m away, over bodies and gaps. Everything within 3 m of where you land takes 60, is interrupted and Pinned for 2 s; anything Aloft takes 100 more. Spends up to 3 pips for +15 each. (simplified)",
+      "summary": "You spring up and come down on a point up to 7 m away, over bodies and gaps. Everything within 3 m of where you land takes 60, is interrupted and Pinned for 2 s; anything Aloft takes 100 more. Spends up to 3 pips for +15 each.",
       "good_modifiers": [
         "Contract",
         "Haste",
@@ -2166,8 +2162,7 @@
       ],
       "verse": "",
       "icon": "coat_static:WIN-4b",
-      "simplified": "'window_s' is not built; 'move_factor' is not built; 'counter_reach' is not built; 'behind_dist' is not built; 'counter' is not built; 'force_rear' is not built; 'gain_pips' is not built; 'refund_unused' is not built",
-      "summary": "A 0.6 s stance. The first blow, charge or pounce aimed at you from within 3 m misses: you slip behind the attacker and strike it for 1.8x strike damage from behind, it is left Turned for 1.5 s, and you gain 2 pips. If nothing comes, half the essence comes back. (simplified)",
+      "summary": "A 0.6 s stance. The first blow, charge or pounce aimed at you from within 3 m misses: you slip behind the attacker and strike it for 1.8x strike damage from behind, it is left Turned for 1.5 s, and you gain 2 pips. If nothing comes, half the essence comes back.",
       "good_modifiers": [
         "Lash",
         "Drop",
@@ -3972,14 +3967,14 @@
             "id": "taunted",
             "lasts": 5.0
           }
-        ]
+        ],
+        "status_data": {
+          "leash_m": 5.0
+        }
       },
-      "tether_to_caster": true,
-      "tether_m": 5.0,
       "verse": "",
       "icon": "mote:MET-2a",
-      "simplified": "the two are not tethered together; both are only slowed; 'tether_to_caster' is not built; 'tether_m' is not built",
-      "summary": "A line of molten iron thrown at one enemy, 9 m: 30 damage, it is dragged 3 m toward you, and for 5 s it is welded to you and Taunted - it fights you, and if you walk away it comes along, out of its pack. (simplified)",
+      "summary": "A line of molten iron thrown at one enemy, 9 m: 30 damage, it is dragged 3 m toward you, and for 5 s it is welded to you and Taunted - it fights you, and if you walk away it comes along, out of its pack.",
       "good_modifiers": [
         "Persist",
         "Far",
@@ -4019,8 +4014,7 @@
       },
       "verse": "",
       "icon": "fist:MET-2b",
-      "simplified": "'spall' is not built",
-      "summary": "One enemy in reach: a cleaving blow, 2.4x strike damage and 60 poise. If it wears metal, its armour splits open and the pieces fly on behind it: 30 per metal class to everyone within 2.5 m. (simplified)",
+      "summary": "One enemy in reach: a cleaving blow, 2.4x strike damage and 60 poise. If it wears metal, its armour splits open and the pieces fly on behind it: 30 per metal class to everyone within 2.5 m.",
       "good_modifiers": [
         "Hone",
         "Expand",
@@ -4115,8 +4109,7 @@
       ],
       "verse": "",
       "icon": "coat_static:MET-1a",
-      "simplified": "'set_focus' is not built",
-      "summary": "You draw the iron red-hot: your Edge Heat is full on the next enemy you strike, everything within 2 m takes 20 as the heat comes off you, and for 6 s every bare strike you land sets its target Alight. (simplified)",
+      "summary": "You draw the iron red-hot: your Edge Heat is full on the next enemy you strike, everything within 2 m takes 20 as the heat comes off you, and for 6 s every bare strike you land sets its target Alight.",
       "good_modifiers": [
         "Persist",
         "Self",
@@ -4157,8 +4150,7 @@
       "per_focus_mult": 0.3,
       "verse": "",
       "icon": "palm:MET-4a",
-      "simplified": "'focus_spend' is not built; 'per_focus_mult' is not built",
-      "summary": "Hold to draw your weapon's edge keen, up to 1.5 s, walking at 45%. Let go for one cut across 60 degrees and 3.3 m: 1.6x strike damage at a tap, up to 3.2x at a full hold - and it spends your Edge Heat for +0.3x a stack. (simplified)",
+      "summary": "Hold to draw your weapon's edge keen, up to 1.5 s, walking at 45%. Let go for one cut across 60 degrees and 3.3 m: 1.6x strike damage at a tap, up to 3.2x at a full hold - and it spends your Edge Heat for +0.3x a stack.",
       "good_modifiers": [
         "Focus",
         "Expand",
@@ -4218,8 +4210,7 @@
       ],
       "verse": "",
       "icon": "coat_static:MET-4b",
-      "simplified": "'window_s' is not built; 'move_factor' is not built; 'counter_reach' is not built; 'counter' is not built; 'burst' is not built; 'focus_gain' is not built; 'refund_unused' is not built",
-      "summary": "A 0.5 s guard, Braced. The first blow aimed at you from within 2.5 m is taken on your blade and does nothing: the attacker is Dulled for 6 s, Staggered (your next strike on it is an Opening), and becomes your Edge Heat target with 2 stacks. The ringing Dulls anyone else within 2 m. If nothing comes, half the essence comes back. (simplified)",
+      "summary": "A 0.5 s guard, Braced. The first blow aimed at you from within 2.5 m is taken on your blade and does nothing: the attacker is Dulled for 6 s, Staggered (your next strike on it is an Opening), and becomes your Edge Heat target with 2 stacks. The ringing Dulls anyone else within 2 m. If nothing comes, half the essence comes back.",
       "good_modifiers": [
         "Plate",
         "Fall",
@@ -4263,8 +4254,7 @@
       ],
       "verse": "",
       "icon": "coat_static:MET-5a",
-      "simplified": "'attacker_reach' is not built",
-      "summary": "For 8 s the metal you wear thickens: every blow on you does 30% less, and a blade that lands on you from within 2.5 m is Dulled for 3 s. You move at full speed. (simplified)",
+      "summary": "For 8 s the metal you wear thickens: every blow on you does 30% less, and a blade that lands on you from within 2.5 m is Dulled for 3 s. You move at full speed.",
       "good_modifiers": [
         "Persist",
         "Self",
@@ -9272,10 +9262,16 @@
       "counter": {
         "damage_mult": 2.5,
         "status": "staggered",
-        "also_status": "lit"
+        "statuses": [
+          {
+            "id": "lit",
+            "stacks": 1
+          }
+        ]
       },
       "counter_ward": 20,
       "patience_ward": 10,
+      "refuses_shots": true,
       "magnitude": [
         {
           "path": "counter.damage_mult",
@@ -9285,8 +9281,7 @@
       ],
       "verse": "",
       "icon": "coat_static:HOL-6b",
-      "simplified": "'window_s' is not built; 'move_factor' is not built; 'counter_reach' is not built; 'counter' is not built; 'counter_ward' is not built; 'patience_ward' is not built",
-      "summary": "Stand and wait for up to 1 s behind a guard of light. The first blow that lands in that time is stopped whole and answered: if its thrower is within 6 m it takes 2.5x strike damage, is Lit and Staggered, and you gain a 20 ward. If nothing comes, you keep a 10 ward for your patience. (simplified)",
+      "summary": "Stand and wait for up to 1 s behind a guard of light. The first blow that lands in that time is stopped whole and answered: if its thrower is within 6 m it takes 2.5x strike damage, is Lit and Staggered, and you gain a 20 ward. If nothing comes, you keep a 10 ward for your patience.",
       "good_modifiers": [
         "Persist",
         "Wrath",
@@ -9438,14 +9433,16 @@
       "on_hit": {
         "damage": 45,
         "status": "leashed",
-        "status_s": 4.0
+        "status_s": 4.0,
+        "status_data": {
+          "leash_m": 4.0
+        }
       },
       "drain_frac": 0.1,
       "drain_cap": 10,
-      "leash_m": 4.0,
       "verse": "",
       "icon": "undertow:UNH-2b",
-      "simplified": "'drain_frac' is not built; 'drain_cap' is not built; 'leash_m' is not built",
+      "simplified": "'drain_frac' is not built; 'drain_cap' is not built",
       "summary": "One enemy within 12 m: a hand of shadow takes it and hauls it to arm's length in front of you: 45, it drains, and it is Leashed to you for 4 s - it cannot get more than 4 m from you. (simplified)",
       "good_modifiers": [
         "Far",
@@ -9492,8 +9489,7 @@
       ],
       "verse": "",
       "icon": "coat_static:UNH-3a",
-      "simplified": "'aura' is not built",
-      "summary": "For 8 s the dark hangs round you, 3.5 m across, and goes where you go. The ground in it counts as Dark, and every enemy in it loses 10 a second - drained to you, like every Unholy hit, and doubled because they stand in Dark. (simplified)",
+      "summary": "For 8 s the dark hangs round you, 3.5 m across, and goes where you go. The ground in it counts as Dark, and every enemy in it loses 10 a second - drained to you, like every Unholy hit, and doubled because they stand in Dark.",
       "good_modifiers": [
         "Persist",
         "Expand",
@@ -9652,9 +9648,11 @@
         "damage_mult": 1.4,
         "status": "leashed",
         "status_s": 2.0,
-        "poise": 20
+        "poise": 20,
+        "status_data": {
+          "leash_m": 4.0
+        }
       },
-      "leash_m": 4.0,
       "trail": {
         "width": 1.5,
         "life": 5.0,
@@ -9669,8 +9667,7 @@
       ],
       "verse": "",
       "icon": "dash:UNH-5a",
-      "simplified": "'leash_m' is not built",
-      "summary": "Charge 6.7 m along your aim through the dark and stop on the first enemy you reach: 1.4x, it drains, and it is Leashed to you for 2 s. The ground you crossed stays Dark for 5 s. (simplified)",
+      "summary": "Charge 6.7 m along your aim through the dark and stop on the first enemy you reach: 1.4x, it drains, and it is Leashed to you for 2 s. The ground you crossed stays Dark for 5 s.",
       "good_modifiers": [
         "Gloom",
         "Haste",

@@ -552,6 +552,9 @@ GAP_FILLS = OD([
     ("sere_ground", OD([("on_hit", OD([("poise", 15.0)]))])),                         # + Blight (status blighted)
     ("funnel", OD([("on_hit", OD([("poise", 10.0)]))])),                              # + Attract (pull +1.5)
     ("sapping_tether", OD([("cost", 6.0), ("on_hit", "payload")])),                   # + Poison / Bind / Essence: cost and an on_hit
+    # v2 (holy.json Abiding Guard: "the first blow that would land is refused whole ... a ranged attacker beyond it is
+    # not answered"): Holy's counter refuses a shot too; Wind's and Metal's answer only blows (wind.json: "a shot does not")
+    ("abiding_guard", OD([("refuses_shots", True)])),
 ])
 
 # self buffs and channels: their main magnitude, scaled by a rune's power op. as "amount" (x m) or "mult" (its gap

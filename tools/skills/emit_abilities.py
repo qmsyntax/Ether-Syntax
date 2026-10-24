@@ -58,10 +58,10 @@ BY_KIND = {
                     "pools_per_two_spent", "consume", "daze_at", "essence_per_hit", "essence_max_hits", "swallow_per_hit",
                     "pip_shove", "elite_stun_mult"},
     "targeted_strike": {"range_bonus", "burst", "burst_always", "through", "through_dist", "pip_mult", "force_rear",
-                        "waterlogged_stacks", "burst_zone"},
+                        "waterlogged_stacks", "burst_zone", "spall"},
     "dash": {"dash_speed", "dash_time", "on_pass", "pass_radius", "stops_at_bodies", "trail", "on_stop", "heavy_poise",
              "gain_pips", "no_recovery", "after_speed_mult", "passes_bodies", "pass_through", "pool_bonus_m", "pool_bonus_max",
-             "clears_winded", "never_winds", "pass_armoured", "leave_decoy", "on_arrive", "arrive_radius"},
+             "clears_winded", "never_winds", "pass_armoured", "leave_decoy", "on_arrive", "arrive_radius", "leap", "range"},
     "blink": {"arrive_radius", "on_arrive", "corpse_range", "needs_shadow", "arrive_behind", "rear_window"},
     "ground_zone": {"zone", "at", "needs", "recent_death_s", "spends_corpse"},
     "self_buff": {"buff", "move_speed_mult", "add_reflux", "strike_status", "hits", "melee_taken_mult", "radius", "retaliate",
@@ -70,7 +70,11 @@ BY_KIND = {
                   "heal_per_s", "overflow_to_sink", "strike_mult", "strike_poise_mult", "poise_loss_mult", "cleanse",
                   "new_status_mult", "floor_health", "blocks_healing", "reveal_radius", "lit_front_armour_mult",
                   "unseen_beyond", "first_hit_rear", "ends_on_hit", "recovery_mult", "status_lasts", "on_infected_hit",
-                  "dr_per_infected", "dr_max", "on_cast", "shot_range_mult", "coat_free"},
+                  "dr_per_infected", "dr_max", "on_cast", "shot_range_mult", "coat_free",
+                  # v2: auras and end payloads, a millstone, Edge Heat, the counter window, shots turned aside
+                  "aura", "on_end", "immovable", "set_focus", "attacker_reach", "deflect_radius", "gain_pips_per_deflect",
+                  "window_s", "move_factor", "counter_reach", "counter", "counter_ward", "patience_ward", "behind_dist",
+                  "force_rear", "gain_pips", "refund_unused", "burst", "burst_radius", "focus_gain", "refuses_shots"},
     "delayed_blast": {"radius", "delay", "leave_prop", "bonus_also_vs"},
     "detonate": {"refund_per_stack", "consume_zone", "per_target_damage", "ray_damage", "gather_radius", "gather_into",
                  "gather_cap", "needs_status", "consume", "beats", "beat_s", "pool_per_beat", "after_status",
@@ -86,7 +90,7 @@ BY_KIND = {
     "channel": {"shape", "tick", "move_factor", "pip_cost_per_s", "radius", "pools_per_tick", "blood_per_take", "sink_per_s",
                 "arm_rate", "breaks_on_hit", "break_range", "arc_deg", "width"},
     "charge_release": {"charge_max", "move_factor", "release", "radius", "damage_full", "leave_prop", "line_width", "pierce",
-                       "damage_min", "marks_by_charge", "arc_deg", "reach_bonus", "damage_mult_min"},
+                       "damage_min", "marks_by_charge", "arc_deg", "reach_bonus", "damage_mult_min", "focus_spend", "per_focus_mult"},
     "summon": {"needs", "max_count", "thrall"},
     "seed": {"seeds", "radius", "delay", "trigger_radius", "leave_growth"},
     "grapple": {"dash_speed", "arrive_radius", "on_arrive"},
@@ -126,7 +130,6 @@ NOTES = OD([
     ("burrow", "it passes through bodies but not under stone or shots"),
     ("cave_in", "the rubble is a stone block: it also stops shots"),
     ("quarry_throw", "the rubble left behind does not slow anyone"),
-    ("spot_weld", "the two are not tethered together; both are only slowed"),
     ("changeling_mask", "its friends attack the masked one, but it does not fight back"),
     ("glancing_ray", "it glances off walls and stone, not off raised shields"),
     ("bell_jar", "Overload arcs are not kept inside the jar"),
@@ -369,6 +372,18 @@ def normalise(aid, aff, s, nums, kind):
         pl = nums["coat"].get("payload", nums["coat"].get("strike_payload"))
         if isinstance(pl, dict):
             pl["jump_radius"] = nums.pop("jump_radius")
+    # a leash (Spot Weld's tether to you, Grasping Dark, Night Charge): its length rides on the statuses of the hit
+    for lk in ("tether_m", "leash_m"):
+        if lk in nums:
+            part = next((p for p in ("on_hit", "on_stop", "on_arrive") if isinstance(nums.get(p), dict) and
+                         ("status" in nums[p] or "statuses" in nums[p])), None)
+            if part:
+                nums[part].setdefault("status_data", OD())["leash_m"] = nums.pop(lk)
+    nums.pop("tether_to_caster", None)            # the tether is the leash (the Fused status's partner is you)
+    # a counter's second status (Abiding Guard's also_status) joins its statuses
+    ctr = nums.get("counter")
+    if isinstance(ctr, dict) and "also_status" in ctr:
+        ctr.setdefault("statuses", []).append(OD([("id", ctr.pop("also_status")), ("stacks", 1)]))
     if "dose_clock" in nums:
         nums["status_lasts"] = OD([("dosed", nums.pop("dose_clock"))])      # read generically: a buff that sets a status's clock
     if "times_flesh" in nums:
