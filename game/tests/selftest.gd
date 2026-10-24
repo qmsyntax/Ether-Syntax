@@ -1432,13 +1432,19 @@ func _test_combat_rules() -> void:
 	(p.get("body") as Body).hp = 100.0
 	var b2 := _fighter(p, Vector3(0, 0, -2.6), "brute")
 	b2.set("_attack_cd", 0.0)
-	_run(b2, 0.2)
+	# it walks the last 0.3 m before it can swing; run it until the slam starts. Called outside a
+	# physics frame, move_and_slide steps by the IDLE frame time, so a fixed 0.2 s of steps was
+	# frame-rate dependent (it missed whenever the machine was busy) - 2026-10-24
+	var walk_t := 0.0
+	while float(b2.get("_windup")) < 0.0 and walk_t < 1.0:
+		_run(b2, 1.0 / 60.0)
+		walk_t += 1.0 / 60.0
 	var facing_then: Vector3 = b2.get("facing")
 	p.global_position = b2.global_position + Vector3(1.2, 0, 2.2)   # a sidestep - still 2.5 m from it, inside the 3 m circle
 	_run(b2, 0.6)
 	_check("it does not track you once it has committed", (b2.get("facing") as Vector3).is_equal_approx(facing_then) and float(b2.get("_windup")) >= 0.0)
 	var hp_before: float = (p.get("body") as Body).hp
-	_run(b2, 0.6)
+	_run(b2, 0.7)                                                    # past the rest of the 1.2 s wind-up
 	_check("the slam lands on anyone still in the circle, for 45", _near(hp_before - (p.get("body") as Body).hp, 45.0), "took %f" % (hp_before - (p.get("body") as Body).hp))
 	_check("a heavy blow takes your feet for a moment", bool(p.call("is_staggered")))
 	var ess: float = float(p.get("essence"))
