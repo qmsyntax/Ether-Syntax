@@ -14,6 +14,8 @@ signal ascended(star: int)
 
 const FloatText := preload("res://scripts/float_text.gd")
 const Projectile := preload("res://scripts/projectile.gd")
+## The rune engine's path helpers (get_path_value, is_numeric), shared so a patch and a preview read paths alike.
+const _Fx := preload("res://scripts/runes/interactions/effects_v1.gd")
 const TALENT_SCRIPT_DIR := "res://scripts/talents/"
 const ISO_YAW := deg_to_rad(45.0)
 
@@ -174,7 +176,6 @@ var _corpse_seq := 0
 ## What you have seen of each overland zone: zone id -> FogMap.to_text().
 var explored: Dictionary = {}
 var rod: Node3D                      # the one Ground Rod standing, if any
-var _bare_strikes := 0               # counted for skills that pay on every other strike
 var _dash_braced := false
 var _dash_on_stop: Dictionary = {}
 var _dash_heavy_poise := 0.0
@@ -770,12 +771,13 @@ func deal_damage(target: Node, base: float, tags: Array = []) -> HitContext:
 		if not ctx.killed and target.has_method("add_status"):
 			for bid: String in buffs:
 				if str((buffs[bid] as Dictionary).get("strike_status", "")) != "":
-					target.call("add_status", str(buffs[bid]["strike_status"]), 1, self)      # Stoke: your hands are lit
+					target.call("add_status", str(buffs[bid]["strike_status"]), 1, self)      # Benediction: your blows leave them Lit
 			_try_shatter(target, INF)                                  # a bare strike is a hard hit
-			if buffs.has("static_coat"):
-				_bare_strikes += 1
-				if _bare_strikes % int((buffs["static_coat"] as Dictionary).get("strikes_per_mark", 2)) == 0:
-					_add_marks(target, 1, true)
+	# a weapon coat (v2: Stoke, Red Iron, Static Coat, Venom Edge...): what lands with your weapon carries it -
+	# a bare strike, a ranged-weapon shot, or a skill made with the weapon
+	if not ctx.killed and not ctx.is_scenery and (bare_strike or ctx.has_tag("ranged") or ctx.has_tag("weapon")) \
+			and not ctx.has_tag("coat") and not ctx.has_tag("dot") and not ctx.has_tag("burst") and not ctx.has_tag("arc"):
+		_apply_coats(target)
 
 	for e: TalentEffect in effects:
 		e.on_dealt(ctx)
@@ -817,10 +819,15 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 			var b: Dictionary = buffs[bid]
 			if str(b.get("attacker_status", "")) != "" and is_instance_valid(melee_from):
 				melee_from.call("add_status", str(b["attacker_status"]), 1, self, {"lasts": float(b.get("attacker_status_s", 3.0))})
-	if melee_from != null and buffs.has("static_coat"):
-		deal_damage(melee_from, float((buffs["static_coat"] as Dictionary).get("retaliate", 25.0)), ["ability", "lightning", "static_coat"])
-		if is_instance_valid(melee_from) and not bool(melee_from.call("is_dead")):
-			_add_marks(melee_from, 1, true)
+	if melee_from != null:
+		# a buff that answers a blow (Static Coat's retaliate): damage, and its coat's payload on whoever threw it
+		for rid: String in buffs.keys():
+			var rb: Dictionary = buffs.get(rid, {})
+			if float(rb.get("retaliate", 0.0)) > 0.0 and is_instance_valid(melee_from) and not bool(melee_from.call("is_dead")):
+				deal_damage(melee_from, float(rb["retaliate"]), ["ability", str(rb.get("affinity", "")), "retaliate"])
+				var rcoat: Variant = rb.get("coat")
+				if rcoat is Dictionary and is_instance_valid(melee_from) and not bool(melee_from.call("is_dead")):
+					apply_hit(melee_from, _coat_payload(rcoat as Dictionary), ["coat", str(rb.get("affinity", ""))])
 	ctx.heavy = heavy
 	if projecting:
 		disturbed.emit()             # pain drags the soul back before the blow is even counted
@@ -889,7 +896,10 @@ func _tick_buffs(delta: float) -> void:
 func _take_buff(ab: Dictionary) -> void:
 	var b: Dictionary = ab.duplicate(true)
 	b["t"] = float(ab.get("duration", 5.0))
-	buffs[str(ab.get("buff", ab.get("name", "buff")))] = b
+	var bid: String = str(ab.get("buff", ab.get("name", "buff")))
+	b.erase("coat")
+	buffs[bid] = b
+	_put_coat(ab, bid)
 	if float(ab.get("add_reflux", 0.0)) > 0.0:
 		var aff: String = str(ab.get("affinity", ""))
 		reflux_by[aff] = reflux_of(aff) + float(ab["add_reflux"])
@@ -904,8 +914,62 @@ func _take_buff(ab: Dictionary) -> void:
 		_stagger_t = 0.0
 		_winded_t = 0.0
 		_shoved_left = 0.0
-	_bare_strikes = 0
 	_float(str(ab.get("name", "")).to_lower(), GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3))
+
+
+# --- the weapon coat (v2, one mechanic: fire.json Stoke's coat, poison.json Venom Edge's strike_payload) ---------
+
+## A coat's payload: {payload} or {strike_payload} (the drafts use both names for the one thing).
+static func _coat_payload(coat: Dictionary) -> Dictionary:
+	return coat.get("payload", coat.get("strike_payload", {}))
+
+
+## Put a coat on your weapon from skill `ab` (its "coat" key). One coat per affinity: a new one replaces that
+## affinity's old one (another affinity's coat is separate). A self buff carries its coat itself (it rides in
+## the buff); any other skill puts on a coat of its own for coat.duration.
+func _put_coat(ab: Dictionary, holder: String = "") -> void:
+	var coat: Variant = ab.get("coat")
+	if not (coat is Dictionary):
+		return
+	var aff: String = str(ab.get("affinity", ""))
+	for bid: String in buffs.keys():
+		var b: Dictionary = buffs[bid]
+		if bid != holder and b.get("coat") is Dictionary and str(b.get("affinity", "")) == aff:
+			if bool(b.get("coat_only", false)):
+				buffs.erase(bid)
+			else:
+				b.erase("coat")
+	var c: Dictionary = (coat as Dictionary).duplicate(true)
+	if int(c.get("charges", 0)) > 0:
+		c["charges_left"] = int(c["charges"])
+	if holder != "" and buffs.has(holder):
+		(buffs[holder] as Dictionary)["coat"] = c
+		return
+	buffs["coat_" + aff] = {"t": float(c.get("duration", ab.get("duration", 6.0))), "coat": c, "affinity": aff, "coat_only": true,
+		"name": str(ab.get("name", ""))}
+
+
+## What lands with your weapon carries every coat on it, through apply_hit; a coat with charges spends one
+## (not while a buff with coat_free is on you) and is gone when they are.
+func _apply_coats(target: Node) -> void:
+	for bid: String in buffs.keys():
+		if not buffs.has(bid):
+			continue
+		var b: Dictionary = buffs[bid]
+		var coat: Variant = b.get("coat")
+		if not (coat is Dictionary) or _coat_payload(coat as Dictionary).is_empty():
+			continue
+		if not is_instance_valid(target) or bool(target.call("is_dead")):
+			return
+		apply_hit(target, _coat_payload(coat as Dictionary), ["coat", str(b.get("affinity", ""))])
+		var c: Dictionary = coat
+		if c.has("charges_left") and not _buff_flag("coat_free"):
+			c["charges_left"] = int(c["charges_left"]) - 1
+			if int(c["charges_left"]) <= 0:
+				if bool(b.get("coat_only", false)):
+					buffs.erase(bid)
+				else:
+					b.erase("coat")
 
 
 ## True while enemy shots turn aside from you.
@@ -1464,8 +1528,16 @@ func shove(dir: Vector3, metres: float) -> void:
 
 ## True while you are set for a braced skill: you take less and cannot be staggered.
 func is_braced() -> bool:
-	return (_windup_t > 0.0 and bool(_windup.get("braced", false))) or buffs.has("stonehide") or (_dash_time > 0.0 and _dash_braced) \
+	return (_windup_t > 0.0 and bool(_windup.get("braced", false))) or (_dash_time > 0.0 and _dash_braced) \
 		or _brace_t > 0.0 or (not _held.is_empty() and bool((_held["ab"] as Dictionary).get("braced", false)))
+
+
+## True if any buff on you carries flag `key` (a braced buff, an immovable one...).
+func _buff_flag(key: String) -> bool:
+	for id: String in buffs:
+		if bool((buffs[id] as Dictionary).get(key, false)):
+			return true
+	return false
 
 
 ## How far through a held skill you are (a channel's hold, a charge), 0 to 1; -1 when holding nothing.
@@ -3165,6 +3237,8 @@ func cast_ability(index: int) -> void:
 
 	var stage_mult: float = ability_damage_mult(int(state["stage"])) * float(ab.get("damage_all", 1.0))
 	var tags: Array = ["ability", aff, str(state["id"])]
+	if bool(ab.get("weapon", false)):
+		tags.append("weapon")                    # made with your weapon: it carries your coat (poison.json)
 	var windup: float = float(ab.get("windup", 0.0))
 	if kind == "prop" or kind == "delayed_blast" or kind == "ground_zone" or kind == "rod" or kind == "seed" or kind == "summon" \
 			or (kind == "displace" and strike_target == null) or (kind == "smite" and strike_target != null):
@@ -3369,6 +3443,8 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 			_streak(ab, stage_mult, tags)
 		"field_pulse":
 			_field_pulse(blink_to, ab, stage_mult, tags)
+	if kind != "self_buff" and ab.get("coat") is Dictionary:
+		_put_coat(ab)                            # the cast leaves its coat on your weapon (Venom Edge, Steeped Blade)
 	_repeat_cast(ab, kind, aff, stage_mult, tags, strike_target, blink_to)
 
 
@@ -3473,24 +3549,43 @@ static func apply_rune_patch(ab: Dictionary, patch: Array) -> void:
 	for p: Dictionary in patch:
 		var keys: PackedStringArray = str(p.get("path", "")).split(".")
 		var last: String = keys[keys.size() - 1]
-		var holder: Dictionary = ab
 		var make: bool = str(p["op"]) in ["add", "set", "append", "max"]
 		var ok := true
+		var walk: Variant = ab
 		for k: int in keys.size() - 1:
-			if not holder.has(keys[k]) or typeof(holder[keys[k]]) != TYPE_DICTIONARY:
+			if typeof(walk) == TYPE_ARRAY:
+				# a list of {id, ...} (a payload's statuses) is walked by id: on_hit.statuses.dosed.stacks
+				var found: Variant = null
+				for entry: Variant in walk:
+					if typeof(entry) == TYPE_DICTIONARY and str((entry as Dictionary).get("id", "")) == keys[k]:
+						found = entry
+						break
+				if found == null:
+					ok = false
+					break
+				walk = found
+				continue
+			var hd: Dictionary = walk
+			if not hd.has(keys[k]) or (typeof(hd[keys[k]]) != TYPE_DICTIONARY and typeof(hd[keys[k]]) != TYPE_ARRAY):
 				if not make:
 					ok = false
 					break
-				holder[keys[k]] = {}
-			holder = holder[keys[k]]
-		if not ok:
+				hd[keys[k]] = {}
+			walk = hd[keys[k]]
+		if not ok or typeof(walk) != TYPE_DICTIONARY:
 			continue
+		var holder: Dictionary = walk
 		var cur: Variant = holder.get(last)
 		var is_num: bool = typeof(cur) == TYPE_FLOAT or typeof(cur) == TYPE_INT
 		match str(p["op"]):
 			"mul":
 				if is_num:
 					holder[last] = float(cur) * float(p["value"])
+				elif _Fx.is_numeric(cur):
+					var scaled: Array = []
+					for x: Variant in cur:
+						scaled.append(float(x) * float(p["value"]))
+					holder[last] = scaled
 			"mul_round":
 				if is_num:
 					holder[last] = int(round(float(cur) * float(p["value"])))
@@ -4188,13 +4283,16 @@ func rune_summary(index: int) -> Array:
 	return Runes.active().locked_effects(_sealed_word(index), RuneContext.of(abilities[index], affinities)).get("summary", [])
 
 
+## (A list of {id, ...} entries is walked by id, as the rune engine's get_path_value does; a list of
+## numbers reads as its largest, for the numbers panel.)
 static func _path_value(d: Dictionary, path: String) -> Variant:
-	var cur: Variant = d
-	for key: String in path.split("."):
-		if typeof(cur) != TYPE_DICTIONARY or not (cur as Dictionary).has(key):
-			return null
-		cur = (cur as Dictionary)[key]
-	return cur
+	var v: Variant = _Fx.get_path_value(d, path)
+	if typeof(v) == TYPE_ARRAY and _Fx.is_numeric(v):
+		var top: float = -INF
+		for x: Variant in v:
+			top = maxf(top, float(x))
+		return top
+	return v
 
 
 ## Every rune this character could set - its affinities' base runes and the universal ones, in

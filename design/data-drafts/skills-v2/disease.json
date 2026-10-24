@@ -22,8 +22,8 @@
     }
   ],
   "parent_traits": {
-    "earth": "Rot in the ground: the sickness heaves up from the floor (Plaguebloom, Exhume), stays where it is put Braced (Plague Barrow), breaks poise the way Earth does (Overrun, Fever Break, Plaguebloom), hardens you (Inured Blood), and is lobbed like thrown stone (Fever Flask).",
-    "death": "What dies feeds the next: corpses and death-sites are its material (Exhume, the Infected corpse cloud), the Dying pass on more (Contagion), wounds rot (Fester), and a full fever ends all at once (Fever Break)."
+    "earth": "Rot in the ground: the sickness heaves up from the floor (Plaguebloom, Exhume), stays where it is put Braced (Plague Barrow), breaks poise the way Earth does (Overrun, Crisis, Plaguebloom), hardens you (Inured Blood), and is lobbed like thrown stone (Fever Flask).",
+    "death": "What dies feeds the next: corpses and death-sites are its material (Exhume, the Infected corpse cloud), the Dying pass on more (Contagion), wounds rot (Fester), and a full fever ends all at once (Crisis)."
   },
   "role_count": "10 of 12 skills spread or feed the sickness; Sealing Clot (one big target) and Inured Blood (your own defence) are the utility. Fever Flask, Contagion and Plague Barrow reach 9-12 m.",
   "affinity_mechanics": [
@@ -134,8 +134,8 @@
       "role_note": "Plague: starts the sickness where the pack stands, and the pack passes it on."
     },
     {
-      "id": "fever_break",
-      "name": "Fever Break",
+      "id": "crisis",
+      "name": "Crisis",
       "affinity": "disease",
       "base_rune": "DIS-1b",
       "rune": "Disinfect",
@@ -843,7 +843,7 @@
       "id": "plague_barrow",
       "name": "Plague Barrow",
       "affinity": "disease",
-      "base_rune": "new:DIS-6a",
+      "base_rune": "DIS-6a",
       "rune": "Inter",
       "status": "new",
       "starter": false,
@@ -944,7 +944,7 @@
       "id": "exhume",
       "name": "Exhume",
       "affinity": "disease",
-      "base_rune": "new:DIS-6b",
+      "base_rune": "DIS-6b",
       "rune": "Exhume",
       "status": "new",
       "starter": false,

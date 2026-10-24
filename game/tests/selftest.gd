@@ -8,6 +8,7 @@ extends Node
 const PlayerScript := preload("res://scripts/player.gd")
 const FreeRules := preload("res://tests/free_rules.gd")
 const BeastChecks := preload("res://tests/beast_checks.gd")
+const V2Checks := preload("res://tests/v2_checks.gd")
 
 var _failed := 0
 var _passed := 0
@@ -33,6 +34,12 @@ func _ready() -> void:
 	if OS.get_cmdline_user_args().has("--only=ascension"):
 		_test_affinities()
 		_test_ascension()
+		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
+		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
+		get_tree().quit(1 if _failed > 0 else 0)
+		return
+	if OS.get_cmdline_user_args().has("--only=v2"):
+		await V2Checks.new(self, _check).run()
 		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 		get_tree().quit(1 if _failed > 0 else 0)
@@ -98,6 +105,7 @@ func _ready() -> void:
 	await _test_build_1022()
 	await _test_status_text()
 	await BeastChecks.new(self, _check).run()
+	await V2Checks.new(self, _check).run()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
 	_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
@@ -193,14 +201,16 @@ func _test_status_text() -> void:
 	p.call("set_affinities", ["water", "lightning"])
 	p.call("learn", "forked_path")
 	var names: Array = (p.get("abilities") as Array).map(func(s: Dictionary) -> String: return str(s["id"]))
-	var wb: Dictionary = p.call("skill_details", names.find("water_bolt"))
+	# v2: Water Bolt is dropped; Breaker (tsunami_strike) is the shove, Riptide Lash the Soak
+	var wb: Dictionary = p.call("skill_details", names.find("tsunami_strike"))
 	var shove_row: Array = (wb.get("rows", []) as Array).filter(func(r: Dictionary) -> bool: return str(r["label"]) == "Shove")
-	_check("Water Bolt's numbers include its shove, in metres", shove_row.size() == 1
-		and str(shove_row[0]["after"]) == "%s m" % StatusText._n(float((GameData.ability("water_bolt")["on_hit"] as Dictionary)["shove"])), str(shove_row))
-	_check("and its statuses, Soaked", (wb.get("statuses", []) as Array).any(func(s: Dictionary) -> bool: return str(s["id"]) == "soaked"))
+	_check("Breaker's numbers include its shove, in metres", shove_row.size() == 1
+		and str(shove_row[0]["after"]) == "%s m" % StatusText._n(float((GameData.ability("tsunami_strike")["on_hit"] as Dictionary)["shove"])), str(shove_row))
+	var rl: Dictionary = p.call("skill_details", names.find("riptide_lash"))
+	_check("and Riptide Lash's statuses, Soaked", (rl.get("statuses", []) as Array).any(func(s: Dictionary) -> bool: return str(s["id"]) == "soaked"))
 	var fp: Dictionary = p.call("skill_details", names.find("forked_path"))
 	var labels: Array = (fp.get("rows", []) as Array).map(func(r: Dictionary) -> String: return str(r["label"]))
-	_check("Forked Path's numbers include its jumps, what each jump does, and its Live mark", labels.has("Jumps") and labels.has("Damage, each jump") and labels.has("Live marks"), str(labels))
+	_check("Forked Path's numbers include its jumps, what each hit does, and its Live mark", labels.has("Jumps") and (labels.has("Damage, each jump") or labels.has("Damage, each hit")) and labels.has("Live marks"), str(labels))
 	_check("every skill's numbers name its recovery and the reflux it leaves", labels.has("Recovery") and labels.has("Reflux left behind"))
 	var rows: Array[Dictionary] = p.call("_stat_rows", {"on_hit": {"shove": 1.5}}, {"on_hit": {"shove": 2.5}, "pierce": true},
 		[{"path": "on_hit.shove", "group": "shown", "label": "Shove", "unit": " m"}, {"path": "pierce", "group": "shown", "label": "Pierces", "bool": true}], 1.0)
@@ -771,62 +781,65 @@ func _test_abilities() -> void:
 	p.call("_recompute_essence_max")
 	p.set("essence", 100.0)
 	var ab: Array = p.get("abilities")
-	_check("starting loadout has three abilities", ab.size() == 3 and str(ab[0]["id"]) == "water_bolt")
+	# v2 (2026-10-24): Water Bolt is dropped; the water kit is Riptide Lash (a pull), Breaker and Sluice Step.
+	# These checks use Breaker (slot 2), which needs nobody in reach to be cast.
+	_check("starting loadout has three abilities", ab.size() == 3 and str(ab[0]["id"]) == "riptide_lash" and str(ab[1]["id"]) == "tsunami_strike")
 	# Progress: essence spent through the ability x use multiplier; vs a monster x1.0.
-	var bolt_cost: float = float(GameData.ability("water_bolt")["cost"])
+	var bolt_cost: float = float(GameData.ability("tsunami_strike")["cost"])
+	var bolt_rpc: float = float(GameData.ability("tsunami_strike").get("reflux_per_cost", 1.0))
 	var e := _dummy_enemy(p)
 	p.call("start_fight")
-	p.call("cast_slot", 0)
-	_check("bolt spends its cost and leaves reflux", _near(float(p.get("essence")), 100.0 - bolt_cost) and _near(float(p.get("reflux")), bolt_cost),
+	p.call("cast_slot", 1)
+	_check("a skill spends its cost and leaves reflux", _near(float(p.get("essence")), 100.0 - bolt_cost) and _near(float(p.get("reflux")), bolt_cost * bolt_rpc),
 		"essence %f reflux %f" % [float(p.get("essence")), float(p.get("reflux"))])
-	_check("progress = essence spent x1 with a monster present", _near(float(ab[0]["progress"]), bolt_cost), "got %f" % float(ab[0]["progress"]))
+	_check("progress = essence spent x1 with a monster present", _near(float(ab[1]["progress"]), bolt_cost), "got %f" % float(ab[1]["progress"]))
 	var spent: float = float(p.get("essence"))
-	p.call("cast_slot", 0)
+	p.call("cast_slot", 1)
 	_check("a skill cannot be cast again while the last one is finishing", _near(float(p.get("essence")), spent))
 	p.call("end_fight")
 	e.queue_free()
 	await get_tree().process_frame
 	p.set("essence", 100.0)
 	_rested(p)
-	p.call("cast_slot", 0)
-	_check("progress x0.25 with nothing to fight", _near(float(ab[0]["progress"]), bolt_cost * 1.25), "got %f" % float(ab[0]["progress"]))
-	ab[0]["progress"] = 99.0
+	p.call("cast_slot", 1)
+	_check("progress x0.25 with nothing to fight", _near(float(ab[1]["progress"]), bolt_cost * 1.25), "got %f" % float(ab[1]["progress"]))
+	ab[1]["progress"] = 99.0
 	p.set("essence", 100.0)
 	p.set("reflux", 0.0)
 	_rested(p)
-	p.call("cast_slot", 0)
-	_check("a full bar waits at 100 - the stage does not advance by itself", int(ab[0]["stage"]) == 0 and _near(float(ab[0]["progress"]), 100.0))
-	_check("stage 0 full needs a vestige", str(p.call("pending_tier", ab[0])) == "vestige")
+	p.call("cast_slot", 1)
+	_check("a full bar waits at 100 - the stage does not advance by itself", int(ab[1]["stage"]) == 0 and _near(float(ab[1]["progress"]), 100.0))
+	_check("stage 0 full needs a vestige", str(p.call("pending_tier", ab[1])) == "vestige")
 
 	var cons: Array = p.get("constructs")
 	cons.append({"tier": "remnant", "concept": "piercing"})
-	_check("the wrong tier is refused", str(p.call("_bind_construct", 0, 0, 0.0)) == "needs a vestige" and cons.size() == 1)
+	_check("the wrong tier is refused", str(p.call("_bind_construct", 1, 0, 0.0)) == "needs a vestige" and cons.size() == 1)
 	cons.clear()
 	cons.append({"tier": "vestige", "concept": "acceleration"})
 	var pb0: Body = p.get("body")
 	var wounds_before: int = pb0.wounds.size()
-	_check("a failed bind loses the construct", str(p.call("_bind_construct", 0, 0, 0.99)) == "failed" and cons.is_empty() and int(ab[0]["stage"]) == 0)
+	_check("a failed bind loses the construct", str(p.call("_bind_construct", 1, 0, 0.99)) == "failed" and cons.is_empty() and int(ab[1]["stage"]) == 0)
 	_check("a failed bind wounds you", pb0.wounds.size() == wounds_before + 1 and str(pb0.wounds[pb0.wounds.size() - 1]["name"]) == "Soul-burn")
 	cons.append({"tier": "vestige", "concept": "acceleration"})
-	_check("a vestige binds into stage 0 and advances it", str(p.call("_bind_construct", 0, 0, 0.0)) == "bound" and int(ab[0]["stage"]) == 1 and _near(float(ab[0]["progress"]), 0.0))
-	var stats: Dictionary = p.call("ability_stats", ab[0])
+	_check("a vestige binds into stage 0 and advances it", str(p.call("_bind_construct", 1, 0, 0.0)) == "bound" and int(ab[1]["stage"]) == 1 and _near(float(ab[1]["progress"]), 0.0))
+	var stats: Dictionary = p.call("ability_stats", ab[1])
+	var own_shove: float = float((GameData.ability("tsunami_strike")["on_hit"] as Dictionary)["shove"])
 	_check("the bind's own arithmetic shapes nothing: a concept reaches a skill only as the keystone of a sealed ring (Brent 2026-10-24)",
-		_near(float(stats["speed"]), float(GameData.ability("water_bolt")["speed"])) and (ab[0]["bound"] as Array).size() == 1, "speed %f" % float(stats["speed"]))
+		_near(float((stats["on_hit"] as Dictionary)["shove"]), own_shove) and (ab[1]["bound"] as Array).size() == 1, str(stats["on_hit"]))
 	var ks_rules: RingRules = Runes.active() as RingRules
-	var ks_word: Dictionary = RuneWord.with_keystone(RuneWord.make(GameData.skill_anchor("water_bolt"), "bond_v2"), 1, "vestige", "acceleration")
-	var ks_stats: Dictionary = p.call("ability_stats", ab[0], ks_word)
+	var ks_word: Dictionary = RuneWord.with_keystone(RuneWord.make(GameData.skill_anchor("tsunami_strike"), "bond_v2"), 1, "vestige", "acceleration")
+	var ks_stats: Dictionary = p.call("ability_stats", ab[1], ks_word)
 	var ks_m: float = ks_rules.keystone_mult(float((GameData.concept("acceleration")["mods"] as Dictionary)["shove"]), ks_rules.keystone_weight("vestige"))
 	_check("as a keystone the concept reaches into what the skill does on a hit (acceleration's shove x2, weighted: x%s)" % RingRules._x(ks_m),
-		_near(float((ks_stats["on_hit"] as Dictionary)["shove"]), 1.5 * ks_m) and _near(float((GameData.ability("water_bolt")["on_hit"] as Dictionary)["shove"]), 1.5),
-		str(ks_stats["on_hit"]))
+		_near(float((ks_stats["on_hit"] as Dictionary)["shove"]), own_shove * ks_m), str(ks_stats["on_hit"]))
 	_check("stage 1 full now needs a remnant", (func() -> bool:
-		ab[0]["progress"] = 100.0
-		return str(p.call("pending_tier", ab[0])) == "remnant").call())
-	ab[0]["stage"] = 2
-	_check("stage cap is stars + 1: a 1-star's stage-2 skill waits for nothing", str(p.call("pending_tier", ab[0])) == "")
+		ab[1]["progress"] = 100.0
+		return str(p.call("pending_tier", ab[1])) == "remnant").call())
+	ab[1]["stage"] = 2
+	_check("stage cap is stars + 1: a 1-star's stage-2 skill waits for nothing", str(p.call("pending_tier", ab[1])) == "")
 	_check("stage raises damage", _near(float(p.call("ability_damage_mult", 2)), 1.2))
-	ab[0]["stage"] = 1
-	ab[0]["progress"] = 0.0
+	ab[1]["stage"] = 1
+	ab[1]["progress"] = 0.0
 
 	# Breaker (id tsunami_strike): a wide blow.
 	var e2 := _dummy_enemy(p)
@@ -834,7 +847,7 @@ func _test_abilities() -> void:
 	var pb: Body = p.get("body")
 	p.set("essence", 100.0)
 	p.set("reflux", 0.0)
-	ab[0]["stage"] = 0
+	ab[1]["stage"] = 0
 	p.set("_facing", Vector3(0, 0, -1))
 	var body_before: float = pb.total()
 	_rested(p)
@@ -987,7 +1000,7 @@ func _test_inventory() -> void:
 	inv.add("river_stone")
 	inv.equip("river_stone")
 	var bolt_cost: float = float((p.call("ability_stats", (p.get("abilities") as Array)[0]) as Dictionary)["cost"])
-	_check("a trinket changes ability cost (x 0.9)", _near(bolt_cost, float(GameData.ability("water_bolt")["cost"]) * 0.9), "got %f" % bolt_cost)
+	_check("a trinket changes ability cost (x 0.9)", _near(bolt_cost, float(GameData.ability(str(((p.get("abilities") as Array)[0] as Dictionary)["id"]))["cost"]) * 0.9), "got %f" % bolt_cost)
 	_check("unequipping returns the item to the bag", inv.unequip("trinket") == "unequipped" and inv.bag.has("river_stone"))
 
 	# swapping packs while loaded: the bigger frame goes on, the canvas pack comes off into the bag
@@ -1138,7 +1151,7 @@ func _test_character() -> void:
 	var r := _new_player()
 	r.call("from_save", old)
 	_check("a save from before character creation still loads", str(r.get("talent_id")) == "grudge" and (r.get("look") as Dictionary) == CharacterLook.default_look()
-		and (r.get("affinities") as Array) == ["water"] and str(((r.get("abilities") as Array)[0] as Dictionary)["id"]) == "water_bolt")
+		and (r.get("affinities") as Array) == ["water"] and str(((r.get("abilities") as Array)[0] as Dictionary)["id"]) == str((GameData.affinity("water")["kit"] as Array)[0]))
 	for n: Node in [p, q, r]:
 		n.queue_free()
 
@@ -1172,17 +1185,22 @@ func _test_playtest_1011() -> void:
 	_check("and on every target the strike hits", _near(gains[1], per_target * 3.0), "got %f want %f" % [gains[1], per_target * 3.0])
 
 	# bind preview
+	# v2: the water kit has no bolt any more; Fire's Cinder Spit is the bolt here (numbers from the data)
 	var q := _new_player("one_percent_lifesteal")
+	q.call("set_affinities", ["fire"])
 	var bolt: Dictionary = (q.get("abilities") as Array)[0]
+	var spit: Dictionary = GameData.ability(str(bolt["id"]))
+	var spit_speed: float = float(spit["speed"])
+	var spit_cost: float = float(spit["cost"])
 	var rows: Array[Dictionary] = q.call("preview_bind", bolt, "acceleration")
 	var by := {}
 	for r: Dictionary in rows:
 		by[str(r["label"])] = r
 	var kr: RingRules = Runes.active() as RingRules
 	var acc_m: float = kr.keystone_mult(float((GameData.concept("acceleration")["mods"] as Dictionary)["speed"]), kr.keystone_weight("vestige"))
-	var want_speed: String = "%d" % int(round(20.0 * acc_m))
-	_check("preview: acceleration as the vestige keystone makes the bolt faster (20 -> %s: x1.5 weighted to x%s) and reach further" % [want_speed, RingRules._x(acc_m)],
-		by.has("Bolt speed") and str(by["Bolt speed"]["before"]) == "20" and str(by["Bolt speed"]["after"]) == want_speed
+	var want_speed: String = "%d" % int(round(spit_speed * acc_m))
+	_check("preview: acceleration as the vestige keystone makes the bolt faster (%d -> %s: x1.5 weighted to x%s) and reach further" % [int(spit_speed), want_speed, RingRules._x(acc_m)],
+		by.has("Bolt speed") and str(by["Bolt speed"]["before"]) == "%d" % int(spit_speed) and str(by["Bolt speed"]["after"]) == want_speed
 		and by.has("Range") and bool(by["Range"]["better"]), str(rows))
 	_check("preview: the stage and its damage step are shown", by.has("Stage") and str(by["Stage"]["after"]) == "1" and by.has("Damage") and bool(by["Damage"]["better"]))
 	_check("preview: numbers that do not move are left out", not by.has("Essence cost"))
@@ -1190,8 +1208,8 @@ func _test_playtest_1011() -> void:
 	by.clear()
 	for r: Dictionary in rows:
 		by[str(r["label"])] = r
-	var want_cost: String = "%d" % int(round(8.0 * kr.keystone_mult(float((GameData.concept("compression")["mods"] as Dictionary)["cost"]), kr.keystone_weight("vestige"))))
-	_check("preview: compression lowers the cost (8 -> %s), shown as an improvement" % want_cost, by.has("Essence cost") and str(by["Essence cost"]["before"]) == "8"
+	var want_cost: String = "%d" % int(round(spit_cost * kr.keystone_mult(float((GameData.concept("compression")["mods"] as Dictionary)["cost"]), kr.keystone_weight("vestige"))))
+	_check("preview: compression lowers the cost (%d -> %s), shown as an improvement" % [int(spit_cost), want_cost], by.has("Essence cost") and str(by["Essence cost"]["before"]) == "%d" % int(spit_cost)
 		and str(by["Essence cost"]["after"]) == want_cost and bool(by["Essence cost"]["better"]), str(rows))
 	rows = q.call("preview_bind", (q.get("abilities") as Array)[1], "tension")
 	by.clear()
@@ -1205,7 +1223,7 @@ func _test_playtest_1011() -> void:
 	# the preview must agree with what the level lock then does
 	bolt["progress"] = 100.0
 	(q.get("constructs") as Array).append({"tier": "vestige", "concept": "acceleration"})
-	for rid: String in _runes_of("water", -1, []):
+	for rid: String in _runes_of("fire", -1, []):
 		q.call("discover_rune", rid, "")          # the runes for a closed, full ring 1 (what a new character can do is checked apart)
 	var res: String = _lock_full(q, 0, 0.0)
 	var speed_after: float = float((q.call("ability_stats", bolt) as Dictionary)["speed"])
@@ -1218,7 +1236,7 @@ func _test_playtest_1011() -> void:
 			if _near(float(op["value"]), acc_m, 0.00001):
 				keystone_ops += 1
 	_check("the level lock does what the preview said: the keystone's speed x%s, once, under the runes' (speed %.2f)" % [RingRules._x(acc_m), speed_after],
-		res == "bound" and int(bolt["stage"]) == 1 and keystone_ops == 1 and _near(speed_after, 20.0 * all_speed), "%s %f %s" % [res, speed_after, str(word_patch)])
+		res == "bound" and int(bolt["stage"]) == 1 and keystone_ops == 1 and _near(speed_after, spit_speed * all_speed), "%s %f %s" % [res, speed_after, str(word_patch)])
 	q.queue_free()
 
 
@@ -1692,8 +1710,8 @@ func _test_combat_rules() -> void:
 	_check("wait it out and the price is the plain one again", _near(e3 - float(w.get("essence")), step_cost))
 	_rested(w)
 	e3 = float(w.get("essence"))
-	w.call("cast_slot", 0)
-	_check("being winded does not touch other skills", _near(e3 - float(w.get("essence")), float(GameData.ability("water_bolt")["cost"])))
+	w.call("cast_slot", 1)
+	_check("being winded does not touch other skills", _near(e3 - float(w.get("essence")), float(GameData.ability("tsunami_strike")["cost"])))
 	w.queue_free()
 
 	# ---------- getting through a doorway (the full-passage bot stalled against a dividing wall)
@@ -2041,29 +2059,34 @@ func _test_step5a() -> void:
 	# ---------- learning
 	var w := _new_player()
 	var inv: Inventory = w.get("inventory")
-	_check("a water character cannot learn an earth skill", str(w.call("can_learn", "pillar")) != "" and str(w.call("can_learn", "undertow")) == "")
+	# v2: Undertow is dropped; Drawdown is the water skill taught by scroll here
+	_check("a water character cannot learn an earth skill", str(w.call("can_learn", "pillar")) != "" and str(w.call("can_learn", "drawdown")) == "")
 	inv.add("scroll_pillar")
 	_check("and reading the scroll does nothing but say so", str(w.call("read_scroll", "scroll_pillar")) != "" and inv.bag.has("scroll_pillar") and not bool(w.call("knows", "pillar")))
 	var loot_before: int = inv.loot_value()
-	inv.add("scroll_undertow")
-	_check("a scroll is not loot: it is not counted or sold with the rest", inv.loot_value() == loot_before and not Inventory.is_loot("scroll_undertow"))
+	inv.add("scroll_drawdown")
+	_check("a scroll is not loot: it is not counted or sold with the rest", inv.loot_value() == loot_before and not Inventory.is_loot("scroll_drawdown"))
 	inv.sell_loot()
-	_check("selling all loot leaves it in the pack", inv.bag.has("scroll_undertow"))
-	_check("reading a scroll of your own affinity teaches the skill", str(w.call("read_scroll", "scroll_undertow")) == "" and bool(w.call("knows", "undertow")))
-	_check("the scroll is used up", not inv.bag.has("scroll_undertow"))
+	_check("selling all loot leaves it in the pack", inv.bag.has("scroll_drawdown"))
+	_check("reading a scroll of your own affinity teaches the skill", str(w.call("read_scroll", "scroll_drawdown")) == "" and bool(w.call("knows", "drawdown")))
+	_check("the scroll is used up", not inv.bag.has("scroll_drawdown"))
 	_check("the skill lands on the first empty key", int((w.get("hotbar") as Array)[3]) == (w.get("abilities") as Array).size() - 1)
-	inv.add("scroll_undertow")
-	_check("a second copy cannot be read", str(w.call("read_scroll", "scroll_undertow")) != "" and inv.bag.has("scroll_undertow"))
-	inv.remove("scroll_undertow")
+	inv.add("scroll_drawdown")
+	_check("a second copy cannot be read", str(w.call("read_scroll", "scroll_drawdown")) != "" and inv.bag.has("scroll_drawdown"))
+	inv.remove("scroll_drawdown")
 	var drop: String = w.call("scroll_for_me")
-	_check("a drop for this character is a scroll they can still use", ["scroll_riptide_lash", "scroll_standing_pool", "scroll_backwash"].has(drop), drop)
-	for more: String in ["riptide_lash", "standing_pool", "backwash"]:
+	var water_rest: Array[String] = []
+	for wid: Variant in GameData.abilities.keys():
+		if str(GameData.ability(str(wid)).get("affinity", "")) == "water" and not bool(w.call("knows", str(wid))):
+			water_rest.append(str(wid))
+	_check("a drop for this character is a scroll they can still use", water_rest.map(func(x: String) -> String: return "scroll_" + x).has(drop), drop)
+	for more: String in water_rest:
 		w.call("learn", more)
 	_check("and nothing once they know them all", str(w.call("scroll_for_me")) == "")
 	var saved: Dictionary = w.call("to_save")
 	var again := _new_player()
 	again.call("from_save", saved)
-	_check("learned skills survive a save", bool(again.call("knows", "undertow")) and bool(again.call("knows", "riptide_lash")))
+	_check("learned skills survive a save", bool(again.call("knows", "drawdown")) and bool(again.call("knows", "siltfall")))
 	again.free()
 	w.free()
 	var icons: Dictionary = {}
@@ -2081,7 +2104,7 @@ func _test_step5a() -> void:
 	# ---------- the skills
 	var m := _new_player()
 	m.call("set_affinities", ["water", "fire", "earth", "wind", "lightning"])
-	for id: String in ["undertow", "riptide_lash", "backdraft", "pyre_call", "pillar", "tremor", "downdraft", "updraft", "forked_path", "dead_short"]:
+	for id: String in ["riptide_lash", "backdraft", "pyre_call", "pillar", "tremor", "downdraft", "updraft", "forked_path", "dead_short"]:
 		m.call("learn", id)
 	m.global_position = Vector3(1900, 0, 0)
 	var here: Vector3 = m.global_position
@@ -2104,19 +2127,6 @@ func _test_step5a() -> void:
 		m.set("attack_target", null)
 		m.call("drop_stones")
 	var spot: Vector3 = here + Vector3(0, 0, -7.0)
-
-	# Undertow
-	fresh.call()
-	var a := _facing_foe(m, Vector3(3.0, 0, -7.0))
-	var c := _facing_foe(m, Vector3(6.0, 0, -7.0))
-	m.set("cursor_fixed", spot)
-	_cast(m, "undertow")
-	_settle(a)
-	_check("Undertow drags an enemy within 4 m to the spot", a.global_position.distance_to(spot) < 0.45, "%.2f m off" % a.global_position.distance_to(spot))
-	_check("Soaks it, and does no damage of its own", bool(a.call("has_status", "soaked")) and _near(_lost(a), 0.0))
-	_check("and leaves one farther out alone", _near(c.global_position.x - here.x, 6.0) and not bool(c.call("has_status", "soaked")))
-	a.free()
-	c.free()
 
 	# Riptide Lash
 	fresh.call()
@@ -2166,9 +2176,11 @@ func _test_step5a() -> void:
 	x.call("add_status", "alight", 3, m)
 	z.call("add_status", "alight", 2, m)
 	_cast(m, "pyre_call")
+	m.call("_tick_windup", float(GameData.ability("pyre_call").get("windup", 0.0)) + 0.01)
 	var hot: float = float(m.call("heat_mult", "fire"))
-	_check("Pyre Call: each stack bursts for 35 on the one carrying it", _near(_lost(x), 105.0 * hot, 0.5) and _near(_lost(z), 70.0 * hot, 0.5), "lost %f / %f, heat x%f" % [_lost(x), _lost(z), hot])
-	_check("and on whoever stands within 2 m", _near(_lost(y), 105.0 * hot, 0.5))
+	var per_burst: float = float(GameData.ability("pyre_call")["per_stack_burst"])
+	_check("Pyre Call: each stack bursts for %d on the one carrying it" % int(per_burst), _near(_lost(x), 3.0 * per_burst * hot, 0.5) and _near(_lost(z), 2.0 * per_burst * hot, 0.5), "lost %f / %f, heat x%f" % [_lost(x), _lost(z), hot])
+	_check("and on whoever stands within 2 m", _near(_lost(y), 3.0 * per_burst * hot, 0.5))
 	_check("the fires are spent", not bool(x.call("has_status", "alight")) and not bool(z.call("has_status", "alight")))
 	for n: Node in [x, y, z]:
 		n.free()
@@ -2184,7 +2196,8 @@ func _test_step5a() -> void:
 	(blasts[0] as Node).call("tick", 0.4)
 	_check("for half a second nothing", _near(_lost(on), 0.0))
 	(blasts[0] as Node).call("tick", 0.15)
-	_check("then the column: 120 to whoever stood there, nobody else", _near(_lost(on), 120.0) and _near(_lost(off), 0.0), "lost %f" % _lost(on))
+	var col_dmg: float = float((GameData.ability("pillar")["on_hit"] as Dictionary)["damage"])
+	_check("then the column: %d to whoever stood there, nobody else" % int(col_dmg), _near(_lost(on), col_dmg) and _near(_lost(off), 0.0), "lost %f" % _lost(on))
 	_check("and it stays as one of your stones", int(m.call("stone_count")) == 1 and _near(((m.get("stones") as Array)[0] as Stone).size.x, 1.2))
 	m.call("_tick_windup", 0.31)
 	on.free()
@@ -2201,31 +2214,34 @@ func _test_step5a() -> void:
 	near.set("_windup", 0.3)
 	_cast(m, "tremor")
 	m.call("_tick_windup", 0.51)
-	_check("Tremor: 60 to everything within 5 m, interrupted and slowed", _near(_lost(near), 60.0) and bool(near.call("has_status", "slowed")) and float(near.get("_windup")) < 0.0, "lost %f" % _lost(near))
+	var trem_dmg: float = float((GameData.ability("tremor")["on_hit"] as Dictionary)["damage"])
+	_check("Tremor: %d to everything within 5 m, interrupted and slowed" % int(trem_dmg), _near(_lost(near), trem_dmg) and bool(near.call("has_status", "slowed")) and float(near.get("_windup")) < 0.0, "lost %f" % _lost(near))
 	_check("and every stone of yours shatters outward", int(m.call("stone_count")) == 0 and _near(_lost(past), 80.0), "lost %f" % _lost(past))
 	near.set("target", null)
 	near.free()
 	past.free()
 
-	# Downdraft
+	# Downdraft (v2: a leap - a dash that lands on the aimed point; on_arrive round the landing)
 	fresh.call()
-	var g := _facing_foe(m, Vector3(0, 0, -6.0))
-	var up := _facing_foe(m, Vector3(2.0, 0, -6.0))
-	var out := _facing_foe(m, Vector3(6.0, 0, -6.0))
+	var dd: Dictionary = GameData.ability("downdraft")
+	var leap_m: float = float(dd["dash_speed"]) * float(dd["dash_time"])
+	var g := _facing_foe(m, Vector3(0, 0, -leap_m))
+	var up := _facing_foe(m, Vector3(1.5, 0, -leap_m))
+	var out := _facing_foe(m, Vector3(float(dd["arrive_radius"]) + 3.0, 0, -leap_m))
 	up.call("add_status", "aloft")
-	var ShotScript: GDScript = load("res://scripts/enemy_shot.gd")
-	var arrow: Node3D = ShotScript.new()
-	add_child(arrow)
-	arrow.set_physics_process(false)
-	arrow.global_position = here + Vector3(1.0, 1.0, -6.0)
-	m.set("cursor_fixed", here + Vector3(0, 0, -6.0))
+	m.set("cursor_fixed", here + Vector3(0, 0, -leap_m))
+	var was_active: bool = bool(m.get("active"))
+	m.set("active", true)
 	_cast(m, "downdraft")
-	blasts = get_tree().get_nodes_in_group("blasts")
-	(blasts.back() as Node).call("tick", 0.26)
+	for i: int in 40:
+		m.call("_physics_process", 1.0 / 60.0)
 	var air: float = float(GameData.status("aloft")["damage_taken_mult"])
-	_check("Downdraft: 50 and pinned, within 4 m", _near(_lost(g), 50.0) and bool(g.call("has_status", "pinned")) and _near(_lost(out), 0.0), "lost %f" % _lost(g))
-	_check("+100 to anything Aloft", _near(_lost(up), 150.0 * air, 0.5), "lost %f" % _lost(up))
-	_check("and it knocks their shots out of the air", arrow.is_queued_for_deletion())
+	var dd_hit: float = float((dd["on_arrive"] as Dictionary)["damage"])
+	_check("Downdraft: %d and pinned, round where it lands" % int(dd_hit), _near(_lost(g), dd_hit) and bool(g.call("has_status", "pinned")) and _near(_lost(out), 0.0), "lost %f / out %f" % [_lost(g), _lost(out)])
+	var dd_bonus: float = float(((dd["on_arrive"] as Dictionary)["bonus_flat_vs"] as Dictionary)["aloft"])
+	_check("+%d to anything Aloft" % int(dd_bonus), _near(_lost(up), (dd_hit + dd_bonus) * air, 0.5), "lost %f" % _lost(up))
+	m.set("active", was_active)
+	m.global_position = here
 	g.set("target", m)
 	g.set("_attack_cd", 99.0)
 	m.global_position = here + Vector3(0, 0, 14.0)
@@ -2256,9 +2272,10 @@ func _test_step5a() -> void:
 		row.append(_facing_foe(m, Vector3(3.0 * float(i), 0, -5.0)))
 	_cast(m, "forked_path")
 	var ok := true
+	var fork_hit: float = _lost(row[0])
 	for i: int in 4:
-		ok = ok and _near(_lost(row[i]), 50.0) and int((row[i] as Node).call("status_stacks", "live")) == 1
-	_check("Forked Path: the target and three more, 50 and one mark each", ok, "lost %f %f %f %f" % [_lost(row[0]), _lost(row[1]), _lost(row[2]), _lost(row[3])])
+		ok = ok and fork_hit > 0.0 and _near(_lost(row[i]), fork_hit) and int((row[i] as Node).call("status_stacks", "live")) == 1
+	_check("Forked Path: the target and three more, the same blow and one mark each", ok, "lost %f %f %f %f" % [_lost(row[0]), _lost(row[1]), _lost(row[2]), _lost(row[3])])
 	_check("and no further", _near(_lost(row[4]), 0.0) and int((row[4] as Node).call("status_stacks", "live")) == 0)
 
 	# Dead Short
@@ -2282,7 +2299,7 @@ func _test_step5b() -> void:
 	await get_tree().process_frame
 	var m := _new_player()
 	m.call("set_affinities", ["water", "fire", "earth", "wind", "lightning"])
-	for id: String in ["standing_pool", "backwash", "slag_pool", "stoke", "stonehide", "veil", "gale_lane", "static_coat", "ground_rod", "bedrock_shove"]:
+	for id: String in ["standing_pool", "backwash", "slag_pool", "stoke", "stonehide", "veil", "gale_lane", "static_coat", "ground_rod"]:
 		_check("a character with the affinity can learn %s" % id, bool(m.call("learn", id)))
 	m.global_position = Vector3(2100, 0, 0)
 	var here: Vector3 = m.global_position
@@ -2395,10 +2412,9 @@ func _test_step5b() -> void:
 	_cast(m, "static_coat")
 	gr.call("_land_melee", 2.0)
 	_check("Static Coat: an enemy that hits you takes 25 and a Live mark", _near(gb.total_max() - gb.hp, 25.0) and int(gr.call("status_stacks", "live")) == 1, "lost %f" % (gb.total_max() - gb.hp))
+	# v2 (2026-10-24): Static Coat is a weapon coat (the one coat mechanic): every bare strike carries its mark
 	m.call("deal_damage", gr, 1.0, ["melee"])
-	_check("one bare strike adds nothing", int(gr.call("status_stacks", "live")) == 1)
-	m.call("deal_damage", gr, 1.0, ["melee"])
-	_check("the second adds a mark", int(gr.call("status_stacks", "live")) == 2)
+	_check("and while it lasts every bare strike carries the coat: a Live mark", int(gr.call("status_stacks", "live")) == 2)
 	gr.free()
 
 	# Stoke
@@ -2407,23 +2423,24 @@ func _test_step5b() -> void:
 	_cast(m, "stoke")
 	_check("Stoke adds 25 heat at once", _near(float(m.call("reflux_of", "fire")), 25.0))
 	m.call("deal_damage", lit, 1.0, ["melee"])
-	_check("and your bare strikes set things Alight", int(lit.call("status_stacks", "alight")) == 1)
-	m.call("_tick_buffs", 6.1)
+	_check("and its coat sets what your bare strikes hit Alight", int(lit.call("status_stacks", "alight")) == 1)
+	m.call("_tick_buffs", float(GameData.ability("stoke")["duration"]) + 0.1)
 	m.call("deal_damage", lit, 1.0, ["melee"])
-	_check("for 6 s", int(lit.call("status_stacks", "alight")) == 1 and not (m.get("buffs") as Dictionary).has("stoke"))
+	_check("for %d s" % int(GameData.ability("stoke")["duration"]), int(lit.call("status_stacks", "alight")) == 1 and not (m.get("buffs") as Dictionary).has("stoke"))
 	lit.free()
 
 	# Stonehide
 	fresh.call()
+	# v2 (2026-10-24): Stonehide is a stone skin and an aura of mud (the tank holds the ground round it); it is no
+	# longer a Brace - Millstone is the one that roots you
+	var hide: Dictionary = GameData.ability("stonehide")
 	_cast(m, "stonehide")
-	_check("Stonehide: Braced without a wind-up", bool(m.call("is_braced")) and float(m.get("_windup_t")) <= 0.0)
-	m.call("take_hit", 10.0, true, null)
-	_check("40% less, and a heavy blow does not stagger you", _near(body.total_max() - body.hp, 6.0) and not bool(m.call("is_staggered")))
-	m.call("shove", Vector3(1, 0, 0), 2.0)
-	_check("nothing shoves you", _near(float(m.get("_shoved_left")), 0.0))
-	_check("you move 25% slower", _near(float(m.call("buff_num", "move_speed_mult")), 0.75))
-	m.call("_tick_buffs", 8.1)
-	_check("for 8 s", not bool(m.call("is_braced")))
+	_check("Stonehide: no wind-up", float(m.get("_windup_t")) <= 0.0 and (m.get("buffs") as Dictionary).has("stonehide"))
+	m.call("take_hit", 10.0, false, null)
+	_check("%d%% less from every blow" % int(round((1.0 - float(hide["incoming_mult"])) * 100.0)), _near(body.total_max() - body.hp, 10.0 * float(hide["incoming_mult"])), "lost %f" % (body.total_max() - body.hp))
+	_check("you move %d%% slower" % int(round((1.0 - float(hide["move_speed_mult"])) * 100.0)), _near(float(m.call("buff_num", "move_speed_mult")), float(hide["move_speed_mult"])))
+	m.call("_tick_buffs", float(hide["duration"]) + 0.1)
+	_check("for %d s" % int(hide["duration"]), not (m.get("buffs") as Dictionary).has("stonehide"))
 
 	# Crosswind Veil
 	fresh.call()
@@ -2462,7 +2479,7 @@ func _test_step5b() -> void:
 	_cast(m, "arc_lash")
 	_check("cast lightning near it and the rod arcs to the nearest enemy: 40 and a mark", _near(_lost(by_rod), 40.0) and int(by_rod.call("status_stacks", "live")) == 1, "lost %f" % _lost(by_rod))
 	_rested(m)
-	_cast(m, "water_bolt")
+	_cast(m, "tsunami_strike")
 	_check("other affinities do not wake it", _near(_lost(by_rod), 40.0))
 	_rested(m)
 	m.global_position = here + Vector3(0, 0, 6.0)
@@ -2485,7 +2502,9 @@ func _test_step5b() -> void:
 	for i: int in 24:
 		m.call("_physics_process", 1.0 / 60.0)
 	_settle(hit)
-	_check("the first enemy you meet is thrown 3 m and loses 50 poise", _near(hit.global_position.z, here.z - 5.5, 0.15) and _near(float(hit.get("poise_max")) - float(hit.get("poise")), 50.0), "z %f" % (hit.global_position.z - here.z))
+	var bs_stop: Dictionary = GameData.ability("bedrock_shove")["on_stop"]
+	_check("the first enemy you meet is thrown %s m and loses %d poise" % [StatusText._n(float(bs_stop["shove"])), int(bs_stop["poise"])],
+		_near(hit.global_position.z, here.z - 2.5 - float(bs_stop["shove"]), 0.15) and _near(float(hit.get("poise_max")) - float(hit.get("poise")), float(bs_stop["poise"])), "z %f" % (hit.global_position.z - here.z))
 	_check("and you stop there - you do not pass through", m.global_position.z > here.z - 2.0, "z %f" % (m.global_position.z - here.z))
 	hit.free()
 	fresh.call()
@@ -2626,9 +2645,12 @@ func _test_fire() -> void:
 	t.call("add_status", "alight", 2, f)                     # now 4
 	_rested(f)
 	f.call("cast_slot", 1)
-	_check("on a burning enemy every stack is spent for +40", _near(_lost(t), plain + 4.0 * 40.0 * hot, 0.05), "lost %f want %f" % [_lost(t), plain + 160.0 * hot])
+	var kf_per: float = float(GameData.ability("kiln_fist")["per_stack_damage"])
+	var kf_burst: int = int((GameData.ability("kiln_fist")["burst"] as Dictionary).get("stacks", 1))
+	_check("on a burning enemy every stack is spent for +%d" % int(kf_per), _near(_lost(t), plain + 4.0 * kf_per * hot, 0.05), "lost %f want %f" % [_lost(t), plain + 4.0 * kf_per * hot])
 	_check("and the blow leaves it lit afresh, twice", int(t.call("status_stacks", "alight")) == 2)
-	_check("the burst lights whoever stands within 2 m, and no further", int(beside.call("status_stacks", "alight")) == 1 and not bool(far.call("has_status", "alight")))
+	_check("the burst lights whoever stands within its radius (%s m), and no further" % StatusText._n(float(GameData.ability("kiln_fist")["burst_radius"])),
+		int(beside.call("status_stacks", "alight")) == kf_burst and not bool(far.call("has_status", "alight")), "%d" % int(beside.call("status_stacks", "alight")))
 	t.set("target", f)
 	t.set("_windup", 0.3)
 	(f.get("reflux_by") as Dictionary)["fire"] = 0.0
@@ -2964,7 +2986,12 @@ func _test_earth() -> void:
 		e.set("_facing", Vector3(0, 0, -1))
 	fresh.call()
 	var kit: Array = e.get("abilities")
-	_check("an earth character starts with Slingstone, Landslide Blow and Raise Slab", kit.size() == 3 and str(kit[0]["id"]) == "slingstone" and str(kit[1]["id"]) == "landslide_blow" and str(kit[2]["id"]) == "raise_slab")
+	# v2 (2026-10-24): the earth kit is Slingstone, Landslide Blow and Bedrock Shove; Raise Slab is trained
+	_check("an earth character starts with Slingstone, Landslide Blow and Bedrock Shove", kit.size() == 3 and str(kit[0]["id"]) == "slingstone" and str(kit[1]["id"]) == "landslide_blow" and str(kit[2]["id"]) == "bedrock_shove")
+	e.call("learn", "raise_slab")
+	var slab_i: int = (e.get("abilities") as Array).map(func(st: Dictionary) -> String: return str(st["id"])).find("raise_slab")
+	var sling: Dictionary = GameData.ability("slingstone")
+	var slide: Dictionary = GameData.ability("landslide_blow")
 	var other := _new_player()
 	_check("earth raises stone; a water character does not", bool(e.call("has_stone")) and not bool(other.call("has_stone")))
 	other.free()
@@ -2972,7 +2999,7 @@ func _test_earth() -> void:
 	# ---------- wind-up and Braced
 	var far := _facing_foe(e, Vector3(0, 0, -6.0))
 	e.call("cast_ability", 0)
-	_check("Slingstone is paid for at once", _near(99.0 - float(e.get("essence")), 12.0), "spent %f" % (99.0 - float(e.get("essence"))))
+	_check("Slingstone is paid for at once", _near(99.0 - float(e.get("essence")), float(sling["cost"])), "spent %f" % (99.0 - float(e.get("essence"))))
 	_check("but nothing leaves your hand yet: a 0.3 s wind-up", _near(float(e.get("_windup_t")), 0.3) and _bolt_of(e) == null and _near(_lost(far), 0.0))
 	_check("you are Braced through it", bool(e.call("is_braced")) and _near(float(e.call("windup_frac")), 0.0))
 	var hp0: float = body.hp
@@ -2981,7 +3008,7 @@ func _test_earth() -> void:
 	_check("Braced: every blow does 40% less", _near(hp0 - body.hp, 18.0), "lost %f" % (hp0 - body.hp))
 	_check("and heavy blows do not stagger you", not bool(e.call("is_staggered")) and _near(float(e.get("poise")), 100.0))
 	var ess: float = float(e.get("essence"))
-	e.call("cast_ability", 2)
+	e.call("cast_ability", slab_i)
 	_check("you cannot start anything else while you are set", _near(float(e.get("essence")), ess) and (e.get("stones") as Array).is_empty())
 	e.call("_tick_windup", 0.2)
 	_check("two thirds through, still holding", bool(e.call("is_braced")) and _bolt_of(e) == null and _near(float(e.call("windup_frac")), 0.667, 0.01))
@@ -2990,7 +3017,7 @@ func _test_earth() -> void:
 	_check("when the wind-up ends the stone flies, and you are no longer Braced", bolt != null and not bool(e.call("is_braced")) and float(e.call("windup_frac")) < 0.0)
 	_check("it is the slowest bolt there is: 14 m/s, 24 m", bolt != null and _near(float(bolt.get("speed")), 14.0) and _near(float(bolt.get("speed")) * float(bolt.get("life")), 24.0, 0.05))
 	_fly(bolt)
-	_check("and the heaviest: 120", _near(_lost(far), 120.0), "lost %f" % _lost(far))
+	_check("and the heaviest: %d" % int(sling["damage"]), _near(_lost(far), float(sling["damage"])), "lost %f" % _lost(far))
 	hp0 = body.hp
 	e.call("take_hit", 10.0, false, null)
 	_check("out of the wind-up a blow lands in full", _near(hp0 - body.hp, 10.0))
@@ -3023,7 +3050,7 @@ func _test_earth() -> void:
 
 	# ---------- standing stone
 	fresh.call()
-	var slab_ab: Dictionary = e.call("ability_stats", kit[2])
+	var slab_ab: Dictionary = e.call("ability_stats", kit[slab_i])
 	var stood := _facing_foe(e, Vector3(0.4, 0, -4.1))
 	var apart := _facing_foe(e, Vector3(2.6, 0, -4.0))
 	var s: Node3D = e.call("raise_stone", here + Vector3(0, 0, -4.0), Vector3(0, 0, -1), slab_ab)
@@ -3154,14 +3181,16 @@ func _test_earth() -> void:
 	big.set("facing", Vector3(0, 0, 1))
 	var big_hp: float = (big.get("body") as Body).hp
 	e.call("cast_ability", 1)
-	_check("Landslide Blow winds up for 0.6 s, Braced", _near(float(e.get("_windup_t")), 0.6) and bool(e.call("is_braced")) and _near(_lost(front), 0.0))
+	var slide_w: float = float(slide["windup"])
+	var slide_m: float = float(slide["damage_mult"])
+	_check("Landslide Blow winds up for %s s, Braced" % StatusText._n(slide_w), _near(float(e.get("_windup_t")), slide_w) and bool(e.call("is_braced")) and _near(_lost(front), 0.0))
 	e.set("cursor_fixed", here + Vector3(5, 0, 0))               # looking away does not move it: you committed
-	e.call("_tick_windup", 0.61)
+	e.call("_tick_windup", slide_w + 0.01)
 	e.set("cursor_fixed", null)
-	_check("then 3.2x a strike on what is in front, out to 3.5 m", _near(_lost(front), strike * 3.2, 0.05), "lost %f want %f" % [_lost(front), strike * 3.2])
+	_check("then %sx a strike on what is in front, out to 3.5 m" % StatusText._n(slide_m), _near(_lost(front), strike * slide_m, 0.05), "lost %f want %f" % [_lost(front), strike * slide_m])
 	_check("a narrow blow: 30 degrees either side", _near(_lost(off), 0.0))
 	_check("it staggers a skirmisher outright", bool(gr.call("has_status", "staggered")))
-	_check("and takes 80 poise from a brute without moving it", _near(float(big.get("poise")), float(big.get("poise_max")) - 80.0) and not bool(big.call("is_shoved"))
+	_check("and takes %d poise from a brute without moving it" % int(slide["on_hit"]["poise"]), _near(float(big.get("poise")), float(big.get("poise_max")) - float(slide["on_hit"]["poise"])) and not bool(big.call("is_shoved"))
 		and (big.get("body") as Body).hp < big_hp)
 	for node: Node in [front, off, gr, big]:
 		node.free()
@@ -3171,14 +3200,14 @@ func _test_earth() -> void:
 	s5.call("tick", 0.5)
 	var past := _facing_foe(e, Vector3(0, 0, -5.0))              # out of the blow's reach, inside the shrapnel's
 	e.call("cast_ability", 1)
-	e.call("_tick_windup", 0.61)
+	e.call("_tick_windup", slide_w + 0.01)
 	_check("Landslide Blow shatters your stone in its arc: the wall becomes the weapon", s5.is_queued_for_deletion() and _near(_lost(past), 80.0), "lost %f" % _lost(past))
 	past.free()
 
 	# ---------- Raise Slab from the key
 	fresh.call()
 	e.set("cursor_fixed", here + Vector3(0, 0, -5.0))
-	e.call("cast_ability", 2)
+	e.call("cast_ability", slab_i)
 	var up: Node3D = (e.get("stones") as Array).back() if not (e.get("stones") as Array).is_empty() else null
 	_check("Raise Slab comes up where you point", up != null and _near(up.global_position.z, here.z - 5.0, 0.05) and _near(up.global_position.x, here.x, 0.05))
 	_check("it is cheap, and you are Braced while it rises", _near(99.0 - float(e.get("essence")), 6.0) and bool(e.call("is_braced")) and _near(float(e.get("_windup_t")), 0.35))
@@ -3186,12 +3215,12 @@ func _test_earth() -> void:
 	_check("nothing more happens when that wind-up ends", int(e.call("stone_count")) == 1 and _bolt_of(e) == null)
 	fresh.call()
 	e.set("cursor_fixed", here + Vector3(0, 0, -0.7))
-	e.call("cast_ability", 2)
+	e.call("cast_ability", slab_i)
 	up = (e.get("stones") as Array).back()
 	_check("point at your feet and it still rises a step away", _near(up.global_position.z, here.z - 1.5, 0.05))
 	fresh.call()
 	e.set("cursor_fixed", here + Vector3(-30.0, 0, 0))
-	e.call("cast_ability", 2)
+	e.call("cast_ability", slab_i)
 	up = (e.get("stones") as Array).back()
 	_check("and never more than 8 m off", _near(up.global_position.x, here.x - 8.0, 0.05))
 	_check("it lies across the way you aimed", absf((up.global_transform.basis.x).z) > 0.99)
@@ -3201,7 +3230,7 @@ func _test_earth() -> void:
 	await get_tree().physics_frame
 	fresh.call()
 	e.set("cursor_fixed", here + Vector3(0, 0, -6.0))
-	e.call("cast_ability", 2)
+	e.call("cast_ability", slab_i)
 	up = (e.get("stones") as Array).back() if not (e.get("stones") as Array).is_empty() else null
 	_check("with a wall in the way it rises short of the wall", up != null and _near(up.global_position.z, here.z - 1.9, 0.05))
 	e.call("drop_stones")
@@ -3489,8 +3518,9 @@ func _test_water_and_lightning() -> void:
 	w.set("star_pct", [99.0] as Array[float])
 	w.call("_recompute_essence_max")
 	w.set("essence", 99.0)
-	var ctx: HitContext = w.call("apply_hit", a, (w.call("_payload", GameData.ability("water_bolt"), "on_hit") as Dictionary), ["test"], 1.0, Vector3(0, 0, -1))
-	_check("water bolt: damage, Soaked, and a step back", _near(ctx.applied, 70.0) and bool(a.call("has_status", "soaked")) and bool(a.call("is_shoved")))
+	# (v2: Water Bolt is dropped - a plain payload of its shape still shows the order: the Soak lands before the shove)
+	var ctx: HitContext = w.call("apply_hit", a, {"damage": 70.0, "status": "soaked", "shove": 1.5}, ["test"], 1.0, Vector3(0, 0, -1))
+	_check("a soaking hit: damage, Soaked, and a step back", _near(ctx.applied, 70.0) and bool(a.call("has_status", "soaked")) and bool(a.call("is_shoved")))
 	_settle(a)
 	_check("the bolt's shove is 1.5 m, and soaking came first so it goes farther", _near(w.global_position.z - 2.0 - a.global_position.z, 2.25, 0.01), "moved %f" % (w.global_position.z - 2.0 - a.global_position.z))
 	# Breaker: a wide arc, everyone thrown straight away
@@ -3501,7 +3531,8 @@ func _test_water_and_lightning() -> void:
 	var behind := _foe(w, Vector3(0, 0, 2.0))
 	_rested(w)
 	w.call("cast_slot", 1)
-	_check("breaker hits a 120 degree arc for twice a strike", _near(_lost(a), strike * 2.0) and _near(_lost(side), strike * 2.0) and _near(_lost(behind), 0.0),
+	var brk_m: float = float(GameData.ability("tsunami_strike")["damage_mult"])
+	_check("breaker hits a 120 degree arc for %sx a strike" % StatusText._n(brk_m), _near(_lost(a), strike * brk_m) and _near(_lost(side), strike * brk_m) and _near(_lost(behind), 0.0),
 		"front %f side %f behind %f" % [_lost(a), _lost(side), _lost(behind)])
 	var side_from: Vector3 = side.global_position
 	_settle(a)
@@ -3520,8 +3551,11 @@ func _test_water_and_lightning() -> void:
 	w.call("cast_slot", 2)
 	for i: int in 30:
 		w.call("_physics_process", 1.0 / 60.0)
-	_check("sluice step carries you through an enemy, exactly its 4.7 m", _near(start.z - w.global_position.z, 26.0 * 0.18, 0.02), "moved %f" % (start.z - w.global_position.z))
-	_check("and soaks it on the way, without hurting it", bool(a.call("has_status", "soaked")) and _near(_lost(a), 0.0))
+	# v2: Sluice Step is a bull rush - it hits what it meets and carries it on ahead (on_pass shove "along")
+	var sluice: Dictionary = GameData.ability("hydraulic_flex")
+	var sluice_m: float = float(sluice["dash_speed"]) * float(sluice["dash_time"])
+	_check("sluice step carries you through an enemy, up to its %s m" % StatusText._n(sluice_m), start.z - w.global_position.z > 2.5 and start.z - w.global_position.z <= sluice_m + 0.05, "moved %f" % (start.z - w.global_position.z))
+	_check("and soaks and strikes what it meets", bool(a.call("has_status", "soaked")) and _near(_lost(a), float((sluice["on_pass"] as Dictionary)["damage"])), "lost %f" % _lost(a))
 	_check("no skill of the new kits hurts its caster", (w.get("body") as Body).wounds.is_empty() and _near((w.get("body") as Body).missing(), 0.0))
 	a.queue_free()
 	w.queue_free()
@@ -3700,14 +3734,15 @@ func _test_ascension() -> void:
 	_check("with no hybrid left to grow into, both choices are random bases not held", all_random)
 	# never an affinity the game lacks: Holy (Light + Life) without skills is never offered, even to Light
 	var affs: Dictionary = GameData.get("_affinities")
-	affs["holy"] = {"label": "Holy", "kind": "hybrid", "parents": ["light", "life"], "kit": []}
+	affs["made_up"] = {"label": "Made Up", "kind": "hybrid", "parents": ["light", "life"], "kit": []}
 	var no_holy := true
 	for s4: int in 200:
 		rng.seed = 9000 + s4
-		no_holy = no_holy and not Ascension.offer(["light"], rng).has("holy")
-	affs.erase("holy")
-	_check("an affinity with no skills in the game (Holy, made up for the check) is never offered", no_holy)
-	_check("Holy and Unholy are not in the game's affinities yet", not GameData.affinity_ids().has("holy") and not GameData.affinity_ids().has("unholy"))
+		no_holy = no_holy and not Ascension.offer(["light"], rng).has("made_up")
+	affs.erase("made_up")
+	_check("an affinity with no skills in the game (made up for the check) is never offered", no_holy)
+	_check("Holy and Unholy are in the game, playable hybrids (Light + Life, Dark + Death)", GameData.affinity_playable("holy") and GameData.affinity_playable("unholy")
+		and GameData.affinity_parents("holy") == (["light", "life"] as Array[String]) and GameData.affinity_parents("unholy") == (["dark", "death"] as Array[String]))
 	_check("every hybrid in the game has two base parents (affinities.json, generated)", GameData.affinity_ids().all(func(id: String) -> bool:
 		var k: String = str(GameData.affinity(id).get("kind", ""))
 		var ps: Array[String] = GameData.affinity_parents(id)
@@ -3719,11 +3754,11 @@ func _test_ascension() -> void:
 	_check("P for the second star is pool_by_star \"2\", and a star past the table uses the last entry", _near(p2, float((Ascension.cfg()["pool_by_star"] as Dictionary)["2"]))
 		and _near(Ascension.pool(99), float((Ascension.cfg()["pool_by_star"] as Dictionary)["5"])))
 	_check("the worked example: P 0.6, four skills, stage 1, a 0.5 -> 0.225", _near(Ascension.amount(0.6, 4, 1, 0.5), 0.225, 0.0001))
-	var two: Array[Dictionary] = Ascension.boosts([{"id": "water_bolt", "stage": 1}, {"id": "tsunami_strike", "stage": 1}], 2)
-	var four: Array[Dictionary] = Ascension.boosts([{"id": "water_bolt", "stage": 1}, {"id": "tsunami_strike", "stage": 1}, {"id": "hydraulic_flex", "stage": 1}, {"id": "drench", "stage": 1}], 2)
+	var two: Array[Dictionary] = Ascension.boosts([{"id": "riptide_lash", "stage": 1}, {"id": "tsunami_strike", "stage": 1}], 2)
+	var four: Array[Dictionary] = Ascension.boosts([{"id": "riptide_lash", "stage": 1}, {"id": "tsunami_strike", "stage": 1}, {"id": "hydraulic_flex", "stage": 1}, {"id": "drench", "stage": 1}], 2)
 	_check("more skills means less each (two skills get twice what four get)", _near(float(two[0]["amount"]), 2.0 * float(four[0]["amount"]), 0.0001)
 		and _near(float(two[0]["amount"]), p2 / 2.0 * (1.0 + a)), "%f %f" % [float(two[0]["amount"]), float(four[0]["amount"])])
-	var mixed: Array[Dictionary] = Ascension.boosts([{"id": "water_bolt", "stage": 0}, {"id": "tsunami_strike", "stage": 3}], 2)
+	var mixed: Array[Dictionary] = Ascension.boosts([{"id": "riptide_lash", "stage": 0}, {"id": "tsunami_strike", "stage": 3}], 2)
 	_check("a higher stage gains more: stage 3 gets (1 + 3a) / 1 of stage 0's", float(mixed[1]["amount"]) > float(mixed[0]["amount"])
 		and _near(float(mixed[1]["amount"]) / float(mixed[0]["amount"]), 1.0 + 3.0 * a, 0.0001))
 
@@ -3732,13 +3767,13 @@ func _test_ascension() -> void:
 		Ascension.aspect_groups("power").has("power") and Ascension.aspect_groups("reach").has("reach") and Ascension.aspect_groups("speed").has("speed")
 		and str(Ascension.aspect_groups("speed")["windup"]) == "down" and str(Ascension.aspect_groups("cost")["cost"]) == "down")
 	var w := _new_player("grudge")
-	w.call("set_affinities", ["water"])
-	var base: Dictionary = w.call("ability_stats", {"id": "water_bolt", "stage": 0, "progress": 0.0})
-	var pw: Dictionary = w.call("ability_stats", {"id": "water_bolt", "stage": 0, "progress": 0.0, "ascension": {"power": 0.2}})
-	var rc: Dictionary = w.call("ability_stats", {"id": "water_bolt", "stage": 0, "progress": 0.0, "ascension": {"reach": 0.2}})
-	var sp: Dictionary = w.call("ability_stats", {"id": "water_bolt", "stage": 0, "progress": 0.0, "ascension": {"speed": 0.2}})
-	var co: Dictionary = w.call("ability_stats", {"id": "water_bolt", "stage": 0, "progress": 0.0, "ascension": {"cost": 0.25}})
-	_check("power +20%: Water Bolt's damage x1.2, its reach and cost untouched", _near(float(pw["damage"]), float(base["damage"]) * 1.2)
+	w.call("set_affinities", ["metal"])         # v2: a plain bolt with no recovery of its own is Metal's Iron Slug
+	var base: Dictionary = w.call("ability_stats", {"id": "iron_slug", "stage": 0, "progress": 0.0})
+	var pw: Dictionary = w.call("ability_stats", {"id": "iron_slug", "stage": 0, "progress": 0.0, "ascension": {"power": 0.2}})
+	var rc: Dictionary = w.call("ability_stats", {"id": "iron_slug", "stage": 0, "progress": 0.0, "ascension": {"reach": 0.2}})
+	var sp: Dictionary = w.call("ability_stats", {"id": "iron_slug", "stage": 0, "progress": 0.0, "ascension": {"speed": 0.2}})
+	var co: Dictionary = w.call("ability_stats", {"id": "iron_slug", "stage": 0, "progress": 0.0, "ascension": {"cost": 0.25}})
+	_check("power +20%: Iron Slug's damage x1.2, its reach and cost untouched", _near(float(pw["damage"]), float(base["damage"]) * 1.2)
 		and _near(float(pw["life"]), float(base["life"])) and _near(float(pw["cost"]), float(base["cost"])))
 	_check("reach +20%: its flight time (reach on a projectile) x1.2, damage untouched", _near(float(rc["life"]), float(base["life"]) * 1.2) and _near(float(rc["damage"]), float(base["damage"])))
 	_check("speed +20%: flight speed x1.2 and the (default) recovery / 1.2", _near(float(sp["speed"]), float(base["speed"]) * 1.2)
@@ -3807,9 +3842,9 @@ func _test_ascension() -> void:
 func _test_affinities() -> void:
 	print("affinities:")
 	var ids: Array = GameData.affinity_ids()
-	# Brent 2026-10-22: all sixteen are in the game
-	var sixteen: Array = ["water", "fire", "earth", "wind", "lightning", "ice", "dark", "metal", "blood", "life", "death", "nature", "light", "dream", "poison", "disease"]
-	_check("sixteen affinities are defined", ids.size() == 16 and sixteen.all(func(a: String) -> bool: return ids.has(a)), str(ids))
+	# Brent 2026-10-22: all sixteen are in the game; 2026-10-24 (v2): Holy and Unholy too - eighteen
+	var eighteen: Array = ["water", "fire", "earth", "wind", "lightning", "ice", "dark", "metal", "blood", "life", "death", "nature", "light", "dream", "poison", "disease", "holy", "unholy"]
+	_check("eighteen affinities are defined", ids.size() == 18 and eighteen.all(func(a: String) -> bool: return ids.has(a)), str(ids))
 	for a: String in ids:
 		var kit: Array = GameData.affinity(a).get("kit", [])
 		var kinds: Array = []
@@ -3818,11 +3853,12 @@ func _test_affinities() -> void:
 			var ab: Dictionary = GameData.ability(id)
 			kinds.append(str(ab.get("kind", "")))
 			own = own and str(ab.get("affinity", "")) == a
-		# earth is the exception, on purpose: its third skill raises a wall and it has no way to move fast
-		# a ranged attack may be a lobbed blast (nature, disease); movement may be a grapple or a streak (nature, light)
-		_check("%s has a ranged attack, a strike and a movement skill of its own (earth: a wall instead)" % a,
-			kit.size() == 3 and own and ["projectile", "beam", "delayed_blast"].has(kinds[0]) and ["melee_burst", "targeted_strike"].has(kinds[1])
-			and (["dash", "blink", "grapple", "streak"].has(kinds[2]) or (a == "earth" and kinds[2] == "prop")), str(kinds))
+		# a ranged attack may be a lobbed blast (nature, disease) or, for a role that fights close, a pull (Water's Riptide
+		# Lash, Unholy's Grasping Dark: ROLES-BRIEF "a tank's ranged starter can be a taunt or a pull"); movement may be a
+		# grapple or a streak (nature, light)
+		_check("%s has a ranged starter, a strike and a movement skill of its own" % a,
+			kit.size() == 3 and own and ["projectile", "beam", "delayed_blast", "displace"].has(kinds[0]) and ["melee_burst", "targeted_strike"].has(kinds[1])
+			and ["dash", "blink", "grapple", "streak"].has(kinds[2]), str(kinds))
 
 	# the roll at character creation: talent and affinities are unrelated, slots are 1 / 2 / 3
 	var rng := RandomNumberGenerator.new()
@@ -3861,7 +3897,7 @@ func _test_affinities() -> void:
 	p.set("essence", 100.0)
 	p.call("cast_slot", 0)
 	_check("casting heats that affinity only", float(p.call("reflux_of", "fire")) > 0.0 and _near(float(p.call("reflux_of", "water")), 0.0))
-	(p.get("abilities") as Array).append({"id": "water_bolt", "stage": 0, "progress": 0.0})
+	(p.get("abilities") as Array).append({"id": "tsunami_strike", "stage": 0, "progress": 0.0})
 	var ess: float = float(p.get("essence"))
 	p.call("cast_ability", 3)
 	_check("an ability outside your affinities cannot be cast", _near(float(p.get("essence")), ess))
@@ -4723,16 +4759,16 @@ func _test_skill_tree() -> void:
 	var p: CharacterBody3D = _new_player("one_percent_lifesteal")
 	p.call("set_affinities", ["water"])
 	_check("a new character has no skill points", int(p.get("skill_points")) == int((GameData.skill_tree["points"] as Dictionary)["start"]))
-	_check("picking one skill is refused", str(p.call("start_with_skills", ["water_bolt"])) != "")
-	_check("picking three is refused", str(p.call("start_with_skills", ["water_bolt", "tsunami_strike", "hydraulic_flex"])) != "")
-	_check("the same skill twice is refused", str(p.call("start_with_skills", ["water_bolt", "water_bolt"])) != "")
-	_check("a skill of another affinity is refused", str(p.call("start_with_skills", ["water_bolt", "cinder_spit"])) != "")
-	_check("a skill that is not a root is refused", str(p.call("start_with_skills", ["water_bolt", "undertow"])) != "")
-	var why: String = p.call("start_with_skills", ["hydraulic_flex", "water_bolt"])
+	_check("picking one skill is refused", str(p.call("start_with_skills", ["riptide_lash"])) != "")
+	_check("picking three is refused", str(p.call("start_with_skills", ["riptide_lash", "tsunami_strike", "hydraulic_flex"])) != "")
+	_check("the same skill twice is refused", str(p.call("start_with_skills", ["riptide_lash", "riptide_lash"])) != "")
+	_check("a skill of another affinity is refused", str(p.call("start_with_skills", ["riptide_lash", "cinder_spit"])) != "")
+	_check("a skill that is not a root is refused", str(p.call("start_with_skills", ["riptide_lash", "standing_pool"])) != "")
+	var why: String = p.call("start_with_skills", ["hydraulic_flex", "riptide_lash"])
 	var abilities: Array = p.get("abilities")
 	var hotbar: Array = p.get("hotbar")
 	_check("two roots of a held affinity are accepted", why == "", why)
-	_check("the character starts with exactly the two chosen skills", abilities.size() == 2 and str(abilities[0]["id"]) == "hydraulic_flex" and str(abilities[1]["id"]) == "water_bolt",
+	_check("the character starts with exactly the two chosen skills", abilities.size() == 2 and str(abilities[0]["id"]) == "hydraulic_flex" and str(abilities[1]["id"]) == "riptide_lash",
 		str(abilities))
 	_check("they are on slots 1 and 2 and nothing else is on the bar", int(hotbar[0]) == 0 and int(hotbar[1]) == 1 and hotbar.slice(2).all(func(v: int) -> bool: return v == -1), str(hotbar))
 
@@ -4755,33 +4791,33 @@ func _test_skill_tree() -> void:
 	# learning: points, money, prerequisites, affinity - and only through train_skill
 	var t: CharacterBody3D = _new_player("one_percent_lifesteal")
 	t.call("set_affinities", ["water"])
-	t.call("start_with_skills", ["water_bolt", "tsunami_strike"])
+	t.call("start_with_skills", ["riptide_lash", "tsunami_strike"])
 	t.set("money", 5000)
-	_check("no points: a trainer cannot teach", str(t.call("cannot_train_reason", "undertow")).contains("point"), str(t.call("cannot_train_reason", "undertow")))
+	_check("no points: a trainer cannot teach", str(t.call("cannot_train_reason", "drench")).contains("point"), str(t.call("cannot_train_reason", "drench")))
 	t.set("skill_points", 5)
-	_check("a tier-2 skill whose root you know can be taught", str(t.call("cannot_train_reason", "undertow")) == "")
+	_check("a tier-2 skill whose root you know can be taught", str(t.call("cannot_train_reason", "drench")) == "")
 	_check("a tier-2 skill whose root you do not know cannot", str(t.call("cannot_train_reason", "backwash")).begins_with("Learn"), str(t.call("cannot_train_reason", "backwash")))
-	_check("the capstone needs one of its two parents", not bool(t.call("skill_unlocked", "standing_pool")))
+	_check("the capstone needs one of its two parents", not bool(t.call("skill_unlocked", "drowning_hold")))
 	_check("another affinity's skill cannot be taught at all", str(t.call("cannot_train_reason", "cinder_spit")).contains("affinity"), str(t.call("cannot_train_reason", "cinder_spit")))
-	_check("nor can one you know", str(t.call("cannot_train_reason", "water_bolt")).contains("already"))
-	var cost: Dictionary = t.call("skill_cost", "undertow")
-	_check("train_skill teaches it", str(t.call("train_skill", "undertow")) == "" and bool(t.call("knows", "undertow")))
+	_check("nor can one you know", str(t.call("cannot_train_reason", "riptide_lash")).contains("already"))
+	var cost: Dictionary = t.call("skill_cost", "drench")
+	_check("train_skill teaches it", str(t.call("train_skill", "drench")) == "" and bool(t.call("knows", "drench")))
 	_check("and spends the points and the fee", int(t.get("skill_points")) == 5 - int(cost["points"]) and int(t.get("money")) == 5000 - int(cost["price"]),
 		"%d pts, $%d" % [int(t.get("skill_points")), int(t.get("money"))])
 	_check("the new skill goes on the next empty slot", int((t.get("hotbar") as Array)[2]) == 2)
-	_check("one parent is enough for the capstone", bool(t.call("skill_unlocked", "standing_pool")) and int((t.call("skill_cost", "standing_pool") as Dictionary)["points"]) == 2)
+	_check("one parent is enough for the capstone", bool(t.call("skill_unlocked", "drowning_hold")) and int((t.call("skill_cost", "drowning_hold") as Dictionary)["points"]) == 2)
 	t.set("skill_points", 1)
-	_check("the capstone costs two points", str(t.call("cannot_train_reason", "standing_pool")).contains("point"))
+	_check("the capstone costs two points", str(t.call("cannot_train_reason", "drowning_hold")).contains("point"))
 	t.set("skill_points", 3)
 	t.set("money", -999999)
-	_check("deep in debt, nobody trains you", str(t.call("train_skill", "riptide_lash")) != "" and not bool(t.call("knows", "riptide_lash")))
+	_check("deep in debt, nobody trains you", str(t.call("train_skill", "hydraulic_flex")) != "" and not bool(t.call("knows", "hydraulic_flex")))
 	t.set("money", 5000)
 	# drilling moves the bar on, never the stage
 	var drill: Dictionary = GameData.skill_tree["drill"]
-	_check("drilling a known skill moves its progress on", str(t.call("drill_skill", "water_bolt")) == ""
+	_check("drilling a known skill moves its progress on", str(t.call("drill_skill", "riptide_lash")) == ""
 		and _near(float((t.get("abilities") as Array)[0]["progress"]), float(drill["progress"])) and int((t.get("abilities") as Array)[0]["stage"]) == 0)
 	((t.get("abilities") as Array)[0] as Dictionary)["progress"] = 100.0
-	_check("a full bar cannot be drilled: the stage still needs a construct", str(t.call("drill_skill", "water_bolt")) != "")
+	_check("a full bar cannot be drilled: the stage still needs a construct", str(t.call("drill_skill", "riptide_lash")) != "")
 	_check("an unknown skill cannot be drilled", str(t.call("cannot_drill_reason", "backwash")) != "")
 	# scrolls still teach anywhere: no points, no prerequisites, only the affinity
 	t.set("skill_points", 0)
@@ -5266,7 +5302,12 @@ func _test_runes() -> void:
 	var uni: Dictionary = GameData.runes.get("universal_runes", {})
 	_check("runes.json names bond_v2 (seals as rings), and it is the rule set in force", str(GameData.runes.get("rule_set", "")) == "bond_v2" and Runes.active() is RingRules)
 	_check("bond_v1 is still in the data and still builds (the chemistry checks below run on it)", Runes.make("bond_v1") is BondRules and not (Runes.make("bond_v1") is RingRules))
-	_check("all 166 base runes and 56 universal runes are loaded", base.size() == 166 and uni.size() == 56, "%d / %d" % [base.size(), uni.size()])
+	# v2 (2026-10-24, workbook commit 8685988): 206 base runes for the 18 affinities, 10 to 12 each, in a/b pairs
+	var per_aff: Dictionary = {}
+	for rid: String in base:
+		per_aff[str((base[rid] as Dictionary)["affinity"])] = int(per_aff.get(str((base[rid] as Dictionary)["affinity"]), 0)) + 1
+	_check("all 206 base runes (10 to 12 for each of the 18 affinities) and 56 universal runes are loaded", base.size() == 206 and uni.size() == 56
+		and per_aff.size() == 18 and per_aff.values().all(func(n: int) -> bool: return n >= 10 and n <= 12 and n % 2 == 0), "%d / %d %s" % [base.size(), uni.size(), str(per_aff)])
 	var anchored := true
 	for id: String in GameData.abilities:
 		var anchor_def: Dictionary = GameData.rune(GameData.skill_anchor(id))
@@ -5280,15 +5321,15 @@ func _test_runes() -> void:
 	var bk: BondRules = bond as BondRules
 	# capacity by level [B]: level 0 holds 4, level 1 holds 6, two more a level
 	_check("a skill of level 0 holds 4 runes, level 1 holds 6, level 2 holds 8",
-		bond.capacity(_rctx("water_bolt", 0)) == 4 and bond.capacity(_rctx("water_bolt", 1)) == 6 and bond.capacity(_rctx("water_bolt", 2)) == 8)
+		bond.capacity(_rctx("tsunami_strike", 0)) == 4 and bond.capacity(_rctx("tsunami_strike", 1)) == 6 and bond.capacity(_rctx("tsunami_strike", 2)) == 8)
 
 	# valence: the anchor takes exactly its valence in bonds
-	var anchor: String = GameData.skill_anchor("water_bolt")
+	var anchor: String = GameData.skill_anchor("tsunami_strike")
 	var aname: String = str(GameData.rune(anchor)["name"])
 	var va: int = BondRules.valence(anchor)
 	var water: Array[String] = _runes_of("water", -1, [anchor])
-	var stage_v: int = _stage_for(bond, "water_bolt", va + 2)
-	var ctxv: RuneContext = _rctx("water_bolt", stage_v)
+	var stage_v: int = _stage_for(bond, "tsunami_strike", va + 2)
+	var ctxv: RuneContext = _rctx("tsunami_strike", stage_v)
 	var w: Dictionary = RuneWord.make(anchor)
 	_check("a word starts as the skill's anchor alone", RuneWord.nodes(w) == [anchor])
 	var took := 0
@@ -5310,7 +5351,7 @@ func _test_runes() -> void:
 	_check("taking a rune out takes its bonds with it", bool(bond.remove(w, 1, ctxv)["ok"]) and RuneWord.size(w) == va + 1 and RuneWord.links(w).size() == links_before - 1)
 	# capacity: at level 0, loose runes go in until the word holds 4, anchor counted
 	var wcap: Dictionary = RuneWord.make(anchor)
-	var ctx0: RuneContext = _rctx("water_bolt", 0)
+	var ctx0: RuneContext = _rctx("tsunami_strike", 0)
 	var k2 := 0
 	while k2 < water.size() and bool(bond.add(wcap, water[k2], ctx0)["ok"]):
 		k2 += 1
@@ -5362,8 +5403,8 @@ func _test_runes() -> void:
 
 	# closure: the anchor with a cap (valence 1) on every bond
 	var caps: Array[String] = _runes_of("water", 1, [anchor])
-	var stage_c: int = _stage_for(bond, "water_bolt", va + 3)
-	var ctxc: RuneContext = _rctx("water_bolt", stage_c)
+	var stage_c: int = _stage_for(bond, "tsunami_strike", va + 3)
+	var ctxc: RuneContext = _rctx("tsunami_strike", stage_c)
 	var wc: Dictionary = RuneWord.make(anchor)
 	for k: int in va - 1:
 		bond.add(wc, caps[k % caps.size()], ctxc, 0)
@@ -5385,6 +5426,7 @@ func _test_runes() -> void:
 			hub = id
 	var p: Node = _new_player()
 	p.call("set_affinities", ["water", "fire"])
+	_surge_first(p)                        # v2: the rune tests are built on Surge, Breaker's rune
 	p.set("test_character", true)              # for the test hook: two level locks with the closed-word rule waived
 	var pst: Dictionary = (p.get("abilities") as Array)[0]
 	pst["progress"] = 100.0
@@ -5430,6 +5472,7 @@ func _test_runes() -> void:
 	Runes.use(free)
 	var f: Node = _new_player()
 	f.call("set_affinities", ["water"])
+	_surge_first(f)                        # v2: the rune tests are built on Surge, Breaker's rune
 	f.set("test_character", true)
 	((f.get("abilities") as Array)[0] as Dictionary)["progress"] = 100.0
 	(f.get("constructs") as Array).append({"tier": "vestige", "concept": "reach"})
@@ -5562,10 +5605,10 @@ func _test_rune_effects() -> void:
 	var bk: BondRules = bond as BondRules
 	var fxp: Dictionary = (bond.params["interaction_params"] as Dictionary)["effects_v1"]
 	var kf: Dictionary = fxp["kind_factors"]
-	var anchor: String = GameData.skill_anchor("water_bolt")
+	var anchor: String = GameData.skill_anchor("tsunami_strike")
 	var en_a: float = BondRules.electronegativity(anchor)
-	var base: Dictionary = GameData.ability("water_bolt")
-	var ctx: RuneContext = _rctx("water_bolt", 3)
+	var base: Dictionary = GameData.ability("tsunami_strike")
+	var ctx: RuneContext = _rctx("tsunami_strike", 3)
 	var water: Array = (GameData.runes["base_runes"] as Dictionary).keys().filter(func(id: String) -> bool: return str(GameData.rune(id)["affinity"]) == "water" and id != anchor)
 	var uni: Array = (GameData.runes["universal_runes"] as Dictionary).keys()
 	_check("effects_v1 is the interaction bond_v1 runs", bond.interactions.size() == 1 and bond.interactions[0].id == "effects_v1")
@@ -5614,15 +5657,16 @@ func _test_rune_effects() -> void:
 	_check("the rune-by-rune breakdown names the side too", str(_row(fx_k, 3).get("relation", "")) == str(dl_i["label"]))
 	var anchor_f: float = (float((kf["even"] as Dictionary)["less_pull"]) + float((kf["polar"] as Dictionary)["less_pull"]) + float((kf["ionic"] as Dictionary)["less_pull"])) / 3.0
 	_check("the anchor's own factor is its side of each bond, averaged", _near(float((fx_k["anchor"] as Dictionary)["factor"]), anchor_f))
-	# the ionic anchor loses its signature: Water Bolt joined only to a rune that pulls far harder
+	# the ionic anchor loses its signature: Breaker joined only to a rune that pulls far harder
 	var p: Node = _new_player()
 	p.call("set_affinities", ["water"])
+	_surge_first(p)                        # v2: the rune tests are built on Surge, Breaker's rune
 	((p.get("abilities") as Array)[0] as Dictionary)["progress"] = 100.0
 	(p.get("constructs") as Array).append({"tier": "vestige", "concept": "reach"})
 	p.call("open_seal", 0)
 	var lone: Dictionary = p.call("word_add", 0, ionic_r, 0)
 	var pv: Dictionary = p.call("rune_preview", 0)
-	_check("bonded ionically to a rune with more pull, Water Bolt loses its shove (%s)" % str(GameData.rune(ionic_r)["name"]),
+	_check("bonded ionically to a rune with more pull, Breaker loses its shove (%s)" % str(GameData.rune(ionic_r)["name"]),
 		bool(lone["ok"]) and _near(float(((pv["before"] as Dictionary)["on_hit"] as Dictionary)["shove"]), float((base["on_hit"] as Dictionary)["shove"]))
 		and _near(float(((pv["after"] as Dictionary)["on_hit"] as Dictionary).get("shove", 0.0)), 0.0), str((pv["after"] as Dictionary)["on_hit"]))
 
@@ -5635,9 +5679,10 @@ func _test_rune_effects() -> void:
 	var small: Dictionary = _raw_word([anchor, shrink_r, shrink_r, shrink_r, shrink_r, shrink_r], [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5]])
 	_check("and cannot fall below %.1f" % float(fxp["mult_min"]), _near(float((bond.effects(small, ctx)["groups"] as Dictionary)["reach"]), float(fxp["mult_min"])))
 
-	# 2026-10-22: duration also lengthens the statuses a skill applies - Water Bolt's Soaked
+	# 2026-10-22: duration also lengthens the statuses a skill applies - Cataract's Soaked (v2: Water Bolt is dropped;
+	# Cataract is on the same rune, Surge, and soaks)
 	var dur_r: String = _rune_where(uni, func(r: Dictionary) -> bool: return (r["ops"] as Array).size() == 1 and str((r["ops"] as Array)[0]["op"]) == "mul" and str((r["ops"] as Array)[0]["group"]) == "duration" and float((r["ops"] as Array)[0]["value"]) > 1.0)
-	var fx_d: Dictionary = bond.effects(_raw_word([anchor, dur_r], [[0, 1]]), ctx)
+	var fx_d: Dictionary = bond.effects(_raw_word([anchor, dur_r], [[0, 1]]), _rctx("cataract", 3))
 	var s_d: float = float(_row(fx_d, 1)["strength"])
 	var dur_m: float = 1.0 + (float(((GameData.rune(dur_r)["ops"] as Array)[0] as Dictionary)["value"]) - 1.0) * s_d
 	_check("a duration rune on a skill that applies a status lengthens the status",
@@ -5679,13 +5724,39 @@ func _test_rune_effects() -> void:
 	_check("a status rune one even bond out (strength %.2f) applies %s" % [float(_row(near_fx, 1)["strength"]), sid], bool(appends.call(near_fx)))
 	_check("two even bonds out (strength %.2f, under %.2f) it does not" % [float(_row(far_fx, 2)["strength"]), float(fxp["status_threshold"])], not bool(appends.call(far_fx)) and float(_row(far_fx, 2)["strength"]) < float(fxp["status_threshold"]))
 
-	# the test word: faster, and a status Water Bolt does not have
-	var fast_r: String = _rune_where(water, func(r: Dictionary) -> bool: return _has_op(r, "mul", "speed") and int(r["valence"]) == 2 and absf(float(r["electronegativity"]) - en_a) < 0.39)
-	var cap_status: String = _rune_where(water, func(r: Dictionary) -> bool: return int(r["valence"]) == 1 and _has_op(r, "status") and float(r["electronegativity"]) - en_a > 1.71)
-	var cap_any: String = _rune_where(water, func(r: Dictionary) -> bool: return int(r["valence"]) == 1 and r["id"] != cap_status)
-	print("    the test word: %s + %s, %s; %s on %s" % [str(GameData.rune(anchor)["name"]), str(GameData.rune(fast_r)["name"]), str(GameData.rune(cap_status)["name"]), str(GameData.rune(cap_any)["name"]), str(GameData.rune(fast_r)["name"])])
+	# the test word: faster, and a status the bolt does not have. v2 (2026-10-24): Water Bolt is dropped, so the bolt is the
+	# first affinity whose ranged starter is a projectile and whose runes hold a speed link, a status cap far above its own
+	# rune, and another cap - the same word Water Bolt was given, found by its chemistry, not by name
+	var fast_r := ""
+	var cap_status := ""
+	var cap_any := ""
+	var aff_t := ""
+	var bolt_id := ""
+	var bolt_anchor := ""
+	for aff_c: Variant in GameData.affinity_ids():
+		var k0: String = str((GameData.affinity(str(aff_c)).get("kit", []) as Array)[0])
+		if str(GameData.ability(k0).get("kind", "")) != "projectile":
+			continue
+		var an_c: String = GameData.skill_anchor(k0)
+		var en_c: float = BondRules.electronegativity(an_c)
+		var own: Array = (GameData.runes["base_runes"] as Dictionary).keys().filter(func(id: String) -> bool: return str(GameData.rune(id)["affinity"]) == str(aff_c) and id != an_c)
+		var f_c: String = _rune_where(own, func(r: Dictionary) -> bool: return _has_op(r, "mul", "speed") and int(r["valence"]) == 2 and absf(float(r["electronegativity"]) - en_c) < 0.39)
+		var s_c: String = _rune_where(own, func(r: Dictionary) -> bool: return int(r["valence"]) == 1 and _has_op(r, "status") and float(r["electronegativity"]) - en_c > 1.71)
+		var a_c: String = _rune_where(own, func(r: Dictionary) -> bool: return int(r["valence"]) == 1 and r["id"] != s_c)
+		if f_c != "" and s_c != "" and a_c != "":
+			fast_r = f_c
+			cap_status = s_c
+			cap_any = a_c
+			aff_t = str(aff_c)
+			bolt_id = k0
+			bolt_anchor = an_c
+			break
+	_check("some affinity's ranged starter is a bolt whose runes make the test word", aff_t != "")
+	if aff_t == "":
+		return
+	print("    the test word (%s): %s + %s, %s; %s on %s" % [aff_t, str(GameData.rune(bolt_anchor)["name"]), str(GameData.rune(fast_r)["name"]), str(GameData.rune(cap_status)["name"]), str(GameData.rune(cap_any)["name"]), str(GameData.rune(fast_r)["name"])])
 	var q: Node = _new_player()
-	q.call("set_affinities", ["water"])
+	q.call("set_affinities", [aff_t])
 	var speed0: float = float(q.call("ability_stats", (q.get("abilities") as Array)[0])["speed"])
 	for rid: String in [fast_r, cap_status, cap_any]:
 		q.call("discover_rune", rid, "")
@@ -5740,7 +5811,7 @@ func _test_rune_effects() -> void:
 	q.set("cursor_fixed", here + Vector3(0, 0, -6.0))
 	q.set("_facing", Vector3(0, 0, -1))
 	q.set("essence", 99.0)
-	_cast(q, "water_bolt")
+	_cast(q, bolt_id)
 	var shot: Node3D = _bolt_of(q)
 	_check("the cast bolt flies at the sealed word's speed (%.1f, not %.1f)" % [speed0 * speed_m, speed0], shot != null and _near(float(shot.get("speed")), speed0 * speed_m, 0.01), str(shot.get("speed") if shot != null else "no bolt"))
 	if shot != null:
@@ -5762,18 +5833,31 @@ func _ring_word(ids: Array, rings: Array, links: Array) -> Dictionary:
 	return w
 
 
-## The level 2 rework of the seal test's word: Flood and Gush parted, Dry out and Slack in on ring
-## 1, Settle (with Drown and Slack) and Expand on ring 2.
+## The level 2 rework of the seal test's word: Flood and Heave parted, Dry out and Drown in on ring
+## 1, Settle (with Drown twice) and Expand on ring 2.
 func _rework(s: Node) -> void:
-	s.call("word_toggle_link", 0, 1, 2)      # part Flood and Gush: ring 1 reworked
+	s.call("word_toggle_link", 0, 1, 2)      # part Flood and Heave: ring 1 reworked
 	s.call("word_remove", 0, 3)              # Dry out
-	s.call("word_add", 0, "WAT-8b", 1, 1)    # Slack in its place, on ring 1, off Flood
-	s.call("word_add", 0, "WAT-6b", 2)       # Settle off Gush, ring 2
+	s.call("word_add", 0, "WAT-4b", 1, 1)    # Drown in its place, on ring 1, off Flood (v2: Slack is dropped)
+	s.call("word_add", 0, "WAT-6b", 2)       # Settle off Heave, ring 2
 	s.call("word_add", 0, "WAT-4b", 4)       # Drown off Settle, ring 2
-	s.call("word_add", 0, "WAT-8b", 4)       # Slack off Settle, ring 2
+	s.call("word_add", 0, "WAT-4b", 4)       # a second Drown off Settle, ring 2
 	s.call("word_add", 0, "UNI-05a", 1)      # Expand off Flood, ring 2
 	s.call("word_add", 0, "UNI-05a", 7)      # a second Expand off the first: ring 2's fifth place (full rings, Brent 2026-10-24)
 	s.call("word_toggle_link", 0, 4, 8)      # it and Settle: the word closes
+
+
+## v2 (2026-10-24): Water Bolt (on Surge) was the first water skill and the rune tests were built on its rune; it is
+## dropped, and Breaker (tsunami_strike) is on Surge. This puts Breaker first in a water character's skills, so
+## index 0 is a skill on Surge again. The kit's own order (Riptide Lash first) is checked elsewhere.
+func _surge_first(p: Node) -> void:
+	var list: Array = p.get("abilities")
+	for i: int in list.size():
+		if str((list[i] as Dictionary)["id"]) == "tsunami_strike" and i > 0:
+			var first: Dictionary = list[0]
+			list[0] = list[i]
+			list[i] = first
+			return
 
 
 func _rings_ctx(ability_id: String, rings: int) -> RuneContext:
@@ -5796,7 +5880,7 @@ func _first_skill_of_kind(kind: String) -> String:
 ## capacity, bonds only within a ring or between neighbouring rings, strength as a product along the
 ## path, the ionic hand-over, each shape trait, the great ring's repeat in a real cast, and the seal
 ## flow - only at a binding, a failed bind keeping the old word, inner rings reworked at the next.
-## Runes are mostly named here (Flood, Drown, Surge, Gush...): Brent's proof is about those runes.
+## Runes are mostly named here (Flood, Drown, Surge, Heave...): Brent's proof is about those runes.
 func _test_seals() -> void:
 	print("seals and structure v2 (design/14 section 8):")
 	var rules: RuneRules = Runes.make("bond_v2")
@@ -5813,15 +5897,15 @@ func _test_seals() -> void:
 	var want2: int = want1 + int(adds[1]) if str(rules.params.get("ring_capacity", "")) == "grows" else int(adds[1])
 	var want3: int = want2 + int(adds[2]) if str(rules.params.get("ring_capacity", "")) == "grows" else int(adds[2])
 	print("    ring capacity (%s): ring 1 holds %d, ring 2 %d, ring 3 %d" % [str(rules.params.get("ring_capacity", "")), rr.ring_capacity(1), rr.ring_capacity(2), rr.ring_capacity(3)])
-	_check("ring 1 holds 3 runes - with the skill's own rune, Brent's 'level 0 holds 4'", rr.ring_capacity(1) == 3 and rules.capacity(_rings_ctx("water_bolt", 1)) == 4)
+	_check("ring 1 holds 3 runes - with the skill's own rune, Brent's 'level 0 holds 4'", rr.ring_capacity(1) == 3 and rules.capacity(_rings_ctx("tsunami_strike", 1)) == 4)
 	_check("each later ring adds 2 (the data's reading: %d, %d)" % [want2, want3], rr.ring_capacity(2) == want2 and rr.ring_capacity(3) == want3
-		and rules.capacity(_rings_ctx("water_bolt", 2)) == 1 + want1 + want2)
-	var surge: String = GameData.skill_anchor("water_bolt")
+		and rules.capacity(_rings_ctx("tsunami_strike", 2)) == 1 + want1 + want2)
+	var surge: String = GameData.skill_anchor("tsunami_strike")
 	var caps: Array[String] = _runes_of("water", 1, [surge])
 	var w0: Dictionary = RuneWord.make(surge)
-	var no_rings: Dictionary = rules.add(w0, caps[0], _rings_ctx("water_bolt", 0), 0)
+	var no_rings: Dictionary = rules.add(w0, caps[0], _rings_ctx("tsunami_strike", 0), 0)
 	_check("before its first binding (no rings) nothing can be set, and the screen says why", not bool(no_rings["ok"]) and str(no_rings["text"]).contains("first binding"), str(no_rings))
-	var ctx1: RuneContext = _rings_ctx("water_bolt", 1)
+	var ctx1: RuneContext = _rings_ctx("tsunami_strike", 1)
 	var w1: Dictionary = RuneWord.make(surge)
 	for k: int in 3:
 		rules.add(w1, caps[k % caps.size()], ctx1)
@@ -5843,7 +5927,7 @@ func _test_seals() -> void:
 			bool(rules.word_state(wf, _rings_ctx(frame_skill, 1))["closed"]), str(rules.word_state(wf, _rings_ctx(frame_skill, 1))))
 
 	# ---- bonds only within a ring or between rings next to each other
-	var ctx3: RuneContext = _rings_ctx("water_bolt", 3)
+	var ctx3: RuneContext = _rings_ctx("tsunami_strike", 3)
 	var links_w: Dictionary = _ring_word(["WAT-2a", "UNI-19a", "UNI-28a", "UNI-26b", "UNI-27b"], [0, 1, 2, 3, 1], [[0, 1]])
 	_check("ring 1 to ring 3: refused", str(rules.can_link(links_w, 1, 3, ctx3)["reason"]) == "rings_apart", str(rules.can_link(links_w, 1, 3, ctx3)))
 	_check("the skill's own rune to ring 2: refused", str(rules.can_link(links_w, 0, 2, ctx3)["reason"]) == "rings_apart")
@@ -5853,7 +5937,7 @@ func _test_seals() -> void:
 	_check("a saved word bonded across rings that do not touch is reported, not obeyed", str(rules.word_state(bad, ctx3)["problems"]).contains("do not touch"))
 
 	# ---- strength: the ring's fade x the product of the bonds' transmissions on the strongest path
-	var pj := "pressure_jet"
+	var pj := "tsunami_strike"
 	var gush: String = GameData.skill_anchor(pj)
 	var ctxp: RuneContext = _rings_ctx(pj, 2)
 	var fade2: float = rr.ring_fade(2)
@@ -5862,7 +5946,7 @@ func _test_seals() -> void:
 	var w_flood: Dictionary = _ring_word([gush, "WAT-1a", "WAT-4b"], [0, 1, 2], [[0, 1], [1, 2]])
 	var fx_flood: Dictionary = rules.effects(w_flood, ctxp)
 	var worked: float = fade2 * ionic_more * even_more
-	print("    worked example (Pressure Jet): Drown on ring 2 -> Flood -> Gush = fade %.2f x ionic %.2f (Drown's side) x even %.2f (Flood's side) = %.3f" % [fade2, ionic_more, even_more, worked])
+	print("    worked example (Breaker): Drown on ring 2 -> Flood -> Surge = fade %.2f x ionic %.2f (Drown's side) x even %.2f (Flood's side) = %.3f" % [fade2, ionic_more, even_more, worked])
 	_check("strength is a product along the path: Drown off Flood = %.3f (before conversion)" % worked, _near(float(_row(fx_flood, 2)["path_strength"]), worked, 0.0001), str(_row(fx_flood, 2)))
 	var v1_s: float = float(_row(Runes.make("bond_v1").effects(w_flood, ctxp), 2)["strength"])
 	var conv_p: Dictionary = fxp["ionic_conversion"]
@@ -5894,7 +5978,7 @@ func _test_seals() -> void:
 	_check("the skill's own rune losing an ionic bond loses its nature (factor 0), as before",
 		_near(float((fx_self["anchor"] as Dictionary)["factor"]), 0.0) and (fx_self["transfers"] as Array).is_empty())
 
-	# ---- Brent's proof: three Drown words on Pressure Jet
+	# ---- Brent's proof: three Drown words on Breaker (v2: Pressure Jet is dropped; Breaker is on Surge, a link like Gush)
 	var w_surge: Dictionary = _ring_word([gush, "WAT-2a", "WAT-4b"], [0, 1, 2], [[0, 1], [1, 2]])
 	var fx_surge: Dictionary = rules.effects(w_surge, ctxp)
 	var base_pj: Dictionary = GameData.ability(pj).duplicate(true)
@@ -5906,35 +5990,38 @@ func _test_seals() -> void:
 		after3.append(ab)
 		var dr: Dictionary = _row(pair[1], RuneWord.size(w_self) - 1 if pair[0] == "on the skill" else 2)
 		print("    Drown %-12s strength %.3f | damage %.2f -> %.2f | shove %.2f -> %.2f | range %.2f -> %.2f | statuses %s | interrupts %s | carries %s" % [
-			str(pair[0]), float(dr["strength"]), float((base_pj["on_hit"] as Dictionary)["damage"]), float((ab["on_hit"] as Dictionary).get("damage", 0.0)),
-			float((base_pj["on_hit"] as Dictionary)["shove"]), float((ab["on_hit"] as Dictionary).get("shove", 0.0)), float(base_pj["range"]), float(ab["range"]),
+			str(pair[0]), float(dr["strength"]), float(base_pj["damage_mult"]), float(ab.get("damage_mult", 0.0)),
+			float((base_pj["on_hit"] as Dictionary)["shove"]), float((ab["on_hit"] as Dictionary).get("shove", 0.0)), float(base_pj["reach_bonus"]), float(ab["reach_bonus"]),
 			str(((ab["on_hit"] as Dictionary).get("statuses", []) as Array).map(func(s: Dictionary) -> String: return str(s["id"]))),
 			str((ab["on_hit"] as Dictionary).get("interrupts", false)), str(dr.get("carries", []))])
 	_check("Drown off Flood carries Flood's reach and Soaked; off Surge it carries Surge's shove instead",
-		float((after3[1] as Dictionary)["range"]) > float(base_pj["range"]) + 0.01 and str((after3[1] as Dictionary)["on_hit"]).contains("soaked")
+		float((after3[1] as Dictionary)["reach_bonus"]) > float(base_pj["reach_bonus"]) + 0.01 and str((after3[1] as Dictionary)["on_hit"]).contains("soaked")
 		and float(((after3[2] as Dictionary)["on_hit"] as Dictionary)["shove"]) > float((base_pj["on_hit"] as Dictionary)["shove"]) + 0.01
-		and not str((after3[2] as Dictionary)["on_hit"]).contains("soaked") and _near(float((after3[2] as Dictionary)["range"]), float(base_pj["range"])))
-	_check("and Drown on the skill itself is a third result: full strength, Gush's nature lost",
+		and not str((after3[2] as Dictionary)["on_hit"]).contains("soaked") and _near(float((after3[2] as Dictionary)["reach_bonus"]), float(base_pj["reach_bonus"])))
+	_check("and Drown on the skill itself is a third result: full strength, Surge's nature lost",
 		_near(float(_row(fx_self, 1)["path_strength"]), ionic_more) and str(after3[0]) != str(after3[1]) and str(after3[0]) != str(after3[2]) and str(after3[1]) != str(after3[2]))
 
 	# ---- shape traits
-	var bolt := "water_bolt"
-	var t_word: Dictionary = _ring_word([surge, "WAT-1a", "WAT-6b", "WAT-3a", "WAT-5a", "WAT-4b"], [0, 1, 1, 1, 2, 3],
+	var bolt := "tsunami_strike"
+	var t_word: Dictionary = _ring_word([surge, "WAT-1a", "WAT-6b", "WAT-3a", "WAT-4a", "WAT-4b"], [0, 1, 1, 1, 2, 3],
 		[[0, 1], [0, 2], [1, 3], [1, 2], [2, 3], [2, 4], [4, 5]])
 	var t_ids: Array = _trait_ids(rules, t_word)
-	var fx_t: Dictionary = rules.effects(t_word, ctx3)
+	# v2: what the traits do is read on a bolt that lasts (a status) and flies (a speed): Breaker has neither, so the
+	# effects are measured on Cinder Spit, the shape being the same word
+	var ctx_t: RuneContext = _rings_ctx("cinder_spit", 3)
+	var fx_t: Dictionary = rules.effects(t_word, ctx_t)
 	var tdefs: Dictionary = fxp["shape_traits"]
 	var closed_m: float = float(((tdefs["closed_ring"] as Dictionary)["ops"] as Array)[0]["value"])
 	_check("closed ring: Flood, Settle and Soak bonded round ring 1 is a closed ring, and the skill lasts longer (duration x%.2f)" % closed_m,
 		t_ids.has("closed_ring") and _near(float((fx_t["groups"] as Dictionary).get("duration", 1.0)), closed_m, 0.0005), "%s %s" % [str(t_ids), str(fx_t["groups"])])
 	var open_ring: Dictionary = t_word.duplicate(true)
 	RuneWord.remove_link(open_ring, 1, 3)
-	_check("part one bond round it and it is no longer closed", not _trait_ids(rules, open_ring).has("closed_ring") and not (rules.effects(open_ring, ctx3)["groups"] as Dictionary).has("duration"))
+	_check("part one bond round it and it is no longer closed", not _trait_ids(rules, open_ring).has("closed_ring") and not (rules.effects(open_ring, ctx_t)["groups"] as Dictionary).has("duration"))
 	var spoke_m: float = float(((tdefs["spoke"] as Dictionary)["ops"] as Array)[0]["value"])
-	var no_spoke: Dictionary = _ring_word([surge, "WAT-1a", "WAT-6b", "WAT-3a", "WAT-5a"], [0, 1, 1, 1, 2], [[0, 1], [0, 2], [1, 3], [1, 2], [2, 3], [2, 4]])
+	var no_spoke: Dictionary = _ring_word([surge, "WAT-1a", "WAT-6b", "WAT-3a", "WAT-4a"], [0, 1, 1, 1, 2], [[0, 1], [0, 2], [1, 3], [1, 2], [2, 3], [2, 4]])
 	var speed_spoke: float = float((fx_t["groups"] as Dictionary).get("speed", 1.0))
-	var speed_two: float = float((rules.effects(no_spoke, ctx3)["groups"] as Dictionary).get("speed", 1.0))
-	_check("spoke: Settle -> Gush -> Drown out through three rings is a spoke; two rings is not", t_ids.has("spoke") and not _trait_ids(rules, no_spoke).has("spoke"))
+	var speed_two: float = float((rules.effects(no_spoke, ctx_t)["groups"] as Dictionary).get("speed", 1.0))
+	_check("spoke: Settle -> Heave -> Drown out through three rings is a spoke; two rings is not", t_ids.has("spoke") and not _trait_ids(rules, no_spoke).has("spoke"))
 	_check("and it reaches further and faster: x%.2f per ring past the second" % spoke_m,
 		str(fx_t["traits"]).contains("Spoke") and speed_spoke > speed_two, "%f vs %f" % [speed_spoke, speed_two])
 	var hubs: Dictionary = _ring_word([surge, "UNI-19a", "UNI-28a", "UNI-26b", "UNI-27b", "UNI-21a", "UNI-01a", "UNI-11a"], [0, 1, 1, 1, 2, 2, 2, 2],
@@ -5983,43 +6070,47 @@ func _test_seals() -> void:
 	((g.get("abilities") as Array)[gi] as Dictionary)["progress"] = 100.0
 	(g.get("constructs") as Array).append_array([{"tier": "vestige", "concept": "reach"}, {"tier": "remnant", "concept": "reach"}])
 	g.call("open_seal", gi)
-	var steps: Array = [g.call("word_add", gi, "WAT-5a", 0)]
+	var steps: Array = [g.call("word_add", gi, "WAT-4a", 0)]
 	steps.append_array(_fill_places(g, gi, ["WAT-6b", "WAT-3a"]))          # ring 1 full (Brent 2026-10-24)
 	_choose_keystone(g, gi)
 	var g_lock1: String = str(g.call("test_bind_unclosed", 0.0))
 	g.call("open_seal", gi)
-	# ring 1 holds Gush (1) and two more (2, 3): Flood is 4, the universal runes 5-8
+	# ring 1 holds Heave (1) and two more (2, 3): Flood is 4, the universal runes 5-8
 	steps.append_array([g.call("word_add", gi, "WAT-1a", 1), g.call("word_add", gi, "UNI-19a", 4),
 		g.call("word_add", gi, "UNI-28a", 5), g.call("word_add", gi, "UNI-26b", 6), g.call("word_add", gi, "UNI-27b", 7), g.call("word_toggle_link", gi, 8, 4)])
 	_choose_keystone(g, gi)
-	_check("a great ring is built lock by lock (Gush and two more filling ring 1 at the first; Flood and four universal runes round ring 2 at the second)",
+	_check("a great ring is built lock by lock (Heave and two more filling ring 1 at the first; Flood and four universal runes round ring 2 at the second)",
 		g_lock1 == "bound" and steps.all(func(r: Dictionary) -> bool: return bool(r["ok"])) and _trait_ids(Runes.active(), g.call("ability_word", gi)).has("great_ring"), str(steps))
 	_check("and the second lock binds it", str(g.call("test_bind_unclosed", 0.0)) == "bound" and RuneWord.sealed(g.call("ability_word", gi)) == 2)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
-	var foe := _foe(g, Vector3(0, 0, -6.0))
-	g.set("cursor_fixed", here + Vector3(0, 0, -6.0))
+	# v2: the repeated skill is Breaker (Water Bolt is dropped): the blow lands once, then again
+	var foe := _foe(g, Vector3(0, 0, -2.0))
+	(foe.get("body") as Body).hp = 9000.0
+	g.set("cursor_fixed", here + Vector3(0, 0, -2.0))
 	g.set("_facing", Vector3(0, 0, -1))
 	g.set("essence", 99.0)
-	var bolts := func() -> int: return g.get_parent().get_children().filter(func(n: Node) -> bool: return n.get("shooter") == g and n.has_method("tick") and not n.is_queued_for_deletion()).size()
+	var hp_start: float = (foe.get("body") as Body).hp
 	_cast(g, bolt)
-	var first_n: int = bolts.call()
+	var first_loss: float = hp_start - (foe.get("body") as Body).hp
 	var timers: Array = g.get_parent().get_children().filter(func(n: Node) -> bool: return n is SkillTimer)
 	for t2: Node in timers:
 		t2.call("tick", float(GameData.runes["rule_sets"]["bond_v2"]["interaction_params"]["effects_v2"]["repeat"]["delay_s"]) + 0.05)
-	_check("the sealed great ring repeats the cast: one bolt, then a second", first_n == 1 and int(bolts.call()) == 2, "%d then %d" % [first_n, int(bolts.call())])
+	var both_loss: float = hp_start - (foe.get("body") as Body).hp
+	_check("the sealed great ring repeats the cast: one blow, then a second", first_loss > 0.0 and both_loss > first_loss + 0.5, "%f then %f" % [first_loss, both_loss])
 
 	# ---- the seal flow: only at a binding; a failed bind keeps the word; inner rings reworked later
 	var s: Node = _new_player()
 	s.call("set_affinities", ["water"])
+	_surge_first(s)                        # v2: the seal test's word is built on Surge, Breaker's rune
 	var st: Dictionary = (s.get("abilities") as Array)[0]
-	for rid: String in ["WAT-1a", "WAT-3b", "WAT-5a", "WAT-6b", "WAT-4b", "WAT-8b", "UNI-05a"]:
+	for rid: String in ["WAT-1a", "WAT-3b", "WAT-4a", "WAT-6b", "WAT-4b", "WAT-4b", "UNI-05a"]:
 		s.call("discover_rune", rid, "")
 	st["progress"] = 100.0
 	(s.get("constructs") as Array).append({"tier": "vestige", "concept": "reach"})
 	s.call("open_seal", 0, 0)
 	s.call("word_add", 0, "WAT-1a", 0)       # Flood
-	s.call("word_add", 0, "WAT-5a", 0)       # Gush
+	s.call("word_add", 0, "WAT-4a", 0)       # Heave (v2: Gush is dropped; Heave is the link closest to it)
 	s.call("word_add", 0, "WAT-3b", 1)       # Dry
 	s.call("word_toggle_link", 0, 1, 2)
 	_check("a closed first seal binds", str(s.call("bind_seal", 0.0)) == "bound" and RuneWord.sealed(s.call("ability_word", 0)) == 1)
@@ -6041,7 +6132,7 @@ func _test_seals() -> void:
 	var reworked: Dictionary = (s.call("ability_word", 0) as Dictionary).duplicate(true)
 	var second: String = str(s.call("bind_seal", 0.0))
 	var w2: Dictionary = s.call("ability_word", 0)
-	_check("the level 2 seal reworks ring 1 (Dry out, Slack in, Flood and Gush parted) and adds ring 2",
+	_check("the level 2 seal reworks ring 1 (Dry out, Drown in, Flood and Heave parted) and adds ring 2",
 		second == "bound" and RuneWord.sealed(w2) == 2 and RuneWord.shape_key(w2) == RuneWord.shape_key(reworked) and not RuneWord.nodes(w2).has("WAT-3b")
 		and RuneWord.ring_nodes(w2, 2).size() == 5 and not RuneWord.linked(w2, 1, 2), str(w2))
 	st["progress"] = 100.0
@@ -6138,7 +6229,7 @@ func _lock_full(p: Node, index: int, roll: float = 0.0) -> String:
 func _test_level_locks() -> void:
 	print("the level lock: full rings, the keystone, all or nothing (Brent 2026-10-23 and 2026-10-24):")
 	var rules: RingRules = Runes.active() as RingRules
-	var bolt: String = "water_bolt"
+	var bolt: String = "tsunami_strike"
 	var anchor: String = GameData.skill_anchor(bolt)
 	var cap: String = ""
 	var link: String = ""
@@ -6200,6 +6291,7 @@ func _test_level_locks() -> void:
 	# ---- through the player: the lock opens only with the bar full and the construct carried
 	var p: Node = _new_player()
 	p.call("set_affinities", ["water"])
+	_surge_first(p)                        # v2: the rune tests are built on Surge, Breaker's rune
 	var st: Dictionary = (p.get("abilities") as Array)[0]
 	for rid2: String in _runes_of("water", -1, []):
 		p.call("discover_rune", rid2, "")
@@ -6417,6 +6509,7 @@ func _test_level_locks() -> void:
 	# loads safely: stage 2 with one rune sealed on ring 1 and no keystones; its next lock starts from it
 	var old: Node = _new_player()
 	old.call("set_affinities", ["water"])
+	_surge_first(old)                        # v2: the rune tests are built on Surge, Breaker's rune
 	var od: Dictionary = JSON.parse_string(JSON.stringify(old.call("to_save")))
 	var oa: Dictionary = (od["abilities"] as Array)[0]
 	oa["stage"] = 2
@@ -6444,7 +6537,7 @@ func _test_level_locks() -> void:
 ## Strength on on/off effects and ionic conversion (Brent 2026-10-23, Bond Rules rows 62-74): a
 ## status lasts base x strength up to the cap, a full 1.0 of strength above 1 adds a stack where the
 ## status stacks, an interrupt above the silence line also silences; and nothing is lost in an ionic
-## bond - Drown takes Wave on Tidal Bore and Wave's nature becomes Drown's strength (1.5 -> 2.5).
+## bond - Drown takes Wave on Sluice Step and Wave's nature becomes Drown's strength (1.5 -> 2.5).
 func _test_strength_rules() -> void:
 	print("strength on on/off effects and ionic conversion (Bond Rules rows 62-74):")
 	var rules: RuneRules = Runes.make("bond_v2")
@@ -6475,24 +6568,25 @@ func _test_strength_rules() -> void:
 	_check("an interrupt above the line silences for 1.5 s per strength above it: 2.25 s at 2.5, none at 1.0",
 		_near(float(rv.call("silence_s", 2.5)), 2.25, 0.0001) and _near(float(rv.call("silence_s", 1.0)), 0.0, 0.0001) and _near(float(rv.call("silence_s", 0.8)), 0.0, 0.0001))
 
-	# ---- (b) the worked example: Drown takes Wave on Tidal Bore
-	var bore := "tidal_bore"
+	# ---- (b) the worked example: Drown takes Wave on Sluice Step
+	var bore := "hydraulic_flex"
 	var wave: String = GameData.skill_anchor(bore)
 	var ctx: RuneContext = _rings_ctx(bore, 1)
 	var w: Dictionary = _ring_word([wave, "WAT-4b"], [0, 1], [[0, 1]])
 	var fx: Dictionary = rules.effects(w, ctx)
 	var drown: Dictionary = _row(fx, 1)
-	print("    Tidal Bore: Drown takes %s - path strength %.2f, converted +%.2f -> %.2f (%s)" % [
+	print("    Sluice Step: Drown takes %s - path strength %.2f, converted +%.2f -> %.2f (%s)" % [
 		str(GameData.rune(wave)["name"]), float(drown.get("path_strength", 0.0)), float(drown.get("converted", 0.0)), float(drown.get("strength", 0.0)), str(drown.get("converted_from", ""))])
 	_check("the bond is ionic and Drown takes it: Wave keeps x0 of its nature", str(drown.get("kind", "")) == "ionic" and str(drown.get("side", "")) == "more"
 		and _near(float((fx["anchor"] as Dictionary)["factor"]), 0.0))
 	_check("Drown's strength goes 1.5 -> 2.5: all of Wave's nature converted (x1.0)", _near(float(drown["path_strength"]), 1.5, 0.0001)
 		and _near(float(drown["strength"]), 2.5, 0.0001) and _near(float(drown["converted"]), 1.0, 0.0001), str(drown))
-	_check("and the panel says where it came from: \"converted from Wave's reach, stagger and carry\"",
-		str(drown.get("converted_from", "")) == "converted from Wave's reach, stagger and carry", str(drown.get("converted_from", "")))
+	# v2: Sluice Step's nature is its signature, the carry (on_pass.shove) and its sweep (pass_radius)
+	_check("and the panel says where it came from: \"converted from Wave's shove and reach\"",
+		str(drown.get("converted_from", "")) == "converted from Wave's shove and reach", str(drown.get("converted_from", "")))
 	var ab: Dictionary = GameData.ability(bore).duplicate(true)
 	PlayerScript.apply_rune_patch(ab, fx["patch"])
-	var hit: Dictionary = ab["on_hit"]
+	var hit: Dictionary = ab["on_pass"]                  # a dash's hit is what it does to those it passes
 	var sil: Dictionary = {}
 	var dazed_e: Dictionary = {}
 	for e: Dictionary in hit.get("statuses", []):
@@ -6520,8 +6614,8 @@ func _test_strength_rules() -> void:
 	p.queue_free()
 	foe.queue_free()
 
-	# ---- outer runes: Drown off Flood on Pressure Jet - Flood's whole effect carried, and its strength added
-	var pj := "pressure_jet"
+	# ---- outer runes: Drown off Flood on Breaker - Flood's whole effect carried, and its strength added
+	var pj := "tsunami_strike"
 	var gush: String = GameData.skill_anchor(pj)
 	var w2: Dictionary = _ring_word([gush, "WAT-1a", "WAT-4b"], [0, 1, 2], [[0, 1], [1, 2]])
 	var fx2: Dictionary = rules.effects(w2, _rings_ctx(pj, 2))

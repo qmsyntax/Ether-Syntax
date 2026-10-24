@@ -168,13 +168,19 @@ EFFECTS_V1 = OrderedDict([
         ("reach", ["range", "life@projectile", "reach_bonus", "range_bonus", "radius", "burst_radius", "arc_deg", "width@beam|prop",
                    "jump_radius", "pass_radius", "relay_radius", "relay_range", "arrive_radius", "through_dist",
                    "zone.radius", "zone.length", "zone.width", "trail.width", "leave_zone.radius", "light_radius", "gather_radius",
-                   "reveal_radius", "leave_decoy.lure_radius", "corpse_range", "drag_radius", "trigger_radius"]),
+                   "reveal_radius", "leave_decoy.lure_radius", "corpse_range", "drag_radius", "trigger_radius",
+                   # 2026-10-24 (v2 drafts' ascension maps: every skill's reach must reach a real number)
+                   "throw", "dash_time@dash", "spread_radius", "aura.radius", "deflect_radius", "counter_reach", "length@prop",
+                   "on_break.burst_radius", "on_break.radius", "hush_radius", "lure_radius", "spall.radius", "attacker_reach",
+                   "pool_radius", "strike_reach_bonus", "conjure_weapon.melee_range", "split.range", "shot_range_mult"]),
         ("speed", ["speed", "dash_speed"]),
-        ("cost", ["cost"]),
+        ("cost", ["cost", "cost_per_s", "heat_cost"]),
         ("reflux", ["reflux_per_cost"]),
-        ("windup", ["windup", "recovery", "delay", "rise_time"]),
+        ("windup", ["windup", "recovery", "delay", "rise_time", "charge_max", "tick", "clock_to"]),
         ("duration", ["duration", "life@prop|rod", "zone.life", "trail.life", "leave_prop.life", "on_hit.status_s", "on_pass.status_s",
-                      "leave_zone.life", "leave_decoy.life", "burst_zone.life", "thrall.life"]),
+                      "leave_zone.life", "leave_decoy.life", "burst_zone.life", "thrall.life",
+                      # 2026-10-24 (v2): a counter's window, a conjured weapon, a summon's buff, a coat, a stun per mark
+                      "window_s", "conjure_weapon.lasts", "summon_buff.duration", "coat.duration", "on_hit.stun_per_mark"]),
         # 2026-10-22: poise on a rise or an arrival counts too
         ("poise", ["on_hit.poise", "heavy_poise", "on_stop.poise", "zone.payload.poise", "on_rise.poise", "on_arrive.poise",
                    "on_pass.poise", "per_stack_poise"]),
@@ -187,7 +193,7 @@ EFFECTS_V1 = OrderedDict([
     ("stage_scaled_groups", ["power"]),
     # units for the effects preview
     ("group_units", OrderedDict([("windup", " s"), ("duration", " s")])),
-    ("field_units", OrderedDict([("arc_deg", " deg"), ("life", " s"), ("range", " m"), ("radius", " m"), ("reach_bonus", " m"),
+    ("field_units", OrderedDict([("arc_deg", " deg"), ("life", " s"), ("tick", " s"), ("charge_max", " s"), ("window_s", " s"), ("range", " m"), ("radius", " m"), ("reach_bonus", " m"),
                                  ("range_bonus", " m"), ("burst_radius", " m"), ("jump_radius", " m"), ("zone.radius", " m"),
                                  ("zone.length", " m"), ("zone.width", " m"), ("width", " m")])),
     # words for the effects preview
@@ -207,6 +213,12 @@ EFFECTS_V1 = OrderedDict([
         ("rise_time", "Rise time"), ("duration", "Duration"), ("life@prop|rod", "Stands for"), ("zone.life", "Zone lasts"),
         ("trail.life", "Trail lasts"), ("leave_prop.life", "Stone stands for"), ("on_hit.poise", "Poise damage"),
         ("heavy_poise", "Poise damage (heavy)"), ("on_stop.poise", "Poise damage"), ("zone.payload.poise", "Poise damage per tick"),
+        ("tick", "Hits every"), ("cost_per_s", "Essence a second"), ("heat_cost", "Heat cost"), ("charge_max", "Longest charge"),
+        ("clock_to", "Clock cut to"), ("throw", "Throw"), ("dash_time@dash", "Dash time"), ("spread_radius", "Spread radius"),
+        ("aura.radius", "Aura radius"), ("deflect_radius", "Turns shots within"), ("counter_reach", "Counter reach"),
+        ("length@prop", "Length"), ("window_s", "Counter window"), ("conjure_weapon.lasts", "Weapon lasts"),
+        ("conjure_weapon.melee_range", "Weapon reach"), ("coat.duration", "Coat lasts"), ("summon_buff.duration", "Buff lasts"),
+        ("on_hit.stun_per_mark", "Stun per mark"), ("pool_radius", "Drinks pools within"), ("lure_radius", "Draws within"),
     ])),
     # 2026-10-23 (Brent: "the details of the skill visible in text"): fields shown in the skill's
     # numbers and the seal's before/after, but in no stat group - so no rune multiplier reaches them
@@ -216,10 +228,8 @@ EFFECTS_V1 = OrderedDict([
     ("shown_fields", [
         OrderedDict([("path", "recovery"), ("label", "Recovery"), ("unit", " s"), ("lower_is_better", True),
                      ("default", ["abilities", "cast_recovery"])]),
-        OrderedDict([("path", "tick"), ("label", "Hits every"), ("unit", " s"), ("lower_is_better", True)]),
         OrderedDict([("path", "zone.tick_s"), ("label", "Zone hits every"), ("unit", " s"), ("lower_is_better", True)]),
         OrderedDict([("path", "trail.tick_s"), ("label", "Trail hits every"), ("unit", " s"), ("lower_is_better", True)]),
-        OrderedDict([("path", "cost_per_s"), ("label", "Essence a second"), ("lower_is_better", True)]),
         OrderedDict([("path", "jumps"), ("label", "Jumps")]),
         OrderedDict([("path", "on_hit.jumps"), ("label", "Jumps")]),
         OrderedDict([("path", "pierce"), ("label", "Pierces"), ("bool", True)]),
@@ -240,7 +250,6 @@ EFFECTS_V1 = OrderedDict([
         OrderedDict([("path", "on_hit.through"), ("label", "Past shields and armour"), ("bool", True)]),
         OrderedDict([("path", "braced"), ("label", "Braced while casting"), ("bool", True)]),
         OrderedDict([("path", "on_hit.execute_below"), ("label", "Ends it below"), ("pct", True)]),
-        OrderedDict([("path", "charge_max"), ("label", "Longest charge"), ("unit", " s")]),
         OrderedDict([("path", "move_factor"), ("label", "Your pace while it lasts"), ("pct", True)]),
         OrderedDict([("path", "spend_pips"), ("label", "Pips spent"), ("lower_is_better", True)]),
         OrderedDict([("path", "gain_pips"), ("label", "Pips gained")]),

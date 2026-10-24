@@ -15,59 +15,99 @@ All numbers are the drafts' [MODEL] numbers unless marked.
 """
 from collections import OrderedDict as OD
 
+import re
+
 AFF_ORDER = ["water", "fire", "earth", "wind", "lightning", "ice", "dark", "metal", "blood", "life", "death",
-             "nature", "light", "dream", "poison", "disease"]
+             "nature", "light", "dream", "poison", "disease", "holy", "unholy"]
+
+# a workbook base rune id (design/runes-workbook.xlsx "Base Runes"): three letters, the pair, a or b
+RUNE_ID = re.compile(r"[A-Z]{3}-\d+[ab]")
+# a draft's starter_slot, in kit order
+STARTER_SLOTS = ["ranged", "close", "movement"]
 
 # Existing affinities keep every key they had. New ones: label, colour, desc (from the draft rule) and the
 # rule's data keys. Keys are documented in game/data/affinities.json's _note (written by the emitter).
 AFFINITIES = OD([
     ("water", OD([("label", "Water"), ("color", "2f7fd6"),
-                  ("desc", "You decide where everyone stands. Every skill shoves, and what is shoved into something breaks on it."),
-                  ("marks_adrift", True)])),
+                  ("desc", "The bruiser. You decide where everyone stands: every skill shoves or drags, what is shoved into something is Crushed, and every Crush shores you up with Ward."),
+                  ("marks_adrift", True),
+                  # v2 (water.json crush_ward): each Crush you cause adds per_crush Ward, at most cap from this source, each lasting `lasts`
+                  ("crush_ward", OD([("per_crush", 15.0), ("cap", 60.0), ("lasts", 6.0)]))])),
     ("fire", OD([("label", "Fire"), ("color", "e2632a"),
                  ("desc", "You get hotter, and so does everything near you. Your own heat is your damage - right up to the moment it locks."),
                  ("damage_per_reflux", 0.6), ("reflux_shed_mult_combat", 0.5)])),
     ("earth", OD([("label", "Earth"), ("color", "a8824a"),
-                  ("desc", "Slow, heavy and sure. You raise stone, stand behind it, and break it over whoever is on the other side."),
+                  ("desc", "The area tank. Slow, heavy and sure: you raise stone, stand Braced, break poise and call the enemy onto you."),
                   ("stone", True), ("reflux_shed_mult", 0.5)])),
     ("wind", OD([("label", "Wind"), ("color", "9fd6c4"),
-                 ("desc", "You are only dangerous while you are moving. Run and the pips fill; stand to think and they drain."),
+                 ("desc", "The evasive monk. You are only dangerous while you are moving: run and the pips fill, stand to think and they drain; turn blows aside and strike the back."),
                  ("slipstream", True), ("reflux_shed_mult_moving", 3.0), ("reflux_shed_mult_standing", 0.0), ("rear_bonus", 0.5)])),
     ("lightning", OD([("label", "Lightning"), ("color", "c9b5ff"),
-                      ("desc", "One target, three touches, gone. Its heat does not bleed off in a fight - only finishing a target grounds it."),
-                      ("reflux_shed_mult_combat", 0.0)])),
+                      ("desc", "The spellblade (Fire's burst, Wind's speed). One target, three touches, gone; every Overload leaves you Quickened. Its heat does not bleed off in a fight."),
+                      ("reflux_shed_mult_combat", 0.0),
+                      # v2 (lightning.json quicken_on_overload): each Overload you cause leaves you Quickened this long
+                      ("quicken_on_overload", 1.5)])),
     # --- new (2026-10-22 drafts) ---
     ("ice", OD([("label", "Ice"), ("color", "7fd8ff"),
-                ("desc", "Cold stays. Lay Chill over several casts until they lock solid, then break them with one hard hit.")])),
+                ("desc", "Control (Water's flow, Dark's stillness). Cold stays: lay Chill until they lock solid, then break them with one hard hit. Wet things freeze faster."),
+                # v2 (ice.json wet_freezes): an ice hit on a Soaked target adds this many more Chill, and the Soak ends
+                ("chill_bonus_vs", OD([("soaked", 1)]))])),
     ("dark", OD([("label", "Dark"), ("color", "9a6bd1"),
                  ("desc", "Strongest where the light is weakest. Make your own dark, stand in it unseen, and hit them while they stand in it."),
-                 ("light_mult", OD([("dark", 1.25), ("lit", 0.8)])), ("unseen_in_dark", True)])),
+                 ("light_mult", OD([("dark", 1.25), ("lit", 0.8)])), ("unseen_in_dark", True),
+                 # v2 (dark.json ambush): your first hit while Unseen counts as from behind and does this much
+                 ("ambush_mult", 1.5)])),
     ("metal", OD([("label", "Metal"), ("color", "b8c2cc"),
-                  ("desc", "You work the metal that is already there: armour is your target, and your weapon is your material."),
-                  ("per_metal_class", 0.25), ("through", True)])),
+                  ("desc", "The armoured duellist (Earth's ground, Fire's forge). Armour is your target; every metal blow on the same enemy heats your edge."),
+                  ("per_metal_class", 0.25), ("through", True),
+                  # v2 (metal.json Edge Heat): a metal hit on the same enemy as your last adds one, up to focus_max, each +focus_mult;
+                  # another enemy starts again at 1; focus_cools_s without a metal hit drops it to 0
+                  ("focus_max", 5), ("focus_mult", 0.08), ("focus_cools_s", 3.0)])),
     ("blood", OD([("label", "Blood"), ("color", "d23a48"),
-                  ("desc", "You work blood that is already out: open Bleeding, ride and drink the pools, spend what you hold. Never your own health."),
-                  ("held_blood", True)])),
+                  ("desc", "The berserker (Life and Death spilled). Open Bleeding, drink the pools, hold the blood: every measure you hold makes your blows harder. Never your own health."),
+                  ("held_blood", True),
+                  # v2 (blood.json Bloodrush): every hit you deal is x (1 + this x held blood)
+                  ("damage_per_held_blood", 0.02)])),
     ("life", OD([("label", "Life"), ("color", "f29ab8"),
-                 ("desc", "Inside living bodies: past armour and shields, hardest on the hale, nothing to the unliving. It mends you fast but wounds slowly."),
-                 ("through", True), ("living_only", True), ("hale_mult", 1.25)])),
+                 ("desc", "The healer. Inside living bodies: past armour and shields, hardest on the hale, nothing to the unliving. It mends you and your living summons, faster just after you land a hit."),
+                 ("through", True), ("living_only", True), ("hale_mult", 1.25),
+                 # v2 (life.json heal_mult_after_hit): Life heals over time run this much faster for after_hit_s after you land a hit;
+                 # a self buff with a radius is shared with your living summons only
+                 ("heal_mult_after_hit", 1.5), ("after_hit_s", 2.0), ("shares_living_only", True)])),
     ("death", OD([("label", "Death"), ("color", "ddd3b4"),
-                  ("desc", "What has died stays useful: corpses lie longer for you and your skills spend them, and the Dying take more."),
-                  ("dying_mult", 1.3), ("corpse_lie_s", 20.0)])),
+                  ("desc", "The necromancer. What has died stays useful: corpses lie longer for you, up to three of your dead fight for you, and the Dying take more."),
+                  ("dying_mult", 1.3), ("corpse_lie_s", 20.0),
+                  # v2 (death.json rule_keys): at most this many thralls stand for you at once
+                  ("thrall_cap", 3)])),
     ("nature", OD([("label", "Nature"), ("color", "4fae5a"),
-                   ("desc", "Plant growth that stays, spreads and grows stronger with age; then feed it or cash it in.")])),
+                   ("desc", "The druid (Earth's ground, Life's growth). Plant growth that stays, spreads and ages; stand in it to regrow, call beasts up out of it, then cash it in.")])),
     ("light", OD([("label", "Light"), ("color", "ffd866"),
-                  ("desc", "Light arrives at once along a straight line and stops on the first opaque thing; whatever it touches is Lit.")])),
+                  ("desc", "The ranged caster. Light arrives at once along a straight line; whatever it touches is Lit, and a light hit on a Lit target Sears it."),
+                  # v2 (light.json sear): a light hit on a target already Lit does this much more and refreshes Lit
+                  ("sear_vs_lit", 0.25)])),
     ("dream", OD([("label", "Dream"), ("color", "e58ae0"),
                   ("desc", "Takes hold only of a mind that can see you, or one asleep. Past armour and shields, harder on the Dazed and the Asleep."),
                   ("needs_seen", True), ("through", True),
                   ("bonus_vs_status", OD([("dazed", 0.3), ("asleep", 0.3)])),
-                  ("status_time_vs", OD([("dazed", 1.5), ("asleep", 1.5)]))])),
+                  ("status_time_vs", OD([("dazed", 1.5), ("asleep", 1.5)])),
+                  # v2 (dream.json twilight): its statuses last this much longer on a target standing in Dim light
+                  ("status_time_dim", 1.25)])),
     ("poison", OD([("label", "Poison"), ("color", "a8e04a"),
-                   ("desc", "Doses in one body: the first starts a 6 s clock, the rest add to the bill, and the clock pays it all at once.")])),
+                   ("desc", "Coating (Water's taint, Death deferred). A coat puts its payload on every weapon hit and shot; the first dose starts a 6 s clock, the rest add to the bill, and the clock pays it all at once.")])),
     ("disease", OD([("label", "Disease"), ("color", "9fa848"),
-                    ("desc", "Lives in clouds that linger and drift; flesh inside catches it. Armour cuts it, shields and facing do not."),
+                    ("desc", "Plague (Earth's rot, Death's feeding). It lives in flesh and clouds: a carrier passes it to anyone who stays beside it. Armour cuts it, shields and facing do not."),
                     ("times_flesh", True), ("through", True)])),
+    # --- new (2026-10-24 v2 drafts) ---
+    ("holy", OD([("label", "Holy"), ("color", "f7e7a0"),
+                 ("desc", "The paladin (Light and Life). Wards take blows before your bar, and a ward that breaks pays out its light; it covers you and your summons, and its healing touches only the living."),
+                 # holy.json rule_data: when the ward pool is emptied by a blow, this goes off round the bearer
+                 ("ward_break_payload", OD([("radius", 3.0), ("damage", 30.0), ("status", "lit")])),
+                 ("shares_living_only", True)])),
+    ("unholy", OD([("label", "Unholy"), ("color", "a85c8c"),
+                   ("desc", "The shadow knight (Dark and Death). Every hit drains part of the harm back to you as health, twice that from the Dying or from anything in the Dark, and banks it as stolen life for your skills."),
+                   # unholy.json rule_keys: the drain rule and the stolen store
+                   ("drain_frac", 0.1), ("drain_mult_vs", OD([("dying", 2.0), ("in_dark", 2.0)])), ("drain_max_frac", 0.5),
+                   ("drain_living_only", True), ("drain_heals", "bar"), ("stolen", OD([("max", 100), ("fade_s", 12.0)]))])),
 ])
 
 # The affinity framework (design/affinities/framework.md, Brent 2026-10-24 [B]): eight bases, and every other
@@ -118,7 +158,9 @@ AFFINITY_RULE_NUMBERS = OD([
                   ("pool", OD([("radius", 0.5), ("life", 15.0), ("max", 12), ("death_radius", 1.0), ("death_measures", 3)]))])),
     ("nature", OD([("growth", OD([("radius", 1.0), ("ages", [5.0, 15.0]), ("age_mult", [1.0, 1.5, 2.0]), ("spread_every", 5.0),
                                   ("max", 12), ("bramble", OD([("tick_s", 1.0), ("payload", OD([("damage", 6.0), ("status", "slowed")]))])),
-                                  ("snarevine", OD([("tick_s", 4.0), ("payload", OD([("status", "rooted")]))]))]))])),
+                                  ("snarevine", OD([("tick_s", 4.0), ("payload", OD([("status", "rooted")]))]))])),
+                   # v2 (nature.json in_the_green): you and your summons on your own growth regrow, and are hard to move
+                   ("in_the_green", OD([("heal_per_s", 1.5), ("shove_mult", 0.5), ("poise_loss_mult", 0.5)]))])),
     ("dark", OD([("unseen_beyond", 4.0), ("reveal_s", 1.0)])),
 ])
 
@@ -249,6 +291,8 @@ NEW_STATUSES = OD([
     # disease
     ("infected", OD([("label", "Infected"), ("stacks", 5), ("lasts", 6.0), ("color", "b9a85c"), ("dps_per_stack", 6.0), ("tick_s", 0.5),
                      ("times_flesh", True), ("dot_tags", ["dot", "disease", "infected"]),
+                     # v2 (disease.json): an enemy that stays within 1.5 m of a carrier for 1 s catches one stack
+                     ("spread_radius", 1.5), ("spread_time", 1.0),
                      ("on_death", OD([("cloud", OD([("radius", 1.0), ("life", 4.0), ("tick_s", 1.0),
                                                      ("payload", OD([("status", "infected")]))]))]))])),
     ("contained", OD([("label", "Contained"), ("stacks", 1), ("lasts", 10.0), ("color", "8a7a40"), ("cap_raise", OD([("infected", 10)])),
@@ -273,6 +317,54 @@ NEW_STATUSES = OD([
     # earth
     ("buried", OD([("label", "Buried"), ("stacks", 1), ("lasts", 2.5), ("color", "8a6a40"), ("cannot_act", True), ("control", True),
                    ("damage_taken_mult", 0.25), ("elite_status", "pinned")])),
+    # --- the 2026-10-24 v2 drafts (the 14 the v2 runes grant, and the drafts' new_mechanics) ---
+    # earth / metal / unholy: one taunt. It comes for whoever put it on and nobody else; lures, decoys and thralls do not draw it
+    ("taunted", OD([("label", "Taunted"), ("stacks", 1), ("lasts", 4.0), ("color", "c89a5a"), ("forced_target", "source"),
+                    ("closes_in", True), ("heavy_lasts_mult", 0.5)])),
+    # wind (Turning Palm, Blowout) and Metal's Deflect: spun round, its back to you
+    ("turned", OD([("label", "Turned"), ("stacks", 1), ("lasts", 1.0), ("color", "bfe9dc"), ("turn_away", True), ("counts_rear", True),
+                   ("heavy_lasts_mult", 0.5)])),
+    # life (the Tithe rune): hits on it from whoever applied it heal them
+    ("tithed", OD([("label", "Tithed"), ("stacks", 1), ("lasts", 6.0), ("color", "f2b8cc"), ("heals_attacker_frac", 0.15),
+                   ("living_only", True)])),
+    # death (Grave Mark, the Bid rune) and nature (the Herd rune, Unleash the Pack): one mark for your summons
+    ("bidden", OD([("label", "Bidden"), ("stacks", 1), ("lasts", 6.0), ("color", "c8bf9c"), ("summons_target", True),
+                   ("summon_damage_mult", 1.5), ("summon_rate_mult", 1.3)])),
+    ("quarry", OD([("label", "Quarry"), ("stacks", 1), ("lasts", 6.0), ("color", "7fbf6a"), ("summons_target", True),
+                   ("summon_damage_mult", 1.3)])),
+    # dream (Sweet Lie, the Charm rune): it fights for you a while
+    ("charmed", OD([("label", "Charmed"), ("stacks", 1), ("lasts", 5.0), ("color", "f0a8e8"), ("fights_for_source", True),
+                    ("ends_on_source_hit", True), ("heavy_lasts_mult", 0.5), ("elite_status", "dazed")])),
+    # dream (Misgiving, the Doubt rune): slow to commit and half-hearted; elites keep it at half time too
+    ("doubting", OD([("label", "Doubting"), ("stacks", 1), ("lasts", 6.0), ("color", "c8a8e0"), ("windup_mult", 1.5), ("deals_mult", 0.7),
+                     ("heavy_lasts_mult", 0.5)])),
+    # poison (Steeped Blade, the Steep rune): the dose clock runs longer once, and the bill is bigger
+    ("steeped", OD([("label", "Steeped"), ("stacks", 1), ("lasts", 30.0), ("color", "7ab838"), ("adds_time", OD([("dosed", 3.0)])),
+                    ("bill_mult", OD([("dosed", 1.5)])), ("ends_with", ["dosed"])])),
+    # poison (Sting Dart): a barb that keeps dosing
+    ("barbed", OD([("label", "Barbed"), ("stacks", 1), ("lasts", 4.5), ("color", "98c840"),
+                   ("adds_status", OD([("status", "dosed"), ("stacks", 1), ("every", 1.5)])), ("ends_with", ["dosed"])])),
+    # holy (Condemning Ray, the Condemn rune): Lit, and every hit on it from you or yours shores up your ward
+    ("condemned", OD([("label", "Condemned"), ("stacks", 1), ("lasts", 8.0), ("color", "fff0b0"), ("counts_as", ["lit"]),
+                      ("armour_mult", 0.5), ("light_radius", 1.5), ("ward_to_attacker", 4.0), ("ward_from_one", 30.0)])),
+    # holy (Penitent Mark, the Penance rune): every attack it starts hurts it, and it hits you and yours softer
+    ("penitent", OD([("label", "Penitent"), ("stacks", 1), ("lasts", 8.0), ("color", "e8d8a0"), ("on_attack_damage", 25.0),
+                     ("deals_mult_vs_source", 0.7)])),
+    # holy (Casting Out, the Exile rune): it will not come within keep_away of whoever cast it out
+    ("exiled", OD([("label", "Exiled"), ("stacks", 1), ("lasts", 4.0), ("color", "fff8d8"), ("keeps_away", 4.0),
+                   ("heavy_lasts_mult", 0.5), ("elites_immune", True)])),
+    # unholy (the Leech and Reave runes): every hit on it from whoever applied it drains to them
+    ("leeched", OD([("label", "Leeched"), ("stacks", 1), ("lasts", 6.0), ("color", "b06090"), ("drain_to_source", 0.15)])),
+    # unholy (Grasping Dark, Night Charge, the Beckon rune): held on a short leash from whoever applied it
+    ("leashed", OD([("label", "Leashed"), ("stacks", 1), ("lasts", 4.0), ("color", "8a5a8a"), ("leash_m", 4.0)])),
+    # unholy (Torment, the Torment rune): a slow hurt that feeds whoever applied it
+    ("tormented", OD([("label", "Tormented"), ("stacks", 1), ("lasts", 8.0), ("color", "a04878"), ("dps_per_stack", 8.0), ("tick_s", 0.5),
+                      ("dot_tags", ["dot", "unholy", "tormented"]), ("drain_frac", 0.5), ("poise_regen_off", True),
+                      ("living_only", True)])),
+    # ice (Dead Calm, the Stasis rune): everything about it stops, then it comes out Stilled
+    ("stasis", OD([("label", "Stasis"), ("stacks", 1), ("lasts", 2.5), ("color", "d8f0ff"), ("cannot_act", True), ("control", True),
+                   ("freezes", ["all"]), ("heavy_lasts_mult", 0.5), ("elite_status", "stilled"),
+                   ("on_expire", OD([("status", "stilled"), ("stacks", 1)]))])),
 ])
 
 # What each status means for the enemy, one plain line in the game's voice (Brent 2026-10-23: "What
@@ -345,11 +437,55 @@ STATUS_DESC = OD([
     ("insulated", "Sealed under still air: Live marks do not leap into or out of it, no Drummer or Censer can work it up, and nothing bursts or spreads from it when it dies."),
     ("muted", "A hum in its ears: it cannot drum or call for help."),
     ("buried", "Heaped over with earth: it cannot move or act, and takes only a quarter of every hit. An elite is only Pinned."),
+    ("taunted", "Called out: it comes for whoever taunted it and attacks only them - an archer or a drummer walks in to fight hand to hand, and no lure, decoy or thrall draws it off."),
+    ("turned", "Spun round: it faces away from you, so every hit on it counts as from behind until it turns back."),
+    ("tithed", "Its life is tithed to you: every hit you land on it heals you a share of the harm. Only the living."),
+    ("bidden", "Marked for your dead: every thrall of yours goes for it, hitting it harder and faster."),
+    ("quarry", "Marked as the pack's quarry: your summons switch to it and hit it harder."),
+    ("charmed", "Charmed: it fights for you, going for the nearest of its old friends, and they turn on it. Hit it yourself and it snaps out."),
+    ("doubting", "Full of doubt: it is slow to start its attacks and its blows land half-hearted. Even an elite feels it, for a while."),
+    ("steeped", "The poison has steeped in: its dose clock runs a little longer, once, and the bill it pays is half again as big."),
+    ("barbed", "A barb in the flesh: every so often it works in another dose of your poison. Pulled when the doses are spent."),
+    ("condemned", "Judged and shown: it counts as Lit, its guard stops half as much, and every hit on it from you or yours adds to your ward."),
+    ("penitent", "Made to pay for its own violence: every attack it starts hurts it, and its blows on you and yours land softer."),
+    ("exiled", "Cast out: it will not come near whoever exiled it, and backs away if it is close - though it may still shoot. Elites only stagger back."),
+    ("leeched", "Leeched: every hit you land on it drains a share of the harm back to you as health."),
+    ("leashed", "On a short leash from whoever cast it: it cannot go further from them than the leash allows, though it can still shoot from inside it."),
+    ("tormented", "Kept failing on purpose: it hurts every second, and half of every hurt feeds whoever torments it. Its poise does not come back. Only the living."),
+    ("stasis", "Held outside time: it cannot act, and nothing on it runs down while it lasts. It comes out Stilled. An elite is only Stilled."),
 ])
 
 # The player's own short states (a buff each, read where it matters). quickened: Stepped Leader.
 PLAYER_STATES = OD([
     ("quickened", OD([("label", "Quickened"), ("move_speed_mult", 1.2), ("recovery_mult", 0.7)])),
+    # Dark's Vanish (Hungry Dark's on_kill self_unseen_s): unseen anywhere, not only in the Dark; your next hit ends it
+    ("vanished", OD([("label", "Vanished"), ("unseen_anywhere", True), ("ends_on_hit", True)])),
+    # the ward pool (Holy, Water's Crush, Ice Shell, Unholy's Black Shroud): not a buff, a pool on the body (Player.ward)
+    ("ward", OD([("label", "Ward"), ("pool", True)])),
+    # Nature's rule: standing on your own growth (never applied by a skill; read where you stand)
+    ("in_the_green", OD([("label", "In the Green"), ("where", "growth")])),
+    # buffs v2 skills put on you, shared with your summons by the skill's radius (their numbers are the skill's)
+    ("red_frenzy", OD([("label", "Red Frenzy"), ("buff", True)])),
+    ("blessed", OD([("label", "Blessed"), ("buff", True)])),
+    ("absolved", OD([("label", "Absolved"), ("buff", True)])),
+    ("kind_light", OD([("label", "Kind Light"), ("buff", True)])),
+    ("overgrown", OD([("label", "Overgrown"), ("buff", True)])),
+    ("unleashed", OD([("label", "Unleashed"), ("buff", True)])),
+])
+
+# What each player state means, in the game's voice (the same rule as STATUS_DESC). The buffs a v2 skill puts on
+# you or your summons are listed too, by their buff id - their numbers are the skill's own. [MODEL]
+PLAYER_STATE_DESC = OD([
+    ("quickened", "Quickened: you move faster and recover from each cast sooner."),
+    ("vanished", "Vanished: no enemy can see you, wherever you stand. Your next hit ends it - and is an Ambush."),
+    ("ward", "Ward: a guard over your body that takes blows before your health does. A blow it wholly stops opens no wound. Every ward fills the one pool, up to its cap, and each amount fades on its own clock."),
+    ("in_the_green", "In the Green: standing on your own growth, you and your beasts regrow health, are hard to shove and lose less poise."),
+    ("red_frenzy", "Red Frenzy: you strike faster and harder, move faster and keep your footing - and after a few seconds it drinks your held blood. When the blood runs out it ends."),
+    ("blessed", "Blessed: you and your summons near you hit harder, lose less poise, and your strikes leave enemies Lit."),
+    ("absolved", "Absolved: the next hold that would land on you is turned away."),
+    ("kind_light", "Kind Light: blows on you are softened, and what was taken off them comes back to you as health when it ends."),
+    ("overgrown", "Overgrown: you and your beasts hit harder, lose less poise, and every hit regrows a little health."),
+    ("unleashed", "Unleashed: a summon let off the leash - it hits harder and faster for a while."),
 ])
 
 MERGED = OD([
@@ -372,18 +508,18 @@ LEGACY_IDS = ["water_bolt", "tsunami_strike", "hydraulic_flex", "cinder_spit", "
 # The hand-made trees of the five affinities that had one before this build (design/08, Brent 2026-10-18): their
 # nodes keep their tier and what they need. The emitter adds every other drafted skill.
 LEGACY_TREES = OD([
-    ("water", OD([("undertow", OD([("tier", 2), ("requires", ["water_bolt"])])),
-                  ("riptide_lash", OD([("tier", 2), ("requires", ["tsunami_strike"])])),
-                  ("backwash", OD([("tier", 2), ("requires", ["hydraulic_flex"])])),
-                  ("standing_pool", OD([("tier", 3), ("requires", ["undertow", "riptide_lash"])]))])),
+    # v2 (2026-10-24): Water Bolt and Undertow are dropped and Riptide Lash is the ranged starter
+    ("water", OD([("standing_pool", OD([("tier", 2), ("requires", ["riptide_lash"])])),
+                  ("backwash", OD([("tier", 2), ("requires", ["hydraulic_flex"])]))])),
     ("fire", OD([("stoke", OD([("tier", 2), ("requires", ["cinder_spit"])])),
                  ("backdraft", OD([("tier", 2), ("requires", ["kiln_fist"])])),
                  ("slag_pool", OD([("tier", 2), ("requires", ["flashover"])])),
                  ("pyre_call", OD([("tier", 3), ("requires", ["backdraft", "slag_pool"])]))])),
+    # v2: Bedrock Shove is the movement starter and Raise Slab is trained
     ("earth", OD([("pillar", OD([("tier", 2), ("requires", ["slingstone"])])),
-                  ("bedrock_shove", OD([("tier", 2), ("requires", ["landslide_blow"])])),
-                  ("stonehide", OD([("tier", 2), ("requires", ["raise_slab"])])),
-                  ("tremor", OD([("tier", 3), ("requires", ["pillar", "bedrock_shove"])]))])),
+                  ("raise_slab", OD([("tier", 2), ("requires", ["bedrock_shove"])])),
+                  ("stonehide", OD([("tier", 2), ("requires", ["landslide_blow"])])),
+                  ("tremor", OD([("tier", 3), ("requires", ["pillar", "stonehide"])]))])),
     ("wind", OD([("downdraft", OD([("tier", 2), ("requires", ["cutting_gust"])])),
                  ("veil", OD([("tier", 2), ("requires", ["crosscut"])])),
                  ("gale_lane", OD([("tier", 2), ("requires", ["tailwind"])])),
@@ -407,13 +543,9 @@ ICON_BY_KIND = {"projectile": "mote", "beam": "bolt", "melee_burst": "backdraft"
                 "charge_release": "palm", "summon": "mask", "seed": "seed", "grapple": "lash", "streak": "tailwind",
                 "field_pulse": "tremor"}
 
-# duplicate ids across drafts: (affinity, draft id) -> (new id, new name)
-RENAMES = {("disease", "fever_break"): ("crisis", "Crisis")}
-
 # The twelve data gaps (modifier-check-planned.md: "Listed as good modifiers, but the maths gives them nothing
 # to act on"), filled so each named modifier has something real to act on. path -> value, applied to numbers.
 GAP_FILLS = OD([
-    ("hammering_heart", OD([("on_hit", OD([("poise", 10.0)]))])),                     # + Choke (interrupts; status choked)
     ("crisis", OD([("on_hit", OD([("poise", 20.0)]))])),                              # + Fall (poise x1.3)
     ("doubling_step", OD([("leave_decoy.lure_radius", 8.0)])),                        # + Persist / Remember (decoy life) / Elsewhere (lure)
     ("shattered_dream", OD([("on_hit", OD([("poise", 20.0)]))])),                     # + Wake (bonus asleep; poise), + Fall
@@ -430,7 +562,7 @@ MAGNITUDE = OD([
     ("stonehide", [("move_speed_mult", "mult", "up")]),
     ("veil", [("duration", "amount", "up")]),
     ("static_coat", [("retaliate", "amount", "up")]),
-    ("ice_shell", [("absorb", "amount", "up"), ("on_break.damage", "amount", "up")]),
+    ("ice_shell", [("ward", "amount", "up"), ("on_break.damage", "amount", "up")]),
     ("muffle", [("unaware_mult", "mult", "up")]),
     ("plating", [("incoming_mult", "mult", "down")]),
     ("tourniquet", [("blood_per_wound", "mult", "down")]),
@@ -440,12 +572,10 @@ MAGNITUDE = OD([
     ("fever_break", [("new_status_mult", "mult", "down")]),
     ("embalm", [("duration", "amount", "up")]),
     ("clear_eye", [("reveal_radius", "amount", "up")]),
-    ("bent_light", [("duration", "amount", "up")]),
     ("bitter_tonic", [("recovery_mult", "mult", "down"), ("move_speed_mult", "mult", "up")]),
     ("festering_hands", [("duration", "amount", "up")]),
     ("inured_blood", [("dr_per_infected", "amount", "up"), ("dr_max", "amount", "up")]),
     # channels
-    ("pressure_jet", [("on_hit.damage", "amount", "up")]),
     ("bellows_breath", [("on_hit.damage", "amount", "up")]),
     ("spindrift", [("on_hit.damage", "amount", "up")]),
     ("deep_draught", [("on_hit.damage", "amount", "up")]),

@@ -296,15 +296,6 @@
       },
       "desc": "The next one is always where your hand already is."
     },
-    "scroll_undertow": {
-      "name": "Scroll: Undertow",
-      "slot": "",
-      "kind": "scroll",
-      "teaches": "undertow",
-      "weight": 0.1,
-      "value": 1200,
-      "desc": "Teaches Undertow to someone with the water affinity. Read once; the scroll is used up. Click it in your pack to read it."
-    },
     "scroll_riptide_lash": {
       "name": "Scroll: Riptide Lash",
       "slot": "",
@@ -800,7 +791,7 @@
   },
   "gear_sell_factor": 0.5,
   "shop_scrolls": [
-    "scroll_undertow",
+    "scroll_drawdown",
     "scroll_riptide_lash",
     "scroll_backdraft",
     "scroll_pyre_call",

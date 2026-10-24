@@ -3,7 +3,9 @@
 Each rune is placed on ten meaning axes. An axis is defined by two sets of plain words for its two ends (a semantic
 differential, the "SemAxis" method): a rune's score is how much nearer its meaning lies to one end than the other.
 A rune's meaning vector blends its name's GloVe vector with the mean vector of its meaning sentence from the rune
-workbook, so a name with several senses ("Lance", "Seal") is read the way the rune uses it.
+workbook, so a name with several senses ("Lance", "Seal") is read the way the rune uses it. The runes are read from
+game/data/runes.json - the workbook's own export (tools/runes/export_runes_json.py) - so this never opens the workbook
+(2026-10-24: the workbook is Brent's, read only, through the exporter).
 Scores are centred per axis, scaled by one spread shared by all axes, and squashed to -1..+1.
 
 Run: python -P -E tools/runes/rune_properties.py   (writes design/runes-data/rune-properties.json)
@@ -13,14 +15,16 @@ import os
 import re
 import sys
 
+from pathlib import Path
+
 import numpy as np
-from openpyxl import load_workbook
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import wn_glove as W  # noqa: E402
 
-WB = 'E:/Code/lifesteal-crawler/design/runes-workbook.xlsx'
-OUT = 'E:/Code/lifesteal-crawler/design/runes-data/rune-properties.json'
+ROOT = Path(__file__).resolve().parents[2]
+RUNES = ROOT / 'game/data/runes.json'
+OUT = ROOT / 'design/runes-data/rune-properties.json'
 NAME_WEIGHT = 0.5
 AXES = {
     'heat': ('hot heat burn fire warm scorch blaze', 'cold freeze ice chill frost cool frozen'),
@@ -63,6 +67,11 @@ PAIR_AXES = {
     'Repel': 'direction', 'Give': 'direction', 'Other': 'direction', 'Order': 'form', 'Pure': 'vitality',
     'Reveal': 'light', 'Fury': 'force', 'Will': 'force', 'Remember': 'mind', 'Reflux': 'heat',
     'Life': 'vitality', 'Soul': 'mind', 'Fate': 'binding',
+    # 2026-10-24: the v2 runes (renamed and new pairs, and Holy and Unholy) [MODEL]
+    'Heave': 'force', 'Catch': 'extent', 'Weigh': 'binding', 'Floe': 'motion', 'Thirst': 'motion', 'Bestow': 'direction',
+    'Bid': 'binding', 'Herd': 'binding', 'Prism': 'extent', 'Charm': 'binding', 'Steep': 'duration', 'Exhume': 'direction',
+    'Ward': 'form', 'Bless': 'vitality', 'Penance': 'binding', 'Exile': 'direction', 'Wrath': 'force', 'Zeal': 'motion',
+    'Outpour': 'direction', 'Daunt': 'direction', 'Gloom': 'extent', 'Torment': 'duration', 'Stalk': 'binding',
 }
 
 
@@ -76,23 +85,15 @@ def main():
         m = np.mean([G[gidx[t]] for t in toks], 0)
         return m / np.linalg.norm(m)
 
-    wb = load_workbook(WB, read_only=True, data_only=True)
+    data = json.loads(RUNES.read_text(encoding='utf-8'))
     runes = []
-    base = wb['Base Runes']
-    meaning = {}
-    for name in [s for s in wb.sheetnames if s not in ('Read Me', 'Affinities', 'Alignment', 'Base Runes',
-                                                      'Universal Runes', 'Bond Rules', 'Slider Links')]:
-        for r in wb[name].iter_rows(min_row=6, values_only=True):
-            if r[1] and re.fullmatch(r'[A-Z]{3}-\d+[ab]', str(r[1])):
-                meaning[r[1]] = str(r[4] or '')
-    for r in base.iter_rows(min_row=2, values_only=True):
-        if r[0]:
-            runes.append({'id': r[0], 'affinity': r[1], 'name': r[3], 'meaning': meaning.get(r[0], '')})
-    for r in wb['Universal Runes'].iter_rows(min_row=2, values_only=True):
-        if r[0]:
-            runes.append({'id': r[0], 'affinity': 'Universal', 'name': r[1], 'meaning': str(r[6] or '')})
-    opp = {r[0]: r[5] for r in base.iter_rows(min_row=2, values_only=True) if r[0]}
-    opp.update({r[0]: r[3] for r in wb['Universal Runes'].iter_rows(min_row=2, values_only=True) if r[0]})
+    opp = {}
+    for rid, r in data['base_runes'].items():
+        runes.append({'id': rid, 'affinity': str(r['affinity']).capitalize(), 'name': r['name'], 'meaning': str(r.get('meaning', ''))})
+        opp[rid] = r.get('opposite', '')
+    for rid, r in data['universal_runes'].items():
+        runes.append({'id': rid, 'affinity': 'Universal', 'name': r['name'], 'meaning': str(r.get('meaning', ''))})
+        opp[rid] = r.get('opposite', '')
 
     axes = {}
     for ax, (pos, neg) in AXES.items():
@@ -129,7 +130,7 @@ def main():
     out = {'method': __doc__.strip().splitlines()[0], 'axes': {k: {'plus': v[0], 'minus': v[1]} for k, v in AXES.items()},
            'runes': [{**ru, 'profile': {ax: round(float(prof[i, j]), 3) for j, ax in enumerate(AXES)}}
                      for i, ru in enumerate(runes)]}
-    json.dump(out, open(OUT, 'w', encoding='utf-8'), indent=1)
+    json.dump(out, open(OUT, 'w', encoding='utf-8', newline='\n'), indent=1)
     by = {ru['name']: prof[i] for i, ru in enumerate(runes)}
     for n in ['Burn', 'Freeze', 'Heal', 'Kill', 'Shine', 'Darken', 'Explode', 'Seal', 'Surge', 'Tangle', 'Dream',
               'Sleep', 'Gush', 'Settle', 'Linger', 'Flash', 'Spread', 'Focus', 'Bind', 'Sever']:

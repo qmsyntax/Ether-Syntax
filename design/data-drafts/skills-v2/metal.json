@@ -136,7 +136,7 @@
    "ascension": {
     "power": "damage_mult",
     "reach": "spall.radius",
-    "speed": "on_hit.poise",
+    "speed": "recovery",
     "cost": "cost"
    },
    "new_mechanics": [],

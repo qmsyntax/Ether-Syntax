@@ -35,6 +35,7 @@
 				"LIG-1a"
 			],
 			"ice": [
+				"ICE-6a",
 				"ICE-1b"
 			],
 			"dark": [
@@ -61,6 +62,7 @@
 				"NAT-1b"
 			],
 			"light": [
+				"LGT-6a",
 				"LGT-1b"
 			],
 			"dream": [
@@ -69,11 +71,19 @@
 			],
 			"poison": [
 				"POI-1b",
-				"POI-5a"
+				"POI-3a"
 			],
 			"disease": [
 				"DIS-1b",
 				"DIS-3a"
+			],
+			"holy": [
+				"HOL-3a",
+				"HOL-2a"
+			],
+			"unholy": [
+				"UNH-4a",
+				"UNH-4b"
 			]
 		}
 	},
@@ -140,12 +150,12 @@
 					"water": [
 						"WAT-2a",
 						"WAT-8a",
-						"WAT-5a"
+						"WAT-7a"
 					],
 					"fire": [
 						"FIR-2a",
-						"FIR-5a",
-						"FIR-1b"
+						"FIR-6a",
+						"FIR-5a"
 					],
 					"earth": [
 						"EAR-3b",
@@ -163,9 +173,9 @@
 						"LIG-3a"
 					],
 					"ice": [
-						"ICE-3b",
+						"ICE-6b",
 						"ICE-4b",
-						"ICE-2b"
+						"ICE-3b"
 					],
 					"dark": [
 						"DRK-3a",
@@ -173,14 +183,14 @@
 						"DRK-5a"
 					],
 					"metal": [
-						"MET-5a",
 						"MET-4a",
+						"MET-5a",
 						"MET-3b"
 					],
 					"blood": [
-						"BLD-2b",
+						"BLD-6a",
 						"BLD-4a",
-						"BLD-5a"
+						"BLD-2b"
 					],
 					"life": [
 						"LIF-2a",
@@ -189,33 +199,43 @@
 					],
 					"death": [
 						"DTH-2a",
-						"DTH-1a",
-						"DTH-5a"
+						"DTH-6a",
+						"DTH-1a"
 					],
 					"nature": [
-						"NAT-1b",
-						"NAT-4b",
-						"NAT-4a"
+						"NAT-6b",
+						"NAT-6a",
+						"NAT-1b"
 					],
 					"light": [
 						"LGT-2a",
-						"LGT-5b",
-						"LGT-5a"
+						"LGT-6a",
+						"LGT-5b"
 					],
 					"dream": [
 						"DRM-1b",
 						"DRM-4a",
-						"DRM-5b"
+						"DRM-6a"
 					],
 					"poison": [
+						"POI-6b",
 						"POI-4b",
-						"POI-1a",
 						"POI-5b"
 					],
 					"disease": [
 						"DIS-3b",
 						"DIS-2a",
 						"DIS-4b"
+					],
+					"holy": [
+						"HOL-6a",
+						"HOL-2b",
+						"HOL-5b"
+					],
+					"unholy": [
+						"UNH-4a",
+						"UNH-1a",
+						"UNH-1b"
 					]
 				},
 				"universal": [
@@ -227,9 +247,9 @@
 			"piercing": {
 				"base": {
 					"water": [
-						"WAT-5a",
 						"WAT-2a",
-						"WAT-4b"
+						"WAT-8a",
+						"WAT-7b"
 					],
 					"fire": [
 						"FIR-2b",
@@ -239,7 +259,7 @@
 					"earth": [
 						"EAR-5a",
 						"EAR-1b",
-						"EAR-1a"
+						"EAR-6b"
 					],
 					"wind": [
 						"WIN-3b",
@@ -252,9 +272,9 @@
 						"LIG-2b"
 					],
 					"ice": [
+						"ICE-6b",
 						"ICE-4b",
-						"ICE-1a",
-						"ICE-1b"
+						"ICE-1a"
 					],
 					"dark": [
 						"DRK-3b",
@@ -277,34 +297,44 @@
 						"LIF-1b"
 					],
 					"death": [
+						"DTH-6b",
 						"DTH-1a",
-						"DTH-2a",
-						"DTH-1b"
+						"DTH-2a"
 					],
 					"nature": [
 						"NAT-4b",
 						"NAT-1b",
-						"NAT-5b"
+						"NAT-6b"
 					],
 					"light": [
-						"LGT-2a",
+						"LGT-6a",
 						"LGT-5b",
-						"LGT-5a"
+						"LGT-2a"
 					],
 					"dream": [
 						"DRM-5b",
-						"DRM-5a",
-						"DRM-1b"
+						"DRM-1b",
+						"DRM-5a"
 					],
 					"poison": [
 						"POI-1a",
 						"POI-2b",
-						"POI-5b"
+						"POI-6b"
 					],
 					"disease": [
 						"DIS-4b",
 						"DIS-3b",
-						"DIS-5a"
+						"DIS-2b"
+					],
+					"holy": [
+						"HOL-4b",
+						"HOL-2b",
+						"HOL-6a"
+					],
+					"unholy": [
+						"UNH-1b",
+						"UNH-5b",
+						"UNH-4a"
 					]
 				},
 				"universal": [
@@ -318,17 +348,17 @@
 					"water": [
 						"WAT-6b",
 						"WAT-7b",
-						"WAT-4a"
+						"WAT-3b"
 					],
 					"fire": [
+						"FIR-6b",
 						"FIR-3b",
-						"FIR-2a",
-						"FIR-4b"
+						"FIR-2a"
 					],
 					"earth": [
+						"EAR-6a",
 						"EAR-1a",
-						"EAR-4a",
-						"EAR-3a"
+						"EAR-4a"
 					],
 					"wind": [
 						"WIN-3b",
@@ -351,9 +381,9 @@
 						"DRK-2a"
 					],
 					"metal": [
-						"MET-3a",
-						"MET-5a",
-						"MET-4b"
+						"MET-4b",
+						"MET-2a",
+						"MET-3a"
 					],
 					"blood": [
 						"BLD-1b",
@@ -361,9 +391,9 @@
 						"BLD-5b"
 					],
 					"life": [
+						"LIF-6a",
 						"LIF-3a",
-						"LIF-5a",
-						"LIF-1a"
+						"LIF-5a"
 					],
 					"death": [
 						"DTH-1b",
@@ -371,29 +401,39 @@
 						"DTH-2a"
 					],
 					"nature": [
+						"NAT-6a",
 						"NAT-1b",
-						"NAT-4a",
-						"NAT-1a"
+						"NAT-4a"
 					],
 					"light": [
+						"LGT-6a",
 						"LGT-5a",
-						"LGT-4b",
-						"LGT-3b"
+						"LGT-4b"
 					],
 					"dream": [
+						"DRM-6a",
 						"DRM-5b",
-						"DRM-4a",
-						"DRM-1a"
+						"DRM-4a"
 					],
 					"poison": [
 						"POI-1a",
-						"POI-2b",
-						"POI-4b"
+						"POI-6a",
+						"POI-6b"
 					],
 					"disease": [
+						"DIS-6a",
 						"DIS-2b",
-						"DIS-4b",
-						"DIS-3b"
+						"DIS-4b"
+					],
+					"holy": [
+						"HOL-6b",
+						"HOL-3b",
+						"HOL-4a"
+					],
+					"unholy": [
+						"UNH-1a",
+						"UNH-3b",
+						"UNH-4a"
 					]
 				},
 				"universal": [
@@ -405,7 +445,7 @@
 			"tension": {
 				"base": {
 					"water": [
-						"WAT-6a",
+						"WAT-4a",
 						"WAT-3a",
 						"WAT-7b"
 					],
@@ -440,29 +480,29 @@
 						"DRK-2b"
 					],
 					"metal": [
-						"MET-4a",
 						"MET-2a",
+						"MET-4a",
 						"MET-3a"
 					],
 					"blood": [
 						"BLD-3a",
-						"BLD-1a",
-						"BLD-2b"
+						"BLD-6b",
+						"BLD-1a"
 					],
 					"life": [
 						"LIF-3a",
-						"LIF-2a",
-						"LIF-2b"
+						"LIF-6b",
+						"LIF-2a"
 					],
 					"death": [
+						"DTH-6a",
 						"DTH-1a",
-						"DTH-4a",
-						"DTH-5b"
+						"DTH-4a"
 					],
 					"nature": [
+						"NAT-6a",
 						"NAT-5a",
-						"NAT-3a",
-						"NAT-2b"
+						"NAT-3a"
 					],
 					"light": [
 						"LGT-1a",
@@ -477,12 +517,22 @@
 					"poison": [
 						"POI-3b",
 						"POI-3a",
-						"POI-5b"
+						"POI-1a"
 					],
 					"disease": [
 						"DIS-1b",
-						"DIS-3a",
-						"DIS-5a"
+						"DIS-6b",
+						"DIS-3a"
+					],
+					"holy": [
+						"HOL-6b",
+						"HOL-4a",
+						"HOL-2a"
+					],
+					"unholy": [
+						"UNH-5a",
+						"UNH-2a",
+						"UNH-2b"
 					]
 				},
 				"universal": [
@@ -500,8 +550,8 @@
 					],
 					"fire": [
 						"FIR-4a",
-						"FIR-3a",
-						"FIR-5a"
+						"FIR-5a",
+						"FIR-3a"
 					],
 					"earth": [
 						"EAR-3b",
@@ -511,7 +561,7 @@
 					"wind": [
 						"WIN-2a",
 						"WIN-4a",
-						"WIN-4b"
+						"WIN-2b"
 					],
 					"lightning": [
 						"LIG-5a",
@@ -519,14 +569,14 @@
 						"LIG-2b"
 					],
 					"ice": [
+						"ICE-6b",
 						"ICE-1b",
-						"ICE-5b",
-						"ICE-2a"
+						"ICE-5b"
 					],
 					"dark": [
-						"DRK-4b",
 						"DRK-5b",
-						"DRK-1a"
+						"DRK-1a",
+						"DRK-4b"
 					],
 					"metal": [
 						"MET-1b",
@@ -534,9 +584,9 @@
 						"MET-5b"
 					],
 					"blood": [
+						"BLD-6a",
 						"BLD-2b",
-						"BLD-1a",
-						"BLD-3a"
+						"BLD-1a"
 					],
 					"life": [
 						"LIF-2a",
@@ -551,17 +601,17 @@
 					"nature": [
 						"NAT-4b",
 						"NAT-3b",
-						"NAT-3a"
+						"NAT-2a"
 					],
 					"light": [
+						"LGT-6b",
 						"LGT-3a",
-						"LGT-2a",
-						"LGT-4a"
+						"LGT-2a"
 					],
 					"dream": [
 						"DRM-3a",
 						"DRM-3b",
-						"DRM-5a"
+						"DRM-2b"
 					],
 					"poison": [
 						"POI-5a",
@@ -572,6 +622,16 @@
 						"DIS-4a",
 						"DIS-2a",
 						"DIS-5b"
+					],
+					"holy": [
+						"HOL-5b",
+						"HOL-6a",
+						"HOL-4b"
+					],
+					"unholy": [
+						"UNH-2a",
+						"UNH-3a",
+						"UNH-1b"
 					]
 				},
 				"universal": [
@@ -585,7 +645,7 @@
 					"water": [
 						"WAT-6b",
 						"WAT-3a",
-						"WAT-8b"
+						"WAT-7b"
 					],
 					"fire": [
 						"FIR-4b",
@@ -599,8 +659,8 @@
 					],
 					"wind": [
 						"WIN-3a",
-						"WIN-4b",
-						"WIN-1b"
+						"WIN-1b",
+						"WIN-4b"
 					],
 					"lightning": [
 						"LIG-5b",
@@ -608,39 +668,39 @@
 						"LIG-3b"
 					],
 					"ice": [
+						"ICE-6a",
 						"ICE-3a",
-						"ICE-5a",
-						"ICE-5b"
+						"ICE-5a"
 					],
 					"dark": [
 						"DRK-2a",
-						"DRK-4b",
-						"DRK-2b"
+						"DRK-2b",
+						"DRK-4b"
 					],
 					"metal": [
+						"MET-2a",
 						"MET-1b",
-						"MET-3a",
-						"MET-2b"
+						"MET-3a"
 					],
 					"blood": [
 						"BLD-4b",
-						"BLD-1a",
-						"BLD-5b"
+						"BLD-6b",
+						"BLD-1a"
 					],
 					"life": [
+						"LIF-6a",
 						"LIF-1b",
-						"LIF-3b",
-						"LIF-4a"
+						"LIF-3b"
 					],
 					"death": [
 						"DTH-2b",
 						"DTH-4a",
-						"DTH-1b"
+						"DTH-3b"
 					],
 					"nature": [
 						"NAT-5a",
 						"NAT-5b",
-						"NAT-2a"
+						"NAT-3a"
 					],
 					"light": [
 						"LGT-2b",
@@ -658,9 +718,19 @@
 						"POI-2a"
 					],
 					"disease": [
+						"DIS-6b",
 						"DIS-2b",
-						"DIS-3a",
-						"DIS-1a"
+						"DIS-6a"
+					],
+					"holy": [
+						"HOL-3b",
+						"HOL-4a",
+						"HOL-6b"
+					],
+					"unholy": [
+						"UNH-4b",
+						"UNH-3b",
+						"UNH-3a"
 					]
 				},
 				"universal": [
@@ -789,20 +859,20 @@
 			"grunt": {
 				"base": {
 					"water": [
-						"WAT-2a",
+						"WAT-4a",
 						"WAT-8a"
 					],
 					"fire": [
-						"FIR-1a",
-						"FIR-3a"
+						"FIR-6a",
+						"FIR-1a"
 					],
 					"earth": [
 						"EAR-5a",
 						"EAR-4a"
 					],
 					"wind": [
-						"WIN-4a",
-						"WIN-1a"
+						"WIN-1a",
+						"WIN-4a"
 					],
 					"lightning": [
 						"LIG-1a",
@@ -810,7 +880,7 @@
 					],
 					"ice": [
 						"ICE-1a",
-						"ICE-4a"
+						"ICE-6b"
 					],
 					"dark": [
 						"DRK-3b",
@@ -822,19 +892,19 @@
 					],
 					"blood": [
 						"BLD-2b",
-						"BLD-3a"
+						"BLD-6a"
 					],
 					"life": [
 						"LIF-3a",
 						"LIF-5a"
 					],
 					"death": [
-						"DTH-3b",
+						"DTH-6a",
 						"DTH-2b"
 					],
 					"nature": [
 						"NAT-4b",
-						"NAT-5b"
+						"NAT-6a"
 					],
 					"light": [
 						"LGT-4a",
@@ -851,6 +921,14 @@
 					"disease": [
 						"DIS-3b",
 						"DIS-5a"
+					],
+					"holy": [
+						"HOL-1a",
+						"HOL-4b"
+					],
+					"unholy": [
+						"UNH-4a",
+						"UNH-3b"
 					]
 				},
 				"universal": [
@@ -862,20 +940,20 @@
 			"brute": {
 				"base": {
 					"water": [
-						"WAT-8a",
-						"WAT-2a"
+						"WAT-4a",
+						"WAT-8a"
 					],
 					"fire": [
-						"FIR-1a",
-						"FIR-3a"
+						"FIR-6a",
+						"FIR-1a"
 					],
 					"earth": [
 						"EAR-5a",
 						"EAR-4a"
 					],
 					"wind": [
-						"WIN-4b",
-						"WIN-4a"
+						"WIN-4a",
+						"WIN-5b"
 					],
 					"lightning": [
 						"LIG-1a",
@@ -887,7 +965,7 @@
 					],
 					"dark": [
 						"DRK-3b",
-						"DRK-2b"
+						"DRK-4b"
 					],
 					"metal": [
 						"MET-3a",
@@ -895,23 +973,23 @@
 					],
 					"blood": [
 						"BLD-2b",
-						"BLD-1a"
+						"BLD-6b"
 					],
 					"life": [
 						"LIF-5a",
 						"LIF-3a"
 					],
 					"death": [
-						"DTH-3b",
-						"DTH-2b"
+						"DTH-2b",
+						"DTH-6a"
 					],
 					"nature": [
 						"NAT-4b",
-						"NAT-5b"
+						"NAT-6a"
 					],
 					"light": [
 						"LGT-4a",
-						"LGT-3a"
+						"LGT-6a"
 					],
 					"dream": [
 						"DRM-5b",
@@ -919,11 +997,19 @@
 					],
 					"poison": [
 						"POI-5b",
-						"POI-3b"
+						"POI-4b"
 					],
 					"disease": [
 						"DIS-5a",
 						"DIS-3b"
+					],
+					"holy": [
+						"HOL-4b",
+						"HOL-1a"
+					],
+					"unholy": [
+						"UNH-4a",
+						"UNH-3b"
 					]
 				},
 				"universal": [
@@ -935,16 +1021,16 @@
 			"commander": {
 				"base": {
 					"water": [
-						"WAT-6a",
-						"WAT-6b"
+						"WAT-6b",
+						"WAT-8a"
 					],
 					"fire": [
-						"FIR-2a",
-						"FIR-3b"
+						"FIR-3b",
+						"FIR-2a"
 					],
 					"earth": [
 						"EAR-5b",
-						"EAR-2a"
+						"EAR-6a"
 					],
 					"wind": [
 						"WIN-4a",
@@ -963,23 +1049,23 @@
 						"DRK-2b"
 					],
 					"metal": [
-						"MET-1a",
-						"MET-4a"
+						"MET-2a",
+						"MET-1a"
 					],
 					"blood": [
 						"BLD-1b",
 						"BLD-4b"
 					],
 					"life": [
-						"LIF-3a",
-						"LIF-2a"
+						"LIF-6b",
+						"LIF-6a"
 					],
 					"death": [
-						"DTH-5b",
-						"DTH-1b"
+						"DTH-6a",
+						"DTH-5b"
 					],
 					"nature": [
-						"NAT-1a",
+						"NAT-6a",
 						"NAT-3a"
 					],
 					"light": [
@@ -987,37 +1073,45 @@
 						"LGT-5a"
 					],
 					"dream": [
-						"DRM-2a",
-						"DRM-4a"
+						"DRM-6a",
+						"DRM-2a"
 					],
 					"poison": [
-						"POI-4b",
-						"POI-3b"
+						"POI-6b",
+						"POI-4b"
 					],
 					"disease": [
 						"DIS-5b",
-						"DIS-2b"
+						"DIS-6a"
+					],
+					"holy": [
+						"HOL-2a",
+						"HOL-6b"
+					],
+					"unholy": [
+						"UNH-1b",
+						"UNH-2b"
 					]
 				},
 				"universal": [
 					"UNI-24a",
 					"UNI-10a",
-					"UNI-23a"
+					"UNI-28a"
 				]
 			},
 			"archer": {
 				"base": {
 					"water": [
-						"WAT-5a",
-						"WAT-1a"
+						"WAT-1a",
+						"WAT-7b"
 					],
 					"fire": [
-						"FIR-5a",
-						"FIR-4b"
+						"FIR-6b",
+						"FIR-5a"
 					],
 					"earth": [
 						"EAR-3b",
-						"EAR-1b"
+						"EAR-6b"
 					],
 					"wind": [
 						"WIN-1a",
@@ -1028,24 +1122,24 @@
 						"LIG-4a"
 					],
 					"ice": [
-						"ICE-1b",
-						"ICE-3b"
+						"ICE-6b",
+						"ICE-1b"
 					],
 					"dark": [
 						"DRK-5b",
 						"DRK-3b"
 					],
 					"metal": [
-						"MET-2a",
-						"MET-4b"
+						"MET-4a",
+						"MET-3a"
 					],
 					"blood": [
-						"BLD-2b",
-						"BLD-4a"
+						"BLD-4a",
+						"BLD-2b"
 					],
 					"life": [
-						"LIF-5b",
-						"LIF-2b"
+						"LIF-6b",
+						"LIF-5b"
 					],
 					"death": [
 						"DTH-5b",
@@ -1057,25 +1151,33 @@
 					],
 					"light": [
 						"LGT-5b",
-						"LGT-2a"
+						"LGT-6a"
 					],
 					"dream": [
 						"DRM-5a",
-						"DRM-4a"
+						"DRM-1b"
 					],
 					"poison": [
-						"POI-1a",
-						"POI-3a"
+						"POI-6b",
+						"POI-1a"
 					],
 					"disease": [
 						"DIS-4b",
 						"DIS-3b"
+					],
+					"holy": [
+						"HOL-6a",
+						"HOL-5a"
+					],
+					"unholy": [
+						"UNH-1b",
+						"UNH-2a"
 					]
 				},
 				"universal": [
 					"UNI-17a",
 					"UNI-01a",
-					"UNI-20a"
+					"UNI-23b"
 				]
 			},
 			"harrier": {
@@ -1086,7 +1188,7 @@
 					],
 					"fire": [
 						"FIR-2a",
-						"FIR-5a"
+						"FIR-6a"
 					],
 					"earth": [
 						"EAR-3b",
@@ -1098,11 +1200,11 @@
 					],
 					"lightning": [
 						"LIG-4a",
-						"LIG-3a"
+						"LIG-1a"
 					],
 					"ice": [
-						"ICE-3b",
-						"ICE-2b"
+						"ICE-6b",
+						"ICE-3b"
 					],
 					"dark": [
 						"DRK-3a",
@@ -1113,8 +1215,8 @@
 						"MET-4a"
 					],
 					"blood": [
-						"BLD-4a",
-						"BLD-2b"
+						"BLD-6a",
+						"BLD-4a"
 					],
 					"life": [
 						"LIF-2a",
@@ -1122,27 +1224,35 @@
 					],
 					"death": [
 						"DTH-2a",
-						"DTH-1a"
+						"DTH-6a"
 					],
 					"nature": [
-						"NAT-1b",
-						"NAT-4a"
+						"NAT-6b",
+						"NAT-6a"
 					],
 					"light": [
 						"LGT-2a",
-						"LGT-5b"
+						"LGT-6a"
 					],
 					"dream": [
 						"DRM-1b",
 						"DRM-4a"
 					],
 					"poison": [
-						"POI-4b",
-						"POI-1a"
+						"POI-6b",
+						"POI-4b"
 					],
 					"disease": [
 						"DIS-3b",
 						"DIS-2a"
+					],
+					"holy": [
+						"HOL-6a",
+						"HOL-2b"
+					],
+					"unholy": [
+						"UNH-4a",
+						"UNH-1a"
 					]
 				},
 				"universal": [
@@ -1158,8 +1268,8 @@
 						"WAT-2b"
 					],
 					"fire": [
-						"FIR-3b",
-						"FIR-2b"
+						"FIR-6a",
+						"FIR-3b"
 					],
 					"earth": [
 						"EAR-3a",
@@ -1167,7 +1277,7 @@
 					],
 					"wind": [
 						"WIN-3a",
-						"WIN-4a"
+						"WIN-4b"
 					],
 					"lightning": [
 						"LIG-1b",
@@ -1183,39 +1293,47 @@
 					],
 					"metal": [
 						"MET-3a",
-						"MET-1a"
+						"MET-2a"
 					],
 					"blood": [
 						"BLD-4b",
 						"BLD-1b"
 					],
 					"life": [
-						"LIF-5a",
-						"LIF-3a"
+						"LIF-6a",
+						"LIF-5a"
 					],
 					"death": [
 						"DTH-2b",
 						"DTH-1b"
 					],
 					"nature": [
-						"NAT-1a",
+						"NAT-6a",
 						"NAT-3a"
 					],
 					"light": [
 						"LGT-4b",
-						"LGT-5a"
+						"LGT-6a"
 					],
 					"dream": [
 						"DRM-2a",
-						"DRM-1a"
+						"DRM-6a"
 					],
 					"poison": [
 						"POI-3b",
-						"POI-4b"
+						"POI-1a"
 					],
 					"disease": [
-						"DIS-5b",
-						"DIS-2b"
+						"DIS-6a",
+						"DIS-5b"
+					],
+					"holy": [
+						"HOL-3b",
+						"HOL-2a"
+					],
+					"unholy": [
+						"UNH-3b",
+						"UNH-4a"
 					]
 				},
 				"universal": [
@@ -1227,8 +1345,8 @@
 			"censer": {
 				"base": {
 					"water": [
-						"WAT-4b",
-						"WAT-2b"
+						"WAT-2b",
+						"WAT-4a"
 					],
 					"fire": [
 						"FIR-5b",
@@ -1251,8 +1369,8 @@
 						"ICE-5b"
 					],
 					"dark": [
-						"DRK-4b",
-						"DRK-1a"
+						"DRK-1a",
+						"DRK-4b"
 					],
 					"metal": [
 						"MET-1b",
@@ -1260,7 +1378,7 @@
 					],
 					"blood": [
 						"BLD-1a",
-						"BLD-2b"
+						"BLD-6a"
 					],
 					"life": [
 						"LIF-1b",
@@ -1276,7 +1394,7 @@
 					],
 					"light": [
 						"LGT-4a",
-						"LGT-3a"
+						"LGT-6b"
 					],
 					"dream": [
 						"DRM-3a",
@@ -1288,7 +1406,15 @@
 					],
 					"disease": [
 						"DIS-1a",
-						"DIS-4a"
+						"DIS-6b"
+					],
+					"holy": [
+						"HOL-2b",
+						"HOL-3a"
+					],
+					"unholy": [
+						"UNH-3a",
+						"UNH-2b"
 					]
 				},
 				"universal": [
@@ -1301,7 +1427,7 @@
 				"base": {
 					"water": [
 						"WAT-3a",
-						"WAT-6a"
+						"WAT-6b"
 					],
 					"fire": [
 						"FIR-4a",
@@ -1320,8 +1446,8 @@
 						"LIG-3b"
 					],
 					"ice": [
-						"ICE-5b",
-						"ICE-4b"
+						"ICE-6b",
+						"ICE-5b"
 					],
 					"dark": [
 						"DRK-4b",
@@ -1329,7 +1455,7 @@
 					],
 					"metal": [
 						"MET-2b",
-						"MET-4a"
+						"MET-1a"
 					],
 					"blood": [
 						"BLD-2b",
@@ -1341,7 +1467,7 @@
 					],
 					"death": [
 						"DTH-4a",
-						"DTH-1a"
+						"DTH-6b"
 					],
 					"nature": [
 						"NAT-4b",
@@ -1349,25 +1475,33 @@
 					],
 					"light": [
 						"LGT-2b",
-						"LGT-2a"
+						"LGT-6b"
 					],
 					"dream": [
 						"DRM-3a",
-						"DRM-2b"
+						"DRM-6b"
 					],
 					"poison": [
-						"POI-2a",
-						"POI-2b"
+						"POI-2b",
+						"POI-2a"
 					],
 					"disease": [
-						"DIS-3a",
-						"DIS-4a"
+						"DIS-6b",
+						"DIS-3a"
+					],
+					"holy": [
+						"HOL-4b",
+						"HOL-2b"
+					],
+					"unholy": [
+						"UNH-1b",
+						"UNH-2a"
 					]
 				},
 				"universal": [
 					"UNI-18b",
-					"UNI-09b",
-					"UNI-23a"
+					"UNI-23a",
+					"UNI-09b"
 				]
 			},
 			"chaff_wren": {
@@ -1377,8 +1511,8 @@
 						"WAT-8a"
 					],
 					"fire": [
-						"FIR-2a",
-						"FIR-5a"
+						"FIR-6a",
+						"FIR-2a"
 					],
 					"earth": [
 						"EAR-3b",
@@ -1395,8 +1529,8 @@
 						"LIG-5a"
 					],
 					"ice": [
-						"ICE-1b",
-						"ICE-2b"
+						"ICE-6b",
+						"ICE-1b"
 					],
 					"dark": [
 						"DRK-3a",
@@ -1407,8 +1541,8 @@
 						"MET-5b"
 					],
 					"blood": [
-						"BLD-4a",
-						"BLD-3b"
+						"BLD-6a",
+						"BLD-4a"
 					],
 					"life": [
 						"LIF-2a",
@@ -1416,35 +1550,43 @@
 					],
 					"death": [
 						"DTH-2a",
-						"DTH-4b"
+						"DTH-6a"
 					],
 					"nature": [
 						"NAT-1a",
+						"NAT-6b",
 						"NAT-2a",
-						"NAT-3a",
 						"NAT-4a"
 					],
 					"light": [
 						"LGT-2a",
-						"LGT-5a"
+						"LGT-6b"
 					],
 					"dream": [
 						"DRM-1b",
 						"DRM-4a"
 					],
 					"poison": [
-						"POI-4b",
-						"POI-5b"
+						"POI-6b",
+						"POI-4b"
 					],
 					"disease": [
 						"DIS-2a",
-						"DIS-3b"
+						"DIS-5b"
+					],
+					"holy": [
+						"HOL-6a",
+						"HOL-5b"
+					],
+					"unholy": [
+						"UNH-4a",
+						"UNH-2a"
 					]
 				},
 				"universal": [
-					"UNI-03a",
+					"UNI-04a",
 					"UNI-02a",
-					"UNI-04a"
+					"UNI-03a"
 				],
 				"themes": [
 					"wind",
@@ -1455,15 +1597,15 @@
 				"base": {
 					"water": [
 						"WAT-8a",
-						"WAT-5a",
+						"WAT-2a",
 						"WAT-7a",
-						"WAT-2a"
+						"WAT-1a"
 					],
 					"fire": [
 						"FIR-2a",
+						"FIR-6a",
 						"FIR-4a",
-						"FIR-1a",
-						"FIR-3a"
+						"FIR-1a"
 					],
 					"earth": [
 						"EAR-5a",
@@ -1471,7 +1613,7 @@
 					],
 					"wind": [
 						"WIN-4a",
-						"WIN-5b"
+						"WIN-4b"
 					],
 					"lightning": [
 						"LIG-1a",
@@ -1486,8 +1628,8 @@
 						"DRK-4b"
 					],
 					"metal": [
-						"MET-2a",
-						"MET-5a"
+						"MET-5a",
+						"MET-2a"
 					],
 					"blood": [
 						"BLD-2b",
@@ -1499,15 +1641,15 @@
 					],
 					"death": [
 						"DTH-1a",
-						"DTH-2a"
+						"DTH-6a"
 					],
 					"nature": [
-						"NAT-4b",
-						"NAT-2b"
+						"NAT-6a",
+						"NAT-4b"
 					],
 					"light": [
 						"LGT-2a",
-						"LGT-3a"
+						"LGT-6a"
 					],
 					"dream": [
 						"DRM-5a",
@@ -1520,6 +1662,14 @@
 					"disease": [
 						"DIS-3b",
 						"DIS-4b"
+					],
+					"holy": [
+						"HOL-5b",
+						"HOL-1a"
+					],
+					"unholy": [
+						"UNH-4a",
+						"UNH-1b"
 					]
 				},
 				"universal": [
@@ -1555,8 +1705,8 @@
 						"LIG-3a"
 					],
 					"ice": [
-						"ICE-1b",
-						"ICE-5b"
+						"ICE-6b",
+						"ICE-1b"
 					],
 					"dark": [
 						"DRK-3a",
@@ -1569,38 +1719,46 @@
 					"blood": [
 						"BLD-2b",
 						"BLD-4a",
-						"BLD-3b",
-						"BLD-1b"
+						"BLD-6a",
+						"BLD-3b"
 					],
 					"life": [
 						"LIF-2a",
-						"LIF-4a"
+						"LIF-6b"
 					],
 					"death": [
-						"DTH-5b",
-						"DTH-3b"
+						"DTH-6a",
+						"DTH-5b"
 					],
 					"nature": [
-						"NAT-1a",
 						"NAT-1b",
+						"NAT-1a",
 						"NAT-4b",
 						"NAT-3a"
 					],
 					"light": [
 						"LGT-5a",
-						"LGT-2a"
+						"LGT-6b"
 					],
 					"dream": [
 						"DRM-1b",
 						"DRM-4a"
 					],
 					"poison": [
-						"POI-2b",
-						"POI-5b"
+						"POI-6b",
+						"POI-2b"
 					],
 					"disease": [
 						"DIS-1b",
 						"DIS-5b"
+					],
+					"holy": [
+						"HOL-6a",
+						"HOL-5a"
+					],
+					"unholy": [
+						"UNH-1b",
+						"UNH-2a"
 					]
 				},
 				"universal": [
@@ -1617,7 +1775,7 @@
 				"base": {
 					"water": [
 						"WAT-2a",
-						"WAT-6a"
+						"WAT-8a"
 					],
 					"fire": [
 						"FIR-2a",
@@ -1638,12 +1796,12 @@
 						"LIG-3a"
 					],
 					"ice": [
-						"ICE-1a",
-						"ICE-5b"
+						"ICE-6b",
+						"ICE-1a"
 					],
 					"dark": [
-						"DRK-4b",
-						"DRK-3a"
+						"DRK-3a",
+						"DRK-4b"
 					],
 					"metal": [
 						"MET-4a",
@@ -1651,25 +1809,25 @@
 					],
 					"blood": [
 						"BLD-2b",
-						"BLD-1a"
+						"BLD-6a"
 					],
 					"life": [
 						"LIF-2a",
 						"LIF-3a"
 					],
 					"death": [
-						"DTH-2a",
-						"DTH-5b"
+						"DTH-6a",
+						"DTH-2a"
 					],
 					"nature": [
 						"NAT-4b",
-						"NAT-1b",
-						"NAT-5b",
-						"NAT-1a"
+						"NAT-6b",
+						"NAT-6a",
+						"NAT-1b"
 					],
 					"light": [
 						"LGT-2a",
-						"LGT-5a"
+						"LGT-6b"
 					],
 					"dream": [
 						"DRM-1b",
@@ -1682,12 +1840,20 @@
 					"disease": [
 						"DIS-3b",
 						"DIS-4b"
+					],
+					"holy": [
+						"HOL-6a",
+						"HOL-4b"
+					],
+					"unholy": [
+						"UNH-1b",
+						"UNH-2a"
 					]
 				},
 				"universal": [
 					"UNI-17a",
 					"UNI-23a",
-					"UNI-18b"
+					"UNI-26b"
 				],
 				"themes": [
 					"earth",
@@ -1701,7 +1867,7 @@
 						"WAT-8a"
 					],
 					"fire": [
-						"FIR-5a",
+						"FIR-6a",
 						"FIR-2a"
 					],
 					"earth": [
@@ -1719,8 +1885,8 @@
 						"LIG-2b"
 					],
 					"ice": [
-						"ICE-1b",
-						"ICE-3b"
+						"ICE-6b",
+						"ICE-1b"
 					],
 					"dark": [
 						"DRK-3a",
@@ -1732,7 +1898,7 @@
 					],
 					"blood": [
 						"BLD-4a",
-						"BLD-3b"
+						"BLD-6a"
 					],
 					"life": [
 						"LIF-2a",
@@ -1745,24 +1911,32 @@
 					"nature": [
 						"NAT-1a",
 						"NAT-2a",
-						"NAT-3a",
-						"NAT-4a"
+						"NAT-4a",
+						"NAT-3a"
 					],
 					"light": [
-						"LGT-5a",
-						"LGT-3b"
+						"LGT-6b",
+						"LGT-5a"
 					],
 					"dream": [
-						"DRM-4b",
+						"DRM-6a",
 						"DRM-1b"
 					],
 					"poison": [
-						"POI-5b",
-						"POI-2b"
+						"POI-6b",
+						"POI-5b"
 					],
 					"disease": [
 						"DIS-5b",
 						"DIS-2a"
+					],
+					"holy": [
+						"HOL-6a",
+						"HOL-1a"
+					],
+					"unholy": [
+						"UNH-2b",
+						"UNH-4a"
 					]
 				},
 				"universal": [
@@ -1778,8 +1952,8 @@
 			"gleaner": {
 				"base": {
 					"water": [
-						"WAT-6a",
-						"WAT-2b"
+						"WAT-2b",
+						"WAT-2a"
 					],
 					"fire": [
 						"FIR-3b",
@@ -1787,13 +1961,13 @@
 					],
 					"earth": [
 						"EAR-5b",
-						"EAR-3b"
+						"EAR-6a"
 					],
 					"wind": [
 						"WIN-5a",
 						"WIN-1a",
-						"WIN-4a",
-						"WIN-3b"
+						"WIN-3b",
+						"WIN-4a"
 					],
 					"lightning": [
 						"LIG-3a",
@@ -1812,8 +1986,8 @@
 						"MET-1a"
 					],
 					"blood": [
-						"BLD-1b",
-						"BLD-2a"
+						"BLD-4a",
+						"BLD-1b"
 					],
 					"life": [
 						"LIF-2a",
@@ -1821,35 +1995,43 @@
 					],
 					"death": [
 						"DTH-2a",
+						"DTH-6a",
 						"DTH-1a",
-						"DTH-5a",
-						"DTH-1b"
+						"DTH-5a"
 					],
 					"nature": [
-						"NAT-1a",
-						"NAT-4a"
+						"NAT-6a",
+						"NAT-1a"
 					],
 					"light": [
 						"LGT-5a",
 						"LGT-5b"
 					],
 					"dream": [
-						"DRM-1b",
-						"DRM-4a"
+						"DRM-6a",
+						"DRM-1b"
 					],
 					"poison": [
-						"POI-1a",
-						"POI-2b"
+						"POI-6b",
+						"POI-6a"
 					],
 					"disease": [
 						"DIS-5b",
-						"DIS-1a"
+						"DIS-6a"
+					],
+					"holy": [
+						"HOL-6a",
+						"HOL-1b"
+					],
+					"unholy": [
+						"UNH-1a",
+						"UNH-5a"
 					]
 				},
 				"universal": [
 					"UNI-16a",
 					"UNI-17b",
-					"UNI-10b"
+					"UNI-13a"
 				],
 				"themes": [
 					"wind",
@@ -1860,19 +2042,19 @@
 				"base": {
 					"water": [
 						"WAT-6b",
-						"WAT-8b",
-						"WAT-4a",
-						"WAT-6a"
+						"WAT-7b",
+						"WAT-3b",
+						"WAT-2b"
 					],
 					"fire": [
 						"FIR-4b",
-						"FIR-2b"
+						"FIR-6b"
 					],
 					"earth": [
 						"EAR-3a",
+						"EAR-6a",
 						"EAR-2a",
-						"EAR-1a",
-						"EAR-5b"
+						"EAR-1a"
 					],
 					"wind": [
 						"WIN-3a",
@@ -1891,40 +2073,48 @@
 						"DRK-2a"
 					],
 					"metal": [
-						"MET-1a",
-						"MET-3a"
+						"MET-2a",
+						"MET-1a"
 					],
 					"blood": [
 						"BLD-4b",
 						"BLD-5b"
 					],
 					"life": [
-						"LIF-3a",
-						"LIF-5a"
+						"LIF-6b",
+						"LIF-6a"
 					],
 					"death": [
 						"DTH-1b",
 						"DTH-5b"
 					],
 					"nature": [
-						"NAT-1b",
+						"NAT-6a",
 						"NAT-3a"
 					],
 					"light": [
 						"LGT-4b",
-						"LGT-5a"
+						"LGT-6a"
 					],
 					"dream": [
 						"DRM-2a",
-						"DRM-1a"
+						"DRM-6a"
 					],
 					"poison": [
 						"POI-3b",
 						"POI-4b"
 					],
 					"disease": [
-						"DIS-2b",
-						"DIS-5b"
+						"DIS-6a",
+						"DIS-2b"
+					],
+					"holy": [
+						"HOL-2a",
+						"HOL-6b"
+					],
+					"unholy": [
+						"UNH-3b",
+						"UNH-4a"
 					]
 				},
 				"universal": [
@@ -1940,18 +2130,18 @@
 			"thornback": {
 				"base": {
 					"water": [
-						"WAT-6a",
-						"WAT-6b"
+						"WAT-6b",
+						"WAT-2a"
 					],
 					"fire": [
-						"FIR-2a",
-						"FIR-2b"
+						"FIR-6a",
+						"FIR-2a"
 					],
 					"earth": [
 						"EAR-1a",
 						"EAR-3a",
-						"EAR-5a",
-						"EAR-5b"
+						"EAR-6a",
+						"EAR-5a"
 					],
 					"wind": [
 						"WIN-4a",
@@ -1988,30 +2178,38 @@
 					"nature": [
 						"NAT-1b",
 						"NAT-1a",
-						"NAT-4a",
+						"NAT-6a",
 						"NAT-3a"
 					],
 					"light": [
 						"LGT-5a",
-						"LGT-2b"
+						"LGT-6b"
 					],
 					"dream": [
-						"DRM-5b",
-						"DRM-2b"
+						"DRM-6b",
+						"DRM-5b"
 					],
 					"poison": [
 						"POI-2b",
 						"POI-5b"
 					],
 					"disease": [
-						"DIS-2b",
-						"DIS-1b"
+						"DIS-6a",
+						"DIS-2b"
+					],
+					"holy": [
+						"HOL-1a",
+						"HOL-4b"
+					],
+					"unholy": [
+						"UNH-4a",
+						"UNH-1b"
 					]
 				},
 				"universal": [
 					"UNI-09a",
 					"UNI-06a",
-					"UNI-23a"
+					"UNI-06b"
 				],
 				"themes": [
 					"nature",

@@ -291,6 +291,15 @@ func player_state(id: String) -> Dictionary:
 	return _player_states.get(id, {})
 
 
+## Every player state id (statuses.json "player_states"), in data order.
+func player_state_ids() -> Array[String]:
+	_ensure()
+	var out: Array[String] = []
+	for id: Variant in _player_states:
+		out.append(str(id))
+	return out
+
+
 func ability(id: String) -> Dictionary:
 	_ensure()
 	if not abilities.has(id):

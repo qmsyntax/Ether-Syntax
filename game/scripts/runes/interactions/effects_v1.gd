@@ -401,8 +401,7 @@ func _group_fields(ab: Dictionary, group: String) -> Array[String]:
 		var path: String = s.get_slice("@", 0)
 		if s.contains("@") and not s.get_slice("@", 1).split("|").has(str(ab.get("kind", ""))):
 			continue
-		var v: Variant = get_path_value(ab, path)
-		if (typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT) and float(v) != 0.0:
+		if is_numeric(get_path_value(ab, path)):
 			out.append(path)
 	return out
 
@@ -427,10 +426,33 @@ func _payload_parts(ab: Dictionary) -> Array[String]:
 static func get_path_value(d: Dictionary, path: String) -> Variant:
 	var cur: Variant = d
 	for key: String in path.split("."):
+		if typeof(cur) == TYPE_ARRAY:
+			# a list of {id, ...} entries (a payload's "statuses") is walked by id: on_hit.statuses.dosed.stacks
+			var found: Variant = null
+			for entry: Variant in cur:
+				if typeof(entry) == TYPE_DICTIONARY and str((entry as Dictionary).get("id", "")) == key:
+					found = entry
+					break
+			if found == null:
+				return null
+			cur = found
+			continue
 		if typeof(cur) != TYPE_DICTIONARY or not (cur as Dictionary).has(key):
 			return null
 		cur = (cur as Dictionary)[key]
 	return cur
+
+
+## True if `v` is a number, or a non-empty list of numbers (Dead Short's overload fractions).
+static func is_numeric(v: Variant) -> bool:
+	if typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT:
+		return float(v) != 0.0
+	if typeof(v) != TYPE_ARRAY or (v as Array).is_empty():
+		return false
+	for x: Variant in v:
+		if typeof(x) != TYPE_FLOAT and typeof(x) != TYPE_INT:
+			return false
+	return true
 
 
 ## Whether the hit payload `part` deals damage when it lands.
