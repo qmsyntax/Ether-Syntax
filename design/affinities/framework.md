@@ -30,7 +30,7 @@ its parents is still to be designed.
 | Blood | Life + Death | midpoint, lift +0.07 | Berserker - conjured blood weapons, never your own health |
 | Dream | Dark + Life | midpoint, lift +0.07 | Enchanter - sleep, charm, masks |
 | Poison | Water + Death | **forced** [B] 2026-10-24 | Weapon coater - coatings, poison that pays out later |
-| Disease | **[?] open** - the midpoint test's pick (Water + Death) is now Poison's | next best: Water + Life (lift +0.07), Life + Death (taken by Blood) | Plague caster - spreading attrition |
+| Disease | Water + Death | midpoint, lift +0.06 [B] kept 2026-10-24 | Plague caster - spreading attrition |
 | Nature | Water + Earth | midpoint, lift +0.04 | Druid - growth, beasts, buffs (Brent: Nature also buffs) |
 | Holy | Light + Life | **forced** [B] | Paladin / support - shields, wards, buffs |
 | Unholy | Dark + Death | **forced** [B] (also the midpoint's pick) | Shadow knight - drain melee, fear, auras |
@@ -43,6 +43,7 @@ its parents is still to be designed.
 
 
 ## Open
+- Poison and Disease share parents (Water + Death): one pair yields two hybrids. How a character comes to one rather than the other is open.
 - How a character gets a hybrid or evolution (held both parents? grown into?), and whether any can be rolled at creation.
 - Holy and Unholy do not exist in the game yet: base runes, five-axis positions, skill drafts.
 - No affinity owns bows / thrown weapons yet.
