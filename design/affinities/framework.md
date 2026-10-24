@@ -29,7 +29,8 @@ its parents is still to be designed.
 | Ice | Earth + Wind | midpoint, lift +0.07 | Control caster - slow, freeze, shatter |
 | Blood | Life + Death | midpoint, lift +0.07 | Berserker - conjured blood weapons, never your own health |
 | Dream | Dark + Life | midpoint, lift +0.07 | Enchanter - sleep, charm, masks |
-| Disease | Water + Death | midpoint, lift +0.06 | Plague caster - spreading attrition |
+| Poison | Water + Death | **forced** [B] 2026-10-24 | Weapon coater - coatings, poison that pays out later |
+| Disease | **[?] open** - the midpoint test's pick (Water + Death) is now Poison's | next best: Water + Life (lift +0.07), Life + Death (taken by Blood) | Plague caster - spreading attrition |
 | Nature | Water + Earth | midpoint, lift +0.04 | Druid - growth, beasts, buffs (Brent: Nature also buffs) |
 | Holy | Light + Life | **forced** [B] | Paladin / support - shields, wards, buffs |
 | Unholy | Dark + Death | **forced** [B] (also the midpoint's pick) | Shadow knight - drain melee, fear, auras |
@@ -39,10 +40,7 @@ its parents is still to be designed.
 | Affinity | Parent | Source | Role |
 |---|---|---|---|
 | Metal | Earth | **forced** [B]; the midpoint test found no pair (lift -0.01) | Armoured duellist - armour, reflect, taunt |
-| Poison | Nature | **forced** [B]; no clear pair in the test | Weapon coater - coatings, poison that pays out later |
 
-Poison's parent: Nature (Brent's original sheet). Nature is itself a hybrid, so Poison is the one third-step
-affinity; Death is the alternative parent if that proves awkward [?].
 
 ## Open
 - How a character gets a hybrid or evolution (held both parents? grown into?), and whether any can be rolled at creation.
