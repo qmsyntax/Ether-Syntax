@@ -219,6 +219,104 @@ static func small_button(text: String, on_press: Callable, enabled: bool = true)
 	return b
 
 
+## The "Test characters" buttons (Brent 2026-10-22), one per affinity in its colour, four to a row:
+## the creation screen's and the game menu's. `on_pick` gets the affinity id. The grid is named
+## "TestCharacters" and each button "Test_<affinity>", for the click tests.
+static func test_character_grid(on_pick: Callable) -> GridContainer:
+	var grid := GridContainer.new()
+	grid.name = "TestCharacters"
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
+	for aff: Variant in GameData.affinity_ids():
+		var col: Color = GameData.affinity_color(str(aff))
+		var b := Button.new()
+		b.name = "Test_" + str(aff)
+		b.text = str(GameData.affinity(str(aff)).get("label", aff))
+		b.focus_mode = Control.FOCUS_NONE
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, 28)
+		b.add_theme_font_size_override("font_size", 13)
+		b.add_theme_color_override("font_color", col.lightened(0.35))
+		b.add_theme_color_override("font_hover_color", col.lightened(0.45))
+		for s: String in ["normal", "hover", "pressed"]:
+			b.add_theme_stylebox_override(s, UiTheme.box(Color("2a241d").lightened(0.06 if s == "hover" else 0.0), col.darkened(0.35), 1, 4, 4))
+		b.tooltip_text = "%s: %s" % [b.text, str(GameData.affinity(str(aff)).get("rule", ""))]
+		b.pressed.connect(func() -> void: on_pick.call(str(aff)))
+		grid.add_child(b)
+	return grid
+
+
+## A question asked over whatever is open (the game menu's "you will lose ..." check): a dimmed
+## overlay that takes every click, a framed panel, the text and two buttons. Esc (the `settings`
+## action) or Cancel closes it and does nothing; the yes button closes it and runs `on_yes`. Add it
+## as the last child of the open screen so it is the topmost thing and gets Esc first. Named
+## "ConfirmDialog" with buttons "ConfirmYes" and "ConfirmNo", for the click tests.
+class ConfirmDialog extends Control:
+	var _title := ""
+	var _text := ""
+	var _yes := ""
+	var _on_yes: Callable
+
+	func _init(title: String, text: String, yes_label: String, on_yes: Callable) -> void:
+		name = "ConfirmDialog"
+		_title = title
+		_text = text
+		_yes = yes_label
+		_on_yes = on_yes
+
+	func _ready() -> void:
+		process_mode = Node.PROCESS_MODE_ALWAYS
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		var dim := ColorRect.new()
+		dim.color = Color(0.02, 0.015, 0.01, 0.6)
+		dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(dim)
+		var panel := PanelContainer.new()
+		panel.anchor_left = 0.33
+		panel.anchor_right = 0.67
+		panel.anchor_top = 0.34
+		panel.anchor_bottom = 0.34
+		panel.grow_vertical = Control.GROW_DIRECTION_END
+		add_child(panel)
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 12)
+		panel.add_child(box)
+		var t := UiTheme.heading(_title, UiTheme.FS_HEAD + 4)
+		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(t)
+		box.add_child(UiTheme.rule())
+		var b := UiTheme.body(_text, UiTheme.FS_BODY, UiTheme.TEXT_DIM)
+		b.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(b)
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 16)
+		box.add_child(row)
+		var yes: Button = UiWidgets.small_button(_yes, answer.bind(true))
+		yes.name = "ConfirmYes"
+		yes.add_theme_color_override("font_color", UiTheme.GOLD)
+		row.add_child(yes)
+		var no: Button = UiWidgets.small_button("Cancel  (%s)" % Keybinds.binding_text("settings"), answer.bind(false))
+		no.name = "ConfirmNo"
+		row.add_child(no)
+
+	func _unhandled_input(event: InputEvent) -> void:
+		if event.is_action_pressed("settings") and not event.is_echo():
+			get_viewport().set_input_as_handled()
+			answer(false)
+
+	## Close the question; on yes, do what was asked.
+	func answer(yes: bool) -> void:
+		if is_queued_for_deletion():
+			return
+		queue_free()
+		if yes and _on_yes.is_valid():
+			_on_yes.call()
+
+
 ## "Label ........ value" on one line.
 static func stat_row(label: String, value: String, value_color: Color = UiTheme.TEXT) -> HBoxContainer:
 	var row := HBoxContainer.new()

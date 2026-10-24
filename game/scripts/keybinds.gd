@@ -39,7 +39,7 @@ const ACTIONS: Array = [
 	["seal_delete_alt", "Delete (second key)", "key", KEY_BACKSPACE],
 	["seal_undo", "Undo", "ctrl_key", KEY_Z],
 	["seal_redo", "Redo", "ctrl_key", KEY_Y],
-	["settings", "Controls menu", "key", KEY_ESCAPE],
+	["settings", "Game menu / back", "key", KEY_ESCAPE],
 ]
 
 signal changed

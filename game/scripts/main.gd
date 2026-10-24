@@ -18,6 +18,9 @@ const TALENT_CHOICES: Array[String] = [
 	"one_percent_lifesteal", "tenth_strike", "grudge", "glass_hour", "debt_of_pain", "furnace_gut",
 ]
 
+## A fresh game took this one's place (restart_game): tests that host main.tscn follow it here.
+signal replaced(fresh: Node)
+
 # Practice arena.
 var arena_half: float = GameData.num("arena", "half_size")
 
@@ -104,6 +107,11 @@ var _last_sealed := false
 var _last_payout := 0
 ## Set by headless tests so they never touch the real save file.
 var _test_mode := false
+## What a fresh game does as soon as it is built (restart_game): {} = the title, {"test": affinity}
+## or {"load": slot}.
+var _then: Dictionary = {}
+## The open screen was opened from the game menu, so closing it goes back to the menu.
+var _menu_return := false
 
 
 func _ready() -> void:
@@ -113,6 +121,10 @@ func _ready() -> void:
 	_build_player()
 	_build_hud()
 	_build_town()
+	if _plays():
+		GameSettings.apply_window()
+	if _go_on(_then):
+		return                          # a restart from the game menu: no title, no test arguments
 	_show_select()
 
 	var args: PackedStringArray = OS.get_cmdline_user_args()
@@ -248,11 +260,18 @@ func _unhandled_input(event: InputEvent) -> void:
 	if screen == null and _zoom_input(event):
 		return
 	if event.is_action_pressed("settings"):
-		if screen is ShopScreen or screen is InventoryScreen or screen is EthercosmScreen or screen is TalkScreen \
-				or screen is TemperingScreen or screen is SkillTreeScreen or screen is CraftScreen or (screen is SavesScreen and state == "town"):
+		# Esc closes the topmost thing first: an open screen, then (with none) opens the game menu.
+		# Paused, the screens take Esc themselves (UiScreen.close_actions, GameMenu.back).
+		if screen is GameMenu:
+			(screen as GameMenu).back()
+		elif screen is ShopScreen or screen is InventoryScreen or screen is EthercosmScreen or screen is TalkScreen \
+				or screen is TemperingScreen or screen is SkillTreeScreen or screen is CraftScreen or screen is SavesScreen:
 			close_screen()
+		elif screen == null and state != "select" and state != "dead":
+			open_game_menu()
 		else:
-			_open_settings()
+			_open_settings()            # the title and the hardcore death notice: the controls, as before
+		get_viewport().set_input_as_handled()
 		return
 
 	if state == "select" or state == "dead":
@@ -366,6 +385,191 @@ func _on_settings_closed() -> void:
 ## "[W]"-style tag for the current binding of an action, for on-screen prompts.
 func _k(action: String) -> String:
 	return "[%s]" % Keybinds.binding_text(action)
+
+
+# --- the game menu (Esc in play) ------------------------------------------------------------
+
+## The game menu: Resume, New game (and the test characters), Save, Load, Settings, Quit to title,
+## Quit game. Pauses the game in every state it opens in (town, field, passage, arena, the
+## Netherecho); not on the title or the hardcore death notice, which have their own buttons.
+func open_game_menu(view: String = "main") -> void:
+	if state == "select" or state == "dead":
+		return
+	_menu_return = false
+	_talking_to = ""
+	_walk_to = null
+	_show_screen(GameMenu.new(self, view), true)
+
+
+## The register (SavesScreen) from the game menu, as "save" or "load"; closing it comes back to the menu.
+func menu_open_saves(mode: String) -> void:
+	if mode == "save" and slot_save_block_reason() != "":
+		return
+	_show_screen(SavesScreen.new(self, mode), true)
+	_menu_return = true
+
+
+## Why the character cannot be written to a numbered slot now, or "" if it can. The rule is the one
+## the register already had (SavesScreen offered Save only in town; save_to_slot is "only
+## meaningful in town"): slots are written in town. A test character may be written to a slot: the
+## slot keeps it marked as one (Player.to_save), so loading it is still never autosaved. Nothing
+## writes a test character to the autosave (save_now).
+func slot_save_block_reason() -> String:
+	if state == "select" or str(player.get("talent_id")) == "":
+		return "There is no character to save."
+	if state == "dead":
+		return "This character is dead."
+	if state == "town":
+		return ""
+	var test: bool = bool(player.get("test_character"))
+	match state:
+		"field":
+			if test:
+				return "Saving to a slot is done in town, as at the inn's register. A test character is never autosaved."
+			return "Saving to a slot is done in town, as at the inn's register. Out here the autosave keeps your place every %d s." % int(
+				float((GameData.balance.get("camps", {}) as Dictionary).get("field_autosave_s", 30.0)))
+		"dungeon":
+			return "Saving to a slot is done in town. Nothing is saved inside a passage; the last autosave is from before you went in."
+	return "Saving to a slot is done in town. Nothing is saved in the arena; the last autosave is from town."
+
+
+## What leaving the character in play would lose, for the game menu's question; "" when there is
+## nothing to lose (no character, or a test character: never saved anyway). The game keeps no
+## record of what has changed since the last save, so a real character is always asked about.
+func leave_warning() -> String:
+	if state == "select" or state == "dead" or str(player.get("talent_id")) == "" or bool(player.get("test_character")):
+		return ""
+	var lines: Array[String] = []
+	match state:
+		"town":
+			lines.append("Anything since the last autosave is lost. In town the autosave is written each time something changes; the game does not track what has changed since, so it asks every time.")
+		"field":
+			lines.append("Out here the autosave runs every %d s; whatever happened since the last one is lost." % int(
+				float((GameData.balance.get("camps", {}) as Dictionary).get("field_autosave_s", 30.0))))
+		"dungeon":
+			lines.append("Nothing is saved inside a passage: this run, its spoils and anything picked up since you went in are lost.")
+		_:
+			lines.append("Nothing is saved in the arena: anything since you left town is lost.")
+	if nether.active:
+		lines.append("Your soul is out in the Netherecho.")
+	return "\n".join(lines)
+
+
+## The character's name for the menu ("Test: Fire", "Maren"), or its talent if it has none.
+func character_label() -> String:
+	var n: String = str(player.get("char_name"))
+	if n != "":
+		return n
+	var t: String = str(player.get("talent_id"))
+	return str(TalentDB.get_talent(t).get("name", "no character")) if t != "" else "no character"
+
+
+## Where the character is, for the menu's header.
+func menu_where() -> String:
+	var w: String = _where()
+	if w == "":
+		w = state
+	return ("The Netherecho of " + w.get_slice("  -  ", 0)) if nether.active else w
+
+
+## Whether any slot (the autosave or a numbered one) holds a character.
+func has_saves() -> bool:
+	for slot: int in SaveGame.SLOTS + 1:
+		if not SaveGame.read(SaveGame.slot_path(slot)).is_empty():
+			return true
+	return false
+
+
+## The game menu's Load: a fresh game that loads this slot (restart_game). The menu asked first.
+func load_from_menu(slot: int) -> void:
+	if SaveGame.read(SaveGame.slot_path(slot)).is_empty():
+		return
+	restart_game({"load": slot})
+
+
+## The game menu's test characters: a fresh game that starts this one in town at once.
+func menu_test_character(aff: String) -> void:
+	if GameData.affinity(aff).is_empty():
+		return
+	restart_game({"test": aff})
+
+
+## Back to the title (character creation and the test characters), as at the first start.
+func quit_to_title() -> void:
+	restart_game()
+
+
+func quit_game() -> void:
+	get_tree().quit()
+
+
+## Settings (the game menu's): the window, and the zoom a game starts at (-1 = the data's default).
+## A new starting zoom moves the camera there now too.
+func set_fullscreen(on: bool) -> void:
+	GameSettings.set_fullscreen(on)
+
+
+func zoom_start() -> float:
+	return GameSettings.zoom_start()
+
+
+func set_zoom_start(z: float) -> void:
+	if z < 0.0:
+		GameSettings.reset_zoom_start()
+	else:
+		GameSettings.set_zoom_start(z)
+	_cam_zoom_target = GameSettings.zoom_start()
+	cam_zoom = _cam_zoom_target
+	var focus: Vector3 = nether.projection.global_position if (nether.active and nether.projection != null) else player.global_position
+	_place_camera(focus, 0.0)                   # paused under the menu: move it now, so it shows
+
+
+## Whether this run is the game being played (no test, shot or bot arguments): only then are the
+## player's own settings applied, so tests and screenshots look the same on every machine.
+func _plays() -> bool:
+	return not _test_mode and OS.get_cmdline_user_args().is_empty()
+
+
+## Throw this game away and put a fresh one in its place - the title, as at the first start - and,
+## if asked, go straight on: {"test": affinity} starts that test character, {"load": slot} loads
+## that slot. Replaces the main node instead of reloading the scene, so a test that hosts
+## main.tscn as a child keeps running (it follows `replaced`). The innkeeper's "Someone else" and
+## the hardcore death notice use it too (new_character).
+func restart_game(then: Dictionary = {}) -> void:
+	Engine.time_scale = 1.0
+	get_tree().paused = false
+	_swap_for_fresh.call_deferred(then)
+
+
+func _swap_for_fresh(then: Dictionary) -> void:
+	var parent: Node = get_parent()
+	if parent == null or is_queued_for_deletion():
+		return
+	var tree: SceneTree = get_tree()
+	var was_current: bool = tree.current_scene == self
+	var fresh: Node = (load(scene_file_path if scene_file_path != "" else "res://scenes/main.tscn") as PackedScene).instantiate()
+	fresh.set("_test_mode", _test_mode)
+	fresh.set("_then", then)
+	fresh.process_mode = process_mode
+	var at: int = get_index()
+	parent.remove_child(self)             # out of the world first: two players never share it
+	parent.add_child(fresh)
+	parent.move_child(fresh, at)
+	if was_current:
+		tree.current_scene = fresh
+	replaced.emit(fresh)
+	queue_free()
+
+
+## A fresh game's first move (restart_game): start the test character or load the slot. False if
+## there was nothing to do (or the slot would not load), and the title is shown.
+func _go_on(then: Dictionary) -> bool:
+	if then.has("test"):
+		start_test_character(str(then["test"]))
+		return true
+	if then.has("load"):
+		return load_slot(int(then["load"]))
+	return false
 
 
 # --- select / town --------------------------------------------------------------
@@ -1108,6 +1312,11 @@ func _show_screen(new_screen: Control, pause: bool) -> void:
 ## Close the open screen. In town, a screen someone showed you goes back to talking to them, and
 ## closing that leaves you standing in the street.
 func close_screen() -> void:
+	if _menu_return and screen != null and not (screen is GameMenu):
+		_show_screen(GameMenu.new(self), true)      # opened from the game menu: back to it
+		_menu_return = false
+		return
+	_menu_return = false
 	if state == "town":
 		if _talking_to != "" and not (screen is TalkScreen):
 			_show_screen(TalkScreen.new(self, _talking_to), false)
@@ -1182,9 +1391,7 @@ func toggle_hardcore() -> void:
 
 
 func new_character() -> void:
-	Engine.time_scale = 1.0
-	get_tree().paused = false
-	get_tree().reload_current_scene()
+	restart_game()
 
 
 func enter_passage() -> void:
@@ -2082,7 +2289,7 @@ func _build_world() -> void:
 	camera.size = GameData.num("camera", "ortho_size")
 	camera.far = 300.0
 	camera.near = 0.1
-	_cam_zoom_target = GameData.num("camera", "zoom_default")
+	_cam_zoom_target = GameSettings.zoom_start() if _plays() else GameData.num("camera", "zoom_default")
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--zoom="):              # screenshots at a chosen zoom
 			_cam_zoom_target = clampf(float(arg.get_slice("=", 1)), 0.0, 1.0)
@@ -2137,6 +2344,37 @@ func _where() -> String:
 
 
 # --- test harness ---------------------------------------------------------------
+
+## The game menu's screenshots (--shot-ui=menu-...): the menu in town and in the field (Save
+## disabled out there), the new game view with the test characters, Load and Save (from a folder
+## of shot saves, never the real ones), Settings, the question before leaving a real character, and
+## the menu over a test character.
+func _setup_menu_shot(which: String) -> void:
+	player.set("char_name", "Maren")
+	SaveGame.test_dir = "user://shot_saves/"
+	save_to_slot(0)                         # an autosave and slot 2, so Load has something to list
+	save_to_slot(2)
+	if which == "menu-field":
+		walk_out()
+	elif which == "menu-test":
+		start_test_character("fire")
+	else:
+		_enter_town()
+	match which:
+		"menu-new":
+			open_game_menu("new")
+		"menu-settings":
+			open_game_menu("settings")
+		"menu-load", "menu-save":
+			open_game_menu()
+			menu_open_saves(which.trim_prefix("menu-"))
+		"menu-confirm":
+			open_game_menu()
+			(screen as UiScreen).confirm_leave("Quit to title", quit_to_title)
+		_:
+			open_game_menu()
+	get_tree().paused = false               # the menu pauses; the shot countdown has to tick
+
 
 ## Put the game into a named UI state with representative data, then screenshot it.
 ## States: title, town, shop, inventory, inventory-abilities, hud (mid-fight, hurt), hud-low (near death, reflux locked).
@@ -2500,6 +2738,8 @@ func _setup_ui_shot(which: String) -> void:
 		"saves":
 			_enter_town()
 			open_saves()
+		"menu-town", "menu-field", "menu-new", "menu-load", "menu-save", "menu-settings", "menu-confirm", "menu-test":
+			_setup_menu_shot(which)
 		"inventory", "inventory-abilities":
 			# some of the new slots filled and some left empty, and a piece in the pack to compare
 			for id: String in ["oilcloth_hood", "work_gloves", "chalk_slate", "hobnailed_boots", "cooling_coil"]:
