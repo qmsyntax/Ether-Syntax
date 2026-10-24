@@ -153,15 +153,11 @@ func _finish(ab: Dictionary, groups: Dictionary, fallback_mult: float, patch: Ar
 	# group multipliers, clamped, onto every field of the group
 	var lo: float = float(params.get("mult_min", 0.0))
 	var hi: float = float(params.get("mult_max", 100.0))
-	var caps: Dictionary = params.get("field_caps", {})
+	var clamped: Dictionary = {}
 	for g: String in groups:
-		var m2: float = clampf(float(groups[g]), lo, hi)
-		(out["groups"] as Dictionary)[g] = m2
-		for path: String in _group_fields(ab, g):
-			patch.append({"op": "mul", "path": path, "value": m2})
-			if caps.has(path):
-				patch.append({"op": "min", "path": path, "value": float(caps[path])})
-		_extra_group_patch(ab, g, m2, patch)
+		clamped[g] = clampf(float(groups[g]), lo, hi)
+		(out["groups"] as Dictionary)[g] = clamped[g]
+	patch.append_array(group_patch(ab, clamped))
 	out["patch"] = patch
 	out["lines"] = lines
 	out["fields"] = _fields_shown(ab, patch)
@@ -338,6 +334,42 @@ func _extra_group_patch(ab: Dictionary, g: String, m: float, patch: Array) -> vo
 				var p: Dictionary = get_path_value(ab, part2)
 				if (p.has("status") or p.has("statuses")) and not p.has("status_s"):
 					patch.append({"op": "set", "path": part2 + ".status_time_mult", "value": m})
+
+
+## The patch that multiplies every field of each stat group in `groups` ({group: multiplier}) in
+## this skill, with the field caps and what each group reaches beyond its fields. The one reader of
+## the stat groups: a sealed word's totals land through it, and so does an ascension boost
+## (Ascension.patch, through RuneRules.group_patch).
+func group_patch(ab: Dictionary, groups: Dictionary) -> Array:
+	var patch: Array = []
+	var caps: Dictionary = params.get("field_caps", {})
+	for g: String in groups:
+		var m: float = float(groups[g])
+		for path: String in _group_fields(ab, g):
+			patch.append({"op": "mul", "path": path, "value": m})
+			if caps.has(path):
+				patch.append({"op": "min", "path": path, "value": float(caps[path])})
+		_extra_group_patch(ab, g, m, patch)
+	return patch
+
+
+## Public: whether stat group `g` reaches anything in this skill.
+func group_acts(ab: Dictionary, g: String) -> bool:
+	return _group_acts(ab, g)
+
+
+## Public: the stat groups a field path of this skill belongs to (a path may sit in one group only).
+func groups_of_path(ab: Dictionary, path: String) -> Array[String]:
+	var out: Array[String] = []
+	for g: String in (params.get("stat_groups", {}) as Dictionary):
+		if _group_fields(ab, g).has(path):
+			out.append(g)
+	return out
+
+
+## Public: the before/after field list for this skill (the rule set's fields, as rune_preview shows).
+func fields_of(ab: Dictionary) -> Array:
+	return _fields_shown(ab)
 
 
 ## True if the group reaches something in this skill once the 2026-10-22 rules are counted.

@@ -9,6 +9,8 @@ signal died
 signal disturbed
 ## A rune became known (design/14 section 8): its id and where it was found.
 signal rune_discovered(rune_id: String, source: String)
+## A star ascended; `ascension_pending` holds its offer and boosts until resolve_ascension.
+signal ascended(star: int)
 
 const FloatText := preload("res://scripts/float_text.gd")
 const Projectile := preload("res://scripts/projectile.gd")
@@ -90,6 +92,9 @@ var craft_made: Array = []
 var tool_uses: Dictionary = {}
 ## Each star's capacity, 1..99 %. The essence tank is the sum of full_tank x capacity (Brent 2026-09-23).
 var star_pct: Array[float] = []
+## The ascension not yet settled (saved): {star, offer: [affinity ids], skills: [{index, id, stage,
+## amount}]}; {} when there is none. See _begin_ascension / resolve_ascension.
+var ascension_pending: Dictionary = {}
 ## Constructs carried, waiting to be bound: [{tier, concept}]. Placeholder source: enemy drops.
 var constructs: Array = []
 var rng := RandomNumberGenerator.new()
@@ -321,6 +326,7 @@ func set_affinities(list: Array) -> void:
 	if next.is_empty():
 		next = GameData.default_affinities()
 	affinities = next
+	ascension_pending = {}
 	_reset_loadout()
 	clear_reflux()
 	_reset_tempering()
@@ -3455,8 +3461,18 @@ func ability_stats(state: Dictionary) -> Dictionary:
 	# a locked rune word reshapes the skill (design/14 section 7; the rule set's effects patch)
 	if state.has("word"):
 		apply_rune_patch(ab, Runes.active().locked_effects(state["word"], RuneContext.of(state, affinities)).get("patch", []))
+	# ascension boosts (Brent 2026-10-24) come AFTER the word: the word's patch can SET a field (the
+	# default recovery, a status time) that a boost laid first would lose, and a boost should also
+	# reach what the word added. Not levelling: stage and bar are untouched.
+	_apply_ascension(ab, state)
 	ab["cost"] = float(ab["cost"]) * inventory.stat("cost_mult", true)
 	return ab
+
+
+## A skill state's ascension totals onto its numbers as they stand (Ascension.patch).
+static func _apply_ascension(ab: Dictionary, state: Dictionary) -> void:
+	if state.has("ascension"):
+		apply_rune_patch(ab, Ascension.patch(ab, state["ascension"]))
 
 
 ## Apply a rune effects patch to an ability dictionary, op by op: {op, path ("a.b" for nested), value}.
@@ -3984,11 +4000,14 @@ func rune_preview(index: int) -> Dictionary:
 	var state: Dictionary = abilities[index]
 	var bare: Dictionary = state.duplicate(true)
 	bare.erase("word")
+	bare.erase("ascension")                  # laid after the word below, as ability_stats does
 	var before: Dictionary = ability_stats(bare)
 	var word: Dictionary = ability_word(index).duplicate(true)
 	var fx: Dictionary = Runes.active().effects(word, rune_context(index))
 	var after: Dictionary = before.duplicate(true)
 	apply_rune_patch(after, fx.get("patch", []))
+	_apply_ascension(before, state)
+	_apply_ascension(after, state)
 	# the rule set names the fields worth showing: [{path, group, label, lower_is_better, unit}]
 	var stage_mult: float = ability_damage_mult(int(state["stage"])) * float(before.get("damage_all", 1.0))
 	var rows: Array[Dictionary] = _stat_rows(before, after, fx.get("fields", []), stage_mult)
@@ -4060,6 +4079,7 @@ func skill_details(index: int) -> Dictionary:
 	var state: Dictionary = abilities[index]
 	var bare: Dictionary = state.duplicate(true)
 	bare.erase("word")
+	bare.erase("ascension")                  # "before" is the skill's own: no word, no ascension boost
 	var before: Dictionary = ability_stats(bare)
 	var after: Dictionary = ability_stats(state)
 	if before.is_empty():
@@ -4103,7 +4123,7 @@ func skill_details(index: int) -> Dictionary:
 		rows.append({"label": str(d["label"]), "group": "derived", "path": "", "before": _stat_text(float(d["b"]), fd), "after": _stat_text(float(d["a"]), fd),
 			"changed": absf(float(d["a"]) - float(d["b"])) > 0.0001, "better": (float(d["a"]) < float(d["b"])) == bool(d.get("lower", false))})
 	return {"rows": rows, "statuses": StatusText.compare(before, after), "works_on": StatusText.read_by(after),
-		"sealed": word_locked(index), "before": before, "after": after}
+		"sealed": word_locked(index), "boosted": ascension_summary(index) != "", "before": before, "after": after}
 
 
 ## Short lines on what a SEALED word does to ability `index` ([] if it has none), for tooltips and
@@ -4419,6 +4439,7 @@ func to_save() -> Dictionary:
 		"name": char_name, "identity": identity, "look": look.duplicate(), "affinities": affinities.duplicate(),
 		"tempering": tempering.duplicate(true),
 		"talent_id": talent_id, "stars": stars, "star_pct": star_pct.duplicate(), "money": money,
+		"ascension_pending": ascension_pending.duplicate(true),
 		"essence": essence, "latent_aura": _latent_aura,
 		"body": body.to_dict(),
 		"arm_right": arm_right, "arm_right_lost": arm_right_lost,
@@ -4463,6 +4484,7 @@ func from_save(d: Dictionary) -> void:
 	money = int(d.get("money", 0))
 	essence = minf(essence_max, float(d.get("essence", essence_max)))
 	_latent_aura = float(d.get("latent_aura", 0.0))
+	ascension_pending = (d.get("ascension_pending", {}) as Dictionary).duplicate(true)
 	# older saves kept three wound layers; their totals become the bar
 	body.from_dict(d.get("body", {}), d.get("body_hp", {}), d.get("body_max", {}))
 	arm_right = float(d.get("arm_right", arm_right))
@@ -4855,11 +4877,114 @@ func try_ascend() -> void:
 	skill_points += int((GameData.skill_tree.get("points", {}) as Dictionary).get("on_ascend", 0))
 	for e: TalentEffect in effects:
 		e.on_ascend(stars)
+	_begin_ascension()
 	_rig_action("power_up")
 	note("ASCENDED. A second star splits off - tiny, for now.")
 	note("Talent evolves: %s" % str(talent.get("evolve_2", "?")))
 	if talent_id != "one_percent_lifesteal":
 		note("(this talent's evolution is not wired into the prototype yet)")
+	ascended.emit(stars)
+
+
+# --- what an ascension gives (Brent 2026-10-24; rules in Ascension, numbers balance.json "ascension") ---
+
+## Roll what this ascension offers, alongside the talents' on_ascend: the affinities to choose from
+## and each skill's boost, measured now (skills held and their stages at the moment of ascending).
+## It waits in `ascension_pending` (saved) until `resolve_ascension`.
+func _begin_ascension() -> void:
+	ascension_pending = {"star": stars, "offer": Ascension.offer(affinities, rng), "skills": Ascension.boosts(abilities, stars)}
+
+
+## The affinity is yours: its skill tree, its tempering technique and its starting runes - and no
+## skill (Brent 2026-10-18: nothing is given automatically; the tree's roots are trained). Returns
+## "" or why not.
+func add_affinity(id: String) -> String:
+	if affinities.has(id):
+		return "You already hold %s." % str(GameData.affinity(id).get("label", id))
+	if GameData.affinity(id).is_empty() or not GameData.affinity_playable(id):
+		return "There is no such affinity."
+	affinities.append(id)
+	for tid: String in GameData.technique_ids():
+		if str(GameData.technique(tid).get("affinity", "")) == id and not tempering.has(tid):
+			tempering[tid] = {"stage": 0, "progress": 0.0}
+	var start: Dictionary = (GameData.rune_discovery.get("start", {}) as Dictionary).get("affinity_runes", {})
+	for rid: Variant in start.get(id, []):
+		_know(str(rid))
+	return ""
+
+
+## Settle the pending ascension: add `affinity` (one of the offer, or "" to decline when the data
+## allows it) and put each skill's boost into an aspect - `aspects` maps a skill's index (int or
+## its string) to an aspect id; a skill left out, or given an aspect that does nothing to it, gets
+## its main aspect (Ascension.main_aspect). Boosts add to the skill's "ascension" totals. Returns ""
+## or why not (nothing is changed then).
+func resolve_ascension(affinity: String, aspects: Dictionary = {}) -> String:
+	if ascension_pending.is_empty():
+		return "Nothing is waiting from an ascension."
+	var offered: Array = ascension_pending.get("offer", [])
+	if affinity == "" and not Ascension.allow_decline() and not offered.is_empty():
+		return "An affinity must be chosen."
+	if affinity != "" and not offered.has(affinity):
+		return "That affinity was not offered."
+	if affinity != "":
+		var why: String = add_affinity(affinity)
+		if why != "":
+			return why
+	for b: Dictionary in ascension_pending.get("skills", []):
+		var i: int = int(b["index"])
+		if i < 0 or i >= abilities.size() or str((abilities[i] as Dictionary)["id"]) != str(b["id"]):
+			continue                            # the skill list changed under the offer; skip what no longer matches
+		var asp: String = ascension_aspect(i, str(aspects.get(i, aspects.get(str(i), ""))))
+		var st: Dictionary = abilities[i]
+		var totals: Dictionary = st.get("ascension", {})
+		totals[asp] = float(totals.get(asp, 0.0)) + float(b["amount"])
+		st["ascension"] = totals
+	ascension_pending = {}
+	note("The star settles.%s" % ((" %s is yours." % str(GameData.affinity(affinity).get("label", affinity))) if affinity != "" else ""))
+	return ""
+
+
+## The aspect a boost to skill `index` goes into: `wanted` if it changes something there, else the
+## skill's main aspect.
+func ascension_aspect(index: int, wanted: String) -> String:
+	var ab: Dictionary = ability_stats(abilities[index])
+	if wanted != "" and Ascension.aspect_ids().has(wanted) and Ascension.aspect_acts(ab, wanted):
+		return wanted
+	return Ascension.main_aspect(ab)
+
+
+## What putting `amount` into `aspect` would change on skill `index`: the rule set's rows for that
+## aspect's stat groups, before -> after ([{label, before, after, changed, better}]), numbers formatted.
+func ascension_preview(index: int, aspect: String, amount: float) -> Array[Dictionary]:
+	if index < 0 or index >= abilities.size():
+		return []
+	var st: Dictionary = abilities[index]
+	var trial: Dictionary = st.duplicate(true)
+	var totals: Dictionary = trial.get("ascension", {})
+	totals[aspect] = float(totals.get(aspect, 0.0)) + amount
+	trial["ascension"] = totals
+	var before: Dictionary = ability_stats(st)
+	var after: Dictionary = ability_stats(trial)
+	var groups: Dictionary = Ascension.aspect_groups(aspect)
+	var fields: Array = Runes.active().fields_of(before).filter(func(f: Dictionary) -> bool:
+		return groups.has(str(f["group"])) or (str(f["path"]) == "recovery" and groups.has("windup")))
+	if groups.has("power"):
+		# a buff's or channel's strength (its magnitude paths) counts as power but is in no field list
+		for mag: Variant in before.get("magnitude", []):
+			var mp: String = str((mag as Dictionary).get("path", ""))
+			if mp != "" and not fields.any(func(f: Dictionary) -> bool: return str(f["path"]) == mp):
+				fields.append({"path": mp, "group": "power", "label": "Strength (%s)" % mp.get_slice(".", mp.get_slice_count(".") - 1).replace("_", " "),
+					"unit": "", "lower_is_better": str((mag as Dictionary).get("dir", "up")) == "down", "scaled_by_stage": false})
+	var stage_mult: float = ability_damage_mult(int(st["stage"])) * float(before.get("damage_all", 1.0))
+	return _stat_rows(before, after, fields, stage_mult).filter(func(r: Dictionary) -> bool: return bool(r["changed"]))
+
+
+## "Ascension: +22% power" for skill `index`, or "" if it has never been boosted.
+func ascension_summary(index: int) -> String:
+	if index < 0 or index >= abilities.size():
+		return ""
+	var s: String = Ascension.summary((abilities[index] as Dictionary).get("ascension", {}))
+	return ("Ascension: " + s) if s != "" else ""
 
 
 # --- the 2026-10-22 skill kinds (build brief: smite, channel, charge_release, summon, seed, grapple,
