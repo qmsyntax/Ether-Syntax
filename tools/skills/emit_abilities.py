@@ -491,10 +491,19 @@ def main():
         a["rule"] = d["rule"]
         for k, v in T.AFFINITY_RULE_NUMBERS.get(aff, {}).items():
             a[k] = v
+        if aff not in T.LINEAGE:
+            sys.exit("emit_abilities: affinity %s has no LINEAGE entry (base or hybrid)" % aff)
+        kind, parents, role = T.LINEAGE[aff]
+        a["kind"] = kind
+        a["parents"] = list(parents)
+        a["role"] = role
         affs[aff] = a
     colour_issues = T.check_colours()
     if colour_issues:
         sys.exit("emit_abilities: colours: %s" % colour_issues)
+    lineage_issues = T.check_lineage()
+    if lineage_issues:
+        sys.exit("emit_abilities: lineage: %s" % lineage_issues)
     aff_note = (NOTE + " " + old_aff["_note"].split(" GENERATED")[0].replace(NOTE + " ", "") +
         " GENERATED (2026-10-22 build): all 16 affinities. kit = the draft's three starters (ranged, close, movement); "
         "reflux_tier and rule (the one rule, as text) from the draft. The rule as data keys, read by the shared systems: "
@@ -503,7 +512,10 @@ def main():
         "store), living_only (nothing to the unliving), hale_mult (above half health), dying_mult (below half), corpse_lie_s "
         "(corpses lie this long while you hold it), growth (Nature's patches), needs_seen (Dream: the target must see you or be "
         "asleep), bonus_vs_status {status: fraction}, status_time_vs {status: mult} (its statuses last longer on those), "
-        "times_flesh (Disease: times the target's flesh), marks_adrift (Water: a shove that ends leaves Adrift).")
+        "times_flesh (Disease: times the target's flesh), marks_adrift (Water: a shove that ends leaves Adrift). "
+        "kind / parents / role (the affinity framework, design/affinities/framework.md, Brent 2026-10-24): 'base' (the eight a "
+        "character is created with) or 'hybrid' (offered at ascension when a parent is held), a hybrid's two base parents, and "
+        "its one-line role; from skill_tables.LINEAGE. A listed affinity with no draft (Holy, Unholy) is not emitted.")
     AFFINITIES.write_text(json.dumps(OD([("_note", aff_note), ("prime_default", old_aff.get("prime_default", ["water"])), ("affinities", affs)]),
                                      indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
 

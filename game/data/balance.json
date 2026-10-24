@@ -58,6 +58,54 @@
   "ascension_2": {
     "body_scale": 1.3
   },
+  "ascension": {
+    "_note": "Brent 2026-10-24 [B]: at each star ascension the player is offered offer_count affinities to add (one a hybrid of a parent already held, when any applies; the rest random affinities not held; never one the game does not have - affinities.json kind/parents) and every skill held gets a permanent boost: boost_i = (P / skills held) x (1 + stage_weight x stage_i), P = pool_by_star[the star just born] (the last entry for later stars). A boost is a fraction (0.25 = 25%) put into one aspect per skill, chosen by the player; a skip uses the skill's main aspect (its signature, else its magnitude). Each aspect names the rune stat groups it reaches and which way: 'up' multiplies a field by (1 + the aspect's total), 'down' divides it by that, so a discount or a quicker wind-up can never reach zero. Boosts of one aspect add up across ascensions. It is not levelling: no stage, bar or level lock moves. allow_decline: the offer may be turned down (and a skip declines; adding an affinity is permanent, so it is never added unasked). Numbers [MODEL]: P 0.6 at the second star = four skills at stage 1 get +22.5% each; unplaytested.",
+    "offer_count": 2,
+    "allow_decline": true,
+    "pool_by_star": {
+      "2": 0.6,
+      "3": 0.8,
+      "4": 1.0,
+      "5": 1.2
+    },
+    "stage_weight": 0.5,
+    "aspects": {
+      "power": {
+        "label": "Power",
+        "word": "power",
+        "desc": "damage, or a heal's or buff's strength",
+        "groups": {
+          "power": "up"
+        }
+      },
+      "reach": {
+        "label": "Reach",
+        "word": "reach",
+        "desc": "range, radius and distance",
+        "groups": {
+          "reach": "up"
+        }
+      },
+      "speed": {
+        "label": "Speed",
+        "word": "speed",
+        "desc": "flight and dash speed, a quicker wind-up and recovery, longer-lasting effects",
+        "groups": {
+          "speed": "up",
+          "windup": "down",
+          "duration": "up"
+        }
+      },
+      "cost": {
+        "label": "Essence",
+        "word": "essence cost",
+        "desc": "a cheaper cast",
+        "groups": {
+          "cost": "down"
+        }
+      }
+    }
+  },
   "night": {
     "rent": 150,
     "arm_restored": 40.0,
