@@ -435,23 +435,29 @@ def main():
     on_off, conversion, strength_text = read_strength_rules(cells, statuses)
 
     # --- alignment thresholds -------------------------------------------------------------
+    # The thresholds sit two rows under the grid, which grows with each affinity (A19/A20 with 16
+    # affinities, A21/A22 with 18 since 2026-10-24), so they are found by their labels.
     al = wb["Alignment"]
-    al_cells = {(r, c): v for r, row in enumerate(al.iter_rows(min_row=1, max_row=22, max_col=2, values_only=True), 1) for c, v in enumerate(row, 1)}
-    if not text(al_cells.get((19, 1))).lower().startswith("refuse") or not text(al_cells.get((20, 1))).lower().startswith("weaken"):
-        sys.exit("export_runes_json: Alignment A19/A20 are not the refuse / weaken thresholds - the layout moved")
-    refuse_below = clean(num(al_cells.get((19, 2)), "Alignment B19"))
-    weaken_below = clean(num(al_cells.get((20, 2)), "Alignment B20"))
+    al_cells = {(r, c): v for r, row in enumerate(al.iter_rows(min_row=1, max_row=80, max_col=2, values_only=True), 1) for c, v in enumerate(row, 1)}
+    refuse_row = next((r for (r, c), v in sorted(al_cells.items()) if c == 1 and text(v).lower().startswith("refuse below")), None)
+    if refuse_row is None or not text(al_cells.get((refuse_row + 1, 1))).lower().startswith("weaken below"):
+        sys.exit("export_runes_json: Alignment has no 'Refuse below' row followed by 'Weaken below' - the layout moved")
+    refuse_below = clean(num(al_cells.get((refuse_row, 2)), "Alignment B%d" % refuse_row))
+    weaken_below = clean(num(al_cells.get((refuse_row + 1, 2)), "Alignment B%d" % (refuse_row + 1)))
 
     # --- affinity positions -----------------------------------------------------------------
+    # one row per affinity from row 2 down to the first empty A cell (the note under the table is
+    # not an affinity); 16 rows until 2026-10-24, 18 since Holy and Unholy
     sl = wb["Slider Links"]
-    rows = list(sl.iter_rows(min_row=1, max_row=17, values_only=True))
+    rows = list(sl.iter_rows(min_row=1, max_row=60, values_only=True))
     axes = []
     for h in rows[0][6:11]:
         axes.append(re.sub(r"\s*\(.*\)", "", text(h)).lower().replace("/", "_").replace(" ", "_"))
     positions = OrderedDict()
     for row in rows[1:]:
-        if text(row[0]):
-            positions[text(row[0]).lower()] = [clean(num(v, "Slider Links %s" % text(row[0]))) for v in row[6:11]]
+        if not text(row[0]):
+            break
+        positions[text(row[0]).lower()] = [clean(num(v, "Slider Links %s" % text(row[0]))) for v in row[6:11]]
 
     # --- base runes ---------------------------------------------------------------------------
     base = OrderedDict()
