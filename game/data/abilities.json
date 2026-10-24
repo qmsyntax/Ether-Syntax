@@ -68,16 +68,15 @@
       "reach_bonus": 1.5,
       "damage_mult_min": 1.4,
       "damage_mult": 3.0,
-      "against_wall_mult": 1.5,
       "on_hit": {
         "shove": 3.0,
         "poise": 60.0,
-        "status": "soaked"
+        "status": "soaked",
+        "against_wall_mult": 1.5
       },
       "verse": "",
       "icon": "palm:WAT-2a",
-      "simplified": "'against_wall_mult' is not built",
-      "summary": "Hold to gather the weight of falling water over your fists (up to 1.2 s; you are Braced and walk at 30%), then bring it down: everything within 3 m takes 1.4x to 3.0x strike damage by the charge, is Soaked, loses 60 poise and is thrown 3 m outward. One already against a wall or stone takes half again and is Crushed where it stands. (simplified)",
+      "summary": "Hold to gather the weight of falling water over your fists (up to 1.2 s; you are Braced and walk at 30%), then bring it down: everything within 3 m takes 1.4x to 3.0x strike damage by the charge, is Soaked, loses 60 poise and is thrown 3 m outward. One already against a wall or stone takes half again and is Crushed where it stands.",
       "good_modifiers": [
         "Hold",
         "Heave",
@@ -352,8 +351,7 @@
       ],
       "verse": "",
       "icon": "undertow:WAT-4a",
-      "simplified": "'throw' is not built; 'on_land' is not built",
-      "summary": "Grab one enemy within reach, lift it on a column of water and hurl it up to 6 m toward where you aim (heavy ones half as far; an elite only staggers). 40 when you grab it; where it lands, everyone within 1.5 m takes 40 and is knocked aside. Thrown into a wall, stone or another body, it is Crushed. (simplified)",
+      "summary": "Grab one enemy within reach, lift it on a column of water and hurl it up to 6 m toward where you aim (heavy ones half as far; an elite only staggers). 40 when you grab it; where it lands, everyone within 1.5 m takes 40 and is knocked aside. Thrown into a wall, stone or another body, it is Crushed.",
       "good_modifiers": [
         "Surge",
         "Drown",
@@ -2573,8 +2571,7 @@
       "on_hit": {},
       "verse": "",
       "icon": "palm:LIG-2a",
-      "simplified": "'range_min' is not built; 'pass_radius' is not built; 'on_pass' is not built",
-      "summary": "Hold up to 1.2 s, walking slowly; let go and you are the bolt: you cross 4 m at a tap, 8 m at a full hold, through everything in the way. Each body you pass takes 80 to 220 and 1 to 3 Live marks by how long you held. A full charge Overloads the whole line. (simplified)",
+      "summary": "Hold up to 1.2 s, walking slowly; let go and you are the bolt: you cross 4 m at a tap, 8 m at a full hold, through everything in the way. Each body you pass takes 80 to 220 and 1 to 3 Live marks by how long you held. A full charge Overloads the whole line.",
       "good_modifiers": [
         "Far",
         "Ground",
@@ -2665,8 +2662,7 @@
       ],
       "verse": "It does not choose. It takes every road.",
       "icon": "fork",
-      "simplified": "'carries_caster' is not built; 'force_rear' is not built",
-      "summary": "One enemy within 9 m, then up to three more within 5 m of each other: you flash from one to the next, striking each from behind for 1.2x strike damage and a Live mark, and stop behind the last. Never the same body twice. (simplified)",
+      "summary": "One enemy within 9 m, then up to three more within 5 m of each other: you flash from one to the next, striking each from behind for 1.2x strike damage and a Live mark, and stop behind the last. Never the same body twice.",
       "good_modifiers": [
         "Many",
         "Far",
@@ -3232,8 +3228,7 @@
       ],
       "verse": "",
       "icon": "wall:ICE-4a",
-      "simplified": "'length' is not built; 'shatter_burst' is not built",
-      "summary": "Point, 10 m: a wall of rime 5 m long rises across your aim in a quarter second and stands 6 s. It blocks walking and every shot, as standing stone does. Anyone it rises under is shoved 1 m clear and gains 2 Chill; a body shoved into it is Crushed, as against stone. A hard hit (yours or theirs) shatters it early: 40 and a Chill to everyone within 2.5 m. Two at a time. (simplified)",
+      "summary": "Point, 10 m: a wall of rime 5 m long rises across your aim in a quarter second and stands 6 s. It blocks walking and every shot, as standing stone does. Anyone it rises under is shoved 1 m clear and gains 2 Chill; a body shoved into it is Crushed, as against stone. A hard hit (yours or theirs) shatters it early: 40 and a Chill to everyone within 2.5 m. Two at a time.",
       "good_modifiers": [
         "Persist",
         "Expand",
@@ -3481,8 +3476,7 @@
       ],
       "verse": "",
       "icon": "mote:ICE-6b",
-      "simplified": "'crushes' is not built",
-      "summary": "A sheet of ice 3 m wide slides out 9 m along the floor: everything it meets takes 30 and 2 Chill and is shoved 3 m along with it. A body it drives into a wall, stone or another body is Crushed, as water's are. (simplified)",
+      "summary": "A sheet of ice 3 m wide slides out 9 m along the floor: everything it meets takes 30 and 2 Chill and is shoved 3 m along with it. A body it drives into a wall, stone or another body is Crushed, as water's are.",
       "good_modifiers": [
         "Far",
         "Motion",

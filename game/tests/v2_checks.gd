@@ -28,6 +28,7 @@ func run() -> void:
 	await _statuses()
 	await _coat_and_fire()
 	await _ground_and_edge()
+	await _storm_and_tide()
 
 
 # --- helpers ------------------------------------------------------------------------------------
@@ -458,6 +459,97 @@ func _ground_and_edge() -> void:
 		p.call("_physics_process", STEP)
 	check.call("Downdraft leaps to where you aim (4 m), not its full %s m" % str(float(dd["dash_speed"]) * float(dd["dash_time"])),
 		_near(start.distance_to(p.global_position), 4.0, 0.15), "%.2f m" % start.distance_to(p.global_position))
+	p.set("cursor_fixed", null)
+	_clean()
+
+
+# --- Lightning's quicken and its path, Ice's wet freeze and wall, Water's wall-crush and throw --------------------
+
+func _storm_and_tide() -> void:
+	var p := _player(Vector3(5800, 0, 0), ["lightning", "ice", "water"])
+	for id: String in ["forked_path", "stored_bolt", "rime_wall", "cataract", "overboard"]:
+		p.call("learn", id)
+	await t.get_tree().physics_frame
+	p.set("_facing", Vector3(0, 0, -1))
+	# quicken on Overload: every Overload you cause leaves you Quickened
+	var lv := _enemy(p, Vector3(0, 0, -3.0))
+	(p.get("buffs") as Dictionary).clear()
+	p.call("_add_marks", lv, 3, false)
+	check.call("Lightning: an Overload you cause leaves you Quickened for %s s" % str(GameData.affinity("lightning")["quicken_on_overload"]),
+		(p.get("buffs") as Dictionary).has("quickened") and _near(float((p.get("buffs") as Dictionary)["quickened"]["t"]), float(GameData.affinity("lightning")["quicken_on_overload"])))
+	(p.get("buffs") as Dictionary).clear()
+	# Forked Path takes you behind each one it strikes
+	var row: Array = []
+	for i: int in 3:
+		var e := _enemy(p, Vector3(3.0 * float(i), 0, -4.0))
+		e.set("facing", Vector3(0, 0, 1))
+		row.append(e)
+	p.set("hovered", row[0])
+	_cast(p, "forked_path")
+	var last: Node3D = row[2]
+	check.call("Forked Path carries you along: you stand behind the last one it struck", bool(last.call("is_behind", p.global_position))
+		and p.global_position.distance_to(last.global_position) < 2.0, "%.2f m off" % p.global_position.distance_to(last.global_position))
+	p.set("hovered", null)
+	p.global_position = Vector3(5800, 0, 0)
+	for e: Node in row:
+		e.queue_free()
+	# Stored Bolt: a full hold crosses its full range at once, through what stands in the way
+	var sb: Dictionary = GameData.ability("stored_bolt")
+	var in_way := _enemy(p, Vector3(0, 0, -3.0))
+	var start: Vector3 = p.global_position
+	p.set("_facing", Vector3(0, 0, -1))
+	_ready_to_cast(p)
+	t.call("_cast", p, "stored_bolt")
+	p.call("_tick_held", float(sb["charge_max"]) + 0.01)
+	check.call("Stored Bolt: held full, it lets go as a streak - %s m at once, striking what it passes" % str(sb["range"]),
+		_near(start.distance_to(p.global_position), float(sb["range"]), 0.7) and float(t.call("_lost", in_way)) >= float(sb["damage"]) - 0.5,
+		"%.2f m, lost %f" % [start.distance_to(p.global_position), float(t.call("_lost", in_way))])
+	p.global_position = start
+	in_way.queue_free()
+	# wet freezes: an ice hit that lays Chill on a Soaked body adds one more, and the Soak is gone
+	var wet := _enemy(p, Vector3(4.0, 0, -6.0))
+	wet.call("add_status", "soaked", 1, p)
+	p.call("apply_hit", wet, {"status": "chilled", "stacks": 2}, ["ability", "ice"])
+	check.call("Ice: Chill on a Soaked body is one more, and the Soak turns to ice", int(wet.call("status_stacks", "chilled")) == 3 and not bool(wet.call("has_status", "soaked")),
+		str(wet.get("statuses")))
+	# Rime Wall: a wall of ice, as long as its length; broken early it bursts and chills
+	var rw: Dictionary = GameData.ability("rime_wall")
+	var by_wall := _enemy(p, Vector3(1.0, 0, -6.0))
+	var wall: Node3D = p.call("raise_stone", p.global_position + Vector3(0, 0, -5.0), Vector3(0, 0, -1), rw)
+	check.call("Rime Wall rises %s m long" % str(rw["length"]), _near((wall.get("size") as Vector3).x, float(rw["length"])))
+	wall.call("tick", 1.0)
+	wall.call("shatter", Vector3(0, 0, -1), p)
+	check.call("and broken early it bursts round itself: %d and Chill" % int(rw["shatter_burst"]["damage"]),
+		_near(float(t.call("_lost", by_wall)), float(rw["shatter_burst"]["damage"]), 0.5) and bool(by_wall.call("has_status", "chilled")), "lost %f" % float(t.call("_lost", by_wall)))
+	# Cataract: a body already pressed against something takes half again, and it is a Crush where it stands
+	var cat: Dictionary = GameData.ability("cataract")
+	var pair_a := _enemy(p, Vector3(-6.0, 0, 0))
+	var pair_b := _enemy(p, Vector3(-6.0, 0, -1.0))          # touching pair_a
+	var alone := _enemy(p, Vector3(-6.0, 0, 6.0))
+	p.set("ward_parts", [])
+	var pa0: float = t.call("_lost", pair_a)
+	p.call("apply_hit", pair_a, {"damage": 100.0, "against_wall_mult": float(cat["on_hit"]["against_wall_mult"])}, ["ability", "water"])
+	p.call("apply_hit", alone, {"damage": 100.0, "against_wall_mult": float(cat["on_hit"]["against_wall_mult"])}, ["ability", "water"])
+	var crush: float = float(GameData.balance["shove"]["crush_base"])
+	check.call("Cataract: against another body it does x%s and Crushes it where it stands (and the Crush wards you)" % str(cat["on_hit"]["against_wall_mult"]),
+		float(t.call("_lost", pair_a)) - pa0 >= 100.0 * float(cat["on_hit"]["against_wall_mult"]) - 0.5 and _near(float(t.call("_lost", alone)), 100.0)
+		and float(p.call("ward")) > 0.0, "against %f (crush %f), alone %f, ward %f" % [float(t.call("_lost", pair_a)) - pa0, crush, float(t.call("_lost", alone)), float(p.call("ward"))])
+	p.set("ward_parts", [])
+	for n: Node in [pair_a, pair_b, alone]:
+		n.queue_free()
+	# Overboard: the one in reach is thrown toward where you aim, and what it lands among is hit
+	var ob: Dictionary = GameData.ability("overboard")
+	var held := _enemy(p, Vector3(0, 0, -1.6))
+	var target_spot: Vector3 = p.global_position + Vector3(6.0, 0, -1.6)
+	var among := _enemy(p, Vector3(5.5, 0, -1.6))
+	p.set("hovered", held)
+	p.set("cursor_fixed", target_spot)
+	_cast(p, "overboard")
+	t.call("_settle", held)
+	check.call("Overboard throws it toward where you aim (up to %s m)" % str(ob["throw"]), held.global_position.distance_to(p.global_position + Vector3(0, 0, -1.6)) > 3.0,
+		"%.2f m" % held.global_position.distance_to(p.global_position + Vector3(0, 0, -1.6)))
+	check.call("and whoever it lands among takes %d" % int(ob["on_land"]["damage"]), float(t.call("_lost", among)) >= float(ob["on_land"]["damage"]) - 0.5, "lost %f" % float(t.call("_lost", among)))
+	p.set("hovered", null)
 	p.set("cursor_fixed", null)
 	_clean()
 

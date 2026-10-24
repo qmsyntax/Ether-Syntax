@@ -17,6 +17,9 @@ var on_rise: Dictionary = {}
 var tags: Array = []
 var stage_mult := 1.0
 var color := Color(0.43, 0.39, 0.34)
+## v2 (ice.json Rime Wall): a wall of ice bursts with this payload (burst_radius / radius) when a hard hit breaks it
+## early, instead of throwing stone shrapnel.
+var shatter_burst: Dictionary = {}
 
 var _age := 0.0
 var _risen := false
@@ -139,6 +142,13 @@ func shatter(dir: Vector3, by: Node = null) -> int:
 	if _gone:
 		return 0
 	var who: Node = by if is_instance_valid(by) else caster
+	if not shatter_burst.is_empty() and is_instance_valid(who) and who.has_method("_burst_at"):
+		var sb: Dictionary = shatter_burst.duplicate()
+		sb["burst_radius"] = float(sb.get("radius", 2.5))
+		FloatText.spawn(get_parent(), global_position + Vector3.UP * 1.6, "SHATTER", color.lightened(0.5))
+		who.call("_burst_at", global_position, sb, tags + ["shatter"])
+		crumble()
+		return 1
 	var cfg: Dictionary = GameData.balance["stone"]["shrapnel"]
 	var flat := Vector3(dir.x, 0.0, dir.z)
 	if flat.length() < 0.001:

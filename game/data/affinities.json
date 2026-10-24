@@ -102,8 +102,12 @@
       "label": "Ice",
       "color": "7fd8ff",
       "desc": "Control (Water's flow, Dark's stillness). Cold stays: lay Chill until they lock solid, then break them with one hard hit. Wet things freeze faster.",
-      "chill_bonus_vs": {
-        "soaked": 1
+      "bonus_stacks_vs": {
+        "status": "chilled",
+        "vs": {
+          "soaked": 1
+        },
+        "ends_vs": true
       },
       "kit": [
         "hoarline",

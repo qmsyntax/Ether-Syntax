@@ -2280,6 +2280,7 @@ func _test_step5a() -> void:
 
 	# Dead Short
 	fresh.call()
+	m.global_position = here                 # v2: Forked Path carried you behind its last target
 	(row[1] as Node).call("add_status", "live", 1)                       # two marks now
 	var lost0: float = _lost(row[0])
 	var lost1: float = _lost(row[1])

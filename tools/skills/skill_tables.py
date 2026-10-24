@@ -50,8 +50,9 @@ AFFINITIES = OD([
     # --- new (2026-10-22 drafts) ---
     ("ice", OD([("label", "Ice"), ("color", "7fd8ff"),
                 ("desc", "Control (Water's flow, Dark's stillness). Cold stays: lay Chill until they lock solid, then break them with one hard hit. Wet things freeze faster."),
-                # v2 (ice.json wet_freezes): an ice hit on a Soaked target adds this many more Chill, and the Soak ends
-                ("chill_bonus_vs", OD([("soaked", 1)]))])),
+                # v2 (ice.json wet_freezes): an ice hit that lays Chill on a Soaked target (Waterlogged counts) adds this
+                # many more, and the Soak ends - the water is now ice
+                ("bonus_stacks_vs", OD([("status", "chilled"), ("vs", OD([("soaked", 1)])), ("ends_vs", True)]))])),
     ("dark", OD([("label", "Dark"), ("color", "9a6bd1"),
                  ("desc", "Strongest where the light is weakest. Make your own dark, stand in it unseen, and hit them while they stand in it."),
                  ("light_mult", OD([("dark", 1.25), ("lit", 0.8)])), ("unseen_in_dark", True),

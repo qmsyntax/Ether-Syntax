@@ -51,7 +51,8 @@ GENERIC = {"cost", "cost_per_s", "cost_note", "reflux_per_cost", "windup", "brac
            # v2 (2026-10-24): the weapon coat and what carries it; a target that must carry a status
            "coat", "weapon", "needs_status"}
 BY_KIND = {
-    "projectile": {"speed", "life", "pierce", "width", "trail", "hits_corpses", "corpse_burst", "zone", "shot"},
+    # crushes (Floe Drive): every shove you cause already ends in a Crush against a wall, stone or body (enemy.gd _tick_shove)
+    "projectile": {"speed", "life", "pierce", "width", "trail", "hits_corpses", "corpse_burst", "zone", "shot", "crushes"},
     "beam": {"width", "pierce", "jumps", "jump_radius", "bounces", "bounce_off", "frozen_counts_as"},
     "melee_burst": {"arc_deg", "reach_bonus", "pull", "pull_before_blast", "spall", "patch_bonus", "patch_bonus_max",
                     "per_patch_essence", "zone", "douses", "clears_clouds", "damage_from_heat", "heat_floor", "spend_blood",
@@ -79,18 +80,19 @@ BY_KIND = {
     "detonate": {"refund_per_stack", "consume_zone", "per_target_damage", "ray_damage", "gather_radius", "gather_into",
                  "gather_cap", "needs_status", "consume", "beats", "beat_s", "pool_per_beat", "after_status",
                  "bonus_vs_asleep", "decoy_burst", "per_stack_burst", "overload_fracs", "clock_to", "bill_mult", "stagger_at"},
-    "chain": {"jumps", "jump_radius", "fan", "depth", "first_hit"},
-    "displace": {"mode", "radius", "pull", "keep", "turn_s"},
+    "chain": {"jumps", "jump_radius", "fan", "depth", "first_hit", "carries_caster", "force_rear"},
+    "displace": {"mode", "radius", "pull", "keep", "turn_s", "throw", "on_land"},
     "prop": {"min_range", "width", "thickness", "height", "rise_time", "life", "on_rise", "hp", "hp_per_s", "spread_every",
              "spread_kind", "max_count", "shape", "light_radius", "tick_s", "payload", "blocks_movement", "blocks_shots",
-             "radius", "blocks", "collapse_radius"},
+             "radius", "blocks", "collapse_radius", "length", "shatter_burst"},
     "rod": {"life", "relay_radius", "relay_range", "relay_hit"},
     "smite": {"delay", "nearest_to_point", "lure_radius", "elite_ok", "stand_s", "on_death_growth", "from_above",
               "spread_stacks", "spread_radius", "spread_max"},
     "channel": {"shape", "tick", "move_factor", "pip_cost_per_s", "radius", "pools_per_tick", "blood_per_take", "sink_per_s",
                 "arm_rate", "breaks_on_hit", "break_range", "arc_deg", "width"},
     "charge_release": {"charge_max", "move_factor", "release", "radius", "damage_full", "leave_prop", "line_width", "pierce",
-                       "damage_min", "marks_by_charge", "arc_deg", "reach_bonus", "damage_mult_min", "focus_spend", "per_focus_mult"},
+                       "damage_min", "marks_by_charge", "arc_deg", "reach_bonus", "damage_mult_min", "focus_spend", "per_focus_mult",
+                       "range_min", "pass_radius", "on_pass"},
     "summon": {"needs", "max_count", "thrall"},
     "seed": {"seeds", "radius", "delay", "trigger_radius", "leave_growth"},
     "grapple": {"dash_speed", "arrive_radius", "on_arrive"},
@@ -104,7 +106,7 @@ PAYLOAD_KEYS = {"damage", "damage_mult", "status", "stacks", "statuses", "status
                 "shove_dir", "marks", "bonus_vs", "bonus_flat_vs", "poise_vs", "through", "jumps", "consume", "consume_stacks",
                 "execute_below", "execute_excludes", "unliving_mult", "stun_per_mark", "stun_min", "turn_s", "needs_facing",
                 "quells_censer", "release_shove", "status_s_if_not", "dark_status_s", "blind_if_dark", "shatter_radius",
-                "burst_radius", "elite_stun_mult", "heat_scale", "jump_radius"}
+                "burst_radius", "elite_stun_mult", "heat_scale", "jump_radius", "against_wall_mult"}
 ZONE_KEYS = {"shape", "radius", "length", "width", "life", "tick_s", "payload", "extra_status", "shove_mult", "push_per_s",
              "caster_speed_mult", "pip_gain_mult", "bright", "blocks_sight", "banks", "life_per_heat", "life_max", "on_enter",
              "pull_per_s", "drift_speed", "drift", "drift_dir", "dark", "dark_extra_ticks", "kill_projectiles", "freeze_pips",
@@ -384,6 +386,9 @@ def normalise(aid, aff, s, nums, kind):
     ctr = nums.get("counter")
     if isinstance(ctr, dict) and "also_status" in ctr:
         ctr.setdefault("statuses", []).append(OD([("id", ctr.pop("also_status")), ("stacks", 1)]))
+    # Cataract: the hit on a body already against something rides on the hit
+    if "against_wall_mult" in nums:
+        nums.setdefault("on_hit", OD())["against_wall_mult"] = nums.pop("against_wall_mult")
     if "dose_clock" in nums:
         nums["status_lasts"] = OD([("dosed", nums.pop("dose_clock"))])      # read generically: a buff that sets a status's clock
     if "times_flesh" in nums:

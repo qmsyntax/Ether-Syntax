@@ -1699,6 +1699,9 @@ func _displace(point: Vector3, target: Node3D, ab: Dictionary, stage_mult: float
 	var color: Color = GameData.affinity_color(str(ab.get("affinity", "")))
 	var chest: Vector3 = global_position + Vector3.UP
 	_strike_t = 0.2
+	if str(ab.get("mode", "")) == "throw_target":
+		_throw(target, point, ab, stage_mult, tags)
+		return
 	if str(ab.get("mode", "")) == "pull_target":
 		if target == null:
 			return
@@ -1722,6 +1725,35 @@ func _displace(point: Vector3, target: Node3D, ab: Dictionary, stage_mult: float
 		elif burned > 0 and bool(e.call("has_status", "aloft")):
 			var up: Dictionary = (e.get("statuses") as Dictionary)["aloft"]
 			up["t"] = float(up["t"]) + float(ab.get("pip_seconds", 0.2)) * float(burned)
+
+
+## Overboard (displace mode throw_target): the one enemy in reach is lifted and thrown toward where you aim, up to
+## `throw` m (a heavy one half as far, by its shove class; an elite only staggers). It travels as a shove, so a wall,
+## stone or body it meets is a Crush; where it stops, on_land hits every other enemy within its radius.
+var _landings: Dictionary = {}
+
+func _throw(target: Node3D, point: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+	_line_visual(global_position + Vector3.UP, target.global_position + Vector3.UP * 1.5, GameData.affinity_color(str(ab.get("affinity", ""))))
+	apply_hit(target, _payload(ab, "on_hit"), tags, stage_mult)
+	if not is_instance_valid(target) or bool(target.call("is_dead")):
+		return
+	if target.has_method("is_elite") and bool(target.call("is_elite")):
+		target.call("stagger", float(GameData.status("staggered").get("lasts", 1.5)))
+		return
+	if point == Vector3.ZERO:
+		point = _cursor_ground()                 # a targeted cast has no aimed point of its own: where you point
+	var way: Vector3 = point - target.global_position
+	way.y = 0.0
+	if way.length() < 0.3:
+		way = _facing
+	var land: Dictionary = (ab.get("on_land", {}) as Dictionary).duplicate()
+	if not land.is_empty():
+		land["burst_radius"] = float(land.get("radius", 1.5))
+		_landings[target.get_instance_id()] = {"payload": land, "tags": tags, "stage_mult": stage_mult}
+	target.set("shover", self)
+	target.call("shove", way, minf(float(ab.get("throw", 6.0)), way.length()))
 
 
 ## delayed_blast: mark the ground now; land_blast() does the rest when the mark comes due.
@@ -1885,12 +1917,26 @@ func _chain(target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> v
 					apply_hit(e, _payload(ab, "on_hit"), tags, stage_mult)
 			wave = next_wave
 		return
+	var hit_tags: Array = tags + (["rear"] if bool(ab.get("force_rear", false)) else [])
 	for jump: int in int(ab.get("jumps", 3)) + 1:
 		var at: Vector3 = cur.global_position
+		if bool(ab.get("carries_caster", false)):
+			# Forked Path takes you with it: you appear behind each one as it is struck; a wall or stone between ends it
+			if jump > 0 and not _ray(global_position + Vector3.UP, at + Vector3.UP).is_empty():
+				return
+			var back: Vector3 = -(cur.get("facing") as Vector3) if cur.get("facing") is Vector3 else (at - global_position).normalized()
+			back.y = 0.0
+			var spot: Vector3 = at + back.normalized() * (float(cur.get("radius")) + 0.9)
+			global_position = Vector3(spot.x, global_position.y, spot.z)
+			var face: Vector3 = at - global_position
+			face.y = 0.0
+			if face.length() > 0.1:
+				_facing = face.normalized()
+			has_move_goal = false
 		struck.append(cur)
 		_line_visual(from, at + Vector3.UP, color)
 		from = at + Vector3.UP
-		apply_hit(cur, _payload(ab, "on_hit"), tags, stage_mult)
+		apply_hit(cur, _payload(ab, "on_hit"), hit_tags, stage_mult)
 		var next: Node3D = null
 		for e: Node3D in _enemies_near(at, float(ab.get("jump_radius", 5.0))):
 			if not struck.has(e) and (next == null or e.global_position.distance_to(at) < next.global_position.distance_to(at)):
@@ -2006,6 +2052,11 @@ func raise_stone(at: Vector3, away: Vector3, ab: Dictionary, stage_mult: float =
 	s.life = float(ab.get("life", cfg["life_s"]))
 	s.rise_s = float(ab.get("rise_time", 0.35))
 	s.on_rise = ab.get("on_rise", {})
+	if str(ab.get("shape", "")) == "ice_wall":
+		# Rime Wall: a stone of ice - as long as its length, melting when its life is out, bursting if broken early
+		s.size.x = float(ab.get("length", s.size.x))
+		s.shatter_burst = ab.get("shatter_burst", {})
+		s.color = GameData.affinity_color(str(ab.get("affinity", ""))).darkened(0.2)
 	s.tags = tags
 	s.stage_mult = stage_mult
 	get_parent().add_child(s)
@@ -2535,6 +2586,13 @@ func apply_hit(target: Node, payload: Dictionary, tags: Array = [], stage_mult: 
 				flat = maxf(flat, float((payload["bonus_flat_vs"] as Dictionary)[st2]))
 	if payload.has("unliving_mult") and not bool(target.get("is_living")):
 		bonus *= float(payload["unliving_mult"])
+	# Cataract (against_wall_mult): a body already pressed against a wall, stone or another body takes more, and it is
+	# a Crush where it stands (Water's rule, its Ward included)
+	if float(payload.get("against_wall_mult", 0.0)) > 0.0 and _against_something(target as Node3D):
+		bonus *= float(payload["against_wall_mult"])
+		on_crush(target, 0.0, null)
+		if not is_instance_valid(target) or bool(target.call("is_dead")):
+			return ctx
 	var dopts: Dictionary = {"heat_scale": float(payload["heat_scale"])} if payload.has("heat_scale") else {}
 	if payload.has("damage"):
 		ctx = deal_damage(target, (float(payload["damage"]) + flat) * stage_mult * bonus, tags, dopts)
@@ -2564,6 +2622,7 @@ func apply_hit(target: Node, payload: Dictionary, tags: Array = [], stage_mult: 
 			_give_status(target, str(e.get("id", "")), int(e.get("stacks", 1)), _status_time(opts, time_of, str(e.get("id", "")), e), memo, held_before)
 		if bool(payload.get("blind_if_dark", false)) and Light.is_dark(get_tree(), (target as Node3D).global_position):
 			_give_status(target, "blinded", 1, opts, memo, held_before)
+		_bonus_stacks(target, payload, tags)
 	if not is_instance_valid(target) or bool(target.call("is_dead")):
 		return ctx
 	if payload.has("stun_per_mark") and not held_before:
@@ -2624,6 +2683,44 @@ func apply_hit(target: Node, payload: Dictionary, tags: Array = [], stage_mult: 
 				arc[k] = float(arc[k]) * cut
 		_arc_on(target as Node3D, arc, tags + ["arc"], stage_mult, int(payload["jumps"]), float(payload.get("jump_radius", GameData.num("skills", "jump_radius"))))
 	return ctx
+
+
+## Ice's rule (affinity key bonus_stacks_vs {status, vs {st: extra}, ends_vs}): a hit of the affinity that lays its
+## status on a target carrying st (or counting as it) adds extra more, and the st ends (the water is now ice).
+func _bonus_stacks(target: Node, payload: Dictionary, tags: Array) -> void:
+	for aff: String in affinities:
+		if not tags.has(aff):
+			continue
+		var rule: Dictionary = GameData.affinity(aff).get("bonus_stacks_vs", {})
+		if rule.is_empty():
+			continue
+		var sid: String = str(rule.get("status", ""))
+		var lays: bool = str(payload.get("status", "")) == sid or (payload.get("statuses", []) as Array).any(func(e: Variant) -> bool: return str((e as Dictionary).get("id", "")) == sid)
+		if not lays:
+			continue
+		for vs: String in (rule.get("vs", {}) as Dictionary):
+			if bool(target.call("has_status", vs)):
+				target.call("add_status", sid, int((rule["vs"] as Dictionary)[vs]), self)
+				if bool(rule.get("ends_vs", true)):
+					target.call("clear_status", vs)
+					for other: String in (target.get("statuses") as Dictionary).keys():
+						if (GameData.status(other).get("counts_as", []) as Array).has(vs):
+							target.call("clear_status", other)
+
+
+## True if `t` is already within 0.5 m of a wall, stone or another body (Cataract's against_wall_mult).
+func _against_something(t: Node3D) -> bool:
+	if t == null or not is_inside_tree():
+		return false
+	var r: float = float(t.get("radius")) + 0.5
+	for e: Node3D in _enemies_near(t.global_position, r + 0.6):
+		if e != t and e.global_position.distance_to(t.global_position) <= r + float(e.get("radius")):
+			return true
+	for i: int in 8:
+		var d := Vector3(cos(TAU * float(i) / 8.0), 0.0, sin(TAU * float(i) / 8.0))
+		if not _ray(t.global_position + Vector3.UP * 0.6, t.global_position + Vector3.UP * 0.6 + d * r).is_empty():
+			return true
+	return false
 
 
 ## One status's own timing on a hit (2026-10-23, rune strength): the payload's `status_time_of`
@@ -2989,6 +3086,23 @@ func plant_growth(at: Vector3, cfg: Dictionary) -> Node3D:
 func on_shove_ended(e: Node) -> void:
 	if holds_rule("marks_adrift") and is_instance_valid(e) and not bool(e.call("is_dead")):
 		e.call("add_status", "adrift", 1, self)
+	# a thrown body has landed (Overboard): what it lands among takes on_land
+	var key: int = e.get_instance_id()
+	if _landings.has(key):
+		var l: Dictionary = _landings[key]
+		_landings.erase(key)
+		if is_instance_valid(e):
+			var p: Dictionary = (l["payload"] as Dictionary).duplicate()
+			if str(p.get("shove_dir", "")) == "from_point":
+				p.erase("shove_dir")
+				var at: Vector3 = (e as Node3D).global_position
+				for o: Node3D in _enemies_near(at, float(p.get("burst_radius", 1.5))):
+					if o != e:
+						var q: Dictionary = p.duplicate()
+						q.erase("burst_radius")
+						apply_hit(o, q, l["tags"], float(l["stage_mult"]), o.global_position - at)
+			else:
+				_burst_at((e as Node3D).global_position, p, l["tags"], float(l["stage_mult"]), e)
 
 
 ## A zone of yours you stand in carries this flag (freeze_pips, shed_standing).
@@ -3127,6 +3241,10 @@ func _overload(target: Node) -> void:
 			deal_damage(node, float(live.get("arc_damage", 60.0)), ["overload", "arc", "lightning"])
 	if affinities.has("lightning"):
 		reflux_by["lightning"] = maxf(0.0, reflux_of("lightning") - float(live.get("grounds", 0.0)))
+	for aff: String in affinities:
+		var q: float = float(GameData.affinity(aff).get("quicken_on_overload", 0.0))
+		if q > 0.0:
+			_take_state("quickened", q)             # Lightning's rule: an Overload leaves you Quickened (a new one refreshes it)
 
 
 # --- skill behaviours (design/05 Appendix A) ---------------------------------------------------
@@ -3585,7 +3703,7 @@ func cast_ability(index: int) -> void:
 	var strike_target: Node3D = null
 	var blink_to := Vector3.ZERO
 	var reach: float = float(ab["range"]) if ab.has("range") else reach_now() + float(ab.get("range_bonus", 0.0))
-	if kind == "targeted_strike" or kind == "chain" or (kind == "displace" and str(ab.get("mode", "")) == "pull_target") \
+	if kind == "targeted_strike" or kind == "chain" or (kind == "displace" and ["pull_target", "throw_target"].has(str(ab.get("mode", "")))) \
 			or (kind == "smite" and not bool(ab.get("nearest_to_point", false))) or (kind == "channel" and str(ab.get("shape", "")) == "tether") \
 			or (kind == "detonate" and str(ab.get("gather_into", "")) == "target"):
 		strike_target = _skill_target(reach)
@@ -6047,6 +6165,16 @@ func _release_charge() -> void:
 		"beam":
 			ab["width"] = float(ab.get("line_width", ab.get("width", 1.0)))
 			_fire_beam(ab, stage_mult, GameData.affinity_color(str(h["aff"])), tags)
+		"streak":
+			# Stored Bolt: you cross range_min at a tap to range at a full hold, in an instant, through bodies
+			ab["range"] = lerpf(float(ab.get("range_min", ab.get("range", 6.0))), float(ab.get("range", 8.0)), frac)
+			var pass_hit: Dictionary = (ab.get("on_pass", {}) as Dictionary).duplicate()
+			if not pass_hit.has("damage") and ab.has("damage"):
+				pass_hit["damage"] = float(ab["damage"])
+			if (ab.get("on_hit", {}) as Dictionary).has("marks"):
+				pass_hit["marks"] = int((ab["on_hit"] as Dictionary)["marks"])      # marks by charge
+			ab["on_pass"] = pass_hit
+			_streak(ab, stage_mult, tags)
 		_:
 			_burst(ab, stage_mult, tags + ["melee"])
 	_recover_t = maxf(_recover_t, GameData.num("abilities", "cast_recovery"))

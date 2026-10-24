@@ -1020,6 +1020,9 @@ func _tick_shove(delta: float) -> void:
 	var col: KinematicCollision3D = move_and_collide(_shove_dir * step)
 	if col == null:
 		_shove_left -= step
+		if _shove_left <= 0.0001:
+			_shove_left = 0.0
+			_shove_ended()                         # it ran its full distance: that is the end of the shove too
 		return
 	var left: float = _shove_left - col.get_travel().length()
 	_shove_left = 0.0
