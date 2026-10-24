@@ -179,7 +179,7 @@ var _hit_recent_t := 0.0                # since you last landed a hit (Life: hea
 func _tick_roles(delta: float) -> void:
 	_clock += delta
 	if in_the_green():
-		var green: Dictionary = GameData.affinity("nature").get("in_the_green", {})
+		var green: Dictionary = green_rule()
 		life_heal(float(green.get("heal_per_s", 0.0)) * delta * buff_num("green_heal_mult"))
 	for bid: String in buffs.keys():
 		if not buffs.has(bid):
@@ -200,9 +200,18 @@ func _tick_roles(delta: float) -> void:
 						break
 
 
+## The In the Green numbers of an affinity you hold that has them (Nature's), else {}.
+func green_rule() -> Dictionary:
+	for aff: String in affinities:
+		var g: Dictionary = GameData.affinity(aff).get("in_the_green", {})
+		if not g.is_empty():
+			return g
+	return {}
+
+
 ## True while you stand on your own growth (Nature's rule, In the Green).
 func in_the_green() -> bool:
-	if not is_inside_tree() or not GameData.affinity("nature").has("in_the_green") or not affinities.has("nature"):
+	if not is_inside_tree() or green_rule().is_empty():
 		return false
 	for node: Node in get_tree().get_nodes_in_group("growth"):
 		var g := node as GrowthPatch
@@ -904,6 +913,13 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 		ctx.base *= GameData.num("braced", "damage_taken_mult")
 	if _try_counter(source):
 		return 0.0
+	ctx.base *= ally_zone_mult(self)
+	# a buff that softens blows and keeps what it softened (Kind Light's softened_return, paid back when it ends)
+	var unsoftened: float = amount * temper_stat("incoming_mult") * (1.0 - armour() / 100.0) * _inured_mult()
+	for sid: String in buffs:
+		var sb: Dictionary = buffs[sid]
+		if float(sb.get("softened_return", 0.0)) > 0.0:
+			sb["softened"] = float(sb.get("softened", 0.0)) + unsoftened * maxf(0.0, 1.0 - float(sb.get("incoming_mult", 1.0)))
 	# a blow thrown from arm's length, as against a shot that left its owner far behind
 	var melee_from: Node3D = source as Node3D if (source is Node3D and (source as Node).is_in_group("enemies") and (source as Node3D).global_position.distance_to(global_position) <= 4.5) else null
 	if melee_from != null and buffs.has("backwash"):
@@ -957,7 +973,7 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 		return 0.0
 	if heavy and not braced and not shrouded and not _buff_flag("immovable"):   # set, shrouded or a millstone: nothing knocks you off it
 		var combat: Dictionary = GameData.balance["combat"]
-		var green_poise: float = float((GameData.affinity("nature").get("in_the_green", {}) as Dictionary).get("poise_loss_mult", 1.0)) if in_the_green() else 1.0
+		var green_poise: float = float(green_rule().get("poise_loss_mult", 1.0)) if in_the_green() else 1.0
 		poise -= float(combat["heavy_poise_damage"]) * buff_num("poise_loss_mult") * green_poise / maxf(0.01, buff_num("poise_mult"))
 		if poise <= 0.0 and _turn_away():
 			poise = float(combat["player_poise"])     # Absolution: the stagger is turned away
@@ -1031,6 +1047,8 @@ func _tick_aura(b: Dictionary, delta: float) -> void:
 ## A buff has run out: its end payload (Millstone's on_end), a counter that was never used (patience_ward, or a
 ## share of the essence back: refund_unused), its following dark.
 func _buff_ended(id: String, b: Dictionary) -> void:
+	if float(b.get("softened", 0.0)) > 0.0 and float(b.get("softened_return", 0.0)) > 0.0:
+		life_heal(float(b["softened"]) * float(b["softened_return"]))         # Kind Light: what it softened comes back
 	if b.get("on_end") is Dictionary:
 		var oe: Dictionary = (b["on_end"] as Dictionary).duplicate()
 		oe["burst_radius"] = float(oe.get("radius", 3.0))
@@ -1100,10 +1118,17 @@ func _take_buff(ab: Dictionary) -> void:
 	if float(ab.get("reveal_radius", 0.0)) > 0.0:
 		for e: Node3D in _enemies_near(global_position, float(ab["reveal_radius"])):
 			e.call("add_status", "lit", 1, self)
-	if bool(ab.get("cleanse", false)):
-		_stagger_t = 0.0
-		_winded_t = 0.0
-		_shoved_left = 0.0
+	if ab.get("cleanse") is String or (ab.get("cleanse") is bool and bool(ab["cleanse"])):
+		# lift what the list names (balance.json cleanse: binds, afflictions), and pay per one lifted
+		var lifted: int = cleanse(str(ab["cleanse"]) if ab["cleanse"] is String else "binds")
+		if float(ab.get("ward_per_cleansed", 0.0)) > 0.0 and lifted > 0:
+			var w: float = float(ab["ward_per_cleansed"]) * float(lifted)
+			if ab.has("ward_cleansed_max"):
+				w = minf(w, float(ab["ward_cleansed_max"]))           # Absolution: up to 40 ward
+			add_ward(w, float(ab.get("duration", -1.0)), {"from": bid + "_cleansed"})
+		if float(ab.get("heal_per_cleansed", 0.0)) > 0.0 and lifted > 0:
+			var counted: int = mini(lifted, int(ab.get("heal_cleansed_max", lifted)))       # Fever Break: up to 4 of them
+			heal_over(float(ab["heal_per_cleansed"]) * float(counted), float(ab.get("heal_over_s", 2.0)))
 	_float(str(ab.get("name", "")).to_lower(), GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3))
 
 
@@ -2128,7 +2153,7 @@ func shove(dir: Vector3, metres: float) -> void:
 	if _turn_away():
 		return                                  # Absolution turns a hold away
 	if in_the_green():
-		metres *= float((GameData.affinity("nature").get("in_the_green", {}) as Dictionary).get("shove_mult", 1.0))
+		metres *= float(green_rule().get("shove_mult", 1.0))
 	_shoved_dir = flat.normalized()
 	_shoved_left = metres
 	_dash_time = 0.0
@@ -2748,7 +2773,8 @@ func _conjure(ab: Dictionary) -> void:
 			(mi as MeshInstance3D).material_override = red
 		_rig.set_weapon(model)
 		_shown_weapon = "conjured"
-	_float(str(cw.get("weapon", "weapon")).replace("_", " "), GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3))
+	if str(ab.get("kind", "")) != "self_buff":          # a self buff floats its own name already
+		_float(str(cw.get("weapon", "weapon")).replace("_", " "), GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3))
 
 
 ## Everything hittable within `reach` and within `half_angle` (radians) of where you face.
@@ -2825,6 +2851,8 @@ func apply_hit(target: Node, payload: Dictionary, tags: Array = [], stage_mult: 
 		on_crush(target, 0.0, null)
 		if not is_instance_valid(target) or bool(target.call("is_dead")):
 			return ctx
+	if float(payload.get("warded_mult", 0.0)) > 0.0 and ward() > 0.0:
+		bonus *= float(payload["warded_mult"])        # Rebuke: harder while you are warded (it spends no ward)
 	var dopts: Dictionary = {"heat_scale": float(payload["heat_scale"])} if payload.has("heat_scale") else {}
 	if payload.has("damage"):
 		ctx = deal_damage(target, (float(payload["damage"]) + flat) * stage_mult * bonus, tags, dopts)
@@ -2832,12 +2860,19 @@ func apply_hit(target: Node, payload: Dictionary, tags: Array = [], stage_mult: 
 		ctx = deal_damage(target, (strike_damage() * float(payload["damage_mult"]) + flat) * stage_mult * bonus, tags, dopts)
 	elif flat > 0.0:
 		ctx = deal_damage(target, flat * stage_mult * bonus, tags, dopts)
-	if ctx != null and ctx.applied > 0.0 and float(payload.get("drain_frac", 0.0)) > 0.0:
-		_drain(ctx, float(payload["drain_frac"]), float(payload.get("drain_cap", INF)), tags)
+	if ctx != null and ctx.applied > 0.0:
+		var dfrac: float = float(payload.get("drain_frac", 0.0)) + _rule_drain_frac(target, tags)
+		var dmax: float = _rule_drain_max(tags)
+		if dmax > 0.0:
+			dfrac = minf(dfrac, dmax)
+		if dfrac > 0.0:
+			_drain(ctx, dfrac, float(payload.get("drain_cap", INF)), tags)
 	if ctx != null and ctx.killed and payload.get("on_kill") is Dictionary:
 		_kill_reward(payload["on_kill"], target, ctx)
 	if not is_instance_valid(target) or bool(target.call("is_dead")) or not target.has_method("add_status"):
 		return ctx
+	if bool(payload.get("purge", false)) and target.has_method("purge_boons"):
+		target.call("purge_boons")          # Guardbreaker: every boon on it is stripped (balance.json enemy_boons)
 	if payload.has("execute_below") and target.get("body") is Body:
 		var b: Body = target.get("body")
 		var excluded: bool = (payload.get("execute_excludes", []) as Array).has("elite") and target.has_method("is_elite") and bool(target.call("is_elite"))
@@ -2967,6 +3002,95 @@ func _against_something(t: Node3D) -> bool:
 ## The healing order is the hit's affinity's: drain_heals "bar" (Unholy: the bar only, banked as stolen life), else
 ## Life's order (Lifeline). Unliving targets give nothing.
 var _drain_cast := 0.0
+
+## Lift every condition a cleanse list names (balance.json "cleanse": binds, afflictions) from you; returns how
+## many were on you. The player carries no enemy statuses: the conditions are your own (staggered, winded, shoved).
+func cleanse(list: String) -> int:
+	var n := 0
+	for c: Variant in (GameData.balance.get("cleanse", {}) as Dictionary).get(list, []):
+		match str(c):
+			"staggered":
+				if _stagger_t > 0.0:
+					_stagger_t = 0.0
+					n += 1
+			"winded":
+				if _winded_t > 0.0:
+					_winded_t = 0.0
+					n += 1
+			"shoved":
+				if _shoved_left > 0.0:
+					_shoved_left = 0.0
+					n += 1
+	return n
+
+
+## True if skill `ab` is a cleanse whose list (balance.json cleanse) lifts `condition` (Absolution lifts a stagger, so
+## it can be cast while you are staggered).
+func _lifts(ab: Dictionary, condition: String) -> bool:
+	var c: Variant = ab.get("cleanse")
+	if not (c is String):
+		return false
+	return ((GameData.balance.get("cleanse", {}) as Dictionary).get(str(c), []) as Array).has(condition)
+
+
+## A zone of yours with an ally_payload (Hallowed Ground) ticks on you and your summons inside it: ward_per_s for
+## the tick, never more than ward_max from that zone.
+func zone_ally_tick(zone: GroundZone) -> void:
+	var ap: Dictionary = zone.ally_payload
+	var amount: float = float(ap.get("ward_per_s", 0.0)) * zone.tick_s
+	if amount <= 0.0:
+		return
+	var cap: float = float(ap.get("ward_max", GameData.num("ward", "cap")))
+	if zone.has_point(global_position):
+		add_ward(amount, -1.0, {"from": "zone_%d" % zone.get_instance_id(), "source_cap": cap})
+	for s: Node3D in summons_near(zone.from, zone.radius + 1.0):
+		if zone.has_point(s.global_position):
+			s.call("add_ward", minf(amount, maxf(0.0, cap - float(s.get("ward")))), GameData.num("ward", "default_lasts"))
+
+
+## What blows on `who` (you or a summon of yours) are multiplied by while it stands in a zone of yours with an
+## ally_payload damage_taken_mult (Hallowed Ground): the strongest one.
+func ally_zone_mult(who: Node3D) -> float:
+	var m := 1.0
+	if not is_inside_tree():
+		return m
+	for node: Node in get_tree().get_nodes_in_group("ground_zones"):
+		var z := node as GroundZone
+		if z != null and z.caster == self and z.ally_payload.has("damage_taken_mult") and z.has_point(who.global_position):
+			m = minf(m, float(z.ally_payload["damage_taken_mult"]))
+	return m
+
+
+## An affinity's own drain on every hit tagged with it (Unholy's rule, affinity drain_frac): times the largest of its
+## drain_mult_vs that applies - a status the target carries (Dying), or "in_dark" for a target standing in Dark.
+func _rule_drain_frac(target: Node, tags: Array) -> float:
+	var total := 0.0
+	for aff: String in affinities:
+		var a: Dictionary = GameData.affinity(aff)
+		if not tags.has(aff) or float(a.get("drain_frac", 0.0)) <= 0.0:
+			continue
+		var m := 1.0
+		var vs: Dictionary = a.get("drain_mult_vs", {})
+		for key: String in vs:
+			var applies := false
+			if key == "in_dark":
+				applies = is_inside_tree() and target is Node3D and Light.is_dark(get_tree(), (target as Node3D).global_position)
+			elif target.has_method("has_status"):
+				applies = bool(target.call("has_status", key))
+			if applies:
+				m = maxf(m, float(vs[key]))
+		total += float(a["drain_frac"]) * m
+	return total
+
+
+## The most of a hit a drain may take back (affinity drain_max_frac; 0 = no cap).
+func _rule_drain_max(tags: Array) -> float:
+	var cap := 0.0
+	for aff: String in affinities:
+		if tags.has(aff):
+			cap = maxf(cap, float(GameData.affinity(aff).get("drain_max_frac", 0.0)))
+	return cap
+
 
 func _drain(ctx: HitContext, frac: float, cap: float, tags: Array) -> void:
 	if not ctx.is_living:
@@ -3402,7 +3526,11 @@ func lay_cloud(at: Vector3, cfg: Dictionary, tags: Array) -> Node3D:
 	zone.tags = tags + ["zone"]
 	zone.caster = self
 	zone.bright = false
-	zone.color = GameData.affinity_color("disease")
+	# a left zone may be Dark ground (Forsaken Ground) rather than a cloud; it takes its skill's colour
+	zone.dark = bool(cfg.get("dark", false))
+	if zone.dark:
+		zone.kind = "dark_ground"
+	zone.color = GameData.affinity_color(_tag_affinity(tags, "disease"))
 	zone.from = Vector3(at.x, global_position.y, at.z)
 	zone.to = zone.from
 	var drift: float = float(cfg.get("drift_speed", 0.0))
@@ -3414,6 +3542,14 @@ func lay_cloud(at: Vector3, cfg: Dictionary, tags: Array) -> Node3D:
 		zone.drift_vel = (way.normalized() if way.length() > 0.05 else _facing) * drift
 	get_parent().add_child(zone)
 	return zone
+
+
+## The first affinity id among a hit's tags (whose skill it is), else `fallback`.
+func _tag_affinity(tags: Array, fallback: String) -> String:
+	for tg: Variant in tags:
+		if GameData.affinity_ids().has(str(tg)):
+			return str(tg)
+	return fallback
 
 
 ## A patch of your growth at `at` (Nature): {kind, radius}. You keep growth.max of them.
@@ -3522,6 +3658,11 @@ func store_add(id: String, n: int, cap: int, life: float) -> void:
 	stores[id] = s
 
 
+## How much a store holds now (the HUD's stolen life, a test).
+func store_count(id: String) -> int:
+	return int((stores.get(id, {}) as Dictionary).get("n", 0))
+
+
 ## Take everything in a store. Returns how much there was.
 func store_take(id: String) -> int:
 	var n: int = int((stores.get(id, {}) as Dictionary).get("n", 0))
@@ -3624,6 +3765,11 @@ func _burst(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	if store != "":
 		var n: int = spend_blood(-1 if str(ab.get("spend_blood", "all")) == "all" else int(ab.get("spend_blood", 0))) if store == "held_blood" else store_take(store)
 		payload["damage"] = float(payload.get("damage", ab.get("damage", 0.0))) + float(ab.get("per_stack_damage", 0.0)) * float(n)
+		if float(ab.get("per_stack_poise", 0.0)) > 0.0:
+			var extra: float = float(ab["per_stack_poise"]) * float(n)
+			if ab.has("poise_max"):
+				extra = minf(extra, float(ab["poise_max"]))          # Black Reckoning: that much poise too, up to 60
+			payload["poise"] = float(payload.get("poise", GameData.num("combat", "skill_poise"))) + extra
 		if ab.has("daze_at") and n >= int(ab["daze_at"]):
 			var dazes: Array = (payload.get("statuses", []) as Array).duplicate()
 			dazes.append({"id": "dazed", "stacks": 1})
@@ -3759,6 +3905,8 @@ func _end_dash() -> void:
 		_dash_on_arrive = {}
 	if _dash_ab.has("leave_growth"):
 		plant_growth(global_position, _dash_ab["leave_growth"])
+	if float(_dash_ab.get("arrive_ward", 0.0)) > 0.0:
+		add_ward(float(_dash_ab["arrive_ward"]), -1.0, {"from": str(_dash_ab.get("name", "dash"))})     # Zealous Charge
 	_dash_ab = {}
 	_dash_pass_armoured = false
 	if _dash_trail.is_empty():
@@ -3770,6 +3918,9 @@ func _end_dash() -> void:
 	zone.life = float(_dash_trail.get("life", 3.0))
 	zone.tick_s = float(_dash_trail.get("tick_s", 1.0))
 	zone.payload = _dash_trail.get("payload", {})
+	zone.dark = bool(_dash_trail.get("dark", false))      # Night Charge: the ground you crossed stays Dark
+	if zone.dark:
+		zone.kind = "dark_ground"
 	zone.tags = _dash_tags + ["zone"]
 	zone.caster = self
 	zone.color = _dash_color
@@ -4041,8 +4192,8 @@ func cast_ability(index: int) -> void:
 	if is_locked(aff):
 		note("%s affinity is locked by reflux. Meditate (hold %s)." % [aff_name, Keybinds.binding_text("meditate")])
 		return
-	if _recover_t > 0.0 or _stagger_t > 0.0:
-		return                                   # still finishing the last one, or off your feet
+	if _recover_t > 0.0 or (_stagger_t > 0.0 and not _lifts(ab, "staggered")):
+		return                                   # still finishing the last one, or off your feet (a cleanse that lifts it may)
 	if not _held.is_empty():
 		_end_held()                              # a new cast lets go of what you were holding
 		return

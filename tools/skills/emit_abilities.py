@@ -58,13 +58,13 @@ BY_KIND = {
                     "per_patch_essence", "zone", "douses", "clears_clouds", "damage_from_heat", "heat_floor", "spend_blood",
                     "conjure_weapon", "heal_per_target", "heal_over_s", "heal_targets_max", "per_patch_heal",
                     "pools_per_two_spent", "consume", "daze_at", "essence_per_hit", "essence_max_hits", "swallow_per_hit",
-                    "pip_shove", "elite_stun_mult"},
+                    "pip_shove", "elite_stun_mult", "poise_max"},
     "targeted_strike": {"range_bonus", "burst", "burst_always", "through", "through_dist", "pip_mult", "force_rear",
                         "waterlogged_stacks", "burst_zone", "spall", "swallow_per_hit", "zone"},
     "dash": {"dash_speed", "dash_time", "on_pass", "pass_radius", "stops_at_bodies", "trail", "on_stop", "heavy_poise",
              "gain_pips", "no_recovery", "after_speed_mult", "passes_bodies", "pass_through", "pool_bonus_m", "pool_bonus_max",
              "clears_winded", "never_winds", "pass_armoured", "leave_decoy", "on_arrive", "arrive_radius", "leap", "range",
-             "after_heal_per_s", "dir"},
+             "after_heal_per_s", "dir", "arrive_ward"},
     "blink": {"arrive_radius", "on_arrive", "corpse_range", "needs_shadow", "arrive_behind", "rear_window", "thrall_range", "swap_thrall",
               "swap_heal"},
     "ground_zone": {"zone", "at", "needs", "recent_death_s", "spends_corpse", "drops_aggro"},
@@ -84,7 +84,10 @@ BY_KIND = {
                   "pool_radius", "attack_rate_mult", "strike_reach_bonus", "kill_blood", "upkeep_blood_per_s", "upkeep_grace_s",
                   "heal_to_poise", "heal_per_hit", "buff_targets", "summon_deals_mult", "phantom_extra_hits", "thrall_incoming_mult",
                   "thrall_time_paused", "corpse_hold", "spread_radius", "spread_stacks", "conjure_weapon", "summon_ward",
-                  "expire_heal_frac", "ward", "ward_from", "ward_max", "no_stagger", "turns_away"},
+                  "expire_heal_frac", "ward", "ward_from", "ward_max", "no_stagger", "turns_away",
+                  # v2: Holy's cleanses pay per bind lifted, Kind Light gives back what it softened
+                  "ward_per_cleansed", "ward_cleansed_max", "heal_per_cleansed", "heal_over_s", "heal_cleansed_max",
+                  "softened_return"},
     "delayed_blast": {"radius", "delay", "leave_prop", "bonus_also_vs", "follows_lit"},
     "detonate": {"refund_per_stack", "consume_zone", "per_target_damage", "ray_damage", "gather_radius", "gather_into",
                  "gather_cap", "needs_status", "consume", "beats", "beat_s", "pool_per_beat", "after_status",
@@ -119,12 +122,12 @@ PAYLOAD_KEYS = {"damage", "damage_mult", "status", "stacks", "statuses", "status
                 "execute_below", "execute_excludes", "unliving_mult", "stun_per_mark", "stun_min", "turn_s", "needs_facing",
                 "quells_censer", "release_shove", "status_s_if_not", "dark_status_s", "blind_if_dark", "shatter_radius",
                 "burst_radius", "elite_stun_mult", "heat_scale", "jump_radius", "against_wall_mult", "on_kill", "execute_needs",
-                "drain_frac", "drain_cap"}
+                "drain_frac", "drain_cap", "purge", "warded_mult"}
 ZONE_KEYS = {"shape", "radius", "length", "width", "life", "tick_s", "payload", "extra_status", "shove_mult", "push_per_s",
              "caster_speed_mult", "pip_gain_mult", "bright", "blocks_sight", "banks", "life_per_heat", "life_max", "on_enter",
              "pull_per_s", "drift_speed", "drift", "drift_dir", "dark", "dark_extra_ticks", "kill_projectiles", "freeze_pips",
              "shed_standing", "ends_if_left", "hides", "lit_shows", "no_heal", "ends_status", "blocks_status", "overrun_at",
-             "kind", "at", "dps_mult", "dose_bonus", "lit_bonus"}
+             "kind", "at", "dps_mult", "dose_bonus", "lit_bonus", "ally_payload"}
 
 KEY_WORDS = {
     "carry": "the wave does not carry bodies along; it hits each once",
@@ -149,7 +152,8 @@ NOTES = OD([
     ("glancing_ray", "it glances off walls and stone, not off raised shields"),
     ("bell_jar", "Overload arcs are not kept inside the jar"),
     ("false_spring", "a thawed body does not keep the two Chill that Frozen leaves"),
-    ("fever_break", "the player carries no enemy statuses yet: it clears stagger, Winded and a shove"),
+    ("fever_break", "the player carries no enemy afflictions yet: it ends Winded (balance.json cleanse) and counts that"),
+    ("absolution", "the player carries no enemy binds yet: it ends stagger, Winded and a shove (balance.json cleanse) and counts those"),
     ("heavy_heart", "blood pools in the circle do not go still"),
     ("drawdown", "it does not empty your Standing Pool toward you"),
 ])
@@ -443,6 +447,9 @@ def normalise(aid, aff, s, nums, kind):
         nums.pop("capture_excludes", None)
         if "kneels_below" in nums and isinstance(nums.get("on_hit"), dict):
             nums["on_hit"].setdefault("status_data", OD())["kneels_below"] = nums.pop("kneels_below")
+    # Rebuke: harder while you are warded - a payload key, so it rides on every hit the skill lands
+    if "warded_mult" in nums and isinstance(nums.get("on_hit"), dict):
+        nums["on_hit"]["warded_mult"] = nums.pop("warded_mult")
     if "dose_clock" in nums:
         nums["status_lasts"] = OD([("dosed", nums.pop("dose_clock"))])      # read generically: a buff that sets a status's clock
     if "times_flesh" in nums:

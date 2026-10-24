@@ -500,6 +500,12 @@
     "sink_frac": 0.25,
     "tick_s": 0.25
   },
+  "enemy_boons": ["frenzied", "drummed", "roused"],
+  "cleanse": {
+    "_note": "What a cleanse lifts from you (Absolution: binds; Fever Break: afflictions), each one counted for the skill's per-cleansed payout. The player carries no enemy statuses yet, so these are your own conditions: staggered, winded, shoved. [MODEL]",
+    "binds": ["staggered", "winded", "shoved"],
+    "afflictions": ["winded"]
+  },
   "minimap": {
     "_note": "Brent 2026-10-18: a minimap with fog of war in overland zones. The zone is cut into fog_cell_m squares; a square is seen once you stand within sight_m of it, and stays seen (saved per character). size_px is the map's width on screen; its height follows the zone's shape.",
     "fog_cell_m": 4.0,

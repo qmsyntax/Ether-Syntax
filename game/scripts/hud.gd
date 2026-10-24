@@ -398,6 +398,39 @@ func _draw_above_dock(cx: float) -> void:
 				draw_arc(bc, 4.0, 0.0, TAU, 14, Color(red, 0.4), 1.5, true)
 		UiDraw.outlined(self, Vector2(x3 + float(blood_max) * 13.0 + 4.0, strip_y), label3, UiTheme.FS_CAPTION, red)
 		strip_y -= 26.0
+	# the ward pool (Holy, Water's Crush ward, Ice Shell, Black Shroud), while there is any: a band against the one cap
+	var ward_now: float = float(player.call("ward"))
+	if ward_now > 0.0:
+		var ward_col := Color("f3e6b0")
+		var cap: float = GameData.num("ward", "cap")
+		var label_w: String = "WARD  %d" % int(ceil(ward_now))
+		var band := 120.0
+		var ww: float = band + 10.0 + UiDraw.text_width(label_w, UiTheme.FS_CAPTION)
+		var xw: float = cx - ww * 0.5
+		_chip_back(Rect2(xw - 10.0, strip_y - 16.0, ww + 20.0, 22.0))
+		draw_rect(Rect2(xw, strip_y - 10.0, band, 8.0), Color(ward_col, 0.18))
+		draw_rect(Rect2(xw, strip_y - 10.0, band * clampf(ward_now / cap, 0.0, 1.0), 8.0), ward_col)
+		draw_rect(Rect2(xw, strip_y - 10.0, band, 8.0), Color(ward_col, 0.6), false, 1.0)
+		UiDraw.outlined(self, Vector2(xw + band + 8.0, strip_y), label_w, UiTheme.FS_CAPTION, ward_col)
+		strip_y -= 26.0
+	# Metal's Edge Heat on the enemy you are working, while it is hot
+	var heat_now: int = int(player.get("focus"))
+	if heat_now > 0:
+		var edge_col: Color = GameData.affinity_color("metal").lightened(0.3)
+		var label_e: String = "EDGE HEAT  %d / %d" % [heat_now, int(player.call("_focus_max"))]
+		var we: float = UiDraw.text_width(label_e, UiTheme.FS_CAPTION)
+		_chip_back(Rect2(cx - we * 0.5 - 10.0, strip_y - 16.0, we + 20.0, 22.0))
+		UiDraw.outlined(self, Vector2(cx - we * 0.5, strip_y), label_e, UiTheme.FS_CAPTION, edge_col)
+		strip_y -= 26.0
+	# Unholy's stolen life, while there is any
+	var stolen: int = int(player.call("store_count", "stolen"))
+	if stolen > 0:
+		var unholy_col: Color = GameData.affinity_color("unholy").lightened(0.3)
+		var label_s: String = "STOLEN LIFE  %d" % stolen
+		var ws: float = UiDraw.text_width(label_s, UiTheme.FS_CAPTION)
+		_chip_back(Rect2(cx - ws * 0.5 - 10.0, strip_y - 16.0, ws + 20.0, 22.0))
+		UiDraw.outlined(self, Vector2(cx - ws * 0.5, strip_y), label_s, UiTheme.FS_CAPTION, unholy_col)
+		strip_y -= 26.0
 	# Dark's swallowed light, while there is any
 	var stores: Dictionary = player.get("stores")
 	if stores.has("swallowed") and int((stores["swallowed"] as Dictionary).get("n", 0)) > 0:

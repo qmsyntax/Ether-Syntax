@@ -164,6 +164,8 @@ func tick(delta: float) -> void:
 	_tick = tick_s
 	if _extra_left > 0:
 		_extra_left -= 1
+	if not ally_payload.is_empty() and is_instance_valid(caster) and caster.has_method("zone_ally_tick"):
+		caster.call("zone_ally_tick", self)
 	for e: Node3D in inside():
 		if extra_status != "":
 			e.call("add_status", extra_status)

@@ -31,6 +31,7 @@ func run() -> void:
 	await _storm_and_tide()
 	await _dark_light_dream()
 	await _summons_and_blood()
+	await _holy_and_unholy()
 
 
 # --- helpers ------------------------------------------------------------------------------------
@@ -879,6 +880,163 @@ func _summons_and_blood() -> void:
 	_clean()
 
 
+# --- Holy and Unholy: the ward pool and its one cap, the ward's break, the drain and stolen life ---------------------
+
+func _holy_and_unholy() -> void:
+	var p := _player(Vector3(7200, 0, 0), ["holy", "unholy"])
+	for id: String in ["guardbreaker", "absolution", "hallowed_ground", "kind_light", "rebuke", "zealous_charge", "black_reckoning",
+			"heartseed"]:
+		p.call("learn", id)
+	await t.get_tree().physics_frame
+	p.set("_facing", Vector3(0, 0, -1))
+	var body: Body = p.get("body")
+	var cap: float = GameData.num("ward", "cap")
+	# the ward pool: one pool, one cap, whoever gives it
+	p.set("ward_parts", [])
+	p.call("add_ward", 40.0, -1.0, {"from": "a"})
+	p.call("add_ward", 40.0, -1.0, {"from": "b"})
+	check.call("the ward pool: wards from two sources share one cap of %s" % str(cap), _near(float(p.call("ward")), cap), "ward %f" % float(p.call("ward")))
+	p.set("ward_parts", [])
+	p.call("add_ward", 10.0, -1.0, {"from": "crush", "source_cap": 15.0})
+	p.call("add_ward", 10.0, -1.0, {"from": "crush", "source_cap": 15.0})
+	check.call("and a source with its own cap (Water's Crush ward) holds no more than that", _near(float(p.call("ward")), 15.0))
+	var hp0: float = body.hp
+	var taken: float = p.call("take_hit", 10.0, false, null)
+	check.call("a blow the ward wholly stops opens nothing: the bar and wounds are untouched", taken == 0.0 and _near(body.hp, hp0) and _near(float(p.call("ward")), 5.0))
+	# Holy's rule: a ward that breaks pays out its light
+	var hb: Dictionary = GameData.affinity("holy")["ward_break_payload"]
+	var near := _enemy(p, Vector3(1.5, 0, 0))
+	var l0: float = t.call("_lost", near)
+	p.call("take_hit", 30.0, false, null)
+	check.call("Holy: a ward that breaks pays out its light - %d and Lit within %s m" % [int(hb["damage"]), str(hb["radius"])],
+		float(t.call("_lost", near)) - l0 > 0.0 and bool(near.call("has_status", "lit")), "lost %f" % (float(t.call("_lost", near)) - l0))
+	body.hp = body.total_max()
+	p.set("ward_parts", [])
+	# Unholy's rule: every Unholy hit drains, twice from the Dying, and banks stolen life
+	var uh: Dictionary = GameData.affinity("unholy")
+	var foe := _enemy(p, Vector3(0, 0, -2.5))
+	body.hp = 40.0
+	p.set("stores", {})
+	var h1: HitContext = p.call("apply_hit", foe, {"damage": 50.0}, ["ability", "unholy"])
+	check.call("Unholy: every hit drains %d%% of the harm back to you (the bar only)" % int(float(uh["drain_frac"]) * 100.0),
+		_near(body.hp - 40.0, h1.applied * float(uh["drain_frac"]), 0.05), "healed %f of %f" % [body.hp - 40.0, h1.applied])
+	check.call("and what it drains is banked as stolen life", int(p.call("store_count", "stolen")) == int(round(h1.applied * float(uh["drain_frac"]))),
+		"stolen %d" % int(p.call("store_count", "stolen")))
+	body.hp = 40.0
+	var fb: Body = foe.get("body")
+	fb.hp = fb.total_max() * 0.2
+	var h2: HitContext = p.call("apply_hit", foe, {"damage": 10.0}, ["ability", "unholy"])
+	check.call("twice that from the Dying", bool(foe.call("is_dead")) or _near(body.hp - 40.0, h2.applied * float(uh["drain_frac"]) * float(uh["drain_mult_vs"]["dying"]), 0.05),
+		"healed %f of %f" % [body.hp - 40.0, h2.applied])
+	body.hp = 40.0
+	var h3: HitContext = p.call("apply_hit", _enemy(p, Vector3(2.5, 0, -2.5)), {"damage": 50.0, "drain_frac": 0.9}, ["ability", "unholy"])
+	check.call("and never more than %d%% of a hit" % int(float(uh["drain_max_frac"]) * 100.0), _near(body.hp - 40.0, h3.applied * float(uh["drain_max_frac"]), 0.05))
+	body.hp = body.total_max()
+	# Black Reckoning spends the stolen life: that much damage and poise (poise up to poise_max)
+	var br: Dictionary = GameData.ability("black_reckoning")
+	p.call("store_add", "stolen", 90, 100, 12.0)
+	var target := _enemy(p, Vector3(0, 0, -3.0))
+	var tl0: float = t.call("_lost", target)
+	var tp0: float = float(target.get("poise"))
+	_cast(p, "black_reckoning")
+	check.call("Black Reckoning: %s plus all your stolen life, which is spent (what it drains is banked afresh)" % str(br["damage"]),
+		int(p.call("store_count", "stolen")) < 90 and float(t.call("_lost", target)) - tl0 >= float(br["damage"]) + 80.0, "lost %f" % (float(t.call("_lost", target)) - tl0))
+	check.call("and that much poise too, up to %s" % str(br["poise_max"]), tp0 - float(target.get("poise")) <= GameData.num("combat", "skill_poise") + float(br["poise_max"]) + 0.01
+		and tp0 - float(target.get("poise")) > float(br["poise_max"]) * 0.5, "poise lost %f" % (tp0 - float(target.get("poise"))))
+	# the ground Unholy leaves is Dark (Forsaken Ground's circle, Night Charge's trail), so its drain doubles there
+	var spot: Vector3 = p.global_position + Vector3(-6.0, 0, 6.0)
+	var fz: Node3D = p.call("lay_cloud", spot, GameData.ability("forsaken_ground")["leave_zone"], ["ability", "unholy"])
+	check.call("Forsaken Ground leaves Dark ground, not a cloud", fz != null and Light.is_dark(t.get_tree(), spot) and str(fz.get("kind")) == "dark_ground")
+	_clean()
+	await t.get_tree().process_frame
+	p = _player(Vector3(7400, 0, 0), ["holy", "life"])
+	for id: String in ["guardbreaker", "absolution", "hallowed_ground", "kind_light", "rebuke", "zealous_charge", "heartseed"]:
+		p.call("learn", id)
+	await t.get_tree().physics_frame
+	p.set("_facing", Vector3(0, 0, -1))
+	body = p.get("body")
+	# Guardbreaker strips every boon
+	var proud := _enemy(p, Vector3(0, 0, -2.0))
+	for b: Variant in GameData.balance["enemy_boons"]:
+		proud.call("add_status", str(b), 1, null)
+	p.set("hovered", proud)
+	_cast(p, "guardbreaker")
+	p.set("hovered", null)
+	check.call("Guardbreaker: Exposed, and every boon on it (%s) stripped" % ", ".join(GameData.balance["enemy_boons"]),
+		bool(proud.call("has_status", "exposed")) and (GameData.balance["enemy_boons"] as Array).all(func(b: Variant) -> bool: return not bool(proud.call("has_status", str(b)))))
+	# Absolution: what holds you is lifted, ward for each one
+	var ab: Dictionary = GameData.ability("absolution")
+	p.set("ward_parts", [])
+	p.set("_stagger_t", 1.0)
+	p.set("_winded_t", 1.0)
+	_cast(p, "absolution")
+	check.call("Absolution: stagger and Winded lifted, %s ward and %s more for each (up to %s)" % [str(ab["ward"]), str(ab["ward_per_cleansed"]), str(ab["ward_cleansed_max"])],
+		float(p.get("_stagger_t")) <= 0.0 and float(p.get("_winded_t")) <= 0.0
+		and _near(float(p.call("ward")), minf(cap, float(ab["ward"]) + minf(2.0 * float(ab["ward_per_cleansed"]), float(ab["ward_cleansed_max"])))), "ward %f" % float(p.call("ward")))
+	(p.get("buffs") as Dictionary).clear()
+	p.set("ward_parts", [])
+	# Hallowed Ground: you and your summons inside gain ward a second, up to its max, and take less
+	var hg: Dictionary = GameData.ability("hallowed_ground")
+	var ap: Dictionary = hg["zone"]["ally_payload"]
+	_cast(p, "heartseed")
+	var seed: Node3D = (p.call("summons_near", p.global_position, 10.0) as Array)[0]
+	p.set("cursor_fixed", p.global_position + Vector3(0, 0, -1.5))
+	_cast(p, "hallowed_ground")
+	p.set("cursor_fixed", null)
+	var zone: GroundZone = null
+	for z: Node in t.get_tree().get_nodes_in_group("ground_zones"):
+		if (z as GroundZone).caster == p and not (z as GroundZone).ally_payload.is_empty():
+			zone = z
+	if zone != null:
+		seed.global_position = p.global_position + Vector3(1.0, 0, 0)
+		for i: int in int(2.0 / STEP) + 2:
+			zone.tick(STEP)
+	check.call("Hallowed Ground: inside it you gain %s ward a second" % str(ap["ward_per_s"]), zone != null and float(p.call("ward")) >= 2.0 * float(ap["ward_per_s"]) - 0.01
+		and float(p.call("ward")) <= 2.0 * float(ap["ward_per_s"]) + float(ap["ward_per_s"]) * zone.tick_s + 0.01,
+		"ward %f from %s me %s ap %s in %s life %f" % [float(p.call("ward")), str(zone.from) if zone else "", str(p.global_position), str(zone.ally_payload) if zone else "", str(zone.has_point(p.global_position)) if zone else "", zone.life if zone else 0.0])
+	if zone != null:
+		for i: int in int(6.0 / STEP):
+			zone.tick(STEP)
+	check.call("up to %s from it" % str(ap["ward_max"]), _near(float(p.call("ward")), float(ap["ward_max"])))
+	check.call("and so does your summon", float(seed.get("ward")) > 0.0)
+	check.call("and blows on you inside are x%s" % str(ap["damage_taken_mult"]), _near(float(p.call("ally_zone_mult", p)), float(ap["damage_taken_mult"])))
+	if zone != null:
+		zone.queue_free()
+	await t.get_tree().process_frame
+	p.set("ward_parts", [])
+	# Kind Light: blows are softer, and what it softened comes back when it ends
+	var kl: Dictionary = GameData.ability("kind_light")
+	_cast(p, "kind_light")
+	body.hp = body.total_max()
+	var got: float = p.call("take_hit", 50.0, false, null)
+	check.call("Kind Light: every blow x%s" % str(kl["incoming_mult"]), _near(got, 50.0 * float(kl["incoming_mult"]), 0.5), "took %f" % got)
+	var before_end: float = body.hp
+	p.call("_tick_buffs", float(kl["duration"]) + 0.1)
+	check.call("and when it ends %d%% of what it softened comes back as health" % int(float(kl["softened_return"]) * 100.0),
+		_near(body.hp - before_end, 50.0 * (1.0 - float(kl["incoming_mult"])) * float(kl["softened_return"]), 0.5), "back %f" % (body.hp - before_end))
+	body.hp = body.total_max()
+	# Rebuke: half again as hard while you are warded
+	var rb: Dictionary = GameData.ability("rebuke")
+	var rt := _enemy(p, Vector3(0, 0, -2.0))
+	p.set("ward_parts", [])
+	var rpay: Dictionary = (rb["on_hit"] as Dictionary).duplicate()
+	rpay["damage"] = 40.0
+	var plain: HitContext = p.call("apply_hit", rt, rpay, ["ability", "holy"])
+	p.call("add_ward", 20.0)
+	var warded: HitContext = p.call("apply_hit", rt, rpay, ["ability", "holy"])
+	check.call("Rebuke: x%s while you are warded, and it spends no ward" % str(rb["on_hit"]["warded_mult"]),
+		_near(warded.applied, plain.applied * float(rb["on_hit"]["warded_mult"]), 0.5) and _near(float(p.call("ward")), 20.0), "%f vs %f" % [warded.applied, plain.applied])
+	p.set("ward_parts", [])
+	# Zealous Charge: you arrive warded
+	var zc: Dictionary = GameData.ability("zealous_charge")
+	_cast(p, "zealous_charge")
+	for i: int in 60:
+		p.call("_physics_process", STEP)
+	check.call("Zealous Charge: you arrive with a %s ward" % str(zc["arrive_ward"]), _near(float(p.call("ward")), float(zc["arrive_ward"])), "ward %f" % float(p.call("ward")))
+	p.set("ward_parts", [])
+	_clean()
+
+
 # --- the data -------------------------------------------------------------------------------------
 
 func _data() -> void:
@@ -887,6 +1045,19 @@ func _data() -> void:
 		var kit: Array = GameData.affinity(str(a)).get("kit", [])
 		return kit.size() == 3 and kit.all(func(k: Variant) -> bool:
 			return str(GameData.ability(str(k)).get("affinity", "")) == str(a) and bool(GameData.ability(str(k)).get("starter", false)))), str(ids))
+	# every rune's glyph is drawn by the font (Holy's and Unholy's are Old Turkic, U+10C00-10C21), not by the stroke
+	# fallback UiDraw.rune_glyph uses for a character the font cannot draw
+	var no_glyph: Dictionary = {}
+	for part: String in ["base_runes", "universal_runes"]:
+		for rid: String in (GameData.runes.get(part, {}) as Dictionary):
+			var r: Dictionary = GameData.rune(rid)
+			if not UiDraw.has_glyph(str(r.get("character", ""))):
+				no_glyph[rid] = str(r.get("affinity", "universal"))
+	var base_missing: Array = no_glyph.keys().filter(func(rid: Variant) -> bool: return str(no_glyph[rid]) != "universal")
+	check.call("every affinity rune's glyph draws in the game's font, Holy's and Unholy's Old Turkic among them (else UiDraw draws strokes)",
+		base_missing.is_empty(), "missing: %s" % str(base_missing))
+	if no_glyph.size() > base_missing.size():
+		print("  note: universal runes the font draws only as an emoji (UiDraw draws strokes): %s" % str(no_glyph.keys().filter(func(rid: Variant) -> bool: return not base_missing.has(rid))))
 	var still: Array[String] = DROPPED.filter(func(id: String) -> bool: return GameData.abilities.has(id))
 	check.call("the %d skills the v2 drafts drop are gone" % DROPPED.size(), still.is_empty(), str(still))
 	var off_rune: Array[String] = []

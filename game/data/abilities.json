@@ -5240,7 +5240,7 @@
       ],
       "verse": "",
       "icon": "coat_static:LIF-4a",
-      "simplified": "the player carries no enemy statuses yet: it clears stagger, Winded and a shove; 'heal_per_cleansed' is not built; 'heal_over_s' is not built; 'heal_cleansed_max' is not built",
+      "simplified": "the player carries no enemy afflictions yet: it ends Winded (balance.json cleanse) and counts that",
       "summary": "At once, ends every affliction of the body on you and your living summons within 6 m: burning, bleeding, poison, disease, withering, sickness and Winded. Each one ended lets the body mend: 4 health over 2 s (up to 4). For 5 s after, new afflictions last half as long. (simplified)",
       "good_modifiers": [
         "Persist",
@@ -8816,8 +8816,7 @@
       },
       "verse": "",
       "icon": "fist:HOL-1b",
-      "simplified": "'on_hit.purge' is not built",
-      "summary": "One enemy in reach: 2.0x strike damage, and the proud are brought low. Its guard is broken (Exposed for 5 s: every hit counts as from behind and its shield does nothing) and every boon on it - Frenzied, Drummed, Roused - is stripped away. (simplified)",
+      "summary": "One enemy in reach: 2.0x strike damage, and the proud are brought low. Its guard is broken (Exposed for 5 s: every hit counts as from behind and its shield does nothing) and every boon on it - Frenzied, Drummed, Roused - is stripped away.",
       "good_modifiers": [
         "Condemn",
         "Wrath",
@@ -8933,7 +8932,7 @@
       ],
       "verse": "",
       "icon": "coat_static:HOL-3a",
-      "simplified": "'ward_per_cleansed' is not built; 'ward_cleansed_max' is not built",
+      "simplified": "the player carries no enemy binds yet: it ends stagger, Winded and a shove (balance.json cleanse) and counts those",
       "summary": "At once, every bind on you and your summons within 8 m is lifted: stagger, holds, slows, stuns, blinding, choking and fear. You gain a 10 ward, and 8 more for each bind lifted (up to 40). For 4 s after, the next bind to reach you is turned away. (simplified)",
       "good_modifiers": [
         "Persist",
@@ -9020,8 +9019,7 @@
       ],
       "verse": "",
       "icon": "pool:HOL-4a",
-      "simplified": "'zone.ally_payload' is not built",
-      "summary": "Point, 8 m: a 3.5 m circle is hallowed for 8 s. You and your summons inside take 20% less and gain 5 ward a second (up to 30). Enemies inside are Lit. Stand your ground in it. (simplified)",
+      "summary": "Point, 8 m: a 3.5 m circle is hallowed for 8 s. You and your summons inside take 20% less and gain 5 ward a second (up to 30). Enemies inside are Lit. Stand your ground in it.",
       "good_modifiers": [
         "Persist",
         "Expand",
@@ -9101,8 +9099,7 @@
       ],
       "verse": "",
       "icon": "coat_static:HOL-5a",
-      "simplified": "'softened_return' is not built",
-      "summary": "For 6 s a gentle light holds you and your summons within 6 m: every blow is 30% softer, and the light keeps what it softened. When it ends, 60% of that comes back to you as health, all at once. (simplified)",
+      "summary": "For 6 s a gentle light holds you and your summons within 6 m: every blow is 30% softer, and the light keeps what it softened. When it ends, 60% of that comes back to you as health, all at once.",
       "good_modifiers": [
         "Persist",
         "Ward",
@@ -9119,7 +9116,7 @@
       "rune": "Wrath",
       "signature": [
         "damage_mult",
-        "warded_mult"
+        "on_hit.warded_mult"
       ],
       "ascension_fields": {
         "power": "damage_mult",
@@ -9135,15 +9132,14 @@
       "reach_bonus": 0.7,
       "arc_deg": 360,
       "needs_clear_line": true,
-      "warded_mult": 1.5,
       "on_hit": {
         "status": "lit",
-        "poise": 25
+        "poise": 25,
+        "warded_mult": 1.5
       },
       "verse": "",
       "icon": "backdraft:HOL-5b",
-      "simplified": "'warded_mult' is not built",
-      "summary": "Light breaks out of you in wrath: everything within 3 m with a clear line to you takes 1.7x strike damage and is Lit. If you are warded it strikes half again as hard, and spends no ward. (simplified)",
+      "summary": "Light breaks out of you in wrath: everything within 3 m with a clear line to you takes 1.7x strike damage and is Lit. If you are warded it strikes half again as hard, and spends no ward.",
       "good_modifiers": [
         "Expand",
         "Humble",
@@ -9190,8 +9186,7 @@
       ],
       "verse": "",
       "icon": "dash:HOL-6a",
-      "simplified": "'arrive_ward' is not built",
-      "summary": "Charge 6 m behind a shield of light, Braced the whole way, stopping at the first body: it takes 1.5x strike damage and is interrupted. You arrive with a 15 ward. (simplified)",
+      "summary": "Charge 6 m behind a shield of light, Braced the whole way, stopping at the first body: it takes 1.5x strike damage and is interrupted. You arrive with a 15 ward.",
       "good_modifiers": [
         "Far",
         "Ward",
@@ -9321,8 +9316,7 @@
       "on_hit": {},
       "verse": "",
       "icon": "backdraft:UNH-1b",
-      "simplified": "'poise_max' is not built",
-      "summary": "Let out everything you took. A cone of black 5 m long: 30, plus all your stolen life, to everything in it, and they lose that much poise too (up to 60). Your stolen life is spent. (simplified)",
+      "summary": "Let out everything you took. A cone of black 5 m long: 30, plus all your stolen life, to everything in it, and they lose that much poise too (up to 60). Your stolen life is spent.",
       "good_modifiers": [
         "Expand",
         "Once",

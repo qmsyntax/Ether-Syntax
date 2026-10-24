@@ -491,6 +491,13 @@ func status_stacks(id: String) -> int:
 	return 1 if has_status(id) else 0
 
 
+## Strip every boon on it (balance.json "enemy_boons": Frenzied, Drummed, Roused; Guardbreaker's purge).
+func purge_boons() -> void:
+	for id: Variant in GameData.balance.get("enemy_boons", []):
+		if statuses.has(str(id)):
+			clear_status(str(id))
+
+
 ## True if it carries the status, or one that counts as it (Waterlogged is Soaked, Frozen is
 ## Brittle), or - for a derived one - its health says so (Dying below half, Hale above).
 func has_status(id: String) -> bool:

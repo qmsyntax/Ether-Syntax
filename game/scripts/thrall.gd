@@ -63,6 +63,8 @@ func _ready() -> void:
 	_rig = _build_model()
 	if _rig != null:
 		add_child(_rig)
+		if _wash != null and is_inside_tree():
+			get_tree().create_timer(0.25).timeout.connect(func() -> void: _apply_wash(_rig))
 
 
 ## Its look, from `model`: "grunt" (a corpse risen, the dead look), "mote:<affinity>" (a seed of light), or
@@ -80,7 +82,33 @@ func _build_model() -> Node3D:
 	var r: ModelRig = Models.enemy(model)
 	if r.has_method("set_dead_look"):
 		r.set_dead_look()
+	# a risen body is the enemy's own model, so it is washed in its caster's affinity colour to tell it from the
+	# living foes it fights (a stand-in look, as the beasts are)
+	var aff: String = "death"
+	for tg: Variant in tags:
+		if GameData.affinity_ids().has(str(tg)):
+			aff = str(tg)
+			break
+	_wash = StandardMaterial3D.new()
+	_wash.albedo_color = Color(GameData.affinity_color(aff).lightened(0.25), 0.55)
+	_wash.emission_enabled = true
+	_wash.emission = GameData.affinity_color(aff)
+	_wash.emission_energy_multiplier = 0.6
+	_wash.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_wash.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_apply_wash(r)
 	return r
+
+
+var _wash: StandardMaterial3D = null
+
+
+## The risen look over every mesh of the model (again once its clothes have loaded).
+func _apply_wash(r: Node) -> void:
+	if _wash == null or r == null or not is_instance_valid(r):
+		return
+	for mi: Node in r.find_children("*", "MeshInstance3D", true, false):
+		(mi as GeometryInstance3D).material_overlay = _wash
 
 
 func _physics_process(delta: float) -> void:
@@ -106,6 +134,9 @@ func _buff_flag(key: String) -> bool:
 ## One step. Public so a test can run it by hand.
 func tick(delta: float) -> void:
 	if dead:
+		return
+	if not is_instance_valid(caster):
+		_fall()                     # its caster is gone (a new game, a freed test body): it goes with them
 		return
 	for id: String in buffs.keys():
 		var b: Dictionary = buffs[id]
@@ -218,6 +249,8 @@ func take_hit(amount: float, _heavy: bool, _source: Node, _tags: Array = []) -> 
 	if dead:
 		return 0.0
 	var a: float = amount * buff_num("incoming_mult") * buff_num("thrall_incoming_mult")
+	if is_instance_valid(caster) and caster.has_method("ally_zone_mult"):
+		a *= float(caster.call("ally_zone_mult", self))        # standing on its caster's Hallowed Ground
 	if ward > 0.0:
 		var took: float = minf(ward, a)
 		ward -= took

@@ -2467,6 +2467,9 @@ func _setup_ui_shot(which: String) -> void:
 	if which.begins_with("test-"):
 		_setup_test_shot(which.trim_prefix("test-"))
 		return
+	if which.begins_with("role-"):
+		_setup_role_shot(which.trim_prefix("role-"))
+		return
 	if which.begins_with("seal-"):
 		_setup_seal_shot(which)
 		return
@@ -2923,6 +2926,10 @@ func _setup_ui_shot(which: String) -> void:
 ## them), or an affinity id: that test character fighting in the arena, casting its skills.
 func _setup_test_shot(what: String) -> void:
 	forced_biome = "scrubland"
+	if what.begins_with("ethercosm-"):
+		start_test_character(what.trim_prefix("ethercosm-"))       # an affinity's own (test-ethercosm-holy: a hybrid's)
+		open_ethercosm()
+		return
 	match what:
 		"ethercosm":
 			start_test_character("water")
@@ -3026,6 +3033,70 @@ func _setup_test_shot(what: String) -> void:
 				player.set("cursor_fixed", (live[k % live.size()] as Node3D).global_position)
 				player.set("hovered", live[k % live.size()])
 			player.call("cast_slot", slot))
+
+
+## The v2 role shots (`--shot-ui=role-<affinity>`): a test character in the arena using the skill its role turns on -
+## Earth's Millstone (the taunt), Poison's Venom Edge (the coat) and a bare strike that carries it, Blood's Thirsting
+## Glaive (the conjured weapon), Dark's Ambush out of its own Blot, Death's thralls raised from the fallen.
+const ROLE_SHOTS := {
+	"earth": [["millstone", 0.1]],
+	"poison": [["venom_edge", 0.1], ["sting_dart", 0.5]],
+	"blood": [["red_lancet", 0.1], ["thirsting_glaive", 0.4]],
+	"dark": [["hungry_dark", 0.5]],
+	"death": [["rise_again", 0.1], ["rise_again", 0.35], ["rise_again", 0.6]],
+}
+
+
+func _setup_role_shot(aff: String) -> void:
+	forced_biome = "scrubland"
+	start_test_character(aff)
+	_show_screen(null, false)
+	enter_arena()
+	rest_timer = 9999.0
+	for at: Vector3 in [Vector3(-1.2, 0, -2.6), Vector3(1.4, 0, -3.0), Vector3(3.0, 0, -1.6), Vector3(-3.2, 0, -4.4)]:
+		_spawn_enemy("grunt", at, 1.0)
+	_spawn_enemy("brute", Vector3(0.4, 0, -5.4), 1.0)
+	player.call("start_fight")
+	state = "arena_fight"
+	var foes: Array = get_tree().get_nodes_in_group("enemies")
+	var first: Node3D = foes[0]
+	player.set("_facing", ((first.global_position - player.global_position) * Vector3(1, 0, 1)).normalized())
+	if aff == "death":
+		# three of them fall where they stood, for the thralls to rise from
+		for i: int in 3:
+			var e: Node = foes[foes.size() - 1 - i]
+			(e.get("body") as Body).apply_damage(9999.0)
+			e.call("take_hit", 1.0, false, player)
+	if aff == "dark":
+		# you stand in a Dark of your own (a Blot's ground), Unseen, for the Ambush
+		var dz := GroundZone.new()
+		dz.shape = "circle"
+		dz.radius = 3.0
+		dz.life = 30.0
+		dz.dark = true
+		dz.kind = "dark_ground"
+		dz.caster = player
+		dz.from = player.global_position
+		level.add_child(dz)
+	_shot_countdown = 70
+	for step: Array in ROLE_SHOTS.get(aff, []):
+		var id: String = str(step[0])
+		SkillTimer.after(level, float(step[1]), func(_i: int) -> void:
+			player.set("_recover_t", 0.0)
+			player.set("_held", {})
+			var dead_spots: Array = get_tree().get_nodes_in_group("fallen").filter(func(f: Node) -> bool: return not bool(f.get("spent")))
+			var live: Array = get_tree().get_nodes_in_group("enemies").filter(func(e: Node) -> bool: return not bool(e.call("is_dead")))
+			if id == "rise_again" and not dead_spots.is_empty():
+				player.set("cursor_fixed", (dead_spots[0] as Node3D).global_position)
+			elif not live.is_empty():
+				player.set("cursor_fixed", (live[0] as Node3D).global_position)
+				player.set("hovered", live[0])
+			var list: Array = player.get("abilities")
+			for i: int in list.size():
+				if str(list[i]["id"]) == id:
+					player.set("essence", float(player.get("essence_max")))
+					player.call("cast_ability", i)
+					break)
 
 
 func _shot_lock_word() -> void:
@@ -3172,6 +3243,14 @@ func _shot_skill(id: String) -> int:
 func _setup_seal_shot(which: String) -> void:
 	if which.begins_with("seal-lock-"):
 		_setup_lock_shot(which.trim_prefix("seal-lock-"))
+		return
+	if which.begins_with("seal-palette-"):
+		# an affinity's own runes in the palette of its test character's first lock (Holy's Old Turkic glyphs)
+		var aff: String = which.trim_prefix("seal-palette-")
+		start_test_character(aff)
+		_enter_town()
+		open_seal(0, 0)
+		screen.call("set_palette_tab", aff)
 		return
 	_select_talent(0)
 	(player.get("constructs") as Array).clear()          # the other UI shots hand out two vestiges first
