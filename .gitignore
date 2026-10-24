@@ -153,3 +153,6 @@ shots/
 
 # agent worktrees (local only, never committed)
 .claude/worktrees/
+
+# Excel lock files
+~$*
