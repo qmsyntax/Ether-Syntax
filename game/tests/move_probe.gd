@@ -186,9 +186,13 @@ func _build_cases() -> void:
 		for p: Vector2 in [Vector2(0.62, 0.38), Vector2(0.3, 0.3), Vector2(0.7, 0.7), Vector2(0.3, 0.7)]:
 			_cases.append({"name": "beast-at-camera z%.1f click (%.2f,%.2f)" % [zoom, p.x, p.y], "place": "field", "zoom": zoom, "at": p, "setup": "beast_at_camera"})
 	# states that hold the feet
-	_cases.append({"name": "field after a dash", "place": "field", "zoom": 0.5, "at": Vector2(0.3, 0.3), "setup": "dash"})
+	# after the dash is over: a dash commits (dash_time + dash_recovery_s), and a click made inside it waits
+	_cases.append({"name": "field after a dash", "place": "field", "zoom": 0.5, "at": Vector2(0.3, 0.3), "setup": "dash",
+		"delay": float(GameData.ability("hydraulic_flex")["dash_time"]) + GameData.num("combat", "dash_recovery_s") + 0.1})
 	# a wind-up roots you (design/05 2.3): a click during it is not acted on, one after it is
-	_cases.append({"name": "field click during a wind-up", "place": "field", "zoom": 0.5, "at": Vector2(0.3, 0.3), "setup": "windup", "rooted": true})
+	# a click in a wind-up is kept (balance.json "feel"): you stay set until it goes off, then walk there
+	_cases.append({"name": "field click during a wind-up", "place": "field", "zoom": 0.5, "at": Vector2(0.3, 0.3), "setup": "windup", "rooted": true, "watch": 0.15})
+	_cases.append({"name": "field click during a wind-up is walked after it", "place": "field", "zoom": 0.5, "at": Vector2(0.3, 0.3), "setup": "windup", "watch": 1.2})
 	_cases.append({"name": "field click after a wind-up", "place": "field", "zoom": 0.5, "at": Vector2(0.3, 0.3), "setup": "windup", "delay": 1.0})
 	for zoom: float in [0.5, 1.0]:
 		for p: Vector2 in [Vector2(0.5, 0.75), Vector2(0.2, 0.4), Vector2(0.8, 0.4)]:
