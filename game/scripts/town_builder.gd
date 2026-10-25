@@ -199,7 +199,7 @@ func pick_screen(screen_pos: Vector2, cam: Camera3D) -> Townsperson:
 	var best: Townsperson = null
 	var best_d := INF
 	for p: Townsperson in folk:
-		if not is_instance_valid(p) or cam.is_position_behind(p.global_position):
+		if not is_instance_valid(p) or not Pick.standing_in_view(cam, p.global_position, p.height):
 			continue
 		var base: Vector2 = cam.unproject_position(p.global_position)
 		var top: Vector2 = cam.unproject_position(p.global_position + Vector3.UP * p.height)

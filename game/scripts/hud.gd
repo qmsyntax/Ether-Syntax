@@ -879,6 +879,13 @@ func _draw_telegraph(e: Node3D, cam: Camera3D) -> void:
 	if not (t is Dictionary) or (t as Dictionary).is_empty():
 		return
 	var tele: Dictionary = t
+	# Its ground points are unprojected one by one; one reaching behind the camera (zoomed in, an
+	# enemy at your back) unprojects mirrored and the fill fails to triangulate. Skip it then.
+	var toward_cam: Vector3 = Vector3(cam.global_transform.basis.z.x, 0.0, cam.global_transform.basis.z.z).normalized()
+	var span: float = maxf(float(tele.get("radius", 0.0)), float(tele.get("width", 0.0)) * 0.5)
+	if cam.is_position_behind(e.global_position + toward_cam * span) \
+			or (tele.get("to") is Vector3 and cam.is_position_behind((tele["to"] as Vector3) + toward_cam * span)):
+		return
 	var danger := Color(1.0, 0.36, 0.22)
 	var white := Color(1, 1, 1)
 	var col: Color = white if bool(tele.get("interruptible", false)) else danger

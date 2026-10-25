@@ -692,6 +692,7 @@ func _town_click(at: Vector2) -> void:
 		return
 	var who: Townsperson = _town.pick_screen(at, camera)
 	if who == null:
+		_walk_to = null                 # a click elsewhere is a new walk: _tick_town would steer back to them
 		return
 	if _flat_dist(who.global_position, player.global_position) <= float(GameData.town.get("talk_reach", 2.7)):
 		talk_to(who.role)

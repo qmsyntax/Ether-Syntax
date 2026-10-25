@@ -120,7 +120,13 @@ func _turn(delta: float, instant: bool) -> void:
 		to.y = 0.0
 		if to.length() > 0.3 and to.length() < float(GameData.town.get("face_player_within", 6.0)):
 			want = to.normalized()
-	_facing = want if instant else _facing.slerp(want, clampf(delta * 4.0, 0.0, 1.0)).normalized()
+	if instant:
+		_facing = want
+	else:
+		# turn by angle: Vector3.slerp between nearly opposite directions (the player walking past)
+		# has no axis to turn round and raised an engine error every frame
+		var a: float = lerp_angle(atan2(-_facing.x, -_facing.z), atan2(-want.x, -want.z), clampf(delta * 4.0, 0.0, 1.0))
+		_facing = Vector3(-sin(a), 0.0, -cos(a))
 	if _facing.length() > 0.01:
 		_rig.rotation.y = atan2(-_facing.x, -_facing.z)
 
