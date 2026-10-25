@@ -210,6 +210,8 @@ var _highlight: int = 0
 var _windup: bool = false
 var _dead: bool = false
 var _flash_left: float = 0.0
+var _pause_left: float = 0.0             # hit_pause: the motion holds still this long
+var _pause_delay: float = 0.0            # ... once this has passed
 
 var _time: float = 0.0
 var _phase: float = 0.0
@@ -418,6 +420,24 @@ func flash(seconds: float = 0.12) -> void:
 	_refresh()
 
 
+## Hit-stop: the body's motion holds still for `seconds`, starting `delay` seconds from now (when the
+## swing it answers lands). Only the drawing stops; the game clock does not (balance.json "feel").
+func hit_pause(seconds: float, delay: float = 0.0) -> void:
+	_pause_delay = maxf(delay, 0.0)
+	_pause_left = maxf(seconds, 0.0)
+
+
+## True while a hit-stop holds this body still (and counts it down).
+func _paused(delta: float) -> bool:
+	if _pause_left <= 0.0:
+		return false
+	if _pause_delay > 0.0:
+		_pause_delay -= delta
+		return false
+	_pause_left -= delta
+	return true
+
+
 ## Attack telegraph: the whole model burns amber while on, and animate() raises the weapon arm.
 func set_windup(on: bool) -> void:
 	if on == _windup:
@@ -490,7 +510,7 @@ func set_dead_look() -> void:
 ## in m/s and whether it is striking right now. Idle breathing, limb swing proportional to
 ## speed, a raised-weapon pose while set_windup(true), and a strike pose while `attacking`.
 func animate(delta: float, speed: float, attacking: bool) -> void:
-	if _dead:
+	if _dead or _paused(delta):
 		return
 	_time += delta
 	var want_move: float = clampf(speed / maxf(stride_speed, 0.01), 0.0, 1.0)

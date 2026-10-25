@@ -449,6 +449,27 @@
     "winded_cost_mult": 2.0,
     "player_shove_speed": 12.0
   },
+  "feel": {
+    "_note": "How the controls answer (Brent 2026-10-24: 'make them feel more fluid. It feels a bit clunky right now'; the look is BG3 / Diablo 4). Responsiveness, not power: no damage, cost, recovery, commit or winded rule is changed here except strike_after_skill_s. Measured with tests/combat_timeline_probe.tscn; every number [MODEL], untested by hand - needs Brent. input_buffer_s: a hotbar key pressed while you are busy (a recovery, a wind-up, a dash, a stagger, a held skill) is kept and cast the moment you are free, if that comes within this many seconds; the latest press wins; 0 turns it off (the press is dropped, as before). strike_queue_max: clicks on a foe that wait their turn to swing (each click is one blow; holding keeps swinging). held_strike_retargets: holding strike when your foe dies clicks again where the cursor is (the next foe under it, or walk there). strike_after_skill_s: how long after a melee skill (melee_burst) before a bare strike (was melee_cooldown x overcharge_cooldown_factor, 0.675 s; now one ordinary swing). cast_faces_cursor: a skill turns you to the cursor the moment it is cast, so it goes where you point even while you walk somewhere else; cast_face_hold_s: you keep facing it this long unless you click. body_turn_rate: the body as drawn turns toward where you face at this rate (exponential, per second); gameplay facing is instant, and a strike or cast snaps the body round. anim_action_lead_s: a strike's or an instant skill's motion is started part-way so its swing lands this long after the press (wardrobe.json action_impact_s says where each clip's swing is); a wind-up's motion is timed to land as the wind-up ends. anim_move_cancel_s: a one-off motion (a cast, a slash, a dodge) is cut for the run when you move after this long; anim_cancel_blend_s / anim_action_blend_s / anim_loop_blend_s: cross-fade times into the run, into a one-off, between loops. hit_stop_s / hit_stop_heavy_s: a landed melee hit freezes the striker's and the struck body's motion this long (heavy: an overcharged blow, a melee skill, or a kill), at the moment the swing lands; never the game clock. camera_kick_m / camera_kick_heavy_m / camera_kick_hurt_m: the camera is nudged this far along a landed melee hit, a heavy one, or when a heavy blow lands on you; camera_kick_decay: how fast it settles (per second).",
+    "input_buffer_s": 0.3,
+    "strike_queue_max": 2,
+    "held_strike_retargets": true,
+    "strike_after_skill_s": 0.45,
+    "cast_faces_cursor": true,
+    "cast_face_hold_s": 0.25,
+    "body_turn_rate": 22.0,
+    "anim_action_lead_s": 0.07,
+    "anim_move_cancel_s": 0.15,
+    "anim_cancel_blend_s": 0.15,
+    "anim_action_blend_s": 0.08,
+    "anim_loop_blend_s": 0.2,
+    "hit_stop_s": 0.05,
+    "hit_stop_heavy_s": 0.09,
+    "camera_kick_m": 0.06,
+    "camera_kick_heavy_m": 0.14,
+    "camera_kick_hurt_m": 0.12,
+    "camera_kick_decay": 12.0
+  },
   "slipstream": {
     "_note": "Wind's signature (design/05 2.4), only for a character who holds wind: a row of pips earned by moving and lost by standing. +1 pip for every metres_per_pip travelled (walking or dashing); after still_delay_s standing, -1 every decay_s. Wind skills spend pips for their real effect. At speed_pips or more you move speed_mult faster.",
     "max": 10,

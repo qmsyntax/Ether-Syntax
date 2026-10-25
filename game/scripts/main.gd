@@ -234,6 +234,8 @@ func _place_camera(focus: Vector3, delta: float) -> void:
 	var pitch: float = deg_to_rad(lerpf(float(c["pitch_far_deg"]), float(c["pitch_near_deg"]), t))
 	var yaw: float = deg_to_rad(float(c["yaw_deg"]))
 	var look: Vector3 = focus + Vector3.UP * lerpf(float(c["look_height_far"]), float(c["look_height_near"]), t)
+	if player != null and player.has_method("camera_kick"):
+		look += player.call("camera_kick")      # a landed blow nudges the view (balance.json feel)
 	var back := Vector3(sin(yaw), 0.0, cos(yaw))
 	camera.fov = lerpf(float(c["fov_far_deg"]), float(c["fov_near_deg"]), t)
 	camera.global_position = look + back * cos(pitch) * dist + Vector3.UP * sin(pitch) * dist
@@ -364,7 +366,7 @@ func _cast_from_hotbar(event: InputEvent) -> bool:
 		return true
 	for i: int in (player.get("hotbar") as Array).size():
 		if event.is_action_pressed("ability_%d" % (i + 1)):
-			player.call("cast_slot", i)
+			player.call("press_slot", i)            # cast now, or as soon as you are free (balance.json feel)
 			return true
 	return false
 
