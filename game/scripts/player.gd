@@ -1901,9 +1901,9 @@ func pick_screen(screen_pos: Vector2, cam: Camera3D) -> Node3D:
 		var t := node as Node3D
 		if t == null or bool(t.call("is_dead")):
 			continue
-		if cam.is_position_behind(t.global_position):
-			continue
 		var h: float = float(t.get("height")) if t.get("height") != null else 1.0
+		if not Pick.standing_in_view(cam, t.global_position, h):
+			continue                            # beside or under the camera: see Pick.standing_in_view
 		var r: float = float(t.get("radius"))
 		var base: Vector2 = cam.unproject_position(t.global_position)
 		var top: Vector2 = cam.unproject_position(t.global_position + Vector3.UP * h)
