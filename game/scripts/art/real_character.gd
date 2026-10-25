@@ -57,6 +57,10 @@ var _run_speed := 3.7
 var _run_armed_speed := 3.6
 var _sprint_speed := 6.0
 var _one_shot := ""                        # an action playing to its end; the loops wait for it
+var _one_shot_t := 0.0                     # how long it has played (moving cuts it after "feel" anim_move_cancel_s)
+var _cancel_blend := false                 # the next loop fades in from a cut action
+var _is_paused := false                    # hit_pause is holding the clip still
+var _paused_speed := 1.0
 var _activity := ""
 var _strike_side := false
 var _was_attacking := false
@@ -419,6 +423,15 @@ func _material_for(piece: String, cfg: Dictionary, mesh_name: String) -> ShaderM
 
 
 func _process(delta: float) -> void:
+	if (_pause_left > 0.0 or _is_paused) and _player != null:
+		var hold: bool = _paused(delta)        # hit-stop: the clip holds still, the game goes on
+		if hold and not _is_paused:
+			_paused_speed = _player.speed_scale
+			_player.speed_scale = 0.0
+			_is_paused = true
+		elif not hold and _is_paused:
+			_player.speed_scale = _paused_speed
+			_is_paused = false
 	for h: Node3D in _hanging:                 # a censer on its chain: down is down, whatever the hand does
 		if is_instance_valid(h):
 			var s: Vector3 = h.global_transform.basis.get_scale()
@@ -698,28 +711,54 @@ func set_activity(name_now: String) -> void:
 
 ## Play a one-off to its end: "cast", "cast_area", "dodge", "hit", "heavy", "pickup", "throw",
 ## "power_up", "slash_in", "slash_out". Speeds come from data/wardrobe.json "action_speed".
-func play_action(name_now: String) -> void:
+## `lands_in` >= 0: start it part-way (or slower) so its swing - wardrobe.json "action_impact_s",
+## clip seconds - lands that many seconds from now; a strike or an instant skill passes balance.json
+## "feel" anim_action_lead_s, a wind-up its own length. Moving cuts it (animate).
+func play_action(name_now: String, lands_in: float = -1.0) -> void:
 	if _dead or _player == null:
 		return
 	if _arm_lost and _player.has_animation(name_now + "_l"):
 		name_now += "_l"
 	if not _player.has_animation(name_now):
 		return
+	if _is_paused:
+		_is_paused = false                     # a new motion ends a hit-stop
+		_pause_left = 0.0
+	var base: String = name_now.trim_suffix("_l")
+	var rate: float = float((_wardrobe().get("action_speed", {}) as Dictionary).get(base, 1.0))
 	_one_shot = name_now
-	_player.speed_scale = float((_wardrobe().get("action_speed", {}) as Dictionary).get(name_now.trim_suffix("_l"), 1.0))
-	_player.play(name_now, 0.08)
+	_one_shot_t = 0.0
+	_player.speed_scale = rate
+	_player.play(name_now, _feel("anim_action_blend_s", 0.08))
+	var impact: float = float((_wardrobe().get("action_impact_s", {}) as Dictionary).get(base, -1.0))
+	var start: float = impact - lands_in * rate if lands_in >= 0.0 and impact > 0.0 else 0.0
+	_player.seek(maxf(start, 0.0), true)       # from the top even if the same clip was playing
+	if lands_in >= 0.0 and impact > 0.0 and start < 0.0:
+		_player.speed_scale = maxf(rate * 0.5, impact / maxf(lands_in, 0.01))     # a long wind-up: the motion is drawn out
+
+
+## A number from balance.json "feel" (how the controls answer), or `fallback` without one.
+static func _feel(key: String, fallback: float) -> float:
+	return float((GameData.balance.get("feel", {}) as Dictionary).get(key, fallback))
 
 
 ## Called every frame: the moving loops by speed, and a slash when a strike lands.
-func animate(_delta: float, speed: float, attacking: bool) -> void:
-	if _dead or _player == null:
+func animate(delta: float, speed: float, attacking: bool) -> void:
+	if _dead or _player == null or _is_paused:
 		return
-	if _attack_clips.is_empty() and attacking and not _was_attacking and (_one_shot == "" or _one_shot.begins_with("slash")):
+	# a swing cuts whatever one-off is playing (a cast's tail, a dodge), except a heavy blow, which is
+	# itself the swing, and the stagger's reaction
+	if _attack_clips.is_empty() and attacking and not _was_attacking and not (_one_shot.begins_with("heavy") or _one_shot.begins_with("hit")):
 		_strike_side = not _strike_side
-		play_action("slash_in" if _strike_side else "slash_out")
+		play_action("slash_in" if _strike_side else "slash_out", _feel("anim_action_lead_s", -1.0))
 	_was_attacking = attacking
 	if _one_shot != "":
-		return
+		_one_shot_t += delta
+		# walking off cuts a one-off for the run (not an enemy's attack, which is timed to its blow)
+		if not (_attack_clips.is_empty() and speed > 0.25 and _one_shot_t >= _feel("anim_move_cancel_s", INF)):
+			return
+		_one_shot = ""
+		_cancel_blend = true
 	if _activity != "":
 		return
 	var want := _idle_clip
@@ -736,8 +775,9 @@ func animate(_delta: float, speed: float, attacking: bool) -> void:
 		want = "walk"
 		rate = speed / _walk_speed
 	if _player.current_animation != want:
-		_player.play(want, 0.2)
+		_player.play(want, _feel("anim_cancel_blend_s" if _cancel_blend else "anim_loop_blend_s", 0.2))
 		_hold_for(want)
+	_cancel_blend = false
 	_player.speed_scale = clampf(rate, 0.6, 1.8) if want != _idle_clip else 1.0
 
 

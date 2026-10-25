@@ -3,6 +3,8 @@ extends Node
 ## a bit clunky right now"). Headless; run it with a fixed frame rate so the animation clock and the
 ## physics clock agree:
 ##   godot --headless --fixed-fps 60 --path game res://tests/combat_timeline_probe.tscn   (-- --only=<seq> --trace)
+##   godot --fixed-fps 60 --path game res://tests/combat_timeline_probe.tscn -- --sheet=<seq> [--every=4] [--tag=after]
+##       (windowed) one sequence as a contact sheet, shots/timeline-<seq>-<tag>.png, a cell every 4 frames
 ## Plays the common sequences through the player's real input path - the strike button (Input
 ## actions + a fixed cursor, as the click handler reads it) and the hotbar (what main.gd's
 ## _cast_from_hotbar calls) - and logs, for every input, when it was pressed, when it took effect,
@@ -56,6 +58,11 @@ var trace := false
 var rules_ok := true
 var rule_notes: Array[String] = []
 var _world: Node3D
+var sheet := ""                          # --sheet=<sequence>: windowed, a contact sheet of it
+var sheet_every := 4                     # --every=<frames> between cells
+var sheet_tag := "now"                   # --tag=<before|after>, for the file name
+var _cells: Array[Image] = []
+var _cam: Camera3D
 var _totals := {"inputs": 0, "dropped": 0, "delay_sum": 0.0, "delayed": 0, "skate_s": 0.0, "snap_max": 0.0}
 
 
@@ -64,6 +71,13 @@ func _ready() -> void:
 	for a: String in OS.get_cmdline_user_args():
 		if a.begins_with("--only="):
 			only = a.trim_prefix("--only=")
+		elif a.begins_with("--sheet="):
+			sheet = a.trim_prefix("--sheet=")
+			only = sheet
+		elif a.begins_with("--every="):
+			sheet_every = int(a.trim_prefix("--every="))
+		elif a.begins_with("--tag="):
+			sheet_tag = a.trim_prefix("--tag=")
 		elif a == "--trace":
 			trace = true
 	await get_tree().physics_frame
@@ -82,6 +96,9 @@ func _ready() -> void:
 		{"t": 0.07, "do": "slot", "slot": 1, "label": "tsunami strike"}], 1.0)
 	await _seq("strike_after_skill", "water", [
 		{"t": 0.0, "do": "slot", "slot": 1, "label": "tsunami strike"},
+		{"t": 0.2, "do": "strike_enemy", "label": "strike"}], 1.2)
+	await _seq("strike_after_burst", "nature", [
+		{"t": 0.0, "do": "slot", "slot": 1, "label": "reaping sweep (0.15 s wind-up)"},
 		{"t": 0.2, "do": "strike_enemy", "label": "strike"}], 1.2)
 	await _seq("dash_then_cast", "water", [
 		{"t": 0.0, "do": "slot", "slot": 2, "label": "dash"},
@@ -203,13 +220,19 @@ func _press_slot(p: Node, slot: int) -> void:
 func _seq(name: String, aff: String, inputs: Array, duration: float, opts: Dictionary = {}) -> void:
 	if only != "" and not name.contains(only):
 		return
+	if sheet != "" and name != sheet:
+		return
 	_floor()
+	if sheet != "":
+		_stage()
 	var p: CharacterBody3D = PlayerScript.new()
 	_world.add_child(p)
 	p.global_position = Vector3.ZERO
 	p.call("set_talent", "one_percent_lifesteal")
 	p.call("set_affinities", [aff])               # the whole kit on slots 1-3 (the sandbox loadout)
 	p.set("active", true)
+	if sheet != "":
+		p.set("cursor_fixed", Vector3(0, 0, -3))   # windowed: aim ahead, not wherever the real mouse is
 	if opts.has("extra_skill"):                    # a fourth skill on slot 4, outside the kit
 		(p.get("abilities") as Array).append({"id": str(opts["extra_skill"]), "stage": 0, "progress": 0.0})
 		p.get("hotbar")[3] = (p.get("abilities") as Array).size() - 1
@@ -261,10 +284,12 @@ func _seq(name: String, aff: String, inputs: Array, duration: float, opts: Dicti
 		spy.clock = t
 		# --- observe the frame just processed
 		var held_now: bool = not (p.get("_held") as Dictionary).is_empty()
+		var acted := false                       # a cast or a blow this frame: its turn is a snap by design
 		for i: int in abilities.size():
 			var st: Dictionary = abilities[i]
 			if float(st["progress"]) > 0.0:
 				if not (was_held and held_now):
+					acted = true
 					_effect(pending, results, "slot", i, seen)
 					if str(GameData.ability(str(st["id"])).get("kind", "")) == "dash":
 						if dash_t >= 0.0:
@@ -280,6 +305,7 @@ func _seq(name: String, aff: String, inputs: Array, duration: float, opts: Dicti
 			dash_end = seen
 		var hits: Array = spy.hits
 		for k: int in range(last_hits, hits.size()):
+			acted = true
 			if bool((hits[k] as Dictionary)["bare"]):
 				strike_count += 1
 				_effect(pending, results, "strike", -1, seen)
@@ -295,7 +321,8 @@ func _seq(name: String, aff: String, inputs: Array, duration: float, opts: Dicti
 				skate += STEP
 		var shown_yaw: float = p.rotation.y + ((rig as Node3D).rotation.y if rig is Node3D else 0.0)     # the body as drawn
 		var dr: float = absf(wrapf(shown_yaw - last_rot, -PI, PI))
-		snap = maxf(snap, rad_to_deg(dr))
+		if not acted:
+			snap = maxf(snap, rad_to_deg(dr))
 		last_rot = shown_yaw
 		if bolt_err < 0.0 and far_foe != null:
 			for node: Node in _world.get_children():
@@ -354,6 +381,8 @@ func _seq(name: String, aff: String, inputs: Array, duration: float, opts: Dicti
 			if str(rec["type"]) != "none":
 				pending.append(rec)
 			results.append(rec)
+		if sheet != "":
+			await _snap_cell(p, int(round(t / STEP)))
 		t += STEP
 	for a: String in ["strike", "ability_1", "ability_2", "ability_3", "move_up"]:
 		Input.action_release(a)
@@ -395,13 +424,80 @@ func _seq(name: String, aff: String, inputs: Array, duration: float, opts: Dicti
 		var fired_late: bool = float(bolt["took"]) >= 0.0 and float(bolt["took"]) - float(bolt["pressed"]) > window + STEP * 1.5
 		print("TIMELINE:   buffer window %.2f s; a press older than that is dropped: %s" % [window, "yes" if not fired_late else "NO"])
 		_rule("a buffered press never fires after its window", not fired_late)
-	print("TIMELINE:   skating (a one-off clip while sliding) %.2f s; largest turn in one frame %.0f deg" % [skate, snap])
+	print("TIMELINE:   skating (a one-off clip while sliding) %.2f s; largest turn in one frame (not at a cast or blow) %.0f deg" % [skate, snap])
 	if trace:
 		print("TIMELINE:   clips: %s" % ", ".join(anims))
 	_totals["skate_s"] = float(_totals["skate_s"]) + skate
 	_totals["snap_max"] = maxf(float(_totals["snap_max"]), snap)
+	if sheet != "":
+		_save_sheet(name)
 	_world.queue_free()
 	await get_tree().physics_frame
+
+
+## --sheet: light, a ground to stand on, and a camera at the game's angle on the player.
+func _stage() -> void:
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.16, 0.17, 0.19)
+	env.ambient_light_color = Color(0.55, 0.55, 0.6)
+	env.ambient_light_energy = 0.6
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	var we := WorldEnvironment.new()
+	we.environment = env
+	_world.add_child(we)
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-50.0, 30.0, 0.0)
+	sun.shadow_enabled = true
+	_world.add_child(sun)
+	var ground := MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(40, 40)
+	ground.mesh = plane
+	var gm := StandardMaterial3D.new()
+	gm.albedo_color = Color(0.33, 0.30, 0.25)
+	ground.material_override = gm
+	_world.add_child(ground)
+	_cam = Camera3D.new()
+	_cam.fov = 30.0
+	_world.add_child(_cam)
+	_cam.current = true
+	_cells.clear()
+
+
+## --sheet: every sheet_every frames, the view around the player becomes a cell.
+func _snap_cell(p: Node3D, frame: int) -> void:
+	if frame % sheet_every != 0:
+		return
+	var at: Vector3 = p.global_position
+	_cam.global_position = at + Vector3(4.2, 4.6, 4.2)
+	_cam.look_at(at + Vector3(0, 0.9, -0.4), Vector3.UP)
+	await RenderingServer.frame_post_draw
+	var img: Image = get_viewport().get_texture().get_image()
+	var size: Vector2i = img.get_size()
+	var side: int = mini(size.x, size.y) * 3 / 4
+	var cell: Image = img.get_region(Rect2i((size.x - side) / 2, (size.y - side) / 2, side, side))
+	cell.resize(240, 240)
+	cell.convert(Image.FORMAT_RGBA8)
+	for x: int in 240:                           # a strip along the top, darker the later the frame, to read the order
+		for y: int in 3:
+			cell.set_pixel(x, y, Color(1, 1, 1) if x < int(240.0 * float(_cells.size() % 10 + 1) / 10.0) else Color(0, 0, 0))
+	_cells.append(cell)
+
+
+func _save_sheet(name: String) -> void:
+	if _cells.is_empty():
+		return
+	var cols := 10
+	var rows: int = int(ceil(float(_cells.size()) / float(cols)))
+	var out := Image.create(240 * mini(cols, _cells.size()), 240 * rows, false, Image.FORMAT_RGBA8)
+	for i: int in _cells.size():
+		out.blit_rect(_cells[i], Rect2i(0, 0, 240, 240), Vector2i((i % cols) * 240, (i / cols) * 240))
+	var dir: String = ProjectSettings.globalize_path("res://").path_join("../shots")
+	DirAccess.make_dir_recursive_absolute(dir)
+	var path: String = dir.path_join("timeline-%s-%s.png" % [name, sheet_tag])
+	print("TIMELINE: sheet saved %s (%d cells, every %d frames = %.2f s, left to right)" % [path, _cells.size(), sheet_every, float(sheet_every) / 60.0])
+	out.save_png(path)
 
 
 ## The first pending input of `type` (and for a slot, that ability) takes effect at `at`.

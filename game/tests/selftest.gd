@@ -8,6 +8,7 @@ extends Node
 const PlayerScript := preload("res://scripts/player.gd")
 const FreeRules := preload("res://tests/free_rules.gd")
 const BeastChecks := preload("res://tests/beast_checks.gd")
+const FeelChecks := preload("res://tests/feel_checks.gd")
 
 var _failed := 0
 var _passed := 0
@@ -26,6 +27,13 @@ func _ready() -> void:
 	# `-- --only=runes` runs just the rune checks (quicker while working on runes)
 	if OS.get_cmdline_user_args().has("--only=statuses"):
 		await _test_status_text()
+		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
+		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
+		get_tree().quit(1 if _failed > 0 else 0)
+		return
+	# `-- --only=feel` runs just the checks on how the controls answer (tests/feel_checks.gd)
+	if OS.get_cmdline_user_args().has("--only=feel"):
+		await FeelChecks.new(self, _check).run()
 		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 		get_tree().quit(1 if _failed > 0 else 0)
@@ -98,6 +106,7 @@ func _ready() -> void:
 	await _test_build_1022()
 	await _test_status_text()
 	await BeastChecks.new(self, _check).run()
+	await FeelChecks.new(self, _check).run()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
 	_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])

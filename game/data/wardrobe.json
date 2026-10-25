@@ -745,6 +745,14 @@
     "throw": 1.9,
     "power_up": 1.2
   },
+  "action_impact_s": {
+    "_note": "where in each one-off clip its swing lands, in the clip's own seconds (before action_speed): the moment the right hand moves fastest, measured by tests/combat_timeline_probe.tscn (its 'clip' lines x the rate) on body_male, 2026-10-24. RealCharacter.play_action starts a clip part-way, or draws it out, so that moment comes when the blow does (balance.json feel anim_action_lead_s, or a wind-up's end). A clip not listed starts from its beginning.",
+    "slash_in": 0.66,
+    "slash_out": 0.85,
+    "heavy": 1.39,
+    "cast": 0.86,
+    "cast_area": 1.3
+  },
   "skin_source": "gen",
   "_skin_note": "skin_source: 'gen' = a face generated on Brent's ComfyUI (FLUX + depth ControlNet on our head's shape, fictional) projected over a MakeHuman CC0 photo skin for the body; 'mh' = the MakeHuman photo skin alone; 'painted' = the procedural skin from blender_body_prep.py. Compared 2026-10-18: gen looked most real.",
   "hair_luma": {

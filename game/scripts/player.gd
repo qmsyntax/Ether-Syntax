@@ -216,6 +216,21 @@ var _cast_action := ""
 var test_character := false
 ## Test characters only: which six of the learned skills the bar shows (next page).
 var hotbar_page := 0
+# The feel of the controls (balance.json "feel", the "# --- feel" block at the end of this file).
+var _buffered_slot := -1             # a hotbar key pressed while busy, cast when you are free
+var _buffered_t := 0.0
+var _strike_credit := 0              # clicks on the attack target not yet swung
+var _fight_target_id := 0            # the attack target last step, by instance id (_target_fell)
+var _hold_fights := false            # the strike button is held and began on a foe
+var _face_hold_t := 0.0              # after a cast you keep facing where it went
+var _face_dir := Vector3.ZERO
+var _body_yaw := 0.0                 # the body as drawn turns toward rotation.y
+var _snap_body := true
+var _cam_kick := Vector3.ZERO
+var _shown_stagger := false
+var _motion_started := false         # the wind-up already started the cast's motion
+## A landed hit, for whatever wants to answer it (a sound, later): strength 0 light, 1 heavy, 2 taken.
+signal impact(strength: int, at: Vector3)
 
 # Tuning (GameData).
 var _p: Dictionary
@@ -306,6 +321,7 @@ func _update_model(delta: float) -> void:
 		_rig.call("set_activity", "meditate" if (meditating or _sitting) else "")
 	if _rig.has_method("set_stance"):          # relaxed in town, the guard in the field (wardrobe "stances")
 		_rig.call("set_stance", _stance_place())
+	_feel_model(delta)
 	_rig.animate(delta, velocity.length(), _strike_t > 0.0)
 
 
@@ -552,6 +568,7 @@ func _physics_process(delta: float) -> void:
 		_tick_windup(delta)
 	if not _held.is_empty():
 		_tick_held(delta)
+	_tick_buffer(delta)
 
 	# Meditation is sitting still: it roots you at once, and only counts once you have settled.
 	_sitting = Input.is_action_pressed("meditate") and _meditate_block <= 0.0 and not _charging and _windup_t <= 0.0
@@ -602,17 +619,15 @@ func _physics_process(delta: float) -> void:
 			fire_ranged(_ranged_aim())
 	if not bot and not ranged_stance and Input.is_action_just_pressed("strike") and not _sitting and not ui_blocked:
 		_click_cursor()
+		_strike_clicked()
 	if not bot and not ranged_stance and Input.is_action_pressed("strike") and attack_target == null and has_move_goal:
 		move_goal = _cursor_ground()          # holding on the ground keeps steering
 
 	var input := Vector2.ZERO
 	if not _sitting and _stagger_t <= 0.0 and _windup_t <= 0.0:
 		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	if _stagger_t > 0.0:
-		# off your feet: nowhere to go and nothing to swing until it passes
-		has_move_goal = false
-		attack_target = null
-		pickup_target = null
+	# off your feet (_stagger_t): nowhere to go and nothing to swing until it passes - what you were
+	# doing was dropped when it hit (take_hit); a click made meanwhile waits for you to get up
 	var dir := Vector3(input.x, 0.0, input.y).normalized().rotated(Vector3.UP, ISO_YAW)
 	if input != Vector2.ZERO:
 		has_move_goal = false                  # WASD takes over from click-to-move
@@ -622,6 +637,8 @@ func _physics_process(delta: float) -> void:
 
 	if attack_target != null and (not is_instance_valid(attack_target) or bool(attack_target.call("is_dead"))):
 		attack_target = null
+	_target_fell()
+	_strike_spent()
 	if attack_target != null and not meditating and not _charging:
 		var to: Vector3 = attack_target.global_position - global_position
 		to.y = 0.0
@@ -630,11 +647,10 @@ func _physics_process(delta: float) -> void:
 			_facing = to.normalized()
 		if to.length() <= reach:
 			dir = Vector3.ZERO if input == Vector2.ZERO else dir
-			if _melee_cd <= 0.0:
+			if _melee_cd <= 0.0 and _stagger_t <= 0.0:
+				_strike_credit = maxi(0, _strike_credit - 1)       # a click is one blow (_strike_spent)
 				_strike_target(attack_target, float(_p["off_hand_factor"]) if arm_right_lost else 1.0, ["melee"])
 				_melee_cd = float(_p["melee_cooldown"]) * weapon_stat("melee_cooldown_mult", true) * temper_stat("melee_cooldown_mult")
-				if _strike_once and not Input.is_action_pressed("strike"):
-					attack_target = null
 		elif input == Vector2.ZERO:
 			dir = to.normalized()                  # walk into reach
 			if bot and _bot_dir != Vector3.ZERO:
@@ -666,8 +682,8 @@ func _physics_process(delta: float) -> void:
 		speed *= GameData.num("ranged", "stance_move_factor")
 	if pips >= GameData.inum("slipstream", "speed_pips"):
 		speed *= GameData.num("slipstream", "speed_mult")
-	if _windup_t > 0.0:
-		dir = Vector3.ZERO                       # set: you do not move until it goes off
+	if _windup_t > 0.0 or _stagger_t > 0.0:
+		dir = Vector3.ZERO                       # set: you do not move until it goes off (or you are up)
 	velocity = dir * speed
 	if _shoved_left > 0.0:
 		# knocked back: an exact distance, and nothing you were doing with your feet survives it
@@ -697,6 +713,7 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 
 	_tick_slipstream(delta)
+	_hold_facing(delta)
 	rotation.y = atan2(-_facing.x, -_facing.z)
 	_update_model(delta)
 
@@ -750,6 +767,8 @@ func deal_damage(target: Node, base: float, tags: Array = []) -> HitContext:
 		_after_landing(ctx, target)
 	if ctx.applied <= 0.0:
 		return ctx
+	if not ctx.is_scenery and ctx.has_tag("melee") and not ctx.has_tag("dot"):
+		_impact_feedback(target, ctx.has_tag("overcharge") or ctx.has_tag("ability") or bool(target.call("is_dead")))
 	if not ctx.is_scenery:
 		FloatText.spawn(get_parent(), pos, "%d" % int(ctx.applied), Color(1, 0.86, 0.45) if opening else (Color(0.75, 0.95, 1.0) if from_behind else Color(1, 1, 1)))
 		if opening:
@@ -845,6 +864,8 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 			_burst_at(global_position, shell.get("on_break", {}), ["ability", str(shell.get("affinity", "")), "shell"])
 		if ctx.amount() <= 0.0:
 			return 0.0
+	if heavy:
+		_kick(Vector3.ZERO, GameData.num("feel", "camera_kick_hurt_m"), source)
 	if heavy and not braced:                 # set for an earth skill: nothing knocks you off it
 		var combat: Dictionary = GameData.balance["combat"]
 		poise -= float(combat["heavy_poise_damage"]) * buff_num("poise_loss_mult") / maxf(0.01, buff_num("poise_mult"))
@@ -854,6 +875,11 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 			_dash_time = 0.0
 			_windup = {}                          # whatever you were winding up is lost
 			_windup_t = 0.0
+			_motion_started = false
+			has_move_goal = false                 # and whatever you meant to do next
+			attack_target = null
+			pickup_target = null
+			_buffered_slot = -1
 			_float("STAGGERED", Color(1, 0.7, 0.3))
 	return _apply_damage(ctx.amount(), heavy)
 
@@ -1486,10 +1512,7 @@ func windup_frac() -> float:
 
 ## A wind-up holds you where you stood and where you aimed; when it ends, the skill goes off.
 func _tick_windup(delta: float) -> void:
-	_facing = _windup.get("facing", _facing)
-	has_move_goal = false
-	attack_target = null
-	pickup_target = null
+	_facing = _windup.get("facing", _facing)     # a click made meanwhile is kept for when it goes off
 	_windup_t -= delta
 	if _windup_t > 0.0:
 		return
@@ -1971,6 +1994,8 @@ func pick_at(point: Vector3) -> Node3D:
 ## One blow on one target (Brent 2026-09-23: base attacks are single target).
 func _strike_target(target: Node3D, multiplier: float, tags: Array) -> void:
 	_strike_t = 0.2
+	_snap_body_now()
+	_face_hold_t = 0.0
 	_swing_visual(reach_now(), multiplier > 1.0, true)
 	deal_damage(target, float(_p["melee_damage"]) * weapon_stat("melee_damage_mult", true) * multiplier, tags)
 
@@ -3166,6 +3191,7 @@ func cast_ability(index: int) -> void:
 	var stage_mult: float = ability_damage_mult(int(state["stage"])) * float(ab.get("damage_all", 1.0))
 	var tags: Array = ["ability", aff, str(state["id"])]
 	var windup: float = float(ab.get("windup", 0.0))
+	_face_cast_aim(kind)
 	if kind == "prop" or kind == "delayed_blast" or kind == "ground_zone" or kind == "rod" or kind == "seed" or kind == "summon" \
 			or (kind == "displace" and strike_target == null) or (kind == "smite" and strike_target != null):
 		var to_spot: Vector3 = (strike_target.global_position if (kind == "smite" and strike_target != null) else blink_to) - global_position
@@ -3195,6 +3221,8 @@ func cast_ability(index: int) -> void:
 		has_move_goal = false
 		attack_target = null
 		pickup_target = null
+		if bool(_windup["release"]):
+			_motion_started = _play_cast_motion(ab, kind, windup)       # the motion lands as the wind-up ends
 		if bool(ab.get("braced", false)):
 			_float("braced", GameData.affinity_color(aff).lightened(0.3))
 
@@ -3213,6 +3241,9 @@ func cast_ability(index: int) -> void:
 		_brace_t = recovery
 	if str(ab.get("self_status", "")) != "":
 		_take_state(str(ab["self_status"]), float(ab.get("self_status_s", 2.0)))
+	if not movement:
+		_face_dir = _facing                      # keep facing where it went for a moment, unless you click
+		_face_hold_t = GameData.num("feel", "cast_face_hold_s")
 
 	if reflux_of(aff) >= float(_reflux_cfg["lock_at"]):
 		capping_affinity = aff
@@ -3232,13 +3263,11 @@ func cast_ability(index: int) -> void:
 func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float, tags: Array, strike_target: Node3D, blink_to: Vector3) -> void:
 	if (kind == "targeted_strike" or kind == "chain") and strike_target == null:
 		return                                   # whoever it was meant for is gone
-	if _rig != null and _rig.has_method("play_action"):
-		# a real body plays the motion that fits; a strike is left to animate(), which swings
-		var motion: String = {"dash": "dodge", "blink": "dodge", "detonate": "cast_area", "self_buff": "cast_area"}.get(kind, "cast")
-		if kind == "melee_burst" and float(ab.get("arc_deg", 0.0)) >= 360.0:
-			motion = "cast_area"
-		if kind != "targeted_strike" and not (kind == "melee_burst" and motion == "cast"):
-			_rig.call("play_action", motion)
+	if _motion_started:
+		_motion_started = false                  # its wind-up started the motion, timed to land now
+	else:
+		_play_cast_motion(ab, kind, GameData.num("feel", "anim_action_lead_s"))
+	_snap_body_now()
 	match kind:
 		"projectile":
 			_fire_projectile(ab, stage_mult, GameData.affinity_color(aff), tags + ["projectile"])
@@ -3247,7 +3276,7 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 				var hurt: float = body.apply_self_harm(float(ab["self_harm"]))
 				_float("-%d" % int(hurt), Color(1, 0.4, 0.3))
 			_burst(ab, stage_mult, tags if bool(ab.get("not_melee", false)) else tags + ["melee"])
-			_melee_cd = float(_p["melee_cooldown"]) * float(_p["overcharge_cooldown_factor"])
+			_melee_cd = GameData.num("feel", "strike_after_skill_s")      # a melee skill counts as one swing
 		"dash":
 			var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 			var dir := Vector3(input.x, 0.0, input.y).normalized().rotated(Vector3.UP, ISO_YAW)
@@ -5808,3 +5837,203 @@ func use_consumable(item_id: String) -> String:
 	inventory.remove(item_id)
 	note("You use the %s." % str(def.get("name", item_id)).to_lower())
 	return ""
+
+
+# --- feel (Brent 2026-10-24: "make them feel more fluid. It feels a bit clunky right now") ----------
+# How the controls answer; numbers in balance.json "feel", measured by tests/combat_timeline_probe.
+# Responsiveness only: nothing here changes what a skill or a strike does, costs or commits you to.
+
+## A hotbar key the player pressed (main.gd). Cast now if you can. While you are busy - a recovery,
+## a wind-up, a dash, a stagger - the press is kept and cast the moment you are free, if that comes
+## within "feel" input_buffer_s; the latest press wins. Pressed while holding a skill, it lets go of
+## that first and then waits its turn. Tests and bots call cast_slot / cast_ability, which still
+## refuse a cast while you are busy, outright.
+func press_slot(slot: int) -> void:
+	_buffered_slot = -1
+	if not _held.is_empty():
+		if str(_held.get("action", "")) == "ability_%d" % (slot + 1):
+			return                               # its own key: the hold answers it
+		_end_held()
+	if _cast_busy():
+		var window: float = GameData.num("feel", "input_buffer_s")
+		if window > 0.0:
+			_buffered_slot = slot
+			_buffered_t = window
+		return
+	cast_slot(slot)
+
+
+## True while a new cast would be refused for timing alone.
+func _cast_busy() -> bool:
+	return _recover_t > 0.0 or _stagger_t > 0.0 or _windup_t > 0.0 or _dash_time > 0.0 or not _held.is_empty()
+
+
+## The kept press goes off as soon as you are free; it is forgotten when its window runs out.
+func _tick_buffer(delta: float) -> void:
+	if _buffered_slot < 0:
+		return
+	_buffered_t -= delta
+	if _buffered_t < 0.0 or meditating or _sitting or ui_blocked or dead:
+		_buffered_slot = -1
+		return
+	if not _cast_busy():
+		var slot: int = _buffered_slot
+		_buffered_slot = -1
+		cast_slot(slot)
+
+
+## The strike button went down and the click handler chose (_click_cursor): a click on a foe is one
+## more blow owed to it (up to "feel" strike_queue_max); any click ends a cast's facing hold.
+func _strike_clicked() -> void:
+	_face_hold_t = 0.0
+	if attack_target != null:
+		_strike_credit = mini(_strike_credit + 1, GameData.inum("feel", "strike_queue_max"))
+	else:
+		_strike_credit = 0
+
+
+## A clicked foe is let go once the blows clicked for are swung, unless the button is still held
+## (holding keeps swinging). Before 2026-10-24 this was asked at the swing, while the click that
+## made it was still down, so one click swung twice and a third quick click was lost.
+func _strike_spent() -> void:
+	if attack_target == null:
+		_strike_credit = 0
+		return
+	if _strike_once and not bot and _strike_credit <= 0 and not Input.is_action_pressed("strike"):
+		attack_target = null
+
+
+## Which foe you are fighting, step to step (by instance id: a freed target compares equal to null).
+## A new target, however it was chosen, is owed one blow. Holding strike that began on a foe fights
+## on ("feel" held_strike_retargets): when the foe drops, the held button clicks again where the
+## cursor is (the next foe there, else the ground to walk to), and while it is held with nobody to
+## hit, a foe the cursor comes over is taken up - Diablo's held attack. Picking is the click
+## handler's own (hovered, pick_at).
+func _target_fell() -> void:
+	var was: int = _fight_target_id
+	_fight_target_id = attack_target.get_instance_id() if is_instance_valid(attack_target) else 0
+	if _fight_target_id != 0 and _fight_target_id != was:
+		_strike_credit = maxi(_strike_credit, 1)
+	if not Input.is_action_pressed("strike") or bot:
+		_hold_fights = false
+		return
+	if _fight_target_id != 0:
+		_hold_fights = true                      # the held button has a foe: it fights until let go
+		return
+	if not _hold_fights or ranged_stance or _sitting or ui_blocked or not bool(GameData.balance["feel"]["held_strike_retargets"]):
+		return
+	var old: Object = instance_from_id(was) if was != 0 else null
+	var felled: bool = was != 0 and (old == null or (old.has_method("is_dead") and bool(old.call("is_dead"))))
+	if felled:
+		_click_cursor()                          # the held button clicks again
+	if attack_target == null:
+		var under: Node3D = hovered if hovered != null and is_instance_valid(hovered) else pick_at(_cursor_ground())
+		if under != null and under.is_in_group("enemies") and not bool(under.call("is_dead")):
+			attack_target = under                # the cursor came over a foe
+			has_move_goal = false
+			_strike_once = true
+	_fight_target_id = attack_target.get_instance_id() if is_instance_valid(attack_target) else 0
+
+
+## A skill goes where you point: the moment it is cast you turn to the cursor ("feel"
+## cast_faces_cursor), even while walking somewhere else or holding a foe. A skill aimed at a foe or
+## a spot turns you to that itself; a dash with a direction key held goes that way; the bot, and a
+## run with no cursor, keep the facing they have.
+func _face_cast_aim(kind: String) -> void:
+	if bot or not bool(GameData.balance["feel"]["cast_faces_cursor"]) or kind == "targeted_strike" or kind == "chain":
+		return
+	if kind == "dash" and Input.get_vector("move_left", "move_right", "move_up", "move_down") != Vector2.ZERO:
+		return
+	if cursor_fixed == null and (not is_inside_tree() or get_viewport().get_camera_3d() == null):
+		return
+	var to: Vector3 = _cursor_ground() - global_position
+	to.y = 0.0
+	if to.length() >= 0.5:
+		_facing = to.normalized()
+		_snap_body_now()
+
+
+## Where you face this step, after the walk and the target have had their say: a wind-up keeps its
+## aim, and for a moment after a cast you keep facing where it went ("feel" cast_face_hold_s).
+func _hold_facing(delta: float) -> void:
+	_face_hold_t -= delta
+	if _windup_t > 0.0:
+		_facing = _windup.get("facing", _facing)
+	elif _face_hold_t > 0.0 and _dash_time <= 0.0 and _face_dir != Vector3.ZERO:
+		_facing = _face_dir
+
+
+## The body's motion for a skill, started so its swing lands `lands_in` seconds from now (each
+## clip's swing moment is wardrobe.json action_impact_s). A melee skill with no wind-up is left to
+## animate(), which slashes; one with a wind-up swings the heavy blow, timed to land as it ends.
+## Returns true if a motion was started.
+func _play_cast_motion(ab: Dictionary, kind: String, lands_in: float) -> bool:
+	if _rig == null or not _rig.has_method("play_action"):
+		return false
+	var motion: String = {"dash": "dodge", "blink": "dodge", "detonate": "cast_area", "self_buff": "cast_area"}.get(kind, "cast")
+	if kind == "melee_burst" and float(ab.get("arc_deg", 0.0)) >= 360.0:
+		motion = "cast_area"
+	var wound_up: bool = lands_in > GameData.num("feel", "anim_action_lead_s") + 0.001
+	if kind == "targeted_strike" or (kind == "melee_burst" and motion == "cast"):
+		if not wound_up:
+			return false
+		motion = "heavy"
+	_rig.call("play_action", motion, -1.0 if motion == "dodge" else lands_in)
+	return true
+
+
+## A strike or a cast turns the body as drawn to where you face, at once (the turn is not eased).
+func _snap_body_now() -> void:
+	_body_yaw = atan2(-_facing.x, -_facing.z)
+
+
+## The body as drawn: the stagger reaction, the turn toward where you face (gameplay facing is
+## instant; a strike or a cast snaps the body round), and the camera settling after a nudge.
+func _feel_model(delta: float) -> void:
+	var down: bool = _stagger_t > 0.0
+	if down != _shown_stagger:
+		_shown_stagger = down
+		_rig.set_staggered(down)
+	var rate: float = GameData.num("feel", "body_turn_rate")
+	if _snap_body or rate <= 0.0:
+		_body_yaw = rotation.y
+		_snap_body = false
+	else:
+		_body_yaw = lerp_angle(_body_yaw, rotation.y, minf(1.0, rate * delta))
+	_rig.rotation.y = wrapf(_body_yaw - rotation.y, -PI, PI)
+	_cam_kick = _cam_kick.lerp(Vector3.ZERO, minf(1.0, GameData.num("feel", "camera_kick_decay") * delta))
+
+
+## A melee hit landed: a hair of hit-stop on both bodies at the moment the swing lands, the camera
+## nudged along the blow, and the impact signal (nothing plays a sound yet).
+func _impact_feedback(target: Node, strong: bool) -> void:
+	if bot:
+		return
+	var f: Dictionary = GameData.balance["feel"]
+	var stop: float = float(f["hit_stop_heavy_s"] if strong else f["hit_stop_s"])
+	if stop > 0.0:
+		var lead: float = float(f["anim_action_lead_s"])
+		for r: Variant in [_rig, target.get("_rig")]:
+			if r is ModelRig and is_instance_valid(r):
+				(r as ModelRig).hit_pause(stop, lead)
+	var at: Vector3 = (target as Node3D).global_position
+	_kick(at - global_position, float(f["camera_kick_heavy_m"] if strong else f["camera_kick_m"]), null)
+	impact.emit(1 if strong else 0, at)
+
+
+## Nudge the camera `metres` along `dir` (or, with no dir, away from `from`: a blow taken).
+func _kick(dir: Vector3, metres: float, from: Variant) -> void:
+	var d: Vector3 = dir
+	if d == Vector3.ZERO and from is Node3D and is_instance_valid(from):
+		d = global_position - (from as Node3D).global_position
+		impact.emit(2, global_position)
+	d.y = 0.0
+	if d.length() < 0.01 or metres <= 0.0:
+		return
+	# blows in the same moment (a sweep through a crowd) add up to no more than one heavy nudge
+	_cam_kick = (_cam_kick + d.normalized() * metres).limit_length(maxf(metres, GameData.num("feel", "camera_kick_heavy_m")))
+
+
+## How far the camera is nudged right now (main._place_camera adds it).
+func camera_kick() -> Vector3:
+	return _cam_kick
