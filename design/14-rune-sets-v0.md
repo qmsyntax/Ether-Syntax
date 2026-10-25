@@ -421,9 +421,10 @@ strength x rate (1.0), up to 3.0. For an outer rune that is its strength - the s
 in through the rune it hands to, as if that bond passed it on whole (otherwise a ring-2 rune handing inward over its
 only bond would give nothing) [MODEL]. For the skill's own rune it is the share of its signature that bond takes:
 its factor's shortfall from 1, split over its bonds by what each takes - all of it when it is taken whole [MODEL].
-The skill's own rune on the strong side converts nothing [MODEL, OPEN]. Worked example (self-test): Drown takes Wave
-on Tidal Bore - 1.5 + 1.0 = 2.5, "converted from Wave's reach, stagger and carry"; a 2.25 s silence; Dazed x2.5
-(7.5 s on a real hit). Drown off Flood on Pressure Jet: 0.675 + 0.75 = 1.425.
+The skill's own rune on the strong side converts nothing [MODEL, OPEN]. Worked example (self-test; v2 2026-10-24:
+Tidal Bore and Pressure Jet are dropped, so the examples moved to the v2 skills on the same runes): Drown takes Wave
+on Sluice Step - 1.5 + 1.0 = 2.5, "converted from Wave's shove and reach"; a 2.25 s silence; Dazed x2.5 (7.5 s on a
+real hit). Drown off Flood on Breaker (on Surge): 0.675 + 0.75 = 1.425.
 
 Not built: moving a placed rune to another place (take it out and set it again), dragging a bond's end to re-route
 it, touch or gamepad controls for the board, and a sound for any of it. Feel is untested - needs Brent.
@@ -494,8 +495,8 @@ level."
   weight_per_tier x the tier's place (vestige 0 ... asura 4). Numbers in `runes.json` bond_v2 `keystone` (with a
   `_note`): weight_base 1.25, weight_per_tier 0.25 (vestige 1.25, remnant 1.5, spirit 1.75, eidolon 2.0, asura 2.25),
   mult_floor 0.1 [MODEL]. A regular rune works at its strength, at most 1.0 before ionic conversion, so every keystone
-  outweighs any unconverted rune. Example: a vestige of Acceleration over Water Bolt's ring 1 takes its speed x1.5 to
-  x1.625. These are not in the workbook yet (Brent adds them; the exporter carries them as `KEYSTONE_RULES` until then).
+  outweighs any unconverted rune. Example: a vestige of Acceleration over a skill's ring 1 takes its speed x1.5 to
+  x1.625 (written for Water Bolt's flight speed; Water Bolt is dropped in v2, the arithmetic is the same). These are not in the workbook yet (Brent adds them; the exporter carries them as `KEYSTONE_RULES` until then).
 - **Folded, not counted twice** [MODEL]. A construct's concept now reaches a skill ONLY as the keystone of a sealed
   ring, through the word's effects (`RingRules.effects` puts the keystones' patch ahead of the runes', as the concept
   was applied before the runes before). The ability's `bound` list is kept as a record of the binds and changes nothing.

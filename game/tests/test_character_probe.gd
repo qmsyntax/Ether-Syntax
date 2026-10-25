@@ -138,12 +138,12 @@ func _detail_steps(at: int) -> void:
 			_click(main.find_child("StatusTerm_masked", true, false) as Control)
 		14:
 			_expect("clicking the name folds the definition", not (main.find_child("StatusDef_masked", true, false) as Control).visible)
-			_point(_skill_spot("rousing_blow"))
+			_point(_skill_spot("shattered_dream"))
 		17:
-			_click_at(_skill_spot("rousing_blow"))
+			_click_at(_skill_spot("shattered_dream"))
 		22:
 			var body2: Control = main.find_child("StatusDef_asleep", true, false) as Control
-			_expect("Rousing Blow lists Asleep, a status it works on, folded", (main.find_child("SkillName", true, false) as Label).text == "Rousing Blow"
+			_expect("Shattered Dream lists Asleep, a status it works on, folded", (main.find_child("SkillName", true, false) as Label).text == "Shattered Dream"
 				and body2 != null and not body2.visible)
 			_reveal(main.find_child("StatusTerm_asleep", true, false) as Control)
 		24:
@@ -157,7 +157,7 @@ func _detail_steps(at: int) -> void:
 			_expect("the skill slots stay in reach below the scrolling details", slot != null and slot.is_visible_in_tree() and vp.encloses(slot.get_global_rect()))
 			_click(slot)
 		32:
-			var want2: int = (player.get("abilities") as Array).map(func(st: Dictionary) -> String: return str(st["id"])).find("rousing_blow")
+			var want2: int = (player.get("abilities") as Array).map(func(st: Dictionary) -> String: return str(st["id"])).find("shattered_dream")
 			_expect("and a click on one puts the skill there", int((player.get("hotbar") as Array)[0]) == want2, str(player.get("hotbar")))
 			_click(main.find_child("GlossaryButton", true, false) as Control)
 		38:

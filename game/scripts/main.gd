@@ -2778,8 +2778,8 @@ func _setup_ui_shot(which: String) -> void:
 		"skill-tree", "skill-tree-field":
 			# a water + lightning character: two roots picked, one tier-2 learned, points to spend
 			player.call("set_affinities", ["water", "lightning"])
-			player.call("start_with_skills", ["water_bolt", "stepped_leader"])
-			player.call("learn", "undertow")
+			player.call("start_with_skills", ["riptide_lash", "stepped_leader"])
+			player.call("learn", "drench")
 			player.set("skill_points", 3)
 			if which == "skill-tree":
 				_enter_town()
@@ -2812,7 +2812,7 @@ func _setup_ui_shot(which: String) -> void:
 			open_inventory()
 			screen.call("show_item", "hobnailed_boots", "")     # the description has its own panel; it covers nothing
 			if which == "inventory-abilities":
-				_shot_lock_word()                          # its locked word shows on Water Bolt's row
+				_shot_lock_word()                          # its locked word shows on Breaker's row
 				screen.set("_tab", "soul")
 				screen.call("rebuild")
 		"ethercosm", "ethercosm-2":
@@ -2834,7 +2834,7 @@ func _setup_ui_shot(which: String) -> void:
 				inv.equip("paired_mote")
 				player.call("refresh_gear")
 				player.call("assign_slot", 3, 2)
-			_shot_lock_word()                              # Water Bolt's ring becomes its word's chain
+			_shot_lock_word()                              # Breaker's ring becomes its word's chain
 			_enter_town()
 			open_ethercosm()
 		"runes-locked", "runes-locking", "runes", "seal-forming", "seal-traits", "seal-drown-self", "seal-drown-flood", "seal-drown-surge", \
@@ -2937,12 +2937,12 @@ func _setup_test_shot(what: String) -> void:
 			return
 		"detail-mask", "detail-water", "detail-chain", "detail-sealed", "status-tip", "status-glossary":
 			# the ethercosm's skill details (Brent 2026-10-23): a skill's numbers and its statuses
-			var spec: Array = {"detail-mask": ["dream", "changeling_mask"], "detail-water": ["water", "water_bolt"],
-				"detail-chain": ["lightning", "forked_path"], "detail-sealed": ["water", "water_bolt"],
-				"status-tip": ["dream", "rousing_blow"], "status-glossary": ["dream", "changeling_mask"]}[what]
+			var spec: Array = {"detail-mask": ["dream", "changeling_mask"], "detail-water": ["water", "riptide_lash"],
+				"detail-chain": ["lightning", "forked_path"], "detail-sealed": ["water", "tsunami_strike"],
+				"status-tip": ["dream", "shattered_dream"], "status-glossary": ["dream", "changeling_mask"]}[what]
 			start_test_character(str(spec[0]))
 			if what == "detail-sealed":
-				_shot_lock_word()                      # Water Bolt sealed through two rings: base beside sealed
+				_shot_lock_word()                      # Breaker sealed through two rings: base beside sealed
 			open_ethercosm()
 			var at: int = (player.get("abilities") as Array).map(func(s: Dictionary) -> String: return str(s["id"])).find(str(spec[1]))
 			screen.call("select", maxi(0, at))
@@ -2966,10 +2966,10 @@ func _setup_test_shot(what: String) -> void:
 					Input.warp_mouse(p))
 			return
 		"skilltree":
-			# a new water character a few skills in: the eighteen-skill tree, four tiers deep
+			# a new water character a few skills in: its thirteen-skill tree, three tiers deep
 			_select_talent(0)
 			player.call("set_affinities", ["water"])
-			for id: String in ["water_bolt", "undertow", "steady_drip", "drench"]:
+			for id: String in ["riptide_lash", "tsunami_strike", "drench", "seepage"]:
 				player.call("learn", id)
 			player.set("skill_points", 2)
 			_enter_town()
@@ -3100,8 +3100,29 @@ func _setup_role_shot(aff: String) -> void:
 
 
 func _shot_lock_word() -> void:
-	# Gush and Drown on ring 1, Dry on Gush on ring 2: sealed through two rings
-	_shot_seal(0, 2, [["WAT-5a", 0], ["WAT-4b", 0], ["WAT-3b", 1]])
+	# Heave and Drown on ring 1, Dry on Heave on ring 2: sealed through two rings, on Breaker (Surge)
+	_shot_surge_first()
+	_shot_seal(0, 2, [["WAT-4a", 0], ["WAT-4b", 0], ["WAT-3b", 1]])
+
+
+## For the water seal shots: the skill built on Surge (Breaker; Water Bolt before v2) is put first, so a
+## shot's rows (given against Surge) mean what they say. The hotbar follows the swap.
+func _shot_surge_first() -> void:
+	if not bool(player.call("knows", "tsunami_strike")) and str(player.call("can_learn", "tsunami_strike")) == "":
+		player.call("learn", "tsunami_strike")
+	var list: Array = player.get("abilities")
+	var k: int = list.map(func(st: Dictionary) -> String: return str(st["id"])).find("tsunami_strike")
+	if k <= 0:
+		return
+	var first: Dictionary = list[0]
+	list[0] = list[k]
+	list[k] = first
+	var bar: Array = player.get("hotbar")
+	for i: int in bar.size():
+		if int(bar[i]) == 0:
+			bar[i] = k
+		elif int(bar[i]) == k:
+			bar[i] = 0
 
 
 ## For screenshots: seal a word on skill `index` as if it had been bound in, lock by lock (the skill
@@ -3214,22 +3235,22 @@ func _shot_skill(id: String) -> int:
 
 
 ## The seal screen's shots (design/14 section 8). Rune ids are the 2026-10-22 workbook's.
-##   seal-forming       a water + fire Water Bolt sealed through ring 1, its bar full and a remnant
+##   seal-forming       a water + fire Breaker sealed through ring 1, its bar full and a remnant
 ##                      carried: the seal screen forming ring 2 over ring 1, part-built (also "runes")
 ##   runes-locking      the same seal bound through the screen (a sure roll), caught mid-animation
-##   runes-locked       a two-ring seal on Water Bolt, looked at (no binding)
-##   seal-traits        a three-ring Water Bolt: a closed ring 1, a spoke out to ring 3, two branch runes
-##   seal-drown-*       Pressure Jet's three Drown words: Drown on the skill itself, Drown hung off Flood,
+##   runes-locked       a two-ring seal on Breaker, looked at (no binding)
+##   seal-traits        a three-ring Breaker: a closed ring 1, a spoke out to ring 3, two branch runes
+##   seal-drown-*       Overboard's three Drown words (on Heave): Drown on the skill itself, Drown hung off Flood,
 ##                      Drown hung off Surge (each carries what it took over its ionic bond)
 ##   seal-drag          the seal-forming draft with a bond being dragged onto a rune that takes it: the
 ##                      live bond, its kind and dominant side in words, valid runes glowing, the rest dimmed
 ##   seal-refused       the same, dragged onto a rune that refuses it: the reason under it and at the cursor
 ##   seal-bond          the same draft with a bond selected: its gold sheath, its x, the panel's bond section
-##   seal-convert       Drown takes Wave on Tidal Bore (sealed, looked at, Drown selected): the converted
+##   seal-convert       Drown takes Wave on Sluice Step (sealed, looked at, Drown selected): the converted
 ##                      strength 1.5 -> 2.5 and where it came from, the silence and the longer Dazed
 ##   seal-discovered    a new water character reading the waystone's runes: the "Rune discovered" card
 ##   seal-palette       the palette of a new character: what it knows, and the "?" it has yet to find
-##   seal-lock-main     a water test character's ethercosm (Brent 2026-10-23): Water Bolt's bar full, "ready
+##   seal-lock-main     a water test character's ethercosm (Brent 2026-10-23): Breaker's bar full, "ready
 ##                      for its level 1 lock", one "Open the seal" button and no bind buttons
 ##   seal-lock-first    its seal at the first lock: ring 1 part-filled (2 of 3 places), the vestige
 ##                      waiting above it, Bind disabled with the reason (Brent 2026-10-24: full rings)
@@ -3256,10 +3277,11 @@ func _setup_seal_shot(which: String) -> void:
 	(player.get("constructs") as Array).clear()          # the other UI shots hand out two vestiges first
 	match which:
 		"seal-drag", "seal-refused", "seal-bond":
-			# ring 1 sealed: Flood and Gush on Surge, Dry on Gush; forming ring 2: Drown and Settle set, not bonded
+			# ring 1 sealed: Flood and Heave on Surge, Dry on Heave; forming ring 2: Drown and Settle set, not bonded
 			player.call("set_affinities", ["water"])
-			_shot_seal(0, 1, [["WAT-1a", 0], ["WAT-5a", 0], ["WAT-3b", 2]])
-			for rid2: String in ["WAT-6b", "WAT-4b", "WAT-8b", "UNI-05a"]:
+			_shot_surge_first()
+			_shot_seal(0, 1, [["WAT-1a", 0], ["WAT-4a", 0], ["WAT-3b", 2]])
+			for rid2: String in ["WAT-6b", "WAT-4b", "WAT-7b", "UNI-05a"]:
 				player.call("_know", rid2)
 			(player.get("abilities") as Array)[0]["progress"] = 100.0
 			(player.get("constructs") as Array).append({"tier": "remnant", "concept": "tension"})
@@ -3272,19 +3294,20 @@ func _setup_seal_shot(which: String) -> void:
 			get_tree().create_timer(0.4, true).timeout.connect(_shot_board_state.bind(which))
 		"seal-forming", "runes", "runes-locking":
 			player.call("set_affinities", ["water", "fire"])
-			_shot_seal(0, 1, [["WAT-1a", 0], ["WAT-5a", 0], ["WAT-3b", 1]], [[1, 2]])     # Flood, Gush (joined), Dry
-			for rid: String in ["WAT-6b", "WAT-4b", "WAT-8b", "UNI-05a", "UNI-11a", "FIR-1b", "WAT-2b"]:
+			_shot_surge_first()
+			_shot_seal(0, 1, [["WAT-1a", 0], ["WAT-4a", 0], ["WAT-3b", 1]], [[1, 2]])     # Flood, Heave (joined), Dry
+			for rid: String in ["WAT-6b", "WAT-4b", "WAT-7b", "UNI-05a", "UNI-11a", "FIR-1b", "WAT-2b"]:
 				player.call("_know", rid)
 			var own: Array = player.get("abilities")
 			own[0]["progress"] = 100.0
 			(player.get("constructs") as Array).append({"tier": "remnant", "concept": "tension"})
 			_enter_town()
 			open_seal(0, 0)
-			# rework ring 1: part Flood and Gush, so each has a bond for the new ring
+			# rework ring 1: part Flood and Heave, so each has a bond for the new ring
 			player.call("word_toggle_link", 0, 1, 2)
-			player.call("word_add", 0, "WAT-6b", 2)        # Settle off Gush, out on ring 2
+			player.call("word_add", 0, "WAT-6b", 2)        # Settle off Heave, out on ring 2
 			player.call("word_add", 0, "WAT-4b", 4)        # Drown off Settle, ring 2
-			player.call("word_add", 0, "WAT-8b", 4)        # Slack off Settle, ring 2
+			player.call("word_add", 0, "WAT-3b", 4)        # a second Dry off Settle, ring 2 (Slack before v2)
 			player.call("word_add", 0, "UNI-05a", 1)       # Expand off Flood, ring 2
 			if which == "runes-locking":
 				player.call("word_toggle_link", 0, 4, 7)   # Expand joins Settle: the word closes
@@ -3294,7 +3317,7 @@ func _setup_seal_shot(which: String) -> void:
 				screen.call("pick_node", 7)                # Expand picked: one bond still open
 		"seal-convert":
 			player.call("set_affinities", ["water"])
-			var tb: int = _shot_skill("tidal_bore")
+			var tb: int = _shot_skill("hydraulic_flex")
 			_shot_seal(tb, 1, [["WAT-4b", 0]])                # Drown on Wave: ionic, Drown takes it
 			_enter_town()
 			open_ethercosm()
@@ -3303,20 +3326,22 @@ func _setup_seal_shot(which: String) -> void:
 			screen.call("pick_node", 1)
 		"runes-locked":
 			player.call("set_affinities", ["water", "fire"])
-			_shot_seal(0, 2, [["WAT-6b", 0], ["WAT-4b", 0], ["WAT-3b", 1], ["WAT-5a", 1, 2], ["WAT-8b", 1, 2], ["FIR-1b", 4, 2]])
+			_shot_surge_first()
+			_shot_seal(0, 2, [["WAT-6b", 0], ["WAT-4b", 0], ["WAT-3b", 1], ["WAT-4a", 1, 2], ["WAT-3b", 1, 2], ["FIR-1b", 4, 2]])
 			_enter_town()
 			open_ethercosm()
 			screen.call("open_runes")
 		"seal-traits":
 			player.call("set_affinities", ["water"])
-			# ring 1: Flood, Settle, Soak round a triangle; Settle -> Gush (ring 2) -> Drown (ring 3)
-			_shot_seal(0, 3, [["WAT-1a", 0], ["WAT-6b", 0], ["WAT-3a", 1, 1], ["WAT-5a", 2, 2], ["WAT-4b", 4, 3]], [[1, 2], [2, 3]])
+			_shot_surge_first()
+			# ring 1: Flood, Settle, Soak round a triangle; Settle -> Heave (ring 2) -> Drown (ring 3)
+			_shot_seal(0, 3, [["WAT-1a", 0], ["WAT-6b", 0], ["WAT-3a", 1, 1], ["WAT-4a", 2, 2], ["WAT-4b", 4, 3]], [[1, 2], [2, 3]])
 			_enter_town()
 			open_ethercosm()
 			screen.call("open_runes")
 		"seal-drown-self", "seal-drown-flood", "seal-drown-surge":
 			player.call("set_affinities", ["water"])
-			var pj: int = _shot_skill("pressure_jet")
+			var pj: int = _shot_skill("overboard")
 			match which:
 				"seal-drown-self":
 					_shot_seal(pj, 2, [["WAT-4b", 0]])
@@ -3371,14 +3396,16 @@ func _setup_lock_shot(what: String) -> void:
 	match what:
 		"main":
 			start_test_character("water")
+			_shot_surge_first()
 			open_ethercosm()
 			screen.call("select", 0)
 		"first":
 			# ring 1 part-filled (2 of 3 places), the vestige chosen and waiting above it: Bind says why not
 			start_test_character("water")
+			_shot_surge_first()
 			open_seal(0)
 			screen.call("place_rune", "WAT-1a", 1, 0)        # Flood, ring 1
-			screen.call("place_rune", "WAT-5a", 1, 1)        # Gush, ring 1
+			screen.call("place_rune", "WAT-4a", 1, 1)        # Heave, ring 1
 			screen.call("finish_bond", 0, 1)                 # Flood joined to the skill
 			screen.call("finish_bond", 0, 2)                 # Gush joined to the skill
 			_shot_keystone("acceleration")
@@ -3386,9 +3413,10 @@ func _setup_lock_shot(what: String) -> void:
 		"keystone":
 			# every place of ring 1 filled, the word closed, the vestige set over it: ready to bind
 			start_test_character("water")
+			_shot_surge_first()
 			open_seal(0)
 			screen.call("place_rune", "WAT-1a", 1, 0)        # Flood
-			screen.call("place_rune", "WAT-5a", 1, 1)        # Gush
+			screen.call("place_rune", "WAT-4a", 1, 1)        # Heave
 			screen.call("place_rune", "WAT-3b", 1, 2)        # Dry
 			for pair: Array in [[0, 1], [0, 2], [1, 3], [1, 2]]:
 				screen.call("finish_bond", int(pair[0]), int(pair[1]))
@@ -3399,19 +3427,20 @@ func _setup_lock_shot(what: String) -> void:
 			# the bar refills - a test override), then lock 2: ring 1 reworked, all five places of ring 2
 			# filled and the word closed, the remnant of Reach set over ring 2
 			start_test_character("water")
+			_shot_surge_first()
 			open_seal(0)
 			player.call("word_add", 0, "WAT-1a", 0)          # Flood
-			player.call("word_add", 0, "WAT-5a", 0)          # Gush
+			player.call("word_add", 0, "WAT-4a", 0)          # Heave
 			player.call("word_add", 0, "WAT-3b", 1)          # Dry on Flood
-			player.call("word_toggle_link", 0, 1, 2)         # Flood - Gush: closed, ring 1 full
+			player.call("word_toggle_link", 0, 1, 2)         # Flood - Heave: closed, ring 1 full
 			_shot_keystone("acceleration")
 			screen.call("bind_and_seal", 0.0)                # the vestige binds; the bar refills (test override)
-			player.call("word_toggle_link", 0, 1, 2)         # rework ring 1: part Flood and Gush
+			player.call("word_toggle_link", 0, 1, 2)         # rework ring 1: part Flood and Heave
 			player.call("word_remove", 0, 3)                 # Dry out
-			player.call("word_add", 0, "WAT-8b", 1, 1)       # Slack in its place, on ring 1, off Flood
-			player.call("word_add", 0, "WAT-6b", 2)          # Settle off Gush, ring 2
+			player.call("word_add", 0, "WAT-4b", 1, 1)       # Drown in its place, on ring 1, off Flood (Slack before v2)
+			player.call("word_add", 0, "WAT-6b", 2)          # Settle off Heave, ring 2
 			player.call("word_add", 0, "WAT-4b", 4)          # Drown off Settle, ring 2
-			player.call("word_add", 0, "WAT-8b", 4)          # Slack off Settle, ring 2
+			player.call("word_add", 0, "WAT-3b", 4)          # Dry off Settle, ring 2
 			player.call("word_add", 0, "UNI-05a", 1)         # Expand off Flood, ring 2
 			player.call("word_add", 0, "UNI-05a", 7)         # a second Expand off the first: ring 2 full
 			player.call("word_toggle_link", 0, 4, 8)         # it and Settle: the word closes

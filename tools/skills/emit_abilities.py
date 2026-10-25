@@ -339,9 +339,6 @@ def normalise(aid, aff, s, nums, kind):
         nums.setdefault("on_hit", OD())["consume"] = c
     if "waterlogged_stacks" in nums:
         nums["consume_counts"] = OD([("waterlogged", nums.pop("waterlogged_stacks"))])
-    if aid == "rousing_blow":
-        on_hit["bonus_vs"] = OD([(nums.pop("bonus_vs_status"), nums.pop("bonus_mult"))])
-        on_hit["poise_vs"] = OD([("asleep", on_hit.pop("poise_vs_asleep"))])
     # a flat bonus against a status (Fracture on the Frozen and Brittle, Downdraft on the Aloft): it rides on the hit
     # that lands - a movement skill's arrival, else on_hit
     if "bonus_vs_status" in nums and "bonus_damage" in nums:
