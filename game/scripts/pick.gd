@@ -39,10 +39,17 @@ static func standing_in_view(cam: Camera3D, base: Vector3, height: float) -> boo
 	return not cam.is_position_behind(base) and not cam.is_position_behind(base + Vector3.UP * height)
 
 
-## Where a screen point meets the horizontal plane at height `y`.
+## Where a screen point meets the horizontal plane at height `y`. A ray that never comes down in
+## front of the camera (above the horizon, the top of the screen zoomed in) has no such point: it
+## gives the far point straight out along the ray's ground direction instead, so a click there
+## still means "that way". (Solving the plane for it gave a point behind the camera, and the
+## player ran the opposite way.)
 static func ground(cam: Camera3D, screen_pos: Vector2, y: float) -> Vector3:
 	var origin: Vector3 = cam.project_ray_origin(screen_pos)
 	var normal: Vector3 = cam.project_ray_normal(screen_pos)
-	if absf(normal.y) < 0.0001:
-		return Vector3(origin.x, y, origin.z)
-	return origin + normal * ((y - origin.y) / normal.y)
+	if normal.y < -0.0001:
+		var hit: Vector3 = origin + normal * ((y - origin.y) / normal.y)
+		if Vector2(hit.x - origin.x, hit.z - origin.z).length() <= cam.far:
+			return hit
+	var flat: Vector2 = Vector2(normal.x, normal.z).normalized() * cam.far
+	return Vector3(origin.x + flat.x, y, origin.z + flat.y)

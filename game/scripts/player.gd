@@ -5721,13 +5721,7 @@ func _cursor_ground() -> Vector3:
 	var cam: Camera3D = get_viewport().get_camera_3d() if is_inside_tree() else null
 	if cam == null:
 		return global_position
-	var mouse: Vector2 = get_viewport().get_mouse_position()
-	var origin: Vector3 = cam.project_ray_origin(mouse)
-	var normal: Vector3 = cam.project_ray_normal(mouse)
-	if absf(normal.y) < 0.0001:
-		return global_position
-	var t: float = (global_position.y - origin.y) / normal.y
-	return origin + normal * t
+	return Pick.ground(cam, get_viewport().get_mouse_position(), global_position.y)
 
 
 func _update_aim() -> void:
