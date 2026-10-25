@@ -71,6 +71,12 @@ static func _system_serif(weight: int) -> SystemFont:
 	f.font_weight = weight
 	f.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
 	f.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
+	# the rune glyphs outside the serif: Holy's and Unholy's Old Turkic (U+10C00-10C21) - Segoe UI Historic on
+	# Windows, Noto elsewhere - named first so the system's own fallback is not left to guess
+	var historic := SystemFont.new()
+	historic.font_names = PackedStringArray(["Segoe UI Historic", "Noto Sans Old Turkic"])
+	historic.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
+	f.fallbacks = [historic]
 	return f
 
 

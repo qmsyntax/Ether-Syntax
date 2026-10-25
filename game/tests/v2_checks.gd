@@ -1,0 +1,1107 @@
+extends RefCounted
+## The self-test's checks for the v2 build (2026-10-24, design/data-drafts/skills-v2/BUILD-BRIEF.md): the
+## data the generator writes from the v2 drafts (18 affinities, their starters, dropped skills gone, every
+## skill on its own rune, every ascension aspect reaching a real number, a desc for every status) and one
+## check per role mechanic. Called from selftest.gd, borrowing its helpers (_new_player, _foe, _lost ...)
+## through `t`; numbers come from the data. Run alone with `-- --only=v2`.
+
+const PlayerScript := preload("res://scripts/player.gd")
+const STEP := 1.0 / 60.0
+
+## The skills the v2 drafts drop (Brent approved the drafts 2026-10-24): none may stay in the game.
+const DROPPED: Array[String] = ["hammering_heart", "knell", "rousing_blow", "icicle", "bent_light", "residue", "water_bolt",
+	"undertow", "pressure_jet", "upwelling", "steady_drip", "tidal_bore", "slack_water", "headwind"]
+
+var t: Node                 # the self-test node
+var check: Callable         # its _check(label, ok, detail)
+
+
+func _init(test: Node, check_fn: Callable) -> void:
+	t = test
+	check = check_fn
+
+
+func run() -> void:
+	print("the v2 build: every affinity rebuilt around its role (2026-10-24):")
+	await t.get_tree().physics_frame
+	_data()
+	await _statuses()
+	await _coat_and_fire()
+	await _ground_and_edge()
+	await _storm_and_tide()
+	await _dark_light_dream()
+	await _summons_and_blood()
+	await _holy_and_unholy()
+
+
+# --- helpers ------------------------------------------------------------------------------------
+
+var _made: Array[Node] = []
+
+
+func _keep(n: Node) -> Node:
+	_made.append(n)
+	return n
+
+
+## A plain player far from everything else, on a floor of its own.
+func _player(at: Vector3, affs: Array = []) -> CharacterBody3D:
+	var p: CharacterBody3D = t.call("_new_player")
+	p.global_position = at
+	if not affs.is_empty():
+		p.call("set_affinities", affs)
+	p.set("effects", [] as Array[TalentEffect])
+	t.call("_bare", p)
+	_keep(p)
+	_keep(t.call("_test_floor", at))
+	return p
+
+
+func _enemy(p: Node3D, offset: Vector3, kind: String = "grunt") -> CharacterBody3D:
+	return _keep(t.call("_foe", p, offset, kind))
+
+
+func _tick_enemy(e: Node, seconds: float) -> void:
+	var n: int = int(ceil(seconds / STEP))
+	for i: int in n:
+		if is_instance_valid(e) and not bool(e.call("is_dead")):
+			e.call("_physics_process", STEP)
+
+
+func _clean() -> void:
+	for n: Node in _made:
+		if is_instance_valid(n):
+			n.queue_free()
+	_made.clear()
+
+
+# --- the statuses: the 14 the v2 runes grant and the drafts' own, each through the one status engine ----
+
+func _statuses() -> void:
+	var p := _player(Vector3(5200, 0, 0))
+	await t.get_tree().physics_frame
+	# Taunted: it comes for whoever taunted it; a lure beside it does not draw it; an archer walks in
+	var arch := _enemy(p, Vector3(0, 0, -9.0), "archer")
+	arch.set("target", p)
+	var lure: Lure = _keep(Lure.new())
+	t.add_child(lure)
+	lure.global_position = arch.global_position + Vector3(1.0, 0, 0)
+	lure.life = 99.0
+	arch.call("add_status", "taunted", 1, p)
+	arch.call("_pick_target")
+	var d0: float = arch.global_position.distance_to(p.global_position)
+	_tick_enemy(arch, 0.5)
+	check.call("Taunted: a lure beside it draws nothing - it goes for whoever taunted it, and an archer walks in to fight",
+		arch.get("target") == p and arch.global_position.distance_to(p.global_position) < d0 - 0.5, "target %s, %.2f -> %.2f m" % [str(arch.get("target")), d0, arch.global_position.distance_to(p.global_position)])
+	lure.life = 0.0
+	lure.call("tick", 0.1)
+	# Turned: spun round, every hit counts as from behind
+	var tn := _enemy(p, Vector3(0, 0, -2.0))
+	tn.set("facing", Vector3(0, 0, 1))
+	tn.call("add_status", "turned", 1, p)
+	check.call("Turned: it faces away from you, so a hit from you is from behind", bool(tn.call("is_behind", p.global_position))
+		and (tn.get("facing") as Vector3).dot(Vector3(0, 0, -1)) > 0.9)
+	# Tithed: your hits on it heal you
+	var tb: Body = p.get("body")
+	tb.hp = 50.0
+	var ti := _enemy(p, Vector3(2.0, 0, -2.0))
+	ti.call("add_status", "tithed", 1, p)
+	var hit: HitContext = p.call("deal_damage", ti, 100.0, ["test"])
+	check.call("Tithed: a hit you land on it heals you %d%% of the harm" % int(GameData.status("tithed")["heals_attacker_frac"] * 100.0),
+		_near(tb.hp - 50.0, hit.applied * float(GameData.status("tithed")["heals_attacker_frac"])), "healed %f of %f" % [tb.hp - 50.0, hit.applied])
+	# Leeched: your hits on it drain to you (the bar)
+	tb.hp = 50.0
+	ti.call("clear_status", "tithed")
+	ti.call("add_status", "leeched", 1, p)
+	hit = p.call("deal_damage", ti, 100.0, ["test"])
+	check.call("Leeched: a hit you land on it drains %d%% of the harm to you" % int(GameData.status("leeched")["drain_to_source"] * 100.0),
+		_near(tb.hp - 50.0, hit.applied * float(GameData.status("leeched")["drain_to_source"])), "healed %f" % (tb.hp - 50.0))
+	tb.hp = tb.total_max()
+	# Charmed: it turns on its friends, and they on it
+	var ch := _enemy(p, Vector3(-6.0, 0, -6.0))
+	var friend := _enemy(p, Vector3(-4.0, 0, -6.0))
+	ch.set("target", p)
+	friend.set("target", p)
+	ch.call("add_status", "charmed", 1, p)
+	ch.call("_pick_target")
+	friend.call("_pick_target")
+	check.call("Charmed: it goes for its nearest friend, and that friend for it", ch.get("target") == friend and friend.get("target") == ch,
+		"%s / %s" % [str(ch.get("target")), str(friend.get("target"))])
+	p.call("deal_damage", ch, 1.0, ["test"])
+	check.call("and a hit from whoever charmed it snaps it out", not bool(ch.call("has_status", "charmed")))
+	# Doubting: slow to commit, half-hearted
+	var db := _enemy(p, Vector3(6.0, 0, -6.0))
+	var w0: float = float(db.call("_windup_len"))
+	var b0: float = float(db.call("_blow", 100.0))
+	db.call("add_status", "doubting", 1, p)
+	check.call("Doubting: its wind-ups take x%s, its blows do x%s" % [str(GameData.status("doubting")["windup_mult"]), str(GameData.status("doubting")["deals_mult"])],
+		_near(float(db.call("_windup_len")), w0 * float(GameData.status("doubting")["windup_mult"])) and _near(float(db.call("_blow", 100.0)), b0 * float(GameData.status("doubting")["deals_mult"])))
+	# Steeped: the dose clock runs longer once, and the bill is bigger
+	var dz := _enemy(p, Vector3(8.0, 0, -2.0))
+	dz.call("add_status", "dosed", 4, p)
+	var clock0: float = float((dz.get("statuses") as Dictionary)["dosed"]["t"])
+	dz.call("add_status", "steeped", 1, p)
+	dz.call("add_status", "steeped", 1, p)
+	var steep: Dictionary = GameData.status("steeped")
+	var add_t: float = float((steep["adds_time"] as Dictionary)["dosed"])
+	check.call("Steeped: the dose clock runs %s s longer, once" % str(add_t), _near(float((dz.get("statuses") as Dictionary)["dosed"]["t"]), clock0 + add_t, 0.02))
+	var lost0: float = t.call("_lost", dz)
+	(dz.get("statuses") as Dictionary)["dosed"]["t"] = 0.001
+	dz.call("_tick_statuses", 0.01)
+	var bill: float = 4.0 * float((GameData.status("dosed")["on_expire"] as Dictionary)["damage_per_stack"]) * float((steep["bill_mult"] as Dictionary)["dosed"])
+	check.call("and the bill is x%s when it comes due - and Steeped goes with it" % str((steep["bill_mult"] as Dictionary)["dosed"]),
+		_near(float(t.call("_lost", dz)) - lost0, bill, 0.5) and not bool(dz.call("has_status", "steeped")), "paid %f want %f" % [float(t.call("_lost", dz)) - lost0, bill])
+	# Barbed: a barb keeps dosing; spending the doses pulls it
+	var bb := _enemy(p, Vector3(10.0, 0, -2.0))
+	bb.call("add_status", "dosed", 1, p)
+	bb.call("add_status", "barbed", 1, p)
+	var every: float = float((GameData.status("barbed")["adds_status"] as Dictionary)["every"])
+	bb.call("_tick_statuses", every + 0.01)
+	check.call("Barbed: every %s s it works in another dose" % str(every), int(bb.call("status_stacks", "dosed")) == 2, str(bb.get("statuses")))
+	bb.call("clear_status", "dosed")
+	check.call("and spending the doses pulls the barb", not bool(bb.call("has_status", "barbed")))
+	# Condemned: Lit, and every hit from you adds ward, at most ward_from_one from one body
+	var cn := _enemy(p, Vector3(-2.0, 0, -2.0))
+	cn.call("add_status", "condemned", 1, p)
+	var cdef: Dictionary = GameData.status("condemned")
+	p.set("ward_parts", [])
+	p.call("deal_damage", cn, 1.0, ["test"])
+	check.call("Condemned: it counts as Lit, and your hit on it adds %s to your ward" % str(cdef["ward_to_attacker"]),
+		bool(cn.call("has_status", "lit")) and _near(float(p.call("ward")), float(cdef["ward_to_attacker"])), "ward %f" % float(p.call("ward")))
+	for i: int in 20:
+		p.call("deal_damage", cn, 1.0, ["test"])
+	check.call("but no more than %s from one body" % str(cdef["ward_from_one"]), _near(float(p.call("ward")), float(cdef["ward_from_one"])), "ward %f" % float(p.call("ward")))
+	p.set("ward_parts", [])
+	# Penitent: an attack it starts hurts it; its blows on you land softer
+	var pn := _enemy(p, Vector3(0, 0, -1.6))
+	pn.set("target", p)
+	pn.set("_attack_cd", 0.0)
+	pn.call("add_status", "penitent", 1, p)
+	var pen: Dictionary = GameData.status("penitent")
+	var pl0: float = t.call("_lost", pn)
+	for i: int in 30:
+		pn.call("_physics_process", STEP)
+		if float(pn.get("_windup")) >= 0.0:
+			break
+	check.call("Penitent: the attack it starts deals it %s" % str(pen["on_attack_damage"]), float(pn.get("_windup")) >= 0.0 and _near(float(t.call("_lost", pn)) - pl0, float(pen["on_attack_damage"]), 0.5),
+		"windup %f lost %f" % [float(pn.get("_windup")), float(t.call("_lost", pn)) - pl0])
+	tb.hp = tb.total_max()
+	var hp_b: float = tb.hp
+	pn.call("_strike", 20.0, false)
+	check.call("and its blow on you does x%s" % str(pen["deals_mult_vs_source"]), _near(hp_b - tb.hp, 20.0 * float(pen["deals_mult_vs_source"]), 0.05), "took %f" % (hp_b - tb.hp))
+	tb.hp = tb.total_max()
+	pn.set("target", null)
+	# Exiled: it will not come within keeps_away of whoever cast it out; an elite is not held by it
+	var ex := _enemy(p, Vector3(2.0, 0, 0))
+	ex.set("target", p)
+	ex.call("add_status", "exiled", 1, p)
+	var ex_d0: float = ex.global_position.distance_to(p.global_position)
+	_tick_enemy(ex, 0.4)
+	check.call("Exiled: inside %s m of you it backs away" % str(GameData.status("exiled")["keeps_away"]), ex.global_position.distance_to(p.global_position) > ex_d0 + 0.3)
+	var cmd := _enemy(p, Vector3(-12.0, 0, 6.0), "commander")
+	check.call("an elite is not held by it", int(cmd.call("add_status", "exiled", 1, p)) == 0 and not bool(cmd.call("has_status", "exiled")))
+	ex.set("target", null)
+	# Leashed: it cannot get further than the leash from whoever leashed it
+	var ls := _enemy(p, Vector3(0, 0, 3.0))
+	ls.call("add_status", "leashed", 1, p)
+	ls.global_position = p.global_position + Vector3(0, 0, 9.0)
+	ls.call("_keep_leash")
+	check.call("Leashed: a step past %s m is undone" % str(GameData.status("leashed")["leash_m"]),
+		_near(ls.global_position.distance_to(p.global_position), float(GameData.status("leashed")["leash_m"]), 0.05), "%.2f m" % ls.global_position.distance_to(p.global_position))
+	# Tormented: it hurts, and half of each hurt feeds whoever torments it
+	tb.hp = 40.0
+	var tm := _enemy(p, Vector3(0, 0, 6.0))
+	tm.call("add_status", "tormented", 1, p)
+	var tl0: float = t.call("_lost", tm)
+	tm.call("_tick_statuses", 1.0)
+	var tdef: Dictionary = GameData.status("tormented")
+	check.call("Tormented: %s a second, and %d%% of it heals whoever torments it" % [str(tdef["dps_per_stack"]), int(float(tdef["drain_frac"]) * 100.0)],
+		_near(float(t.call("_lost", tm)) - tl0, float(tdef["dps_per_stack"]), 0.5) and _near(tb.hp - 40.0, (float(t.call("_lost", tm)) - tl0) * float(tdef["drain_frac"]), 0.2),
+		"dealt %f healed %f" % [float(t.call("_lost", tm)) - tl0, tb.hp - 40.0])
+	tb.hp = tb.total_max()
+	# Stasis: nothing on it runs down, and it comes out Stilled
+	var sx := _enemy(p, Vector3(4.0, 0, 6.0))
+	sx.call("add_status", "chilled", 2, p)
+	sx.call("add_status", "stasis", 1, p)
+	var chill_t: float = float((sx.get("statuses") as Dictionary)["chilled"]["t"])
+	sx.call("_tick_statuses", 1.0)
+	check.call("Stasis: it cannot act, and nothing else on it runs down", _near(float((sx.get("statuses") as Dictionary)["chilled"]["t"]), chill_t) and bool(sx.call("_st_any", "cannot_act")))
+	sx.call("_tick_statuses", float(GameData.status("stasis")["lasts"]))
+	check.call("and it comes out Stilled", not bool(sx.call("has_status", "stasis")) and bool(sx.call("has_status", "stilled")))
+	# Infected spreads by touch: a carrier passes one stack to whoever stays beside it
+	var ca := _enemy(p, Vector3(-8.0, 0, 8.0))
+	var nb := _enemy(p, Vector3(-7.0, 0, 8.0))
+	ca.call("add_status", "infected", 3, p)
+	ca.call("_tick_statuses", float(GameData.status("infected")["spread_time"]) + 0.05)
+	check.call("Infected: whoever stays within %s m of a carrier for %s s catches one stack in the carrier's name" % [str(GameData.status("infected")["spread_radius"]), str(GameData.status("infected")["spread_time"])],
+		int(nb.call("status_stacks", "infected")) == 1 and ((nb.get("statuses") as Dictionary)["infected"] as Dictionary).get("by") == p, str(nb.get("statuses")))
+	# Contained: when it ends, what is over the plain cap falls away
+	var co := _enemy(p, Vector3(8.0, 0, 8.0))
+	co.call("add_status", "contained", 1, p)
+	co.call("add_status", "infected", 9, p)
+	(co.get("statuses") as Dictionary)["contained"]["t"] = 0.001
+	co.call("_tick_statuses", 0.01)
+	check.call("Contained raises Infected's cap, and when it ends the stacks above five fall away",
+		int(co.call("status_stacks", "infected")) == int(GameData.status("infected")["stacks"]), str(co.get("statuses")))
+	_clean()
+
+
+## Ready to cast: a full tank, nothing finishing.
+func _ready_to_cast(p: Node) -> void:
+	p.set("star_pct", [99.0] as Array[float])
+	p.call("_recompute_essence_max")
+	p.set("essence", 99.0)
+	p.call("clear_reflux")
+	t.call("_rested", p)
+	p.set("_windup", {})
+	p.set("_windup_t", 0.0)
+
+
+func _cast(p: Node, id: String) -> void:
+	_ready_to_cast(p)
+	t.call("_cast", p, id)
+	if float(p.get("_windup_t")) > 0.0:
+		p.call("_tick_windup", float(p.get("_windup_t")) + 0.01)
+
+
+# --- the weapon coat (one mechanic: Fire's Stoke, Poison's Venom Edge, Metal's Red Iron, Static Coat) and Fire ---
+
+func _coat_and_fire() -> void:
+	var p := _player(Vector3(5400, 0, 0), ["poison", "fire"])
+	for id: String in ["steeped_blade", "stoke", "white_heat", "brushfire", "venom_spur", "clean_air"]:
+		p.call("learn", id)
+	await t.get_tree().physics_frame
+	p.set("_facing", Vector3(0, 0, -1))
+	var foe := _enemy(p, Vector3(0, 0, -1.6))
+	var edge: Dictionary = GameData.ability("venom_edge")
+	_cast(p, "venom_edge")
+	var coat: Dictionary = ((p.get("buffs") as Dictionary).get("coat_poison", {}) as Dictionary).get("coat", {})
+	check.call("Venom Edge: its blow doses, and the cast leaves a poison coat on your weapon with %d charges" % int(edge["coat"]["charges"]),
+		int(foe.call("status_stacks", "dosed")) == int(edge["on_hit"]["stacks"]) and int(coat.get("charges_left", 0)) == int(edge["coat"]["charges"]), str(p.get("buffs")))
+	var d0: int = int(foe.call("status_stacks", "dosed"))
+	p.call("deal_damage", foe, 1.0, ["melee"])
+	check.call("every bare strike carries the coat (one more dose) and spends a charge", int(foe.call("status_stacks", "dosed")) == d0 + 1
+		and int(coat.get("charges_left", 0)) == int(edge["coat"]["charges"]) - 1)
+	_cast(p, "stoke")
+	check.call("a Fire coat (Stoke) sits beside the Poison one: one coat per affinity", (p.get("buffs") as Dictionary).has("coat_poison")
+		and ((p.get("buffs") as Dictionary).get("stoke", {}) as Dictionary).has("coat"))
+	p.call("deal_damage", foe, 1.0, ["melee"])
+	check.call("and a strike carries both", int(foe.call("status_stacks", "alight")) >= 1 and int(foe.call("status_stacks", "dosed")) == d0 + 2)
+	_cast(p, "steeped_blade")
+	var sb: Dictionary = GameData.ability("steeped_blade")
+	var coat2: Dictionary = ((p.get("buffs") as Dictionary).get("coat_poison", {}) as Dictionary).get("coat", {})
+	check.call("a new Poison coat (Steeped Blade) replaces the old one", int(coat2.get("charges_left", 0)) == int(sb["coat"]["charges"]) and coat2 != coat)
+	for i: int in int(sb["coat"]["charges"]):
+		p.call("deal_damage", foe, 1.0, ["melee"])
+	check.call("and when its charges are spent it is gone", not (p.get("buffs") as Dictionary).has("coat_poison"))
+	# a ranged shot carries the coat too (the ranged weapon's own shot)
+	_cast(p, "venom_edge")
+	foe.call("clear_status", "dosed")
+	var before: int = int(foe.call("status_stacks", "dosed"))
+	p.call("deal_damage", foe, 1.0, ["ranged"])
+	check.call("a ranged-weapon shot carries the coat as a strike does", int(foe.call("status_stacks", "dosed")) == before + 1)
+	# Venom Spur: the clock comes due now, at a reduced bill
+	foe.call("add_status", "dosed", 2, p)
+	var spur: Dictionary = GameData.ability("venom_spur")
+	_cast(p, "venom_spur")
+	var dz: Dictionary = (foe.get("statuses") as Dictionary).get("dosed", {})
+	check.call("Venom Spur cuts every dose clock in reach to %s s" % str(spur["clock_to"]), not dz.is_empty() and float(dz["t"]) <= float(spur["clock_to"]) + 0.001
+		and _near(float((dz.get("data", {}) as Dictionary).get("bill_mult", 0.0)), float(spur["bill_mult"])), str(dz))
+	# White Heat: the Heat bonus counts heat_scale times
+	(foe.get("body") as Body).hp = 5000.0
+	foe.call("clear_status", "dosed")
+	foe.call("clear_status", "alight")
+	(p.get("buffs") as Dictionary).clear()
+	var wh: Dictionary = GameData.ability("white_heat")
+	var heat: float = 50.0
+	_ready_to_cast(p)
+	(p.get("reflux_by") as Dictionary)["fire"] = heat
+	var l0: float = t.call("_lost", foe)
+	var bonus: float = float(p.call("heat_mult", "fire")) - 1.0
+	t.call("_cast", p, "white_heat")
+	p.call("_tick_windup", float(wh.get("windup", 0.0)) + 0.01)
+	var heat_now: float = float(p.call("reflux_of", "fire"))
+	var want: float = float(wh["damage"]) * (1.0 + (float(p.call("heat_mult", "fire")) - 1.0) * float(wh["on_hit"]["heat_scale"]))
+	check.call("White Heat: its Heat bonus counts x%s" % str(wh["on_hit"]["heat_scale"]), _near(float(t.call("_lost", foe)) - l0, want, 1.0),
+		"lost %f want %f (bonus %f, heat %f)" % [float(t.call("_lost", foe)) - l0, want, bonus, heat_now])
+	# Brushfire: refused on a target that is not burning; on a burning one, its stacks spread
+	var near := _enemy(p, Vector3(1.5, 0, -1.6))
+	p.set("hovered", foe)
+	var ess0: float = 0.0
+	_ready_to_cast(p)
+	ess0 = float(p.get("essence"))
+	t.call("_cast", p, "brushfire")
+	check.call("Brushfire needs a burning target, and is refused before anything is spent", _near(float(p.get("essence")), ess0) and not bool(near.call("has_status", "alight")))
+	foe.call("add_status", "alight", 3, p)
+	_cast(p, "brushfire")
+	var bf: Dictionary = GameData.ability("brushfire")
+	check.call("on a burning one, everyone near it catches as many stacks as it carries (at most %d)" % int(bf["spread_max"]),
+		int(near.call("status_stacks", "alight")) == mini(3, int(bf["spread_max"])), str(near.get("statuses")))
+	p.set("hovered", null)
+	_clean()
+
+
+# --- Earth's ground, Metal's edge, Wind's turn: auras, the millstone, the counter window, Edge Heat, the leap ---
+
+func _ground_and_edge() -> void:
+	var p := _player(Vector3(5600, 0, 0), ["earth", "metal", "wind"])
+	for id: String in ["millstone", "stonehide", "turn_the_edge", "plating", "veil", "downdraft", "turning_palm", "red_iron"]:
+		p.call("learn", id)
+	await t.get_tree().physics_frame
+	p.set("_facing", Vector3(0, 0, -1))
+	# Millstone: an aura that drags them in and keeps them Taunted; nothing moves you; a slam when it ends
+	var ms: Dictionary = GameData.ability("millstone")
+	var near := _enemy(p, Vector3(0, 0, -4.0))
+	_cast(p, "millstone")
+	var d0: float = near.global_position.distance_to(p.global_position)
+	p.call("_tick_buffs", 1.0)
+	check.call("Millstone: its aura Taunts whoever is near and draws them in", bool(near.call("has_status", "taunted"))
+		and near.global_position.distance_to(p.global_position) < d0 - 0.3, "%.2f -> %.2f m" % [d0, near.global_position.distance_to(p.global_position)])
+	p.call("shove", Vector3(1, 0, 0), 3.0)
+	check.call("and while it lasts nothing shoves you", _near(float(p.get("_shoved_left")), 0.0))
+	var l0: float = t.call("_lost", near)
+	near.global_position = p.global_position + Vector3(0, 0, -1.5)
+	p.call("_tick_buffs", float(ms["duration"]))
+	check.call("when it runs out it slams down round you (%d)" % int(ms["on_end"]["damage"]), _near(float(t.call("_lost", near)) - l0, float(ms["on_end"]["damage"]), 0.5)
+		and not (p.get("buffs") as Dictionary).has("millstone"), "lost %f" % (float(t.call("_lost", near)) - l0))
+	# Stonehide's aura of mud
+	_cast(p, "stonehide")
+	p.call("_tick_buffs", 0.6)
+	check.call("Stonehide: an aura of mud round you (Mired)", bool(near.call("has_status", "mired")))
+	(p.get("buffs") as Dictionary).clear()
+	# the counter window (one mechanic for Holy, Wind and Metal): Turn the Edge refuses the first blow whole and answers it
+	var tte: Dictionary = GameData.ability("turn_the_edge")
+	var att := _enemy(p, Vector3(0, 0, -1.6))
+	att.set("facing", Vector3(0, 0, 1))
+	var body: Body = p.get("body")
+	body.hp = body.total_max()
+	_cast(p, "turn_the_edge")
+	check.call("Turn the Edge opens a %s s window and roots you" % str(tte["window_s"]), (p.get("buffs") as Dictionary).has("turn_the_edge") and _near(float(p.call("buff_num", "move_factor")), 0.0))
+	var took: float = p.call("take_hit", 30.0, true, att)
+	check.call("the first blow in it is refused whole - no harm, no wound", _near(took, 0.0) and _near(body.hp, body.total_max()) and body.wounds.is_empty())
+	check.call("and answered: the attacker Dulled and Staggered, and two Edge Heat on it", bool(att.call("has_status", "dulled")) and bool(att.call("has_status", "staggered"))
+		and int(p.get("focus")) == int(tte["focus_gain"]) and p.get("_focus_target") == att, "focus %d" % int(p.get("focus")))
+	check.call("then the window is shut", not (p.get("buffs") as Dictionary).has("turn_the_edge"))
+	took = p.call("take_hit", 10.0, false, att)
+	check.call("so the next blow lands", took > 0.0)
+	body.hp = body.total_max()
+	# a window that passes with no blow gives a share of the essence back (Turning Palm's refund_unused)
+	var tp: Dictionary = GameData.ability("turning_palm")
+	_cast(p, "turning_palm")
+	var e_after: float = float(p.get("essence"))
+	p.call("_tick_buffs", float(tp["window_s"]) + 0.05)
+	check.call("an unused Turning Palm gives back %d%% of its essence" % int(float(tp["refund_unused"]) * 100.0), _near(float(p.get("essence")) - e_after, float(tp["cost"]) * float(tp["refund_unused"]), 0.05))
+	# Turning Palm answers from behind: you end up at the attacker's back, and it is Turned
+	att.call("clear_status", "staggered")
+	att.set("facing", Vector3(0, 0, 1))
+	_cast(p, "turning_palm")
+	p.call("take_hit", 10.0, false, att)
+	check.call("Turning Palm puts you behind the attacker and Turns it", bool(att.call("is_behind", p.global_position)) and bool(att.call("has_status", "turned")))
+	(p.get("buffs") as Dictionary).clear()
+	# Edge Heat: blows on the same enemy heat the edge, each +8%; another enemy starts again; it cools
+	var a1 := _enemy(p, Vector3(4.0, 0, 0))
+	var a2 := _enemy(p, Vector3(-4.0, 0, 0))
+	p.set("focus", 0)
+	p.set("_focus_target", null)
+	var mcfg: Dictionary = GameData.affinity("metal")
+	var h1: HitContext = p.call("deal_damage", a1, 100.0, ["ability", "metal"])
+	var h2: HitContext = p.call("deal_damage", a1, 100.0, ["ability", "metal"])
+	var h3: HitContext = p.call("deal_damage", a1, 100.0, ["ability", "metal"])
+	check.call("Edge Heat: each metal blow on the same enemy adds one, +%d%% each" % int(float(mcfg["focus_mult"]) * 100.0),
+		int(p.get("focus")) == 3 and _near(h2.applied / h1.applied, 1.0 + float(mcfg["focus_mult"]), 0.001) and _near(h3.applied / h1.applied, 1.0 + 2.0 * float(mcfg["focus_mult"]), 0.001),
+		"focus %d, %f %f %f" % [int(p.get("focus")), h1.applied, h2.applied, h3.applied])
+	p.call("deal_damage", a1, 50.0, ["ability", "metal", "spall"])
+	check.call("a side-effect (spall) neither adds nor resets it", int(p.get("focus")) == 3)
+	p.call("deal_damage", a2, 100.0, ["ability", "metal"])
+	check.call("a blow on another enemy starts again at one, on that one", int(p.get("focus")) == 1 and p.get("_focus_target") == a2)
+	for i: int in int(float(mcfg["focus_max"])) + 2:
+		p.call("deal_damage", a2, 1.0, ["ability", "metal"])
+	check.call("it stops at %d" % int(mcfg["focus_max"]), int(p.get("focus")) == int(mcfg["focus_max"]))
+	p.set("_focus_t", 0.0)
+	p.call("_physics_process", STEP)
+	check.call("and %s s without a metal blow cools it to nothing" % str(mcfg["focus_cools_s"]), int(p.get("focus")) == 0)
+	_cast(p, "red_iron")
+	p.call("deal_damage", a1, 1.0, ["ability", "metal"])
+	check.call("Red Iron starts the edge white-hot on the next enemy you hit", int(p.get("focus")) == int(mcfg["focus_max"]) and p.get("_focus_target") == a1)
+	(p.get("buffs") as Dictionary).clear()
+	# Plating answers only the blows from close by
+	var pl: Dictionary = GameData.ability("plating")
+	var far_att := _enemy(p, Vector3(0, 0, 4.0))
+	_cast(p, "plating")
+	p.call("take_hit", 5.0, false, far_att)
+	check.call("Plating: an attacker beyond %s m is not Dulled" % str(pl["attacker_reach"]), not bool(far_att.call("has_status", "dulled")))
+	far_att.global_position = p.global_position + Vector3(0, 0, 1.6)
+	p.call("take_hit", 5.0, false, far_att)
+	check.call("one within it is", bool(far_att.call("has_status", "dulled")))
+	(p.get("buffs") as Dictionary).clear()
+	body.hp = body.total_max()
+	# Crosswind Veil: a shot passing close curves away and pays a pip
+	_cast(p, "veil")
+	var ShotScript: GDScript = load("res://scripts/enemy_shot.gd")
+	var arrow: Node3D = _keep(ShotScript.new())
+	arrow.set("dir", Vector3(0, 0, 1))
+	arrow.set("damage", 18.0)
+	arrow.set("target", p)
+	t.add_child(arrow)
+	arrow.set_physics_process(false)
+	arrow.global_position = p.global_position + Vector3(1.0, 1.0, -8.0)
+	p.set("pips", 0)
+	for i: int in 60:
+		if is_instance_valid(arrow) and not arrow.is_queued_for_deletion():
+			arrow.call("_physics_process", STEP)
+	check.call("Crosswind Veil: a shot within %s m curves away and pays a pip" % str(GameData.ability("veil")["deflect_radius"]),
+		_near(body.hp, body.total_max()) and int(p.get("pips")) == int(GameData.ability("veil")["gain_pips_per_deflect"]), "pips %d hp %f" % [int(p.get("pips")), body.hp])
+	(p.get("buffs") as Dictionary).clear()
+	# Downdraft leaps to the aimed point, no further
+	var dd: Dictionary = GameData.ability("downdraft")
+	var start: Vector3 = p.global_position
+	p.set("cursor_fixed", start + Vector3(0, 0, -4.0))
+	p.set("pips", 0)
+	_cast(p, "downdraft")
+	for i: int in 40:
+		p.call("_physics_process", STEP)
+	check.call("Downdraft leaps to where you aim (4 m), not its full %s m" % str(float(dd["dash_speed"]) * float(dd["dash_time"])),
+		_near(start.distance_to(p.global_position), 4.0, 0.15), "%.2f m" % start.distance_to(p.global_position))
+	p.set("cursor_fixed", null)
+	_clean()
+
+
+# --- Lightning's quicken and its path, Ice's wet freeze and wall, Water's wall-crush and throw --------------------
+
+func _storm_and_tide() -> void:
+	var p := _player(Vector3(5800, 0, 0), ["lightning", "ice", "water"])
+	for id: String in ["forked_path", "stored_bolt", "rime_wall", "cataract", "overboard"]:
+		p.call("learn", id)
+	await t.get_tree().physics_frame
+	p.set("_facing", Vector3(0, 0, -1))
+	# quicken on Overload: every Overload you cause leaves you Quickened
+	var lv := _enemy(p, Vector3(0, 0, -3.0))
+	(p.get("buffs") as Dictionary).clear()
+	p.call("_add_marks", lv, 3, false)
+	check.call("Lightning: an Overload you cause leaves you Quickened for %s s" % str(GameData.affinity("lightning")["quicken_on_overload"]),
+		(p.get("buffs") as Dictionary).has("quickened") and _near(float((p.get("buffs") as Dictionary)["quickened"]["t"]), float(GameData.affinity("lightning")["quicken_on_overload"])))
+	(p.get("buffs") as Dictionary).clear()
+	# Forked Path takes you behind each one it strikes
+	var row: Array = []
+	for i: int in 3:
+		var e := _enemy(p, Vector3(3.0 * float(i), 0, -4.0))
+		e.set("facing", Vector3(0, 0, 1))
+		row.append(e)
+	p.set("hovered", row[0])
+	_cast(p, "forked_path")
+	var last: Node3D = row[2]
+	check.call("Forked Path carries you along: you stand behind the last one it struck", bool(last.call("is_behind", p.global_position))
+		and p.global_position.distance_to(last.global_position) < 2.0, "%.2f m off" % p.global_position.distance_to(last.global_position))
+	p.set("hovered", null)
+	p.global_position = Vector3(5800, 0, 0)
+	for e: Node in row:
+		e.queue_free()
+	# Stored Bolt: a full hold crosses its full range at once, through what stands in the way
+	var sb: Dictionary = GameData.ability("stored_bolt")
+	var in_way := _enemy(p, Vector3(0, 0, -3.0))
+	var start: Vector3 = p.global_position
+	p.set("_facing", Vector3(0, 0, -1))
+	_ready_to_cast(p)
+	t.call("_cast", p, "stored_bolt")
+	p.call("_tick_held", float(sb["charge_max"]) + 0.01)
+	check.call("Stored Bolt: held full, it lets go as a streak - %s m at once, striking what it passes" % str(sb["range"]),
+		_near(start.distance_to(p.global_position), float(sb["range"]), 0.7) and float(t.call("_lost", in_way)) >= float(sb["damage"]) - 0.5,
+		"%.2f m, lost %f" % [start.distance_to(p.global_position), float(t.call("_lost", in_way))])
+	p.global_position = start
+	in_way.queue_free()
+	# wet freezes: an ice hit that lays Chill on a Soaked body adds one more, and the Soak is gone
+	var wet := _enemy(p, Vector3(4.0, 0, -6.0))
+	wet.call("add_status", "soaked", 1, p)
+	p.call("apply_hit", wet, {"status": "chilled", "stacks": 2}, ["ability", "ice"])
+	check.call("Ice: Chill on a Soaked body is one more, and the Soak turns to ice", int(wet.call("status_stacks", "chilled")) == 3 and not bool(wet.call("has_status", "soaked")),
+		str(wet.get("statuses")))
+	# Rime Wall: a wall of ice, as long as its length; broken early it bursts and chills
+	var rw: Dictionary = GameData.ability("rime_wall")
+	var by_wall := _enemy(p, Vector3(1.0, 0, -6.0))
+	var wall: Node3D = p.call("raise_stone", p.global_position + Vector3(0, 0, -5.0), Vector3(0, 0, -1), rw)
+	check.call("Rime Wall rises %s m long" % str(rw["length"]), _near((wall.get("size") as Vector3).x, float(rw["length"])))
+	wall.call("tick", 1.0)
+	wall.call("shatter", Vector3(0, 0, -1), p)
+	check.call("and broken early it bursts round itself: %d and Chill" % int(rw["shatter_burst"]["damage"]),
+		_near(float(t.call("_lost", by_wall)), float(rw["shatter_burst"]["damage"]), 0.5) and bool(by_wall.call("has_status", "chilled")), "lost %f" % float(t.call("_lost", by_wall)))
+	# Cataract: a body already pressed against something takes half again, and it is a Crush where it stands
+	var cat: Dictionary = GameData.ability("cataract")
+	var pair_a := _enemy(p, Vector3(-6.0, 0, 0))
+	var pair_b := _enemy(p, Vector3(-6.0, 0, -1.0))          # touching pair_a
+	var alone := _enemy(p, Vector3(-6.0, 0, 6.0))
+	p.set("ward_parts", [])
+	var pa0: float = t.call("_lost", pair_a)
+	p.call("apply_hit", pair_a, {"damage": 100.0, "against_wall_mult": float(cat["on_hit"]["against_wall_mult"])}, ["ability", "water"])
+	p.call("apply_hit", alone, {"damage": 100.0, "against_wall_mult": float(cat["on_hit"]["against_wall_mult"])}, ["ability", "water"])
+	var crush: float = float(GameData.balance["shove"]["crush_base"])
+	check.call("Cataract: against another body it does x%s and Crushes it where it stands (and the Crush wards you)" % str(cat["on_hit"]["against_wall_mult"]),
+		float(t.call("_lost", pair_a)) - pa0 >= 100.0 * float(cat["on_hit"]["against_wall_mult"]) - 0.5 and _near(float(t.call("_lost", alone)), 100.0)
+		and float(p.call("ward")) > 0.0, "against %f (crush %f), alone %f, ward %f" % [float(t.call("_lost", pair_a)) - pa0, crush, float(t.call("_lost", alone)), float(p.call("ward"))])
+	p.set("ward_parts", [])
+	for n: Node in [pair_a, pair_b, alone]:
+		n.queue_free()
+	# Overboard: the one in reach is thrown toward where you aim, and what it lands among is hit
+	var ob: Dictionary = GameData.ability("overboard")
+	var held := _enemy(p, Vector3(0, 0, -1.6))
+	var target_spot: Vector3 = p.global_position + Vector3(6.0, 0, -1.6)
+	var among := _enemy(p, Vector3(5.5, 0, -1.6))
+	p.set("hovered", held)
+	p.set("cursor_fixed", target_spot)
+	_cast(p, "overboard")
+	t.call("_settle", held)
+	check.call("Overboard throws it toward where you aim (up to %s m)" % str(ob["throw"]), held.global_position.distance_to(p.global_position + Vector3(0, 0, -1.6)) > 3.0,
+		"%.2f m" % held.global_position.distance_to(p.global_position + Vector3(0, 0, -1.6)))
+	check.call("and whoever it lands among takes %d" % int(ob["on_land"]["damage"]), float(t.call("_lost", among)) >= float(ob["on_land"]["damage"]) - 0.5, "lost %f" % float(t.call("_lost", among)))
+	p.set("hovered", null)
+	p.set("cursor_fixed", null)
+	_clean()
+
+
+# --- Dark's ambush and vanish, Light's sear and lines, Dream's twilight --------------------------------------------
+
+## A zone of Dark (or bright light) under `at`, as Dark's skills lay it.
+func _dark_at(p: Node, at: Vector3, r: float = 4.0) -> GroundZone:
+	var z := GroundZone.new()
+	z.shape = "circle"
+	z.caster = p
+	z.dark = true
+	z.kind = "dark_ground"
+	z.bright = false
+	z.radius = r
+	z.life = 99.0
+	z.from = at
+	z.to = at
+	t.add_child(z)
+	z.global_position = at
+	_keep(z)
+	return z
+
+
+func _dark_light_dream() -> void:
+	var p := _player(Vector3(6000, 0, 0), ["dark", "light", "dream"])
+	for id: String in ["muffle", "still_lamp", "burning_glass", "prism_bolt", "pall", "lucid"]:
+		p.call("learn", id)
+	await t.get_tree().physics_frame
+	p.set("_facing", Vector3(0, 0, -1))
+	# Ambush: standing in Dark you are Unseen; your first hit out of it counts as from behind and does x1.5
+	var dz := _dark_at(p, p.global_position)
+	var foe := _enemy(p, Vector3(0, 0, -1.6))
+	foe.set("facing", Vector3(0, 0, 1))                   # it faces you: not from behind
+	p.set("_unseen_reveal_t", 0.0)
+	var amb: float = float(GameData.affinity("dark")["ambush_mult"])
+	var rear: float = float(GameData.balance["combat"]["rear_mult"])
+	var h1: HitContext = p.call("deal_damage", foe, 100.0, ["test"])
+	var h2: HitContext = p.call("deal_damage", foe, 100.0, ["test"])
+	check.call("Ambush: the first hit out of the Dark is from behind and x%s (%.0f); the next is plain (%.0f)" % [str(amb), h1.applied, h2.applied],
+		_near(h1.applied, 100.0 * amb * rear, 0.5) and _near(h2.applied, 100.0, 0.5))
+	# Muffle: striking does not show you, so every hit can be an Ambush - and a kill raises no alarm
+	_cast(p, "muffle")
+	p.set("_unseen_reveal_t", 0.0)
+	var m1: HitContext = p.call("deal_damage", foe, 100.0, ["test"])
+	var m2: HitContext = p.call("deal_damage", foe, 100.0, ["test"])
+	var mf: float = float(GameData.ability("muffle")["unaware_mult"])
+	check.call("Muffled, every hit is an Ambush", m1.applied >= 100.0 * amb * rear - 0.5 and _near(m2.applied, m1.applied, 0.5), "%f %f" % [m1.applied, m2.applied])
+	var bystander := _enemy(p, Vector3(3.0, 0, -1.6))
+	var heard := [false]
+	foe.connect("hurt", func(_e: Node, _s: Node) -> void: heard[0] = true)
+	(foe.get("body") as Body).hp = 1.0
+	p.call("deal_damage", foe, 50.0, ["test"])
+	check.call("and a Muffled kill raises no alarm: nobody wakes, and those near it cannot call for help", not bool(heard[0]) and bool(bystander.call("has_status", "muted")))
+	(p.get("buffs") as Dictionary).clear()
+	dz.life = 0.0
+	dz.call("tick", 0.1)
+	# Hungry Dark: a kill Vanishes you - unseen anywhere until your next hit, which is an Ambush
+	var hd: Dictionary = GameData.ability("hungry_dark")
+	var prey := _enemy(p, Vector3(0, 0, -1.6))
+	(prey.get("body") as Body).hp = 1.0
+	p.set("hovered", prey)
+	_cast(p, "hungry_dark")
+	p.set("hovered", null)
+	var vanished: bool = (p.get("buffs") as Dictionary).has("vanished")
+	check.call("Hungry Dark: a kill Vanishes you for %s s" % str(hd["on_hit"]["on_kill"]["self_unseen_s"]), vanished and bool(p.call("_hidden")) is bool)
+	var watcher := _enemy(p, Vector3(0, 0, -6.0))
+	watcher.set("facing", Vector3(0, 0, 1))
+	p.set("_unseen_reveal_t", 0.0)
+	p.set("_cast_hidden_t", 0.0)
+	check.call("Vanished, no enemy past %s m sees you, in the light as in the dark" % str(GameData.affinity("dark")["unseen_beyond"]),
+		bool(p.call("unseen_from", watcher.global_position)))
+	var v1: HitContext = p.call("deal_damage", watcher, 100.0, ["test"])
+	check.call("and the hit that ends it is an Ambush", _near(v1.applied, 100.0 * amb * rear, 0.5) and not (p.get("buffs") as Dictionary).has("vanished"), "%f" % v1.applied)
+	# Sear: a light hit on a Lit target does +25% and lights it afresh; a lamp's light adds its own
+	var lt := _enemy(p, Vector3(4.0, 0, -3.0))
+	lt.call("add_status", "lit", 1, p)
+	(lt.get("statuses") as Dictionary)["lit"]["t"] = 0.5
+	var sear: float = float(GameData.affinity("light")["sear_vs_lit"])
+	var s1: HitContext = p.call("deal_damage", lt, 100.0, ["ability", "light"])
+	check.call("Light's Sear: on a Lit target a light hit does x%s and lights it afresh" % str(1.0 + sear),
+		_near(s1.applied, 100.0 * (1.0 + sear), 0.5) and float((lt.get("statuses") as Dictionary)["lit"]["t"]) > 1.0, "%f" % s1.applied)
+	p.set("cursor_fixed", lt.global_position)
+	_cast(p, "still_lamp")
+	var s2: HitContext = p.call("deal_damage", lt, 100.0, ["ability", "light"])
+	check.call("in your Still Lamp's light the Sear is +%s more" % str(GameData.ability("still_lamp")["sear_bonus"]),
+		_near(s2.applied, 100.0 * (1.0 + sear + float(GameData.ability("still_lamp")["sear_bonus"])), 0.5), "%f" % s2.applied)
+	# Burning Glass follows a Lit enemy
+	var bg: Dictionary = GameData.ability("burning_glass")
+	var moving := _enemy(p, Vector3(-4.0, 0, -6.0))
+	moving.call("add_status", "lit", 1, p)
+	p.set("cursor_fixed", moving.global_position)
+	_cast(p, "burning_glass")
+	moving.global_position += Vector3(2.5, 0, 0)
+	var blasts: Array = t.get_tree().get_nodes_in_group("blasts")
+	for b: Node in blasts:
+		b.call("tick", float(bg["delay"]) + 0.05)
+	check.call("Burning Glass on a Lit enemy lands where it has gone", float(t.call("_lost", moving)) > 0.0, "lost %f" % float(t.call("_lost", moving)))
+	p.set("cursor_fixed", null)
+	# Prism Bolt splits where it ends into lines that strike past it
+	var pb: Dictionary = GameData.ability("prism_bolt")
+	p.global_position = Vector3(6000, 0, 30.0)          # clear ground: nothing else in the bolt's way
+	var first := _enemy(p, Vector3(0, 0, -8.0))
+	var behind := _enemy(p, Vector3(0.7, 0, -12.0))     # on the line 10 degrees off the flight
+	p.set("_facing", Vector3(0, 0, -1))
+	_cast(p, "prism_bolt")
+	var bolt: Node3D = t.call("_bolt_of", p)
+	if bolt != null:
+		t.call("_fly", bolt)
+	check.call("Prism Bolt: it ends on the first and splits into %d lines, one of which strikes the one behind" % int(pb["split"]["count"]),
+		float(t.call("_lost", first)) > 0.0 and float(t.call("_lost", behind)) >= float(pb["split"]["damage"]) - 0.5, "first %f behind %f" % [float(t.call("_lost", first)), float(t.call("_lost", behind))])
+	# twilight: a Dream status lasts x1.25 on a target in Dim light (neither Lit nor Dark)
+	var dim := _enemy(p, Vector3(8.0, 0, 6.0))
+	var lvl: String = Light.level_at(t.get_tree(), dim.global_position)
+	p.call("apply_hit", dim, {"status": "dazed"}, ["ability", "dream"])
+	var want: float = float(GameData.status("dazed")["lasts"]) * (float(GameData.affinity("dream")["status_time_dim"]) if lvl == "dim" else 1.0)
+	check.call("Dream's twilight: in Dim light its statuses last x%s (here: %s)" % [str(GameData.affinity("dream")["status_time_dim"]), lvl],
+		lvl == "dim" and _near(float((dim.get("statuses") as Dictionary)["dazed"]["t"]), want, 0.01), str(dim.get("statuses")))
+	# Lucid: statuses you lay last longer while it lasts
+	_cast(p, "lucid")
+	dim.call("clear_status", "dazed")
+	p.call("apply_hit", dim, {"status": "dazed"}, ["ability", "dream"])
+	check.call("Lucid: your statuses last x%s on top" % str(GameData.ability("lucid")["status_time_mult"]),
+		_near(float((dim.get("statuses") as Dictionary)["dazed"]["t"]), want * float(GameData.ability("lucid")["status_time_mult"]), 0.01))
+	(p.get("buffs") as Dictionary).clear()
+	# Pall: everyone coming for you loses you
+	var hunter := _enemy(p, Vector3(2.0, 0, 2.0))
+	hunter.set("target", p)
+	hunter.set("_windup", 0.3)
+	p.set("cursor_fixed", p.global_position)
+	_cast(p, "pall")
+	check.call("Pall: whoever was coming for you loses the swing it was winding up", float(hunter.get("_windup")) < 0.0)
+	p.set("cursor_fixed", null)
+	hunter.set("target", null)
+	# Withering Needle: a body that dies Withering regrows you
+	var wn := _player(Vector3(6200, 0, 0), ["life"])
+	var vic := _enemy(wn, Vector3(0, 0, -3.0))
+	var okh: Dictionary = (GameData.ability("withering_needle")["on_hit"] as Dictionary)["status_data"]["on_kill_heal"]
+	wn.call("apply_hit", vic, GameData.ability("withering_needle")["on_hit"], ["ability", "life"])
+	(vic.get("body") as Body).hp = 1.0
+	(wn.get("body") as Body).hp = 50.0
+	wn.call("deal_damage", vic, 10.0, ["ability", "life"])
+	wn.call("_tick_regen", float(okh["over_s"]) + 0.1)
+	check.call("Withering Needle: a body that dies Withering regrows you %s over %s s" % [str(okh["heal"]), str(okh["over_s"])],
+		(wn.get("body") as Body).hp >= 50.0 + float(okh["heal"]) - 0.5, "hp %f" % (wn.get("body") as Body).hp)
+	_clean()
+
+
+# --- summons (Death's thralls, Nature's beasts, Life's heartseed), shared buffs, Life's and Blood's own -----------
+
+## A corpse at `at` (a body where one fell), for Death's skills.
+func _corpse(at: Vector3) -> Fallen:
+	var f := Fallen.new()
+	f.life = 60.0
+	t.add_child(f)
+	f.global_position = at
+	_keep(f)
+	return f
+
+
+func _summons_and_blood() -> void:
+	var p := _player(Vector3(6400, 0, 0), ["death", "life", "nature", "blood"])
+	for id: String in ["rise_again", "embalm", "grave_mark", "bone_burst", "knit", "heartseed", "call_the_brake", "unleash_the_pack",
+			"overgrowth", "lifeline", "deep_draught", "red_frenzy", "thirsting_glaive"]:
+		p.call("learn", id)
+	await t.get_tree().physics_frame
+	p.set("_facing", Vector3(0, 0, -1))
+	var ra: Dictionary = GameData.ability("rise_again")
+	var cap: int = int(GameData.affinity("death")["thrall_cap"])
+	# thrall cap: at most thrall_cap of your dead stand at once; another pushes out the oldest
+	var first: Node = null
+	for i: int in cap + 1:
+		var spot: Vector3 = p.global_position + Vector3(2.0 * float(i) - 3.0, 0, -4.0)
+		_corpse(spot)
+		p.set("cursor_fixed", spot)
+		_cast(p, "rise_again")
+		if i == 0:
+			var made: Array = p.call("summons_near", p.global_position, 50.0)
+			first = made[0] if not made.is_empty() else null
+	await t.get_tree().process_frame
+	var standing: Array = p.call("summons_near", p.global_position, 50.0)
+	check.call("Death's thrall cap: %d of your dead stand at once; a %s pushes out the oldest" % [cap, ["first", "second", "third", "fourth"][mini(cap, 3)]],
+		standing.size() == cap and not is_instance_valid(first), "%d standing" % standing.size())
+	check.call("a thrall is not living (Life cannot touch it)", standing.all(func(s: Node) -> bool: return not bool(s.get("is_living"))))
+	p.set("cursor_fixed", null)
+	# Grave Mark: your thralls go for the Bidden one, harder
+	var bait := _enemy(p, Vector3(-6.0, 0, -4.0))
+	var marked := _enemy(p, Vector3(8.0, 0, -4.0))
+	p.set("hovered", marked)
+	_cast(p, "grave_mark")
+	p.set("hovered", null)
+	var th: Node = standing[0]
+	check.call("Grave Mark: your thralls go for the Bidden one, not the nearest", th.call("_pick_foe") == marked)
+	# Embalm: its thrall_ keys reach your thralls in its radius (the one shared-buff radius)
+	_cast(p, "embalm")
+	check.call("Embalm's buff is on your thralls within its radius (thrall_incoming_mult, thrall_time_paused)",
+		standing.all(func(s: Node) -> bool: return (s.get("buffs") as Dictionary).has("embalmed")))
+	var life0: float = float(th.get("life"))
+	th.call("tick", 1.0)
+	var took: float = th.call("take_hit", 100.0, false, null)
+	check.call("so their time stands still and they take x%s" % str(GameData.ability("embalm")["thrall_incoming_mult"]),
+		_near(float(th.get("life")), life0) and _near(took, 100.0 * float(GameData.ability("embalm")["thrall_incoming_mult"])))
+	(p.get("buffs") as Dictionary).clear()
+	# Bone Burst spends them all for a burst each
+	var near_t := _enemy(p, Vector3(0, 0, -4.5))
+	var nl0: float = t.call("_lost", near_t)
+	_cast(p, "bone_burst")
+	await t.get_tree().process_frame
+	check.call("Bone Burst: every thrall of yours in range bursts and is gone", (p.call("summons_near", p.global_position, 50.0) as Array).is_empty()
+		and float(t.call("_lost", near_t)) > nl0, "lost %f" % (float(t.call("_lost", near_t)) - nl0))
+	# Heartseed: a living seed that keeps beside you and heals you
+	var body: Body = p.get("body")
+	body.hp = 40.0
+	_cast(p, "heartseed")
+	var seeds: Array = p.call("summons_near", p.global_position, 10.0)
+	var seed: Node = seeds[0] if not seeds.is_empty() else null
+	check.call("Heartseed: a living summon that follows you and does not attack", seed != null and bool(seed.get("is_living")) and str(seed.get("behaviour")) == "follow")
+	if seed != null:
+		for i: int in 60:
+			seed.call("tick", STEP)
+	check.call("and it regrows you", body.hp > 40.0, "hp %f" % body.hp)
+	# Knit is shared with your living summons
+	body.hp = 40.0
+	_cast(p, "knit")
+	check.call("Knit is shared with your living summons near you", seed != null and (seed.get("buffs") as Dictionary).has("knit"))
+	(p.get("buffs") as Dictionary).clear()
+	if seed != null:
+		seed.queue_free()                  # its own heal_per_hit would add to the hits below
+	await t.get_tree().process_frame
+	# Call the Brake: beasts out of your growth - two from a bloom
+	var cb: Dictionary = GameData.ability("call_the_brake")
+	var patch: Node3D = p.call("plant_growth", p.global_position + Vector3(3.0, 0, 3.0), {"kind": "bramble"})
+	patch.set("age_t", 99.0)
+	p.set("cursor_fixed", patch.global_position)
+	var before: int = (p.call("summons_near", p.global_position, 50.0) as Array).size()
+	_cast(p, "call_the_brake")
+	var hounds: Array = (p.call("summons_near", p.global_position, 50.0) as Array).filter(func(s: Node) -> bool: return str(s.get("skill")) == str(cb["name"]))
+	check.call("Call the Brake: a bloom patch calls up %d beasts, stronger for its age, and is cut back" % int(cb["bloom_count"]),
+		hounds.size() == int(cb["bloom_count"]) and _near(float(hounds[0].get("hp")), float(cb["thrall"]["hp"]) * float(cb["age_scales"]["bloom"]))
+		and int(patch.call("age")) == 0, "%d hounds" % hounds.size())
+	p.set("cursor_fixed", Vector3(9999, 0, 9999))
+	var refused_e: float = 0.0
+	_ready_to_cast(p)
+	refused_e = float(p.get("essence"))
+	t.call("_cast", p, "call_the_brake")
+	check.call("and is refused, with nothing spent, where you have no growth", _near(float(p.get("essence")), refused_e))
+	p.set("cursor_fixed", null)
+	# Unleash the Pack: they leap to the target and are Unleashed
+	var quarry := _enemy(p, Vector3(-3.0, 0, 8.0))
+	p.set("hovered", quarry)
+	_cast(p, "unleash_the_pack")
+	p.set("hovered", null)
+	check.call("Unleash the Pack: your beasts leap to the target, Unleashed, and it is their Quarry", bool(quarry.call("has_status", "quarry"))
+		and hounds.all(func(h: Node) -> bool: return (h as Node3D).global_position.distance_to(quarry.global_position) < 2.5 and (h.get("buffs") as Dictionary).has("unleashed")))
+	# Overgrowth: you and your beasts hit harder, and every hit regrows the one that lands it
+	_cast(p, "overgrowth")
+	body.hp = 40.0
+	var og: Dictionary = GameData.ability("overgrowth")
+	var oh: HitContext = p.call("deal_damage", quarry, 100.0, ["test"])
+	check.call("Overgrowth: x%s damage and +%s health for each hit you land" % [str(og["damage_mult"]), str(og["heal_per_hit"])],
+		_near(oh.applied, 100.0 * float(og["damage_mult"]), 0.5) and _near(body.hp, 40.0 + float(og["heal_per_hit"]), 0.05), "%f hp %f" % [oh.applied, body.hp])
+	check.call("and the beasts near you have it too", hounds.all(func(h: Node) -> bool: return (h.get("buffs") as Dictionary).has("overgrown")))
+	(p.get("buffs") as Dictionary).clear()
+	# In the Green: on your growth you regrow, and shoves move you half as far
+	var home: Node3D = p.call("plant_growth", p.global_position, {"kind": "bramble", "radius": 2.0})
+	body.hp = 40.0
+	for i: int in 60:
+		p.call("_tick_roles", STEP)
+	var green: Dictionary = GameData.affinity("nature")["in_the_green"]
+	check.call("In the Green: on your own growth you regrow %s a second" % str(green["heal_per_s"]), _near(body.hp, 40.0 + float(green["heal_per_s"]), 0.1), "hp %f" % body.hp)
+	p.call("shove", Vector3(1, 0, 0), 4.0)
+	check.call("and a shove moves you x%s" % str(green["shove_mult"]), _near(float(p.get("_shoved_left")), 4.0 * float(green["shove_mult"])))
+	p.set("_shoved_left", 0.0)
+	home.queue_free()
+	await t.get_tree().process_frame
+	# Lifeline: a drain - you are healed half the harm (Life's healing order)
+	body.hp = 40.0
+	var ll := _enemy(p, Vector3(0, 0, -3.0))
+	var dl: HitContext = p.call("apply_hit", ll, (GameData.ability("lifeline")["on_hit"] as Dictionary), ["ability", "life"])
+	check.call("Lifeline's drain: you regrow %d%% of what it deals" % int(float(GameData.ability("lifeline")["on_hit"]["drain_frac"]) * 100.0),
+		_near(body.hp - 40.0, dl.applied * float(GameData.ability("lifeline")["on_hit"]["drain_frac"]), 0.05))
+	body.hp = body.total_max()
+	# Deep Draught drinks the pools and the bleeders near you
+	var dd: Dictionary = GameData.ability("deep_draught")
+	p.set("held_blood", 0)
+	p.call("spill_blood", p.global_position + Vector3(1.0, 0, 0), 2)
+	var bleeder := _enemy(p, Vector3(-2.0, 0, 0))
+	bleeder.call("add_status", "bleeding", 3, p)
+	_cast(p, "deep_draught")
+	check.call("Deep Draught: it drinks the pools near you and a stack from every bleeder, into held blood",
+		int(p.get("held_blood")) >= 2 and int(bleeder.call("status_stacks", "bleeding")) == 2, "held %d" % int(p.get("held_blood")))
+	# Red Frenzy: faster strikes, further, and it drinks your blood to keep going
+	var rf: Dictionary = GameData.ability("red_frenzy")
+	p.set("held_blood", 2)
+	var reach0: float = float(p.call("reach_now"))
+	_cast(p, "red_frenzy")
+	check.call("Red Frenzy: strikes x%s as fast and %s m further" % [str(rf["attack_rate_mult"]), str(rf["strike_reach_bonus"])],
+		_near(float(p.call("strike_rate_mult")), float(rf["attack_rate_mult"])) and _near(float(p.call("reach_now")), reach0 + float(rf["strike_reach_bonus"])))
+	p.call("_tick_roles", float(rf["upkeep_grace_s"]) + 2.0 / float(rf["upkeep_blood_per_s"]) + 0.5)
+	check.call("after its grace it drinks your held blood, and with none left it ends", int(p.get("held_blood")) == 0 and not (p.get("buffs") as Dictionary).has("red_frenzy"))
+	# the conjured weapon: Thirsting Glaive puts a blade in your hand that your bare strikes use
+	var tg: Dictionary = GameData.ability("thirsting_glaive")
+	var cw: Dictionary = tg["conjure_weapon"]
+	var plain: float = float(p.call("strike_damage"))
+	_cast(p, "thirsting_glaive")
+	check.call("Thirsting Glaive: a conjured blade - strikes x%s, reach %s m, for %s s" % [str(cw["melee_damage_mult"]), str(cw["melee_range"]), str(cw["lasts"])],
+		_near(float(p.call("strike_damage")), plain * float(cw["melee_damage_mult"])) and _near(float(p.call("reach_now")), float(cw["melee_range"]))
+		and _near(float((p.call("conjured") as Dictionary).get("t", 0.0)), float(cw["lasts"])))
+	var drink := _enemy(p, Vector3(2.5, 0, 0))
+	drink.call("add_status", "bleeding", 2, p)
+	p.set("held_blood", 0)
+	p.call("deal_damage", drink, 5.0, ["melee"])
+	check.call("and each strike drinks a Bleeding stack into held blood", int(drink.call("status_stacks", "bleeding")) == 1 and int(p.get("held_blood")) == 1)
+	p.call("_tick_buffs", float(cw["lasts"]) + 0.1)
+	check.call("when it ends your own weapon is back", (p.call("conjured") as Dictionary).is_empty() and _near(float(p.call("strike_damage")), plain))
+	# Bloodrush: every measure of blood you hold makes every hit you deal harder
+	var per: float = float(GameData.affinity("blood")["damage_per_held_blood"])
+	var rush_t := _enemy(p, Vector3(0, 0, 3.0))
+	p.set("held_blood", 10)
+	var full: HitContext = p.call("deal_damage", rush_t, 100.0, ["test"])
+	p.set("held_blood", 0)
+	var none: HitContext = p.call("deal_damage", rush_t, 100.0, ["test"])
+	check.call("Bloodrush: holding 10 blood, a hit of any affinity is x%s" % str(1.0 + 10.0 * per),
+		_near(full.applied, none.applied * (1.0 + 10.0 * per), 0.5), "%f vs %f" % [full.applied, none.applied])
+	_clean()
+
+
+# --- Holy and Unholy: the ward pool and its one cap, the ward's break, the drain and stolen life ---------------------
+
+func _holy_and_unholy() -> void:
+	var p := _player(Vector3(7200, 0, 0), ["holy", "unholy"])
+	for id: String in ["guardbreaker", "absolution", "hallowed_ground", "kind_light", "rebuke", "zealous_charge", "black_reckoning",
+			"heartseed"]:
+		p.call("learn", id)
+	await t.get_tree().physics_frame
+	p.set("_facing", Vector3(0, 0, -1))
+	var body: Body = p.get("body")
+	var cap: float = GameData.num("ward", "cap")
+	# the ward pool: one pool, one cap, whoever gives it
+	p.set("ward_parts", [])
+	p.call("add_ward", 40.0, -1.0, {"from": "a"})
+	p.call("add_ward", 40.0, -1.0, {"from": "b"})
+	check.call("the ward pool: wards from two sources share one cap of %s" % str(cap), _near(float(p.call("ward")), cap), "ward %f" % float(p.call("ward")))
+	p.set("ward_parts", [])
+	p.call("add_ward", 10.0, -1.0, {"from": "crush", "source_cap": 15.0})
+	p.call("add_ward", 10.0, -1.0, {"from": "crush", "source_cap": 15.0})
+	check.call("and a source with its own cap (Water's Crush ward) holds no more than that", _near(float(p.call("ward")), 15.0))
+	var hp0: float = body.hp
+	var taken: float = p.call("take_hit", 10.0, false, null)
+	check.call("a blow the ward wholly stops opens nothing: the bar and wounds are untouched", taken == 0.0 and _near(body.hp, hp0) and _near(float(p.call("ward")), 5.0))
+	# Holy's rule: a ward that breaks pays out its light
+	var hb: Dictionary = GameData.affinity("holy")["ward_break_payload"]
+	var near := _enemy(p, Vector3(1.5, 0, 0))
+	var l0: float = t.call("_lost", near)
+	p.call("take_hit", 30.0, false, null)
+	check.call("Holy: a ward that breaks pays out its light - %d and Lit within %s m" % [int(hb["damage"]), str(hb["radius"])],
+		float(t.call("_lost", near)) - l0 > 0.0 and bool(near.call("has_status", "lit")), "lost %f" % (float(t.call("_lost", near)) - l0))
+	body.hp = body.total_max()
+	p.set("ward_parts", [])
+	# Unholy's rule: every Unholy hit drains, twice from the Dying, and banks stolen life
+	var uh: Dictionary = GameData.affinity("unholy")
+	var foe := _enemy(p, Vector3(0, 0, -2.5))
+	body.hp = 40.0
+	p.set("stores", {})
+	var h1: HitContext = p.call("apply_hit", foe, {"damage": 50.0}, ["ability", "unholy"])
+	check.call("Unholy: every hit drains %d%% of the harm back to you (the bar only)" % int(float(uh["drain_frac"]) * 100.0),
+		_near(body.hp - 40.0, h1.applied * float(uh["drain_frac"]), 0.05), "healed %f of %f" % [body.hp - 40.0, h1.applied])
+	check.call("and what it drains is banked as stolen life", int(p.call("store_count", "stolen")) == int(round(h1.applied * float(uh["drain_frac"]))),
+		"stolen %d" % int(p.call("store_count", "stolen")))
+	body.hp = 40.0
+	var fb: Body = foe.get("body")
+	fb.hp = fb.total_max() * 0.2
+	var h2: HitContext = p.call("apply_hit", foe, {"damage": 10.0}, ["ability", "unholy"])
+	check.call("twice that from the Dying", bool(foe.call("is_dead")) or _near(body.hp - 40.0, h2.applied * float(uh["drain_frac"]) * float(uh["drain_mult_vs"]["dying"]), 0.05),
+		"healed %f of %f" % [body.hp - 40.0, h2.applied])
+	body.hp = 40.0
+	var h3: HitContext = p.call("apply_hit", _enemy(p, Vector3(2.5, 0, -2.5)), {"damage": 50.0, "drain_frac": 0.9}, ["ability", "unholy"])
+	check.call("and never more than %d%% of a hit" % int(float(uh["drain_max_frac"]) * 100.0), _near(body.hp - 40.0, h3.applied * float(uh["drain_max_frac"]), 0.05))
+	body.hp = body.total_max()
+	# Black Reckoning spends the stolen life: that much damage and poise (poise up to poise_max)
+	var br: Dictionary = GameData.ability("black_reckoning")
+	p.call("store_add", "stolen", 90, 100, 12.0)
+	var target := _enemy(p, Vector3(0, 0, -3.0))
+	var tl0: float = t.call("_lost", target)
+	var tp0: float = float(target.get("poise"))
+	_cast(p, "black_reckoning")
+	check.call("Black Reckoning: %s plus all your stolen life, which is spent (what it drains is banked afresh)" % str(br["damage"]),
+		int(p.call("store_count", "stolen")) < 90 and float(t.call("_lost", target)) - tl0 >= float(br["damage"]) + 80.0, "lost %f" % (float(t.call("_lost", target)) - tl0))
+	check.call("and that much poise too, up to %s" % str(br["poise_max"]), tp0 - float(target.get("poise")) <= GameData.num("combat", "skill_poise") + float(br["poise_max"]) + 0.01
+		and tp0 - float(target.get("poise")) > float(br["poise_max"]) * 0.5, "poise lost %f" % (tp0 - float(target.get("poise"))))
+	# the ground Unholy leaves is Dark (Forsaken Ground's circle, Night Charge's trail), so its drain doubles there
+	var spot: Vector3 = p.global_position + Vector3(-6.0, 0, 6.0)
+	var fz: Node3D = p.call("lay_cloud", spot, GameData.ability("forsaken_ground")["leave_zone"], ["ability", "unholy"])
+	check.call("Forsaken Ground leaves Dark ground, not a cloud", fz != null and Light.is_dark(t.get_tree(), spot) and str(fz.get("kind")) == "dark_ground")
+	_clean()
+	await t.get_tree().process_frame
+	p = _player(Vector3(7400, 0, 0), ["holy", "life"])
+	for id: String in ["guardbreaker", "absolution", "hallowed_ground", "kind_light", "rebuke", "zealous_charge", "heartseed"]:
+		p.call("learn", id)
+	await t.get_tree().physics_frame
+	p.set("_facing", Vector3(0, 0, -1))
+	body = p.get("body")
+	# Guardbreaker strips every boon
+	var proud := _enemy(p, Vector3(0, 0, -2.0))
+	for b: Variant in GameData.balance["enemy_boons"]:
+		proud.call("add_status", str(b), 1, null)
+	p.set("hovered", proud)
+	_cast(p, "guardbreaker")
+	p.set("hovered", null)
+	check.call("Guardbreaker: Exposed, and every boon on it (%s) stripped" % ", ".join(GameData.balance["enemy_boons"]),
+		bool(proud.call("has_status", "exposed")) and (GameData.balance["enemy_boons"] as Array).all(func(b: Variant) -> bool: return not bool(proud.call("has_status", str(b)))))
+	# Absolution: what holds you is lifted, ward for each one
+	var ab: Dictionary = GameData.ability("absolution")
+	p.set("ward_parts", [])
+	p.set("_stagger_t", 1.0)
+	p.set("_winded_t", 1.0)
+	_cast(p, "absolution")
+	check.call("Absolution: stagger and Winded lifted, %s ward and %s more for each (up to %s)" % [str(ab["ward"]), str(ab["ward_per_cleansed"]), str(ab["ward_cleansed_max"])],
+		float(p.get("_stagger_t")) <= 0.0 and float(p.get("_winded_t")) <= 0.0
+		and _near(float(p.call("ward")), minf(cap, float(ab["ward"]) + minf(2.0 * float(ab["ward_per_cleansed"]), float(ab["ward_cleansed_max"])))), "ward %f" % float(p.call("ward")))
+	(p.get("buffs") as Dictionary).clear()
+	p.set("ward_parts", [])
+	# Hallowed Ground: you and your summons inside gain ward a second, up to its max, and take less
+	var hg: Dictionary = GameData.ability("hallowed_ground")
+	var ap: Dictionary = hg["zone"]["ally_payload"]
+	_cast(p, "heartseed")
+	var seed: Node3D = (p.call("summons_near", p.global_position, 10.0) as Array)[0]
+	p.set("cursor_fixed", p.global_position + Vector3(0, 0, -1.5))
+	_cast(p, "hallowed_ground")
+	p.set("cursor_fixed", null)
+	var zone: GroundZone = null
+	for z: Node in t.get_tree().get_nodes_in_group("ground_zones"):
+		if (z as GroundZone).caster == p and not (z as GroundZone).ally_payload.is_empty():
+			zone = z
+	if zone != null:
+		seed.global_position = p.global_position + Vector3(1.0, 0, 0)
+		for i: int in int(2.0 / STEP) + 2:
+			zone.tick(STEP)
+	check.call("Hallowed Ground: inside it you gain %s ward a second" % str(ap["ward_per_s"]), zone != null and float(p.call("ward")) >= 2.0 * float(ap["ward_per_s"]) - 0.01
+		and float(p.call("ward")) <= 2.0 * float(ap["ward_per_s"]) + float(ap["ward_per_s"]) * zone.tick_s + 0.01,
+		"ward %f from %s me %s ap %s in %s life %f" % [float(p.call("ward")), str(zone.from) if zone else "", str(p.global_position), str(zone.ally_payload) if zone else "", str(zone.has_point(p.global_position)) if zone else "", zone.life if zone else 0.0])
+	if zone != null:
+		for i: int in int(6.0 / STEP):
+			zone.tick(STEP)
+	check.call("up to %s from it" % str(ap["ward_max"]), _near(float(p.call("ward")), float(ap["ward_max"])))
+	check.call("and so does your summon", float(seed.get("ward")) > 0.0)
+	check.call("and blows on you inside are x%s" % str(ap["damage_taken_mult"]), _near(float(p.call("ally_zone_mult", p)), float(ap["damage_taken_mult"])))
+	if zone != null:
+		zone.queue_free()
+	await t.get_tree().process_frame
+	p.set("ward_parts", [])
+	# Kind Light: blows are softer, and what it softened comes back when it ends
+	var kl: Dictionary = GameData.ability("kind_light")
+	_cast(p, "kind_light")
+	body.hp = body.total_max()
+	var got: float = p.call("take_hit", 50.0, false, null)
+	check.call("Kind Light: every blow x%s" % str(kl["incoming_mult"]), _near(got, 50.0 * float(kl["incoming_mult"]), 0.5), "took %f" % got)
+	var before_end: float = body.hp
+	p.call("_tick_buffs", float(kl["duration"]) + 0.1)
+	check.call("and when it ends %d%% of what it softened comes back as health" % int(float(kl["softened_return"]) * 100.0),
+		_near(body.hp - before_end, 50.0 * (1.0 - float(kl["incoming_mult"])) * float(kl["softened_return"]), 0.5), "back %f" % (body.hp - before_end))
+	body.hp = body.total_max()
+	# Rebuke: half again as hard while you are warded
+	var rb: Dictionary = GameData.ability("rebuke")
+	var rt := _enemy(p, Vector3(0, 0, -2.0))
+	p.set("ward_parts", [])
+	var rpay: Dictionary = (rb["on_hit"] as Dictionary).duplicate()
+	rpay["damage"] = 40.0
+	var plain: HitContext = p.call("apply_hit", rt, rpay, ["ability", "holy"])
+	p.call("add_ward", 20.0)
+	var warded: HitContext = p.call("apply_hit", rt, rpay, ["ability", "holy"])
+	check.call("Rebuke: x%s while you are warded, and it spends no ward" % str(rb["on_hit"]["warded_mult"]),
+		_near(warded.applied, plain.applied * float(rb["on_hit"]["warded_mult"]), 0.5) and _near(float(p.call("ward")), 20.0), "%f vs %f" % [warded.applied, plain.applied])
+	p.set("ward_parts", [])
+	# Zealous Charge: you arrive warded
+	var zc: Dictionary = GameData.ability("zealous_charge")
+	_cast(p, "zealous_charge")
+	for i: int in 60:
+		p.call("_physics_process", STEP)
+	check.call("Zealous Charge: you arrive with a %s ward" % str(zc["arrive_ward"]), _near(float(p.call("ward")), float(zc["arrive_ward"])), "ward %f" % float(p.call("ward")))
+	p.set("ward_parts", [])
+	_clean()
+
+
+# --- the data -------------------------------------------------------------------------------------
+
+func _data() -> void:
+	var ids: Array = GameData.affinity_ids()
+	check.call("eighteen affinities, each with a kit of three of its own starters", ids.size() == 18 and ids.all(func(a: Variant) -> bool:
+		var kit: Array = GameData.affinity(str(a)).get("kit", [])
+		return kit.size() == 3 and kit.all(func(k: Variant) -> bool:
+			return str(GameData.ability(str(k)).get("affinity", "")) == str(a) and bool(GameData.ability(str(k)).get("starter", false)))), str(ids))
+	# every rune's glyph is drawn by the font (Holy's and Unholy's are Old Turkic, U+10C00-10C21), not by the stroke
+	# fallback UiDraw.rune_glyph uses for a character the font cannot draw
+	var no_glyph: Dictionary = {}
+	for part: String in ["base_runes", "universal_runes"]:
+		for rid: String in (GameData.runes.get(part, {}) as Dictionary):
+			var r: Dictionary = GameData.rune(rid)
+			if not UiDraw.has_glyph(str(r.get("character", ""))):
+				no_glyph[rid] = str(r.get("affinity", "universal"))
+	var base_missing: Array = no_glyph.keys().filter(func(rid: Variant) -> bool: return str(no_glyph[rid]) != "universal")
+	check.call("every affinity rune's glyph draws in the game's font, Holy's and Unholy's Old Turkic among them (else UiDraw draws strokes)",
+		base_missing.is_empty(), "missing: %s" % str(base_missing))
+	if no_glyph.size() > base_missing.size():
+		print("  note: universal runes the font draws only as an emoji (UiDraw draws strokes): %s" % str(no_glyph.keys().filter(func(rid: Variant) -> bool: return not base_missing.has(rid))))
+	var still: Array[String] = DROPPED.filter(func(id: String) -> bool: return GameData.abilities.has(id))
+	check.call("the %d skills the v2 drafts drop are gone" % DROPPED.size(), still.is_empty(), str(still))
+	var off_rune: Array[String] = []
+	for id: String in GameData.abilities:
+		var ab: Dictionary = GameData.ability(id)
+		var rid: String = str(ab.get("base_rune", ""))
+		var r: Dictionary = GameData.rune(rid)
+		if r.is_empty() or str(r.get("affinity", "")) != str(ab.get("affinity", "")) or GameData.skill_anchor(id) != rid or str(r.get("name", "")) != str(ab.get("rune", "")):
+			off_rune.append("%s (%s)" % [id, rid])
+	check.call("every skill sits on exactly the rune its draft names, a rune of its own affinity (%d skills)" % GameData.abilities.size(), off_rune.is_empty(), str(off_rune))
+	# the ascension boost reads aspects through the rune stat groups: each draft-named field must be a number one reaches
+	var unreached: Array[String] = []
+	for id: String in GameData.abilities:
+		var ab: Dictionary = GameData.ability(id)
+		var mags: Array = (ab.get("magnitude", []) as Array).map(func(m: Dictionary) -> String: return str(m["path"]))
+		var fields: Dictionary = ab.get("ascension_fields", {})
+		if fields.is_empty():
+			unreached.append("%s: no ascension fields" % id)
+			continue
+		for aspect: String in Ascension.aspect_ids():
+			if not fields.has(aspect):
+				unreached.append("%s: no %s field" % [id, aspect])
+				continue
+			for path: String in str(fields[aspect]).split(" + "):
+				var groups: Array[String] = Runes.active().groups_of_path(ab, path)
+				var want: Dictionary = Ascension.aspect_groups(aspect)
+				var ok: bool = groups.any(func(g: String) -> bool: return want.has(g)) or (aspect == "power" and mags.has(path)) \
+					or (path == "recovery" and want.has("windup"))
+				if not ok:
+					unreached.append("%s: %s -> %s" % [id, aspect, path])
+	check.call("every skill's four ascension aspects reach a real number of it (through the stat groups, or as its magnitude)", unreached.is_empty(), str(unreached))
+	var no_desc: Array[String] = []
+	for sid: String in GameData.status_ids():
+		if StatusText.desc(sid).strip_edges() == "":
+			no_desc.append(sid)
+	for pid: String in GameData.player_state_ids():
+		if str(GameData.player_state(pid).get("desc", "")).strip_edges() == "":
+			no_desc.append(pid)
+	var v2_statuses: Array[String] = ["taunted", "turned", "tithed", "bidden", "quarry", "charmed", "doubting", "steeped", "condemned", "penitent",
+		"exiled", "leeched", "leashed", "tormented", "stasis", "barbed"]
+	var missing: Array[String] = v2_statuses.filter(func(sid: String) -> bool: return GameData.status(sid).is_empty())
+	check.call("the 14 statuses the v2 runes grant, and the drafts' own (Stasis, Barbed), are in the status engine", missing.is_empty(), str(missing))
+	check.call("every status and every state of yours has a written desc", no_desc.is_empty(), str(no_desc))
+
+
+func _near(a: float, b: float, eps: float = 0.01) -> bool:
+	return absf(a - b) <= eps

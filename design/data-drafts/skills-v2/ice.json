@@ -347,7 +347,7 @@
     }
    },
    "ascension": {
-    "power": "zone.payload.statuses",
+    "power": "zone.payload.statuses.chilled.stacks",
     "reach": "zone.radius",
     "speed": "zone.life",
     "cost": "cost"
@@ -748,7 +748,7 @@
    "id": "dead_calm",
    "name": "Dead Calm",
    "affinity": "ice",
-   "base_rune": "new:ICE-6a",
+   "base_rune": "ICE-6a",
    "rune": "Stasis",
    "status": "new",
    "starter": false,
@@ -776,7 +776,7 @@
     }
    },
    "ascension": {
-    "power": "on_hit.statuses",
+    "power": "on_hit.statuses.chilled.stacks",
     "reach": "range",
     "speed": "on_hit.status_s",
     "cost": "cost"
@@ -829,7 +829,7 @@
    "id": "floe_drive",
    "name": "Floe Drive",
    "affinity": "ice",
-   "base_rune": "new:ICE-6b",
+   "base_rune": "ICE-6b",
    "rune": "Floe",
    "status": "new",
    "starter": false,

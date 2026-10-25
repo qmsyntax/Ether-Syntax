@@ -29,6 +29,10 @@ const WORDED: Array[String] = [
 	"retch_every", "retch_s", "makes_interruptible", "staggers_in_windup", "lure_radius", "shove_mult", "ends_on_shove",
 	"goes_to_goal", "no_conduct", "no_death_effects", "nudge_per_s", "conduct_radius", "conduct_marks", "overload_damage",
 	"stun", "arc_damage", "arc_radius", "grounds",
+	# 2026-10-24 (v2): taunt, turning, summons' marks, charm, the poison clock, Holy's judgements, Unholy's drain and leash
+	"forced_target", "closes_in", "turn_away", "heals_attacker_frac", "summons_target", "summon_damage_mult", "summon_rate_mult",
+	"fights_for_source", "ends_on_source_hit", "adds_time", "bill_mult", "ends_with", "adds_status", "ward_to_attacker", "ward_from_one",
+	"on_attack_damage", "deals_mult_vs_source", "keeps_away", "elites_immune", "drain_to_source", "leash_m", "drain_frac",
 ]
 
 ## Keys of a skill's data that name statuses it reads, spends or keeps off rather than applies.
@@ -148,6 +152,8 @@ static func rules_of(def: Dictionary, lasts: float = -1.0, with_lasts: bool = tr
 		p.append("not while %s" % _labels(def["blocked_by"], " or "))
 	if def.has("elite_status"):
 		p.append("elites get %s instead" % label(str(def["elite_status"])))
+	if bool(def.get("elites_immune", false)):
+		p.append("elites are not held by it")
 	# what it cannot do
 	if bool(def.get("cannot_act", false)):
 		p.append("cannot move or act")
@@ -179,6 +185,26 @@ static func rules_of(def: Dictionary, lasts: float = -1.0, with_lasts: bool = tr
 		p.append("its friends within %s m go for it instead of you" % _n(float(def["lure_radius"])))
 	if def.has("flees"):
 		p.append("runs from whoever put it there" if str(def["flees"]) == "source" else "backs out of the ground that caused it")
+	if str(def.get("forced_target", "")) == "source":
+		p.append("goes for whoever put it there and nobody else - no lure, decoy or thrall draws it")
+	if bool(def.get("closes_in", false)):
+		p.append("an archer or support walks in to fight hand to hand")
+	if def.has("keeps_away"):
+		p.append("will not come within %s m of whoever put it there" % _n(float(def["keeps_away"])))
+	if def.has("leash_m"):
+		p.append("cannot go further than %s m from whoever put it there" % _n(float(def["leash_m"])))
+	if bool(def.get("turn_away", false)):
+		p.append("turned to face away from you")
+	if bool(def.get("fights_for_source", false)):
+		p.append("fights for whoever put it there, and its friends turn on it")
+	if bool(def.get("ends_on_source_hit", false)):
+		p.append("a hit from whoever put it there ends it")
+	if bool(def.get("summons_target", false)):
+		p.append("your summons go for it")
+	if def.has("summon_damage_mult"):
+		p.append("your summons hit it %s" % _more_less(float(def["summon_damage_mult"]), "harder", "softer"))
+	if def.has("summon_rate_mult"):
+		p.append("and %s" % _more_less(float(def["summon_rate_mult"]), "faster", "slower"))
 	if bool(def.get("goes_to_goal", false)):
 		p.append("walks to the spot it was sent to")
 	if def.get("blinded") is Dictionary:
@@ -224,6 +250,20 @@ static func rules_of(def: Dictionary, lasts: float = -1.0, with_lasts: bool = tr
 	# what it deals and its poise
 	if def.has("deals_mult"):
 		p.append("its blows do %s" % _more_less(float(def["deals_mult"]), "more", "less"))
+	if def.has("deals_mult_vs_source"):
+		p.append("its blows on whoever put it there, and theirs, do %s" % _more_less(float(def["deals_mult_vs_source"]), "more", "less"))
+	if def.has("on_attack_damage"):
+		p.append("each attack it starts deals it %s" % _n(float(def["on_attack_damage"])))
+	if def.has("heals_attacker_frac"):
+		p.append("hits on it from whoever put it there heal them %d%% of the harm" % int(round(float(def["heals_attacker_frac"]) * 100.0)))
+	if def.has("drain_to_source"):
+		p.append("hits on it from whoever put it there drain %d%% of the harm to them" % int(round(float(def["drain_to_source"]) * 100.0)))
+	if def.has("drain_frac"):
+		p.append("%d%% of its hurt feeds whoever put it there" % int(round(float(def["drain_frac"]) * 100.0)))
+	if def.has("ward_to_attacker"):
+		p.append("every hit on it from you or yours adds %s to your ward%s" % [_n(float(def["ward_to_attacker"])), (" (at most %s from one body)" % _n(float(def["ward_from_one"]))) if def.has("ward_from_one") else ""])
+	elif def.has("ward_from_one"):
+		p.append("at most %s ward from one body" % _n(float(def["ward_from_one"])))
 	if bool(def.get("no_poise_damage", false)):
 		p.append("its blows cannot stagger you")
 	if def.has("poise_max_mult"):
@@ -303,7 +343,16 @@ static func rules_of(def: Dictionary, lasts: float = -1.0, with_lasts: bool = tr
 	if def.has("counts_as"):
 		p.append("counts as %s" % _labels(def["counts_as"], ", "))
 	if def.has("freezes"):
-		p.append("%s on it do not run down" % _labels(def["freezes"], ", "))
+		p.append("nothing on it runs down" if (def["freezes"] as Array).has("all") else "%s on it do not run down" % _labels(def["freezes"], ", "))
+	for st_t: String in (def.get("adds_time", {}) as Dictionary):
+		p.append("the first time, %s on it runs %s s longer" % [label(st_t), _n(float((def["adds_time"] as Dictionary)[st_t]))])
+	for st_b: String in (def.get("bill_mult", {}) as Dictionary):
+		p.append("%s's bill on it is x%s" % [label(st_b), _n(float((def["bill_mult"] as Dictionary)[st_b]))])
+	if def.get("adds_status") is Dictionary:
+		var ad: Dictionary = def["adds_status"]
+		p.append("every %s s it adds %d %s" % [_n(float(ad.get("every", 1.0))), int(ad.get("stacks", 1)), label(str(ad.get("status", "")))])
+	if def.has("ends_with"):
+		p.append("ends with %s" % _labels(def["ends_with"], ", "))
 	if def.get("shatter") is Dictionary:
 		var sh: Dictionary = def["shatter"]
 		var shard: Dictionary = sh.get("shard", {})

@@ -12,8 +12,8 @@ the role and parents are Brent's framework [B 2026-10-24]; that miasma is flesh-
 
 ## How each parent shows
 
-- **Earth**: Rot in the ground: the sickness heaves up from the floor (Plaguebloom, Exhume), stays where it is put Braced (Plague Barrow), breaks poise the way Earth does (Overrun, Fever Break, Plaguebloom), hardens you (Inured Blood), and is lobbed like thrown stone (Fever Flask).
-- **Death**: What dies feeds the next: corpses and death-sites are its material (Exhume, the Infected corpse cloud), the Dying pass on more (Contagion), wounds rot (Fester), and a full fever ends all at once (Fever Break).
+- **Earth**: Rot in the ground: the sickness heaves up from the floor (Plaguebloom, Exhume), stays where it is put Braced (Plague Barrow), breaks poise the way Earth does (Overrun, Crisis, Plaguebloom), hardens you (Inured Blood), and is lobbed like thrown stone (Fever Flask).
+- **Death**: What dies feeds the next: corpses and death-sites are its material (Exhume, the Infected corpse cloud), the Dying pass on more (Contagion), wounds rot (Fester), and a full fever ends all at once (Crisis).
 
 ## Disease and Poison, kept apart
 
@@ -26,7 +26,7 @@ touch skill, and it spreads what is already there).
 | Skill | Rune | Kind | What it does | Starter | Status |
 |---|---|---|---|---|---|
 | Fever Flask | Infect | marked blast | Lob a flask up to 12 m: it bursts over shields and heads for 45 and 2 Infected, and leaves a sick cloud 2.5 m across that hangs 6 s and drifts slowly away from you. | **ranged** | existing |
-| Fever Break | Disinfect | detonate | Every Infected enemy within 10 m has its fever broken at once: 30 a stack, all now, and the stacks are gone. Armour still cuts it. A body broken at 5 stacks is Staggered as well. |  | changed |
+| Crisis | Disinfect | detonate | Every Infected enemy within 10 m has its fever broken at once: 30 a stack, all now, and the stacks are gone. Armour still cuts it. A body broken at 5 stacks is Staggered as well. |  | changed |
 | Contagion | Spread | chain | One enemy within 9 m catches it (2 Infected); then every enemy within 3 m of it catches it, and every enemy within 3 m of those - up to 8 bodies, 20 and 1 Infected each. A Dying body passes 2 stacks instead of 1. |  | changed |
 | Sealing Clot | Contain | bolt | A clot that sticks to one enemy: 45 and 3 Infected, and for 10 s the sickness is sealed in - it can climb to 10 stacks and burns half again as hard, but never leaves that body. |  | existing |
 | Festering Hands | Fester | buff | For 8 s every hit you land on an Infected enemy - bare strikes too - adds a stack, its poise stops refilling while the wound festers, and the nearest other enemy within 2 m catches a stack from it. |  | changed |
@@ -40,7 +40,7 @@ touch skill, and it spreads what is already there).
 
 The loop: Fever Flask or Plaguebloom into a packed wall; the wall passes it on by itself (the rule); Contagion jumps
 it to the back rank; Plague Barrow holds a doorway and keeps breathing it; when the sick die, Exhume brings it back
-up out of their graves; Fever Break ends a long fight at once.
+up out of their graves; Crisis ends a long fight at once.
 
 ## Runes (12)
 
@@ -68,7 +68,7 @@ No rune renamed or dropped. New: **Inter**, **Exhume** (the Earth pair the set l
 - **infected** (status, Fever Flask): Infected (up to 5 stacks, 6 s, refreshed by any new stack): 6 damage a second per stack, times flesh, dealt every 0.5 s through whoever infected it (tags disease, dot). When an Infected body dies it leaves a corpse cloud 2 m across for 4 s that does not drift.
 - **cloud** (behaviour, Fever Flask): A cloud is a ground_zone that gives 1 Infected a second to every enemy inside (no faster, however many clouds overlap), drifts at drift_speed (away from the caster, along the aim, or not at all), stops against walls and stone, and ignores shields, facing and armour except through flesh.
 - **lobbed** (field, Fever Flask): A lobbed delayed_blast flies over bodies and shields to its point; only walls and stone taller than 1.8 m stop it.
-- **stagger_at** (field, Fever Break): A consume_status key: a target that held at least this many stacks when they were consumed is Staggered (the existing status).
+- **stagger_at** (field, Crisis): A consume_status key: a target that held at least this many stacks when they were consumed is Staggered (the existing status).
 - **fan** (field, Contagion): A chain with fan jumps from each body hit to every not-yet-hit enemy within jump_radius of it, for depth generations, up to jumps bodies in all (Forked Path jumps to one at a time).
 - **dying_stacks** (field, Contagion): A chain key: a jump that starts from a Dying body (below half health) carries this many stacks of on_hit's status instead of its own.
 - **contained** (status, Sealing Clot): Contained (1 stack, 10 s): its Infected cap is 10 and its ticks are x1.5; nothing spreads from it and it leaves no corpse cloud; when Contained ends, stacks above 5 fall away.
@@ -86,7 +86,7 @@ Kept and still used: flesh, infected, cloud, lobbed, fan, contained, festering, 
 
 - Touch-spread on the status itself is a big change: a tight Pavise line will infect itself. 1.5 m and 1 s are
   Alight's numbers; it may need to be slower than fire.
-- Fever Break is still a cash-in (all stacks now). It is the one place Disease pays like Poison; it stays dear (18)
+- Crisis is still a cash-in (all stacks now). It is the one place Disease pays like Poison; it stays dear (18)
   and ticks are still the main damage.
 - Plague Barrow is a mound that blocks walking, like Earth's stone. It does not count toward Earth's three-stone
   limit (that is Earth's rule, not Disease's); a character holding both might need one shared limit.

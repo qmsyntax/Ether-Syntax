@@ -180,6 +180,8 @@ func _try(id: String, runes: Array[String]) -> Dictionary:
 	var frames: int = int(SECONDS * float(Engine.physics_ticks_per_second))
 	for f: int in frames:
 		await get_tree().physics_frame
+		if f == 3 and ab.has("window_s") and is_instance_valid(a):
+			p.call("take_hit", 10.0, false, a)            # a counter waits for a blow: the first dummy throws one
 		for k: int in dummies.size():
 			var e: Node = dummies[k]
 			if not is_instance_valid(e):
@@ -196,7 +198,7 @@ func _try(id: String, runes: Array[String]) -> Dictionary:
 		if int(groups_after[g]) > int(groups_before.get(g, 0)):
 			effect = true
 	# a self buff, a shove, a move, held blood or a refund are effects too
-	if not (p.get("buffs") as Dictionary).is_empty() or (p.global_position - Vector3.ZERO).length() > 0.5 or int(p.get("held_blood")) > 0:
+	if not (p.get("buffs") as Dictionary).is_empty() or (p.global_position - Vector3.ZERO).length() > 0.5 or int(p.get("held_blood")) > 0 			or float(p.call("ward")) > 0.0:
 		effect = true
 	for k2: int in dummies.size():
 		var e3: Node3D = dummies[k2]
@@ -377,6 +379,16 @@ func _set_out(p: Node, ab: Dictionary, dummies: Array) -> void:
 		p.call("spill_blood", Vector3(0, 0, -1.5), 1, false)
 		p.set("held_blood", 6)
 	p.call("store_add", "swallowed", 3, 5, 12.0)
+	p.call("store_add", "stolen", 40, 100, 12.0)          # Unholy's stolen life (Black Reckoning spends it)
+	if bool(ab.get("consume_thralls", false)):
+		# a thrall of yours by the first dummy, for Bone Burst to spend
+		var th := Thrall.new()
+		th.caster = p
+		th.skill = "test"
+		th.life = 30.0
+		th.tags = ["ability", str(ab["affinity"])]
+		th.position = Vector3(-0.8, 0, -2.4)
+		_world.add_child(th)
 	# a wound to mend (Regrowth)
 	(p.get("body") as Body).add_wound("test_wound", "Test wound", 30.0, 10.0)
 	p.set("pips", 6)

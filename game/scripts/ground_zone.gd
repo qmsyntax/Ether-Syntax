@@ -51,6 +51,17 @@ var freeze_pips := false
 var shed_standing := false
 var ends_if_left := false
 var overrun_at := 0
+## v2 (2026-10-24): a status's damage over time ticks this much harder on enemies inside ({status: x}, Smokepall);
+## a bill (an on_expire damage) paid on an enemy inside is x(1 + bill_bonus) (Clean Air's dose_bonus); the caster's
+## hits on an enemy inside carrying a status do this much more ({status: fraction}, Dusk Well's lit_bonus).
+var dps_mult: Dictionary = {}
+var bill_bonus := 0.0
+var bonus_vs: Dictionary = {}
+## v2: what it does each tick to you and your summons inside it (Hallowed Ground's ally_payload: ward_per_s up to
+## ward_max from this zone, damage_taken_mult while inside)
+var ally_payload: Dictionary = {}
+## v2: a zone that goes where this body goes (an aura of dark, Gloom Mantle)
+var follow: Node3D = null
 
 var _tick := 0.0
 var _mesh: MeshInstance3D
@@ -110,6 +121,11 @@ func tick(delta: float) -> void:
 	if ends_if_left and is_instance_valid(caster) and not has_point((caster as Node3D).global_position):
 		queue_free()
 		return
+	if follow != null and is_instance_valid(follow):
+		var at: Vector3 = Vector3(follow.global_position.x, from.y, follow.global_position.z)
+		global_position += at - from
+		to += at - from
+		from = at
 	if drift_vel != Vector3.ZERO and shape == "circle":
 		var step: Vector3 = drift_vel * delta
 		if not is_inside_tree() or get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(from + Vector3.UP * 0.6, from + Vector3.UP * 0.6 + step.normalized() * (step.length() + radius * 0.5), 1)).is_empty():
@@ -148,6 +164,8 @@ func tick(delta: float) -> void:
 	_tick = tick_s
 	if _extra_left > 0:
 		_extra_left -= 1
+	if not ally_payload.is_empty() and is_instance_valid(caster) and caster.has_method("zone_ally_tick"):
+		caster.call("zone_ally_tick", self)
 	for e: Node3D in inside():
 		if extra_status != "":
 			e.call("add_status", extra_status)

@@ -155,14 +155,35 @@
 							"leave_decoy.lure_radius",
 							"corpse_range",
 							"drag_radius",
-							"trigger_radius"
+							"trigger_radius",
+							"throw",
+							"dash_time@dash",
+							"spread_radius",
+							"aura.radius",
+							"deflect_radius",
+							"counter_reach",
+							"length@prop",
+							"on_break.burst_radius",
+							"on_break.radius",
+							"hush_radius",
+							"lure_radius",
+							"spall.radius",
+							"attacker_reach",
+							"pool_radius",
+							"strike_reach_bonus",
+							"conjure_weapon.melee_range",
+							"split.range",
+							"shot_range_mult",
+							"coat.payload.jump_radius"
 						],
 						"speed": [
 							"speed",
 							"dash_speed"
 						],
 						"cost": [
-							"cost"
+							"cost",
+							"cost_per_s",
+							"heat_cost"
 						],
 						"reflux": [
 							"reflux_per_cost"
@@ -171,7 +192,10 @@
 							"windup",
 							"recovery",
 							"delay",
-							"rise_time"
+							"rise_time",
+							"charge_max",
+							"tick",
+							"clock_to"
 						],
 						"duration": [
 							"duration",
@@ -184,7 +208,12 @@
 							"leave_zone.life",
 							"leave_decoy.life",
 							"burst_zone.life",
-							"thrall.life"
+							"thrall.life",
+							"window_s",
+							"conjure_weapon.lasts",
+							"summon_buff.duration",
+							"coat.duration",
+							"on_hit.stun_per_mark"
 						],
 						"poise": [
 							"on_hit.poise",
@@ -220,6 +249,9 @@
 					"field_units": {
 						"arc_deg": " deg",
 						"life": " s",
+						"tick": " s",
+						"charge_max": " s",
+						"window_s": " s",
 						"range": " m",
 						"radius": " m",
 						"reach_bonus": " m",
@@ -288,7 +320,27 @@
 						"on_hit.poise": "Poise damage",
 						"heavy_poise": "Poise damage (heavy)",
 						"on_stop.poise": "Poise damage",
-						"zone.payload.poise": "Poise damage per tick"
+						"zone.payload.poise": "Poise damage per tick",
+						"tick": "Hits every",
+						"cost_per_s": "Essence a second",
+						"heat_cost": "Heat cost",
+						"charge_max": "Longest charge",
+						"clock_to": "Clock cut to",
+						"throw": "Throw",
+						"dash_time@dash": "Dash time",
+						"spread_radius": "Spread radius",
+						"aura.radius": "Aura radius",
+						"deflect_radius": "Turns shots within",
+						"counter_reach": "Counter reach",
+						"length@prop": "Length",
+						"window_s": "Counter window",
+						"conjure_weapon.lasts": "Weapon lasts",
+						"conjure_weapon.melee_range": "Weapon reach",
+						"coat.duration": "Coat lasts",
+						"summon_buff.duration": "Buff lasts",
+						"on_hit.stun_per_mark": "Stun per mark",
+						"pool_radius": "Drinks pools within",
+						"lure_radius": "Draws within"
 					},
 					"shown_fields": [
 						{
@@ -302,12 +354,6 @@
 							]
 						},
 						{
-							"path": "tick",
-							"label": "Hits every",
-							"unit": " s",
-							"lower_is_better": true
-						},
-						{
 							"path": "zone.tick_s",
 							"label": "Zone hits every",
 							"unit": " s",
@@ -317,11 +363,6 @@
 							"path": "trail.tick_s",
 							"label": "Trail hits every",
 							"unit": " s",
-							"lower_is_better": true
-						},
-						{
-							"path": "cost_per_s",
-							"label": "Essence a second",
 							"lower_is_better": true
 						},
 						{
@@ -416,11 +457,6 @@
 							"path": "on_hit.execute_below",
 							"label": "Ends it below",
 							"pct": true
-						},
-						{
-							"path": "charge_max",
-							"label": "Longest charge",
-							"unit": " s"
 						},
 						{
 							"path": "move_factor",
@@ -671,14 +707,35 @@
 							"leave_decoy.lure_radius",
 							"corpse_range",
 							"drag_radius",
-							"trigger_radius"
+							"trigger_radius",
+							"throw",
+							"dash_time@dash",
+							"spread_radius",
+							"aura.radius",
+							"deflect_radius",
+							"counter_reach",
+							"length@prop",
+							"on_break.burst_radius",
+							"on_break.radius",
+							"hush_radius",
+							"lure_radius",
+							"spall.radius",
+							"attacker_reach",
+							"pool_radius",
+							"strike_reach_bonus",
+							"conjure_weapon.melee_range",
+							"split.range",
+							"shot_range_mult",
+							"coat.payload.jump_radius"
 						],
 						"speed": [
 							"speed",
 							"dash_speed"
 						],
 						"cost": [
-							"cost"
+							"cost",
+							"cost_per_s",
+							"heat_cost"
 						],
 						"reflux": [
 							"reflux_per_cost"
@@ -687,7 +744,10 @@
 							"windup",
 							"recovery",
 							"delay",
-							"rise_time"
+							"rise_time",
+							"charge_max",
+							"tick",
+							"clock_to"
 						],
 						"duration": [
 							"duration",
@@ -700,7 +760,12 @@
 							"leave_zone.life",
 							"leave_decoy.life",
 							"burst_zone.life",
-							"thrall.life"
+							"thrall.life",
+							"window_s",
+							"conjure_weapon.lasts",
+							"summon_buff.duration",
+							"coat.duration",
+							"on_hit.stun_per_mark"
 						],
 						"poise": [
 							"on_hit.poise",
@@ -736,6 +801,9 @@
 					"field_units": {
 						"arc_deg": " deg",
 						"life": " s",
+						"tick": " s",
+						"charge_max": " s",
+						"window_s": " s",
 						"range": " m",
 						"radius": " m",
 						"reach_bonus": " m",
@@ -804,7 +872,27 @@
 						"on_hit.poise": "Poise damage",
 						"heavy_poise": "Poise damage (heavy)",
 						"on_stop.poise": "Poise damage",
-						"zone.payload.poise": "Poise damage per tick"
+						"zone.payload.poise": "Poise damage per tick",
+						"tick": "Hits every",
+						"cost_per_s": "Essence a second",
+						"heat_cost": "Heat cost",
+						"charge_max": "Longest charge",
+						"clock_to": "Clock cut to",
+						"throw": "Throw",
+						"dash_time@dash": "Dash time",
+						"spread_radius": "Spread radius",
+						"aura.radius": "Aura radius",
+						"deflect_radius": "Turns shots within",
+						"counter_reach": "Counter reach",
+						"length@prop": "Length",
+						"window_s": "Counter window",
+						"conjure_weapon.lasts": "Weapon lasts",
+						"conjure_weapon.melee_range": "Weapon reach",
+						"coat.duration": "Coat lasts",
+						"summon_buff.duration": "Buff lasts",
+						"on_hit.stun_per_mark": "Stun per mark",
+						"pool_radius": "Drinks pools within",
+						"lure_radius": "Draws within"
 					},
 					"shown_fields": [
 						{
@@ -818,12 +906,6 @@
 							]
 						},
 						{
-							"path": "tick",
-							"label": "Hits every",
-							"unit": " s",
-							"lower_is_better": true
-						},
-						{
 							"path": "zone.tick_s",
 							"label": "Zone hits every",
 							"unit": " s",
@@ -833,11 +915,6 @@
 							"path": "trail.tick_s",
 							"label": "Trail hits every",
 							"unit": " s",
-							"lower_is_better": true
-						},
-						{
-							"path": "cost_per_s",
-							"label": "Essence a second",
 							"lower_is_better": true
 						},
 						{
@@ -932,11 +1009,6 @@
 							"path": "on_hit.execute_below",
 							"label": "Ends it below",
 							"pct": true
-						},
-						{
-							"path": "charge_max",
-							"label": "Longest charge",
-							"unit": " s"
 						},
 						{
 							"path": "move_factor",
@@ -1251,6 +1323,20 @@
 			-1,
 			-0.3,
 			0.3
+		],
+		"holy": [
+			0.4,
+			-0.2,
+			0.8,
+			0.7,
+			0.2
+		],
+		"unholy": [
+			-0.5,
+			-0.1,
+			-0.7,
+			-0.8,
+			-0.2
 		]
 	},
 	"base_runes": {
@@ -1384,26 +1470,21 @@
 		"WAT-4a": {
 			"id": "WAT-4a",
 			"affinity": "water",
-			"name": "Float",
+			"name": "Heave",
 			"character": "ᚦ",
 			"opposite": "WAT-4b",
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2,
-			"meaning": "buoyancy: lift, lighten, walk on water",
-			"effect": "shove +1; poise x0.8",
+			"meaning": "lift a body bodily and throw it",
+			"effect": "shove +2",
 			"ops": [
 				{
 					"op": "shove",
-					"value": 1
-				},
-				{
-					"op": "mul",
-					"group": "poise",
-					"value": 0.8
+					"value": 2
 				}
 			],
-			"as_means": "lifts: lightens, slows falls"
+			"as_means": "shoves 2 m"
 		},
 		"WAT-4b": {
 			"id": "WAT-4b",
@@ -1428,82 +1509,12 @@
 			],
 			"as_means": "silences"
 		},
-		"WAT-5a": {
-			"id": "WAT-5a",
-			"affinity": "water",
-			"name": "Gush",
-			"character": "ᚨ",
-			"opposite": "WAT-5b",
-			"role": "link",
-			"valence": 2,
-			"electronegativity": 1.7,
-			"meaning": "a sudden forceful jet",
-			"effect": "speed x1.3; power x1.1",
-			"ops": [
-				{
-					"op": "mul",
-					"group": "speed",
-					"value": 1.3
-				},
-				{
-					"op": "mul",
-					"group": "power",
-					"value": 1.1
-				}
-			],
-			"as_means": "speed +30%; damage +10%"
-		},
-		"WAT-5b": {
-			"id": "WAT-5b",
-			"affinity": "water",
-			"name": "Drip",
-			"character": "ᚩ",
-			"opposite": "WAT-5a",
-			"role": "link",
-			"valence": 2,
-			"electronegativity": 2.8,
-			"meaning": "a slow steady trickle that wears and lingers",
-			"effect": "duration x1.4; cost x0.85",
-			"ops": [
-				{
-					"op": "mul",
-					"group": "duration",
-					"value": 1.4
-				},
-				{
-					"op": "mul",
-					"group": "cost",
-					"value": 0.85
-				}
-			],
-			"as_means": "duration +40%; essence cost -15%"
-		},
-		"WAT-6a": {
-			"id": "WAT-6a",
-			"affinity": "water",
-			"name": "Sweep",
-			"character": "ᚪ",
-			"opposite": "WAT-6b",
-			"role": "link",
-			"valence": 2,
-			"electronegativity": 2.1,
-			"meaning": "a current that carries things along",
-			"effect": "reach x1.3",
-			"ops": [
-				{
-					"op": "mul",
-					"group": "reach",
-					"value": 1.3
-				}
-			],
-			"as_means": "range and area +30%"
-		},
 		"WAT-6b": {
 			"id": "WAT-6b",
 			"affinity": "water",
 			"name": "Settle",
 			"character": "ᚫ",
-			"opposite": "WAT-6a",
+			"opposite": "WAT-8a",
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.66,
@@ -1566,11 +1577,11 @@
 			"affinity": "water",
 			"name": "Wave",
 			"character": "ᚮ",
-			"opposite": "WAT-8b",
+			"opposite": "WAT-6b",
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.15,
-			"meaning": "a rolling wall of water",
+			"meaning": "a rolling wall of water that carries what it meets",
 			"effect": "reach x1.2; poise x1.3",
 			"ops": [
 				{
@@ -1585,26 +1596,6 @@
 				}
 			],
 			"as_means": "range and area +20%; poise damage +30%"
-		},
-		"WAT-8b": {
-			"id": "WAT-8b",
-			"affinity": "water",
-			"name": "Slack",
-			"character": "ᚯ",
-			"opposite": "WAT-8a",
-			"role": "cap",
-			"valence": 1,
-			"electronegativity": 3.25,
-			"meaning": "the still moment at the turn of the tide: everything pauses, reflux eases",
-			"effect": "reflux x0.75",
-			"ops": [
-				{
-					"op": "mul",
-					"group": "reflux",
-					"value": 0.75
-				}
-			],
-			"as_means": "reflux left -25%"
 		},
 		"FIR-1a": {
 			"id": "FIR-1a",
@@ -1836,6 +1827,55 @@
 			],
 			"as_means": "interrupts a wind-up; applies Slowed"
 		},
+		"FIR-6a": {
+			"id": "FIR-6a",
+			"affinity": "fire",
+			"name": "Catch",
+			"character": "ᛘ",
+			"opposite": "FIR-6b",
+			"role": "branch",
+			"valence": 3,
+			"electronegativity": 1.94,
+			"meaning": "fire leaps from a burning body to every body near it",
+			"effect": "jumps +1; power x0.9",
+			"ops": [
+				{
+					"op": "jumps",
+					"value": 1
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 0.9
+				}
+			],
+			"as_means": "jumps to one more target; damage -10%"
+		},
+		"FIR-6b": {
+			"id": "FIR-6b",
+			"affinity": "fire",
+			"name": "Sear",
+			"character": "ᛙ",
+			"opposite": "FIR-6a",
+			"role": "cap",
+			"valence": 1,
+			"electronegativity": 3.55,
+			"meaning": "drive all the heat into one point: white-hot",
+			"effect": "power x1.35; reach x0.8",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.35
+				},
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 0.8
+				}
+			],
+			"as_means": "damage +35%; range and area -20%"
+		},
 		"EAR-1a": {
 			"id": "EAR-1a",
 			"affinity": "earth",
@@ -2062,6 +2102,56 @@
 			],
 			"as_means": "applies Stunned; essence cost +20%"
 		},
+		"EAR-6a": {
+			"id": "EAR-6a",
+			"affinity": "earth",
+			"name": "Weigh",
+			"character": "ᛚ",
+			"opposite": "EAR-6b",
+			"role": "frame",
+			"valence": 4,
+			"electronegativity": 2.78,
+			"meaning": "add mass: grow so heavy that nothing moves you and everything near leans toward you",
+			"effect": "status taunted; poise x1.15",
+			"ops": [
+				{
+					"op": "status",
+					"id": "taunted",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.15
+				}
+			],
+			"as_means": "applies Taunted; poise damage +15%"
+		},
+		"EAR-6b": {
+			"id": "EAR-6b",
+			"affinity": "earth",
+			"name": "Buoy",
+			"character": "ᛛ",
+			"opposite": "EAR-6a",
+			"role": "link",
+			"valence": 2,
+			"electronegativity": 1.9,
+			"meaning": "lighten: lift a thing out of the ground to throw it",
+			"effect": "reach x1.25; speed x1.15",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.25
+				},
+				{
+					"op": "mul",
+					"group": "speed",
+					"value": 1.15
+				}
+			],
+			"as_means": "range and area +25%; speed +15%"
+		},
 		"WIN-1a": {
 			"id": "WIN-1a",
 			"affinity": "wind",
@@ -2225,22 +2315,22 @@
 		"WIN-4b": {
 			"id": "WIN-4b",
 			"affinity": "wind",
-			"name": "Stall",
+			"name": "Deflect",
 			"character": "ᛋ",
 			"opposite": "WIN-4a",
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 3.1,
-			"meaning": "stalled; slipstream stolen",
-			"effect": "status slowed",
+			"meaning": "turn a blow or a rush aside, and the one behind it with it",
+			"effect": "status turned",
 			"ops": [
 				{
 					"op": "status",
-					"id": "slowed",
+					"id": "turned",
 					"stacks": 1
 				}
 			],
-			"as_means": "applies Slowed"
+			"as_means": "applies Turned"
 		},
 		"WIN-5a": {
 			"id": "WIN-5a",
@@ -2404,15 +2494,15 @@
 			"valence": 1,
 			"electronegativity": 2.95,
 			"meaning": "block a jump, isolate a target",
-			"effect": "cost x0.85",
+			"effect": "status insulated",
 			"ops": [
 				{
-					"op": "mul",
-					"group": "cost",
-					"value": 0.85
+					"op": "status",
+					"id": "insulated",
+					"stacks": 1
 				}
 			],
-			"as_means": "essence cost -15%"
+			"as_means": "applies Insulated"
 		},
 		"LIG-4a": {
 			"id": "LIG-4a",
@@ -2732,6 +2822,51 @@
 				}
 			]
 		},
+		"ICE-6a": {
+			"id": "ICE-6a",
+			"affinity": "ice",
+			"name": "Stasis",
+			"character": "🝮",
+			"opposite": "ICE-6b",
+			"role": "cap",
+			"valence": 1,
+			"electronegativity": 3.7,
+			"meaning": "deep cold that halts everything",
+			"effect": "interrupts; status stilled",
+			"ops": [
+				{
+					"op": "interrupts"
+				},
+				{
+					"op": "status",
+					"id": "stilled",
+					"stacks": 1
+				}
+			]
+		},
+		"ICE-6b": {
+			"id": "ICE-6b",
+			"affinity": "ice",
+			"name": "Floe",
+			"character": "🝯",
+			"opposite": "ICE-6a",
+			"role": "link",
+			"valence": 2,
+			"electronegativity": 2,
+			"meaning": "drifting ice carried by the current",
+			"effect": "shove +1.5; status chilled",
+			"ops": [
+				{
+					"op": "shove",
+					"value": 1.5
+				},
+				{
+					"op": "status",
+					"id": "chilled",
+					"stacks": 1
+				}
+			]
+		},
 		"DRK-1a": {
 			"id": "DRK-1a",
 			"affinity": "dark",
@@ -2899,18 +3034,16 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.15,
-			"meaning": "sound carries and echoes in the dark",
-			"effect": "reach x1.2; poise x1.2",
+			"meaning": "a sound thrown into the dark that draws every ear",
+			"effect": "interrupts; reach x1.15",
 			"ops": [
 				{
-					"op": "mul",
-					"group": "reach",
-					"value": 1.2
+					"op": "interrupts"
 				},
 				{
 					"op": "mul",
-					"group": "poise",
-					"value": 1.2
+					"group": "reach",
+					"value": 1.15
 				}
 			]
 		},
@@ -3014,7 +3147,7 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.7,
-			"meaning": "join metal into one piece",
+			"meaning": "weld two into one piece: a foe chained to you, or two foes together",
 			"effect": "status fused",
 			"ops": [
 				{
@@ -3123,7 +3256,7 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.1,
-			"meaning": "blunt edges, theirs included",
+			"meaning": "blunt edges, theirs included: take a blow on your blade and turn it dull",
 			"effect": "status dulled; poise x1.2",
 			"ops": [
 				{
@@ -3335,7 +3468,7 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.2,
-			"meaning": "the heart pounds",
+			"meaning": "the heart pounds - your own, in frenzy",
 			"effect": "windup x0.8; power x1.1; reflux x1.1",
 			"ops": [
 				{
@@ -3417,6 +3550,54 @@
 					"op": "mul",
 					"group": "windup",
 					"value": 0.9
+				}
+			]
+		},
+		"BLD-6a": {
+			"id": "BLD-6a",
+			"affinity": "blood",
+			"name": "Thirst",
+			"character": "🝰",
+			"opposite": "BLD-6b",
+			"role": "link",
+			"valence": 2,
+			"electronegativity": 2.1,
+			"meaning": "hunger for blood: the drive that reaches for it",
+			"effect": "speed x1.15; reach x1.1",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "speed",
+					"value": 1.15
+				},
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.1
+				}
+			]
+		},
+		"BLD-6b": {
+			"id": "BLD-6b",
+			"affinity": "blood",
+			"name": "Sate",
+			"character": "🝱",
+			"opposite": "BLD-6a",
+			"role": "cap",
+			"valence": 1,
+			"electronegativity": 3.85,
+			"meaning": "drink a body to the dregs: finish it and take all its blood",
+			"effect": "bonus dying +0.3; bonus bleeding +0.15",
+			"ops": [
+				{
+					"op": "bonus",
+					"status": "dying",
+					"value": 0.3
+				},
+				{
+					"op": "bonus",
+					"status": "bleeding",
+					"value": 0.15
 				}
 			]
 		},
@@ -3563,7 +3744,7 @@
 			"role": "cap",
 			"valence": 1,
 			"electronegativity": 3.25,
-			"meaning": "end a sickness or a poison",
+			"meaning": "end an affliction of the body: a sickness, a poison, a burn or a bleed",
 			"effect": "cost x0.85; reflux x0.9",
 			"ops": [
 				{
@@ -3632,6 +3813,49 @@
 					"op": "status",
 					"id": "arrested",
 					"stacks": 1
+				}
+			]
+		},
+		"LIF-6a": {
+			"id": "LIF-6a",
+			"affinity": "life",
+			"name": "Tithe",
+			"character": "🝲",
+			"opposite": "LIF-6b",
+			"role": "link",
+			"valence": 2,
+			"electronegativity": 3.3,
+			"meaning": "take life from a living body into yours",
+			"effect": "status tithed",
+			"ops": [
+				{
+					"op": "status",
+					"id": "tithed",
+					"stacks": 1
+				}
+			]
+		},
+		"LIF-6b": {
+			"id": "LIF-6b",
+			"affinity": "life",
+			"name": "Bestow",
+			"character": "🝳",
+			"opposite": "LIF-6a",
+			"role": "branch",
+			"valence": 3,
+			"electronegativity": 2.08,
+			"meaning": "give life outward into a body: your summons, or a small body of your own",
+			"effect": "duration x1.25; reach x1.1",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.25
+				},
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.1
 				}
 			]
 		},
@@ -3752,7 +3976,7 @@
 			"role": "frame",
 			"valence": 4,
 			"electronegativity": 2.66,
-			"meaning": "stop decay, the user's own body included",
+			"meaning": "stop decay: in the dead you keep, and in your own body",
 			"effect": "duration x1.4; reflux x0.9",
 			"ops": [
 				{
@@ -3861,6 +4085,54 @@
 				}
 			]
 		},
+		"DTH-6a": {
+			"id": "DTH-6a",
+			"affinity": "death",
+			"name": "Bid",
+			"character": "𐰀",
+			"opposite": "DTH-6b",
+			"role": "link",
+			"valence": 2,
+			"electronegativity": 3.1,
+			"meaning": "the dead do your bidding: send them, and they go",
+			"effect": "status bidden",
+			"ops": [
+				{
+					"op": "status",
+					"id": "bidden",
+					"stacks": 1
+				}
+			]
+		},
+		"DTH-6b": {
+			"id": "DTH-6b",
+			"affinity": "death",
+			"name": "Unbind",
+			"character": "𐰁",
+			"opposite": "DTH-6a",
+			"role": "branch",
+			"valence": 3,
+			"electronegativity": 2.01,
+			"meaning": "let your dead go, and what held them goes outward",
+			"effect": "reach x1.2; power x1.15; duration x0.8",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.2
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.15
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 0.8
+				}
+			]
+		},
 		"NAT-1a": {
 			"id": "NAT-1a",
 			"affinity": "nature",
@@ -3870,7 +4142,7 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.15,
-			"meaning": "make a thing larger and stronger",
+			"meaning": "make a thing larger and stronger - a plant, a beast, or you",
 			"effect": "reach x1.2; power x1.1; cost x1.1",
 			"ops": [
 				{
@@ -3966,7 +4238,7 @@
 			"role": "branch",
 			"valence": 3,
 			"electronegativity": 2.01,
-			"meaning": "thrive: strengthen what grows",
+			"meaning": "thrive: strengthen what grows, and what lives in it",
 			"effect": "power x1.1; duration x1.3",
 			"ops": [
 				{
@@ -4092,6 +4364,49 @@
 					"op": "mul",
 					"group": "windup",
 					"value": 0.9
+				}
+			]
+		},
+		"NAT-6a": {
+			"id": "NAT-6a",
+			"affinity": "nature",
+			"name": "Herd",
+			"character": "𐰂",
+			"opposite": "NAT-6b",
+			"role": "link",
+			"valence": 2,
+			"electronegativity": 3.1,
+			"meaning": "gather beasts to you - called up out of the growth - and drive them onto your quarry",
+			"effect": "status quarry",
+			"ops": [
+				{
+					"op": "status",
+					"id": "quarry",
+					"stacks": 1
+				}
+			]
+		},
+		"NAT-6b": {
+			"id": "NAT-6b",
+			"affinity": "nature",
+			"name": "Unleash",
+			"character": "𐰃",
+			"opposite": "NAT-6a",
+			"role": "branch",
+			"valence": 3,
+			"electronegativity": 1.94,
+			"meaning": "let the bound go wild: a pack off its leash",
+			"effect": "windup x0.8; power x1.1",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.8
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.1
 				}
 			]
 		},
@@ -4304,18 +4619,64 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2.8,
-			"meaning": "bend light: false images, or nothing",
-			"effect": "windup x0.8; reach x1.15",
+			"meaning": "bend light through a lens to a burning point",
+			"effect": "power x1.2; reach x0.9",
 			"ops": [
 				{
 					"op": "mul",
-					"group": "windup",
-					"value": 0.8
+					"group": "power",
+					"value": 1.2
 				},
 				{
 					"op": "mul",
 					"group": "reach",
-					"value": 1.15
+					"value": 0.9
+				}
+			]
+		},
+		"LGT-6a": {
+			"id": "LGT-6a",
+			"affinity": "light",
+			"name": "Ray",
+			"character": "𐰄",
+			"opposite": "LGT-6b",
+			"role": "cap",
+			"valence": 1,
+			"electronegativity": 1.45,
+			"meaning": "all the light in one line",
+			"effect": "pierce +1; power x1.1",
+			"ops": [
+				{
+					"op": "pierce",
+					"value": 1
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.1
+				}
+			]
+		},
+		"LGT-6b": {
+			"id": "LGT-6b",
+			"affinity": "light",
+			"name": "Prism",
+			"character": "𐰅",
+			"opposite": "LGT-6a",
+			"role": "branch",
+			"valence": 3,
+			"electronegativity": 2.92,
+			"meaning": "split the light into many rays",
+			"effect": "jumps +2; power x0.75",
+			"ops": [
+				{
+					"op": "jumps",
+					"value": 2
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 0.75
 				}
 			]
 		},
@@ -4347,7 +4708,7 @@
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 2,
-			"meaning": "rouse; break a trance",
+			"meaning": "rouse; break a trance - your own mind included",
 			"effect": "bonus asleep +0.5; poise x1.2",
 			"ops": [
 				{
@@ -4533,16 +4894,59 @@
 				}
 			]
 		},
+		"DRM-6a": {
+			"id": "DRM-6a",
+			"affinity": "dream",
+			"name": "Charm",
+			"character": "𐰆",
+			"opposite": "DRM-6b",
+			"role": "frame",
+			"valence": 4,
+			"electronegativity": 2.7,
+			"meaning": "win a mind over: for a while it is yours",
+			"effect": "status charmed; cost x1.15",
+			"ops": [
+				{
+					"op": "status",
+					"id": "charmed",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "cost",
+					"value": 1.15
+				}
+			]
+		},
+		"DRM-6b": {
+			"id": "DRM-6b",
+			"affinity": "dream",
+			"name": "Doubt",
+			"character": "𐰇",
+			"opposite": "DRM-6a",
+			"role": "branch",
+			"valence": 3,
+			"electronegativity": 2.08,
+			"meaning": "plant doubt: nothing is done with conviction",
+			"effect": "status doubting",
+			"ops": [
+				{
+					"op": "status",
+					"id": "doubting",
+					"stacks": 1
+				}
+			]
+		},
 		"POI-1a": {
 			"id": "POI-1a",
 			"affinity": "poison",
-			"name": "Poison",
+			"name": "Envenom",
 			"character": "🝚",
 			"opposite": "POI-1b",
 			"role": "link",
 			"valence": 2,
 			"electronegativity": 1.9,
-			"meaning": "dose a target",
+			"meaning": "coat a blade or a shot so what it strikes is dosed",
 			"effect": "status dosed 2",
 			"ops": [
 				{
@@ -4742,6 +5146,54 @@
 					"op": "mul",
 					"group": "reflux",
 					"value": 1.15
+				}
+			]
+		},
+		"POI-6a": {
+			"id": "POI-6a",
+			"affinity": "poison",
+			"name": "Steep",
+			"character": "𐰈",
+			"opposite": "POI-6b",
+			"role": "frame",
+			"valence": 4,
+			"electronegativity": 2.7,
+			"meaning": "let a poison soak in slowly, so it does more when it comes due",
+			"effect": "duration x1.3; status steeped",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.3
+				},
+				{
+					"op": "status",
+					"id": "steeped",
+					"stacks": 1
+				}
+			]
+		},
+		"POI-6b": {
+			"id": "POI-6b",
+			"affinity": "poison",
+			"name": "Spur",
+			"character": "𐰉",
+			"opposite": "POI-6a",
+			"role": "cap",
+			"valence": 1,
+			"electronegativity": 1.6,
+			"meaning": "make a poison act sooner",
+			"effect": "windup x0.8; bonus dosed +0.2",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.8
+				},
+				{
+					"op": "bonus",
+					"status": "dosed",
+					"value": 0.2
 				}
 			]
 		},
@@ -4965,6 +5417,551 @@
 					"op": "mul",
 					"group": "cost",
 					"value": 1.1
+				}
+			]
+		},
+		"DIS-6a": {
+			"id": "DIS-6a",
+			"affinity": "disease",
+			"name": "Inter",
+			"character": "𐰊",
+			"opposite": "DIS-6b",
+			"role": "frame",
+			"valence": 4,
+			"electronegativity": 2.74,
+			"meaning": "bury the sick under sick earth, which goes on breathing it out",
+			"effect": "status mired; status infected",
+			"ops": [
+				{
+					"op": "status",
+					"id": "mired",
+					"stacks": 1
+				},
+				{
+					"op": "status",
+					"id": "infected",
+					"stacks": 1
+				}
+			]
+		},
+		"DIS-6b": {
+			"id": "DIS-6b",
+			"affinity": "disease",
+			"name": "Exhume",
+			"character": "𐰋",
+			"opposite": "DIS-6a",
+			"role": "branch",
+			"valence": 3,
+			"electronegativity": 2.08,
+			"meaning": "dig up the buried, and the grave-rot with it",
+			"effect": "poise x1.2; status infected",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.2
+				},
+				{
+					"op": "status",
+					"id": "infected",
+					"stacks": 1
+				}
+			]
+		},
+		"HOL-1a": {
+			"id": "HOL-1a",
+			"affinity": "holy",
+			"name": "Ward",
+			"character": "𐰌",
+			"opposite": "HOL-1b",
+			"role": "frame",
+			"valence": 4,
+			"electronegativity": 2.66,
+			"meaning": "raise a guard of light over a body that is yours",
+			"effect": "braced; reflux x0.9",
+			"ops": [
+				{
+					"op": "braced"
+				},
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 0.9
+				}
+			]
+		},
+		"HOL-1b": {
+			"id": "HOL-1b",
+			"affinity": "holy",
+			"name": "Humble",
+			"character": "𐰍",
+			"opposite": "HOL-1a",
+			"role": "branch",
+			"valence": 3,
+			"electronegativity": 2.08,
+			"meaning": "bring a guard down: shields, armour and the boons on a foe",
+			"effect": "status exposed; poise x1.15",
+			"ops": [
+				{
+					"op": "status",
+					"id": "exposed",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "poise",
+					"value": 1.15
+				}
+			]
+		},
+		"HOL-2a": {
+			"id": "HOL-2a",
+			"affinity": "holy",
+			"name": "Bless",
+			"character": "𐰎",
+			"opposite": "HOL-2b",
+			"role": "link",
+			"valence": 2,
+			"electronegativity": 2,
+			"meaning": "give a boon to a body that is yours",
+			"effect": "power x1.15; duration x1.15",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.15
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.15
+				}
+			]
+		},
+		"HOL-2b": {
+			"id": "HOL-2b",
+			"affinity": "holy",
+			"name": "Condemn",
+			"character": "𐰏",
+			"opposite": "HOL-2a",
+			"role": "cap",
+			"valence": 1,
+			"electronegativity": 3.7,
+			"meaning": "mark a foe for judgement",
+			"effect": "status condemned",
+			"ops": [
+				{
+					"op": "status",
+					"id": "condemned",
+					"stacks": 1
+				}
+			]
+		},
+		"HOL-3a": {
+			"id": "HOL-3a",
+			"affinity": "holy",
+			"name": "Absolve",
+			"character": "𐰐",
+			"opposite": "HOL-3b",
+			"role": "cap",
+			"valence": 1,
+			"electronegativity": 1.45,
+			"meaning": "lift a burden from a body: holds, slows, fear, blindness",
+			"effect": "cost x0.9; reflux x0.8",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "cost",
+					"value": 0.9
+				},
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 0.8
+				}
+			]
+		},
+		"HOL-3b": {
+			"id": "HOL-3b",
+			"affinity": "holy",
+			"name": "Penance",
+			"character": "𐰑",
+			"opposite": "HOL-3a",
+			"role": "link",
+			"valence": 2,
+			"electronegativity": 3.1,
+			"meaning": "lay a burden on a foe that it pays for itself",
+			"effect": "status penitent",
+			"ops": [
+				{
+					"op": "status",
+					"id": "penitent",
+					"stacks": 1
+				}
+			]
+		},
+		"HOL-4a": {
+			"id": "HOL-4a",
+			"affinity": "holy",
+			"name": "Hallow",
+			"character": "𐰒",
+			"opposite": "HOL-4b",
+			"role": "frame",
+			"valence": 4,
+			"electronegativity": 2.62,
+			"meaning": "make a place holy, and keep what is yours in it",
+			"effect": "duration x1.3",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.3
+				}
+			]
+		},
+		"HOL-4b": {
+			"id": "HOL-4b",
+			"affinity": "holy",
+			"name": "Exile",
+			"character": "𐰓",
+			"opposite": "HOL-4a",
+			"role": "branch",
+			"valence": 3,
+			"electronegativity": 1.94,
+			"meaning": "drive a foe out and keep it out",
+			"effect": "shove +1; status exiled",
+			"ops": [
+				{
+					"op": "shove",
+					"value": 1
+				},
+				{
+					"op": "status",
+					"id": "exiled",
+					"stacks": 1
+				}
+			]
+		},
+		"HOL-5a": {
+			"id": "HOL-5a",
+			"affinity": "holy",
+			"name": "Mercy",
+			"character": "𐰔",
+			"opposite": "HOL-5b",
+			"role": "link",
+			"valence": 2,
+			"electronegativity": 2.9,
+			"meaning": "soften harm and give it back as healing",
+			"effect": "reflux x0.75; power x0.9",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reflux",
+					"value": 0.75
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 0.9
+				}
+			]
+		},
+		"HOL-5b": {
+			"id": "HOL-5b",
+			"affinity": "holy",
+			"name": "Wrath",
+			"character": "𐰕",
+			"opposite": "HOL-5a",
+			"role": "branch",
+			"valence": 3,
+			"electronegativity": 1.87,
+			"meaning": "radiant fury poured out",
+			"effect": "power x1.2; status lit",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.2
+				},
+				{
+					"op": "status",
+					"id": "lit",
+					"stacks": 1
+				}
+			]
+		},
+		"HOL-6a": {
+			"id": "HOL-6a",
+			"affinity": "holy",
+			"name": "Zeal",
+			"character": "𐰖",
+			"opposite": "HOL-6b",
+			"role": "link",
+			"valence": 2,
+			"electronegativity": 2,
+			"meaning": "drive forward unafraid",
+			"effect": "speed x1.2; windup x0.8",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "speed",
+					"value": 1.2
+				},
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.8
+				}
+			]
+		},
+		"HOL-6b": {
+			"id": "HOL-6b",
+			"affinity": "holy",
+			"name": "Patience",
+			"character": "𐰗",
+			"opposite": "HOL-6a",
+			"role": "cap",
+			"valence": 1,
+			"electronegativity": 3.4,
+			"meaning": "wait for the blow, and answer it",
+			"effect": "windup x1.25; power x1.25",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 1.25
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.25
+				}
+			]
+		},
+		"UNH-1a": {
+			"id": "UNH-1a",
+			"affinity": "unholy",
+			"name": "Leech",
+			"character": "𐰘",
+			"opposite": "UNH-1b",
+			"role": "link",
+			"valence": 2,
+			"electronegativity": 3.3,
+			"meaning": "draw the life out of what you strike, into yourself",
+			"effect": "status leeched",
+			"ops": [
+				{
+					"op": "status",
+					"id": "leeched",
+					"stacks": 1
+				}
+			]
+		},
+		"UNH-1b": {
+			"id": "UNH-1b",
+			"affinity": "unholy",
+			"name": "Outpour",
+			"character": "𐰙",
+			"opposite": "UNH-1a",
+			"role": "branch",
+			"valence": 3,
+			"electronegativity": 1.94,
+			"meaning": "let out what you took, as harm",
+			"effect": "power x1.2; reach x1.15",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 1.2
+				},
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.15
+				}
+			]
+		},
+		"UNH-2a": {
+			"id": "UNH-2a",
+			"affinity": "unholy",
+			"name": "Daunt",
+			"character": "𐰚",
+			"opposite": "UNH-2b",
+			"role": "branch",
+			"valence": 3,
+			"electronegativity": 2.08,
+			"meaning": "fear that drives them back from you",
+			"effect": "status terrified; power x0.85",
+			"ops": [
+				{
+					"op": "status",
+					"id": "terrified",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "power",
+					"value": 0.85
+				}
+			]
+		},
+		"UNH-2b": {
+			"id": "UNH-2b",
+			"affinity": "unholy",
+			"name": "Beckon",
+			"character": "𐰛",
+			"opposite": "UNH-2a",
+			"role": "link",
+			"valence": 2,
+			"electronegativity": 3.2,
+			"meaning": "the dark calls them in, and does not let them go",
+			"effect": "pull +1.5; status leashed",
+			"ops": [
+				{
+					"op": "pull",
+					"value": 1.5
+				},
+				{
+					"op": "status",
+					"id": "leashed",
+					"stacks": 1
+				}
+			]
+		},
+		"UNH-3a": {
+			"id": "UNH-3a",
+			"affinity": "unholy",
+			"name": "Gloom",
+			"character": "𐰜",
+			"opposite": "UNH-3b",
+			"role": "branch",
+			"valence": 3,
+			"electronegativity": 2.22,
+			"meaning": "darkness that hangs about you and goes where you go",
+			"effect": "reach x1.15; duration x1.2",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.15
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.2
+				}
+			]
+		},
+		"UNH-3b": {
+			"id": "UNH-3b",
+			"affinity": "unholy",
+			"name": "Shroud",
+			"character": "𐰝",
+			"opposite": "UNH-3a",
+			"role": "frame",
+			"valence": 4,
+			"electronegativity": 2.7,
+			"meaning": "darkness drawn tight onto your own body",
+			"effect": "braced; duration x1.15",
+			"ops": [
+				{
+					"op": "braced"
+				},
+				{
+					"op": "mul",
+					"group": "duration",
+					"value": 1.15
+				}
+			]
+		},
+		"UNH-4a": {
+			"id": "UNH-4a",
+			"affinity": "unholy",
+			"name": "Reave",
+			"character": "𐰞",
+			"opposite": "UNH-4b",
+			"role": "cap",
+			"valence": 1,
+			"electronegativity": 4,
+			"meaning": "tear out the last of a failing life and keep it",
+			"effect": "bonus dying +0.3; status leeched",
+			"ops": [
+				{
+					"op": "bonus",
+					"status": "dying",
+					"value": 0.3
+				},
+				{
+					"op": "status",
+					"id": "leeched",
+					"stacks": 1
+				}
+			]
+		},
+		"UNH-4b": {
+			"id": "UNH-4b",
+			"affinity": "unholy",
+			"name": "Torment",
+			"character": "𐰟",
+			"opposite": "UNH-4a",
+			"role": "link",
+			"valence": 2,
+			"electronegativity": 2.2,
+			"meaning": "keep a life failing slowly",
+			"effect": "status tormented",
+			"ops": [
+				{
+					"op": "status",
+					"id": "tormented",
+					"stacks": 1
+				}
+			]
+		},
+		"UNH-5a": {
+			"id": "UNH-5a",
+			"affinity": "unholy",
+			"name": "Stalk",
+			"character": "𐰠",
+			"opposite": "UNH-5b",
+			"role": "link",
+			"valence": 2,
+			"electronegativity": 2.9,
+			"meaning": "come at your prey through the dark and do not let it go",
+			"effect": "reach x1.3; speed x1.15",
+			"ops": [
+				{
+					"op": "mul",
+					"group": "reach",
+					"value": 1.3
+				},
+				{
+					"op": "mul",
+					"group": "speed",
+					"value": 1.15
+				}
+			]
+		},
+		"UNH-5b": {
+			"id": "UNH-5b",
+			"affinity": "unholy",
+			"name": "Forsake",
+			"character": "𐰡",
+			"opposite": "UNH-5a",
+			"role": "link",
+			"valence": 2,
+			"electronegativity": 1.9,
+			"meaning": "break away, and leave dread on the ground behind you",
+			"effect": "status dread; windup x0.85",
+			"ops": [
+				{
+					"op": "status",
+					"id": "dread",
+					"stacks": 1
+				},
+				{
+					"op": "mul",
+					"group": "windup",
+					"value": 0.85
 				}
 			]
 		}
@@ -6102,26 +7099,21 @@
 		}
 	},
 	"skill_anchor": {
-		"water_bolt": "WAT-2a",
 		"tsunami_strike": "WAT-2a",
-		"hydraulic_flex": "WAT-6a",
-		"undertow": "WAT-2b",
+		"cataract": "WAT-2a",
 		"riptide_lash": "WAT-2b",
 		"standing_pool": "WAT-1a",
-		"backwash": "WAT-7a",
-		"pressure_jet": "WAT-5a",
 		"drawdown": "WAT-1b",
 		"drench": "WAT-3a",
 		"wringing_grip": "WAT-3b",
-		"upwelling": "WAT-4a",
+		"overboard": "WAT-4a",
 		"drowning_hold": "WAT-4b",
-		"steady_drip": "WAT-5b",
-		"siltfall": "WAT-6b",
+		"backwash": "WAT-7a",
 		"seepage": "WAT-7b",
-		"tidal_bore": "WAT-8a",
-		"slack_water": "WAT-8b",
-		"kiln_fist": "FIR-1a",
+		"hydraulic_flex": "WAT-8a",
+		"siltfall": "WAT-6b",
 		"cinder_spit": "FIR-2a",
+		"kiln_fist": "FIR-1a",
 		"flashover": "FIR-2a",
 		"pyre_call": "FIR-3a",
 		"backdraft": "FIR-3b",
@@ -6132,41 +7124,44 @@
 		"wickpinch": "FIR-2b",
 		"flashpan": "FIR-5a",
 		"smokepall": "FIR-5b",
+		"white_heat": "FIR-6b",
+		"brushfire": "FIR-6a",
 		"slingstone": "EAR-4a",
 		"landslide_blow": "EAR-2b",
+		"bedrock_shove": "EAR-3a",
 		"raise_slab": "EAR-1a",
 		"pillar": "EAR-1a",
-		"stonehide": "EAR-2a",
-		"bedrock_shove": "EAR-3a",
-		"tremor": "EAR-3b",
-		"quarry_throw": "EAR-4a",
 		"sinkhole": "EAR-1b",
+		"stonehide": "EAR-2a",
+		"tremor": "EAR-3b",
+		"cave_in": "EAR-5b",
+		"millstone": "EAR-6a",
+		"quarry_throw": "EAR-6b",
 		"cairn": "EAR-4b",
 		"burrow": "EAR-5a",
-		"cave_in": "EAR-5b",
 		"cutting_gust": "WIN-2a",
 		"crosscut": "WIN-2a",
 		"tailwind": "WIN-4a",
-		"downdraft": "WIN-3b",
-		"updraft": "WIN-3a",
 		"veil": "WIN-2b",
 		"gale_lane": "WIN-1a",
 		"spindrift": "WIN-1a",
+		"downdraft": "WIN-3b",
+		"turning_palm": "WIN-4b",
+		"updraft": "WIN-3a",
 		"dead_air": "WIN-1b",
-		"headwind": "WIN-4b",
 		"dust_devil": "WIN-5a",
 		"blowout": "WIN-5b",
-		"plumb_bolt": "LIG-1a",
-		"ground_rod": "LIG-1b",
+		"arc_lash": "LIG-3a",
+		"thunderclap_palm": "LIG-5a",
+		"stepped_leader": "LIG-4a",
 		"static_coat": "LIG-2a",
 		"stored_bolt": "LIG-2a",
 		"dead_short": "LIG-2b",
-		"arc_lash": "LIG-3a",
 		"forked_path": "LIG-3a",
-		"bell_jar": "LIG-3b",
-		"stepped_leader": "LIG-4a",
 		"seize_up": "LIG-4b",
-		"thunderclap_palm": "LIG-5a",
+		"plumb_bolt": "LIG-1a",
+		"ground_rod": "LIG-1b",
+		"bell_jar": "LIG-3b",
 		"dead_line": "LIG-5b",
 		"set_solid": "ICE-1a",
 		"false_spring": "ICE-1b",
@@ -6174,10 +7169,12 @@
 		"black_ice": "ICE-2b",
 		"whiteout": "ICE-3a",
 		"runoff": "ICE-3b",
-		"icicle": "ICE-4a",
+		"rime_wall": "ICE-4a",
 		"fracture": "ICE-4b",
 		"craze": "ICE-5a",
 		"ice_shell": "ICE-5b",
+		"dead_calm": "ICE-6a",
+		"floe_drive": "ICE-6b",
 		"blot": "DRK-1a",
 		"daybreak": "DRK-1b",
 		"pall": "DRK-2a",
@@ -6185,29 +7182,32 @@
 		"shadow_slip": "DRK-3a",
 		"shadownail": "DRK-3b",
 		"muffle": "DRK-4a",
-		"knell": "DRK-4b",
+		"stray_echo": "DRK-4b",
 		"hungry_dark": "DRK-5a",
 		"night_spill": "DRK-5b",
-		"iron_slug": "MET-1a",
-		"rust_bloom": "MET-1b",
 		"spot_weld": "MET-2a",
 		"splitting_blow": "MET-2b",
-		"iron_clasp": "MET-3a",
 		"breakthrough": "MET-3b",
+		"red_iron": "MET-1a",
 		"whetted_cut": "MET-4a",
 		"turn_the_edge": "MET-4b",
 		"plating": "MET-5a",
 		"wrench": "MET-5b",
+		"iron_slug": "MET-1a",
+		"iron_clasp": "MET-3a",
+		"rust_bloom": "MET-1b",
 		"red_lancet": "BLD-1a",
 		"tourniquet": "BLD-1b",
 		"deep_draught": "BLD-2a",
 		"outpour": "BLD-2b",
 		"clotblade": "BLD-3a",
 		"thinblood_rush": "BLD-3b",
-		"hammering_heart": "BLD-4a",
+		"red_frenzy": "BLD-4a",
 		"heavy_heart": "BLD-4b",
 		"gullet_knot": "BLD-5a",
 		"long_breath": "BLD-5b",
+		"thirsting_glaive": "BLD-6a",
+		"last_draught": "BLD-6b",
 		"knit": "LIF-1a",
 		"withering_needle": "LIF-1b",
 		"fresh_stride": "LIF-2a",
@@ -6218,6 +7218,8 @@
 		"turn_the_stomach": "LIF-4b",
 		"regrowth": "LIF-5a",
 		"unmending": "LIF-5b",
+		"lifeline": "LIF-6a",
+		"heartseed": "LIF-6b",
 		"endstroke": "DTH-1a",
 		"last_mercy": "DTH-1b",
 		"rise_again": "DTH-2a",
@@ -6228,9 +7230,12 @@
 		"banishing_line": "DTH-4b",
 		"gravestep": "DTH-5a",
 		"death_mask": "DTH-5b",
-		"heartwood": "NAT-1a",
+		"grave_mark": "DTH-6a",
+		"bone_burst": "DTH-6b",
+		"overgrowth": "NAT-1a",
 		"dwindling_gall": "NAT-1b",
 		"thornburst": "NAT-2a",
+		"heartwood": "NAT-2a",
 		"sere_ground": "NAT-2b",
 		"greening": "NAT-3a",
 		"heartrot": "NAT-3b",
@@ -6238,6 +7243,8 @@
 		"scatter_seed": "NAT-4b",
 		"vine_reach": "NAT-5a",
 		"unwinding": "NAT-5b",
+		"call_the_brake": "NAT-6a",
+		"unleash_the_pack": "NAT-6b",
 		"dayline": "LGT-1a",
 		"dusk_well": "LGT-1b",
 		"glint": "LGT-2a",
@@ -6247,9 +7254,11 @@
 		"hard_glare": "LGT-4a",
 		"clear_eye": "LGT-4b",
 		"glancing_ray": "LGT-5a",
-		"bent_light": "LGT-5b",
+		"burning_glass": "LGT-5b",
+		"sunlance": "LGT-6a",
+		"prism_bolt": "LGT-6b",
 		"dozing_mote": "DRM-1a",
-		"rousing_blow": "DRM-1b",
+		"lucid": "DRM-1b",
 		"doubling_step": "DRM-2a",
 		"shattered_dream": "DRM-2b",
 		"night_terror": "DRM-3a",
@@ -6258,16 +7267,20 @@
 		"read_the_tell": "DRM-4b",
 		"errand": "DRM-5a",
 		"shutter": "DRM-5b",
-		"sting_dart": "POI-1a",
+		"sweet_lie": "DRM-6a",
+		"misgiving": "DRM-6b",
+		"venom_edge": "POI-1a",
 		"black_purge": "POI-1b",
 		"fouling_slide": "POI-2a",
 		"clean_air": "POI-2b",
 		"caustic_spew": "POI-3a",
 		"counterdose": "POI-3b",
-		"residue": "POI-4a",
+		"sting_dart": "POI-4a",
 		"funnel": "POI-4b",
 		"sapping_tether": "POI-5a",
 		"bitter_tonic": "POI-5b",
+		"steeped_blade": "POI-6a",
+		"venom_spur": "POI-6b",
 		"fever_flask": "DIS-1a",
 		"crisis": "DIS-1b",
 		"contagion": "DIS-2a",
@@ -6277,7 +7290,31 @@
 		"plaguebloom": "DIS-4a",
 		"dispersal": "DIS-4b",
 		"teeming_fog": "DIS-5a",
-		"inured_blood": "DIS-5b"
+		"inured_blood": "DIS-5b",
+		"plague_barrow": "DIS-6a",
+		"exhume": "DIS-6b",
+		"dawnward": "HOL-1a",
+		"guardbreaker": "HOL-1b",
+		"benediction": "HOL-2a",
+		"condemning_ray": "HOL-2b",
+		"absolution": "HOL-3a",
+		"penitent_mark": "HOL-3b",
+		"hallowed_ground": "HOL-4a",
+		"casting_out": "HOL-4b",
+		"kind_light": "HOL-5a",
+		"rebuke": "HOL-5b",
+		"zealous_charge": "HOL-6a",
+		"abiding_guard": "HOL-6b",
+		"reaving_cleave": "UNH-1a",
+		"black_reckoning": "UNH-1b",
+		"dreadcry": "UNH-2a",
+		"grasping_dark": "UNH-2b",
+		"gloom_mantle": "UNH-3a",
+		"black_shroud": "UNH-3b",
+		"reaping_blow": "UNH-4a",
+		"torment": "UNH-4b",
+		"night_charge": "UNH-5a",
+		"forsaken_ground": "UNH-5b"
 	},
 	"unmatched": {
 		"sheet_skills_without_ability": [

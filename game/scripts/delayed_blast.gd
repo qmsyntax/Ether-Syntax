@@ -11,6 +11,8 @@ var tags: Array = []
 var radius := 2.0
 var delay := 0.5
 var color := Color(1.0, 0.9, 0.7)
+## v2 (Burning Glass, follows_lit): the body it tracks - it lands where that body is when the delay ends
+var follow: Node3D = null
 
 var _t := 0.0
 var _done := false
@@ -45,6 +47,8 @@ func tick(delta: float) -> void:
 	if _done:
 		return
 	_t += delta
+	if follow != null and is_instance_valid(follow) and not bool(follow.call("is_dead")):
+		global_position = Vector3(follow.global_position.x, global_position.y, follow.global_position.z)
 	_mat.albedo_color = Color(color, 0.4 + 0.6 * clampf(_t / maxf(delay, 0.01), 0.0, 1.0))
 	if _t < delay:
 		return

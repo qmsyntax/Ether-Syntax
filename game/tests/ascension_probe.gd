@@ -1,13 +1,13 @@
 extends Node
 ## Ascension click test (windowed run only - needs real GUI hit-testing):
 ##   godot --path game res://tests/ascension_probe.tscn
-## Starts a real water character (two picked skills, Water Bolt at stage 1), forces an ascension
+## Starts a real water character (two picked skills, Riptide Lash at stage 1), forces an ascension
 ## (a full star and the latent aura, then try_ascend - the same call the ascend key makes), and
 ## checks the ascension screen opened from the `ascended` signal with two affinities, the first a
 ## hybrid with Water as a parent. Clicks that affinity, then on the boost step clicks Reach for
-## Water Bolt and Essence for the other skill, and clicks Ascend. Checks: the affinity is held, no
+## Riptide Lash and Essence for the other skill, and clicks Ascend. Checks: the affinity is held, no
 ## skill was given, each boost is in its aspect at the formula's amount, ability_stats shows them
-## (Water Bolt's flight time x(1 + boost), the other's cost / (1 + boost)), stage and bar unchanged,
+## (Riptide Lash's range x(1 + boost), the other's cost / (1 + boost)), stage and bar unchanged,
 ## nothing pending; then the ethercosm shows the boost on the skill and the base in brackets.
 ## Prints "ASCEND: PASS" / "ASCEND: FAIL" and exits 0/1.
 
@@ -66,7 +66,7 @@ func _process(_delta: float) -> void:
 	var player: Node = main.get("player")
 	match frames:
 		30:
-			var why: String = main.call("begin_character", {"talent_id": "grudge", "affinities": ["water"], "skills": ["water_bolt", "tsunami_strike"],
+			var why: String = main.call("begin_character", {"talent_id": "grudge", "affinities": ["water"], "skills": ["riptide_lash", "tsunami_strike"],
 				"name": "Probe", "look": {}})
 			_expect("a real water character starts with its two picked skills", why == "" and (player.get("abilities") as Array).size() == 2, why)
 			var abs0: Array = player.get("abilities")
@@ -109,7 +109,7 @@ func _process(_delta: float) -> void:
 			_click(reach)
 		56:
 			var s3: Node = main.get("screen")
-			_expect("clicking Reach sets Water Bolt's aspect", str((s3.get("aspects") as Dictionary).get(0, "")) == "reach", str(s3.get("aspects")))
+			_expect("clicking Reach sets Riptide Lash's aspect", str((s3.get("aspects") as Dictionary).get(0, "")) == "reach", str(s3.get("aspects")))
 			_click(_find("Aspect_1_cost"))
 		62:
 			var s4: Node = main.get("screen")
@@ -127,8 +127,8 @@ func _process(_delta: float) -> void:
 				and is_equal_approx(float((a1.get("ascension", {}) as Dictionary).get("cost", 0.0)), float(_amounts[1])), "%s %s" % [str(a0.get("ascension")), str(a1.get("ascension"))])
 			var s0: Dictionary = player.call("ability_stats", a0)
 			var s1: Dictionary = player.call("ability_stats", a1)
-			_expect("ability_stats: Water Bolt's flight time x(1 + boost), damage untouched", absf(float(s0["life"]) - float(_base0["life"]) * (1.0 + float(_amounts[0]))) < 0.0001
-				and is_equal_approx(float(s0["damage"]), float(_base0["damage"])), "%s vs %s" % [str(s0["life"]), str(_base0["life"])])
+			_expect("ability_stats: Riptide Lash's range x(1 + boost), damage untouched", absf(float(s0["range"]) - float(_base0["range"]) * (1.0 + float(_amounts[0]))) < 0.0001
+				and is_equal_approx(float(s0["on_hit"]["damage"]), float(_base0["on_hit"]["damage"])), "%s vs %s" % [str(s0["range"]), str(_base0["range"])])
 			_expect("ability_stats: the other skill's cost / (1 + boost)", absf(float(s1["cost"]) - float(_base1["cost"]) / (1.0 + float(_amounts[1]))) < 0.0001,
 				"%s vs %s" % [str(s1["cost"]), str(_base1["cost"])])
 			_expect("not levelling: stage and bar unchanged", int(a0["stage"]) == _stage0 and is_equal_approx(float(a0["progress"]), _progress0))
@@ -139,10 +139,10 @@ func _process(_delta: float) -> void:
 			_expect("the ethercosm shows the boost on the skill", boosts != null and boosts.text.begins_with("Ascension: +") and boosts.text.contains("reach"),
 				boosts.text if boosts != null else "none")
 			var rows: Node = _find("SkillDetailRows")
-			var flight: Node = rows.find_child("Row_Flight_time", true, false) if rows != null else null
+			var flight: Node = rows.find_child("Row_Range", true, false) if rows != null else null
 			var idx: int = flight.get_index() if flight != null else -1
 			var val_box: Node = rows.get_child(idx + 1) if idx >= 0 else null
-			_expect("and its 'What it does' table shows the boosted flight time with the base in brackets", val_box != null and val_box.find_child("Base", true, false) != null)
+			_expect("and its 'What it does' table shows the boosted range with the base in brackets", val_box != null and val_box.find_child("Base", true, false) != null)
 			main.call("close_screen")
 		86:
 			_expect("no script error was raised", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])

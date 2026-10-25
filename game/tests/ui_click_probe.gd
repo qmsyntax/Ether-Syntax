@@ -655,18 +655,18 @@ func _trainer_steps(at: int) -> void:
 		30:
 			var s: Node = main.get("screen")
 			_expect("Training opens the skill tree, teaching", s is SkillTreeScreen and bool(s.get("at_trainer")))
-			var node: Control = _find(main, "Node_undertow")
-			_expect("the tree shows Undertow", node != null)
+			var node: Control = _find(main, "Node_standing_pool")
+			_expect("the tree shows Standing Pool", node != null)
 			if node != null:
 				_click_at(_centre(node))
 		40:
-			_expect("clicking a node selects it", main.get("screen") is SkillTreeScreen and str((main.get("screen") as Node).get("selected")) == "undertow")
+			_expect("clicking a node selects it", main.get("screen") is SkillTreeScreen and str((main.get("screen") as Node).get("selected")) == "standing_pool")
 			var learn: Control = _find(main, "LearnButton")
 			_expect("its Learn button is live", learn != null and not (learn as Button).disabled)
 			if learn != null:
 				_click_at(_centre(learn))
 		50:
-			_expect("clicking Learn teaches it and spends a point", bool(player.call("knows", "undertow")) and int(player.get("skill_points")) == 1)
+			_expect("clicking Learn teaches it and spends a point", bool(player.call("knows", "standing_pool")) and int(player.get("skill_points")) == 1)
 			# the smith at the forge (design/12): what a billet needs, and enough skill that it cannot fail
 			main.call("close_screen")
 			main.call("close_screen")

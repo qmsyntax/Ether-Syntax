@@ -261,10 +261,19 @@ func take_hit(amount: float, _heavy: bool, source: Node, tags: Array = []) -> fl
 	if _rig != null:
 		_rig.flash(0.12)
 	_refresh_label()
-	if applied > 0.0:
+	var hushed: bool = body.is_dead() and source != null and is_instance_valid(source) and source.has_method("hush_radius") and float(source.call("hush_radius")) > 0.0
+	if applied > 0.0 and not hushed:
 		hurt.emit(self, source)                 # its camp wakes; a herd answers (FieldCamps)
+	if hushed:
+		# Muffle: a kill raises no alarm - those near it cannot call for help a while
+		for node: Node in get_tree().get_nodes_in_group("enemies"):
+			if node != self and (node as Node3D).global_position.distance_to(global_position) <= float(source.call("hush_radius")):
+				node.call("add_status", "muted", 1, source)
 	if applied > 0.0 and not body.is_dead():
 		_after_hurt(applied, winding)
+		for id: String in statuses.keys():
+			if statuses.has(id) and bool(_sdef(id).get("ends_on_source_hit", false)) and (statuses[id] as Dictionary).get("by") == source and source != null:
+				statuses.erase(id)                     # Charmed: a hit from whoever charmed it snaps it out
 	if body.is_dead():
 		_release_slot()
 		telegraph = {}
@@ -405,6 +414,8 @@ func add_status(id: String, stacks: int = 1, by: Node = null, opts: Dictionary =
 		return 0
 	if bool(def.get("living_only", false)) and not is_living:
 		return 0
+	if bool(def.get("elites_immune", false)) and bool(_def.get("elite", false)):
+		return 0                                   # Exiled: an elite only takes the hit's shove
 	# what is on it, or the ground it stands on, may refuse the status
 	for other: String in statuses:
 		if (_sdef(other).get("blocks", []) as Array).has(id):
@@ -445,6 +456,16 @@ func add_status(id: String, stacks: int = 1, by: Node = null, opts: Dictionary =
 	if had.has("taken"):
 		entry["taken"] = had["taken"]
 	statuses[id] = entry
+	if had.is_empty():
+		# the first time only: it changes another status's clock (Steeped: the dose clock runs longer, once)
+		var more: Dictionary = def.get("adds_time", {})
+		for other_id: String in more:
+			if statuses.has(_canon(other_id)):
+				var o: Dictionary = statuses[_canon(other_id)]
+				o["t"] = float(o["t"]) + float(data.get("clock_add", more[other_id]))
+		# turned round, its back to whoever did it (Turning Palm, Blowout, Deflect)
+		if bool(def.get("turn_away", false)) and who is Node3D and is_instance_valid(who):
+			turn_away_from((who as Node3D).global_position, float(entry["t"]))
 	for gone: Variant in def.get("ends", []):
 		if str(gone) != id:
 			clear_status(str(gone))
@@ -470,6 +491,13 @@ func status_stacks(id: String) -> int:
 	return 1 if has_status(id) else 0
 
 
+## Strip every boon on it (balance.json "enemy_boons": Frenzied, Drummed, Roused; Guardbreaker's purge).
+func purge_boons() -> void:
+	for id: Variant in GameData.balance.get("enemy_boons", []):
+		if statuses.has(str(id)):
+			clear_status(str(id))
+
+
 ## True if it carries the status, or one that counts as it (Waterlogged is Soaked, Frozen is
 ## Brittle), or - for a derived one - its health says so (Dying below half, Hale above).
 func has_status(id: String) -> bool:
@@ -490,6 +518,35 @@ func has_status(id: String) -> bool:
 
 func clear_status(id: String) -> void:
 	statuses.erase(_canon(id))
+	_end_with(_canon(id))
+
+
+## Statuses that end with `id` (ends_with: a barb pulled when its doses are spent or paid).
+func _end_with(id: String) -> void:
+	for other: String in statuses.keys():
+		if (_sdef(other).get("ends_with", []) as Array).has(id):
+			statuses.erase(other)
+
+
+## The sum of number `key` over the statuses on it that `who` put there (Tithed's heal, Leeched's drain for
+## whoever applied it); 0 if none.
+func status_sum_by(key: String, who: Node) -> float:
+	var out := 0.0
+	for id: String in statuses:
+		var s: Dictionary = statuses[id]
+		if s.get("by") == who and is_instance_valid(who):
+			out += float(_sdef(id).get(key, 0.0))
+	return out
+
+
+## A status of its put there by `who` (or by a summon of theirs) carrying `key`, as [id, entry], or [].
+func status_from(key: String, who: Node) -> Array:
+	for id: String in statuses:
+		var s: Dictionary = statuses[id]
+		var by: Variant = s.get("by")
+		if _sdef(id).has(key) and by != null and is_instance_valid(by) and (by == who or (who != null and who.get("caster") == by)):
+			return [id, s]
+	return []
 
 
 ## The data a skill left with a status (Dripping's nudge, a Commanded walk's goal), or {}.
@@ -573,6 +630,29 @@ func _blinded() -> Dictionary:
 	return {}
 
 
+## The product of the ground zones under it that tick status `id` harder (dps_mult {id: x}).
+func _zone_dps_mult(id: String) -> float:
+	var m := 1.0
+	if not is_inside_tree():
+		return m
+	for z: Node in get_tree().get_nodes_in_group("ground_zones"):
+		var dm: Variant = z.get("dps_mult")
+		if dm is Dictionary and (dm as Dictionary).has(id) and bool(z.call("has_point", global_position, radius)):
+			m *= float((dm as Dictionary)[id])
+	return m
+
+
+## The largest bill bonus of the ground zones under it (Clean Air's dose_bonus).
+func _zone_bill_bonus() -> float:
+	var b := 0.0
+	if not is_inside_tree():
+		return b
+	for z: Node in get_tree().get_nodes_in_group("ground_zones"):
+		if float(z.get("bill_bonus")) > 0.0 and bool(z.call("has_point", global_position, radius)):
+			b = maxf(b, float(z.get("bill_bonus")))
+	return b
+
+
 ## A ground zone of the caster's under it carries this flag (no_heal: Clean Air).
 func _in_zone_flag(key: String) -> bool:
 	if not is_inside_tree():
@@ -638,6 +718,14 @@ func _expire(id: String) -> void:
 		add_status(str(ex["status"]), int(ex.get("stacks", 1)), who)
 	if ex.has("damage_per_stack"):
 		var dmg: float = float(ex["damage_per_stack"]) * float(int(s.get("stacks", 1)))
+		for other: String in statuses:
+			var os: Dictionary = statuses[other]
+			# Steeped: a bigger bill (the skill's own bill_mult, in its data, else the status's)
+			var bm: Dictionary = _sdef(other).get("bill_mult", {})
+			if bm.has(id):
+				dmg *= float((os.get("data", {}) as Dictionary).get("bill_mult", bm[id]))
+		dmg *= 1.0 + _zone_bill_bonus()                  # Clean Air: a bill paid inside costs more
+		dmg *= float((s.get("data", {}) as Dictionary).get("bill_mult", 1.0))      # Venom Spur: this bill only
 		if who != null and who.has_method("deal_damage"):
 			who.call("deal_damage", self, dmg, ex.get("tags", ["dot"]))
 		else:
@@ -648,6 +736,14 @@ func _expire(id: String) -> void:
 	if float(data.get("release_shove", 0.0)) > 0.0 and who is Node3D:
 		shover = who
 		shove(global_position - (who as Node3D).global_position, float(data["release_shove"]))
+	_end_with(id)
+	# a status that raised another's cap is gone: what is above the plain cap falls away (Contained's Infected)
+	for other: String in statuses.keys():
+		var cap: int = int(_sdef(other).get("stacks", 1))
+		for o2: String in statuses:
+			cap = maxi(cap, int((_sdef(o2).get("cap_raise", {}) as Dictionary).get(other, 0)))
+		if int((statuses[other] as Dictionary).get("stacks", 1)) > cap:
+			(statuses[other] as Dictionary)["stacks"] = cap
 
 
 ## What its statuses leave when it dies: a burning that jumps, a pool of blood, a sick cloud.
@@ -657,6 +753,13 @@ func _death_effects() -> void:
 		var s: Dictionary = statuses[id]
 		var by: Variant = s.get("by")
 		var who: Node = by if (by != null and is_instance_valid(by)) else null
+		# a skill may leave word with its status of what its applier regrows if the body dies carrying it (Withering Needle)
+		# a status that leaves something when its body dies tells its applier where (Exhume reads these grave sites)
+		if not (def.get("on_death", {}) as Dictionary).is_empty() and who != null and who.has_method("status_death"):
+			who.call("status_death", id, global_position)
+		var okh: Variant = (s.get("data", {}) as Dictionary).get("on_kill_heal")
+		if okh is Dictionary and who != null and who.has_method("heal_over"):
+			who.call("heal_over", float((okh as Dictionary).get("heal", 0.0)), float((okh as Dictionary).get("over_s", 2.0)))
 		if bool(def.get("jumps_on_death", false)):
 			var heir: Node3D = _nearest_enemy_within(float(def.get("spread_radius", 1.2)))
 			if heir != null:
@@ -795,13 +898,17 @@ func is_shoved() -> bool:
 ## there, spreading to whoever stands close, nudging, dripping blood, retching.
 func _tick_statuses(delta: float) -> void:
 	var frozen_by: Array = []
+	var frozen_all := ""
 	for id: String in statuses:
-		frozen_by.append_array(_sdef(id).get("freezes", []))
+		var fz: Array = _sdef(id).get("freezes", [])
+		frozen_by.append_array(fz)
+		if fz.has("all"):
+			frozen_all = id                       # Stasis: nothing else on it runs down
 	for id: String in statuses.keys():
 		if not statuses.has(id):
 			continue
 		var s: Dictionary = statuses[id]
-		if frozen_by.has(id) or _in_zone_banking(id):
+		if frozen_by.has(id) or _in_zone_banking(id) or (frozen_all != "" and id != frozen_all):
 			continue                              # Arrested, or banked in a pall of smoke: it does not run down
 		s["t"] = float(s["t"]) - delta
 		if float(s["t"]) <= 0.0:
@@ -852,14 +959,25 @@ func _tick_status(id: String, delta: float) -> void:
 				dmg *= flesh()
 			for other: String in statuses:
 				dmg *= float((_sdef(other).get("dps_mult", {}) as Dictionary).get(id, 1.0))
+			dmg *= _zone_dps_mult(id)                    # Smokepall: the burning ticks harder in the smoke
 			if who != null and who.has_method("deal_damage"):
-				who.call("deal_damage", self, dmg, def.get("dot_tags", ["dot"]))
+				var dot: Variant = who.call("deal_damage", self, dmg, def.get("dot_tags", ["dot"]))
+				# Tormented: part of every tick feeds whoever put it there
+				if float(def.get("drain_frac", 0.0)) > 0.0 and dot is HitContext and who.has_method("drain_heal"):
+					who.call("drain_heal", (dot as HitContext).applied * float(def["drain_frac"]), self, false)
 			else:
 				take_hit(dmg, false, null, def.get("dot_tags", ["dot"]))
 		if id == "alight":
 			_burn_t = float(s.get("acc", 0.0))
 	if body.is_dead() or not statuses.has(id):
 		return
+	# Barbed: it works another status in every so often, in the name of whoever put it there
+	var adds: Variant = def.get("adds_status")
+	if adds is Dictionary:
+		s["add_t"] = float(s.get("add_t", 0.0)) + delta
+		if float(s["add_t"]) >= float(data.get("every", (adds as Dictionary).get("every", 1.0))):
+			s["add_t"] = 0.0
+			add_status(str((adds as Dictionary).get("status", "")), int((adds as Dictionary).get("stacks", 1)), who)
 	# Bleeding drips a pool every so often
 	if def.has("drips_pool_s") and who != null and who.has_method("spill_blood"):
 		s["drip"] = float(s.get("drip", 0.0)) + delta
@@ -922,6 +1040,9 @@ func _tick_shove(delta: float) -> void:
 	var col: KinematicCollision3D = move_and_collide(_shove_dir * step)
 	if col == null:
 		_shove_left -= step
+		if _shove_left <= 0.0001:
+			_shove_left = 0.0
+			_shove_ended()                         # it ran its full distance: that is the end of the shove too
 		return
 	var left: float = _shove_left - col.get_travel().length()
 	_shove_left = 0.0
@@ -995,6 +1116,7 @@ func _physics_process(delta: float) -> void:
 	velocity = Vector3.ZERO
 	_walk_dir = _route_dir(dir, delta)
 
+	var winding_before: bool = _windup >= 0.0
 	if _st_any("cannot_act") or _kneeling():
 		telegraph = {}
 	elif _stuck_t > 0.0:
@@ -1004,7 +1126,7 @@ func _physics_process(delta: float) -> void:
 	elif _flee(delta) or _walk_to_goal(delta):
 		telegraph = {}                          # running from you, or walking where it was told
 	else:
-		match behaviour:
+		match "melee" if _st_any("closes_in") else behaviour:       # Taunted: an archer or a drummer walks in to fight
 			"ranged":
 				_think_ranged(delta, dir, dist)
 			"pouncer":
@@ -1019,7 +1141,26 @@ func _physics_process(delta: float) -> void:
 	velocity *= pace
 	if _leap_left <= 0.0 and _charge_left <= 0.0:
 		move_and_slide()
+	_keep_leash()
+	if not winding_before and _windup >= 0.0:
+		_attack_started()
 	_look(delta)
+
+
+## Leashed: it cannot go further than leash_m from whoever leashed it - a step beyond is undone, as a wall would
+## stop it (the leash length may come from the skill, status data "leash_m").
+func _keep_leash() -> void:
+	for id: String in statuses:
+		var s: Dictionary = statuses[id]
+		var m: float = float((s.get("data", {}) as Dictionary).get("leash_m", _sdef(id).get("leash_m", 0.0)))
+		var by: Variant = s.get("by")
+		if m <= 0.0 or not (by is Node3D) or not is_instance_valid(by):
+			continue
+		var off: Vector3 = global_position - (by as Node3D).global_position
+		off.y = 0.0
+		if off.length() > m:
+			var back: Vector3 = (by as Node3D).global_position + off.normalized() * m
+			global_position = Vector3(back.x, global_position.y, back.z)
 
 
 ## Who it goes for: the player, unless a lure stands within its reach (a phantom, a death mask, a
@@ -1030,6 +1171,29 @@ func _pick_target() -> void:
 		return
 	if not _lured and target == null:
 		return
+	# Taunted: whoever taunted it, and nobody else (no lure, decoy or thrall draws it)
+	var forced: Node3D = _forced_target()
+	if forced != null:
+		if target != forced:
+			interrupt()
+		target = forced
+		_lured = forced != _player
+		return
+	# Charmed: it fights for whoever charmed it - the nearest of its old friends
+	if _st_any("fights_for_source"):
+		var foe: Node3D = null
+		for node2: Node in get_tree().get_nodes_in_group("enemies"):
+			var o := node2 as Node3D
+			if o == null or o == self or bool(o.call("is_dead")) or bool(o.call("_charmed")):
+				continue
+			if foe == null or o.global_position.distance_to(global_position) < foe.global_position.distance_to(global_position):
+				foe = o
+		if foe != null:
+			if target != foe:
+				interrupt()
+			target = foe
+			_lured = true
+			return
 	var best: Node3D = null
 	var best_d := INF
 	for node: Node in get_tree().get_nodes_in_group("lures"):
@@ -1041,12 +1205,14 @@ func _pick_target() -> void:
 			best = l
 			best_d = d
 	if best == null:
+		# a friend that draws it (Masked wears your face; a Charmed one has turned on them): any status with lure_radius
 		for node: Node in get_tree().get_nodes_in_group("enemies"):
 			var m := node as Node3D
-			if m == null or m == self or not bool(m.call("has_status", "masked")):
+			if m == null or m == self:
 				continue
+			var draw: float = float(m.call("lure_reach"))
 			var d2: float = m.global_position.distance_to(global_position)
-			if d2 <= float(GameData.status("masked").get("lure_radius", 8.0)) and d2 < best_d:
+			if draw > 0.0 and d2 <= draw and d2 < best_d:
 				best = m
 				best_d = d2
 	if best != null:
@@ -1060,10 +1226,41 @@ func _pick_target() -> void:
 		interrupt()
 
 
+## Whoever a forced_target status on it names (Taunted: whoever put it there), if they still stand; else null.
+func _forced_target() -> Node3D:
+	for id: String in statuses:
+		if str(_sdef(id).get("forced_target", "")) != "source":
+			continue
+		var by: Variant = (statuses[id] as Dictionary).get("by")
+		if by is Node3D and is_instance_valid(by) and not _gone(by as Node):
+			return by as Node3D
+	return null
+
+
+## True if a body (an enemy, a thrall, a lure: is_dead(); the player: dead) is down or gone.
+static func _gone(n: Node) -> bool:
+	if not is_instance_valid(n):
+		return true
+	return bool(n.call("is_dead")) if n.has_method("is_dead") else bool(n.get("dead"))
+
+
+## True while it fights for someone else (Charmed).
+func _charmed() -> bool:
+	return _st_any("fights_for_source")
+
+
+## How far its friends are drawn to it (Masked, Charmed: the largest lure_radius on it), 0 if none.
+func lure_reach() -> float:
+	var r := 0.0
+	for id: String in statuses:
+		r = maxf(r, float(_sdef(id).get("lure_radius", 0.0)))
+	return r
+
+
 ## Spared and Dying: it kneels and does nothing.
 func _kneeling() -> bool:
 	for id: String in statuses:
-		var below: float = float(_sdef(id).get("kneels_below", 0.0))
+		var below: float = float((statuses[id] as Dictionary).get("data", {}).get("kneels_below", _sdef(id).get("kneels_below", 0.0)))
 		if below > 0.0 and body.total() < body.total_max() * below:
 			return true
 	return false
@@ -1073,6 +1270,17 @@ func _kneeling() -> bool:
 ## attack. Returns true while it is running.
 func _flee(_delta: float) -> bool:
 	for id: String in statuses:
+		# Exiled: it will not come within keeps_away of whoever cast it out (outside it, it fights - and shoots - as it will)
+		var keep: float = float(_sdef(id).get("keeps_away", 0.0))
+		var kby: Variant = (statuses[id] as Dictionary).get("by")
+		if keep > 0.0 and kby is Node3D and is_instance_valid(kby):
+			var off: Vector3 = global_position - (kby as Node3D).global_position
+			off.y = 0.0
+			if off.length() < keep:
+				_windup = -1.0
+				facing = (off if off.length() > 0.05 else -facing).normalized()
+				velocity = facing * speed
+				return true
 		var how: String = str(_sdef(id).get("flees", ""))
 		if how == "":
 			continue
@@ -1134,7 +1342,26 @@ func _blow(amount: float) -> float:
 
 ## Hit whoever it is fighting. Dulled blows do not stagger you.
 func _strike(amount: float, is_heavy: bool) -> void:
-	target.take_hit(_blow(amount), is_heavy and not _st_any("no_poise_damage"), self)
+	var mult := 1.0
+	for id: String in statuses:
+		var by: Variant = (statuses[id] as Dictionary).get("by")
+		if _sdef(id).has("deals_mult_vs_source") and by != null and is_instance_valid(by) and (target == by or target.get("caster") == by):
+			mult *= float(_sdef(id)["deals_mult_vs_source"])          # Penitent: softer on you and yours
+	target.take_hit(_blow(amount) * mult, is_heavy and not _st_any("no_poise_damage"), self)
+
+
+## It has just started an attack: a status that punishes that answers (Penitent's on_attack_damage, through
+## whoever put it there).
+func _attack_started() -> void:
+	for id: String in statuses.keys():
+		if not statuses.has(id):
+			continue
+		var hurt_by: float = float(_sdef(id).get("on_attack_damage", 0.0))
+		var by: Variant = (statuses[id] as Dictionary).get("by")
+		if hurt_by > 0.0 and by != null and is_instance_valid(by) and (by as Node).has_method("deal_damage"):
+			(by as Node).call("deal_damage", self, hurt_by, ["ability", "holy", "through", "penance"])
+			if body.is_dead():
+				return
 
 
 ## The direction to walk in order to reach the player: along its path on the level's navigation

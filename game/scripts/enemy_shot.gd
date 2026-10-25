@@ -11,6 +11,7 @@ var heavy := false
 var hit_radius := 0.7
 var target: Node3D
 var shooter: Node
+var _deflected := false             # turned aside once (Crosswind Veil): it no longer looks for its target
 
 
 func _ready() -> void:
@@ -51,7 +52,14 @@ func tick(delta: float) -> void:
 		var a := Vector2(from.x, from.z)
 		var b := Vector2(to.x, to.z)
 		var p := Vector2(target.global_position.x, target.global_position.z)
-		if Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= hit_radius and not (target.has_method("deflects_shots") and bool(target.call("deflects_shots"))):
+		var miss_by: float = Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p)
+		var turn_r: float = float(target.call("deflect_radius")) if target.has_method("deflect_radius") else 0.0
+		if turn_r > 0.0 and miss_by <= turn_r:
+			if not _deflected:
+				_deflected = true                # it curves away (Crosswind Veil), once, and may pay you for it
+				if target.has_method("shot_deflected"):
+					target.call("shot_deflected")
+		elif miss_by <= hit_radius:
 			target.call("take_hit", damage, heavy, shooter if is_instance_valid(shooter) else null)
 			queue_free()
 			return
