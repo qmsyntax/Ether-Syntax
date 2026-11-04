@@ -39,6 +39,13 @@ func _ready() -> void:
 		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 		get_tree().quit(1 if _failed > 0 else 0)
 		return
+	# `-- --only=combat` runs just the combat review's fixes (tests/combat_fix_checks.gd, 2026-11-03)
+	if OS.get_cmdline_user_args().has("--only=combat"):
+		await CombatFixChecks.new(self, _check).run()
+		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
+		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
+		get_tree().quit(1 if _failed > 0 else 0)
+		return
 	if OS.get_cmdline_user_args().has("--only=ascension"):
 		_test_affinities()
 		_test_ascension()
@@ -115,6 +122,7 @@ func _ready() -> void:
 	await BeastChecks.new(self, _check).run()
 	await V2Checks.new(self, _check).run()
 	await FeelChecks.new(self, _check).run()
+	await CombatFixChecks.new(self, _check).run()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
 	_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])

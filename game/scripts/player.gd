@@ -895,6 +895,8 @@ func deal_damage(target: Node, base: float, tags: Array = [], opts: Dictionary =
 				hottest = aff
 		if hottest != "":
 			reflux_by[hottest] = maxf(0.0, float(reflux_by[hottest]) - float(combat["strike_sheds_reflux"]))
+		# gathering (combat review R1): raw essence manipulation - a landed strike draws a little in, never past the tank
+		essence = minf(essence_max, essence + float(combat["strike_gathers_essence"]))
 		if not ctx.killed and target.has_method("take_poise"):
 			target.call("take_poise", float(combat["strike_poise"]) * (2.0 if ctx.has_tag("overcharge") else 1.0) * buff_num("strike_poise_mult") * float(conjured().get("melee_poise_mult", 1.0)))
 		if not ctx.killed and conjured().get("on_strike") is Dictionary:
