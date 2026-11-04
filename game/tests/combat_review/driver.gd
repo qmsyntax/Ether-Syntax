@@ -516,8 +516,8 @@ func _resolve_presses() -> void:
 				reason = "refused:no landing"
 			log_reasons[last] = int(log_reasons.get(last, 0)) + 1
 			_outcome(reason)
-		elif t - float(p["t"]) > 0.4:
-			_outcome("silent:busy or dropped")
+		elif t - float(p["t"]) > 0.4 and not (player.has_method("walking_to_cast") and bool(player.call("walking_to_cast")) and t - float(p["t"]) < 4.0):
+			_outcome("silent:busy or dropped")       # (a close skill walking in to its foe is still pending - R4a)
 		else:
 			keep.append(p)
 	_pending = keep

@@ -740,6 +740,10 @@ func _physics_process(delta: float) -> void:
 			dir = to_goal.normalized()
 			_facing = dir
 
+	if not _walk_cast.is_empty():
+		var walk: Variant = _walk_cast_step(delta, input)
+		if walk != null:
+			dir = walk
 	if bot:
 		dir = _bot_dir if attack_target == null else dir
 	var speed: float = float(_p["move_speed"]) * temper_stat("move_speed_mult") * (float(_p["charge_move_factor"]) if _charging else 1.0) * buff_num("move_speed_mult") * _zone_num("caster_speed_mult")
@@ -4060,6 +4064,8 @@ func _skill_target(reach: float) -> Node3D:
 ## The enemy a single-target skill would be aimed at, near or far: the one under the cursor, else the
 ## one you are fighting, else the nearest (whether it is in reach is _skill_target's question).
 func _skill_candidate() -> Node3D:
+	if _forced_target != null and is_instance_valid(_forced_target) and not bool(_forced_target.call("is_dead")):
+		return _forced_target                    # a walked-in cast lands on the foe it walked to
 	for c: Variant in [hovered, attack_target, _nearest_enemy()]:
 		if c != null and is_instance_valid(c) and (c as Node).is_in_group("enemies") and not bool((c as Node).call("is_dead")):
 			return c
@@ -4268,6 +4274,8 @@ func cast_ability(index: int) -> void:
 				and not _ray(global_position + Vector3.UP, strike_target.global_position + Vector3.UP).is_empty():
 			strike_target = null                 # a wall or stone stands between
 			no_line = true
+		if strike_target == null and not no_line and kind == "targeted_strike" and _walk_in(index, reach):
+			return                               # out of reach: walk in, then cast (nothing is spent yet)
 		if strike_target == null:
 			if no_line:
 				_refuse("no_line", "No clear line")
@@ -4325,6 +4333,8 @@ func cast_ability(index: int) -> void:
 			_refuse("no_target", "Needs your growth there")
 			note("%s needs your growth where you point." % str(ab["name"]))
 			return
+	if kind == "melee_burst" and _walk_in(index, melee_range + float(ab.get("reach_bonus", 0.0))):
+		return                                   # its foe is out of the sweep: walk in, then cast
 	essence -= cost
 	if float(ab.get("heat_cost", 0.0)) > 0.0:
 		reflux_by[aff] = heat - float(ab["heat_cost"])          # paid in heat, not essence (Wickpinch)
@@ -4351,7 +4361,8 @@ func cast_ability(index: int) -> void:
 	if bool(ab.get("weapon", false)):
 		tags.append("weapon")                    # made with your weapon: it carries your coat (poison.json)
 	var windup: float = float(ab.get("windup", 0.0))
-	_face_cast_aim(kind)
+	if _forced_target == null:
+		_face_cast_aim(kind)                     # a walked-in cast already faces the foe it walked to
 	if kind == "prop" or kind == "delayed_blast" or kind == "ground_zone" or kind == "rod" or kind == "seed" or kind == "summon" \
 			or (kind == "displace" and strike_target == null) or (kind == "smite" and strike_target != null):
 		var to_spot: Vector3 = (strike_target.global_position if (kind == "smite" and strike_target != null) else blink_to) - global_position
@@ -7320,6 +7331,7 @@ func use_consumable(item_id: String) -> String:
 ## refuse a cast while you are busy, outright.
 func press_slot(slot: int) -> void:
 	_buffered_slot = -1
+	cancel_walk_cast()                           # a new press is another input: the walk-in is dropped
 	if not _held.is_empty():
 		if str(_held.get("action", "")) == "ability_%d" % (slot + 1):
 			return                               # its own key: the hold answers it
@@ -7330,7 +7342,14 @@ func press_slot(slot: int) -> void:
 			_buffered_slot = slot
 			_buffered_t = window
 		return
+	_pressed_cast(slot)
+
+
+## A cast from a key press (press_slot, or its kept press): a close skill out of reach may walk you in.
+func _pressed_cast(slot: int) -> void:
+	_from_press = true
 	cast_slot(slot)
+	_from_press = false
 
 
 ## True while a new cast would be refused for timing alone.
@@ -7349,13 +7368,14 @@ func _tick_buffer(delta: float) -> void:
 	if not _cast_busy():
 		var slot: int = _buffered_slot
 		_buffered_slot = -1
-		cast_slot(slot)
+		_pressed_cast(slot)
 
 
 ## The strike button went down and the click handler chose (_click_cursor): a click on a foe is one
 ## more blow owed to it (up to "feel" strike_queue_max); any click ends a cast's facing hold.
 func _strike_clicked() -> void:
 	_face_hold_t = 0.0
+	cancel_walk_cast()                           # a click is another input: the walk-in is dropped
 	if attack_target != null:
 		_strike_credit = mini(_strike_credit + 1, GameData.inum("feel", "strike_queue_max"))
 	else:
@@ -7527,6 +7547,7 @@ signal sidestepped(dir: Vector3, winded: bool)
 ## of a held skill, and the latest press wins over a kept hotbar key.
 func press_sidestep() -> void:
 	_buffered_slot = -1
+	cancel_walk_cast()
 	if not _held.is_empty():
 		_end_held()
 	if _cast_busy():
@@ -7650,3 +7671,79 @@ signal cast_refused(slot: int, reason: String, text: String)
 func _refuse(reason: String, text: String) -> void:
 	last_refusal = {"serial": int(last_refusal.get("serial", 0)) + 1, "slot": _casting_slot, "reason": reason, "text": text}
 	cast_refused.emit(_casting_slot, reason, text)
+
+
+# --- close skills walk you in (combat review R4a, approved by Brent 2026-11-03) ---------------------
+# A close skill (targeted_strike, melee_burst) pressed with its foe out of reach no longer fails: you walk
+# to the foe and it is cast the moment you are in reach, as a click on a foe walks you in to strike it.
+# Only a key press does this (press_slot and its kept press); cast_slot / cast_ability from tests and
+# bots refuse as before. Nothing is spent until the cast. Any other input drops it: a move key, a click,
+# another hotbar key, the sidestep, meditating, the shooting stance, a stagger. Numbers in balance.json
+# "feel": skill_walk_in_max_m, skill_walk_in_max_s, skill_walk_in_margin_m.
+
+var _walk_cast: Dictionary = {}      # {index, target, reach, slot, left}: walking in to cast
+var _from_press := false             # the cast comes from a key press: it may walk in
+var _forced_target: Node3D = null    # the foe a walked-in cast walked to (_skill_candidate takes it first)
+
+
+## Start walking in for ability `index` if this is a key press, there is a foe to aim at within
+## skill_walk_in_max_m and it is out of `reach` (plus its radius, less the margin). True if it started.
+func _walk_in(index: int, reach: float) -> bool:
+	if not _from_press or bot or _forced_target != null:
+		return false
+	var foe: Node3D = _skill_candidate()
+	if foe == null:
+		return false
+	var feel: Dictionary = GameData.balance["feel"]
+	var d: float = Vector2(foe.global_position.x - global_position.x, foe.global_position.z - global_position.z).length()
+	if d <= reach + float(foe.get("radius")) - float(feel["skill_walk_in_margin_m"]) or d > float(feel["skill_walk_in_max_m"]):
+		return false
+	_walk_cast = {"index": index, "target": foe, "reach": reach, "slot": _casting_slot, "left": float(feel["skill_walk_in_max_s"])}
+	attack_target = null                         # the walk is the order now
+	has_move_goal = false
+	pickup_target = null
+	_strike_credit = 0
+	return true
+
+
+## True while you are walking in to cast a close skill.
+func walking_to_cast() -> bool:
+	return not _walk_cast.is_empty()
+
+
+## Drop a walk-in (any other input does).
+func cancel_walk_cast() -> void:
+	_walk_cast = {}
+
+
+## One step of a walk-in: the way to walk, or null when it is over (cast, or dropped). Casts the moment
+## the foe is in reach.
+func _walk_cast_step(delta: float, input: Vector2) -> Variant:
+	var foe_v: Variant = _walk_cast.get("target")
+	if input != Vector2.ZERO or _sitting or meditating or ranged_stance or _charging or _stagger_t > 0.0 or dead \
+			or not is_instance_valid(foe_v) or bool((foe_v as Node).call("is_dead")):
+		cancel_walk_cast()
+		return null
+	var foe: Node3D = foe_v
+	_walk_cast["left"] = float(_walk_cast["left"]) - delta
+	if float(_walk_cast["left"]) <= 0.0:
+		var slot_was: int = _casting_slot
+		_casting_slot = int(_walk_cast["slot"])
+		_refuse("out_of_reach", "Out of reach")
+		_casting_slot = slot_was
+		cancel_walk_cast()
+		return null
+	var to: Vector3 = foe.global_position - global_position
+	to.y = 0.0
+	if to.length() > 0.05:
+		_facing = to.normalized()
+	if to.length() <= float(_walk_cast["reach"]) + float(foe.get("radius")) - GameData.num("feel", "skill_walk_in_margin_m"):
+		var w: Dictionary = _walk_cast
+		_walk_cast = {}
+		_forced_target = foe
+		_casting_slot = int(w["slot"])
+		cast_ability(int(w["index"]))
+		_casting_slot = -1
+		_forced_target = null
+		return Vector3.ZERO
+	return to.normalized()

@@ -28,6 +28,7 @@ func run() -> void:
 	_starters()
 	await _sidestep()
 	await _refusals()
+	await _walk_in()
 	for n: Node in _made:
 		if is_instance_valid(n):
 			n.queue_free()
@@ -302,6 +303,90 @@ func _refusals() -> void:
 	check.call("each refusal is new to the HUD (its serial counts up)", int((p.get("last_refusal") as Dictionary)["serial"]) == serial + 1)
 	_gone(far)
 	_gone(p)
+
+
+# --- R4a: close skills walk you in ----------------------------------------------------------------
+
+func _full(p: Node) -> void:
+	p.set("star_pct", [99.0] as Array[float])
+	p.call("_recompute_essence_max")
+	p.set("essence", float(p.get("essence_max")))
+
+
+func _walk_in() -> void:
+	var f: Dictionary = GameData.balance["feel"]
+	check.call("balance.json feel has the walk-in knobs, with a note", float(f.get("skill_walk_in_max_m", 0.0)) > 3.0
+		and float(f.get("skill_walk_in_max_s", 0.0)) > 0.0 and str(f["_note"]).contains("skill_walk_in_max_m"))
+	# a targeted close skill (Kiln Fist) pressed with its foe 5 m off: walk, then cast
+	var p := _player("fire", AT + Vector3(0, 0, 240))
+	_full(p)
+	var e := _foe(p, Vector3(0, 0, -5.0))
+	p.set("cursor_fixed", e.global_position)
+	await _wait(STEP)
+	var e0: float = float(p.get("essence"))
+	var at: Vector3 = p.global_position
+	p.call("press_slot", 1)
+	check.call("a close skill pressed out of reach is not refused: you walk in, and nothing is spent yet",
+		bool(p.call("walking_to_cast")) and _near(float(p.get("essence")), e0) and str((p.get("last_refusal") as Dictionary).get("reason", "")) == "")
+	for i: int in 120:
+		await t.get_tree().physics_frame
+		if not bool(p.call("walking_to_cast")):
+			break
+	check.call("... and it is cast the moment you are in reach (Kiln Fist lands)", _lost(e) > 0.0 and float(p.get("essence")) < e0
+		and p.global_position.distance_to(at) > 1.0, "lost %f moved %f" % [_lost(e), p.global_position.distance_to(at)])
+	_gone(p)
+	_gone(e)
+	# a melee burst (Breaker) with its foe out of the sweep: walk, then sweep
+	var w := _player("water", AT + Vector3(0, 0, 280))
+	_full(w)
+	var g := _foe(w, Vector3(0, 0, -6.0))
+	w.set("cursor_fixed", g.global_position)
+	await _wait(STEP)
+	w.call("press_slot", 1)
+	var walking: bool = bool(w.call("walking_to_cast"))
+	for i: int in 120:
+		await t.get_tree().physics_frame
+		if not bool(w.call("walking_to_cast")):
+			break
+	check.call("a melee burst whose foe is out of the sweep walks you in and then sweeps it", walking and _lost(g) > 0.0, "lost %f" % _lost(g))
+	_gone(w)
+	_gone(g)
+	# any other input drops it: a move key, another press, the sidestep, a click
+	var q := _player("fire", AT + Vector3(0, 0, 320))
+	_full(q)
+	var h := _foe(q, Vector3(0, 0, -6.0))
+	q.set("cursor_fixed", h.global_position)
+	await _wait(STEP)
+	var e1: float = float(q.get("essence"))
+	q.call("press_slot", 1)
+	Input.action_press("move_left")
+	await _wait(STEP * 2.0)
+	Input.action_release("move_left")
+	check.call("a move key drops the walk-in, and nothing is spent", not bool(q.call("walking_to_cast")) and _near(float(q.get("essence")), e1) and _lost(h) <= 0.0)
+	await _wait(STEP * 2.0)
+	h.global_position = q.global_position + Vector3(0, 0, -6.0)
+	q.call("press_slot", 1)
+	var was_walking: bool = bool(q.call("walking_to_cast"))
+	q.call("press_sidestep")
+	check.call("so does the sidestep", was_walking and not bool(q.call("walking_to_cast")))
+	await _wait(0.4)
+	h.global_position = q.global_position + Vector3(0, 0, -6.0)
+	q.call("press_slot", 1)
+	was_walking = bool(q.call("walking_to_cast"))
+	q.call("_strike_clicked")
+	check.call("so does a click", was_walking and not bool(q.call("walking_to_cast")))
+	# beyond skill_walk_in_max_m it is refused as out of reach; cast_slot (tests, bots) never walks
+	await _wait(0.2)
+	h.global_position = q.global_position + Vector3(0, 0, -(float(f["skill_walk_in_max_m"]) + 2.0))
+	q.call("press_slot", 1)
+	check.call("a foe past skill_walk_in_max_m: refused, out of reach", not bool(q.call("walking_to_cast"))
+		and str((q.get("last_refusal") as Dictionary).get("reason", "")) == "out_of_reach", "%s rec %.2f stag %.2f wind %.2f dash %.2f held %s" % [str(q.get("last_refusal")), float(q.get("_recover_t")), float(q.get("_stagger_t")), float(q.get("_windup_t")), float(q.get("_dash_time")), str(q.get("_held"))])
+	h.global_position = q.global_position + Vector3(0, 0, -5.0)
+	q.call("cast_slot", 1)
+	check.call("cast_slot (tests, bots) still refuses outright and never walks", not bool(q.call("walking_to_cast"))
+		and str((q.get("last_refusal") as Dictionary).get("reason", "")) == "out_of_reach", "%s rec %.2f stag %.2f wind %.2f dash %.2f held %s" % [str(q.get("last_refusal")), float(q.get("_recover_t")), float(q.get("_stagger_t")), float(q.get("_windup_t")), float(q.get("_dash_time")), str(q.get("_held"))])
+	_gone(q)
+	_gone(h)
 
 
 ## Actions whose default keys collide (each binding is meant to be one action's).
