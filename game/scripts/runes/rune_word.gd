@@ -454,8 +454,7 @@ static func normalize(saved: Variant, anchor_id: String) -> Dictionary:
 		out["sealed"] = int(src["sealed"])
 	elif bool(src.get("locked", false)):
 		out["sealed"] = maxi(1, outer_ring(out))
-	if bool(src.get("closure_waived", src.get("free_edit", false))):      # "free_edit": its name before 2026-10-23
-		out["closure_waived"] = true
+	# (an old "closure_waived" / "free_edit" mark is dropped: since Brent 2026-11-03 no seal has to be closed)
 	# keystones: one per ring, of a tier and concept the data knows (anything else is dropped)
 	for ks: Variant in src.get("keystones", []):
 		if typeof(ks) != TYPE_DICTIONARY or not (ks as Dictionary).has("ring"):

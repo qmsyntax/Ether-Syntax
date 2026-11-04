@@ -655,9 +655,12 @@ func _mode_banner(mode: String, ctx: RuneContext, st: Dictionary) -> String:
 		var need: String = str(player.call("pending_tier", st))
 		var n_sealed: int = sealed_rings()
 		var cap: int = (Runes.active() as RingRules).ring_capacity(ctx.forming) if Runes.active() is RingRules else 0
-		var how: String = "Fill all %d places of ring 1, then set the %s over it as its keystone; the bind locks the level - all of it or nothing." % [cap, need] if ctx.forming <= 1 else \
-			"Ring%s sealed (it may be reworked, and must stay full); fill all %d places of ring %d and set the %s over it as its keystone - the bind locks the level, all of it or nothing." % [
-				(" 1" if n_sealed == 1 else "s 1-%d" % n_sealed), cap, ctx.forming, need]
+		# Brent 2026-11-03: "let them bind and close no matter what" - nothing has to be full or closed
+		var how: String = "Set runes on ring 1 (%d places, as many as you like) and the %s over it as its keystone; the bind locks the level as it stands." % [cap, need] if ctx.forming <= 1 else \
+			"Ring%s sealed (it may be reworked); set runes on ring %d (%d places, as many as you like) - the skill's own rune reaches any ring - and the %s over it as its keystone; the bind locks the level as it stands." % [
+				(" 1" if n_sealed == 1 else "s 1-%d" % n_sealed), ctx.forming, cap, need]
+		if Runes.active() is RingRules and (Runes.active() as RingRules).needs_full_rings():
+			how = "Fill all %d places of ring %d and set the %s over it as its keystone; the bind locks the level - all of it or nothing." % [cap, ctx.forming, need]
 		return "FORMING RING %d  -  %s" % [ctx.forming, how]
 	var n: int = sealed_rings()
 	if n <= 0:
@@ -1006,8 +1009,12 @@ func _refresh_runes() -> void:
 			_lock_button.tooltip_text = "" if bool(can["ok"]) else str(can["text"])
 			var odds: String = "%d%% it takes; a failed bind loses the construct, wounds you, and changes nothing in the word." % int(round(GameData.num("binding", "success_chance") * 100.0))
 			if bool(can["ok"]):
-				_lock_note.text = "Ready: every ring full, the word closed, the %s over ring %d - the level locks if the bind takes.  %s" % [
-					str(ks2.get("label", "")), ctx.forming, odds]
+				# Brent 2026-11-03: empty places and open bonds are information, not a bar to the bind
+				var rr2: RingRules = rules as RingRules
+				var fill: String = (", ring %d holds %s" % [ctx.forming, rr2.ring_fill_text(word, ctx.forming)]) if rr2 != null else ""
+				var shape: String = ", every bond filled" if bool(ws.get("closed", false)) else ", bonds still open (optional)"
+				_lock_note.text = "Ready: the %s over ring %d%s%s - the level locks as it stands if the bind takes.  %s" % [
+					str(ks2.get("label", "")), ctx.forming, fill, shape, odds]
 			else:
 				_lock_note.text = "Cannot bind yet: %s  %s" % [str(can["text"]), odds]
 	elif _lock_note != null and is_instance_valid(_lock_note):
@@ -1139,7 +1146,7 @@ func _build_skill_detail(box: VBoxContainer, held: Array) -> void:
 		ob.name = "OpenSealButton"
 		ob.custom_minimum_size = Vector2(150, 36)
 		lock_box.add_child(ob)
-		box.add_child(UiTheme.body("On the seal screen every place of the new ring is filled and the %s set over it as its keystone; the bind locks the whole level or nothing." % need, 12, UiTheme.TEXT_FAINT))
+		box.add_child(UiTheme.body("On the seal screen set runes on the new ring - as many as you like - and the %s over it as its keystone; the bind locks the level as it stands, or changes nothing if it fails." % need, 12, UiTheme.TEXT_FAINT))
 	elif str(lock["reason"]) in ["no_construct", "bar"]:
 		var miss := UiTheme.body(str(lock["text"]), 14, UiTheme.BAD.lightened(0.2) if str(lock["reason"]) == "no_construct" else UiTheme.TEXT_DIM)
 		miss.name = "LockMissing"

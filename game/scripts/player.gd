@@ -4919,18 +4919,22 @@ func _bind_construct(ability_index: int, construct_index: int, roll: float = -1.
 # A level lock is one act on the seal screen: the forming ring is built, the construct of the right
 # tier is chosen there, and the bind locks ring and construct together. The draft (seal_draft) is a
 # copy of the sealed word - inner rings may be reworked - and becomes the skill's word only if the
-# bind takes; a failed bind changes nothing in the word. Rings are built from the skill outward
-# (RingRules.ring_formed): never a rune on ring k while ring k-1 is unformed.
-# Brent 2026-10-24 (design/14 section 12): "Every slot should be filled to be fully formed. Then a
-# vestige is placed over the top with its effect being worth more than a regular rune...and that
-# locks the level ... You have to be able to lock the current level (have a proper construct for it)
-# before you can reform. Its all or nothing at each level." So: a ring is formed only when FULL; the
-# lock opens only when the bar is full AND a construct of the tier is carried (can_open_seal); the
-# chosen construct is the keystone set over the forming ring (seal_keystone; drawn waiting until the
-# rings are full); the bind needs every ring up to the new one full, the word closed and the keystone
-# chosen, and locks all of it - or, if the roll fails, nothing. Test characters follow the same rule.
-# A skill from an older save at stage N whose word has fewer full rings (or no word) is not supported;
-# it loads as it is, and its next lock simply starts from what it has: every ring 1..N+1 must be full.
+# bind takes; a failed bind changes nothing in the word. Rings are built from the skill outward by
+# level: ring k takes runes only from the level-k lock on.
+# Brent 2026-10-24 (design/14 section 12): "Then a vestige is placed over the top with its effect
+# being worth more than a regular rune...and that locks the level ... You have to be able to lock the
+# current level (have a proper construct for it) before you can reform." So the lock opens only when
+# the bar is full AND a construct of the tier is carried (can_open_seal), and the chosen construct is
+# the keystone set over the forming ring (seal_keystone).
+# Brent 2026-11-03 reversed the rest of that day's ruling ("Every slot should be filled to be fully
+# formed ... Its all or nothing at each level") and the closed-word rule: "Forcing all valence to be
+# filled is not right. Also, forcing the ring to be complete is wrong. let them bind and close no
+# matter what." So the bind needs only the keystone chosen and no hard rule broken (RuneRules.
+# can_seal: a rune over its valence, refused affinities, bonds across rings that do not touch, a ring
+# over its room, runes on a ring the skill lacks). Open bonds, empty places, runes joined to nothing
+# and a new ring with no rune at all are allowed (bond_v2 seal_needs_closed / seal_needs_full_rings
+# false). It locks all of it - or, if the roll fails, nothing. Test characters follow the same rule.
+# A skill from an older save loads as it is, and its next lock starts from what it has.
 # Whether a change is allowed, and what the word is, is asked of the rule set in force
 # (Runes.active()).
 
@@ -5085,7 +5089,8 @@ func open_seal(index: int, construct_index: int = -1) -> Dictionary:
 
 
 ## The keystone this level lock will set over its forming ring: {ring, tier, concept, construct,
-## set (every ring up to it full, so it sits over the ring), label}; {} when none is chosen yet.
+## set (it sits over the ring - at once since Brent 2026-11-03; only with seal_needs_full_rings does it
+## wait for every ring up to it to be full), label}; {} when none is chosen yet.
 func seal_keystone() -> Dictionary:
 	var c: int = seal_construct()
 	if seal_mode() != "bind" or c < 0 or c >= constructs.size():
@@ -5141,9 +5146,10 @@ func draft_changed() -> bool:
 	return RuneWord.shape_key(seal_draft["word"]) != RuneWord.shape_key(_draft_from(sealing_index()))
 
 
-## May the level lock be bound? All or nothing (Brent 2026-10-24): every ring up to the new one full,
-## the word a seal the rules accept (closed, every bond valid), and the keystone - a construct of the
-## right tier - chosen. The reasons come in that order. {ok, reason, text}.
+## May the level lock be bound? Brent 2026-11-03 ("let them bind and close no matter what"): the
+## draft a seal the rules accept (no hard rule broken - RuneRules.can_seal; full rings and a closed
+## word only where bond_v2's switches still ask them), then the keystone - a construct of the right
+## tier - chosen. The reasons come in that order. {ok, reason, text}.
 func can_bind_seal() -> Dictionary:
 	if seal_mode() != "bind":
 		return RuneRules.no("not_sealing", "No level lock is being formed.")
@@ -5157,38 +5163,24 @@ func _can_bind(ctx: RuneContext) -> Dictionary:
 	var need: String = pending_tier(abilities[sealing_index()])
 	var c: int = seal_construct()
 	if c < 0 or c >= constructs.size() or need != str(constructs[c]["tier"]):
-		return RuneRules.no("no_keystone", "Every ring is full and the word is closed: choose the %s to set over ring %d as its keystone, then bind." % [need, ctx.forming])
+		return RuneRules.no("no_keystone", "Choose the %s to set over ring %d as its keystone, then bind." % [need, ctx.forming])
 	return r
 
 
 ## Bind the chosen construct and, if the bind takes, seal the draft as the skill's word: one ring per
 ## level, locked together (the only bind in the game). A failed bind (the existing roll) forms no
 ## seal: the word stays as it was and the construct is gone. Returns what _bind_construct returns
-## ("bound", "failed", ...) or why it could not be tried.
+## ("bound", "failed", ...) or why it could not be tried. (test_bind_unclosed, the test hook that
+## waived the closed-word rule, went on 2026-11-03: every bind is like that now.)
 func bind_seal(roll: float = -1.0) -> String:
-	return _bind_seal(roll, false)
-
-
-## TEST HOOK, code only (cast_every_skill and the self-test build big words with it; no screen and
-## no key reaches it): bind_seal for a test character with the closed-word rule waived. Everything
-## else is the real level lock - a construct of the tier, the roll, rings built inside out, one ring
-## per lock.
-func test_bind_unclosed(roll: float = 0.0) -> String:
-	if not test_character:
-		return "only a test character may seal an open word"
-	return _bind_seal(roll, true)
-
-
-func _bind_seal(roll: float, waive_closure: bool) -> String:
 	if seal_mode() != "bind":
 		return "No level lock is being formed."
 	var index: int = sealing_index()
 	var ctx: RuneContext = rune_context(index)
-	ctx.closure_waived = waive_closure
 	var check: Dictionary = _can_bind(ctx)
 	if not bool(check["ok"]):
 		return str(check["text"])
-	# the whole level as it will lock: every reworked ring, the new ring full, the keystone over it
+	# the whole level as it will lock: every reworked ring, the new ring as built, the keystone over it
 	var draft: Dictionary = draft_with_keystone()
 	var ks: Dictionary = seal_keystone()
 	var result: String = _bind_construct(index, seal_construct(), roll)
@@ -5197,7 +5189,6 @@ func _bind_seal(roll: float, waive_closure: bool) -> String:
 	var skill: String = str(GameData.ability(str(st["id"])).get("name", "?"))
 	if result == "bound":
 		var after: RuneContext = RuneContext.of(st, affinities)
-		after.closure_waived = waive_closure
 		var r: Dictionary = Runes.active().seal(draft, after, int(st["stage"]))
 		if bool(r["ok"]):
 			st["word"] = draft

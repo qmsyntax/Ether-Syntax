@@ -76,23 +76,39 @@ RING_RULES = OrderedDict([
     # ring of 5 or more, row 56) can ever form. "own": each ring holds exactly its adds (3, 2, 2, 2):
     # total +2 per level, as row 52 words it, but no ring past the first can be great.
     ("ring_capacity", "grows"),
-    # [MODEL] the skill's own rune can only bond to ring 1, so it counts as filled once it holds as
-    # many bonds as ring 1 has places (a four-bond rune would otherwise never close at level 1)
+    # [MODEL] the skill's own rune counts as filled once it holds as many bonds as the rings it can
+    # reach have places (ring 1 alone without anchor_bonds_any_ring; a four-bond rune would otherwise
+    # never close at level 1). Only "closed" reads it, and closed is a description since 2026-11-03.
     ("anchor_fills_by_ring", True),
-    # [MODEL] a seal is formed only from a closed word (the old lock rule, Bond Rules B36)
-    ("seal_needs_closed", True),
+    # [B] Brent 2026-11-03 ("Forcing all valence to be filled is not right ... let them bind and close
+    # no matter what"): a seal no longer has to be a closed word. Reverses the old lock rule (Bond
+    # Rules B36, still read by bond_v1 as lock_needs_closed). True puts the old rule back.
+    ("seal_needs_closed", False),
+    # [B] Brent 2026-11-03 ("forcing the ring to be complete is wrong"): a level locks with empty
+    # places on its rings, and ring k takes runes at the level-k lock whether or not ring k-1 is full.
+    # Reverses Brent 2026-10-24 ("Every slot should be filled to be fully formed ... all or nothing").
+    # True puts full rings back as a requirement.
+    ("seal_needs_full_rings", False),
+    # [B] Brent 2026-11-03 ("the base run may need to have valence added each new ring so it can
+    # connect directly. At least one."): the skill's own rune (ring 0) gains this much valence for
+    # each ring the skill has beyond ring 1. [MODEL] 1, the least he named.
+    ("anchor_valence_per_ring", 1),
+    # [B] Brent 2026-11-03 (same quote): the skill's own rune may bond straight to a rune on ANY
+    # ring, not only ring 1. Every other rune keeps the adjacent-ring rule.
+    ("anchor_bonds_any_ring", True),
 ])
 
 # The keystone (Brent 2026-10-24, design/14 section 12: "Every slot should be filled to be fully
 # formed. Then a vestige is placed over the top with its effect being worth more than a regular
-# rune...and that locks the level"). NOT IN THE WORKBOOK YET: Brent adds these rows to Bond Rules by
+# rune...and that locks the level"; the full-ring half reversed by Brent 2026-11-03, see
+# seal_needs_full_rings above). NOT IN THE WORKBOOK YET: Brent adds these rows to Bond Rules by
 # hand (Excel open, Excel COM only); until then they live here. When they are in the sheet, read
 # them from it like the rings and on/off rows and drop this table. game/scripts/runes/ring_rules.gd
 # reads them (keystone_weight, keystone_effect).
 KEYSTONE_RULES = OrderedDict([
-    ("_note", "Brent 2026-10-24 (design/14 section 12): once every place of the forming ring holds a rune, the chosen construct "
-              "(vestige at lock 1, remnant at 2, then spirit, eidolon, asura) is set over that ring as its keystone and sealed with "
-              "the word. Its concept's effect counts for more than a regular rune's: every multiplier of the concept (constructs.json "
+    ("_note", "Brent 2026-10-24 (design/14 section 12): the chosen construct "
+              "(vestige at lock 1, remnant at 2, then spirit, eidolon, asura) is set over the forming ring as its keystone and sealed with "
+              "the word (since Brent 2026-11-03 the ring need not be full). Its concept's effect counts for more than a regular rune's: every multiplier of the concept (constructs.json "
               "concepts.mods, or its fallback) has its distance from 1 scaled by the tier's weight, weight = weight_base + "
               "weight_per_tier x the tier's place (vestige 0 ... asura 4), so a vestige of Acceleration's speed x1.5 becomes "
               "x(1 + 0.5 x 1.25) = x1.625. A regular rune works at its strength, at most 1.0 before conversion. No multiplier goes "
@@ -129,7 +145,8 @@ NATURE_WORDS = OrderedDict([("power", "force"), ("reach", "reach"), ("speed", "s
 
 BOND_V2_NOTES = [
     "Runes are sealed when a vestige (or a later construct) is bound into the skill; the word changes the skill only once sealed.",
-    "A level locks only when every place of every ring up to it holds a rune; the construct is set over the full ring as its keystone, and counts for more than any rune.",
+    "A level locks whenever the bind takes: its ring need not be full nor the word closed (Brent 2026-11-03). The construct is set over the ring as its keystone, and counts for more than any rune.",
+    "The skill's own rune gains a bond for each ring past the first and may bond straight to any ring; a rune not joined to the skill does nothing.",
     "Strength = the ring's fade x every bond's transmission on the strongest path to the skill.",
     "An ionic bond hands the weaker rune's whole effect to the stronger one, and what it gives up becomes the stronger rune's strength.",
     "A status lasts longer, and an interrupt also silences, the stronger the rune that adds it.",

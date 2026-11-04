@@ -216,15 +216,15 @@ func _try(id: String, runes: Array[String]) -> Dictionary:
 	return {"cast": cast, "why": why, "hit": hits > 0, "hits": hits, "statuses": statuses, "effect": effect, "sealed": sealed, "seal_why": seal_why, "great": great}
 
 
-## The word, lock by lock (no free edit since Brent 2026-10-23), every ring FULL (Brent 2026-10-24:
-## "Every slot should be filled to be fully formed"): at the first level lock the good runes on ring 1
+## The word, lock by lock (no free edit since Brent 2026-10-23), every ring filled - no longer required
+## (Brent 2026-11-03: "let them bind and close no matter what"), but the fullest word is the most
+## demanding test of the effects: at the first level lock the good runes on ring 1
 ## (joined to the skill's own rune where it has bonds left, else to the first of them), its other
 ## places filled with universal runes, the vestige set over it as the keystone; at the second, a great
 ## ring on ring 2 - a three-bond rune of the skill's affinity and four universal runes bonded round,
 ## the three-bond one joined to a ring-1 rune with a bond to spare - if the rules let it be built (it
-## fills ring 2's five places), else ring 2 filled rune by rune; the remnant set over it. Both binds go
-## through the test hook Player.test_bind_unclosed (a sure roll; the closed-word rule waived,
-## everything else the real lock). Returns {ok, text}.
+## fills ring 2's five places), else ring 2 filled rune by rune; the remnant set over it. Both binds are
+## the real Player.bind_seal with a sure roll (open bonds are allowed since 2026-11-03). Returns {ok, text}.
 func _seal_word(p: Node, index: int, runes: Array[String]) -> Dictionary:
 	p.call("open_seal", index)
 	var placed: Array[int] = []
@@ -236,7 +236,7 @@ func _seal_word(p: Node, index: int, runes: Array[String]) -> Dictionary:
 			placed.append(int(r["node"]))
 	_fill_ring(p, index, 1, placed)
 	_set_keystone(p, index)
-	var lock1: String = str(p.call("test_bind_unclosed", 0.0))
+	var lock1: String = str(p.call("bind_seal", 0.0))
 	if lock1 != "bound":
 		p.call("close_seal")
 		return {"ok": false, "text": "the first lock: " + lock1}
@@ -277,7 +277,7 @@ func _seal_word(p: Node, index: int, runes: Array[String]) -> Dictionary:
 		_one_on_ring2(p, index, RuneWord.ring_nodes(word2, 1), tries)
 	_fill_ring(p, index, 2, [])
 	_set_keystone(p, index)
-	var second: String = str(p.call("test_bind_unclosed", 0.0))
+	var second: String = str(p.call("bind_seal", 0.0))
 	p.call("close_seal")
 	return {"ok": second == "bound", "text": "the second lock: " + second}
 

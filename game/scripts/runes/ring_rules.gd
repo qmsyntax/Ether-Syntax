@@ -6,17 +6,24 @@ extends BondRules
 ##   - ring k holds params.rings[k].adds more runes than the ring inside it ("grows") - or exactly
 ##     its adds ("own"); params.ring_capacity picks the reading (see the exporter);
 ##   - a rune bonds to runes on its own ring and on the rings just inside and outside; the skill's
-##     own rune is ring 0 and bonds only to ring 1;
+##     own rune is ring 0 and (Brent 2026-11-03, params.anchor_bonds_any_ring) bonds straight to a
+##     rune on ANY ring - before that, only to ring 1;
+##   - the skill's own rune gains params.anchor_valence_per_ring bonds for each ring the skill has
+##     beyond ring 1 (Brent 2026-11-03: "the base run may need to have valence added each new ring so
+##     it can connect directly. At least one."; node_valence);
 ##   - a word is closed when every rune's valence is filled - the skill's own rune counting as filled
-##     once it holds as many bonds as ring 1 has places (params.anchor_fills_by_ring);
+##     once it holds as many bonds as the rings it reaches have places (params.anchor_fills_by_ring).
+##     Closed is a description and a reward, not a requirement (Brent 2026-11-03: "Forcing all
+##     valence to be filled is not right"; params.seal_needs_closed false);
 ##   - shape traits (closed ring, great ring, spoke, branch, balanced) are found here, structurally;
 ##     what they do is the effects interaction's (effects_v2);
-##   - the seal is built from the skill outward (Brent 2026-10-23: "You should not be able to build
-##     level 2 until level 1 is fully formed with construct"): no rune is set on ring k until every
-##     ring inside it is formed (ring_formed), and a seal is refused while any ring up to the one
-##     being formed is not;
-##   - a ring is formed only when it is FULL, every place holding a rune (Brent 2026-10-24: "Every
-##     slot should be filled to be fully formed ... Its all or nothing at each level");
+##   - the seal is built from the skill outward BY LEVEL: ring k holds runes only from the level-k
+##     lock on (RuneContext.rings / forming);
+##   - a ring need not be full to lock (Brent 2026-11-03: "forcing the ring to be complete is wrong.
+##     let them bind and close no matter what"; params.seal_needs_full_rings false). This reverses
+##     Brent 2026-10-24 ("Every slot should be filled to be fully formed ... Its all or nothing at
+##     each level"), which made a ring formed only when full and refused ring k while ring k-1 had an
+##     empty place; with seal_needs_full_rings true that rule comes back (ring_formed);
 ##   - each sealed ring carries the construct bound at its lock as its keystone, whose concept's
 ##     effect is weighted above a rune's (params.keystone; keystone_effect, folded into effects).
 ## No numbers here: they are this rule set's params in runes.json.
@@ -90,18 +97,33 @@ func place_ring(word: Dictionary, ctx: RuneContext, to_node: int, ring: int) -> 
 	return tries[0] if not tries.is_empty() else 1
 
 
-# --- building out from the skill (Brent 2026-10-23 and 2026-10-24) ------------------------------
-# One level, one ring, one construct, locked together: ring N+1 is never built before ring N is
-# formed. Brent 2026-10-24: "Every slot should be filled to be fully formed ... Its all or nothing at
-# each level." A ring is formed when every one of its places holds a rune (ring_capacity). The word's
-# own rules still apply on top at the bind: closed, every bond valid, no alignment refused. A ring a
-# rework leaves with an empty place is unformed again until it is filled back.
+# --- building out from the skill (Brent 2026-10-23, 2026-10-24, 2026-11-03) ---------------------
+# One level, one ring, one construct, locked together: ring N+1 takes runes only from the level N+1
+# lock on. Brent 2026-10-24 had every ring FULL before the next could take a rune and before the level
+# could lock ("Every slot should be filled to be fully formed ... Its all or nothing at each level");
+# Brent 2026-11-03 reversed it: "forcing the ring to be complete is wrong. let them bind and close no
+# matter what." So a sealed ring is formed whether or not it is full, and a ring reworked at a later
+# lock may be left with empty places. params.seal_needs_full_rings (false) is the switch: true puts
+# the 2026-10-24 rule back, and then ring_formed means full again. The word's hard rules still apply
+# at the bind (every bond valid, no alignment refused, no ring over its room).
 
-## Ring k is full: every place on it holds a rune (the skill's own ring 0 always is).
-func ring_formed(word: Dictionary, k: int) -> bool:
+## Whether a level lock needs its rings full (params.seal_needs_full_rings; false since 2026-11-03).
+func needs_full_rings() -> bool:
+	return bool(params.get("seal_needs_full_rings", false))
+
+
+## Ring k is full: every place on it holds a rune (the skill's own ring 0 always is). A description
+## (and what a great ring needs room for) since 2026-11-03, not a requirement.
+func ring_full(word: Dictionary, k: int) -> bool:
 	if k <= 0:
 		return true
 	return RuneWord.ring_nodes(word, k).size() >= ring_capacity(k)
+
+
+## Ring k is formed - as far as the lock asks: full where params.seal_needs_full_rings says so, else
+## always (Brent 2026-11-03: a ring binds with empty places).
+func ring_formed(word: Dictionary, k: int) -> bool:
+	return ring_full(word, k) or not needs_full_rings()
 
 
 ## How many of ring k's places hold a rune, and how many it has: "2 of 3".
@@ -131,12 +153,13 @@ func unformed_text(word: Dictionary, gap: int, k: int) -> String:
 		gap, ring_fill_text(word, gap), gap, k]
 
 
-## May this draft be sealed? Everything the rule set asks, and every ring up to the one this level
-## lock forms (and any ring the word holds) full, from the skill outward: all or nothing.
+## May this draft be sealed? Everything the rule set asks (RuneRules.can_seal: no hard rule broken)
+## and - only where params.seal_needs_full_rings is true - every ring up to the one this lock forms
+## full. Since Brent 2026-11-03 the switch is false: a ring binds with empty places.
 func can_seal(word: Dictionary, ctx: RuneContext) -> Dictionary:
 	var r: Dictionary = super.can_seal(word, ctx)
 	# what breaks the rules is said first; then the rings' places, before "close it"
-	if RuneWord.size(word) == 0 or str(r.get("reason", "")) == "problems":
+	if RuneWord.size(word) == 0 or str(r.get("reason", "")) == "problems" or not needs_full_rings():
 		return r
 	var upto: int = maxi(ctx.forming, RuneWord.outer_ring(word))
 	var gap: int = first_unformed(word, upto)
@@ -278,18 +301,29 @@ static func _is_num(v: Variant) -> bool:
 	return typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT
 
 
-## Two rings a bond may span: the same, or next to each other.
+## Two rings a bond between ordinary runes may span: the same, or next to each other.
 static func rings_meet(ra: int, rb: int) -> bool:
 	return absi(ra - rb) <= 1
+
+
+## Two rings a bond may span under these rules: rings_meet, and - Brent 2026-11-03 ("so it can
+## connect directly"), params.anchor_bonds_any_ring - the skill's own rune (ring 0) to any ring.
+func rings_bond(ra: int, rb: int) -> bool:
+	if ra == 0 and rb == 0:
+		return false
+	if (ra == 0 or rb == 0) and bool(params.get("anchor_bonds_any_ring", false)):
+		return true
+	return rings_meet(ra, rb)
 
 
 func _apart(word: Dictionary, a: int, b: int) -> Dictionary:
 	var ra: int = RuneWord.ring(word, a)
 	var rb: int = RuneWord.ring(word, b)
-	if rings_meet(ra, rb) and not (ra == 0 and rb == 0):
+	if rings_bond(ra, rb):
 		return ok()
-	return no("rings_apart", "%s is %s and %s %s: a rune bonds only on its own ring and the rings just inside and outside." % [
-		rune_name(word, a), _ring_words(ra), rune_name(word, b), _ring_words(rb)])
+	return no("rings_apart", "%s is %s and %s %s: a rune bonds only on its own ring and the rings just inside and outside%s." % [
+		rune_name(word, a), _ring_words(ra), rune_name(word, b), _ring_words(rb),
+		" (only the skill's own rune reaches any ring)" if bool(params.get("anchor_bonds_any_ring", false)) else ""])
 
 
 static func _ring_words(k: int) -> String:
@@ -303,7 +337,7 @@ func _can_add(word: Dictionary, rune_id: String, ctx: RuneContext, to_node: int,
 		return no("ring", "Ring %d is not open: this skill has %d ring%s." % [ring, ctx.rings, "" if ctx.rings == 1 else "s"])
 	if not _room(word, ring):
 		return no("ring_full", "Ring %d is full: it holds %d rune%s." % [ring, ring_capacity(ring), "" if ring_capacity(ring) == 1 else "s"])
-	if to_node >= 0 and not rings_meet(RuneWord.ring(word, to_node), ring):
+	if to_node >= 0 and not rings_bond(RuneWord.ring(word, to_node), ring):
 		return no("rings_apart", "%s is %s; ring %d is too far out to bond to it." % [rune_name(word, to_node), _ring_words(RuneWord.ring(word, to_node)), ring])
 	var gap: int = unformed_below(word, ring)
 	if gap > 0:
@@ -318,12 +352,38 @@ func _can_link(word: Dictionary, a: int, b: int, ctx: RuneContext) -> Dictionary
 	return super._can_link(word, a, b, ctx)
 
 
-## Bonds the skill's own rune needs before the word can close.
-func anchor_needs(word: Dictionary) -> int:
-	var v: int = valence(RuneWord.node_id(word, 0))
-	if bool(params.get("anchor_fills_by_ring", true)):
-		return mini(v, ring_capacity(1))
-	return v
+## How many rings the skill has for this word: the context's (the forming ring included at a lock),
+## or - without one - what the word itself was sealed through or holds runes on.
+static func rings_held(word: Dictionary, ctx: RuneContext = null) -> int:
+	return maxi(ctx.rings if ctx != null else 0, maxi(RuneWord.sealed(word), RuneWord.outer_ring(word)))
+
+
+## The extra bonds the skill's own rune has: params.anchor_valence_per_ring for each ring beyond ring
+## 1 (Brent 2026-11-03: "the base run may need to have valence added each new ring so it can connect
+## directly. At least one.").
+func anchor_extra(word: Dictionary, ctx: RuneContext = null) -> int:
+	return int(params.get("anchor_valence_per_ring", 0)) * maxi(0, rings_held(word, ctx) - 1)
+
+
+## The skill's own rune grows with the rings (anchor_extra); every other rune has its valence.
+func node_valence(word: Dictionary, i: int, ctx: RuneContext = null) -> int:
+	var v: int = valence(RuneWord.node_id(word, i))
+	return v + anchor_extra(word, ctx) if i == 0 else v
+
+
+## Bonds the skill's own rune needs before the word is closed (a description since 2026-11-03): its
+## valence with the rings' extra, at most the places it can reach (params.anchor_fills_by_ring) - ring
+## 1's alone, or every ring's when it bonds to any ring.
+func anchor_needs(word: Dictionary, ctx: RuneContext = null) -> int:
+	var v: int = node_valence(word, 0, ctx)
+	if not bool(params.get("anchor_fills_by_ring", true)):
+		return v
+	var reach: int = ring_capacity(1)
+	if bool(params.get("anchor_bonds_any_ring", false)):
+		reach = 0
+		for k: int in range(1, maxi(1, rings_held(word, ctx)) + 1):
+			reach += ring_capacity(k)
+	return mini(v, reach)
 
 
 func _word_state(word: Dictionary, ctx: RuneContext) -> Dictionary:
@@ -331,12 +391,12 @@ func _word_state(word: Dictionary, ctx: RuneContext) -> Dictionary:
 	var lines: Array = []
 	var open := 0
 	for i: int in RuneWord.size(word):
-		var rid: String = RuneWord.node_id(word, i)
+		var v: int = node_valence(word, i, ctx)
 		var deg: int = RuneWord.degree(word, i)
-		if deg > valence(rid):
-			problems.append("%s has %d bonds; its valence is %d." % [rune_name(word, i), deg, valence(rid)])
+		if deg > v:
+			problems.append("%s has %d bonds; its valence is %d." % [rune_name(word, i), deg, v])
 		else:
-			open += maxi(0, (anchor_needs(word) if i == 0 else valence(rid)) - deg)
+			open += maxi(0, (anchor_needs(word, ctx) if i == 0 else v) - deg)
 	for l: Dictionary in RuneWord.links(word):
 		var a: int = int(l["a"])
 		var b: int = int(l["b"])
@@ -364,19 +424,33 @@ func _word_state(word: Dictionary, ctx: RuneContext) -> Dictionary:
 	var closed: bool = problems.is_empty() and open == 0 and (joined or not needs_joined) and RuneWord.size(word) > 1
 	if not counts.is_empty():
 		lines.append(",  ".join(PackedStringArray(counts)) + ".")
+	# Brent 2026-11-03: open bonds, empty places and loose runes are information, not a bar to the bind
+	var strict: bool = _needs_closed()
 	if open > 0:
-		lines.append("%d open bond%s to fill." % [open, "" if open == 1 else "s"])
+		lines.append(("%d open bond%s to fill." if strict else "%d bond%s still open - optional; an open bond carries nothing.") % [open, "" if open == 1 else "s"])
 	if not joined:
-		lines.append("Not every rune is joined to the skill%s." % (" - a closed word is one piece" if needs_joined else ""))
-	var gap: int = first_unformed(word, maxi(ctx.forming, RuneWord.outer_ring(word)))
-	if gap > 0:
-		lines.append("Ring %d is not full yet (%s): every place must hold a rune%s." % [gap, ring_fill_text(word, gap),
-			" before the rings outside it can hold runes" if gap < maxi(ctx.forming, RuneWord.outer_ring(word)) else ""])
+		lines.append(("Not every rune is joined to the skill%s." % (" - a closed word is one piece" if needs_joined else "")) if strict
+			else "Not every rune is joined to the skill - a rune joined to nothing does nothing.")
+	var upto: int = maxi(ctx.forming, RuneWord.outer_ring(word))
+	if needs_full_rings():
+		var gap: int = first_unformed(word, upto)
+		if gap > 0:
+			lines.append("Ring %d is not full yet (%s): every place must hold a rune%s." % [gap, ring_fill_text(word, gap),
+				" before the rings outside it can hold runes" if gap < upto else ""])
+	else:
+		var empty: Array[String] = []
+		for k2: int in range(1, mini(upto, ctx.rings) + 1):
+			if not ring_full(word, k2):
+				empty.append("ring %d" % k2)
+		if not empty.is_empty():
+			lines.append("Empty places on %s - allowed; a full ring can be bonded round for a closed ring." % " and ".join(PackedStringArray(empty)))
 	var traits: Array = []
 	for t: Dictionary in shape_traits(word):
 		traits.append(str(t["text"]))
-	return {"closed": closed, "label": "closed - it can be sealed" if closed else "open - not a word yet", "problems": problems, "lines": lines,
-		"traits": traits}
+	var label: String = "closed - it can be sealed" if closed else "open - not a word yet"
+	if not strict:
+		label = "closed - every bond filled" if closed else "open - it can still be sealed"
+	return {"closed": closed, "label": label, "problems": problems, "lines": lines, "traits": traits}
 
 
 # --- shape traits ----------------------------------------------------------------------------

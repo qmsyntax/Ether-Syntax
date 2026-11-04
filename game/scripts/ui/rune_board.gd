@@ -583,7 +583,7 @@ func _draw() -> void:
 		UiDraw.outlined(self, Vector2(16.0, ty), "NO WORD YET", 15, Color(UiTheme.TEXT_DIM, 0.9), HORIZONTAL_ALIGNMENT_LEFT, -1.0)
 	ty += 24.0
 	if mode != "view" and closed and n > 1:
-		UiDraw.outlined(self, Vector2(16.0, ty), "CLOSED  -  ready to seal", 14, Color(UiTheme.GOOD, 0.9), HORIZONTAL_ALIGNMENT_LEFT, -1.0)
+		UiDraw.outlined(self, Vector2(16.0, ty), "CLOSED  -  every bond filled", 14, Color(UiTheme.GOOD, 0.9), HORIZONTAL_ALIGNMENT_LEFT, -1.0)
 		ty += 20.0
 	ty += 6.0
 	for rl: Array in _ring_labels:
@@ -633,7 +633,8 @@ func _draw_rings(c: Vector2, word_d: Dictionary, ctx: RuneContext, col: Color) -
 	for k: int in range(1, _ring_r.size()):
 		var r: float = _ring_r[k]
 		var is_sealed: bool = k <= sealed_n
-		# the ring this lock forms (every place filled before the level can lock - Brent 2026-10-24)
+		# the ring this lock forms (since Brent 2026-11-03 it locks with empty places; it "waits" for an
+		# inner ring only where the rules still ask for full rings)
 		var forming: bool = mode == "bind" and k > sealed_n and k <= ctx.forming
 		var waits: int = (rules_ring().unformed_below(word_d, k) if rules_ring() != null else 0) if forming else 0
 		var fill: String = rules_ring().ring_fill_text(word_d, k) if rules_ring() != null else ""
@@ -703,8 +704,9 @@ func _keystone_pos(k: int) -> Vector2:
 	return c + Vector2(0.0, -r)
 
 
-## Each sealed ring's keystone, and at a lock the one being set over the forming ring: set (every ring
-## up to it full), waiting above it (chosen, the ring not full yet), or an empty socket (none chosen).
+## Each sealed ring's keystone, and at a lock the one being set over the forming ring: set (at once
+## since Brent 2026-11-03), waiting above it (only where the rules still ask for full rings and one is
+## not), or an empty socket (none chosen).
 ## What each is and does is written in the list top left (_keystone_labels), never over the rings.
 func _draw_keystones(_c: Vector2, word: Dictionary, ctx: RuneContext) -> void:
 	var mode: String = _mode()

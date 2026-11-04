@@ -3164,12 +3164,10 @@ func _shot_surge_first() -> void:
 
 ## For screenshots: seal a word on skill `index` as if it had been bound in, lock by lock (the skill
 ## is raised to `stage` first). Rows are [rune, joined to row (0 = the skill's own rune, 1 = the first
-## row ...), ring (optional)], inside out; `links` are extra [row a, row b] bonds. Every ring is full
-## (Brent 2026-10-24): before a row goes on ring k, the empty places of the rings inside it are filled
-## with SHOT_FILLER runes, set alone (so they change nothing the shot shows), and so are the rings left
-## with empty places at the end; each ring gets a keystone (`concepts`, else the concepts in turn).
-## Shot setup only: the rules are asked for every rune and bond (rings are built from the skill
-## outward) and the closed-word rule is waived (RuneContext.closure_waived), as the test hook does; no
+## row ...), ring (optional)], inside out; `links` are extra [row a, row b] bonds. Each ring gets a
+## keystone (`concepts`, else the concepts in turn). Only where the rule set still asks for full rings
+## (bond_v2 seal_needs_full_rings; false since Brent 2026-11-03) are the empty places filled with
+## SHOT_FILLER runes, set alone. Shot setup only: the rules are asked for every rune and bond; no
 ## screen reaches this.
 const SHOT_FILLER := "UNI-19a"
 
@@ -3181,7 +3179,6 @@ func _shot_seal(index: int, stage: int, rows: Array, links: Array = [], concepts
 	var rules: RuneRules = Runes.active()
 	var rr: RingRules = rules as RingRules
 	var ctx: RuneContext = player.call("rune_context", index)
-	ctx.closure_waived = true
 	var at: Dictionary = {0: 0}               # row -> node
 	for ri: int in rows.size():
 		var row: Array = rows[ri]
@@ -3224,10 +3221,11 @@ func _shot_ring(w: Dictionary, ctx: RuneContext, to: int) -> int:
 	return tr
 
 
-## Fill every empty place of rings 1..`upto` with the shot filler, set alone.
+## Fill every empty place of rings 1..`upto` with the shot filler, set alone - only where the rules
+## still ask for full rings.
 func _shot_fill(w: Dictionary, ctx: RuneContext, upto: int) -> void:
 	var rr: RingRules = Runes.active() as RingRules
-	if rr == null:
+	if rr == null or not rr.needs_full_rings():
 		return
 	for k: int in range(1, upto + 1):
 		while RuneWord.ring_nodes(w, k).size() < rr.ring_capacity(k):
@@ -3289,13 +3287,17 @@ func _shot_skill(id: String) -> int:
 ##   seal-palette       the palette of a new character: what it knows, and the "?" it has yet to find
 ##   seal-lock-main     a water test character's ethercosm (Brent 2026-10-23): Breaker's bar full, "ready
 ##                      for its level 1 lock", one "Open the seal" button and no bind buttons
-##   seal-lock-first    its seal at the first lock: ring 1 part-filled (2 of 3 places), the vestige
-##                      waiting above it, Bind disabled with the reason (Brent 2026-10-24: full rings)
+##   seal-lock-first    its seal at the first lock: ring 1 part-filled (2 of 3 places), the vestige set
+##                      over it and Bind live all the same (Brent 2026-11-03: "let them bind and close no
+##                      matter what"; it was disabled under the full-ring rule of 2026-10-24)
 ##   seal-lock-keystone the first lock with every place of ring 1 filled, the word closed and the vestige
 ##                      set over it as the keystone: Bind live
 ##   seal-lock-second   the second lock, by the real flow (ring 1 full, closed and bound under a vestige,
 ##                      the bar refilled - a test override): ring 1 reworked, ring 2 full and closed, the
 ##                      remnant set over it
+##   seal-lock-open     the second lock under Brent's 2026-11-03 rules: ring 1 bound 2 of 3 with open
+##                      bonds, then ring 2 only 2 of 5 - Drown bonded straight to the skill's own rune
+##                      (its third bond, gained with ring 2), Settle off Heave - the remnant set, Bind live
 ##   seal-lock-missing  a new character's main page: the bar full, no vestige carried - what is missing,
 ##                      and no way into the lock
 func _setup_seal_shot(which: String) -> void:
@@ -3436,8 +3438,23 @@ func _setup_lock_shot(what: String) -> void:
 			_shot_surge_first()
 			open_ethercosm()
 			screen.call("select", 0)
+		"open":
+			# Brent 2026-11-03: lock 1 bound with ring 1 part-filled and open bonds, then lock 2 with the
+			# skill's own rune bonded straight to a ring 2 rune and ring 2 far from full: Bind live
+			start_test_character("water")
+			_shot_surge_first()
+			open_seal(0)
+			player.call("word_add", 0, "WAT-1a", 0, 1)       # Flood on ring 1, joined to the skill
+			player.call("word_add", 0, "WAT-4a", 0, 1)       # Heave on ring 1, joined to the skill
+			_shot_keystone("acceleration")
+			screen.call("bind_and_seal", 0.0)                # ring 1 binds 2 of 3, Flood's bonds open
+			player.call("word_add", 0, "WAT-4b", 0, 2)       # Drown on ring 2, bonded straight to the skill
+			player.call("word_add", 0, "WAT-6b", 2, 2)       # Settle on ring 2, off Heave
+			_shot_keystone("reach")
+			screen.call("deselect")
+			_shot_countdown = 70
 		"first":
-			# ring 1 part-filled (2 of 3 places), the vestige chosen and waiting above it: Bind says why not
+			# ring 1 part-filled (2 of 3 places), the vestige chosen and set: Bind live (Brent 2026-11-03)
 			start_test_character("water")
 			_shot_surge_first()
 			open_seal(0)

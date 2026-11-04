@@ -1,8 +1,10 @@
 class_name FullRings
 extends RefCounted
-## Test helpers for the full-ring level lock (Brent 2026-10-24, design/14 section 12: "Every slot
-## should be filled to be fully formed ... Its all or nothing at each level"). Tests only - the game
-## never builds a word for the player.
+## Test helpers that build the fullest word a level lock can take: every place filled and every bond
+## closed. Full rings were a requirement from Brent 2026-10-24 ("Every slot should be filled to be fully
+## formed") until Brent 2026-11-03 ("forcing the ring to be complete is wrong"); now they are a shape
+## the tests still build, because it exercises the most of the rules. Tests only - the game never
+## builds a word for the player.
 ##
 ##   pattern(anchor, rings, pool, rules)  a CLOSED word with every place of rings 1..`rings` filled,
 ##                                        built to a plan from runes of `pool` (repeats allowed): ring 1
@@ -56,11 +58,23 @@ static func _pick(by_v: Dictionary, v: int, n: int) -> String:
 	return str(list[n % list.size()])
 
 
+## A context of `rings` rings, for what the skill's own rune needs at that level (it gains bonds with
+## the rings since Brent 2026-11-03: RingRules.anchor_extra).
+static func _ctx(rings: int) -> RuneContext:
+	var c := RuneContext.new()
+	c.rings = rings
+	c.forming = rings
+	return c
+
+
 ## A closed word, every place of rings 1..`rings` filled, from `pool`. {} if the plan cannot be made.
+## The skill's own rune fills what ring 1 can take of its bonds; the bonds it gains with later rings
+## (Brent 2026-11-03) go straight to runes of those rings, the least-bonded first.
 static func pattern(anchor: String, rings: int, pool: Array, rules: RingRules) -> Dictionary:
 	var by_v: Dictionary = _aligned(anchor, _by_valence(anchor, pool, rules), rules)
 	var w: Dictionary = RuneWord.make(anchor, rules.id)
-	var a: int = rules.anchor_needs(w)
+	var a: int = rules.anchor_needs(w, _ctx(1))
+	var a_rest: int = rules.anchor_needs(w, _ctx(rings)) - a
 	var n1: int = rules.ring_capacity(1)
 	if n1 != 3:
 		return {}             # the plan below is for a ring 1 of three places
@@ -130,26 +144,45 @@ static func pattern(anchor: String, rings: int, pool: Array, rules: RingRules) -
 		var last: bool = k == rings
 		var ids: Array[int] = []
 		var cycle: bool = by_v.has(3) and by_v.has(2)
+		if not cycle and (not by_v.has(2) or (last and not by_v.has(1))):
+			return {}
+		var degs: Array[int] = []
+		for j: int in n:
+			if cycle:
+				degs.append(3 if j == 0 or (j == 2 and not last) else 2)
+			else:
+				degs.append(1 if last and j == n - 1 else 2)
+		# the skill's own rune's later bonds, shared over the rings left, each to the least-bonded rune
+		var share: int = ceili(float(a_rest) / float(rings - k + 1)) if a_rest > 0 else 0
+		share = mini(share, n - 1)
+		a_rest -= share
+		var to_anchor: Array[int] = []
+		for s3: int in share:
+			var best: int = -1
+			for j5: int in range(1, n):
+				if not to_anchor.has(j5) and (best < 0 or degs[j5] < degs[best]):
+					best = j5
+			to_anchor.append(best)
+			degs[best] += 1
+		for j6: int in n:
+			if not by_v.has(degs[j6]):
+				return {}
+			ids.append(RuneWord.add_node(w, _pick(by_v, degs[j6], count), k))
+			count += 1
 		if cycle:
-			for j: int in n:
-				var dj: int = 3 if j == 0 or (j == 2 and not last) else 2
-				ids.append(RuneWord.add_node(w, _pick(by_v, dj, count), k))
-				count += 1
 			for j2: int in n:
 				RuneWord.add_link(w, ids[j2], ids[(j2 + 1) % n])
 			RuneWord.add_link(w, out_from, ids[0])
 			out_from = ids[2] if not last else -1
 		else:
-			if not by_v.has(2) or (last and not by_v.has(1)):
-				return {}
-			for j3: int in n:
-				var dj2: int = 1 if last and j3 == n - 1 else 2
-				ids.append(RuneWord.add_node(w, _pick(by_v, dj2, count), k))
-				count += 1
 			for j4: int in n - 1:
 				RuneWord.add_link(w, ids[j4], ids[j4 + 1])
 			RuneWord.add_link(w, out_from, ids[0])
 			out_from = ids[n - 1] if not last else -1
+		for j7: int in to_anchor:
+			RuneWord.add_link(w, 0, ids[j7])
+	if a_rest > 0:
+		return {}
 	return w
 
 
@@ -181,7 +214,7 @@ static func solve(anchor: String, rings: int, pool: Array, rules: RingRules) -> 
 		kinds.append(id)
 	if kinds.is_empty():
 		return {}
-	var a: int = rules.anchor_needs(RuneWord.make(anchor, rules.id))
+	var a: int = rules.anchor_needs(RuneWord.make(anchor, rules.id), _ctx(rings))
 	var per_ring: Array = []
 	for k: int in range(1, rings + 1):
 		per_ring.append(_multisets(kinds.size(), rules.ring_capacity(k)))
@@ -222,7 +255,7 @@ static func _realise(anchor: String, kinds: Array[String], choice: Array, a: int
 	var edges: Array = []
 	for i: int in n:
 		for j: int in range(i + 1, n):
-			if RingRules.rings_meet(rs[i], rs[j]) and not (rs[i] == 0 and rs[j] == 0) and rules.alignment_state(ids[i], ids[j]) != "refused":
+			if rules.rings_bond(rs[i], rs[j]) and rules.alignment_state(ids[i], ids[j]) != "refused":
 				edges.append([i, j])
 	var left: Array[int] = []
 	left.resize(n)

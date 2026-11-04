@@ -222,7 +222,8 @@ func _process(_delta: float) -> void:
 			_expect("a test character knows every rune", (player.call("rune_palette") as Array).all(func(id: String) -> bool: return bool(player.call("knows_rune", id))))
 			var anchor: String = GameData.skill_anchor(str(((player.get("abilities") as Array)[0] as Dictionary)["id"]))
 			var rules: RingRules = Runes.active() as RingRules
-			# a closed word with every place of ring 1 filled (Brent 2026-10-24), planned from the
+			# a closed word with every place of ring 1 filled (the fullest shape; no longer required since
+			# Brent 2026-11-03 - ui_click_probe binds a part-filled, open ring), planned from the
 			# affinity's own runes (the palette tab shown) and then made by clicks and drags only
 			var mine: Array = (player.call("rune_palette") as Array).filter(func(id: String) -> bool: return str(GameData.rune(id).get("affinity", "")) == AFF)
 			var plan: Dictionary = FullRings.pattern(anchor, 1, mine, rules)

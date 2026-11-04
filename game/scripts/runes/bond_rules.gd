@@ -96,29 +96,35 @@ func _pair(rune_a: String, rune_b: String) -> Dictionary:
 	return ok()
 
 
-func _full(word: Dictionary, i: int) -> Dictionary:
-	var rid: String = RuneWord.node_id(word, i)
-	if RuneWord.degree(word, i) >= valence(rid):
-		return no("valence_full", "%s is full: valence %d, every bond taken." % [rune_name(word, i), valence(rid)])
+## How many bonds rune `i` of the word may make in this context: its valence (a rule set with rings
+## grows the skill's own rune with them - RingRules).
+func node_valence(word: Dictionary, i: int, _ctx: RuneContext = null) -> int:
+	return valence(RuneWord.node_id(word, i))
+
+
+func _full(word: Dictionary, i: int, ctx: RuneContext = null) -> Dictionary:
+	var v: int = node_valence(word, i, ctx)
+	if RuneWord.degree(word, i) >= v:
+		return no("valence_full", "%s is full: valence %d, every bond taken." % [rune_name(word, i), v])
 	return ok()
 
 
 # --- RuneRules ----------------------------------------------------------------------------
 
-func _can_add(word: Dictionary, rune_id: String, _ctx: RuneContext, to_node: int, _ring: int) -> Dictionary:
+func _can_add(word: Dictionary, rune_id: String, ctx: RuneContext, to_node: int, _ring: int) -> Dictionary:
 	if not bool(params.get("allow_repeats", true)) and RuneWord.nodes(word).has(rune_id):
 		return no("repeat", "%s is already in the word." % str(GameData.rune(rune_id).get("name", rune_id)))
 	if to_node >= 0:
-		var full: Dictionary = _full(word, to_node)
+		var full: Dictionary = _full(word, to_node, ctx)
 		if not bool(full["ok"]):
 			return full
 		return _pair(RuneWord.node_id(word, to_node), rune_id)
 	return ok()
 
 
-func _can_link(word: Dictionary, a: int, b: int, _ctx: RuneContext) -> Dictionary:
+func _can_link(word: Dictionary, a: int, b: int, ctx: RuneContext) -> Dictionary:
 	for i: int in [a, b]:
-		var full: Dictionary = _full(word, i)
+		var full: Dictionary = _full(word, i, ctx)
 		if not bool(full["ok"]):
 			return full
 	return _pair(RuneWord.node_id(word, a), RuneWord.node_id(word, b))
@@ -161,12 +167,13 @@ static func relation(kind: String, more: String, less: String) -> String:
 	return "%s: %s and %s blend" % [kind, more, less]
 
 
-func _describe_node(word: Dictionary, i: int, _ctx: RuneContext) -> Dictionary:
+func _describe_node(word: Dictionary, i: int, ctx: RuneContext) -> Dictionary:
 	var rid: String = RuneWord.node_id(word, i)
-	var d: Dictionary = {"sockets": valence(rid), "used": RuneWord.degree(word, i), "badges": []}
+	var v: int = node_valence(word, i, ctx)
+	var d: Dictionary = {"sockets": v, "used": RuneWord.degree(word, i), "badges": []}
 	if bool(GameData.rune(rid).get("placeholder", false)):
 		(d["badges"] as Array).append("placeholder")
-	if RuneWord.degree(word, i) > valence(rid):
+	if RuneWord.degree(word, i) > v:
 		(d["badges"] as Array).append("over")
 	return d
 

@@ -1,6 +1,7 @@
 extends Node
-## Can a NEW character fill its starting skills' rings? (Brent 2026-10-24, design/14 section 12: a
-## level locks only when every place of every ring up to it holds a rune and the word is closed.) For
+## Can a NEW character fill its starting skills' rings? (Brent 2026-10-24, design/14 section 12, made
+## full rings and a closed word a requirement; Brent 2026-11-03 dropped both - a lock binds as it stands
+## - so this is now a report on whether the fullest shape, a reward, is within a new character's reach.) For
 ## every affinity and every pair of root skills a single-affinity prime can start with, a fresh
 ## character is made through the real start (Player.start_with_skills, which grants the starting
 ## runes), and for each of its two skills the exhaustive search FullRings.solve asks: is there a
