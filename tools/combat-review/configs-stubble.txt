@@ -1,0 +1,11 @@
+--scenario=stubble --aff=water --meditate=1 --minutes=6 --tag=S
+--scenario=stubble --aff=fire --meditate=1 --minutes=6 --tag=S
+--scenario=stubble --aff=earth --meditate=1 --minutes=6 --tag=S
+--scenario=stubble --aff=wind --meditate=1 --minutes=6 --tag=S
+--scenario=stubble --aff=dark --meditate=1 --minutes=6 --tag=S
+--scenario=stubble --aff=life --meditate=1 --minutes=6 --tag=S
+--scenario=stubble --aff=death --meditate=1 --minutes=6 --tag=S
+--scenario=stubble --aff=light --meditate=1 --minutes=6 --tag=S
+--scenario=stubble --aff=water --meditate=0 --press=eager --minutes=6 --tag=S-nomed-eager
+--scenario=stubble --aff=water --tier=mid --meditate=1 --minutes=6 --tag=S
+--scenario=stubble --aff=fire --tier=mid --meditate=1 --minutes=6 --tag=S

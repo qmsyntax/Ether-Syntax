@@ -1,0 +1,22 @@
+--scenario=arena --aff=water --meditate=1 --lines=1 --waves=5 --minutes=8 --tag=W0-lines
+--scenario=arena --aff=water --meditate=0 --lines=1 --whatif_strike_essence=2 --waves=5 --minutes=8 --tag=W1-gen2
+--scenario=arena --aff=water --meditate=0 --lines=1 --whatif_strike_essence=2 --whatif_hp=0.6 --waves=5 --minutes=8 --tag=W2-gen2-hp60
+--scenario=passage --aff=water --meditate=0 --lines=1 --whatif_strike_essence=2 --walls=4 --minutes=8 --tag=W1-gen2
+--scenario=arena --aff=fire --meditate=1 --lines=1 --waves=5 --minutes=8 --tag=W0-lines
+--scenario=arena --aff=fire --meditate=0 --lines=1 --whatif_strike_essence=2 --waves=5 --minutes=8 --tag=W1-gen2
+--scenario=arena --aff=fire --meditate=0 --lines=1 --whatif_strike_essence=2 --whatif_hp=0.6 --waves=5 --minutes=8 --tag=W2-gen2-hp60
+--scenario=passage --aff=fire --meditate=0 --lines=1 --whatif_strike_essence=2 --walls=4 --minutes=8 --tag=W1-gen2
+--scenario=arena --aff=earth --meditate=1 --lines=1 --waves=5 --minutes=8 --tag=W0-lines
+--scenario=arena --aff=earth --meditate=0 --lines=1 --whatif_strike_essence=2 --waves=5 --minutes=8 --tag=W1-gen2
+--scenario=arena --aff=earth --meditate=0 --lines=1 --whatif_strike_essence=2 --whatif_hp=0.6 --waves=5 --minutes=8 --tag=W2-gen2-hp60
+--scenario=passage --aff=earth --meditate=0 --lines=1 --whatif_strike_essence=2 --walls=4 --minutes=8 --tag=W1-gen2
+--scenario=arena --aff=light --meditate=1 --lines=1 --waves=5 --minutes=8 --tag=W0-lines
+--scenario=arena --aff=light --meditate=0 --lines=1 --whatif_strike_essence=2 --waves=5 --minutes=8 --tag=W1-gen2
+--scenario=arena --aff=light --meditate=0 --lines=1 --whatif_strike_essence=2 --whatif_hp=0.6 --waves=5 --minutes=8 --tag=W2-gen2-hp60
+--scenario=passage --aff=light --meditate=0 --lines=1 --whatif_strike_essence=2 --walls=4 --minutes=8 --tag=W1-gen2
+--scenario=stubble --aff=water --meditate=1 --rest=1.0 --minutes=6 --tag=S-rest100
+--scenario=stubble --aff=fire --meditate=1 --rest=1.0 --minutes=6 --tag=S-rest100
+--scenario=stubble --aff=earth --meditate=1 --rest=1.0 --minutes=6 --tag=S-rest100
+--scenario=stubble --aff=light --meditate=1 --rest=1.0 --minutes=6 --tag=S-rest100
+--scenario=stubble --aff=water --meditate=0 --rest=1.0 --whatif_strike_essence=2 --minutes=6 --tag=SW1-gen2
+--scenario=stubble --aff=light --meditate=0 --rest=1.0 --whatif_strike_essence=2 --minutes=6 --tag=SW1-gen2

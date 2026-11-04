@@ -1,0 +1,35 @@
+--scenario=arena --aff=water --meditate=1 --waves=5 --minutes=8 --tag=A
+--scenario=arena --aff=fire --meditate=1 --waves=5 --minutes=8 --tag=A
+--scenario=arena --aff=earth --meditate=1 --waves=5 --minutes=8 --tag=A
+--scenario=arena --aff=wind --meditate=1 --waves=5 --minutes=8 --tag=A
+--scenario=arena --aff=dark --meditate=1 --waves=5 --minutes=8 --tag=A
+--scenario=arena --aff=life --meditate=1 --waves=5 --minutes=8 --tag=A
+--scenario=arena --aff=death --meditate=1 --waves=5 --minutes=8 --tag=A
+--scenario=arena --aff=light --meditate=1 --waves=5 --minutes=8 --tag=A
+--scenario=arena --aff=water --meditate=0 --press=eager --waves=5 --minutes=8 --tag=A-nomed-eager
+--scenario=arena --aff=light --meditate=0 --press=eager --waves=5 --minutes=8 --tag=A-nomed-eager
+--scenario=arena --aff=water --tier=mid --meditate=1 --waves=6 --minutes=8 --tag=A
+--scenario=arena --aff=fire --tier=mid --meditate=1 --waves=6 --minutes=8 --tag=A
+--scenario=arena --aff=earth --tier=mid --meditate=1 --waves=6 --minutes=8 --tag=A
+--scenario=arena --aff=wind --tier=mid --meditate=1 --waves=6 --minutes=8 --tag=A
+--scenario=arena --aff=dark --tier=mid --meditate=1 --waves=6 --minutes=8 --tag=A
+--scenario=arena --aff=life --tier=mid --meditate=1 --waves=6 --minutes=8 --tag=A
+--scenario=arena --aff=death --tier=mid --meditate=1 --waves=6 --minutes=8 --tag=A
+--scenario=arena --aff=light --tier=mid --meditate=1 --waves=6 --minutes=8 --tag=A
+--scenario=arena --aff=water --tier=mid --meditate=1 --dodge=dash --waves=6 --minutes=8 --tag=A-dash
+--scenario=passage --aff=water --meditate=1 --walls=3 --minutes=8 --tag=P
+--scenario=passage --aff=fire --meditate=1 --walls=3 --minutes=8 --tag=P
+--scenario=passage --aff=earth --meditate=1 --walls=3 --minutes=8 --tag=P
+--scenario=passage --aff=wind --meditate=1 --walls=3 --minutes=8 --tag=P
+--scenario=passage --aff=dark --meditate=1 --walls=3 --minutes=8 --tag=P
+--scenario=passage --aff=life --meditate=1 --walls=3 --minutes=8 --tag=P
+--scenario=passage --aff=death --meditate=1 --walls=3 --minutes=8 --tag=P
+--scenario=passage --aff=light --meditate=1 --walls=3 --minutes=8 --tag=P
+--scenario=passage --aff=water --tier=mid --meditate=1 --walls=4 --minutes=8 --tag=P
+--scenario=passage --aff=fire --tier=mid --meditate=1 --walls=4 --minutes=8 --tag=P
+--scenario=passage --aff=earth --tier=mid --meditate=1 --walls=4 --minutes=8 --tag=P
+--scenario=passage --aff=wind --tier=mid --meditate=1 --walls=4 --minutes=8 --tag=P
+--scenario=passage --aff=dark --tier=mid --meditate=1 --walls=4 --minutes=8 --tag=P
+--scenario=passage --aff=life --tier=mid --meditate=1 --walls=4 --minutes=8 --tag=P
+--scenario=passage --aff=death --tier=mid --meditate=1 --walls=4 --minutes=8 --tag=P
+--scenario=passage --aff=light --tier=mid --meditate=1 --walls=4 --minutes=8 --tag=P
