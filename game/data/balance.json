@@ -455,12 +455,21 @@
     "player_shove_speed": 12.0
   },
   "sidestep": {
-    "_note": "The free sidestep (combat review 2026-11-03 R3, approved by Brent; Player.sidestep, Keybinds 'sidestep'). A short step on its own key, moved by the exact-distance dash movement: distance_m metres in time_s seconds, then recovery_s in which you cannot strike or cast (a press meanwhile waits, feel.input_buffer_s). NOT invulnerable: you avoid a blow by not being there (design/05 6.3) [B]. Priced through reflux, not essence or a cooldown [B]: each step adds reflux heat to the coolest affinity you hold that is not locked (with every one locked you cannot step; with none held it costs nothing). A second step within chain_s of the first leaves you Winded (combat.winded_s, shared with the movement skills); a step taken Winded costs combat.winded_cost_mult the heat (with no affinity held, Winded refuses the step). It stops at bodies and walls. Every number [MODEL], feel untested - needs Brent.",
+    "_note": "The sidestep (combat review 2026-11-03 R3, approved by Brent; reworked the same day per Brent: 'the side step stops the player from moving. We need endurance to make sure its not cheesed. But also, keep the motion smooth ... almost like a dash, but with the animation' [B]; Player.sidestep, Keybinds 'sidestep'). A short eased run on its own key: distance_m metres in time_s seconds, moved by hand along a speed curve v(u) = v_end + (v_start - v_end) x (1 - u)^ease_power over u = 0..1 of the step (v_start is whatever makes it cover distance_m exactly), so it is fastest at the start and eases out with no dead stop. v_end is end_speed_frac x your run speed (Player.walk_speed) when you will move on - a move key held, a click destination or an item you were walking to - and end_speed_frac_still x it when you will not; it never exceeds the step's average speed. A held move key or a pending click carries straight on when it ends (a step drops the foe you were closing on, not where you were walking). The way it goes: the move keys, else toward the cursor, else the way you face. cast_lockout_s: no strike or cast this long after the step ends (0: none; during the step itself nothing is cast, and a press waits, feel.input_buffer_s). anim_blend_out_s: the dodge clip, fitted to time_s (wardrobe.json action_window_s), cross-fades into the run or the guard this fast as the step ends. NOT invulnerable: you avoid a blow by not being there (design/05 6.3) [B]. Its price is endurance (balance.json endurance step_cost) - no reflux, essence, cooldown or Winded rule of its own; the movement skills keep combat.winded_s unchanged. It stops at bodies and walls. Every number [MODEL], feel untested - needs Brent.",
     "distance_m": 2.75,
-    "time_s": 0.14,
-    "recovery_s": 0.1,
-    "reflux": 5.0,
-    "chain_s": 1.5
+    "time_s": 0.32,
+    "ease_power": 2.0,
+    "end_speed_frac": 1.0,
+    "end_speed_frac_still": 0.25,
+    "cast_lockout_s": 0.0,
+    "anim_blend_out_s": 0.12
+  },
+  "endurance": {
+    "_note": "Endurance (Brent 2026-11-03: 'We need endurance to make sure its not cheesed' [B]; Player.endurance_now, spend_endurance, refill_endurance). A body's wind for quick movement: max points, regen_per_s once regen_delay_s has passed since the last spend. For now it is the sidestep's price only (step_cost each: two steps from full, a pause, then more); a sprint or other uses are future. A step with less than step_cost is refused ('Not enough endurance to step', the refusal at the cursor). Not saved: you start full, and waking after a death or walking into town fills it. The HUD shows a slim bar under your feet while it is not full (hud endurance_fade_s). Every number [MODEL], feel untested - needs Brent.",
+    "max": 100.0,
+    "regen_per_s": 30.0,
+    "regen_delay_s": 0.6,
+    "step_cost": 38.0
   },
   "feel": {
     "_note": "How the controls answer (Brent 2026-10-24: 'make them feel more fluid. It feels a bit clunky right now'; the look is BG3 / Diablo 4). Responsiveness, not power: no damage, cost, recovery, commit or winded rule is changed here except strike_after_skill_s. Measured with tests/combat_timeline_probe.tscn; every number [MODEL], untested by hand - needs Brent. input_buffer_s: a hotbar key pressed while you are busy (a recovery, a wind-up, a dash, a stagger, a held skill) is kept and cast the moment you are free, if that comes within this many seconds; the latest press wins; 0 turns it off (the press is dropped, as before). strike_queue_max: clicks on a foe that wait their turn to swing (each click is one blow; holding keeps swinging). held_strike_retargets: holding strike when your foe dies clicks again where the cursor is (the next foe under it, or walk there). strike_after_skill_s: how long after a melee skill (melee_burst) before a bare strike (was melee_cooldown x overcharge_cooldown_factor, 0.675 s; now one ordinary swing). cast_faces_cursor: a skill turns you to the cursor the moment it is cast, so it goes where you point even while you walk somewhere else; cast_face_hold_s: you keep facing it this long unless you click. body_turn_rate: the body as drawn turns toward where you face at this rate (exponential, per second); gameplay facing is instant, and a strike or cast snaps the body round. anim_action_lead_s: a strike's or an instant skill's motion is started part-way so its swing lands this long after the press (wardrobe.json action_impact_s says where each clip's swing is); a wind-up's motion is timed to land as the wind-up ends. anim_move_cancel_s: a one-off motion (a cast, a slash, a dodge) is cut for the run when you move after this long; anim_cancel_blend_s / anim_action_blend_s / anim_loop_blend_s: cross-fade times into the run, into a one-off, between loops. hit_stop_s / hit_stop_heavy_s: a landed melee hit freezes the striker's and the struck body's motion this long (heavy: an overcharged blow, a melee skill, or a kill), at the moment the swing lands; never the game clock. camera_kick_m / camera_kick_heavy_m / camera_kick_hurt_m: the camera is nudged this far along a landed melee hit, a heavy one, or when a heavy blow lands on you; camera_kick_decay: how fast it settles (per second). skill_walk_in_max_m / skill_walk_in_max_s / skill_walk_in_margin_m (combat review 2026-11-03 R4a, approved by Brent): a close skill (targeted_strike, melee_burst) pressed with its foe out of reach walks you in and is cast the moment the foe is within its reach less the margin, as a click on a foe walks you in to strike; only when that foe is within skill_walk_in_max_m, and it gives up (refused, out of reach) after skill_walk_in_max_s. Nothing is spent until the cast; any other input (move key, click, hotbar key, sidestep, meditate, the shooting stance, a stagger) drops it.",
@@ -550,7 +559,7 @@
     "size_px": 300.0
   },
   "hud": {
-    "_note": "Interface tunables (design/09-ui-review-v0.md). log_seconds / log_max: how long a message line stays and how many show. hints_alpha_in_combat: the key reminders in the bottom-right corner fade to this while a fight is on (0 = gone). show_untouched_enemy_bars: 1 draws a health bar over every enemy, 0 only over hurt or hovered ones. wisp_label_range: metres from the projection within which a wisp says what it is. tooltip_delay_s: how long the cursor rests on a slot or orb before its tooltip opens. refusal_show_s / refusal_flash_s (combat review 2026-11-03 R4d, approved by Brent): a refused cast shows its reason beside the cursor this long (rising and fading), and its hotbar slot flashes red this long. [MODEL]",
+    "_note": "Interface tunables (design/09-ui-review-v0.md). log_seconds / log_max: how long a message line stays and how many show. hints_alpha_in_combat: the key reminders in the bottom-right corner fade to this while a fight is on (0 = gone). show_untouched_enemy_bars: 1 draws a health bar over every enemy, 0 only over hurt or hovered ones. wisp_label_range: metres from the projection within which a wisp says what it is. tooltip_delay_s: how long the cursor rests on a slot or orb before its tooltip opens. refusal_show_s / refusal_flash_s (combat review 2026-11-03 R4d, approved by Brent): a refused cast shows its reason beside the cursor this long (rising and fading), and its hotbar slot flashes red this long. endurance_fade_s (Brent 2026-11-03, balance.json endurance): the slim endurance bar under your feet fades in this fast when endurance is spent and out this fast once it is full again; endurance_bar_w: its width in pixels. [MODEL]",
     "log_seconds": 9.0,
     "log_max": 6,
     "hints_alpha_in_combat": 0.0,
@@ -558,7 +567,9 @@
     "wisp_label_range": 6.0,
     "tooltip_delay_s": 0.25,
     "refusal_show_s": 1.2,
-    "refusal_flash_s": 0.5
+    "refusal_flash_s": 0.5,
+    "endurance_fade_s": 0.4,
+    "endurance_bar_w": 64.0
   },
   "art": {
     "_note": "real_bodies: the player is drawn with the real rigged, clothed body (assets/characters/body_<sex>.glb, scripts/art/real_character.gd, dressed by data/wardrobe.json) instead of the procedural one. On since 2026-10-18; false brings the procedural body back. --real-body on the command line forces it on for one run.",

@@ -3,8 +3,9 @@ extends Node
 ## a bit clunky right now"). Headless; run it with a fixed frame rate so the animation clock and the
 ## physics clock agree:
 ##   godot --headless --fixed-fps 60 --path game res://tests/combat_timeline_probe.tscn   (-- --only=<seq> --trace)
-##   godot --fixed-fps 60 --path game res://tests/combat_timeline_probe.tscn -- --sheet=<seq> [--every=4] [--tag=after]
-##       (windowed) one sequence as a contact sheet, shots/timeline-<seq>-<tag>.png, a cell every 4 frames
+##   godot --fixed-fps 60 --path game res://tests/combat_timeline_probe.tscn -- --sheet=<seq> [--every=4] [--tag=after] [--fixed-cam]
+##       (windowed) one sequence as a contact sheet, shots/timeline-<seq>-<tag>.png, a cell every 4 frames;
+##       --fixed-cam holds the camera where the player started (wider), so travel shows across the cells
 ## Plays the common sequences through the player's real input path - the strike button (Input
 ## actions + a fixed cursor, as the click handler reads it) and the hotbar (what main.gd's
 ## _cast_from_hotbar calls) - and logs, for every input, when it was pressed, when it took effect,
@@ -61,6 +62,8 @@ var _world: Node3D
 var sheet := ""                          # --sheet=<sequence>: windowed, a contact sheet of it
 var sheet_every := 4                     # --every=<frames> between cells
 var sheet_tag := "now"                   # --tag=<before|after>, for the file name
+var fixed_cam := false                   # --fixed-cam: the sheet's camera stays where the player started
+var _cam_at := Vector3.INF
 var _cells: Array[Image] = []
 var _cam: Camera3D
 var _totals := {"inputs": 0, "dropped": 0, "delay_sum": 0.0, "delayed": 0, "skate_s": 0.0, "snap_max": 0.0}
@@ -80,6 +83,8 @@ func _ready() -> void:
 			sheet_tag = a.trim_prefix("--tag=")
 		elif a == "--trace":
 			trace = true
+		elif a == "--fixed-cam":
+			fixed_cam = true
 	await get_tree().physics_frame
 	_clip_report()
 	await _seq("strike_x3", "water", [
@@ -136,9 +141,14 @@ func _ready() -> void:
 	await _seq("buffer_expires", "water", [
 		{"t": 0.0, "do": "slot", "slot": 2, "label": "dash"},
 		{"t": 0.05, "do": "slot", "slot": 0, "label": "bolt pressed early in the dash"}], 1.2, {"no_enemy_near": true, "check_window": true})
+	# the sidestep (combat review R3, reworked per Brent 2026-11-03: endurance, smooth): with a move key
+	# held it eases out into the run and you keep going; the dodge clip hands over as the travel ends
 	await _seq("sidestep", "water", [
-		{"t": 0.0, "do": "sidestep", "label": "sidestep (Space)"},
-		{"t": 0.08, "do": "slot", "slot": 1, "label": "breaker pressed mid-step (waits)"}], 0.9, {"no_enemy_near": true})
+		{"t": 0.0, "do": "key", "key": "move_right", "hold": 0.9, "label": "hold move right"},
+		{"t": 0.05, "do": "sidestep", "label": "sidestep (Space) while moving"},
+		{"t": 0.13, "do": "slot", "slot": 1, "label": "breaker pressed mid-step (waits)"}], 0.9, {"no_enemy_near": true, "step_track": true, "moving_on": true})
+	await _seq("sidestep_still", "water", [
+		{"t": 0.0, "do": "sidestep", "label": "sidestep (Space) standing, toward the cursor"}], 0.7, {"no_enemy_near": true, "step_track": true, "aim_at": Vector3(6, 0, 0)})
 	_report()
 
 
@@ -236,6 +246,9 @@ func _seq(name: String, aff: String, inputs: Array, duration: float, opts: Dicti
 	p.set("active", true)
 	if sheet != "":
 		p.set("cursor_fixed", Vector3(0, 0, -3))   # windowed: aim ahead, not wherever the real mouse is
+	if opts.has("aim_at"):
+		p.set("cursor_fixed", opts["aim_at"])
+	_cam_at = Vector3.INF
 	if opts.has("extra_skill"):                    # a fourth skill on slot 4, outside the kit
 		(p.get("abilities") as Array).append({"id": str(opts["extra_skill"]), "stage": 0, "progress": 0.0})
 		p.get("hotbar")[3] = (p.get("abilities") as Array).size() - 1
@@ -282,6 +295,17 @@ func _seq(name: String, aff: String, inputs: Array, duration: float, opts: Dicti
 	var strike_count := 0
 	var steps_seen := 0
 	var held_until := -1.0
+	# the sidestep's track (step_track): the largest move in one frame while stepping, when the travel
+	# ended, when the timed dodge handed over, and the speed in the frame after
+	var step_prev := Vector3.INF
+	var step_max_frame := 0.0
+	var step_travel := 0.0
+	var step_end := -1.0
+	var anim_end := -1.0
+	var was_stepping := false
+	var was_timed := false
+	var speed_after := -1.0
+	var step_started := -1.0
 	while t < duration:
 		await get_tree().physics_frame
 		var seen: float = t - STEP                # what the player did in the frame just processed
@@ -318,13 +342,30 @@ func _seq(name: String, aff: String, inputs: Array, duration: float, opts: Dicti
 			_effect(pending, results, "move", -1, seen)
 		if int(p.get("sidesteps")) > steps_seen:
 			steps_seen = int(p.get("sidesteps"))
+			acted = true                         # the step turns you to its way at once, by design
 			_effect(pending, results, "step", -1, seen)
+		if bool(opts.get("step_track", false)):
+			var now_stepping: bool = bool(p.call("stepping"))
+			if (now_stepping or was_stepping) and step_prev != Vector3.INF:
+				var moved: float = Vector2(p.global_position.x - step_prev.x, p.global_position.z - step_prev.z).length()
+				step_max_frame = maxf(step_max_frame, moved)
+				step_travel += moved
+				step_prev = p.global_position
+			if was_stepping and not now_stepping:
+				step_end = seen
+			if step_end >= 0.0 and speed_after < 0.0 and seen > step_end + 0.0001:
+				speed_after = p.velocity.length()
+			was_stepping = now_stepping
+			var timed: bool = rig != null and rig.has_method("timed_playing") and bool(rig.call("timed_playing"))
+			if was_timed and not timed and anim_end < 0.0:
+				anim_end = seen
+			was_timed = timed
 		if ap != null:
 			var now: String = String(ap.current_animation)
 			if now != last_anim:
 				anims.append("%.2f %s" % [seen, now])
 				last_anim = now
-			if str(rig.get("_one_shot")) != "" and p.velocity.length() > 1.0:
+			if str(rig.get("_one_shot")) != "" and p.velocity.length() > 1.0 and not (rig.has_method("timed_playing") and bool(rig.call("timed_playing"))):
 				skate += STEP
 		var shown_yaw: float = p.rotation.y + ((rig as Node3D).rotation.y if rig is Node3D else 0.0)     # the body as drawn
 		var dr: float = absf(wrapf(shown_yaw - last_rot, -PI, PI))
@@ -373,9 +414,15 @@ func _seq(name: String, aff: String, inputs: Array, duration: float, opts: Dicti
 					p.set("cursor_fixed", inp["at"])
 					rec["type"] = "none"
 				"sidestep":
-					# the free sidestep (combat review R3), as main.gd answers its key
+					# the sidestep (combat review R3), as main.gd answers its key
+					step_prev = p.global_position         # the step's track starts from here (step_track)
+					step_started = t
 					p.call("press_sidestep")
 					rec["type"] = "step"
+				"key":
+					Input.action_press(str(inp["key"]))
+					releases.append([t + float(inp.get("hold", TAP_S)), str(inp["key"])])
+					rec["type"] = "none"
 				"slot":
 					_press_slot(p, int(inp["slot"]))
 					releases.append([t + TAP_S, "ability_%d" % (int(inp["slot"]) + 1)])
@@ -395,7 +442,7 @@ func _seq(name: String, aff: String, inputs: Array, duration: float, opts: Dicti
 		if sheet != "":
 			await _snap_cell(p, int(round(t / STEP)))
 		t += STEP
-	for a: String in ["strike", "ability_1", "ability_2", "ability_3", "move_up"]:
+	for a: String in ["strike", "ability_1", "ability_2", "ability_3", "move_up", "move_right"]:
 		Input.action_release(a)
 	p.set("cursor_fixed", null)
 	# --- the sequence's lines
@@ -420,6 +467,16 @@ func _seq(name: String, aff: String, inputs: Array, duration: float, opts: Dicti
 		print("TIMELINE:   held strike carried on to the next foe: %s" % ("yes" if moved_on else "no"))
 	if bool(opts.get("aim_check", false)):
 		print("TIMELINE:   bolt flew %.0f deg away from the cursor" % bolt_err)
+	if bool(opts.get("step_track", false)):
+		var s_cfg: Dictionary = GameData.balance["sidestep"]
+		print("TIMELINE:   step: %.2f m in %.2f s (data %.2f m in %.2f s); largest move in one frame %.2f m; speed the frame after %.2f m/s; dodge handed over at %.2f, travel ended at %.2f" % [
+			step_travel, step_end - step_started, float(s_cfg["distance_m"]), float(s_cfg["time_s"]), step_max_frame, speed_after, anim_end, step_end])
+		_rule("%s: the step is continuous (no frame moves more than 0.6 m)" % name, step_max_frame > 0.0 and step_max_frame <= 0.6)
+		_rule("%s: it covers its distance" % name, absf(step_travel - float(s_cfg["distance_m"])) <= 0.1)
+		if ap != null:
+			_rule("%s: the dodge hands over within 0.05 s of the travel ending" % name, anim_end >= 0.0 and absf(anim_end - step_end) <= 0.05 + 0.0001)
+		if bool(opts.get("moving_on", false)):
+			_rule("%s: with a move key held you are moving the frame after the step" % name, speed_after > 0.5)
 	if dash_t >= 0.0:
 		_rule("%s: nothing is cast while the dash is under way" % name, not cast_in_dash)
 	if bool(opts.get("check_winded", false)):
@@ -476,34 +533,61 @@ func _stage() -> void:
 	_cells.clear()
 
 
-## --sheet: every sheet_every frames, the view around the player becomes a cell.
+## --sheet: every sheet_every frames, the view around the player becomes a cell. With --fixed-cam the
+## camera stays put (wider, a strip with metre marks on the ground from where the player started) so
+## the cells show the body travelling, not just its pose.
 func _snap_cell(p: Node3D, frame: int) -> void:
 	if frame % sheet_every != 0:
 		return
 	var at: Vector3 = p.global_position
-	_cam.global_position = at + Vector3(4.2, 4.6, 4.2)
-	_cam.look_at(at + Vector3(0, 0.9, -0.4), Vector3.UP)
+	var cw := 240
+	var ch := 240
+	if fixed_cam:
+		cw = 420
+		if _cam_at == Vector3.INF:
+			var right := Vector3(1, 0, -1).normalized()     # screen-right from this camera
+			_cam_at = at + right * 2.6
+			for i: int in 13:                               # a mark every half metre, every metre a longer one
+				var m := MeshInstance3D.new()
+				var bm := BoxMesh.new()
+				bm.size = Vector3(0.05, 0.02, 0.5 if i % 2 == 0 else 0.25)
+				m.mesh = bm
+				var mm := StandardMaterial3D.new()
+				mm.albedo_color = Color(0.1, 0.09, 0.08) if i > 0 else Color(0.75, 0.2, 0.15)
+				m.material_override = mm
+				_world.add_child(m)
+				m.global_position = at + right * (0.5 * float(i)) + Vector3(0, 0.01, 0)
+				m.look_at(m.global_position + right, Vector3.UP)
+				m.rotate_object_local(Vector3.UP, PI * 0.5)
+		_cam.global_position = _cam_at + Vector3(5.4, 6.4, 5.4)
+		_cam.look_at(_cam_at + Vector3(0, 0.6, 0), Vector3.UP)
+	else:
+		_cam.global_position = at + Vector3(4.2, 4.6, 4.2)
+		_cam.look_at(at + Vector3(0, 0.9, -0.4), Vector3.UP)
 	await RenderingServer.frame_post_draw
 	var img: Image = get_viewport().get_texture().get_image()
 	var size: Vector2i = img.get_size()
 	var side: int = mini(size.x, size.y) * 3 / 4
-	var cell: Image = img.get_region(Rect2i((size.x - side) / 2, (size.y - side) / 2, side, side))
-	cell.resize(240, 240)
+	var wide: int = mini(size.x, side * cw / ch)
+	var cell: Image = img.get_region(Rect2i((size.x - wide) / 2, (size.y - side) / 2, wide, side))
+	cell.resize(cw, ch)
 	cell.convert(Image.FORMAT_RGBA8)
-	for x: int in 240:                           # a strip along the top, darker the later the frame, to read the order
+	for x: int in cw:                            # a strip along the top, darker the later the frame, to read the order
 		for y: int in 3:
-			cell.set_pixel(x, y, Color(1, 1, 1) if x < int(240.0 * float(_cells.size() % 10 + 1) / 10.0) else Color(0, 0, 0))
+			cell.set_pixel(x, y, Color(1, 1, 1) if x < int(float(cw) * float(_cells.size() % 10 + 1) / 10.0) else Color(0, 0, 0))
 	_cells.append(cell)
 
 
 func _save_sheet(name: String) -> void:
 	if _cells.is_empty():
 		return
-	var cols := 10
+	var cw: int = _cells[0].get_width()
+	var ch: int = _cells[0].get_height()
+	var cols := 10 if cw <= 240 else 5
 	var rows: int = int(ceil(float(_cells.size()) / float(cols)))
-	var out := Image.create(240 * mini(cols, _cells.size()), 240 * rows, false, Image.FORMAT_RGBA8)
+	var out := Image.create(cw * mini(cols, _cells.size()), ch * rows, false, Image.FORMAT_RGBA8)
 	for i: int in _cells.size():
-		out.blit_rect(_cells[i], Rect2i(0, 0, 240, 240), Vector2i((i % cols) * 240, (i / cols) * 240))
+		out.blit_rect(_cells[i], Rect2i(0, 0, cw, ch), Vector2i((i % cols) * cw, (i / cols) * ch))
 	var dir: String = ProjectSettings.globalize_path("res://").path_join("../shots")
 	DirAccess.make_dir_recursive_absolute(dir)
 	var path: String = dir.path_join("timeline-%s-%s.png" % [name, sheet_tag])

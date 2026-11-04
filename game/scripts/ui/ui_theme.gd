@@ -29,6 +29,7 @@ const REFLUX := Color("e08a2a")
 const REFLUX_HOT := Color("e2452a")
 const STAR := Color("cdbcf2")
 const NETHER := Color("8a6fd0")
+const ENDURANCE := Color("cbbd86")        # the endurance bar under your feet (a pale, worn straw)
 
 # Type scale (pixels at the 1600 x 900 reference size; the window scales it). Nothing smaller
 # than CAPTION is drawn anywhere, and CAPTION only inside a panel or with an outline.

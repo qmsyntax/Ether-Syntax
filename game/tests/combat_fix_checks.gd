@@ -182,77 +182,198 @@ func _starters() -> void:
 	print("    lighter by role: %s" % ", ".join(light))
 
 
-# --- R3: the free sidestep ----------------------------------------------------------------------
+# --- R3: the sidestep (reworked per Brent 2026-11-03: endurance, smooth) --------------------------
+
+## A wall (layer 1) across the way, `ahead` metres from `p` along `dir` (the box is thin along x).
+func _wall(p: Node3D, dir: Vector3, ahead: float) -> StaticBody3D:
+	var sb := StaticBody3D.new()
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(0.4, 3.0, 4.0)
+	col.shape = shape
+	sb.add_child(col)
+	sb.position = p.global_position + dir * (ahead + 0.2) + Vector3(0, 1.0, 0)
+	sb.rotation.y = atan2(-dir.x, -dir.z) + PI * 0.5      # thin along dir: a wall across the way
+	t.add_child(sb)
+	_keep(sb)
+	return sb
+
+
+## Step and follow it frame by frame: {travel, max_frame, frames, ended_at, anim_at, speed_after}.
+func _track_step(p: CharacterBody3D) -> Dictionary:
+	var out := {"travel": 0.0, "max_frame": 0.0, "frames": 0, "ended_at": -1.0, "anim_at": -1.0, "speed_after": -1.0, "stepped": false}
+	var rig: Node = p.get("_rig")
+	var prev: Vector3 = p.global_position
+	out["stepped"] = str(p.call("sidestep")) == ""
+	var clock := 0.0
+	var timed_was: bool = rig != null and rig.has_method("timed_playing") and bool(rig.call("timed_playing"))
+	for i: int in 60:
+		await t.get_tree().physics_frame
+		clock += STEP
+		var moved: float = Vector2(p.global_position.x - prev.x, p.global_position.z - prev.z).length()
+		prev = p.global_position
+		var timed: bool = rig != null and rig.has_method("timed_playing") and bool(rig.call("timed_playing"))
+		if timed_was and not timed and float(out["anim_at"]) < 0.0:
+			out["anim_at"] = clock
+		timed_was = timed
+		if float(out["ended_at"]) >= 0.0:
+			out["speed_after"] = p.velocity.length()
+			break
+		out["travel"] = float(out["travel"]) + moved
+		out["max_frame"] = maxf(float(out["max_frame"]), moved)
+		out["frames"] = int(out["frames"]) + 1
+		if not bool(p.call("stepping")):
+			out["ended_at"] = clock
+	return out
+
 
 func _sidestep() -> void:
 	var s: Dictionary = GameData.balance.get("sidestep", {})
+	var en: Dictionary = GameData.balance.get("endurance", {})
 	var dist: float = float(s.get("distance_m", 0.0))
-	check.call("balance.json sidestep: a short step (2.5-3 m), priced in reflux, with a note",
-		dist >= 2.5 and dist <= 3.0 and float(s.get("reflux", 0.0)) > 0.0 and str(s.get("_note", "")).contains("NOT invulnerable"))
+	var time: float = float(s.get("time_s", 0.0))
+	var cost: float = float(en.get("step_cost", 0.0))
+	var most: float = float(en.get("max", 0.0))
+	check.call("balance.json sidestep: a short eased step (2.5-3 m in 0.25-0.4 s) with its curve as data and a note; no reflux price or chain of its own",
+		dist >= 2.5 and dist <= 3.0 and time >= 0.25 and time <= 0.4 and s.has("ease_power") and s.has("end_speed_frac")
+		and str(s.get("_note", "")).contains("NOT invulnerable") and not s.has("reflux") and not s.has("chain_s"))
+	check.call("balance.json endurance: max, regen, delay and a step cost that buys two steps from full, with a note that it is the sidestep's price for now",
+		most > 0.0 and float(en.get("regen_per_s", 0.0)) > 0.0 and float(en.get("regen_delay_s", -1.0)) >= 0.0
+		and cost * 2.0 <= most and cost * 3.0 > most and str(en.get("_note", "")).contains("sidestep's price"))
 	check.call("the sidestep has its own key, Space by default, and no other action shares it",
 		Keybinds.binding_text("sidestep") == "Space" and _shared_defaults().is_empty(), str(_shared_defaults()))
+	# --- the price: endurance, not reflux or essence
 	var p := _player("water", AT + Vector3(0, 0, 80), 10.0)
 	var hitter := _foe(p, Vector3(40, 0, 0))
 	await _wait(STEP)
+	check.call("a character starts with full endurance", _near(float(p.call("endurance_now")), most))
 	var from: Vector3 = p.global_position
 	p.set("cursor_fixed", from + Vector3(8, 0, 0))     # step toward the cursor (no move key held)
 	p.call("press_sidestep")
-	check.call("pressed when free, the step starts at once", int(p.get("sidesteps")) == 1 and float(p.get("_dash_time")) > 0.0)
-	check.call("it costs reflux, not essence", _near(float(p.get("essence")), 10.0) and _near(float(p.call("reflux_of", "water")), float(s["reflux"])),
-		"essence %f reflux %f" % [float(p.get("essence")), float(p.call("reflux_of", "water"))])
+	check.call("pressed when free, the step starts at once", int(p.get("sidesteps")) == 1 and bool(p.call("stepping")))
+	check.call("it spends endurance, not reflux or essence", _near(float(p.call("endurance_now")), most - cost)
+		and _near(float(p.get("essence")), 10.0) and _near(float(p.call("reflux_of", "water")), 0.0),
+		"endurance %f essence %f reflux %f" % [float(p.call("endurance_now")), float(p.get("essence")), float(p.call("reflux_of", "water"))])
 	await _wait(STEP * 2.0)
 	var hp0: float = (p.get("body") as Body).total()
 	p.call("take_hit", 6.0, false, hitter)
-	check.call("it is not invulnerable: a blow mid-step lands", float(p.get("_dash_time")) > 0.0 and (p.get("body") as Body).total() < hp0)
-	await _wait(float(s["time_s"]) + STEP * 2.0)
+	check.call("it is not invulnerable: a blow mid-step lands", bool(p.call("stepping")) and (p.get("body") as Body).total() < hp0)
+	await _wait(time + STEP * 2.0)
 	var moved: Vector3 = p.global_position - from
-	check.call("it moves its distance, exactly, toward the cursor", _near(moved.length(), dist, 0.05) and moved.normalized().dot(Vector3(1, 0, 0)) > 0.99,
+	check.call("it covers its distance toward the cursor", _near(moved.length(), dist, 0.05) and moved.normalized().dot(Vector3(1, 0, 0)) > 0.99,
 		"moved %s" % str(moved))
-	check.call("one step does not wind you", float(p.get("_winded_t")) <= 0.0)
-	# a second in quick succession: Winded; the third pays double
-	await _wait(float(s["recovery_s"]) + STEP)
+	check.call("it winds nobody: no Winded from steps", float(p.get("_winded_t")) <= 0.0)
+	# the second step at once; the third is refused until the wind comes back
 	p.call("press_sidestep")
-	check.call("the second step in quick succession leaves you Winded", int(p.get("sidesteps")) == 2 and float(p.get("_winded_t")) > 0.0)
-	await _wait(float(s["time_s"]) + float(s["recovery_s"]) + STEP * 2.0)
-	var heat0: float = float(p.call("reflux_of", "water"))
-	p.call("press_sidestep")
-	check.call("... and a step taken Winded costs winded_cost_mult the heat", int(p.get("sidesteps")) == 3 and
-		_near(float(p.call("reflux_of", "water")) - heat0, float(s["reflux"]) * GameData.num("combat", "winded_cost_mult"), 0.05),
-		"heat %f" % (float(p.call("reflux_of", "water")) - heat0))
+	check.call("a second step straight after the first is taken", int(p.get("sidesteps")) == 2)
+	await _wait(time + STEP * 2.0)
+	var before_refusal: int = int((p.get("last_refusal") as Dictionary).get("serial", 0))
+	check.call("with less endurance than a step costs, the step is refused, and the refusal is recorded for the HUD",
+		str(p.call("sidestep")) == "endurance" and int(p.get("sidesteps")) == 2
+		and int((p.get("last_refusal") as Dictionary).get("serial", 0)) == before_refusal + 1
+		and str((p.get("last_refusal") as Dictionary).get("reason", "")) == "endurance"
+		and str((p.get("last_refusal") as Dictionary).get("text", "")).contains("endurance"), str(p.get("last_refusal")))
+	var low: float = float(p.call("endurance_now"))
+	var delay: float = float(en["regen_delay_s"])
+	await _wait(maxf(0.0, delay - time - STEP * 6.0))
+	check.call("endurance does not come back inside regen_delay_s", _near(float(p.call("endurance_now")), low, 0.01),
+		"%f -> %f" % [low, float(p.call("endurance_now"))])
+	await _wait(STEP * 6.0 + 0.5)
+	var back: float = float(p.call("endurance_now"))
+	check.call("... and then it regenerates at regen_per_s", back > low + float(en["regen_per_s"]) * 0.3 and back <= most,
+		"%f -> %f" % [low, back])
+	p.set("endurance", most)
 	# pressed while busy, it waits like a hotbar key
-	await _wait(float(s["time_s"]) + float(s["recovery_s"]) + STEP * 2.0)
 	p.set("_recover_t", 0.15)
 	p.call("press_sidestep")
-	check.call("pressed during a recovery it does not step yet", int(p.get("sidesteps")) == 3)
+	check.call("pressed during a recovery it does not step yet", int(p.get("sidesteps")) == 2)
 	await _wait(0.2)
-	check.call("... and steps the moment you are free (feel.input_buffer_s)", int(p.get("sidesteps")) == 4)
-	# every affinity locked: no step
-	await _wait(float(s["time_s"]) + float(s["recovery_s"]) + STEP * 2.0)
-	(p.get("locked_by") as Dictionary)["water"] = true
-	check.call("with every affinity locked by reflux you cannot step", str(p.call("sidestep")) == "locked" and int(p.get("sidesteps")) == 4)
-	(p.get("locked_by") as Dictionary)["water"] = false
+	check.call("... and steps the moment you are free (feel.input_buffer_s)", int(p.get("sidesteps")) == 3)
+	await _wait(time + STEP * 2.0)
+	# death and the town fill it; it is not saved
+	p.set("endurance", 1.0)
+	p.call("refill_endurance")
+	check.call("refill_endurance (waking after a death, the town) fills it", _near(float(p.call("endurance_now")), most))
+	check.call("endurance is not saved (a character loads full)", not (p.call("to_save") as Dictionary).has("endurance"))
+	var src: String = (load("res://scripts/player.gd") as GDScript).source_code
+	var main_src: String = (load("res://scripts/main.gd") as GDScript).source_code
+	check.call("respawn_naked and the town call refill_endurance", src.contains("refill_endurance()\n\tbody.hp") and main_src.contains("player.call(\"refill_endurance\")"))
 	p.set("cursor_fixed", null)
 	_gone(p)
-	# two affinities: the coolest unlocked one takes the heat
-	var d := _player("fire", AT + Vector3(0, 0, 120), 10.0)
-	d.call("set_affinities", ["fire", "water"])
-	(d.get("reflux_by") as Dictionary)["fire"] = 40.0
-	await _wait(STEP)
-	d.call("sidestep")
-	check.call("with two affinities the step heats the cooler one", _near(float(d.call("reflux_of", "water")), float(s["reflux"]), 0.1) and float(d.call("reflux_of", "fire")) <= 40.0)
-	_gone(d)
-	# no affinity at all: the step is free, and Winded refuses it
-	var n := _player("water", AT + Vector3(0, 0, 160), 10.0)
-	n.set("affinities", [] as Array[String])
-	await _wait(STEP)
-	n.call("sidestep")
-	await _wait(float(s["time_s"]) + float(s["recovery_s"]) + STEP * 2.0)
-	n.call("sidestep")
-	await _wait(float(s["time_s"]) + float(s["recovery_s"]) + STEP * 2.0)
-	check.call("with no affinity held a step costs nothing, and once Winded it is refused", int(n.get("sidesteps")) == 2 and str(n.call("sidestep")) == "winded"
-		and _near(float(n.get("essence")), 10.0))
-	_gone(n)
 	_gone(hitter)
+
+	# --- smooth: continuous, eased, and the dodge hands over as the travel ends
+	var c := _player("water", AT + Vector3(0, 0, 100), 10.0)
+	c.set("cursor_fixed", c.global_position + Vector3(8, 0, 0))
+	await _wait(STEP)
+	var track: Dictionary = await _track_step(c)
+	check.call("a step's travel is continuous: no frame moves more than 0.6 m at 60 fps, and it lasts its time",
+		bool(track["stepped"]) and float(track["max_frame"]) <= 0.6 and absf(float(track["ended_at"]) - time) <= STEP + 0.001
+		and _near(float(track["travel"]), dist, 0.05), str(track))
+	var rig: Node = c.get("_rig")
+	if rig != null and rig.has_method("timed_playing"):
+		check.call("the dodge clip ends (hands over to the loops) within 0.05 s of the travel ending",
+			float(track["anim_at"]) >= 0.0 and absf(float(track["anim_at"]) - float(track["ended_at"])) <= 0.05 + 0.001, str(track))
+	else:
+		check.call("(no real body here: the dodge hand-over check needs one)", true)
+	_gone(c)
+
+	# --- you keep moving: a held move key
+	var m := _player("water", AT + Vector3(0, 0, 120), 10.0)
+	await _wait(STEP)
+	Input.action_press("move_right")
+	await _wait(STEP * 3.0)
+	var walk: float = m.velocity.length()
+	var mt: Dictionary = await _track_step(m)
+	Input.action_release("move_right")
+	check.call("with a move key held you are moving in the frame after the step ends (no stop, no stand)",
+		bool(mt["stepped"]) and walk > 0.5 and float(mt["speed_after"]) > 0.5 * walk, "walk %f %s" % [walk, str(mt)])
+	_gone(m)
+
+	# --- you keep moving: a click destination survives the step and is reached
+	var k := _player("water", AT + Vector3(0, 0, 140), 10.0)
+	await _wait(STEP)
+	var goal: Vector3 = k.global_position + Vector3(0, 0, -7)
+	k.set("move_goal", goal)
+	k.set("has_move_goal", true)
+	await _wait(STEP * 4.0)
+	k.set("cursor_fixed", k.global_position + Vector3(6, 0, 0))   # the step goes to the side (toward the cursor)
+	var kt: Dictionary = await _track_step(k)
+	var kept: bool = bool(k.get("has_move_goal"))
+	var arrived := false
+	for i: int in 180:
+		await t.get_tree().physics_frame
+		var to: Vector3 = goal - k.global_position
+		if Vector2(to.x, to.z).length() < 0.35 and not bool(k.get("has_move_goal")):
+			arrived = true
+			break
+	check.call("a click destination survives a step (walking on the moment it ends) and is reached from the new spot",
+		bool(kt["stepped"]) and kept and float(kt["speed_after"]) > 0.5 and arrived, "kept %s %s at %s" % [kept, str(kt), str(k.global_position - goal)])
+	k.set("cursor_fixed", null)
+	_gone(k)
+
+	# --- still stops at walls and bodies
+	var w := _player("water", AT + Vector3(0, 0, 160), 10.0)
+	_wall(w, Vector3(1, 0, 0), 1.2)
+	w.set("cursor_fixed", w.global_position + Vector3(8, 0, 0))
+	await _wait(STEP * 2.0)
+	var w0: Vector3 = w.global_position
+	var wt: Dictionary = await _track_step(w)
+	var wmoved: float = (w.global_position - w0).length()
+	check.call("a step stops at a wall (and ends there, early)", bool(wt["stepped"]) and wmoved < 1.3 and wmoved > 0.3
+		and float(wt["ended_at"]) < time - STEP, "moved %f %s" % [wmoved, str(wt)])
+	w.set("cursor_fixed", null)
+	_gone(w)
+	var b := _player("water", AT + Vector3(0, 0, 180), 10.0)
+	var bod := _foe(b, Vector3(1.8, 0, 0))
+	b.set("cursor_fixed", b.global_position + Vector3(8, 0, 0))
+	await _wait(STEP * 2.0)
+	var b0: Vector3 = b.global_position
+	await _track_step(b)
+	check.call("a step stops at a body, not through it", (b.global_position - b0).x < 1.8 - 0.4, str(b.global_position - b0))
+	b.set("cursor_fixed", null)
+	_gone(b)
+	_gone(bod)
 
 
 # --- R4d: a refusal you can see -----------------------------------------------------------------

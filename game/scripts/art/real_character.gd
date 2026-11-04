@@ -59,6 +59,8 @@ var _sprint_speed := 6.0
 var _one_shot := ""                        # an action playing to its end; the loops wait for it
 var _one_shot_t := 0.0                     # how long it has played (moving cuts it after "feel" anim_move_cancel_s)
 var _cancel_blend := false                 # the next loop fades in from a cut action
+var _one_shot_for := -1.0                  # a timed one-off (play_for): it holds this long, then hands over
+var _hand_over_blend := -1.0               # the cross-fade into the loop after a timed one-off
 var _is_paused := false                    # hit_pause is holding the clip still
 var _paused_speed := 1.0
 var _activity := ""
@@ -691,6 +693,7 @@ func pose_at(anim: String, t: float, f: float = -1.0) -> void:
 	if _player == null or not _player.has_animation(anim):
 		return
 	_one_shot = anim
+	_one_shot_for = -1.0
 	var at: float = t if t >= 0.0 else maxf(f, 0.0) * _player.get_animation(anim).length
 	_player.play(anim, 0.0)
 	_player.seek(at, true)
@@ -728,6 +731,7 @@ func play_action(name_now: String, lands_in: float = -1.0) -> void:
 	var rate: float = float((_wardrobe().get("action_speed", {}) as Dictionary).get(base, 1.0))
 	_one_shot = name_now
 	_one_shot_t = 0.0
+	_one_shot_for = -1.0
 	_player.speed_scale = rate
 	_player.play(name_now, _feel("anim_action_blend_s", 0.08))
 	var impact: float = float((_wardrobe().get("action_impact_s", {}) as Dictionary).get(base, -1.0))
@@ -735,6 +739,47 @@ func play_action(name_now: String, lands_in: float = -1.0) -> void:
 	_player.seek(maxf(start, 0.0), true)       # from the top even if the same clip was playing
 	if lands_in >= 0.0 and impact > 0.0 and start < 0.0:
 		_player.speed_scale = maxf(rate * 0.5, impact / maxf(lands_in, 0.01))     # a long wind-up: the motion is drawn out
+
+
+## Play a one-off fitted to `seconds` of game time: the part of the clip in wardrobe.json
+## "action_window_s" (clip seconds; the whole clip without one) is time-scaled to last exactly that long,
+## and when it is over (or end_timed() is called) the loops take over at once with a `blend_out` cross-fade
+## - no waiting for the clip's own tail. Moving does not cut it early. The sidestep plays "dodge" this way.
+func play_for(name_now: String, seconds: float, blend_out: float = -1.0) -> void:
+	if _dead or _player == null:
+		return
+	if _arm_lost and _player.has_animation(name_now + "_l"):
+		name_now += "_l"
+	if not _player.has_animation(name_now):
+		return
+	if _is_paused:
+		_is_paused = false
+		_pause_left = 0.0
+	var length: float = _player.get_animation(name_now).length
+	var win: Variant = (_wardrobe().get("action_window_s", {}) as Dictionary).get(name_now.trim_suffix("_l"), [])
+	var from := 0.0
+	var to := length
+	if win is Array and (win as Array).size() == 2:
+		from = clampf(float(win[0]), 0.0, length)
+		to = clampf(float(win[1]), from + 0.01, length)
+	_one_shot = name_now
+	_one_shot_t = 0.0
+	_one_shot_for = maxf(0.01, seconds)
+	_hand_over_blend = blend_out
+	_player.play(name_now, _feel("anim_action_blend_s", 0.08))
+	_player.seek(from, true)
+	_player.speed_scale = (to - from) / _one_shot_for
+
+
+## A timed one-off (play_for) ends now: the loops take over on the next animate().
+func end_timed() -> void:
+	if _one_shot_for > 0.0:
+		_one_shot_for = 0.0
+
+
+## True while a timed one-off (play_for) is still playing.
+func timed_playing() -> bool:
+	return _one_shot != "" and _one_shot_for > 0.0 and _one_shot_t < _one_shot_for
 
 
 ## A number from balance.json "feel" (how the controls answer), or `fallback` without one.
@@ -754,8 +799,12 @@ func animate(delta: float, speed: float, attacking: bool) -> void:
 	_was_attacking = attacking
 	if _one_shot != "":
 		_one_shot_t += delta
+		if _one_shot_for >= 0.0:
+			# a timed one-off (play_for) holds to its time, then hands over at once
+			if _one_shot_t < _one_shot_for - 0.0001:
+				return
 		# walking off cuts a one-off for the run (not an enemy's attack, which is timed to its blow)
-		if not (_attack_clips.is_empty() and speed > 0.25 and _one_shot_t >= _feel("anim_move_cancel_s", INF)):
+		elif not (_attack_clips.is_empty() and speed > 0.25 and _one_shot_t >= _feel("anim_move_cancel_s", INF)):
 			return
 		_one_shot = ""
 		_cancel_blend = true
@@ -775,9 +824,14 @@ func animate(delta: float, speed: float, attacking: bool) -> void:
 		want = "walk"
 		rate = speed / _walk_speed
 	if _player.current_animation != want:
-		_player.play(want, _feel("anim_cancel_blend_s" if _cancel_blend else "anim_loop_blend_s", 0.2))
+		var blend: float = _feel("anim_cancel_blend_s" if _cancel_blend else "anim_loop_blend_s", 0.2)
+		if _cancel_blend and _hand_over_blend >= 0.0:
+			blend = _hand_over_blend
+		_player.play(want, blend)
 		_hold_for(want)
 	_cancel_blend = false
+	_one_shot_for = -1.0
+	_hand_over_blend = -1.0
 	_player.speed_scale = clampf(rate, 0.6, 1.8) if want != _idle_clip else 1.0
 
 
