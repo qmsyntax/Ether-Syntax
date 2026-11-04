@@ -539,8 +539,9 @@ func _shared_defaults() -> Array[String]:
 func _shedding() -> void:
 	var c: Dictionary = GameData.balance["combat"]
 	var r: Dictionary = GameData.balance["reflux"]
-	check.call("Q2's numbers: a landed strike sheds 3 reflux, a fight sheds 2 a second (were 1 and 0.5)",
-		_near(float(c["strike_sheds_reflux"]), 3.0) and _near(float(r["shed_in_combat"]), 2.0) and str(r["_note"]).contains("shed_in_combat"))
+	check.call("Q2's numbers: a landed strike and a fight shed at least the review's 3 and 2 (were 1 and 0.5), and not so much that reflux stops limiting",
+		float(c["strike_sheds_reflux"]) >= 3.0 and float(r["shed_in_combat"]) >= 2.0 and float(r["shed_in_combat"]) < float(r["shed_meditating"])
+		and str(r["_note"]).contains("shed_in_combat"))
 	var p := _player("water", AT + Vector3(0, 0, 40), 10.0)
 	var e := _foe(p, Vector3(0, 0, -1.8))
 	await _wait(STEP)

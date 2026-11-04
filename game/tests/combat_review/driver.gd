@@ -9,7 +9,7 @@ extends Node
 ##   --scenario=stubble|arena|passage   --aff=<base affinity>   --skills=a,b (default: first two roots)
 ##   --tier=new|mid                     --meditate=0|1 (sit to full between fights)
 ##   --dodge=walk|dash|step             --minutes=<game minutes cap>   --waves=<arena waves>  --walls=<passage walls>
-##   --tag=<label for the output line>
+##   --tag=<label for the output line>   --set=section.key=value,... (balance.json numbers changed in memory for one run)
 ## Prints one "PROBE {json}" line at the end plus human-readable "PROBE:" lines.
 
 const STEP := 1.0 / 60.0
@@ -98,6 +98,14 @@ func _ready() -> void:
 			var ed: Variant = GameData.enemies[k]
 			if ed is Dictionary and (ed as Dictionary).has("hp"):
 				ed["hp"] = float(ed["hp"]) * float(args["whatif_hp"])
+	# --set=section.key=value[,section.key=value...]: a balance.json number changed in memory for this run only
+	# (for tuning a knob before it is written to the data; nothing is saved)
+	if args.has("set"):
+		for pair: String in str(args["set"]).split(","):
+			var kv: PackedStringArray = pair.split("=", true, 1)
+			var path: PackedStringArray = kv[0].split(".")
+			if kv.size() == 2 and path.size() == 2 and GameData.balance.has(path[0]):
+				(GameData.balance[path[0]] as Dictionary)[path[1]] = float(kv[1])
 	var scene: PackedScene = load("res://scenes/main.tscn")
 	main = scene.instantiate()
 	main.set("_test_mode", true)
@@ -780,7 +788,7 @@ func _finish(why: String) -> void:
 		"loot_value_picked": loot_value_picked, "loot_value_left": loot_value_left, "loot_per_min": snappedf(loot_value_picked / mins, 1.0),
 		"aura_gained": snappedf(float(player.get("_latent_aura")) - aura0, 0.01), "star_pct_gained": snappedf(_star_total() - star0, 0.001),
 		"skill_progress_gained": snappedf(_progress_total() - progress0, 0.1), "essence_max": snappedf(float(player.get("essence_max")), 0.1),
-		"whatif": {"hp": str(args.get("whatif_hp", "")), "sat": str(args.get("whatif_sat", "")), "strike_essence": str(args.get("whatif_strike_essence", ""))}, "refusal_lines": log_reasons, "other_by": _round(other_by), "death_note": death_note,
+		"whatif": {"hp": str(args.get("whatif_hp", "")), "sat": str(args.get("whatif_sat", "")), "strike_essence": str(args.get("whatif_strike_essence", "")), "set": str(args.get("set", ""))}, "refusal_lines": log_reasons, "other_by": _round(other_by), "death_note": death_note,
 		"arena_wave": int(main.get("wave")) if _scenario == "arena" else -1, "walls_cleared": int(main.get("cleared")) if _scenario == "passage" else -1,
 	}
 	print("PROBE " + JSON.stringify(out))

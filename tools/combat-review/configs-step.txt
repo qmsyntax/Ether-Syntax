@@ -1,0 +1,24 @@
+--scenario=arena --aff=water --meditate=1 --waves=5 --minutes=8 --dodge=step --tag=A-step
+--scenario=arena --aff=fire --meditate=1 --waves=5 --minutes=8 --dodge=step --tag=A-step
+--scenario=arena --aff=earth --meditate=1 --waves=5 --minutes=8 --dodge=step --tag=A-step
+--scenario=arena --aff=wind --meditate=1 --waves=5 --minutes=8 --dodge=step --tag=A-step
+--scenario=arena --aff=dark --meditate=1 --waves=5 --minutes=8 --dodge=step --tag=A-step
+--scenario=arena --aff=life --meditate=1 --waves=5 --minutes=8 --dodge=step --tag=A-step
+--scenario=arena --aff=death --meditate=1 --waves=5 --minutes=8 --dodge=step --tag=A-step
+--scenario=arena --aff=light --meditate=1 --waves=5 --minutes=8 --dodge=step --tag=A-step
+--scenario=passage --aff=water --meditate=1 --walls=3 --minutes=8 --dodge=step --tag=P-step
+--scenario=passage --aff=fire --meditate=1 --walls=3 --minutes=8 --dodge=step --tag=P-step
+--scenario=passage --aff=earth --meditate=1 --walls=3 --minutes=8 --dodge=step --tag=P-step
+--scenario=passage --aff=wind --meditate=1 --walls=3 --minutes=8 --dodge=step --tag=P-step
+--scenario=passage --aff=dark --meditate=1 --walls=3 --minutes=8 --dodge=step --tag=P-step
+--scenario=passage --aff=life --meditate=1 --walls=3 --minutes=8 --dodge=step --tag=P-step
+--scenario=passage --aff=death --meditate=1 --walls=3 --minutes=8 --dodge=step --tag=P-step
+--scenario=passage --aff=light --meditate=1 --walls=3 --minutes=8 --dodge=step --tag=P-step
+--scenario=stubble --aff=water --meditate=1 --minutes=6 --dodge=step --tag=S-step
+--scenario=stubble --aff=fire --meditate=1 --minutes=6 --dodge=step --tag=S-step
+--scenario=stubble --aff=earth --meditate=1 --minutes=6 --dodge=step --tag=S-step
+--scenario=stubble --aff=wind --meditate=1 --minutes=6 --dodge=step --tag=S-step
+--scenario=stubble --aff=dark --meditate=1 --minutes=6 --dodge=step --tag=S-step
+--scenario=stubble --aff=life --meditate=1 --minutes=6 --dodge=step --tag=S-step
+--scenario=stubble --aff=death --meditate=1 --minutes=6 --dodge=step --tag=S-step
+--scenario=stubble --aff=light --meditate=1 --minutes=6 --dodge=step --tag=S-step
