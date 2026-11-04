@@ -16,6 +16,7 @@ const ACTIONS: Array = [
 	["strike", "Strike", "mouse", MOUSE_BUTTON_LEFT],
 	["overcharge", "Overcharge (hold)", "mouse", MOUSE_BUTTON_RIGHT],
 	["ranged_stance", "Shoot (hold, then strike)", "key", KEY_SHIFT],
+	["sidestep", "Sidestep", "key", KEY_SPACE],
 	["ability_1", "Ability slot 1", "key", KEY_1],
 	["ability_2", "Ability slot 2", "key", KEY_2],
 	["ability_3", "Ability slot 3", "key", KEY_3],
@@ -33,7 +34,7 @@ const ACTIONS: Array = [
 	["interact", "Talk / use / leave", "key", KEY_F],
 	["healer", "Healer", "key", KEY_H],
 	["rest", "Rest", "key", KEY_E],
-	["go_now", "Skip the rest", "key", KEY_SPACE],
+	["go_now", "Skip the rest", "key", KEY_G],     # was Space, which the sidestep took (2026-11-03)
 	["restart", "Start over", "key", KEY_R],
 	["seal_delete", "Delete the selected rune or bond", "key", KEY_DELETE],
 	["seal_delete_alt", "Delete (second key)", "key", KEY_BACKSPACE],

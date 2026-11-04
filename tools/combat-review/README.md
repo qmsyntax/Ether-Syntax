@@ -50,7 +50,7 @@ python -I tools/combat-review/summarise.py /tmp/out.jsonl
 | `--meditate=` | `0` \| `1` | | `1` sits to a full tank between fights |
 | `--rest=` | a fraction | `0.7` | Health to rest up to between fights |
 | `--press=` | `careful` \| `eager` | `careful` | `eager` also presses unaffordable skills once a second |
-| `--dodge=` | `walk` \| `dash` | `walk` | `dash` uses the movement skill to step out of telegraphs |
+| `--dodge=` | `walk` \| `dash` \| `step` | `walk` | `dash` uses the movement skill to step out of telegraphs; `step` uses the free sidestep (R3) |
 | `--lines=1` | | | Also steps off archer aim lines |
 | `--minutes=` | | | Cap on game minutes |
 | `--waves=` | | | Arena wave cap |

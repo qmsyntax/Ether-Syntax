@@ -592,6 +592,7 @@ func _physics_process(delta: float) -> void:
 	_recover_t -= delta
 	_ranged_cd -= delta
 	_winded_t -= delta
+	_step_chain_t -= delta
 	_brace_t -= delta
 	_rear_window_t -= delta
 	_unseen_reveal_t -= delta
@@ -634,6 +635,7 @@ func _physics_process(delta: float) -> void:
 	if not _held.is_empty():
 		_tick_held(delta)
 	_tick_buffer(delta)
+	_tick_step_buffer(delta)
 
 	# Meditation is sitting still: it roots you at once, and only counts once you have settled.
 	_sitting = Input.is_action_pressed("meditate") and _meditate_block <= 0.0 and not _charging and _windup_t <= 0.0
@@ -4377,17 +4379,20 @@ func cast_ability(index: int) -> void:
 		_face_dir = _facing                      # keep facing where it went for a moment, unless you click
 		_face_hold_t = GameData.num("feel", "cast_face_hold_s")
 
-	if reflux_of(aff) >= float(_reflux_cfg["lock_at"]):
-		capping_affinity = aff
-		var handled := false
-		for e: TalentEffect in effects:
-			if e.on_reflux_cap():
-				handled = true
-				break
-		if not handled:
-			locked_by[aff] = true
-			note("Reflux at %d - %s affinity LOCKED." % [int(_reflux_cfg["lock_at"]), aff_name.to_lower()])
+	_lock_if_capped(aff)
 	_check_death()
+
+
+## At reflux lock_at an affinity locks, unless a talent answers the cap (on_reflux_cap).
+func _lock_if_capped(aff: String) -> void:
+	if reflux_of(aff) < float(_reflux_cfg["lock_at"]) or is_locked(aff):
+		return
+	capping_affinity = aff
+	for e: TalentEffect in effects:
+		if e.on_reflux_cap():
+			return
+	locked_by[aff] = true
+	note("Reflux at %d - %s affinity LOCKED." % [int(_reflux_cfg["lock_at"]), str(GameData.affinity(aff).get("label", aff)).to_lower()])
 
 
 ## What a skill does when it goes off: at once, or when its wind-up ends (see _tick_windup).
@@ -7476,3 +7481,126 @@ func _kick(dir: Vector3, metres: float, from: Variant) -> void:
 ## How far the camera is nudged right now (main._place_camera adds it).
 func camera_kick() -> Vector3:
 	return _cam_kick
+
+
+# --- the sidestep (combat review R3, approved by Brent 2026-11-03; balance.json "sidestep") ------------
+# A short step on its own key (Keybinds "sidestep"): not invulnerable - you avoid a blow by not being
+# there (design/05 6.3) - and priced through reflux, not essence or a cooldown [B]. Two in quick succession
+# leave you Winded, and a step taken Winded costs combat.winded_cost_mult the heat. It is moved by the
+# exact-distance dash movement, plays the dodge clip, and a press while busy waits like a hotbar key.
+
+var _step_buffer_t := 0.0            # a sidestep pressed while busy, taken the moment you are free
+var _step_chain_t := 0.0             # a second step inside this leaves you Winded
+## Sidesteps taken, for tests and the combat-review probe.
+var sidesteps := 0
+signal sidestepped(dir: Vector3, winded: bool)
+
+
+## The sidestep key (main.gd). Step now if you can; while you are busy (a recovery, a wind-up, a dash,
+## a stagger) the press is kept for "feel" input_buffer_s, as press_slot keeps a hotbar key. It lets go
+## of a held skill, and the latest press wins over a kept hotbar key.
+func press_sidestep() -> void:
+	_buffered_slot = -1
+	if not _held.is_empty():
+		_end_held()
+	if _cast_busy():
+		_step_buffer_t = GameData.num("feel", "input_buffer_s")
+		return
+	sidestep()
+
+
+func _tick_step_buffer(delta: float) -> void:
+	if _step_buffer_t <= 0.0:
+		return
+	_step_buffer_t -= delta
+	if _step_buffer_t <= 0.0 or meditating or _sitting or ui_blocked or dead:
+		_step_buffer_t = 0.0
+		return
+	if not _cast_busy():
+		_step_buffer_t = 0.0
+		sidestep()
+
+
+## Whose reflux a sidestep heats: the coolest of your affinities that is not locked. "" when you hold
+## none (then a step costs nothing, and Winded refuses it instead of doubling it - there is no reflux to
+## pay into) or when every one is locked (then you cannot step until one unlocks).
+func sidestep_affinity() -> String:
+	var best := ""
+	for aff: String in affinities:
+		if is_locked(aff):
+			continue
+		if best == "" or reflux_of(aff) < reflux_of(best):
+			best = aff
+	return best
+
+
+## Take the step now. Returns "" if you stepped, else why not: inactive, sitting, busy, locked, winded.
+func sidestep() -> String:
+	if not active or dead or projecting or ui_blocked:
+		return "inactive"
+	if _sitting or meditating:
+		return "sitting"
+	if _cast_busy():
+		return "busy"
+	var cfg: Dictionary = GameData.balance["sidestep"]
+	var aff: String = sidestep_affinity()
+	var winded: bool = _winded_t > 0.0
+	if aff == "" and not affinities.is_empty():
+		note("Every affinity is locked by reflux: no step. Meditate (hold %s)." % Keybinds.binding_text("meditate"))
+		return "locked"
+	if aff == "" and winded:
+		note("Winded: no step yet.")
+		return "winded"
+	if aff != "":
+		reflux_by[aff] = reflux_of(aff) + float(cfg["reflux"]) * (GameData.num("combat", "winded_cost_mult") if winded else 1.0)
+		_lock_if_capped(aff)
+	var dir: Vector3 = _sidestep_dir()
+	var time: float = float(cfg["time_s"])
+	_facing = dir
+	_snap_body_now()
+	_dash_vel = dir * (float(cfg["distance_m"]) / time)
+	_dash_time = time
+	_dash_stops = true                       # a step does not carry you through a body
+	_dash_braced = false
+	_dash_pass = {}
+	_dash_passed.clear()
+	_dash_trail = {}
+	_dash_on_stop = {}
+	_dash_on_arrive = {}
+	_dash_heavy_poise = 0.0
+	_dash_pass_armoured = false
+	_dash_ab = {}
+	_dash_from = global_position
+	_dash_start = global_position
+	_recover_t = maxf(_recover_t, time + float(cfg["recovery_s"]))
+	_melee_cd = maxf(_melee_cd, _recover_t)
+	has_move_goal = false                    # a step drops what your feet were doing
+	attack_target = null
+	pickup_target = null
+	_strike_credit = 0
+	_face_hold_t = 0.0
+	if _step_chain_t > 0.0:
+		_winded_t = GameData.num("combat", "winded_s")      # the second in quick succession: Winded
+		_step_chain_t = 0.0
+	else:
+		_step_chain_t = float(cfg["chain_s"])
+	if winded:
+		_float("winded", Color(0.8, 0.8, 0.9))
+	if _rig != null and _rig.has_method("play_action"):
+		_rig.call("play_action", "dodge", -1.0)
+	sidesteps += 1
+	sidestepped.emit(dir, winded)
+	return ""
+
+
+## Which way a step goes: the way the move keys point, else toward the cursor, else the way you face.
+func _sidestep_dir() -> Vector3:
+	var input := Vector2.ZERO if bot else Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	if input != Vector2.ZERO:
+		return Vector3(input.x, 0.0, input.y).normalized().rotated(Vector3.UP, ISO_YAW)
+	if cursor_fixed != null or (is_inside_tree() and get_viewport().get_camera_3d() != null):
+		var to: Vector3 = _cursor_ground() - global_position
+		to.y = 0.0
+		if to.length() > 0.5:
+			return to.normalized()
+	return _facing if _facing.length() > 0.01 else Vector3(0, 0, -1)

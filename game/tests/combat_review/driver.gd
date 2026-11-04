@@ -8,7 +8,7 @@ extends Node
 ## Args (after --):
 ##   --scenario=stubble|arena|passage   --aff=<base affinity>   --skills=a,b (default: first two roots)
 ##   --tier=new|mid                     --meditate=0|1 (sit to full between fights)
-##   --dodge=walk|dash                  --minutes=<game minutes cap>   --waves=<arena waves>  --walls=<passage walls>
+##   --dodge=walk|dash|step             --minutes=<game minutes cap>   --waves=<arena waves>  --walls=<passage walls>
 ##   --tag=<label for the output line>
 ## Prints one "PROBE {json}" line at the end plus human-readable "PROBE:" lines.
 
@@ -78,6 +78,7 @@ var _stuck_t := 0.0
 var _loot_item: Variant = null
 var _loot_t := 0.0
 var _last_pos := Vector3.ZERO
+var _last_step := -9.0
 
 
 func _ready() -> void:
@@ -425,6 +426,11 @@ func _fight(foes: Array) -> void:
 		if str(args.get("dodge", "walk")) == "dash":
 			player.set("cursor_fixed", esc)
 			_try_press_kind(["dash", "blink", "streak"])
+		elif str(args.get("dodge", "walk")) == "step" and player.has_method("press_sidestep") and t - _last_step >= 0.5:
+			# the free sidestep (combat review R3), toward the way out, at most twice a second
+			player.set("cursor_fixed", esc)
+			_last_step = t
+			player.call("press_sidestep")
 		return
 	player.set("has_move_goal", false)
 	var near: Node3D = null
@@ -769,6 +775,7 @@ func _finish(why: String) -> void:
 		"dmg_by_skill": _round(dmg_by_skill), "dps_fight": snappedf(dmg_total / maxf(0.001, float(time_in["fight"])), 0.1),
 		"taken": snappedf(taken, 0.1), "taken_per_fight_min": snappedf(taken / fmins, 0.1), "hits_taken": taken_hits,
 		"healed_in_fight": snappedf(healed_in_fight, 0.1), "wounds": wounds_got, "deaths": deaths,
+		"sidesteps": int(player.get("sidesteps")) if player.get("sidesteps") != null else 0,
 		"engaged_avg": snappedf(eng_avg / maxf(0.001, eng_tot), 0.01), "engaged_max": engaged_max, "engaged_hist": hist,
 		"loot_value_picked": loot_value_picked, "loot_value_left": loot_value_left, "loot_per_min": snappedf(loot_value_picked / mins, 1.0),
 		"aura_gained": snappedf(float(player.get("_latent_aura")) - aura0, 0.01), "star_pct_gained": snappedf(_star_total() - star0, 0.001),

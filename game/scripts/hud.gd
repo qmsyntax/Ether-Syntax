@@ -819,6 +819,7 @@ func _draw_hints(vs: Vector2) -> void:
 	var inv: Inventory = player.get("inventory")
 	var heavy: bool = inv.weight() > inv.capacity() * 0.9
 	var rows: Array = [
+		["Sidestep", "sidestep", false],
 		["Inventory  %d / %d kg" % [int(inv.weight()), int(inv.capacity())], "inventory", heavy],
 		["Soul", "ethercosm", false],
 		["Project", "project", false],

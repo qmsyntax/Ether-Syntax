@@ -359,10 +359,14 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 ## Hotbar slots are the actions ability_1..N. Returns true if the event cast something. A test
-## character also turns the bar to its next six skills (hotbar_page).
+## character also turns the bar to its next six skills (hotbar_page). The sidestep key (combat review
+## R3) is taken here too: wherever you can cast, you can step.
 func _cast_from_hotbar(event: InputEvent) -> bool:
 	if event.is_action_pressed("hotbar_page") and bool(player.get("test_character")):
 		player.call("next_hotbar_page")
+		return true
+	if event.is_action_pressed("sidestep"):
+		player.call("press_sidestep")             # now, or as soon as you are free (balance.json sidestep)
 		return true
 	for i: int in (player.get("hotbar") as Array).size():
 		if event.is_action_pressed("ability_%d" % (i + 1)):

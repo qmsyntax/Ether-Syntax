@@ -26,6 +26,7 @@ func run() -> void:
 	await _gathering()
 	await _shedding()
 	_starters()
+	await _sidestep()
 	for n: Node in _made:
 		if is_instance_valid(n):
 			n.queue_free()
@@ -175,6 +176,91 @@ func _starters() -> void:
 	check.call("only a ranged starter whose hit pulls or taunts stays under the floor (the tank's exception)",
 		light.size() <= 4 and not light.has("cinder_spit"), str(light))
 	print("    lighter by role: %s" % ", ".join(light))
+
+
+# --- R3: the free sidestep ----------------------------------------------------------------------
+
+func _sidestep() -> void:
+	var s: Dictionary = GameData.balance.get("sidestep", {})
+	var dist: float = float(s.get("distance_m", 0.0))
+	check.call("balance.json sidestep: a short step (2.5-3 m), priced in reflux, with a note",
+		dist >= 2.5 and dist <= 3.0 and float(s.get("reflux", 0.0)) > 0.0 and str(s.get("_note", "")).contains("NOT invulnerable"))
+	check.call("the sidestep has its own key, Space by default, and no other action shares it",
+		Keybinds.binding_text("sidestep") == "Space" and _shared_defaults().is_empty(), str(_shared_defaults()))
+	var p := _player("water", AT + Vector3(0, 0, 80), 10.0)
+	var hitter := _foe(p, Vector3(40, 0, 0))
+	await _wait(STEP)
+	var from: Vector3 = p.global_position
+	p.set("cursor_fixed", from + Vector3(8, 0, 0))     # step toward the cursor (no move key held)
+	p.call("press_sidestep")
+	check.call("pressed when free, the step starts at once", int(p.get("sidesteps")) == 1 and float(p.get("_dash_time")) > 0.0)
+	check.call("it costs reflux, not essence", _near(float(p.get("essence")), 10.0) and _near(float(p.call("reflux_of", "water")), float(s["reflux"])),
+		"essence %f reflux %f" % [float(p.get("essence")), float(p.call("reflux_of", "water"))])
+	await _wait(STEP * 2.0)
+	var hp0: float = (p.get("body") as Body).total()
+	p.call("take_hit", 6.0, false, hitter)
+	check.call("it is not invulnerable: a blow mid-step lands", float(p.get("_dash_time")) > 0.0 and (p.get("body") as Body).total() < hp0)
+	await _wait(float(s["time_s"]) + STEP * 2.0)
+	var moved: Vector3 = p.global_position - from
+	check.call("it moves its distance, exactly, toward the cursor", _near(moved.length(), dist, 0.05) and moved.normalized().dot(Vector3(1, 0, 0)) > 0.99,
+		"moved %s" % str(moved))
+	check.call("one step does not wind you", float(p.get("_winded_t")) <= 0.0)
+	# a second in quick succession: Winded; the third pays double
+	await _wait(float(s["recovery_s"]) + STEP)
+	p.call("press_sidestep")
+	check.call("the second step in quick succession leaves you Winded", int(p.get("sidesteps")) == 2 and float(p.get("_winded_t")) > 0.0)
+	await _wait(float(s["time_s"]) + float(s["recovery_s"]) + STEP * 2.0)
+	var heat0: float = float(p.call("reflux_of", "water"))
+	p.call("press_sidestep")
+	check.call("... and a step taken Winded costs winded_cost_mult the heat", int(p.get("sidesteps")) == 3 and
+		_near(float(p.call("reflux_of", "water")) - heat0, float(s["reflux"]) * GameData.num("combat", "winded_cost_mult"), 0.05),
+		"heat %f" % (float(p.call("reflux_of", "water")) - heat0))
+	# pressed while busy, it waits like a hotbar key
+	await _wait(float(s["time_s"]) + float(s["recovery_s"]) + STEP * 2.0)
+	p.set("_recover_t", 0.15)
+	p.call("press_sidestep")
+	check.call("pressed during a recovery it does not step yet", int(p.get("sidesteps")) == 3)
+	await _wait(0.2)
+	check.call("... and steps the moment you are free (feel.input_buffer_s)", int(p.get("sidesteps")) == 4)
+	# every affinity locked: no step
+	await _wait(float(s["time_s"]) + float(s["recovery_s"]) + STEP * 2.0)
+	(p.get("locked_by") as Dictionary)["water"] = true
+	check.call("with every affinity locked by reflux you cannot step", str(p.call("sidestep")) == "locked" and int(p.get("sidesteps")) == 4)
+	(p.get("locked_by") as Dictionary)["water"] = false
+	p.set("cursor_fixed", null)
+	_gone(p)
+	# two affinities: the coolest unlocked one takes the heat
+	var d := _player("fire", AT + Vector3(0, 0, 120), 10.0)
+	d.call("set_affinities", ["fire", "water"])
+	(d.get("reflux_by") as Dictionary)["fire"] = 40.0
+	await _wait(STEP)
+	d.call("sidestep")
+	check.call("with two affinities the step heats the cooler one", _near(float(d.call("reflux_of", "water")), float(s["reflux"]), 0.1) and float(d.call("reflux_of", "fire")) <= 40.0)
+	_gone(d)
+	# no affinity at all: the step is free, and Winded refuses it
+	var n := _player("water", AT + Vector3(0, 0, 160), 10.0)
+	n.set("affinities", [] as Array[String])
+	await _wait(STEP)
+	n.call("sidestep")
+	await _wait(float(s["time_s"]) + float(s["recovery_s"]) + STEP * 2.0)
+	n.call("sidestep")
+	await _wait(float(s["time_s"]) + float(s["recovery_s"]) + STEP * 2.0)
+	check.call("with no affinity held a step costs nothing, and once Winded it is refused", int(n.get("sidesteps")) == 2 and str(n.call("sidestep")) == "winded"
+		and _near(float(n.get("essence")), 10.0))
+	_gone(n)
+	_gone(hitter)
+
+
+## Actions whose default keys collide (each binding is meant to be one action's).
+func _shared_defaults() -> Array[String]:
+	var seen: Dictionary = {}
+	var out: Array[String] = []
+	for a: Array in Keybinds.ACTIONS:
+		var key: String = "%s:%d" % [str(a[2]), int(a[3])]
+		if seen.has(key):
+			out.append("%s and %s" % [seen[key], a[0]])
+		seen[key] = a[0]
+	return out
 
 
 # --- Q2: reflux sheds faster in a fight ---------------------------------------------------------
