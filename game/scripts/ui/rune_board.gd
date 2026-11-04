@@ -775,8 +775,8 @@ func _keystone_line(k: int, tier: String, concept: String, state: String, ctx: R
 	if concept != "" and rr != null:
 		var ab: Dictionary = GameData.ability(ctx.ability_id) if GameData.abilities.has(ctx.ability_id) else {}
 		var ke: Dictionary = rr.keystone_effect(ab, {"ring": k, "tier": tier, "concept": concept})
-		out.append(["%s ring %d  -  %s of %s (x%s)" % ["keystone" if state == "sealed" else "KEYSTONE", k, tier, str(GameData.concept(concept).get("label", concept)),
-			RingRules._x(float(ke["weight"]))], col])
+		out.append(["%s ring %d  -  %s (x%s)  %s" % ["keystone" if state == "sealed" else "KEYSTONE", k, ConstructWords.phrase(tier, concept),
+			RingRules._x(float(ke["weight"])), ConstructWords.spelling(tier, concept)], col])
 		out.append(["      " + ", ".join(PackedStringArray(ke["lines"])), Color(col, 0.85)])
 	else:
 		out.append(["KEYSTONE ring %d  -  the %s" % [k, tier], col])

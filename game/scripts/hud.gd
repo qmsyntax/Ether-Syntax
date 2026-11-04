@@ -1478,7 +1478,7 @@ func _draw_tooltip(vs: Vector2) -> void:
 				else:
 					lines.append([str(lock["text"]), body_px, UiTheme.BAD])
 			for ks: Dictionary in RuneWord.keystones(st.get("word", {})):
-				lines.append(["Keystone, ring %d: %s of %s" % [int(ks["ring"]), str(ks["tier"]), str(GameData.concept(str(ks["concept"])).get("label", ks["concept"]))], body_px, UiTheme.STAR])
+				lines.append(["Keystone, ring %d: %s (%s)" % [int(ks["ring"]), ConstructWords.phrase(str(ks["tier"]), str(ks["concept"])), ConstructWords.spelling(str(ks["tier"]), str(ks["concept"]))], body_px, UiTheme.STAR])
 	elif what == "strike":
 		var arm_lost: bool = bool(player.get("arm_right_lost"))
 		var strike: float = float(player.call("strike_damage")) * (GameData.num("player", "off_hand_factor") if arm_lost else 1.0)

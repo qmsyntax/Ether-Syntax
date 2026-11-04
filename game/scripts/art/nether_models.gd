@@ -4,7 +4,9 @@ extends RefCounted
 ## wisps and the wild ether constructs. Use them through Models.projection(), Models.wisp()
 ## and Models.construct(), which cache the baked results.
 ##
-## The constructs are this project's own abstract designs - one silhouette per concept:
+## The constructs are this project's own abstract designs - six silhouettes ("forms", one per old
+## concept). Since Brent 2026-11-04 a construct carries a word of runes; each word names the form its
+## runes lean to (constructs.json "form") and is tinted by its affinity (a pale neutral if universal):
 ##   acceleration  a rising flight of chevrons, each bigger and further ahead than the last
 ##   piercing      a faceted needle driven through torn membranes
 ##   compression   stacked plates squeezed between two heavy slabs around a crushed core
@@ -12,7 +14,9 @@ extends RefCounted
 ##   reach         a rooted, jointed limb straining forward at a mote it never touches
 ##   stillness     a hanging drop inside perfectly level rings over frozen ripples
 
-const TIER_HEIGHT: Dictionary[String, float] = {"vestige": 0.9, "remnant": 1.5, "spirit": 2.3}
+const TIER_HEIGHT: Dictionary[String, float] = {"vestige": 0.9, "remnant": 1.5, "spirit": 2.3, "eidolon": 2.8, "asura": 3.3}
+## A universal word's palette: pale and cool, so the six forms read as plain ether.
+const NEUTRAL_TINT := Color(0.74, 0.8, 0.92)
 const NONE := Vector3.ZERO
 const ONE := Vector3.ONE
 
@@ -101,13 +105,15 @@ static func build_wisp(affinity: String) -> Node3D:
 # ---------------------------------------------------------------- constructs
 
 ## Builds a construct. Every design is authored 1.0 tall under a "root" part that is scaled
-## to the tier's height; `level` (0, 1, 2) adds elements with each tier.
-static func build_construct(tier: String, concept: String) -> ModelRig:
+## to the tier's height; `level` (0, 1, 2) adds elements with each tier. `concept` is the form drawn;
+## `affinity` tints it: an affinity id its colour, "" (a universal word) the neutral palette, "-" (no
+## word) the design's own colours.
+static func build_construct(tier: String, concept: String, affinity: String = "-") -> ModelRig:
 	var size: float = TIER_HEIGHT.get(tier, 0.9)
 	var level: int = 0
 	if tier == "remnant":
 		level = 1
-	elif tier == "spirit":
+	elif tier in ["spirit", "eidolon", "asura"]:
 		level = 2
 	var r := ModelRig.new()
 	r.name = "Construct_%s_%s" % [tier, concept]
@@ -134,6 +140,10 @@ static func build_construct(tier: String, concept: String) -> ModelRig:
 			unit_radius = _stillness(r, level)
 		_:
 			unit_radius = _generic(r, level)
+	if affinity == "":
+		r.tint_shapes(NEUTRAL_TINT, 0.6)
+	elif affinity != "-":
+		r.tint_shapes(GameData.affinity_color(affinity), 0.5)
 	r.radius = unit_radius * size
 	r.finish()
 	return r

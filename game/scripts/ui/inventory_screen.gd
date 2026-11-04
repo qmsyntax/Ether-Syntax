@@ -614,7 +614,7 @@ func _build_soul(box: VBoxContainer) -> void:
 		if not keys.is_empty():
 			var names: Array[String] = []
 			for ks: Dictionary in keys:
-				names.append("ring %d: %s of %s" % [int(ks["ring"]), str(ks["tier"]), str(GameData.concept(str(ks["concept"])).get("label", ks["concept"]))])
+				names.append("ring %d: %s" % [int(ks["ring"]), ConstructWords.phrase(str(ks["tier"]), str(ks["concept"]))])
 			col.add_child(UiTheme.body("Keystones: " + ", ".join(names), 12, UiTheme.STAR))
 		var rune_fx: Array = player.call("rune_summary", ai)
 		if not rune_fx.is_empty():
@@ -639,10 +639,39 @@ func _build_soul(box: VBoxContainer) -> void:
 	if held.is_empty():
 		box.add_child(UiTheme.body("None. For now they come from the strongest things you kill.", 13, UiTheme.TEXT_FAINT))
 	else:
-		var names2: Array[String] = []
-		for g: Dictionary in player.call("construct_groups"):
-			names2.append(str(g["text"]))
-		box.add_child(UiTheme.body(", ".join(names2), 14, UiTheme.GOLD))
+		# one chip per word carried, by tier (Brent 2026-11-04: a construct carries a word of runes); its
+		# tooltip shows the runes, the meaning and what it does as a keystone; one that fits none of your
+		# skills is dimmed. A long list (a test character's) scrolls.
+		var scroll := ScrollContainer.new()
+		scroll.name = "ConstructsCarried"
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		var groups: Array = player.call("construct_groups")
+		scroll.custom_minimum_size = Vector2(0, minf(150.0, 30.0 * ceilf(float(groups.size()) / 4.0) + 26.0 * float(GameData.construct_tiers.size())))
+		box.add_child(scroll)
+		var col := VBoxContainer.new()
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.add_child(col)
+		for tier: Variant in GameData.construct_tiers:
+			var of_tier: Array = groups.filter(func(g: Dictionary) -> bool: return str(g["tier"]) == str(tier))
+			if of_tier.is_empty():
+				continue
+			col.add_child(UiTheme.body("%s (%d)" % [str(tier).capitalize(), of_tier.reduce(func(a: int, g: Dictionary) -> int: return a + int(g["count"]), 0)], 12, UiTheme.TEXT_DIM))
+			var flow := HFlowContainer.new()
+			flow.add_theme_constant_override("h_separation", 4)
+			flow.add_theme_constant_override("v_separation", 3)
+			col.add_child(flow)
+			for g: Dictionary in of_tier:
+				var t: String = str(g["tier"])
+				var cid: String = str(g["concept"])
+				var glyphs: String = "".join(PackedStringArray(ConstructWords.runes(t, cid).map(func(r: String) -> String: return str(GameData.rune(r).get("character", "?")))))
+				var chip := UiWidgets.TipLabel.new()
+				chip.text = "%s %s%s" % [glyphs, ConstructWords.label(t, cid), (" x%d" % int(g["count"])) if int(g["count"]) > 1 else ""]
+				chip.add_theme_font_size_override("font_size", 13)
+				chip.add_theme_color_override("font_color", ConstructWords.color(t, cid).lightened(0.3) if bool(g["fits"]) else UiTheme.TEXT_FAINT)
+				chip.name = "Carried_%s_%s" % [t, cid]
+				chip.mouse_filter = Control.MOUSE_FILTER_PASS
+				chip.tooltip_text = ConstructWords.tooltip(t, cid, player.get("affinities"), true)
+				flow.add_child(chip)
 	var proven: Array = player.get("discoveries")
 	if not proven.is_empty():
 		box.add_child(UiTheme.heading("Proven about your talent", 18))

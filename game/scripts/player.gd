@@ -97,7 +97,8 @@ var star_pct: Array[float] = []
 ## The ascension not yet settled (saved): {star, offer: [affinity ids], skills: [{index, id, stage,
 ## amount}]}; {} when there is none. See _begin_ascension / resolve_ascension.
 var ascension_pending: Dictionary = {}
-## Constructs carried, waiting to be bound: [{tier, concept}]. Placeholder source: enemy drops.
+## Constructs carried, waiting to be bound: [{tier, concept}] - "concept" is the word it carries (a rune id
+## for a vestige, an authored word id above; constructs.json words, ConstructWords). Source: the Netherecho.
 var constructs: Array = []
 var rng := RandomNumberGenerator.new()
 ## Diablo-style click targeting (Brent 2026-09-23): the thing you clicked, and where you clicked.
@@ -4864,8 +4865,10 @@ func _preview_row(out: Array[Dictionary], label: String, before: float, after: f
 	out.append({"label": label, "before": a, "after": b, "better": (after > before) == more_is_better})
 
 
-## The carried constructs grouped by tier and concept, in carried order: [{tier, concept, count,
-## index (the first one carried), text ("eidolon of Reach x3")}], optionally of one tier only.
+## The carried constructs grouped by tier and word, in carried order: [{tier, concept (the word id),
+## count, index (the first one carried), text ("vestige of Flood x3"), fits, why (when it does not fit,
+## the reason - Brent 2026-11-04: a word with an affinity rune fits only where that rune could be set,
+## can_use_rune)}], optionally of one tier only.
 func construct_groups(tier: String = "") -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var at: Dictionary = {}
@@ -4880,8 +4883,25 @@ func construct_groups(tier: String = "") -> Array[Dictionary]:
 			at[key] = out.size()
 			out.append({"tier": str(c["tier"]), "concept": str(c["concept"]), "count": 1, "index": i})
 	for g: Dictionary in out:
-		g["text"] = "%s of %s%s" % [g["tier"], str(GameData.concept(str(g["concept"])).get("label", g["concept"])),
-			(" x%d" % int(g["count"])) if int(g["count"]) > 1 else ""]
+		g["text"] = "%s%s" % [ConstructWords.phrase(str(g["tier"]), str(g["concept"])), (" x%d" % int(g["count"])) if int(g["count"]) > 1 else ""]
+		var f: Dictionary = construct_fits(str(g["tier"]), str(g["concept"]))
+		g["fits"] = bool(f["ok"])
+		g["why"] = "" if bool(f["ok"]) else str(f["text"])
+	return out
+
+
+## Whether a construct carrying word `concept` fits this character's skills (Brent 2026-11-04,
+## design/14 section 14): every rune of it one this character may set (can_use_rune - its universal
+## runes always, an affinity's only when the affinity is held). {ok, reason, text}.
+func construct_fits(tier: String, concept: String) -> Dictionary:
+	return ConstructWords.fits(tier, concept, affinities)
+
+
+## How many carried constructs of `tier` fit, and how many do not: {fit, unfit}.
+func construct_fit_counts(tier: String) -> Dictionary:
+	var out: Dictionary = {"fit": 0, "unfit": 0}
+	for g: Dictionary in construct_groups(tier):
+		out["fit" if bool(g["fits"]) else "unfit"] = int(out["fit" if bool(g["fits"]) else "unfit"]) + int(g["count"])
 	return out
 
 
@@ -4903,7 +4923,7 @@ func _bind_construct(ability_index: int, construct_index: int, roll: float = -1.
 	constructs.remove_at(construct_index)
 	var r: float = rng.randf() if roll < 0.0 else roll
 	var ab_name: String = str(GameData.ability(str(state["id"])).get("name", "?"))
-	var label: String = str(GameData.concept(str(con["concept"])).get("label", con["concept"]))
+	var label: String = ConstructWords.label(str(con["tier"]), str(con["concept"]))
 	if r >= GameData.num("binding", "success_chance"):
 		var burn_wound: Dictionary = GameData.balance["wounds"]["bind_fail"]
 		_wound_seq += 1
@@ -5063,8 +5083,10 @@ func draft_redo() -> bool:
 
 ## May ability `index`'s next level lock be opened? Only with its bar full AND a construct of the
 ## tier carried (Brent 2026-10-24: "You have to be able to lock the current level (have a proper
-## construct for it) before you can reform"). {ok, reason ("no_skill", "at_cap", "bar", "no_construct"),
-## text (what is missing, for the main page), tier, stage}.
+## construct for it) before you can reform"). Since Brent 2026-11-04 the construct must also FIT the
+## skill (its word's runes ones this character may set, construct_fits): one that does not, does not
+## count. {ok, reason ("no_skill", "at_cap", "bar", "no_construct", "no_fit"), text (what is missing,
+## for the main page), tier, stage}.
 func can_open_seal(index: int) -> Dictionary:
 	if index < 0 or index >= abilities.size():
 		return RuneRules.no("no_skill", "No such skill.")
@@ -5072,11 +5094,16 @@ func can_open_seal(index: int) -> Dictionary:
 	var stage: int = int(st["stage"])
 	var tier: String = GameData.tier_for_stage(stage)
 	var r: Dictionary = RuneRules.ok()
+	var counts: Dictionary = construct_fit_counts(tier) if tier != "" else {"fit": 0, "unfit": 0}
 	if stage >= stars + 1 or tier == "":
 		r = RuneRules.no("at_cap", "Level %d is as far as it goes at %d star%s: no lock is left until you ascend." % [stage, stars, "" if stars == 1 else "s"])
 	elif float(st["progress"]) < 100.0:
 		r = RuneRules.no("bar", "Its level %d lock needs its bar full first (%d%%): it fills as you use the skill." % [stage + 1, int(float(st["progress"]))])
-	elif construct_groups(tier).is_empty():
+	elif int(counts["fit"]) == 0 and int(counts["unfit"]) > 0:
+		var first: Dictionary = construct_groups(tier)[0]
+		r = RuneRules.no("no_fit", "The bar is full, but its level %d lock needs a %s that fits, and the %d you carry do%s not. %s Subdue one of your own affinities, or a universal one." % [
+			stage + 1, tier, int(counts["unfit"]), "es" if int(counts["unfit"]) == 1 else "", str(first["why"])])
+	elif int(counts["fit"]) == 0:
 		r = RuneRules.no("no_construct", "The bar is full, but its level %d lock needs a %s and you carry none: subdue one in the Netherecho, then open the seal." % [stage + 1, tier])
 	r["tier"] = tier
 	r["stage"] = stage
@@ -5096,6 +5123,8 @@ func open_seal(index: int, construct_index: int = -1) -> Dictionary:
 	var ci: int = construct_index
 	if ci >= 0 and (ci >= constructs.size() or str(constructs[ci]["tier"]) != need):
 		return RuneRules.no("wrong_tier", "It needs a %s." % need)
+	if ci >= 0 and not bool(construct_fits(need, str(constructs[ci]["concept"]))["ok"]):
+		return RuneRules.no("unfit", str(construct_fits(need, str(constructs[ci]["concept"]))["text"]))
 	seal_draft = {"index": index, "construct": ci, "mode": "bind", "word": _draft_from(index)}
 	return RuneRules.ok()
 
@@ -5112,7 +5141,7 @@ func seal_keystone() -> Dictionary:
 	var con: Dictionary = constructs[c]
 	return {"ring": ctx.forming, "tier": str(con["tier"]), "concept": str(con["concept"]), "construct": c,
 		"set": rr == null or rr.first_unformed(seal_draft["word"], ctx.forming) == 0,
-		"label": "%s of %s" % [str(con["tier"]), str(GameData.concept(str(con["concept"])).get("label", con["concept"]))]}
+		"label": ConstructWords.phrase(str(con["tier"]), str(con["concept"]))}
 
 
 ## The draft as it would be sealed: with the chosen keystone over its forming ring (a copy).
@@ -5126,7 +5155,8 @@ func draft_with_keystone() -> Dictionary:
 
 
 ## Choose, on the seal screen, which carried construct this level lock binds - the keystone set over
-## the forming ring: one of the tier the skill needs. Returns {ok, reason, text}.
+## the forming ring: one of the tier the skill needs, whose word fits (Brent 2026-11-04: construct_fits;
+## reason "unfit" with why). Returns {ok, reason, text}.
 func choose_seal_construct(construct_index: int) -> Dictionary:
 	if seal_mode() != "bind":
 		return RuneRules.no("not_sealing", "No level lock is being formed.")
@@ -5135,6 +5165,9 @@ func choose_seal_construct(construct_index: int) -> Dictionary:
 		return RuneRules.no("no_construct", "You carry no such construct.")
 	if str(constructs[construct_index]["tier"]) != need:
 		return RuneRules.no("wrong_tier", "This level lock needs a %s." % need)
+	var fit: Dictionary = construct_fits(need, str(constructs[construct_index]["concept"]))
+	if not bool(fit["ok"]):
+		return RuneRules.no("unfit", str(fit["text"]))
 	seal_draft["construct"] = construct_index
 	return RuneRules.ok()
 
@@ -5174,6 +5207,8 @@ func _can_bind(ctx: RuneContext) -> Dictionary:
 		return r
 	var need: String = pending_tier(abilities[sealing_index()])
 	var c: int = seal_construct()
+	if c >= 0 and c < constructs.size() and need == str(constructs[c]["tier"]) and not bool(construct_fits(need, str(constructs[c]["concept"]))["ok"]):
+		return RuneRules.no("unfit", str(construct_fits(need, str(constructs[c]["concept"]))["text"]))
 	if c < 0 or c >= constructs.size() or need != str(constructs[c]["tier"]):
 		return RuneRules.no("no_keystone", "Choose the %s to set over ring %d as its keystone, then bind." % [need, ctx.forming])
 	return r
@@ -5568,18 +5603,30 @@ func reveal_rune(base: Array, universal: Array, universal_chance: float, source:
 	return rid
 
 
-## A construct subdued in the Netherecho reveals runes of its concept. Returns the ids revealed.
+## A construct subdued in the Netherecho reveals runes of the word it carries (Brent 2026-11-04,
+## design/14 section 14): "reveals" of them by tier (rune_discovery.json construct.by_tier) - first the
+## word's OWN runes this character can use and does not know (in random order), then, for the reveals
+## left, the runes nearest the word (construct.words.<id>: per affinity held, universal with the tier's
+## universal_chance), as before. Returns the ids revealed.
 func on_construct_subdued(tier: String, concept: String) -> Array[String]:
 	var cfg: Dictionary = GameData.rune_discovery.get("construct", {})
 	var by_tier: Dictionary = (cfg.get("by_tier", {}) as Dictionary).get(tier, {})
-	var entry: Dictionary = (cfg.get("concepts", {}) as Dictionary).get(concept, {})
+	var wid: String = GameData.construct_word_id(tier, concept)
+	var entry: Dictionary = (cfg.get("words", {}) as Dictionary).get(wid, {})
 	var base: Array = []
 	for a: String in affinities:
 		base.append_array((entry.get("base", {}) as Dictionary).get(a, []))
-	var label: String = str(GameData.concept(concept).get("label", concept.capitalize()))
+	var source: String = "from the %s you subdued" % ConstructWords.phrase(tier, concept)
+	var own: Array[String] = _unknown_usable(ConstructWords.runes(tier, concept))
 	var out: Array[String] = []
 	for n: int in int(by_tier.get("reveals", 0)):
-		var rid: String = reveal_rune(base, entry.get("universal", []), float(by_tier.get("universal_chance", 0.0)), "from the %s of %s you subdued" % [tier, label])
+		var rid: String = ""
+		if not own.is_empty():
+			rid = own[rng.randi() % own.size()]
+			own.erase(rid)
+			discover_rune(rid, source)
+		else:
+			rid = reveal_rune(base, entry.get("universal", []), float(by_tier.get("universal_chance", 0.0)), source)
 		if rid != "":
 			out.append(rid)
 	return out
@@ -5629,10 +5676,12 @@ func _roll_drops(target: Node) -> void:
 	var drops: Dictionary = GameData.enemy(str(kind_v)).get("drops", {})
 	for tier: String in drops:
 		if rng.randf() < float(drops[tier]):
-			var ids: Array = GameData.concept_ids()
-			var concept_id: String = str(ids[rng.randi() % ids.size()])
+			# a word of the tier, leaning toward your affinities (ConstructWords.pick_wild)
+			var concept_id: String = ConstructWords.pick_wild(tier, affinities, rng)
+			if concept_id == "":
+				continue
 			constructs.append({"tier": tier, "concept": concept_id})
-			note("It leaves a %s of %s behind." % [tier, str(GameData.concept(concept_id).get("label", concept_id))])
+			note("It leaves a %s behind." % ConstructWords.phrase(tier, concept_id))
 
 
 # --- gear, loot, saving ----------------------------------------------------------
@@ -5765,12 +5814,16 @@ func make_test_character(aff: String) -> void:
 		abilities.append({"id": id, "stage": stage, "progress": 100.0})       # full bars: ready for the first lock
 	for i: int in mini(hotbar.size(), abilities.size()):
 		hotbar[i] = i
-	# every construct tier of every concept, test_constructs_each of each, to bind with (Brent 2026-10-23)
+	# every construct tier, test_constructs_each of every word that fits it, to bind with (Brent 2026-10-23;
+	# words since 2026-11-04: a vestige of every rune, the authored words above - only those this
+	# character's skills can take, its affinities' and the universal ones)
 	constructs.clear()
 	for tier: Variant in GameData.construct_tiers:
-		for concept: Variant in GameData.concept_ids():
+		for concept: Variant in GameData.construct_word_ids(str(tier)):
+			if not bool(construct_fits(str(tier), str(concept))["ok"]):
+				continue
 			for k: int in GameData.inum("skills", "test_constructs_each"):
-				constructs.append({"tier": str(tier), "concept": concept})
+				constructs.append({"tier": str(tier), "concept": str(concept)})
 	note("TEST CHARACTER: every %s skill, stage %d, each ready for its level lock (the ethercosm). %s turns the skill bar to the next six." % [
 		str(GameData.affinity(aff).get("label", aff)).to_lower(), stage, Keybinds.binding_text("hotbar_page")])
 
@@ -5872,7 +5925,14 @@ func from_save(d: Dictionary) -> void:
 		tool_uses[t] = int(saved_uses[t])
 	constructs.clear()
 	for c: Variant in d.get("constructs", []):
-		constructs.append(c)
+		# an old concept id becomes the word it now is at that tier (constructs.json legacy); a construct
+		# naming no word at all is dropped
+		if typeof(c) == TYPE_DICTIONARY:
+			var cd: Dictionary = (c as Dictionary).duplicate()
+			var wid: String = GameData.construct_word_id(str(cd.get("tier", "")), str(cd.get("concept", "")))
+			if wid != "":
+				cd["concept"] = wid
+				constructs.append(cd)
 	discoveries.clear()
 	for line: Variant in d.get("discoveries", []):
 		discoveries.append(str(line))

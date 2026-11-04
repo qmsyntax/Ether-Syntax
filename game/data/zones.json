@@ -1,5 +1,5 @@
 {
-  "_note": "Overland zones (design/07, approved by Brent 2026-10-18). Coordinates are metres in the zone's own map frame: origin at the north-west corner, x east, y south; north is the far side of the screen. A zone is built by scripts/zone_builder.gd. lines: gaps in the edge that lead somewhere - 'to' is a zone id, 'town', or a dungeon; a line that is not 'open' is drawn shut with a sign. arrive: where you stand when you come in by that line. All numbers [MODEL]. decor: real models (game/assets/models/props/<model>.glb) scattered over the zone, 'count' of each at a random 'scale' in the range; 'solid' gives it a trunk collider of that radius. A landmark prop may be [\"model\", id, dx, dy, scale]. inscriptions: rune stones (Brent 2026-10-23, design/14 section 8): read with interact, each reveals one rune once per character - pool base (a rune of one of your affinities) or universal (rarer); rules in rune_discovery.json. 2026-10-23 (the Stubble populated, Brent): tracks - narrower ways (drawn, kept clear). power_line - pole points [x, y] (+ 'down' for a fallen one), wires between standing neighbours. features - [kit ('field' = scripts/art/field_props.gd, else a biome kit), kind, x, y, yaw, size]. entrances - dungeon mouths not open yet (scripts/field_entrance.gd): name, flavour, 'sealed' line, and 'dungeon' (the id it will open one day). camps - FieldCamps (scripts/field_camps.gd): at, strength (hp and damage factor), leash, aggro, members [{kind, n}], edge (Gleaners and where they run), herd (neutral until one is hurt), live_chance (the spare sites, rolled on each visit until there is a world clock), path + roam_speed (roamers), respawn_s. lurker_patches - a buried Sod-Lurker under turned earth at each. nether - the zone's own Netherecho: echoes, sites (wisps by affinity, 'own' = one of yours; constructs), scale by tier.",
+  "_note": "Overland zones (design/07, approved by Brent 2026-10-18). Coordinates are metres in the zone's own map frame: origin at the north-west corner, x east, y south; north is the far side of the screen. A zone is built by scripts/zone_builder.gd. lines: gaps in the edge that lead somewhere - 'to' is a zone id, 'town', or a dungeon; a line that is not 'open' is drawn shut with a sign. arrive: where you stand when you come in by that line. All numbers [MODEL]. decor: real models (game/assets/models/props/<model>.glb) scattered over the zone, 'count' of each at a random 'scale' in the range; 'solid' gives it a trunk collider of that radius. A landmark prop may be [\"model\", id, dx, dy, scale]. inscriptions: rune stones (Brent 2026-10-23, design/14 section 8): read with interact, each reveals one rune once per character - pool base (a rune of one of your affinities) or universal (rarer); rules in rune_discovery.json. 2026-10-23 (the Stubble populated, Brent): tracks - narrower ways (drawn, kept clear). power_line - pole points [x, y] (+ 'down' for a fallen one), wires between standing neighbours. features - [kit ('field' = scripts/art/field_props.gd, else a biome kit), kind, x, y, yaw, size]. entrances - dungeon mouths not open yet (scripts/field_entrance.gd): name, flavour, 'sealed' line, and 'dungeon' (the id it will open one day). camps - FieldCamps (scripts/field_camps.gd): at, strength (hp and damage factor), leash, aggro, members [{kind, n}], edge (Gleaners and where they run), herd (neutral until one is hurt), live_chance (the spare sites, rolled on each visit until there is a world clock), path + roam_speed (roamers), respawn_s. lurker_patches - a buried Sod-Lurker under turned earth at each. nether - the zone's own Netherecho: echoes, sites (wisps by affinity, 'own' = one of yours; constructs {tier, concept = the word it carries, constructs.json words - a rune id for a vestige, Brent 2026-11-04}), scale by tier.",
   "zones": {
     "the_stubble": {
       "name": "The Stubble",
@@ -922,7 +922,7 @@
             "constructs": [
               {
                 "tier": "vestige",
-                "concept": "stillness"
+                "concept": "UNI-01b"
               },
               {
                 "tier": "remnant",
@@ -959,7 +959,7 @@
             "constructs": [
               {
                 "tier": "vestige",
-                "concept": "compression"
+                "concept": "UNI-05b"
               }
             ]
           },
@@ -991,11 +991,11 @@
             "constructs": [
               {
                 "tier": "vestige",
-                "concept": "tension"
+                "concept": "UNI-12a"
               },
               {
                 "tier": "vestige",
-                "concept": "tension",
+                "concept": "UNI-12a",
                 "docile": true
               }
             ]
@@ -1028,7 +1028,7 @@
             "constructs": [
               {
                 "tier": "vestige",
-                "concept": "reach"
+                "concept": "UNI-06b"
               }
             ]
           },
@@ -1056,7 +1056,7 @@
             "constructs": [
               {
                 "tier": "vestige",
-                "concept": "acceleration",
+                "concept": "UNI-01a",
                 "docile": true
               }
             ]
@@ -1112,7 +1112,7 @@
             "constructs": [
               {
                 "tier": "vestige",
-                "concept": "compression",
+                "concept": "UNI-05b",
                 "docile": true
               }
             ]

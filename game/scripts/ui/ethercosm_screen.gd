@@ -670,8 +670,12 @@ func _mode_banner(mode: String, ctx: RuneContext, st: Dictionary) -> String:
 
 
 ## The level lock's keystone choice (Brent 2026-10-24): the carried constructs of the tier the skill
-## needs, one button per concept (Player.construct_groups), the chosen one marked; each button's
-## tooltip says what that keystone would do. The lock only opens with one carried (can_open_seal).
+## needs, one button per word (Player.construct_groups), the chosen one marked. Since Brent 2026-11-04
+## (design/14 section 14) a construct carries a word of runes and may not fit: the ones that fit come
+## first, grouped by affinity (the skill's own, the character's others, universal), each button's
+## tooltip its runes and what it does as this skill's keystone; the ones that do not fit follow, greyed
+## and disabled, the reason in their tooltip. The list scrolls (a test character carries dozens). The
+## lock only opens with a fitting one carried (can_open_seal).
 func _fill_constructs() -> void:
 	if _constructs_box == null or not is_instance_valid(_constructs_box):
 		return
@@ -682,37 +686,92 @@ func _fill_constructs() -> void:
 	var need: String = str(player.call("pending_tier", st))
 	var groups: Array = player.call("construct_groups", need)
 	var chosen: int = int(player.call("seal_construct"))
-	var chosen_g: Dictionary = {}
-	for g: Dictionary in groups:
-		var cons: Array = player.get("constructs")
-		if chosen >= 0 and chosen < cons.size() and str((cons[chosen] as Dictionary)["concept"]) == str(g["concept"]):
-			chosen_g = g
+	var cons: Array = player.get("constructs")
+	var chosen_id: String = str((cons[chosen] as Dictionary)["concept"]) if chosen >= 0 and chosen < cons.size() else ""
 	var ctx: RuneContext = current_context()
-	var head := UiTheme.body("KEYSTONE  -  the %s set over ring %d, chosen here (x%s: it counts for more than any rune)" % [need, ctx.forming,
-		RingRules._x((Runes.active() as RingRules).keystone_weight(need))] if Runes.active() is RingRules else "KEYSTONE", 12, UiTheme.GOLD.darkened(0.15))
+	var rr: RingRules = Runes.active() as RingRules
+	var fit: Array = groups.filter(func(g: Dictionary) -> bool: return bool(g["fits"]))
+	var unfit: Array = groups.filter(func(g: Dictionary) -> bool: return not bool(g["fits"]))
+	var head := UiTheme.body("KEYSTONE  -  the %s set over ring %d, chosen here (x%s: it counts for more than any rune)%s" % [need, ctx.forming,
+		RingRules._x(rr.keystone_weight(need)), ("   -   %d fit, %d do not" % [fit.size(), unfit.size()]) if not unfit.is_empty() else ("   -   %d carried" % fit.size())] \
+		if rr != null else "KEYSTONE", 12, UiTheme.GOLD.darkened(0.15))
 	head.name = "KeystoneHead"
 	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_constructs_box.add_child(head)
 	if groups.is_empty():
 		return
+	var scroll := ScrollContainer.new()
+	scroll.name = "KeystoneScroll"
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_constructs_box.add_child(scroll)
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 3)
+	scroll.add_child(col)
+	var ab: Dictionary = GameData.ability(str(st["id"]))
+	var own_aff: String = str(ab.get("affinity", ""))
+	var held: Array = player.get("affinities")
+	# fitting words: the skill's own affinity, then the character's others, then universal
+	var order: Array[String] = [own_aff]
+	for a: Variant in held:
+		if not order.has(str(a)):
+			order.append(str(a))
+	order.append("")
+	var flow: HFlowContainer = null
+	for aff: String in order:
+		var in_aff: Array = fit.filter(func(g: Dictionary) -> bool: return ConstructWords.affinity(str(g["tier"]), str(g["concept"])) == aff)
+		if in_aff.is_empty():
+			continue
+		flow = _keystone_flow(col, ("Universal" if aff == "" else str(GameData.affinity(aff).get("label", aff.capitalize()))), UiTheme.TEXT_DIM)
+		for g: Dictionary in in_aff:
+			flow.add_child(_keystone_button(g, need, ctx, ab, str(g["concept"]) == chosen_id))
+	if not unfit.is_empty():
+		flow = _keystone_flow(col, "Does not fit this skill (%d)" % unfit.size(), UiTheme.BAD.lightened(0.2))
+		for g2: Dictionary in unfit:
+			flow.add_child(_keystone_button(g2, need, ctx, ab, false))
+	# as tall as the list (each heading and row of buttons), up to about three rows' worth; a longer
+	# list scrolls inside it
+	var heads: int = col.get_children().filter(func(n: Node) -> bool: return n is Label).size()
+	scroll.custom_minimum_size = Vector2(0, minf(132.0, 34.0 * ceilf(float(groups.size()) / 3.0) + 17.0 * float(heads) + 4.0))
+
+
+func _keystone_flow(col: VBoxContainer, title: String, colour: Color) -> HFlowContainer:
+	var t := UiTheme.body(title, 11, colour)
+	col.add_child(t)
 	var flow := HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 4)
 	flow.add_theme_constant_override("v_separation", 4)
-	_constructs_box.add_child(flow)
-	for g: Dictionary in groups:
-		var ci: int = int(g["index"])
-		var label: String = str(GameData.concept(str(g["concept"])).get("label", g["concept"]))
-		var b: Button = UiWidgets.small_button(label + ((" x%d" % int(g["count"])) if int(g["count"]) > 1 else ""), func() -> void: choose_construct.call_deferred(ci))
-		b.name = "LockConstruct_%s" % str(g["concept"])
-		b.add_theme_font_size_override("font_size", 13)
-		b.custom_minimum_size = Vector2(0, 30)
-		var rows: Array[Dictionary] = player.call("preview_bind", st, str(g["concept"]))
-		b.tooltip_text = "The %s of %s as the keystone of ring %d:\n%s" % [need, label, ctx.forming, "\n".join(PackedStringArray(rows.map(func(r: Dictionary) -> String:
-			return "%s  %s -> %s" % [str(r["label"]), str(r["before"]), str(r["after"])])))]
-		if g == chosen_g:
-			b.add_theme_stylebox_override("normal", UiTheme.box(Color("3a3024"), UiTheme.GOLD, 2, 3, 8))
-			b.add_theme_color_override("font_color", UiTheme.GOLD)
-		flow.add_child(b)
+	col.add_child(flow)
+	return flow
+
+
+## One keystone button: the word's glyphs and name, its count; tooltip = what it is and what it would
+## do over this ring of this skill (RingRules.keystone_effect), or why it does not fit.
+func _keystone_button(g: Dictionary, need: String, ctx: RuneContext, ab: Dictionary, is_chosen: bool) -> Button:
+	var ci: int = int(g["index"])
+	var tier: String = str(g["tier"])
+	var cid: String = str(g["concept"])
+	var glyphs: String = "".join(PackedStringArray(ConstructWords.runes(tier, cid).map(func(r: String) -> String: return str(GameData.rune(r).get("character", "?")))))
+	var label: String = "%s %s%s" % [glyphs, ConstructWords.label(tier, cid), (" x%d" % int(g["count"])) if int(g["count"]) > 1 else ""]
+	var b: Button = UiWidgets.tip_button(label, func() -> void: choose_construct.call_deferred(ci))
+	b.name = "LockConstruct_%s" % cid
+	b.add_theme_font_size_override("font_size", 13)
+	b.custom_minimum_size = Vector2(0, 30)
+	var tip: String = ConstructWords.tooltip(tier, cid)
+	if bool(g["fits"]):
+		var rr: RingRules = Runes.active() as RingRules
+		if rr != null:
+			var ke: Dictionary = rr.keystone_effect(ab, {"ring": ctx.forming, "tier": tier, "concept": cid})
+			tip += "\nOver ring %d of %s: %s" % [ctx.forming, str(ab.get("name", "this skill")), ", ".join(PackedStringArray(ke["lines"]))]
+		b.add_theme_color_override("font_color", ConstructWords.color(tier, cid).lightened(0.35))
+	else:
+		b.disabled = true
+		tip += "\nDoes not fit: " + str(g["why"])
+	b.tooltip_text = tip
+	if is_chosen:
+		b.add_theme_stylebox_override("normal", UiTheme.box(Color("3a3024"), UiTheme.GOLD, 2, 3, 8))
+		b.add_theme_color_override("font_color", UiTheme.GOLD)
+	return b
 
 
 ## The palette's tabs and the chips of the tab shown.
@@ -825,7 +884,7 @@ func _refresh_runes() -> void:
 			_rune_info.add_child(csec)
 			var kfx: Dictionary = (Runes.active() as RingRules).keystone_effect(GameData.ability(str((player.get("abilities") as Array)[selected]["id"])), ks) \
 				if Runes.active() is RingRules else {}
-			var kl := UiTheme.body("      x%s (a rune works at most x1):  %s" % [RingRules._x(float(kfx.get("weight", 1.0))), ", ".join(PackedStringArray(kfx.get("lines", [])))],
+			var kl := UiTheme.body("      %s  -  x%s (a rune works at most x1):  %s" % [str(kfx.get("runes", "")), RingRules._x(float(kfx.get("weight", 1.0))), ", ".join(PackedStringArray(kfx.get("lines", [])))],
 				13, UiTheme.STAR.lightened(0.2))
 			kl.name = "KeystoneEffect"
 			kl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1136,8 +1195,9 @@ func _build_skill_detail(box: VBoxContainer, held: Array) -> void:
 		lock_box.name = "LockState"
 		lock_box.add_theme_constant_override("separation", 8)
 		box.add_child(lock_box)
-		var carried: int = (player.call("construct_groups", need) as Array).reduce(func(a: int, g: Dictionary) -> int: return a + int(g["count"]), 0)
-		var ready_l := UiTheme.body("Ready for its level %d lock: needs a %s (%d carried)." % [int(st["stage"]) + 1, need, carried], 14, UiTheme.GOLD)
+		var counts: Dictionary = player.call("construct_fit_counts", need)
+		var ready_l := UiTheme.body("Ready for its level %d lock: needs a %s (%d carried that fit%s)." % [int(st["stage"]) + 1, need, int(counts["fit"]),
+			(", %d that do not" % int(counts["unfit"])) if int(counts["unfit"]) > 0 else ""], 14, UiTheme.GOLD)
 		ready_l.name = "LockReady"
 		ready_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		ready_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1147,8 +1207,8 @@ func _build_skill_detail(box: VBoxContainer, held: Array) -> void:
 		ob.custom_minimum_size = Vector2(150, 36)
 		lock_box.add_child(ob)
 		box.add_child(UiTheme.body("On the seal screen set runes on the new ring - as many as you like - and the %s over it as its keystone; the bind locks the level as it stands, or changes nothing if it fails." % need, 12, UiTheme.TEXT_FAINT))
-	elif str(lock["reason"]) in ["no_construct", "bar"]:
-		var miss := UiTheme.body(str(lock["text"]), 14, UiTheme.BAD.lightened(0.2) if str(lock["reason"]) == "no_construct" else UiTheme.TEXT_DIM)
+	elif str(lock["reason"]) in ["no_construct", "no_fit", "bar"]:
+		var miss := UiTheme.body(str(lock["text"]), 14, UiTheme.BAD.lightened(0.2) if str(lock["reason"]) != "bar" else UiTheme.TEXT_DIM)
 		miss.name = "LockMissing"
 		miss.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		box.add_child(miss)

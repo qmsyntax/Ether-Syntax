@@ -2900,13 +2900,18 @@ func _setup_ui_shot(which: String) -> void:
 				"seal-drag", "seal-refused", "seal-bond", "seal-convert", \
 				"seal-discovered", "seal-palette":
 			_setup_seal_shot(which)
-		"nether":
+		"nether", "nether-words":
 			_show_screen(null, false)
 			_enter_dungeon()
 			nether.clear()
 			var base: Vector3 = Vector3(0.0, 0.0, -4.0)
 			var first_c: Node = null
-			for spec: Array in [[Vector3(3.5, 0, -4.5), "vestige", "tension"], [Vector3(-4.0, 0, -6.0), "vestige", "acceleration"], [Vector3(1.0, 0, -9.5), "remnant", "piercing"]]:
+			# nether-words (Brent 2026-11-04): constructs carry words - a water vestige (Flood), a water remnant
+			# (Undertow), a water spirit (Tidewrack) and a universal spirit (Vortex), in their colours
+			var specs: Array = [[Vector3(3.5, 0, -4.5), "vestige", "tension"], [Vector3(-4.0, 0, -6.0), "vestige", "acceleration"], [Vector3(1.0, 0, -9.5), "remnant", "piercing"]] \
+				if which == "nether" else [[Vector3(3.5, 0, -4.5), "vestige", "WAT-1a"], [Vector3(-4.0, 0, -5.5), "remnant", "undertow"],
+					[Vector3(1.0, 0, -10.0), "spirit", "tidewrack"], [Vector3(6.0, 0, -9.0), "spirit", "vortex"]]
+			for spec: Array in specs:
 				var made: Node = nether.spawn_construct(base + (spec[0] as Vector3), str(spec[1]), str(spec[2]), false)
 				if first_c == null:
 					first_c = made
@@ -3219,7 +3224,8 @@ func _shot_seal(index: int, stage: int, rows: Array, links: Array = [], concepts
 	_shot_fill(w, ctx, int(st["stage"]))
 	if rr != null:
 		for k2: int in range(1, int(st["stage"]) + 1):
-			var cid: String = str(concepts[k2 - 1]) if k2 - 1 < concepts.size() else str(GameData.concept_ids()[(k2 - 1) % GameData.concept_ids().size()])
+			var olds: Array = GameData.construct_legacy.keys()          # else the six old concepts in turn, as their words of the tier
+			var cid: String = str(concepts[k2 - 1]) if k2 - 1 < concepts.size() else GameData.construct_word_id(GameData.tier_for_stage(k2 - 1), str(olds[(k2 - 1) % olds.size()]))
 			RuneWord.set_keystone(w, k2, GameData.tier_for_stage(k2 - 1), cid)
 	var sealed: Dictionary = rules.seal(w, ctx, int(st["stage"]))
 	if bool(sealed["ok"]):
@@ -3322,6 +3328,10 @@ func _shot_skill(id: String) -> int:
 ##                      (its third bond, gained with ring 2), Settle off Heave - the remnant set, Bind live
 ##   seal-lock-missing  a new character's main page: the bar full, no vestige carried - what is missing,
 ##                      and no way into the lock
+##   seal-lock-fit      a water test character's first lock (Brent 2026-11-04): the keystone list - water
+##                      vestiges, universal ones, and two fire and an ice vestige that do not fit, greyed
+##   seal-lock-tip      the same, the pointer resting on the vestige of Flood: its runes and what it does
+##   seal-lock-nofit    the main page of a fire character carrying only water vestiges: the lock does not open
 func _setup_seal_shot(which: String) -> void:
 	if which.begins_with("seal-lock-"):
 		_setup_lock_shot(which.trim_prefix("seal-lock-"))
@@ -3441,11 +3451,13 @@ func _setup_seal_shot(which: String) -> void:
 			screen.call("set_palette_tab", "universal")
 
 
-## For a shot: set the carried construct of the open lock's tier and `concept` as its keystone.
+## For a shot: set the carried construct of the open lock's tier and `concept` as its keystone (a word
+## id, or one of the six old concept ids - the word it now is at that tier).
 func _shot_keystone(concept: String) -> void:
 	var need: String = str(player.call("pending_tier", (player.get("abilities") as Array)[int(player.call("sealing_index"))]))
+	var wid: String = GameData.construct_word_id(need, concept)
 	for g: Dictionary in player.call("construct_groups", need):
-		if str(g["concept"]) == concept:
+		if str(g["concept"]) == wid:
 			screen.call("choose_construct", int(g["index"]))
 			return
 	print("shot: no %s of %s carried" % [need, concept])
@@ -3455,6 +3467,47 @@ func _shot_keystone(concept: String) -> void:
 func _setup_lock_shot(what: String) -> void:
 	forced_biome = "scrubland"
 	match what:
+		"fit", "tip":
+			# Brent 2026-11-04: a construct carries a word; the ones that do not fit are listed, greyed
+			start_test_character("water")
+			_shot_surge_first()
+			for cid: String in ["FIR-1a", "FIR-6b", "ICE-1a"]:
+				(player.get("constructs") as Array).append({"tier": "vestige", "concept": cid})
+			open_seal(0)
+			screen.call("place_rune", "WAT-1a", 1, 0)        # Flood, ring 1
+			screen.call("finish_bond", 0, 1)
+			_shot_keystone("WAT-4a")                         # the vestige of Heave chosen
+			screen.call("deselect")
+			if what == "fit":
+				# the list scrolled to its end: the universal vestiges and the three that do not fit, greyed
+				_shot_countdown = 60
+				get_tree().create_timer(0.3).timeout.connect(func() -> void:
+					var sc: ScrollContainer = screen.find_child("KeystoneScroll", true, false) as ScrollContainer
+					if sc != null:
+						sc.scroll_vertical = 100000)
+			if what == "tip":
+				_shot_countdown = 110
+				get_tree().create_timer(0.3).timeout.connect(func() -> void:
+					var b: Control = screen.find_child("LockConstruct_WAT-1a", true, false) as Control
+					if b == null:
+						print("shot: no Flood button")
+						return
+					var p: Vector2 = b.get_global_rect().get_center()
+					var mv := InputEventMouseMotion.new()
+					mv.position = p
+					mv.global_position = p
+					get_viewport().push_input(mv)
+					Input.warp_mouse(p))
+		"nofit":
+			player.call("set_affinities", ["fire"])
+			player.call("start_with_skills", player.call("default_start_skills"))
+			((player.get("abilities") as Array)[0] as Dictionary)["progress"] = 100.0
+			(player.get("constructs") as Array).clear()
+			for cid2: String in ["WAT-1a", "WAT-4b"]:
+				(player.get("constructs") as Array).append({"tier": "vestige", "concept": cid2})
+			_enter_town()
+			open_ethercosm()
+			screen.call("select", 0)
 		"main":
 			start_test_character("water")
 			_shot_surge_first()

@@ -9,7 +9,7 @@ extends RefCounted
 ##    "made_under": "bond_v2",                             # the rule set it was built under (for reports)
 ##    "sealed": 2,                                         # rings sealed in (0 / absent: no seal yet)
 ##    "places": [-1, 0, 2, ...],                           # where each rune sits on its ring (optional)
-##    "keystones": [{"ring": 1, "tier": "vestige", "concept": "reach"}, ...]}   # the construct set over each sealed ring
+##    "keystones": [{"ring": 1, "tier": "vestige", "concept": "WAT-1a"}, ...]}   # the construct (its word) set over each sealed ring
 ##
 ## "places" is layout only (2026-10-23): the index of each rune's place on its ring, so a rune stays
 ## where it was set when bonds change (-1: not chosen - layout_places picks). No rule reads it.
@@ -365,7 +365,9 @@ static func shape_key(word: Dictionary) -> String:
 # "Every slot should be filled to be fully formed. Then a vestige is placed over the top with its
 # effect being worth more than a regular rune...and that locks the level." Each sealed ring carries
 # the construct bound at its lock, set over it as a keystone: "keystones": [{"ring", "tier",
-# "concept"}], one per ring at most. What a keystone does is the rule set's (RingRules.keystone_effect).
+# "concept"}], one per ring at most; "concept" is the word the construct carries (Brent 2026-11-04,
+# design/14 section 14: a rune id for a vestige, an authored word id above). What a keystone does is the
+# rule set's (RingRules.keystone_effect).
 
 ## The word's keystones, innermost ring first: [{ring, tier, concept}].
 static func keystones(word: Dictionary) -> Array[Dictionary]:
@@ -455,11 +457,13 @@ static func normalize(saved: Variant, anchor_id: String) -> Dictionary:
 	elif bool(src.get("locked", false)):
 		out["sealed"] = maxi(1, outer_ring(out))
 	# (an old "closure_waived" / "free_edit" mark is dropped: since Brent 2026-11-03 no seal has to be closed)
-	# keystones: one per ring, of a tier and concept the data knows (anything else is dropped)
+	# keystones: one per ring, of a tier and word the data knows (anything else is dropped); an old
+	# concept id (the six of 2026-09) becomes the word it now is at that tier (constructs.json legacy)
 	for ks: Variant in src.get("keystones", []):
 		if typeof(ks) != TYPE_DICTIONARY or not (ks as Dictionary).has("ring"):
 			continue
 		var kd: Dictionary = ks
-		if GameData.construct_tiers.has(str(kd.get("tier", ""))) and not GameData.concept(str(kd.get("concept", ""))).is_empty():
-			set_keystone(out, maxi(1, int(kd["ring"])), str(kd["tier"]), str(kd["concept"]))
+		var wid: String = GameData.construct_word_id(str(kd.get("tier", "")), str(kd.get("concept", "")))
+		if GameData.construct_tiers.has(str(kd.get("tier", ""))) and wid != "":
+			set_keystone(out, maxi(1, int(kd["ring"])), str(kd["tier"]), wid)
 	return out
