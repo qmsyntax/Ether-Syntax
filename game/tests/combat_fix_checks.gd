@@ -24,6 +24,7 @@ func run() -> void:
 	print("the combat review's fixes (2026-11-03):")
 	await t.get_tree().physics_frame
 	await _gathering()
+	await _shedding()
 	for n: Node in _made:
 		if is_instance_valid(n):
 			n.queue_free()
@@ -112,5 +113,33 @@ func _gathering() -> void:
 	p.set("essence", float(p.get("essence_max")) - 0.5)
 	p.call("_strike_target", e, 1.0, ["melee"])
 	check.call("gathering never fills past the tank", _near(float(p.get("essence")), float(p.get("essence_max"))))
+	_gone(p)
+	_gone(e)
+
+
+# --- Q2: reflux sheds faster in a fight ---------------------------------------------------------
+
+func _shedding() -> void:
+	var c: Dictionary = GameData.balance["combat"]
+	var r: Dictionary = GameData.balance["reflux"]
+	check.call("Q2's numbers: a landed strike sheds 3 reflux, a fight sheds 2 a second (were 1 and 0.5)",
+		_near(float(c["strike_sheds_reflux"]), 3.0) and _near(float(r["shed_in_combat"]), 2.0) and str(r["_note"]).contains("shed_in_combat"))
+	var p := _player("water", AT + Vector3(0, 0, 40), 10.0)
+	var e := _foe(p, Vector3(0, 0, -1.8))
+	await _wait(STEP)
+	var mult: float = float((p.get("inventory") as Inventory).stat("reflux_shed_mult", true)) * float(p.call("temper_stat", "reflux_shed_mult"))
+	p.call("start_fight")
+	(p.get("reflux_by") as Dictionary)["water"] = 50.0
+	var frames: int = 60
+	for i: int in frames:
+		await t.get_tree().physics_frame
+	var want: float = 50.0 - float(r["shed_in_combat"]) * mult * float(frames) * STEP
+	check.call("in a fight reflux sheds at reflux.shed_in_combat a second", _near(float(p.call("reflux_of", "water")), want, 0.15),
+		"%f, want %f" % [float(p.call("reflux_of", "water")), want])
+	var before: float = float(p.call("reflux_of", "water"))
+	p.call("_strike_target", e, 1.0, ["melee"])
+	check.call("a landed strike sheds combat.strike_sheds_reflux from the hottest affinity", _near(before - float(p.call("reflux_of", "water")), float(c["strike_sheds_reflux"]), 0.05),
+		"shed %f" % (before - float(p.call("reflux_of", "water"))))
+	p.call("end_fight")
 	_gone(p)
 	_gone(e)

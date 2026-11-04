@@ -1486,9 +1486,10 @@ func _test_combat_rules() -> void:
 	var d := _dummy_enemy(p)
 	(p.get("reflux_by") as Dictionary)["water"] = 30.0
 	p.call("_strike_target", d, 1.0, ["melee"])
-	_check("each bare strike that lands sheds 1 reflux", _near(float(p.call("reflux_of", "water")), 29.0))
+	var shed_1: float = 30.0 - GameData.num("combat", "strike_sheds_reflux")
+	_check("each bare strike that lands sheds combat.strike_sheds_reflux", _near(float(p.call("reflux_of", "water")), shed_1))
 	p.call("apply_hit", d, {"damage": 10.0}, ["ability", "melee"])
-	_check("a skill sheds none", _near(float(p.call("reflux_of", "water")), 29.0))
+	_check("a skill sheds none", _near(float(p.call("reflux_of", "water")), shed_1))
 	d.queue_free()
 	await get_tree().process_frame
 
