@@ -19,6 +19,7 @@
  "skills": [
   {
    "id": "tsunami_strike",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 12.0 -> 8; damage unchanged.",
    "name": "Breaker",
    "affinity": "water",
    "base_rune": "WAT-2a",
@@ -31,7 +32,7 @@
    "summary": "A wide, heavy blow (2.4x strike damage, 30 poise) that throws everyone it hits 4 m away from you. Stand so the wall is behind them.",
    "verb_fit": "Surge is \"push bodies away\": every enemy in the arc is thrown 4 m away from you. As the bruiser's close starter it hits harder before it throws (2.4x, was 2.0x).",
    "numbers": {
-    "cost": 12.0,
+    "cost": 8.0,
     "reflux_per_cost": 1.0,
     "damage_mult": 2.4,
     "reach_bonus": 0.8,
@@ -174,6 +175,7 @@
   },
   {
    "id": "riptide_lash",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 12.0 -> 4; damage kept: its hit pulls or taunts, so it stays lighter (ROLES-BRIEF).",
    "name": "Riptide Lash",
    "affinity": "water",
    "base_rune": "WAT-2b",
@@ -187,7 +189,7 @@
    "verb_fit": "Ebb is \"draw bodies in\": a rope of water that hauls a single enemy in. It is the ranged starter because a bruiser's reach is a pull (ROLES-BRIEF: a tank's ranged starter can be a pull).",
    "numbers": {
     "mode": "pull_target",
-    "cost": 12.0,
+    "cost": 4.0,
     "reflux_per_cost": 1.0,
     "range": 10.0,
     "pull": 10.0,

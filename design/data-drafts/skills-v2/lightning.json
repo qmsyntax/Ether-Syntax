@@ -17,6 +17,7 @@
  "skills": [
   {
    "id": "arc_lash",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 8 -> 5, damage 85 -> 90 (1.5x a bare strike).",
    "name": "Arc Lash",
    "affinity": "lightning",
    "base_rune": "LIG-3a",
@@ -27,12 +28,12 @@
    "serves": "role",
    "kind": "beam",
    "targeting": "aimed",
-   "summary": "Instant and short: it cannot miss what it points at. 85 damage and a Live mark, then it arcs to one more enemy within 4 m for the same. Walls stop it.",
+   "summary": "Instant and short: it cannot miss what it points at. 90 damage and a Live mark, then it arcs to one more enemy within 4 m for the same. Walls stop it.",
    "verb_fit": "Arc is \"jump between targets\": the hit leaps on, as Fire's burn catches from body to body, but in an instant (Wind's speed).",
    "numbers": {
-    "cost": 8,
+    "cost": 5,
     "reflux_per_cost": 1.0,
-    "damage": 85,
+    "damage": 90,
     "range": 9,
     "width": 0.7,
     "recovery": 0.12,
@@ -89,6 +90,7 @@
   },
   {
    "id": "thunderclap_palm",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 12 -> 8; damage unchanged.",
    "name": "Thunderclap Palm",
    "affinity": "lightning",
    "base_rune": "LIG-5a",
@@ -102,7 +104,7 @@
    "summary": "One enemy in reach: a heavy blow, 2 Live marks, and it stops whatever it was doing. The crack Dazes and staggers everyone within 2.5 m of it, the target too.",
    "verb_fit": "Thunder is \"a deafening crack that staggers\": the blade-hand strike is Fire's Kiln Fist (a heavy blow that bursts on the neighbours), with Wind's Drop in the crack of air.",
    "numbers": {
-    "cost": 12,
+    "cost": 8,
     "reflux_per_cost": 1.0,
     "damage_mult": 2.2,
     "range_bonus": 1.0,

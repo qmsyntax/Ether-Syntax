@@ -18,6 +18,7 @@
   "skills": [
     {
       "id": "venom_edge",
+      "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 8 -> 6; damage unchanged.",
       "name": "Venom Edge",
       "affinity": "poison",
       "base_rune": "POI-1a",
@@ -30,7 +31,7 @@
       "verb_fit": "Envenom is to coat a blade or a shot so what it strikes is dosed. The cut is the proof; the coat is the skill. Water's Soak: the venom is a liquid that wets the edge and goes in with every cut. Death's ending, deferred: nothing dies of it yet.",
       "role_note": "Weapon coating: the close starter is a strike that leaves the coat on.",
       "numbers": {
-        "cost": 8,
+        "cost": 6,
         "reflux_per_cost": 0.7,
         "damage_mult": 1.6,
         "reach_bonus": 0.4,
@@ -498,6 +499,7 @@
     },
     {
       "id": "sting_dart",
+      "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 6 -> 5, damage 50 -> 90 (1.5x a bare strike).",
       "name": "Sting Dart",
       "affinity": "poison",
       "base_rune": "POI-4a",
@@ -506,12 +508,12 @@
       "starter": true,
       "kind": "projectile",
       "targeting": "aimed",
-      "summary": "A barbed dart from your ranged weapon (or thrown, without one): 50 and a dose, and the barb stays in - a dose every 1.5 s for 4.5 s more. The first dose starts the 6 s clock; when it runs out, every dose in the body is paid at once, 20 each.",
+      "summary": "A barbed dart from your ranged weapon (or thrown, without one): 90 and a dose, and the barb stays in - a dose every 1.5 s for 4.5 s more. The first dose starts the 6 s clock; when it runs out, every dose in the body is paid at once, 20 each.",
       "verb_fit": "Linger leaves residue that stays. The barb is that residue: it stays in the body and keeps dosing it after the shot has landed. Water's Seep: it soaks in slowly and keeps working inside the body. It rides your coat too, so a coated dart doses twice.",
       "numbers": {
-        "cost": 6,
+        "cost": 5,
         "reflux_per_cost": 0.7,
-        "damage": 50,
+        "damage": 90,
         "speed": 26,
         "life": 1.15,
         "on_hit": {

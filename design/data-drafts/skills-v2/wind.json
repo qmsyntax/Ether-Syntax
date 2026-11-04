@@ -8,6 +8,7 @@
  "skills": [
   {
    "id": "cutting_gust",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 7.0 -> 5, damage 45.0 -> 90 (1.5x a bare strike).",
    "name": "Cutting Gust",
    "affinity": "wind",
    "base_rune": "WIN-2a",
@@ -18,12 +19,12 @@
    "serves": "role",
    "kind": "projectile",
    "targeting": "aimed",
-   "summary": "A short gust that passes through everything in its line. Spends up to 3 pips for +15 each - weak from a standstill.",
+   "summary": "A short gust that passes through everything in its line. 90 damage; spends up to 3 pips for +15 each.",
    "verb_fit": "Lash is \"air that strikes and cuts\": a thrown palm of cutting air that is only strong when you have been moving.",
    "numbers": {
-    "cost": 7.0,
+    "cost": 5.0,
     "reflux_per_cost": 0.7,
-    "damage": 45.0,
+    "damage": 90.0,
     "speed": 32.0,
     "life": 0.375,
     "pierce": true,
@@ -79,6 +80,7 @@
   },
   {
    "id": "crosscut",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 7.0 -> 6; damage unchanged.",
    "name": "Crosscut",
    "affinity": "wind",
    "base_rune": "WIN-2a",
@@ -92,7 +94,7 @@
    "summary": "One enemy within 7 m: you cut through and stop behind it. Always a hit from behind. Spends every pip for +10% each.",
    "verb_fit": "Lash is \"air that strikes and cuts\": the monk passes through the guard and strikes from the back.",
    "numbers": {
-    "cost": 7.0,
+    "cost": 6.0,
     "reflux_per_cost": 0.7,
     "damage_mult": 1.6,
     "range": 7.0,

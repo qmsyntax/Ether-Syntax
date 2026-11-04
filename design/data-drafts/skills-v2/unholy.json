@@ -55,6 +55,7 @@
   "skills": [
     {
       "id": "reaving_cleave",
+      "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 10 -> 7; damage unchanged.",
       "name": "Reaving Cleave",
       "affinity": "unholy",
       "base_rune": "UNH-1a",
@@ -68,7 +69,7 @@
       "verb_fit": "Leech is drawing the life out of what you strike and into yourself. The cleave is the strike; what it is for is the life it brings back. Death's ending: the Dying give up twice as much. Dark's Devour: the dark swallows what it touches, and so do you.",
       "role_note": "Life-drain melee: the shadow knight's bread and butter.",
       "numbers": {
-        "cost": 10,
+        "cost": 7,
         "reflux_per_cost": 1.0,
         "windup": 0.15,
         "damage_mult": 1.8,
@@ -278,6 +279,7 @@
     },
     {
       "id": "grasping_dark",
+      "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 10 -> 4; damage kept: its hit pulls or taunts, so it stays lighter (ROLES-BRIEF).",
       "name": "Grasping Dark",
       "affinity": "unholy",
       "base_rune": "UNH-2b",
@@ -291,7 +293,7 @@
       "verb_fit": "Beckon is the dark calling them in, and not letting them go. The hand brings the archer to you; the leash keeps it there. Dark's Pin: the shadow holds the target. Death: what is claimed comes to you.",
       "role_note": "Range and utility, shaped by the role: the tank's ranged starter is a pull.",
       "numbers": {
-        "cost": 10,
+        "cost": 4,
         "reflux_per_cost": 1.0,
         "range": 12,
         "mode": "pull_target",

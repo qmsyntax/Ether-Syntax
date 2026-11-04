@@ -14,6 +14,7 @@
  "skills": [
   {
    "id": "dayline",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 7 -> 5, damage 60 -> 90 (1.5x a bare strike).",
    "name": "Dayline",
    "affinity": "light",
    "base_rune": "LGT-1a",
@@ -23,12 +24,12 @@
    "role_fit": "role",
    "kind": "beam",
    "targeting": "aimed",
-   "summary": "An instant line of daylight, 16 m: the first thing on it takes 60 and is Lit for 6 s. Walls, stone and a raised shield stop it.",
+   "summary": "An instant line of daylight, 16 m: the first thing on it takes 90 and is Lit for 6 s. Walls, stone and a raised shield stop it.",
    "verb_fit": "Shine is to illuminate: Lit is what Shine means in a fight. The ranged caster's starter: the reveal, and on a second line the Sear.",
    "numbers": {
-    "cost": 7,
+    "cost": 5,
     "reflux_per_cost": 0.7,
-    "damage": 60,
+    "damage": 90,
     "range": 16,
     "width": 0.5,
     "on_hit": {
@@ -312,6 +313,7 @@
   },
   {
    "id": "noonburst",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 10 -> 7; damage unchanged.",
    "name": "Noonburst",
    "affinity": "light",
    "base_rune": "LGT-3a",
@@ -324,7 +326,7 @@
    "summary": "Light and heat pour out of you: everything within 3.5 m with a clear line to you takes a heavy hit and is Lit. A raised shield shades whoever holds it.",
    "verb_fit": "Radiate is to send light and heat outward. The burst goes out from you in every direction at once, and like all light it only reaches what it can see: walls, stone and shields cast shadows it does not cross.",
    "numbers": {
-    "cost": 10,
+    "cost": 7,
     "reflux_per_cost": 0.7,
     "damage_mult": 1.8,
     "reach_bonus": 1.2,

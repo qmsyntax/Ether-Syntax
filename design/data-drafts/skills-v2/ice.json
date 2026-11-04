@@ -17,6 +17,7 @@
  "skills": [
   {
    "id": "set_solid",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 12 -> 7; damage unchanged.",
    "name": "Set Solid",
    "affinity": "ice",
    "base_rune": "ICE-1a",
@@ -30,7 +31,7 @@
    "summary": "The air around you sets. Everything within 3.5 m takes 30 damage and 3 Chill: two more and it freezes solid.",
    "verb_fit": "Freeze is 'lock solid'. Ice's lock is the fifth Chill, and this puts three on everything around you: the air goes still and sets (Dark's stillness, made cold).",
    "numbers": {
-    "cost": 12,
+    "cost": 7,
     "reflux_per_cost": 0.7,
     "windup": 0.2,
     "arc_deg": 360,
@@ -160,6 +161,7 @@
   },
   {
    "id": "hoarline",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 7 -> 5, damage 45 -> 90 (1.5x a bare strike).",
    "name": "Hoarline",
    "affinity": "ice",
    "base_rune": "ICE-2a",
@@ -170,12 +172,12 @@
    "parent_trait": "Dark",
    "kind": "projectile",
    "targeting": "aimed",
-   "summary": "A line of frost races 10 m along the ground: 45 damage and 2 Chill to everything on it. The line stays frosted for 4 s, adding a Chill a second to anyone standing on it. Walls stop it.",
+   "summary": "A line of frost races 10 m along the ground: 90 damage and 2 Chill to everything on it. The line stays frosted for 4 s, adding a Chill a second to anyone standing on it. Walls stop it.",
    "verb_fit": "Frost is 'creeping cold on the ground that grips and slows'. The floor grips them along a line, the way Dark's Pin holds a shadow, and keeps gripping for 4 s.",
    "numbers": {
-    "cost": 7,
+    "cost": 5,
     "reflux_per_cost": 0.7,
-    "damage": 45,
+    "damage": 90,
     "speed": 18,
     "life": 0.56,
     "pierce": true,

@@ -17,6 +17,7 @@
  "skills": [
   {
    "id": "dozing_mote",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 7 -> 5, damage 45 -> 90 (1.5x a bare strike).",
    "name": "Dozing Mote",
    "affinity": "dream",
    "base_rune": "DRM-1a",
@@ -27,12 +28,12 @@
    "parent_trait": "Dark",
    "kind": "projectile",
    "targeting": "aimed",
-   "summary": "A slow, drifting mote: 45, and the target nods. The first mote Dazes it; a second on a Dazed target puts it to sleep for 4 s. It must see the mote coming.",
+   "summary": "A slow, drifting mote: 90, and the target nods. The first mote Dazes it; a second on a Dazed target puts it to sleep for 4 s. It must see the mote coming.",
    "verb_fit": "Sleep is to put to sleep: every mote pushes the target one step further down - awake, Dazed, asleep. The night's half of the twilight (Dark).",
    "numbers": {
-    "cost": 7,
+    "cost": 5,
     "reflux_per_cost": 1.0,
-    "damage": 45,
+    "damage": 90,
     "speed": 12,
     "life": 1.5,
     "on_hit": {
@@ -316,6 +317,7 @@
   },
   {
    "id": "night_terror",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 10 -> 7; damage unchanged.",
    "name": "Night Terror",
    "affinity": "dream",
    "base_rune": "DRM-3a",
@@ -329,7 +331,7 @@
    "summary": "For a moment you are the thing under the bed: everything within 4 m that sees you takes a blow and is Terrified for 2 s - it turns, runs, and will not attack.",
    "verb_fit": "Dread is terror - fear of the dark (Dark's old Dread): the blow is small, the fear is the point.",
    "numbers": {
-    "cost": 10,
+    "cost": 7,
     "reflux_per_cost": 1.0,
     "damage_mult": 1.6,
     "reach_bonus": 1.7,

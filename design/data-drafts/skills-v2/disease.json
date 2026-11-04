@@ -36,6 +36,7 @@
   "skills": [
     {
       "id": "fever_flask",
+      "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 8 -> 5, on_hit.damage 45 -> 90 (1.5x a bare strike).",
       "name": "Fever Flask",
       "affinity": "disease",
       "base_rune": "DIS-1a",
@@ -44,17 +45,17 @@
       "starter": true,
       "kind": "delayed_blast",
       "targeting": "point",
-      "summary": "Lob a flask up to 12 m: it bursts over shields and heads for 45 and 2 Infected, and leaves a sick cloud 2.5 m across that hangs 6 s and drifts slowly away from you.",
+      "summary": "Lob a flask up to 12 m: it bursts over shields and heads for 90 and 2 Infected, and leaves a sick cloud 2.5 m across that hangs 6 s and drifts slowly away from you.",
       "verb_fit": "Infect is to give a disease. The flask gives it twice: to whoever it bursts over, and to whoever walks into the cloud it leaves. Earth's Dig: it is lobbed like a thrown stone, over shields and heads, and the sickness it carries spreads from there.",
       "numbers": {
-        "cost": 8,
+        "cost": 5,
         "reflux_per_cost": 1.4,
         "range": 12,
         "radius": 2.5,
         "delay": 0.45,
         "lobbed": true,
         "on_hit": {
-          "damage": 45,
+          "damage": 90,
           "status": "infected",
           "stacks": 2
         },
@@ -536,6 +537,7 @@
     },
     {
       "id": "plaguebloom",
+      "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 10 -> 7; damage unchanged.",
       "name": "Plaguebloom",
       "affinity": "disease",
       "base_rune": "DIS-4a",
@@ -547,7 +549,7 @@
       "summary": "A sick cloud heaves up out of the ground round you: everything within 3.5 m takes a blow, 25 poise damage and 1 Infected, and the cloud stays 6 s, drifting the way you face.",
       "verb_fit": "Billow is to spread the cloud. The burst is the cloud rolling up out of the ground round you, and it keeps rolling after the blow has landed. Earth's Quake: it heaves up from the floor, and what it hits is rocked off balance.",
       "numbers": {
-        "cost": 10,
+        "cost": 7,
         "reflux_per_cost": 1.4,
         "damage_mult": 1.6,
         "reach_bonus": 1.2,

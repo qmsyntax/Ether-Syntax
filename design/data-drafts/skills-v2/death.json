@@ -16,6 +16,7 @@
   "skills": [
     {
       "id": "endstroke",
+      "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 12 -> 7; damage unchanged.",
       "name": "Endstroke",
       "affinity": "death",
       "base_rune": "DTH-1a",
@@ -27,7 +28,7 @@
       "summary": "One enemy in reach: 2.0x strike damage, 30% more if it is Dying (below half). Anything short of an elite left under 15% of its health dies outright.",
       "verb_fit": "Kill is finishing the dying. It is an ordinary blow on a healthy target and a certain one on a failing one.",
       "numbers": {
-        "cost": 12,
+        "cost": 7,
         "reflux_per_cost": 1.4,
         "windup": 0.15,
         "damage_mult": 2.0,
@@ -326,6 +327,7 @@
     },
     {
       "id": "rotting_bolt",
+      "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 8 -> 5, damage 50 -> 90 (1.5x a bare strike).",
       "name": "Rotting Bolt",
       "affinity": "death",
       "base_rune": "DTH-3a",
@@ -334,12 +336,12 @@
       "starter": true,
       "kind": "projectile",
       "targeting": "aimed",
-      "summary": "A clot of decay thrown along your aim: 50 and Rotting for 6 s (its armour and shield count for half, and lost poise does not come back). If it hits a corpse instead, the corpse bursts: 60 and Rotting to everything within 2.5 m.",
+      "summary": "A clot of decay thrown along your aim: 90 and Rotting for 6 s (its armour and shield count for half, and lost poise does not come back). If it hits a corpse instead, the corpse bursts: 60 and Rotting to everything within 2.5 m.",
       "verb_fit": "Rot is decay. On the living it decays guard and armour; on the dead it decays the whole body at once.",
       "numbers": {
-        "cost": 8,
+        "cost": 5,
         "reflux_per_cost": 1.4,
-        "damage": 50,
+        "damage": 90,
         "speed": 20,
         "life": 1.4,
         "recovery": 0.1,

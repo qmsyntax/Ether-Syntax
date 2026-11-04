@@ -9,7 +9,7 @@
   "rule_data": {"ward_cap": 60, "ward_break_payload": {"radius": 3, "damage": 30, "status": "lit"}, "ward_targets": "self_and_summons", "heal_living_only": true},
   "rule_why": "Light's half: a ward is light held round a body, and like all Holy light it shows and burns what it touches when it breaks (Lit, from Light's Shine). Life's half: it keeps the body whole - here by keeping wounds from opening rather than by closing them, which is Life's job - and its few heals obey Life's living-only rule. A breaking ward that hits back makes guarding a way of fighting in a solo game.",
   "axis_position_proposed": {"heat": 0.35, "substance": -0.2, "vitality": 0.65, "light": 0.6, "mind_matter": 0.2, "why": "The midpoint of Light [0.4, -0.4, 0.3, 1, 0] and Life [0.3, 0, 1, 0.2, 0.4], as framework.md and design/14 section 7 say hybrids sit between their parents. Not mine to set in the workbook; for Brent."},
-  "band_shift": "Hits lighter than the bands (ray 50, strikes 1.5-2.0x, burst 1.7x): a support's damage comes from what its wards pay out and from judged foes. Wards and blessings at mid cost (10-14); the three starters cheap or mid.",
+  "band_shift": "Hits lighter than the bands (ray 50 until Q1 of the 2026-11-03 combat review raised every full-damage ranged starter to 90 at cost 5; strikes 1.5-2.0x, burst 1.7x): a support's damage comes from what its wards pay out and from judged foes. Wards and blessings at mid cost (10-14); the three starters cheap or mid.",
   "skills": [
     {
       "id": "dawnward", "name": "Dawnward", "affinity": "holy", "base_rune": "HOL-1a", "rune": "Ward",
@@ -83,12 +83,12 @@
       ]
     },
     {
-      "id": "condemning_ray", "name": "Condemning Ray", "affinity": "holy", "base_rune": "HOL-2b", "rune": "Condemn",
+      "id": "condemning_ray", "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 7 -> 5, damage 50 -> 90 (1.5x a bare strike).", "name": "Condemning Ray", "affinity": "holy", "base_rune": "HOL-2b", "rune": "Condemn",
       "status": "new", "starter": true, "starter_slot": "ranged",
       "kind": "beam", "targeting": "aimed",
-      "summary": "An instant line of judging light, 14 m: the first thing on it takes 50 and is Condemned for 8 s - Lit, and every hit you or your summons land on it adds 4 to your ward (up to 30 from one Condemned foe). Walls, stone and a raised shield stop it.",
+      "summary": "An instant line of judging light, 14 m: the first thing on it takes 90 and is Condemned for 8 s - Lit, and every hit you or your summons land on it adds 4 to your ward (up to 30 from one Condemned foe). Walls, stone and a raised shield stop it.",
       "verb_fit": "Condemn marks a foe for judgement. Parents: Light (an instant straight line that stops on the first opaque thing, and Lights its target) and Life (what you take from the judged keeps your body whole - as a ward, Holy's way).",
-      "numbers": {"cost": 7, "reflux_per_cost": 0.7, "damage": 50, "range": 14, "width": 0.5,
+      "numbers": {"cost": 5, "reflux_per_cost": 0.7, "damage": 90, "range": 14, "width": 0.5,
         "on_hit": {"status": "condemned", "status_s": 8}},
       "ascension": {"power": "damage", "reach": "range", "speed": "on_hit.status_s", "cost": "cost"},
       "ascension_note": "speed acts on how long Condemned lasts (status_s, the payload key _status_opts already reads).",
@@ -226,12 +226,12 @@
       ]
     },
     {
-      "id": "rebuke", "name": "Rebuke", "affinity": "holy", "base_rune": "HOL-5b", "rune": "Wrath",
+      "id": "rebuke", "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 10 -> 7; damage unchanged.", "name": "Rebuke", "affinity": "holy", "base_rune": "HOL-5b", "rune": "Wrath",
       "status": "new", "starter": true, "starter_slot": "close",
       "kind": "melee_burst", "targeting": "self",
       "summary": "Light breaks out of you in wrath: everything within 3 m with a clear line to you takes 1.7x strike damage and is Lit. If you are warded it strikes half again as hard, and spends no ward.",
       "verb_fit": "Wrath is radiant fury poured out. Parents: Light's Radiate (Noonburst's light outward, only to what it can see) and Holy's ward (the guarded paladin hits hardest).",
-      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "windup": 0.2, "damage_mult": 1.7, "reach_bonus": 0.7, "arc_deg": 360, "needs_clear_line": true, "warded_mult": 1.5,
+      "numbers": {"cost": 7, "reflux_per_cost": 0.7, "windup": 0.2, "damage_mult": 1.7, "reach_bonus": 0.7, "arc_deg": 360, "needs_clear_line": true, "warded_mult": 1.5,
         "on_hit": {"status": "lit", "poise": 25}},
       "ascension": {"power": "damage_mult", "reach": "reach_bonus", "speed": "windup", "cost": "cost"},
       "signature": ["damage_mult", "warded_mult"],

@@ -2646,7 +2646,7 @@ func _test_fire() -> void:
 	close.call("clear_status", "alight")
 	(close.get("body") as Body).hp = 5000.0
 	var ctx: HitContext = f.call("apply_hit", close, (f.call("_payload", GameData.ability("cinder_spit"), "on_hit") as Dictionary), ["ability", "fire"])
-	_check("cinder spit: 55 and one Alight", _near(ctx.applied, 55.0) and int(close.call("status_stacks", "alight")) == 1)
+	_check("cinder spit: its damage and one Alight", _near(ctx.applied, float(GameData.ability("cinder_spit")["damage"])) and int(close.call("status_stacks", "alight")) == 1)
 	_check("it recovers in half the time of other bolts", float(GameData.ability("cinder_spit")["recovery"]) <= GameData.num("abilities", "cast_recovery") * 0.5)
 
 	# ---------- Kiln Fist: cash in the burn
@@ -2819,6 +2819,7 @@ func _test_wind() -> void:
 	var off := _foe(w, Vector3(4.0, 0, -4.0))
 	w.set("pips", 0)
 	w.call("cast_slot", 0)
+	var _gust: float = float(GameData.ability("cutting_gust")["damage"])
 	var gust: Node = null
 	for n: Node in w.get_parent().get_children():
 		if n.get("shooter") == w and not n.is_queued_for_deletion():
@@ -2827,7 +2828,7 @@ func _test_wind() -> void:
 		if gust == null or not is_instance_valid(gust) or gust.is_queued_for_deletion():
 			break
 		gust.call("tick", 1.0 / 60.0)
-	_check("cutting gust passes through every enemy in its line", _near(_lost(g1), 45.0) and _near(_lost(g2), 45.0) and _near(_lost(g3), 45.0), "g1 %f g2 %f g3 %f" % [_lost(g1), _lost(g2), _lost(g3)])
+	_check("cutting gust passes through every enemy in its line", _near(_lost(g1), _gust) and _near(_lost(g2), _gust) and _near(_lost(g3), _gust), "g1 %f g2 %f g3 %f" % [_lost(g1), _lost(g2), _lost(g3)])
 	_check("and touches nothing off the line, and no one twice", _near(_lost(off), 0.0))
 	await get_tree().process_frame
 	for g: Node in [g1, g2, g3]:
@@ -2844,7 +2845,7 @@ func _test_wind() -> void:
 		if gust == null or not is_instance_valid(gust) or gust.is_queued_for_deletion():
 			break
 		gust.call("tick", 1.0 / 60.0)
-	_check("for +15 each", _near(_lost(g1), 90.0), "lost %f" % _lost(g1))
+	_check("for +15 each", _near(_lost(g1), _gust + 3.0 * float(GameData.ability("cutting_gust")["pip_damage"])), "lost %f" % _lost(g1))
 	_check("it is short: 12 m, and the wall beyond stops nothing it would reach", _near(float(GameData.ability("cutting_gust")["speed"]) * float(GameData.ability("cutting_gust")["life"]), 12.0))
 	await get_tree().process_frame
 
@@ -3602,9 +3603,9 @@ func _test_water_and_lightning() -> void:
 	# Arc Lash: instant, first enemy on the line, one mark - then (approved 2026-10-22) it arcs on to
 	# the nearest other enemy within 4 m: `far`, 2 m behind t1, not t2, 4 m to the side
 	l.call("cast_slot", 0)
-	_check("arc lash lands at once on the first enemy in line", _near(_lost(t1), 85.0) and _near(_lost(t2), 0.0),
+	_check("arc lash lands at once on the first enemy in line", _near(_lost(t1), float(GameData.ability("arc_lash")["damage"])) and _near(_lost(t2), 0.0),
 		"t1 %f far %f t2 %f" % [_lost(t1), _lost(far), _lost(t2)])
-	_check("and arcs on to the nearest other enemy within 4 m, for the same", _near(_lost(far), 85.0) and int(far.call("status_stacks", "live")) == 1,
+	_check("and arcs on to the nearest other enemy within 4 m, for the same", _near(_lost(far), float(GameData.ability("arc_lash")["damage"])) and int(far.call("status_stacks", "live")) == 1,
 		"far %f" % _lost(far))
 	_check("and leaves one Live mark", int(t1.call("status_stacks", "live")) == 1)
 	var far_before: float = _lost(far)

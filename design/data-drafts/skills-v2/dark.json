@@ -14,6 +14,7 @@
  "skills": [
   {
    "id": "blot",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 8 -> 5, damage 60 -> 90 (1.5x a bare strike).",
    "name": "Blot",
    "affinity": "dark",
    "base_rune": "DRK-1a",
@@ -23,12 +24,12 @@
    "role_fit": "role",
    "kind": "projectile",
    "targeting": "aimed",
-   "summary": "A blot of darkness, thrown: 60 damage, and where it lands the ground goes Dark in a circle 2.5 m across for 6 s. Hit them again while they stand in it.",
+   "summary": "A blot of darkness, thrown: 90 damage, and where it lands the ground goes Dark in a circle 2.5 m across for 6 s. Hit them again while they stand in it.",
    "verb_fit": "Darken is 'make it darker'. The bolt is the delivery; what it does is put a patch of Dark exactly where the fight is - ground you can stand in Unseen and strike out of as an Ambush.",
    "numbers": {
-    "cost": 8,
+    "cost": 5,
     "reflux_per_cost": 1.0,
-    "damage": 60,
+    "damage": 90,
     "speed": 18,
     "life": 1.4,
     "on_hit": {},
@@ -559,6 +560,7 @@
   },
   {
    "id": "hungry_dark",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 10.0 -> 7; damage unchanged.",
    "name": "Hungry Dark",
    "affinity": "dark",
    "base_rune": "DRK-5a",
@@ -571,7 +573,7 @@
    "summary": "One enemy in reach: the dark bites. 2.2x strike damage (more from behind, and an Ambush out of Unseen), and it swallows 1 light. If the bite leaves it under 20% health it is swallowed whole: it dies, you get 4 essence back and a second light, and the dark closes over you - Unseen for 1.5 s wherever you stand. The ground under it goes Dark for 4 s.",
    "verb_fit": "Devour is 'swallow light and energy': one body's light, and when it is low enough, the body's life with it. The kill feeds the next Ambush.",
    "numbers": {
-    "cost": 10.0,
+    "cost": 7.0,
     "reflux_per_cost": 1.0,
     "damage_mult": 2.2,
     "range_bonus": 0.8,

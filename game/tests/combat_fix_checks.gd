@@ -25,6 +25,7 @@ func run() -> void:
 	await t.get_tree().physics_frame
 	await _gathering()
 	await _shedding()
+	_starters()
 	for n: Node in _made:
 		if is_instance_valid(n):
 			n.queue_free()
@@ -115,6 +116,65 @@ func _gathering() -> void:
 	check.call("gathering never fills past the tank", _near(float(p.get("essence")), float(p.get("essence_max"))))
 	_gone(p)
 	_gone(e)
+
+
+# --- Q1: cheaper, stronger starters -------------------------------------------------------------
+
+## A starter's hit on its main target at stage 0, as Player._payload folds it.
+static func starter_hit(ab: Dictionary) -> float:
+	var oh: Dictionary = ab.get("on_hit", {})
+	var strike: float = GameData.num("player", "melee_damage")
+	if oh.has("damage"):
+		return float(oh["damage"])
+	if oh.has("damage_mult"):
+		return float(oh["damage_mult"]) * strike
+	if ab.has("damage"):
+		return float(ab["damage"])
+	return float(ab.get("damage_mult", 0.0)) * strike
+
+
+## True when a skill's hit pulls its target in or taunts it: the role exception (ROLES-BRIEF: a tank's ranged
+## starter can be a pull or a taunt), which may stay lighter than the damage floor.
+static func pulls_or_taunts(ab: Dictionary) -> bool:
+	var oh: Dictionary = ab.get("on_hit", {})
+	if str(ab.get("mode", "")) == "pull_target" or float(oh.get("pull", 0.0)) > 0.0 or str(oh.get("status", "")) == "taunted":
+		return true
+	for st: Variant in oh.get("statuses", []):
+		if st is Dictionary and str((st as Dictionary).get("id", "")) == "taunted":
+			return true
+	return false
+
+
+func _starters() -> void:
+	var floor_dmg: float = 1.5 * GameData.num("player", "melee_damage")
+	var bad: Array[String] = []
+	var light: Array[String] = []
+	var n := 0
+	for aff_v: Variant in GameData.affinity_ids():
+		var aff: String = str(aff_v)
+		var def: Dictionary = GameData.affinity(aff)
+		if not def.has("kit"):
+			continue
+		var kit: Array = def["kit"]
+		var ranged: Dictionary = GameData.ability(str(kit[0]))
+		var close: Dictionary = GameData.ability(str(kit[1]))
+		n += 1
+		var rc: float = float(ranged["cost"])
+		if rc < 4.0 or rc > 5.0:
+			bad.append("%s ranged %s costs %s" % [aff, kit[0], rc])
+		if starter_hit(ranged) < floor_dmg - 0.01:
+			if pulls_or_taunts(ranged):
+				light.append(str(kit[0]))
+			else:
+				bad.append("%s ranged %s hits for %s" % [aff, kit[0], starter_hit(ranged)])
+		var cc: float = float(close["cost"])
+		if cc < 6.0 or cc > 8.0:
+			bad.append("%s close %s costs %s" % [aff, kit[1], cc])
+	check.call("every affinity's ranged starter costs 4-5 and hits for at least 1.5x a bare strike, its close starter costs 6-8 (Q1, all %d)" % n,
+		n == 18 and bad.is_empty(), str(bad))
+	check.call("only a ranged starter whose hit pulls or taunts stays under the floor (the tank's exception)",
+		light.size() <= 4 and not light.has("cinder_spit"), str(light))
+	print("    lighter by role: %s" % ", ".join(light))
 
 
 # --- Q2: reflux sheds faster in a fight ---------------------------------------------------------

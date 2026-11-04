@@ -17,6 +17,7 @@
  "skills": [
   {
    "id": "spot_weld",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 8 -> 4; damage kept: its hit pulls or taunts, so it stays lighter (ROLES-BRIEF).",
    "name": "Weld Line",
    "affinity": "metal",
    "base_rune": "MET-2a",
@@ -30,7 +31,7 @@
    "summary": "A line of molten iron thrown at one enemy, 9 m: 30 damage, it is dragged 3 m toward you, and for 5 s it is welded to you and Taunted - it fights you, and if you walk away it comes along, out of its pack.",
    "verb_fit": "Fuse is \"weld two into one piece\": you and one enemy, joined. Fire's heat makes the weld; Earth's hold keeps it on your ground. The duel starts here.",
    "numbers": {
-    "cost": 8,
+    "cost": 4,
     "reflux_per_cost": 1.4,
     "damage": 30,
     "speed": 26,
@@ -104,6 +105,7 @@
   },
   {
    "id": "splitting_blow",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 12 -> 8; damage unchanged.",
    "name": "Splitting Blow",
    "affinity": "metal",
    "base_rune": "MET-2b",
@@ -117,7 +119,7 @@
    "summary": "One enemy in reach: a cleaving blow, 2.4x strike damage and 60 poise. If it wears metal, its armour splits open and the pieces fly on behind it: 30 per metal class to everyone within 2.5 m.",
    "verb_fit": "Sunder is \"split it apart\": Earth's Crumble (break the guard) forged, and the spall is Earth's stone shrapnel in steel - but aimed at the one in front of you.",
    "numbers": {
-    "cost": 12,
+    "cost": 8,
     "reflux_per_cost": 1.4,
     "damage_mult": 2.4,
     "range_bonus": 1.0,

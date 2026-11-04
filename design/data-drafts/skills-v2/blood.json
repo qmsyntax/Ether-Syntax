@@ -8,15 +8,15 @@
   "rule": "Blood works blood that is already out: its hits open Bleeding, bleeders spill pools, and you hold what you drink (up to 10 measures); every measure you hold makes your blows 2% harder (Bloodrush), and blood skills spend Bleeding, pools or held blood - never your health. Blood never heals.",
   "rule_data": {"held_blood_max": 10, "damage_per_held_blood": 0.02, "pays_in_health": false, "heals": false},
   "rule_why": "The 2026-10-22 rule kept, plus Bloodrush: the berserker's meter is the blood it holds. Holding blood makes you hit harder; spending it buys the big moves (longer blood weapons, Outpour, Red Frenzy). That tension - hold or spend - is the role. Brent's ruling stands: nothing spends the caster's health, and blood never heals (healing is Life's; Blood is what Life loses).",
-  "band_shift": "Strikes on the heavy side for a melee role (weapon strikes 1.3-1.5x every swing, finisher 2.2x plus 20 a stack), costs cheap to mid (7-12) because held blood is the second fuel. Ranged damage stays light (lancet 50).",
+  "band_shift": "Strikes on the heavy side for a melee role (weapon strikes 1.3-1.5x every swing, finisher 2.2x plus 20 a stack), costs cheap to mid (7-12) because held blood is the second fuel. Ranged damage was light (lancet 50) until Q1 (combat review 2026-11-03): every full-damage ranged starter now hits for 90 at cost 5.",
   "skills": [
     {
-      "id": "red_lancet", "name": "Red Lancet", "affinity": "blood", "base_rune": "BLD-1a", "rune": "Bleed",
+      "id": "red_lancet", "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 7 -> 5, damage 50 -> 90 (1.5x a bare strike).", "name": "Red Lancet", "affinity": "blood", "base_rune": "BLD-1a", "rune": "Bleed",
       "status": "existing", "starter": true, "starter_slot": "ranged",
       "kind": "projectile", "targeting": "aimed",
-      "summary": "A thin blade of essence thrown along your aim. The first enemy it hits takes 50 and starts Bleeding (2 stacks).",
+      "summary": "A thin blade of essence thrown along your aim. The first enemy it hits takes 90 and starts Bleeding (2 stacks).",
       "verb_fit": "It opens a cut; the Bleeding it leaves is where every other blood skill gets its blood. Parent: Life (the living body opened; only what lives bleeds).",
-      "numbers": {"cost": 7, "reflux_per_cost": 0.7, "damage": 50, "speed": 26, "life": 1.15, "recovery": 0.1, "on_hit": {"status": "bleeding", "stacks": 2}},
+      "numbers": {"cost": 5, "reflux_per_cost": 0.7, "damage": 90, "speed": 26, "life": 1.15, "recovery": 0.1, "on_hit": {"status": "bleeding", "stacks": 2}},
       "ascension": {"power": "damage", "reach": "life", "speed": "speed", "cost": "cost"},
       "signature": ["on_hit.status", "on_hit.stacks"],
       "new_mechanics": [
@@ -106,13 +106,13 @@
       ]
     },
     {
-      "id": "clotblade", "name": "Clotblade", "affinity": "blood", "base_rune": "BLD-3a", "rune": "Clot",
+      "id": "clotblade", "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 10 -> 7; damage unchanged.", "name": "Clotblade", "affinity": "blood", "base_rune": "BLD-3a", "rune": "Clot",
       "status": "changed", "starter": true, "starter_slot": "close",
       "kind": "melee_burst", "targeting": "aimed",
       "summary": "A wide sweep as cleavers of hardened blood form in your hands: 1.8x strike damage in front of you, and every Bleeding stack on a target sets hard in the cut for +22 damage and +12 poise (those stacks are spent). Then you keep the clotblades for 8 s - 1 s more for each held blood you spend, up to 4: your strikes do 1.5x and half again the poise damage, and each strike opens 1 Bleeding.",
       "verb_fit": "Clot is blood hardening into blades: the conjured weapon is clotted blood. Parents: Life (the living's blood, hardened) and Death (a cleaver that turns open cuts into killing wounds).",
       "change": "Role shaping: the sweep now conjures a blood weapon (8 s, longer with held blood) that your strikes use. Kept the sweep, so it is still the close starter.",
-      "numbers": {"cost": 10, "reflux_per_cost": 0.7, "windup": 0.15, "damage_mult": 1.8, "reach_bonus": 0.8, "arc_deg": 140,
+      "numbers": {"cost": 7, "reflux_per_cost": 0.7, "windup": 0.15, "damage_mult": 1.8, "reach_bonus": 0.8, "arc_deg": 140,
         "consume_status": "bleeding", "per_stack_damage": 22, "per_stack_poise": 12, "on_hit": {"poise": 25},
         "conjure_weapon": {"weapon": "clotblades", "lasts": 8, "extend_per_blood": 1, "spend_blood_max": 4,
           "melee_damage_mult": 1.5, "melee_poise_mult": 1.5, "on_strike": {"status": "bleeding", "stacks": 1}}},

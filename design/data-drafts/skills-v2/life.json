@@ -8,7 +8,7 @@
   "rule": "Life works inside living bodies: its harm passes armour and hits the hale (above half health) 25% harder, it does nothing to the unliving, and it heals over time - you and your living summons, the bar fast and wounds slowly - half as fast again for 2 s after each hit you land.",
   "rule_data": {"living_only": true, "inside": true, "hale_mult": 1.25, "heal_targets": "self_and_living_summons", "heal_mult_after_hit": 1.5, "after_hit_s": 2.0},
   "rule_why": "The 2026-10-22 rule kept, plus one clause for the role: a heal must be worth casting in a solo action game, so every Life heal over time runs faster while you are trading blows. The healer is pushed to fight, not to stand back. The bar/sink split is kept: only Regrowth fills sinks at a useful rate.",
-  "band_shift": "Hits lighter than the bands (needle 45, sweep 1.7x, grip 2.0x): Life's power is in its heals. Heal skills sit at mid cost (10-14); a full Knit is about 30 health, 45 with the after-hit rule, against 100 health and enemy blows of 10-45.",
+  "band_shift": "Hits lighter than the bands (needle 45 until Q1 of the 2026-11-03 combat review raised every full-damage ranged starter to 90 at cost 5; sweep 1.7x, grip 2.0x): Life's power is in its heals. Heal skills sit at mid cost (10-14); a full Knit is about 30 health, 45 with the after-hit rule, against 100 health and enemy blows of 10-45.",
   "skills": [
     {
       "id": "knit", "name": "Knit", "affinity": "life", "base_rune": "LIF-1a", "rune": "Heal",
@@ -37,13 +37,13 @@
       ]
     },
     {
-      "id": "withering_needle", "name": "Withering Needle", "affinity": "life", "base_rune": "LIF-1b", "rune": "Wither",
+      "id": "withering_needle", "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 7 -> 5, damage 45 -> 90 (1.5x a bare strike).", "name": "Withering Needle", "affinity": "life", "base_rune": "LIF-1b", "rune": "Wither",
       "status": "changed", "starter": true, "starter_slot": "ranged",
       "kind": "projectile", "targeting": "aimed",
-      "summary": "A needle of life turned inward. The first enemy hit takes 45 and 1 Withering (7 a second for 6 s, up to 3 stacks), past shields and armour. If it dies while Withering, its last life comes back to you: you regrow 10 health over 2 s.",
+      "summary": "A needle of life turned inward. The first enemy hit takes 90 and 1 Withering (7 a second for 6 s, up to 3 stacks), past shields and armour. If it dies while Withering, its last life comes back to you: you regrow 10 health over 2 s.",
       "verb_fit": "Wither is harm from within. The needle's damage is the small part; the Withering works inside the body, and what it takes out of a dying body is not wasted.",
       "change": "Role shaping: a kill while Withering regrows you 10 over 2 s, so the healer's ranged starter feeds its healing.",
-      "numbers": {"cost": 7, "reflux_per_cost": 1.0, "damage": 45, "speed": 22, "life": 1.3, "recovery": 0.1, "inside": true,
+      "numbers": {"cost": 5, "reflux_per_cost": 1.0, "damage": 90, "speed": 22, "life": 1.3, "recovery": 0.1, "inside": true,
         "on_hit": {"status": "withering", "stacks": 1},
         "on_kill_heal": {"heal": 10, "over_s": 2, "needs_status": "withering"}},
       "ascension": {"power": "damage", "reach": "life", "speed": "speed", "cost": "cost"},
@@ -89,13 +89,13 @@
       ]
     },
     {
-      "id": "wearying_sweep", "name": "Wearying Sweep", "affinity": "life", "base_rune": "LIF-2b", "rune": "Exhaust",
+      "id": "wearying_sweep", "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 10 -> 7; damage unchanged.", "name": "Wearying Sweep", "affinity": "life", "base_rune": "LIF-2b", "rune": "Exhaust",
       "status": "changed", "starter": true, "starter_slot": "close",
       "kind": "melee_burst", "targeting": "self",
       "summary": "Everything within 3 m of you takes 1.7x strike damage and is Spent for 4 s (25% slower, attacks 30% slower). Every living enemy hit gives its stamina to you: 3 health over 3 s for each, up to 5.",
       "verb_fit": "Exhaust drains stamina. The ring around you is suddenly tired, and the vigour it lost is drawn into your own body.",
       "change": "Role shaping: regrowth on hit, 3 per living enemy struck (up to 15).",
-      "numbers": {"cost": 10, "reflux_per_cost": 1.0, "windup": 0.2, "damage_mult": 1.7, "reach_bonus": 1.2, "arc_deg": 360,
+      "numbers": {"cost": 7, "reflux_per_cost": 1.0, "windup": 0.2, "damage_mult": 1.7, "reach_bonus": 1.2, "arc_deg": 360,
         "heal_per_target": 3, "heal_over_s": 3, "heal_targets_max": 5,
         "on_hit": {"status": "spent", "poise": 15}},
       "ascension": {"power": "damage_mult", "reach": "reach_bonus", "speed": "windup", "cost": "cost"},

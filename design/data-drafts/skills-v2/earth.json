@@ -8,6 +8,7 @@
  "skills": [
   {
    "id": "slingstone",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 8.0 -> 4; damage kept: its hit pulls or taunts, so it stays lighter (ROLES-BRIEF).",
    "name": "Slingstone",
    "affinity": "earth",
    "base_rune": "EAR-4a",
@@ -21,7 +22,7 @@
    "summary": "A slow, heavy stone thrown Braced: 70 damage, 45 poise, it stops what it hits mid-swing, and it Taunts it for 4 s - it drops what it was doing and comes for you. Thrown into your own stone, it shatters it.",
    "verb_fit": "Dig is \"tear into the ground and bring stone up to throw\": a stone torn up and thrown, and for the tank the throw is a challenge: the archer at the back now walks to you.",
    "numbers": {
-    "cost": 8.0,
+    "cost": 4.0,
     "reflux_per_cost": 0.4,
     "windup": 0.3,
     "braced": true,
@@ -89,6 +90,7 @@
   },
   {
    "id": "landslide_blow",
+   "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 12.0 -> 8; damage unchanged.",
    "name": "Landslide Blow",
    "affinity": "earth",
    "base_rune": "EAR-2b",
@@ -102,7 +104,7 @@
    "summary": "A broad, slow, crushing blow across 100 degrees, Braced: 2x strike damage and 60 poise to everything in it, and each one is Taunted for 4 s. It moves nobody, and shatters every stone of yours in its arc.",
    "verb_fit": "Crumble is \"break stone and guard\": the blow breaks guards across a whole front, and everything whose guard you broke turns on you.",
    "numbers": {
-    "cost": 12.0,
+    "cost": 8.0,
     "reflux_per_cost": 0.4,
     "windup": 0.5,
     "braced": true,

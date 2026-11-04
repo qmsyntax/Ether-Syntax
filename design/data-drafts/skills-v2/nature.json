@@ -8,7 +8,7 @@
   "rule": "Nature's growth stays in the ground and ages (sprout, grown, bloom), spreading on open ground; you and your beasts standing in your growth are In the Green - regrowing 1.5 health a second and hard to move - and any patch can be called up as a beast.",
   "rule_data": {"growth_ages": {"sprout": [0, 5, 1.0], "grown": [5, 15, 1.5], "bloom": [15, null, 2.0]}, "growth_cap": 12, "in_the_green": {"heal_per_s": 1.5, "shove_mult": 0.5, "poise_loss_mult": 0.5}},
   "rule_why": "The old rule (growth that stays, spreads and ages) was all Earth: ground that stays. The role adds Life's half: the growth is alive, it heals what stands in it, and it bears beasts. In the Green is one place-based buff that carries both parents at once: Life's regrowth and Earth's footing. It also gives the druid a reason to fight on its own ground.",
-  "band_shift": "Direct hits on the low side (Thornburst 60, sweep 1.8x): the druid's damage is in growth over time and in its beasts. Costs at the bands; summons and buffs mid (10-14).",
+  "band_shift": "Direct hits on the low side (Thornburst 60 until Q1 of the 2026-11-03 combat review raised every full-damage ranged starter to 90 at cost 5; sweep 1.8x): the druid's damage is in growth over time and in its beasts. Costs at the bands; summons and buffs mid (10-14).",
   "skills": [
     {
       "id": "overgrowth", "name": "Overgrowth", "affinity": "nature", "base_rune": "NAT-1a", "rune": "Grow",
@@ -55,13 +55,13 @@
       ]
     },
     {
-      "id": "thornburst", "name": "Thornburst", "affinity": "nature", "base_rune": "NAT-2a", "rune": "Sprout",
+      "id": "thornburst", "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 8 -> 5, on_hit.damage 60 -> 90 (1.5x a bare strike).", "name": "Thornburst", "affinity": "nature", "base_rune": "NAT-2a", "rune": "Sprout",
       "status": "existing", "starter": true, "starter_slot": "ranged",
       "kind": "delayed_blast", "targeting": "point",
-      "summary": "Point, 9 m: after 0.35 s thorns burst up. 60 and Slowed to everything within 1.5 m, and the thorns stay as a bramble patch that spreads and thickens the longer it stands - ground you can stand in, and a beast you can call.",
+      "summary": "Point, 9 m: after 0.35 s thorns burst up. 90 and Slowed to everything within 1.5 m, and the thorns stay as a bramble patch that spreads and thickens the longer it stands - ground you can stand in, and a beast you can call.",
       "verb_fit": "Sprout is growing plants from the ground. The hit is the plants coming up; what stays is the plants. Parents: Earth (it comes up out of the floor and stays) and Life (it is alive and keeps growing).",
-      "numbers": {"cost": 8, "reflux_per_cost": 0.5, "range": 9, "radius": 1.5, "delay": 0.35,
-        "on_hit": {"damage": 60, "status": "slowed"}, "leave_growth": {"kind": "bramble", "radius": 1.0}},
+      "numbers": {"cost": 5, "reflux_per_cost": 0.5, "range": 9, "radius": 1.5, "delay": 0.35,
+        "on_hit": {"damage": 90, "status": "slowed"}, "leave_growth": {"kind": "bramble", "radius": 1.0}},
       "ascension": {"power": "on_hit.damage", "reach": "range", "speed": "delay", "cost": "cost"},
       "signature": ["on_hit.status", "leave_growth"],
       "new_mechanics": [
@@ -170,13 +170,13 @@
       ]
     },
     {
-      "id": "reaping_sweep", "name": "Reaping Sweep", "affinity": "nature", "base_rune": "NAT-4a", "rune": "Harvest",
+      "id": "reaping_sweep", "q1_note": "Q1 (combat review 2026-11-03, approved by Brent): cost 10 -> 7; damage unchanged.", "name": "Reaping Sweep", "affinity": "nature", "base_rune": "NAT-4a", "rune": "Harvest",
       "status": "changed", "starter": true, "starter_slot": "close",
       "kind": "melee_burst", "targeting": "aimed",
       "summary": "A wide scything sweep through 180 degrees: 1.8x strike damage. Each patch of your growth in the arc is cut back to a sprout and adds 15% to the blow (up to 60%), 1 essence and 3 health to you; the roots stay and regrow.",
       "verb_fit": "Harvest is taking what has grown and its yield. Parents: Earth (the ground's yield, cut and left to regrow) and Life (the yield feeds your body).",
       "change": "Role shaping: each patch reaped also regrows you 3 health.",
-      "numbers": {"cost": 10, "reflux_per_cost": 0.5, "windup": 0.15, "damage_mult": 1.8, "reach_bonus": 1.2, "arc_deg": 180,
+      "numbers": {"cost": 7, "reflux_per_cost": 0.5, "windup": 0.15, "damage_mult": 1.8, "reach_bonus": 1.2, "arc_deg": 180,
         "patch_bonus": 0.15, "patch_bonus_max": 0.6, "per_patch_essence": 1, "per_patch_heal": 3, "on_hit": {"poise": 20}},
       "ascension": {"power": "damage_mult", "reach": "reach_bonus", "speed": "windup", "cost": "cost"},
       "signature": ["damage_mult", "patch_bonus"],
