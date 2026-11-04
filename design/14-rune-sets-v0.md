@@ -329,6 +329,11 @@ base runes. 25 of the first five's runes already carry a design/05 skill.
   - an ionic bond really transfers: the weaker rune's effect leaves it and is carried by the stronger rune;
   - shape traits: a closed ring lasts longer (a large one repeats once); a radial chain through several rings reaches
     further and faster; a rune with three or more bonds spreads its effect; a balanced first ring does not fade.
+- **Bind no matter what; the skill's own rune grows with the rings** [B 2026-11-03, section 13]: "Forcing all valence to
+  be filled is not right. Also, forcing the ring to be complete is wrong. let them bind and close no matter what. Also,
+  the base run may need to have valence added each new ring so it can connect directly. At least one." This reverses
+  the closed-word rule (sections 9, 11) and the full rings of section 12. Closed words, full rings, closed and great
+  rings are rewards (descriptions and shape traits), not requirements.
 
 ## 9. Built (2026-10-23): seals, rings, structure v2, discovery
 
@@ -347,7 +352,8 @@ What the game does now, and the calls made where Brent has not ruled. Rule set `
   adds*: 3, 5, 7, 9, 11. The other reading (each ring holds exactly its adds: 3, 2, 2, 2, the "+2 per level" of row
   52) leaves the great ring (a closed ring of 5) impossible. One data switch, `ring_capacity`, picks the reading.
 - **The skill's own rune** bonds only to ring 1, so it counts as filled once it holds as many bonds as ring 1 has
-  places (a four-bond rune could otherwise never close a level 1 seal) [MODEL].
+  places (a four-bond rune could otherwise never close a level 1 seal) [MODEL; superseded by section 13: it bonds to
+  any ring and gains a bond per ring past the first]. A seal must be closed [superseded by section 13: it need not be].
 - **Strength** [B outline, MODEL detail]: paths run inward (to the same ring or one further in, never back out, no rune
   twice); the strongest path counts; each bond's factor is read from the side further out *along the path*.
 - **Ionic** [B outline, MODEL detail]: a rune weaker in two ionic bonds hands its effect to the partner with the most
@@ -533,3 +539,58 @@ level."
 
 Not built: a separate cost for reworking; a choice of where on the ring the keystone sits (it always crowns the top);
 the keystone's own animation or sound. Feel is untested - needs Brent.
+
+**Superseded by section 13** (2026-11-03): "Fully formed means full", "ring N+1 cannot be started until ring N is
+full", the bind needing every ring full and the word closed, and "every ring 1..N+1 must be full" for an old save's
+next lock. The keystone, the lock needing its construct, rework at a lock, the failed bind's rules and the rest of
+section 12 stand.
+
+
+## 13. Ruling and build (2026-11-03): bind no matter what, and the skill's own rune grows with the rings
+
+Brent, 2026-11-03 [B], on the level 2 lock of a Riptide Lash test character (ring 1 sealed 3 of 3, ring 2 filled 5 of 5,
+the remnant of Compression set as the keystone, Bind refused: "Only a closed word can be sealed; this one is open - not
+a word yet", "1 open bond to fill"): "trying to bind the second ring and I cant. something is off with our mechanics
+here. Forcing all valence to be filled is not right. Also, forcing the ring to be complete is wrong. let them bind and
+close no matter what. Also, the base run may need to have valence added each new ring so it can connect directly. At
+least one."
+
+- **Bind no matter what** [B]. A level lock binds when the skill's bar is full and a construct of the tier is carried
+  (unchanged, `Player.can_open_seal`), the keystone is chosen, and the draft breaks no hard rule: a rune over its
+  valence, a bond between affinities that refuse each other, a bond across rings that do not touch, more runes on a
+  ring than it has places, runes on a ring the skill does not have (`RuneRules.can_seal`, reason `problems`). Not
+  needed any more: a closed word (every valence filled), every place of a ring filled, every rune joined to the skill,
+  or any rune at all on the new ring. The 80% roll and a failed bind's consequences are unchanged.
+- **Data switches, not deleted rules** [MODEL]. `runes.json` bond_v2 `seal_needs_closed` false and the new
+  `seal_needs_full_rings` false (both from the exporter's `RING_RULES`, not the workbook; true puts the old rule back).
+  With full rings off, `RingRules.ring_formed` is always true, so `unformed_below` / `first_unformed` are 0 and the
+  `ring_unformed` refusals never fire; `ring_full` keeps the description ("2 of 5").
+- **Inside out, by level** [B, section 11, kept]. Ring k takes runes only from the level-k lock on (`RuneContext.rings`);
+  ring k-1 no longer has to be full first. A ring reworked at a later lock may be left with empty places.
+- **The skill's own rune grows** [B rule, MODEL number]. Its valence is its rune's + `anchor_valence_per_ring` (1, "at
+  least one") for each ring the skill has beyond ring 1 (`RingRules.node_valence` / `anchor_extra`; at a lock the
+  forming ring counts), and it may bond straight to a rune on any ring (`anchor_bonds_any_ring` true;
+  `RingRules.rings_bond`). Every other rune keeps the adjacent-ring rule. The board's sockets for the core follow
+  (`describe_node`). A closed word now asks the core for its grown valence, up to the places it can reach (`anchor_needs`).
+- **What an open or partial word does** [MODEL, from effects_v2 as built]. A sealed word's effects apply whether or not it
+  is closed (`locked_effects`). A rune works at its strength along its strongest inward path to the skill; a rune joined
+  to nothing has strength 0 and does nothing; an open bond carries nothing and costs nothing. The skill's own rune's
+  nature is scaled by the bonds it has (none if it has none). Keystones work in full whatever the ring holds. Closed
+  rings, great rings, spokes, branches and balanced are found from the shape as before - the rewards for filling.
+- **On the seal screen** the banner says to set runes on the ring "as many as you like" and that the bind locks the
+  level as it stands; the status lines say "N bonds still open - optional; an open bond carries nothing", "Not every
+  rune is joined to the skill - a rune joined to nothing does nothing", "Empty places on ring k - allowed"; the lock note
+  reads "Ready: the <keystone> over ring k, ring k holds n of N, bonds still open (optional)". A closed word shows
+  "CLOSED - every bond filled". Shot: `--shot-ui=seal-lock-open` (lock 2 with ring 1 bound 2 of 3, ring 2 2 of 5, Drown
+  bonded straight to the skill's own rune).
+- **Tests**: the test hook `Player.test_bind_unclosed` and `RuneContext.closure_waived` are gone (every bind is like
+  that now). The self-test's level-lock block checks the switches, a partial open word sealing and still working, a rune
+  joined to nothing carrying nothing, an empty lock binding, the core's valence 2, 3, 4, 5, 6 at rings 1-5 (Surge), the
+  core bonding straight to ring 2 and 3 while a ring 1 rune cannot reach ring 3, over-valence / refused / far bonds and a
+  missing keystone still blocking. `ui_click_probe` binds a part-filled, open ring 1 and then, at lock 2, bonds the core
+  straight to a ring 2 rune and binds ring 2 at 2 of 5, with the keystone still required and a failed bind changing
+  nothing.
+
+Open for Brent: whether a closed word itself (all valence filled) should earn something beyond the shape traits it
+already makes possible; whether the core's extra bonds should be +1 per ring or more; whether an empty new ring should
+really be allowed to lock a level (it is, by "no matter what"). Feel is untested - needs Brent.
