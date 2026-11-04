@@ -27,6 +27,7 @@ func run() -> void:
 	await _shedding()
 	_starters()
 	await _sidestep()
+	await _refusals()
 	for n: Node in _made:
 		if is_instance_valid(n):
 			n.queue_free()
@@ -249,6 +250,58 @@ func _sidestep() -> void:
 		and _near(float(n.get("essence")), 10.0))
 	_gone(n)
 	_gone(hitter)
+
+
+# --- R4d: a refusal you can see -----------------------------------------------------------------
+
+func _refusals() -> void:
+	var h: Dictionary = GameData.balance["hud"]
+	check.call("balance.json hud has refusal_show_s and refusal_flash_s, with a note",
+		float(h.get("refusal_show_s", 0.0)) > 0.0 and float(h.get("refusal_flash_s", 0.0)) > 0.0 and str(h["_note"]).contains("refusal_show_s"))
+	var p := _player("water", AT + Vector3(0, 0, 200), 0.0)
+	p.call("set_talent", "one_percent_lifesteal")
+	var heard: Array = []
+	p.connect("cast_refused", func(slot: int, reason: String, text: String) -> void: heard.append([slot, reason, text]))
+	var hud: Control = load("res://scripts/hud.gd").new()
+	t.add_child(hud)
+	_keep(hud)
+	hud.call("refresh", p, "")
+	hud.call("_process", STEP)
+	await _wait(STEP)
+	p.call("press_slot", 1)                       # Breaker with an empty tank
+	var r: Dictionary = p.get("last_refusal")
+	check.call("a refused cast records its slot and reason (no essence)", str(r.get("reason", "")) == "essence" and int(r.get("slot", -1)) == 1 and str(r.get("text", "")) != "",
+		str(r))
+	check.call("... and says so (the cast_refused signal)", heard.size() == 1 and int(heard[0][0]) == 1 and str(heard[0][1]) == "essence")
+	hud.call("_process", STEP)
+	check.call("the HUD takes it up: the slot flashes and the reason shows at the cursor", str((hud.get("_refusal") as Dictionary).get("reason", "")) == "essence"
+		and float(hud.get("_refusal_age")) < float(h["refusal_flash_s"]))
+	for i: int in int(ceil(float(h["refusal_show_s"]) / STEP)) + 2:
+		hud.call("_process", STEP)
+	check.call("... for refusal_show_s, then it is gone", float(hud.get("_refusal_age")) > float(h["refusal_show_s"]))
+	# locked: the reason names the meditate key as it is bound now
+	p.set("essence", 20.0)
+	(p.get("locked_by") as Dictionary)["water"] = true
+	p.call("press_slot", 0)
+	r = p.get("last_refusal")
+	check.call("locked by reflux: the reason names the meditate key (Keybinds-aware)", str(r.get("reason", "")) == "locked"
+		and str(r.get("text", "")).contains("[%s]" % Keybinds.binding_text("meditate")), str(r))
+	(p.get("locked_by") as Dictionary)["water"] = false
+	# no target at all, and one out of reach
+	p.call("cast_slot", 0)                         # Riptide Lash, nobody near (the rest of the self-test may leave foes far off)
+	var anyone := false
+	for n: Node in t.get_tree().get_nodes_in_group("enemies"):
+		anyone = anyone or not bool(n.call("is_dead"))
+	check.call("nobody to aim at: 'no target' (or 'out of reach' while another test's foe stands far off)",
+		str((p.get("last_refusal") as Dictionary).get("reason", "")) == ("out_of_reach" if anyone else "no_target"))
+	var far := _foe(p, Vector3(0, 0, -20))
+	p.call("cast_slot", 0)                         # Riptide Lash reaches 10 m
+	check.call("someone past the skill's reach: 'out of reach'", str((p.get("last_refusal") as Dictionary).get("reason", "")) == "out_of_reach")
+	var serial: int = int((p.get("last_refusal") as Dictionary)["serial"])
+	p.call("cast_slot", 0)
+	check.call("each refusal is new to the HUD (its serial counts up)", int((p.get("last_refusal") as Dictionary)["serial"]) == serial + 1)
+	_gone(far)
+	_gone(p)
 
 
 ## Actions whose default keys collide (each binding is meant to be one action's).

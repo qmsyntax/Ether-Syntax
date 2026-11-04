@@ -67,6 +67,12 @@ var minimap: Dictionary = {}
 var nether: Dictionary = {}
 ## Screenshot aid: force a tooltip ("slot:0", "strike", "shoot", "health", "essence") without a real cursor.
 var debug_tip := ""
+## Screenshot aid: where the cursor is said to be (a refusal's reason is drawn there); zero = the real mouse.
+var debug_cursor := Vector2.ZERO
+## The refusal being shown (combat review R4d): the player's last_refusal, its age, and the serial seen.
+var _refusal: Dictionary = {}
+var _refusal_age := 99.0
+var _refusal_serial := -1
 
 
 func _ready() -> void:
@@ -148,6 +154,13 @@ func _process(delta: float) -> void:
 		_recover_max = _track_max(_recover_max, float(player.get("_recover_t")))
 		_melee_max = _track_max(_melee_max, float(player.get("_melee_cd")))
 		_ranged_max = _track_max(_ranged_max, float(player.get("_ranged_cd")))
+		var refused: Dictionary = player.get("last_refusal")
+		var refusal_n: int = int(refused.get("serial", 0))
+		if _refusal_serial >= 0 and refusal_n != _refusal_serial:
+			_refusal = refused.duplicate()
+			_refusal_age = 0.0
+		_refusal_serial = refusal_n
+		_refusal_age += delta
 		var fight: bool = bool(player.get("in_combat"))
 		var target_a: float = GameData.num("hud", "hints_alpha_in_combat") if fight else 1.0
 		_hint_alpha = move_toward(_hint_alpha, target_a, delta * 2.0)
@@ -187,6 +200,7 @@ func _draw() -> void:
 	if not _hidden.has("plate"):
 		_draw_plate()
 	_draw_dock(vs)
+	_draw_refusal(vs)
 	if not _hidden.has("hints"):
 		_draw_hints(vs)
 	_draw_tooltip(vs)
@@ -305,6 +319,35 @@ func _draw_slot(r: Rect2, i: int, idx: int, abilities: Array, essence: float, re
 	if border.a > 0.0:
 		draw_rect(r.grow(1.0), border, false, 2.0)
 	_slot_key(r, Keybinds.binding_text("ability_%d" % (i + 1)))
+
+
+## A refused cast (combat review R4d): its slot flashes (hud refusal_flash_s) and the reason shows a moment
+## beside the cursor (refusal_show_s), rising and fading; a key it names is drawn as a keycap.
+func _draw_refusal(vs: Vector2) -> void:
+	if _refusal.is_empty():
+		return
+	var flash_s: float = GameData.num("hud", "refusal_flash_s")
+	var show_s: float = GameData.num("hud", "refusal_show_s")
+	var slot: int = int(_refusal.get("slot", -1))
+	if _refusal_age < flash_s and slot >= 0 and slot < _slot_rects.size():
+		var a: float = 1.0 - _refusal_age / flash_s
+		var r: Rect2 = _slot_rects[slot]
+		draw_rect(r.grow(-3.0), Color(UiTheme.BAD, 0.4 * a))
+		draw_rect(r.grow(2.0), Color(UiTheme.BAD.lightened(0.25), a), false, 3.0)
+	if _refusal_age >= show_s:
+		return
+	var fade: float = clampf((show_s - _refusal_age) / 0.3, 0.0, 1.0)
+	var at: Vector2 = debug_cursor if debug_cursor != Vector2.ZERO else get_local_mouse_position()
+	var text: String = str(_refusal.get("text", ""))
+	var px: int = UiTheme.FS_CAPTION + 4
+	var w: float = UiDraw.rich_width(text, px)
+	var pos := Vector2(at.x + 20.0, at.y - 18.0 - 14.0 * _refusal_age)
+	pos.x = clampf(pos.x, 8.0, vs.x - w - 8.0)
+	pos.y = clampf(pos.y, float(px) + 8.0, vs.y - 8.0)
+	var back := Rect2(pos.x - 8.0, pos.y - float(px) - 4.0, w + 16.0, float(px) + 12.0)
+	draw_rect(back, Color(0.05, 0.03, 0.03, 0.62 * fade))
+	draw_rect(back, Color(UiTheme.BAD, 0.8 * fade), false, 1.5)
+	UiDraw.rich(self, pos, text, px, Color(UiTheme.BAD.lightened(0.55), fade))
 
 
 ## The key that fires a slot, as a keycap hanging off the bottom of its frame.

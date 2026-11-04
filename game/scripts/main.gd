@@ -103,6 +103,9 @@ var _bot_money_before := 0
 var _bot_started_ms := 0
 var _shot_dungeon := false          # windowed bot run that screenshots wall 2 as it wakes
 var _shot_countdown := 0
+## A screenshot's last moment: run when _shot_countdown reaches SHOT_LATE_FRAMES (a refusal pressed just before the shot).
+var _shot_late: Callable = Callable()
+const SHOT_LATE_FRAMES := 8
 var _last_cleared := 0
 var _last_sealed := false
 var _last_payout := 0
@@ -208,6 +211,8 @@ func _process(delta: float) -> void:
 			_save_shot()
 	if _shot_countdown > 0:
 		_shot_countdown -= 1
+		if _shot_countdown == SHOT_LATE_FRAMES and _shot_late.is_valid():
+			_shot_late.call()
 		if _shot_countdown == 0:
 			_save_shot()
 	if _bot_mode:
@@ -2624,6 +2629,31 @@ func _setup_ui_shot(which: String) -> void:
 			e.set_physics_process(false)
 		player.set_physics_process(false)
 		player.call("_refresh_highlights")
+		return
+	if which == "refusal" or which == "refusal-locked":
+		# a refused cast (combat review R4d): a water character presses Breaker at a grunt in reach with too
+		# little essence (refusal), or with water locked by reflux (refusal-locked); the slot flashes and the
+		# reason shows beside the cursor, which is said to be on the grunt
+		forced_biome = "scrubland"
+		_select_talent(0)
+		player.call("set_affinities", ["water"])
+		_show_screen(null, false)
+		enter_arena()
+		rest_timer = 9999.0
+		_spawn_enemy("grunt", Vector3(0.8, 0, -2.4), 1.0)
+		var foe: Node3D = get_tree().get_nodes_in_group("enemies")[0]
+		player.set("hovered", foe)
+		player.set("essence", 2.0 if which == "refusal" else 18.0)
+		if which == "refusal-locked":
+			(player.get("reflux_by") as Dictionary)["water"] = 100.0
+			(player.get("locked_by") as Dictionary)["water"] = true
+		foe.set_physics_process(false)
+		player.set_physics_process(false)
+		player.call("_refresh_highlights")
+		_shot_countdown = 60
+		_shot_late = func() -> void:
+			hud.set("debug_cursor", camera.unproject_position(foe.global_position + Vector3.UP * 1.0))
+			player.call("press_slot", 1)
 		return
 	if which == "combat":
 		# the combat rules on one screen: a brute mid-slam, an archer aiming, a staggered grunt,

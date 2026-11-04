@@ -4049,16 +4049,21 @@ func _beam_leg(origin: Vector3, dir: Vector3, reach_in: float, ab: Dictionary, s
 ## cursor if you are pointing at one - and only that one, never a nearer bystander - else the one
 ## you are fighting, else the nearest.
 func _skill_target(reach: float) -> Node3D:
-	var pick: Node3D = null
-	for c: Variant in [hovered, attack_target, _nearest_enemy()]:
-		if c != null and is_instance_valid(c) and (c as Node).is_in_group("enemies") and not bool((c as Node).call("is_dead")):
-			pick = c
-			break
+	var pick: Node3D = _skill_candidate()
 	if pick == null:
 		return null
 	var to: Vector3 = pick.global_position - global_position
 	to.y = 0.0
 	return pick if to.length() <= reach + float(pick.get("radius")) else null
+
+
+## The enemy a single-target skill would be aimed at, near or far: the one under the cursor, else the
+## one you are fighting, else the nearest (whether it is in reach is _skill_target's question).
+func _skill_candidate() -> Node3D:
+	for c: Variant in [hovered, attack_target, _nearest_enemy()]:
+		if c != null and is_instance_valid(c) and (c as Node).is_in_group("enemies") and not bool((c as Node).call("is_dead")):
+			return c
+	return null
 
 
 ## Where a blink would land: toward the cursor, at most `reach` away. Null if that spot is off
@@ -4189,7 +4194,9 @@ func cast_slot(slot: int) -> void:
 		return
 	var action: String = "ability_%d" % (slot + 1)
 	_cast_action = action if InputMap.has_action(action) and Input.is_action_pressed(action) else ""
+	_casting_slot = slot
 	cast_ability(hotbar[slot])
+	_casting_slot = -1
 	_cast_action = ""
 
 
@@ -4216,9 +4223,11 @@ func cast_ability(index: int) -> void:
 	var aff: String = str(ab.get("affinity", ""))
 	var aff_name: String = str(GameData.affinity(aff).get("label", aff))
 	if not affinities.has(aff):
+		_refuse("no_affinity", "No %s affinity" % aff_name.to_lower())
 		note("You have no %s affinity." % aff_name.to_lower())
 		return
 	if is_locked(aff):
+		_refuse("locked", "%s locked by reflux - meditate [%s]" % [aff_name, Keybinds.binding_text("meditate")])
 		note("%s affinity is locked by reflux. Meditate (hold %s)." % [aff_name, Keybinds.binding_text("meditate")])
 		return
 	if _recover_t > 0.0 or (_stagger_t > 0.0 and not _lifts(ab, "staggered")):
@@ -4238,9 +4247,11 @@ func cast_ability(index: int) -> void:
 	if per_second:
 		cost = 0.0                               # a channel pays as it is held (see _tick_held)
 	if essence < cost or (per_second and essence < float(ab["cost"]) * 0.25):
+		_refuse("essence", "Not enough essence")
 		note("Not enough essence for %s." % str(ab["name"]))
 		return
 	if float(ab.get("heat_cost", 0.0)) > 0.0 and heat < float(ab["heat_cost"]):
+		_refuse("heat", "Needs %d heat" % int(ab["heat_cost"]))
 		note("%s needs %d heat." % [str(ab["name"]), int(ab["heat_cost"])])
 		return
 	# Some skills need something to point at; find out before anything is spent.
@@ -4251,20 +4262,30 @@ func cast_ability(index: int) -> void:
 			or (kind == "smite" and not bool(ab.get("nearest_to_point", false))) or (kind == "channel" and str(ab.get("shape", "")) == "tether") \
 			or (kind == "detonate" and str(ab.get("gather_into", "")) == "target"):
 		strike_target = _skill_target(reach)
+		var no_line := false
 		if strike_target != null and kind == "smite" and GameData.balance["skills"].get("smite_needs_line", true) \
 				and not bool((ab.get("on_hit", {}) as Dictionary).get("through", false)) \
 				and not _ray(global_position + Vector3.UP, strike_target.global_position + Vector3.UP).is_empty():
 			strike_target = null                 # a wall or stone stands between
+			no_line = true
 		if strike_target == null:
+			if no_line:
+				_refuse("no_line", "No clear line")
+			elif _skill_candidate() != null:
+				_refuse("out_of_reach", "Out of reach")
+			else:
+				_refuse("no_target", "No target")
 			note("%s needs someone within reach." % str(ab["name"]))
 			return
 		if str(ab.get("needs_status", "")) != "" and kind != "detonate" and not bool(strike_target.call("has_status", str(ab["needs_status"]))):
+			_refuse("needs_status", "Needs a %s target" % StatusText.label(str(ab["needs_status"])))
 			note("%s needs a target that is %s." % [str(ab["name"]), StatusText.label(str(ab["needs_status"]))])
 			return
 	elif kind == "smite":
 		blink_to = _aim_point(reach)
 		strike_target = _nearest_enemy_to(blink_to, reach)
 		if strike_target == null:
+			_refuse("no_target", "No target there")
 			note("%s needs someone near where you point." % str(ab["name"]))
 			return
 	elif kind == "blink" or kind == "grapple":
@@ -4273,15 +4294,18 @@ func cast_ability(index: int) -> void:
 		if special != null:
 			spot = special
 		elif bool(ab.get("needs_shadow", false)) and spot != null and not Light.is_dark(get_tree(), spot):
+			_refuse("no_landing", "No shadow there")
 			note("There is no shadow there to rise from.")
 			return
 		if spot == null:
+			_refuse("no_landing", "No way through")
 			note("There is no way through to there.")
 			return
 		blink_to = spot
 	elif kind == "prop" and str(ab.get("shape", "")) == "":
 		var where: Variant = _prop_point(ab)
 		if where == null:
+			_refuse("no_landing", "No room there")
 			note("There is no room to raise stone there.")
 			return
 		blink_to = where
@@ -4291,12 +4315,14 @@ func cast_ability(index: int) -> void:
 	if str(ab.get("needs", "")).begins_with("corpse"):
 		var body_at: Fallen = _corpse_near(blink_to, float(GameData.num("skills", "jump_radius")))
 		if body_at == null and str(ab["needs"]) == "corpse":
+			_refuse("no_target", "Needs a body there")
 			note("%s needs a body where you point." % str(ab["name"]))
 			return
 		if body_at != null:
 			blink_to = body_at.global_position
 	elif kind == "summon" and str(ab.get("needs", "")) == "growth":
 		if _growth_at(blink_to, 1.5) == null:
+			_refuse("no_target", "Needs your growth there")
 			note("%s needs your growth where you point." % str(ab["name"]))
 			return
 	essence -= cost
@@ -7546,9 +7572,11 @@ func sidestep() -> String:
 	var aff: String = sidestep_affinity()
 	var winded: bool = _winded_t > 0.0
 	if aff == "" and not affinities.is_empty():
+		_refuse("locked", "Locked by reflux - meditate [%s]" % Keybinds.binding_text("meditate"))
 		note("Every affinity is locked by reflux: no step. Meditate (hold %s)." % Keybinds.binding_text("meditate"))
 		return "locked"
 	if aff == "" and winded:
+		_refuse("winded", "Winded")
 		note("Winded: no step yet.")
 		return "winded"
 	if aff != "":
@@ -7604,3 +7632,21 @@ func _sidestep_dir() -> Vector3:
 		if to.length() > 0.5:
 			return to.normalized()
 	return _facing if _facing.length() > 0.01 else Vector3(0, 0, -1)
+
+
+# --- refusals the player can see (combat review R4d, approved by Brent 2026-11-03) -----------------
+# A refused cast used to be one line in the corner log. Now it is also recorded here for the HUD, which
+# flashes the slot it came from and shows the reason a moment at the cursor (balance.json "hud"
+# refusal_show_s / refusal_flash_s). The log line stays as it was.
+
+var _casting_slot := -1              # the hotbar slot cast_slot is casting from, -1 otherwise
+## The last refusal: {serial, slot, reason, text} - reason is no_affinity | locked | essence | heat |
+## no_target | out_of_reach | no_line | needs_status | no_landing | winded; slot is -1 when it was not a
+## hotbar slot (the sidestep, a test's cast_ability). The HUD shows a new serial once.
+var last_refusal: Dictionary = {}
+signal cast_refused(slot: int, reason: String, text: String)
+
+
+func _refuse(reason: String, text: String) -> void:
+	last_refusal = {"serial": int(last_refusal.get("serial", 0)) + 1, "slot": _casting_slot, "reason": reason, "text": text}
+	cast_refused.emit(_casting_slot, reason, text)
