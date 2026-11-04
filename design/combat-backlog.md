@@ -5,6 +5,20 @@ The source is `design/combat-review-2026-11-03.md`; each item's full row is in i
 On 2026-11-03 Brent approved **R1, Q1, Q2, R3 and R4** for building [B]. The items below are logged for later; none
 is approved yet.
 
+**Built 2026-11-03** (a worktree branch, not yet merged; CLAUDE.md "Combat rules" says how each works): R1 strikes
+gather essence; Q1 cheaper, stronger starters for all 18 affinities; Q2 faster reflux shedding in a fight; R3 the
+free sidestep (Space; "Skip the rest" moved to G); R4 (a) close skills walk you in, (b) slow shots lead their foe,
+(c) your own stone lets your shots through, (d) a refusal flashes the slot and shows why at the cursor. Measured
+before and after with the review's probe (`tools/combat-review/results-2026-11-03-*.jsonl`, `compare.py`). Feel is
+untested - needs Brent. Tuned on the probe: `strike_gathers_essence` 1.5 (the review measured 2),
+`strike_sheds_reflux` 5 and `shed_in_combat` 3 (the review's 3 and 2 first). Met: a new character casts 52-79 times a
+fight-minute (was 13-23) with a 43-57% skill share (was 9-20%), and dies far less (Stubble 0 of 8, passage 3 of 8,
+arena 7 of 8; was 8, 8, 8). Still short [MODEL, measured]: a mid character's reflux-lock refusals (17-38% of
+presses, was 36-71%; target under 10%) and meditation (46-63% of its time, mostly the sit to a full tank between
+fights - Q3's knob); melee bursts touching nothing for the mid character (15-18%, target under 10%); and the mid
+earth character's Slingstone hits (35-45%; a new character's are 95-100%) [?]. Decisions left to Brent: the
+movement starters' price (Q1 names none; unchanged), and "Skip the rest" moving from Space to G.
+
 | Id | Change | Why (from the review) | What it needs before it can start |
 |---|---|---|---|
 | R2 | **Essence from kills**: a small mote rises from each kill, worth the kind's `aura_value` x k, walked through or gathered within 2 m | Chains kill -> cast -> kill; the setting harvests essence from kills [F] | Brent's ruling on essence from kills (it changes how essence enters the game). Measure after R1 lands, which may be enough on its own |
