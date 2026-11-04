@@ -73,6 +73,7 @@ var debug_cursor := Vector2.ZERO
 var _refusal: Dictionary = {}
 var _refusal_age := 99.0
 var _refusal_serial := -1
+var _endurance_a := 0.0            # the endurance bar fades in when spent, out once full again
 
 
 func _ready() -> void:
@@ -161,6 +162,8 @@ func _process(delta: float) -> void:
 			_refusal_age = 0.0
 		_refusal_serial = refusal_n
 		_refusal_age += delta
+		var full: bool = float(player.call("endurance_now")) >= float(player.call("endurance_max")) - 0.01
+		_endurance_a = move_toward(_endurance_a, 0.0 if full else 1.0, delta / maxf(0.01, GameData.num("hud", "endurance_fade_s")))
 		var fight: bool = bool(player.get("in_combat"))
 		var target_a: float = GameData.num("hud", "hints_alpha_in_combat") if fight else 1.0
 		_hint_alpha = move_toward(_hint_alpha, target_a, delta * 2.0)
@@ -183,6 +186,7 @@ func _draw() -> void:
 		_draw_nether_veil(vs)
 	if show_world:
 		_draw_enemy_bars()
+		_draw_endurance()
 		if not nether.is_empty():
 			_draw_wisp_labels()
 		_draw_vignette(vs)
@@ -913,6 +917,37 @@ func _draw_enemy_bars() -> void:
 		if b.total() >= b.total_max() and not lit and not show_all:
 			continue                      # untouched enemies show no bar - less clutter
 		UiDraw.bar(self, Rect2(top.x - w * 0.5, top.y - 4.0, w, 6.0), b.total() / b.total_max(), UiTheme.HEALTH_SUPERFICIAL if not lit else Color("f0563f"))
+
+
+## Endurance (balance.json "endurance"): a slim bar just under the player's feet while it is not full,
+## with a notch at each step's worth, so two steps and the wait for a third read at a glance. Short of a
+## step it dims toward red. Not while the soul is out in the Netherecho.
+func _draw_endurance() -> void:
+	if _endurance_a <= 0.01 or not nether.is_empty() or not (player is Node3D):
+		return
+	var cam: Camera3D = get_viewport().get_camera_3d()
+	if cam == null or cam.is_position_behind((player as Node3D).global_position):
+		return
+	var at: Vector2 = cam.unproject_position((player as Node3D).global_position)
+	var w: float = GameData.num("hud", "endurance_bar_w")
+	var r := Rect2(at.x - w * 0.5, at.y + 22.0, w, 4.0)
+	var now: float = float(player.call("endurance_now"))
+	var most: float = maxf(1.0, float(player.call("endurance_max")))
+	var cost: float = GameData.num("endurance", "step_cost")
+	var col: Color = UiTheme.ENDURANCE if now + 0.0001 >= cost else UiTheme.ENDURANCE.lerp(UiTheme.BAD, 0.55)
+	var a: float = _endurance_a
+	var frac: float = clampf(now / most, 0.0, 1.0)
+	draw_rect(r.grow(1.0), Color(0, 0, 0, 0.7 * a))
+	draw_rect(r, Color(UiTheme.INSET, 0.85 * a))
+	draw_rect(Rect2(r.position, Vector2(r.size.x * frac, r.size.y)), Color(col, a))
+	draw_rect(Rect2(r.position, Vector2(r.size.x * frac, 1.0)), Color(1, 1, 1, 0.16 * a))
+	if cost > 0.0:
+		var x: float = cost
+		while x < most - 0.5:
+			var nx: float = r.position.x + r.size.x * x / most
+			draw_line(Vector2(nx, r.position.y - 1.0), Vector2(nx, r.end.y + 1.0), Color(UiTheme.OUTLINE, 0.9 * a), 1.0)
+			x += cost
+	draw_rect(r.grow(1.0), Color(UiTheme.BRONZE_DIM, a), false, 1.0)
 
 
 ## The attack an enemy is winding up, drawn where it will land: a circle that fills for a slam,

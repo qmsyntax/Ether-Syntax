@@ -602,6 +602,7 @@ func _enter_town(arrive: String = "square") -> void:
 		nether.exit("")
 	_build_town()
 	player.call("end_fight")
+	player.call("refill_endurance")             # the town gives you your wind back (balance.json endurance)
 	player.global_position = level.to_global(_town.arrival(arrive))
 	player.set("attack_target", null)
 	player.set("pickup_target", null)
@@ -2654,6 +2655,27 @@ func _setup_ui_shot(which: String) -> void:
 		_shot_late = func() -> void:
 			hud.set("debug_cursor", camera.unproject_position(foe.global_position + Vector3.UP * 1.0))
 			player.call("press_slot", 1)
+		return
+	if which == "endurance" or which == "endurance-refused":
+		# the endurance bar under the feet (Brent 2026-11-03, balance.json endurance): one step spent
+		# (endurance), or short of a step with the step refused at the cursor (endurance-refused)
+		forced_biome = "scrubland"
+		_select_talent(0)
+		player.call("set_affinities", ["water"])
+		_show_screen(null, false)
+		enter_arena()
+		rest_timer = 9999.0
+		_spawn_enemy("grunt", Vector3(0.8, 0, -3.4), 1.0)
+		var grunt: Node3D = get_tree().get_nodes_in_group("enemies")[0]
+		grunt.set_physics_process(false)
+		var most: float = float(player.call("endurance_max"))
+		player.set("endurance", most - GameData.num("endurance", "step_cost") if which == "endurance" else GameData.num("endurance", "step_cost") * 0.45)
+		player.set_physics_process(false)
+		_shot_countdown = 60
+		_shot_late = func() -> void:
+			hud.set("debug_cursor", camera.unproject_position(player.global_position + Vector3(1.6, 0, 0.4)))
+			if which == "endurance-refused":
+				player.call("sidestep")
 		return
 	if which == "combat":
 		# the combat rules on one screen: a brute mid-slam, an archer aiming, a staggered grunt,

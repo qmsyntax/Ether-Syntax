@@ -592,7 +592,7 @@ func _physics_process(delta: float) -> void:
 	_recover_t -= delta
 	_ranged_cd -= delta
 	_winded_t -= delta
-	_step_chain_t -= delta
+	_tick_endurance(delta)
 	_brace_t -= delta
 	_rear_window_t -= delta
 	_unseen_reveal_t -= delta
@@ -714,7 +714,7 @@ func _physics_process(delta: float) -> void:
 			_facing = to.normalized()
 		if to.length() <= reach:
 			dir = Vector3.ZERO if input == Vector2.ZERO else dir
-			if _melee_cd <= 0.0 and _stagger_t <= 0.0:
+			if _melee_cd <= 0.0 and _stagger_t <= 0.0 and not stepping():
 				_strike_credit = maxi(0, _strike_credit - 1)       # a click is one blow (_strike_spent)
 				_strike_target(attack_target, float(_p["off_hand_factor"]) if arm_right_lost else 1.0, ["melee"])
 				_melee_cd = float(_p["melee_cooldown"]) * weapon_stat("melee_cooldown_mult", true) * temper_stat("melee_cooldown_mult") / maxf(0.1, strike_rate_mult())
@@ -746,14 +746,7 @@ func _physics_process(delta: float) -> void:
 			dir = walk
 	if bot:
 		dir = _bot_dir if attack_target == null else dir
-	var speed: float = float(_p["move_speed"]) * temper_stat("move_speed_mult") * (float(_p["charge_move_factor"]) if _charging else 1.0) * buff_num("move_speed_mult") * _zone_num("caster_speed_mult")
-	if not _held.is_empty():
-		speed *= float((_held["ab"] as Dictionary).get("move_factor", 1.0))     # holding a skill: you walk slowly, or not at all
-	speed *= buff_num("move_factor")          # a counter window roots you (Abiding Guard, Turning Palm, Turn the Edge)
-	if ranged_stance:
-		speed *= GameData.num("ranged", "stance_move_factor")
-	if pips >= GameData.inum("slipstream", "speed_pips"):
-		speed *= GameData.num("slipstream", "speed_mult")
+	var speed: float = walk_speed()
 	if _windup_t > 0.0 or _stagger_t > 0.0:
 		dir = Vector3.ZERO                       # set: you do not move until it goes off (or you are up)
 	velocity = dir * speed
@@ -764,6 +757,8 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector3.ZERO
 		if move_and_collide(_shoved_dir * push) != null:
 			_shoved_left = 0.0
+	elif stepping():
+		_tick_step_move(delta)                   # the sidestep: an eased run of its own (balance.json sidestep)
 	elif _dash_time > 0.0:
 		# A dash covers an exact distance: it is moved by hand, not by velocity, whose time step
 		# the engine chooses (that made a 4.2 m dash travel 23 m in a test, and would on a hitch).
@@ -788,6 +783,21 @@ func _physics_process(delta: float) -> void:
 	_hold_facing(delta)
 	rotation.y = atan2(-_facing.x, -_facing.z)
 	_update_model(delta)
+
+
+## How fast your feet carry you right now: the run, slowed by a charge, a held skill, a counter
+## window or the shooting stance, quickened by buffs and Slipstream. Wind-ups and staggers stop you
+## separately. The sidestep eases out into this.
+func walk_speed() -> float:
+	var speed: float = float(_p["move_speed"]) * temper_stat("move_speed_mult") * (float(_p["charge_move_factor"]) if _charging else 1.0) * buff_num("move_speed_mult") * _zone_num("caster_speed_mult")
+	if not _held.is_empty():
+		speed *= float((_held["ab"] as Dictionary).get("move_factor", 1.0))     # holding a skill: you walk slowly, or not at all
+	speed *= buff_num("move_factor")          # a counter window roots you (Abiding Guard, Turning Palm, Turn the Edge)
+	if ranged_stance:
+		speed *= GameData.num("ranged", "stance_move_factor")
+	if pips >= GameData.inum("slipstream", "speed_pips"):
+		speed *= GameData.num("slipstream", "speed_mult")
+	return speed
 
 
 # --- the damage pipeline --------------------------------------------------------
@@ -1010,6 +1020,7 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 			poise = float(combat["player_poise"])
 			_stagger_t = float(combat["player_stagger_s"])
 			_dash_time = 0.0
+			_end_step()                           # knocked off your feet mid-step: the step is over
 			_windup = {}                          # whatever you were winding up is lost
 			_windup_t = 0.0
 			_motion_started = false
@@ -2191,6 +2202,7 @@ func shove(dir: Vector3, metres: float) -> void:
 	_shoved_dir = flat.normalized()
 	_shoved_left = metres
 	_dash_time = 0.0
+	_end_step()
 	has_move_goal = false
 
 
@@ -6065,6 +6077,8 @@ func respawn_naked() -> void:
 	_charge = 0.0
 	clear_reflux()
 	buffs.clear()
+	_end_step()
+	refill_endurance()
 	body.hp = maxf(body.hp, body.total_max() * float(town["revive_health_frac"]))
 	_build_model()
 	refresh_gear()
@@ -7364,7 +7378,7 @@ func _pressed_cast(slot: int) -> void:
 
 ## True while a new cast would be refused for timing alone.
 func _cast_busy() -> bool:
-	return _recover_t > 0.0 or _stagger_t > 0.0 or _windup_t > 0.0 or _dash_time > 0.0 or not _held.is_empty()
+	return _recover_t > 0.0 or _stagger_t > 0.0 or _windup_t > 0.0 or _dash_time > 0.0 or stepping() or not _held.is_empty()
 
 
 ## The kept press goes off as soon as you are free; it is forgotten when its window runs out.
@@ -7539,22 +7553,32 @@ func camera_kick() -> Vector3:
 	return _cam_kick
 
 
-# --- the sidestep (combat review R3, approved by Brent 2026-11-03; balance.json "sidestep") ------------
+# --- the sidestep (combat review R3, approved by Brent 2026-11-03; reworked per Brent 2026-11-03:
+# "keep the motion smooth ... almost like a dash, but with the animation"; balance.json "sidestep") ------
 # A short step on its own key (Keybinds "sidestep"): not invulnerable - you avoid a blow by not being
-# there (design/05 6.3) - and priced through reflux, not essence or a cooldown [B]. Two in quick succession
-# leave you Winded, and a step taken Winded costs combat.winded_cost_mult the heat. It is moved by the
-# exact-distance dash movement, plays the dodge clip, and a press while busy waits like a hotbar key.
+# there (design/05 6.3) - and priced in endurance (below), not essence, reflux or a cooldown [B]. It is
+# its own eased run, not the dash movement: distance_m in time_s, fast at the start and easing out
+# (ease_power) into your run speed when you are moving on (end_speed_frac) or nearly to a stand when you
+# are not (end_speed_frac_still). Each frame moves the exact stretch of that curve with move_and_collide,
+# so it stops at walls and bodies like a dash. A held move key, a click destination or a held-mouse walk
+# carries on the moment it ends; a press while busy waits like a hotbar key. The dodge clip is fitted to
+# the step (RealCharacter.play_for, wardrobe.json action_window_s) and hands over to the run as it ends.
 
 var _step_buffer_t := 0.0            # a sidestep pressed while busy, taken the moment you are free
-var _step_chain_t := 0.0             # a second step inside this leaves you Winded
+var _step_len := 0.0                 # the step under way: how long it lasts ...
+var _step_el := 0.0                  # ... how far into it you are (seconds)
+var _step_dir := Vector3.ZERO
+var _step_v0 := 0.0                  # its speed at the start and at the end (m/s)
+var _step_ve := 0.0
+var _step_k := 2.0                   # the ease-out exponent
 ## Sidesteps taken, for tests and the combat-review probe.
 var sidesteps := 0
-signal sidestepped(dir: Vector3, winded: bool)
+signal sidestepped(dir: Vector3)
 
 
 ## The sidestep key (main.gd). Step now if you can; while you are busy (a recovery, a wind-up, a dash,
-## a stagger) the press is kept for "feel" input_buffer_s, as press_slot keeps a hotbar key. It lets go
-## of a held skill, and the latest press wins over a kept hotbar key.
+## a stagger, a step) the press is kept for "feel" input_buffer_s, as press_slot keeps a hotbar key. It
+## lets go of a held skill, and the latest press wins over a kept hotbar key.
 func press_sidestep() -> void:
 	_buffered_slot = -1
 	cancel_walk_cast()
@@ -7578,20 +7602,12 @@ func _tick_step_buffer(delta: float) -> void:
 		sidestep()
 
 
-## Whose reflux a sidestep heats: the coolest of your affinities that is not locked. "" when you hold
-## none (then a step costs nothing, and Winded refuses it instead of doubling it - there is no reflux to
-## pay into) or when every one is locked (then you cannot step until one unlocks).
-func sidestep_affinity() -> String:
-	var best := ""
-	for aff: String in affinities:
-		if is_locked(aff):
-			continue
-		if best == "" or reflux_of(aff) < reflux_of(best):
-			best = aff
-	return best
+## True while a sidestep is carrying you.
+func stepping() -> bool:
+	return _step_el < _step_len
 
 
-## Take the step now. Returns "" if you stepped, else why not: inactive, sitting, busy, locked, winded.
+## Take the step now. Returns "" if you stepped, else why not: inactive, sitting, busy, endurance.
 func sidestep() -> String:
 	if not active or dead or projecting or ui_blocked:
 		return "inactive"
@@ -7600,56 +7616,85 @@ func sidestep() -> String:
 	if _cast_busy():
 		return "busy"
 	var cfg: Dictionary = GameData.balance["sidestep"]
-	var aff: String = sidestep_affinity()
-	var winded: bool = _winded_t > 0.0
-	if aff == "" and not affinities.is_empty():
-		_refuse("locked", "Locked by reflux - meditate [%s]" % Keybinds.binding_text("meditate"))
-		note("Every affinity is locked by reflux: no step. Meditate (hold %s)." % Keybinds.binding_text("meditate"))
-		return "locked"
-	if aff == "" and winded:
-		_refuse("winded", "Winded")
-		note("Winded: no step yet.")
-		return "winded"
-	if aff != "":
-		reflux_by[aff] = reflux_of(aff) + float(cfg["reflux"]) * (GameData.num("combat", "winded_cost_mult") if winded else 1.0)
-		_lock_if_capped(aff)
+	if not spend_endurance(GameData.num("endurance", "step_cost")):
+		_refuse("endurance", "Not enough endurance to step")
+		return "endurance"
 	var dir: Vector3 = _sidestep_dir()
-	var time: float = float(cfg["time_s"])
+	var time: float = maxf(0.05, float(cfg["time_s"]))
+	var dist: float = float(cfg["distance_m"])
+	# the curve: v(u) = ve + (v0 - ve)(1 - u)^k over u = 0..1, with v0 chosen so it covers dist exactly
+	var k: float = maxf(0.0, float(cfg.get("ease_power", 2.0)))
+	var moving_on: bool = _moves_on()
+	var ve: float = walk_speed() * float(cfg.get("end_speed_frac", 1.0) if moving_on else cfg.get("end_speed_frac_still", 0.0))
+	ve = clampf(ve, 0.0, dist / time)           # never ends faster than it averages: it is a burst, then the run
+	_step_k = k
+	_step_ve = ve
+	_step_v0 = ve + (dist / time - ve) * (k + 1.0)
+	_step_dir = dir
+	_step_len = time
+	_step_el = 0.0
 	_facing = dir
 	_snap_body_now()
-	_dash_vel = dir * (float(cfg["distance_m"]) / time)
-	_dash_time = time
-	_dash_stops = true                       # a step does not carry you through a body
-	_dash_braced = false
-	_dash_pass = {}
-	_dash_passed.clear()
-	_dash_trail = {}
-	_dash_on_stop = {}
-	_dash_on_arrive = {}
-	_dash_heavy_poise = 0.0
-	_dash_pass_armoured = false
-	_dash_ab = {}
-	_dash_from = global_position
-	_dash_start = global_position
-	_recover_t = maxf(_recover_t, time + float(cfg["recovery_s"]))
-	_melee_cd = maxf(_melee_cd, _recover_t)
-	has_move_goal = false                    # a step drops what your feet were doing
-	attack_target = null
-	pickup_target = null
+	attack_target = null                        # a step drops the foe you were closing on ...
 	_strike_credit = 0
-	_face_hold_t = 0.0
-	if _step_chain_t > 0.0:
-		_winded_t = GameData.num("combat", "winded_s")      # the second in quick succession: Winded
-		_step_chain_t = 0.0
-	else:
-		_step_chain_t = float(cfg["chain_s"])
-	if winded:
-		_float("winded", Color(0.8, 0.8, 0.9))
-	if _rig != null and _rig.has_method("play_action"):
+	_face_hold_t = 0.0                          # ... but not where your feet were going (has_move_goal, pickup_target)
+	if _rig != null and _rig.has_method("play_for"):
+		_rig.call("play_for", "dodge", time, float(cfg.get("anim_blend_out_s", 0.12)))
+	elif _rig != null and _rig.has_method("play_action"):
 		_rig.call("play_action", "dodge", -1.0)
 	sidesteps += 1
-	sidestepped.emit(dir, winded)
+	sidestepped.emit(dir)
 	return ""
+
+
+## Whether you will be moving when the step ends: a move key held, a click destination or an item to
+## walk to, or the strike button held on the ground. Decides the speed the step eases out into.
+func _moves_on() -> bool:
+	if bot:
+		return _bot_dir != Vector3.ZERO
+	if Input.get_vector("move_left", "move_right", "move_up", "move_down") != Vector2.ZERO:
+		return true
+	return has_move_goal or (pickup_target != null and is_instance_valid(pickup_target))
+
+
+## Distance covered by fraction u of the step (metres), along the curve sidestep() chose.
+func _step_dist_at(u: float) -> float:
+	var k1: float = _step_k + 1.0
+	return _step_len * (_step_ve * u + (_step_v0 - _step_ve) * (1.0 - pow(1.0 - u, k1)) / k1)
+
+
+## The step's speed at fraction u (m/s).
+func _step_speed_at(u: float) -> float:
+	return _step_ve + (_step_v0 - _step_ve) * pow(1.0 - u, _step_k)
+
+
+## One physics frame of the step: the exact stretch of the curve, stopped by a body ahead or a wall.
+func _tick_step_move(delta: float) -> void:
+	var u0: float = _step_el / _step_len
+	_step_el = minf(_step_len, _step_el + delta)
+	var u1: float = _step_el / _step_len
+	var metres: float = _step_dist_at(u1) - _step_dist_at(u0)
+	_facing = _step_dir
+	velocity = _step_dir * _step_speed_at(u1)    # moved by hand below; this is what the body's animation reads
+	if _body_ahead(_step_dir, metres) != null:
+		_end_step()                               # a step does not carry you through a body
+	elif move_and_collide(_step_dir * metres) != null:
+		_end_step()                               # a wall
+	elif not stepping():
+		_end_step()
+
+
+## The step is over (its end, a wall, a body, a stagger, a shove): the body hands over to the run.
+func _end_step() -> void:
+	var was: bool = stepping() or _step_len > 0.0
+	_step_el = 0.0
+	_step_len = 0.0
+	if was and _rig != null and _rig.has_method("end_timed"):
+		_rig.call("end_timed")
+	if was:
+		var lock: float = float((GameData.balance["sidestep"] as Dictionary).get("cast_lockout_s", 0.0))
+		_recover_t = maxf(_recover_t, lock)       # a hair of lockout after, if the data asks (none for moving)
+		_melee_cd = maxf(_melee_cd, lock)
 
 
 ## Which way a step goes: the way the move keys point, else toward the cursor, else the way you face.
@@ -7665,6 +7710,52 @@ func _sidestep_dir() -> Vector3:
 	return _facing if _facing.length() > 0.01 else Vector3(0, 0, -1)
 
 
+# --- endurance (Brent 2026-11-03: "We need endurance to make sure its not cheesed"; balance.json
+# "endurance") -------------------------------------------------------------------------------------
+# A body's wind for quick movement. For now only the sidestep spends it (step_cost); it comes back at
+# regen_per_s once regen_delay_s has passed since the last spend. Not saved: a character starts full, and
+# waking after a death or walking into town fills it. The HUD shows a slim bar under your feet while it is
+# not full.
+
+var endurance := -1.0                # -1 until first read: full
+var _endurance_wait := 0.0           # no regeneration until this runs out
+
+
+## The most endurance you can hold.
+func endurance_max() -> float:
+	return GameData.num("endurance", "max")
+
+
+## Endurance now (full until anything spends it).
+func endurance_now() -> float:
+	if endurance < 0.0:
+		endurance = endurance_max()
+	return endurance
+
+
+## Spend `amount` if you have it all; true if it was spent.
+func spend_endurance(amount: float) -> bool:
+	if endurance_now() + 0.0001 < amount:
+		return false
+	endurance = maxf(0.0, endurance - amount)
+	_endurance_wait = GameData.num("endurance", "regen_delay_s")
+	return true
+
+
+## Back to full (a death, the town).
+func refill_endurance() -> void:
+	endurance = endurance_max()
+	_endurance_wait = 0.0
+
+
+func _tick_endurance(delta: float) -> void:
+	var now: float = endurance_now()
+	_endurance_wait -= delta
+	if _endurance_wait > 0.0:
+		return
+	endurance = minf(endurance_max(), now + GameData.num("endurance", "regen_per_s") * delta)
+
+
 # --- refusals the player can see (combat review R4d, approved by Brent 2026-11-03) -----------------
 # A refused cast used to be one line in the corner log. Now it is also recorded here for the HUD, which
 # flashes the slot it came from and shows the reason a moment at the cursor (balance.json "hud"
@@ -7672,7 +7763,7 @@ func _sidestep_dir() -> Vector3:
 
 var _casting_slot := -1              # the hotbar slot cast_slot is casting from, -1 otherwise
 ## The last refusal: {serial, slot, reason, text} - reason is no_affinity | locked | essence | heat |
-## no_target | out_of_reach | no_line | needs_status | no_landing | winded; slot is -1 when it was not a
+## no_target | out_of_reach | no_line | needs_status | no_landing | winded | endurance (the sidestep); slot is -1 when it was not a
 ## hotbar slot (the sidestep, a test's cast_ability). The HUD shows a new serial once.
 var last_refusal: Dictionary = {}
 signal cast_refused(slot: int, reason: String, text: String)
