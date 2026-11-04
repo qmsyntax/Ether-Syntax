@@ -49,7 +49,9 @@ GENERIC = {"cost", "cost_per_s", "cost_note", "reflux_per_cost", "windup", "brac
            "consume_status", "per_stack_damage", "per_stack_poise", "burst_radius", "bonus_vs_status", "bonus_damage",
            "inside", "times_flesh", "lobbed", "needs_seen", "damage", "damage_mult", "status_s", "duration",
            # v2 (2026-10-24): the weapon coat and what carries it; a target that must carry a status
-           "coat", "weapon", "needs_status"}
+           "coat", "weapon", "needs_status",
+           # combat review R4c (2026-11-03): your own standing stone lets your shots through unless the skill asks
+           "stops_at_own_stone"}
 BY_KIND = {
     # crushes (Floe Drive): every shove you cause already ends in a Crush against a wall, stone or body (enemy.gd _tick_shove)
     "projectile": {"speed", "life", "pierce", "width", "trail", "hits_corpses", "corpse_burst", "zone", "shot", "crushes", "split"},

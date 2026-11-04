@@ -12,7 +12,8 @@ var payload: Dictionary = {}
 var tags: Array = ["projectile"]
 ## Passes through every enemy in its line instead of stopping at the first.
 var pierce := false
-## An earth bolt: if what stops it is the shooter's own stone, the stone shatters along its flight.
+## An earth bolt: if it meets the shooter's own stone, the stone shatters along its flight (and the bolt
+## flies on through, unless the skill asks to stop there - combat review R4c).
 var shatters_stone := false
 ## How far either side of its line it touches a body (a wave of water is wide).
 var hit_radius := 0.35
@@ -54,12 +55,25 @@ func tick(delta: float) -> void:
 	var stopped := false
 	var hit_wall: Object = null
 	if is_inside_tree():
+		# your own standing stone lets your shot through (combat review R4c) - a Slingstone shatters it on
+		# the way - unless the skill asks to stop at it (stops_at_own_stone)
 		var q := PhysicsRayQueryParameters3D.create(from, to, 1)
-		var wall: Dictionary = get_world_3d().direct_space_state.intersect_ray(q)
-		if not wall.is_empty():
+		var passed: Array[RID] = []
+		for i: int in 4:
+			q.exclude = passed
+			var wall: Dictionary = get_world_3d().direct_space_state.intersect_ray(q)
+			if wall.is_empty():
+				break
+			var own: bool = wall["collider"] is Stone and is_instance_valid(shooter) and (wall["collider"] as Stone).caster == shooter
+			if own and not bool(ab.get("stops_at_own_stone", false)):
+				if shatters_stone:
+					(wall["collider"] as Stone).shatter(dir, shooter)
+				passed.append((wall["collider"] as CollisionObject3D).get_rid())
+				continue
 			to = wall["position"]
 			stopped = true
 			hit_wall = wall["collider"]
+			break
 	var a := Vector2(from.x, from.z)
 	var b := Vector2(to.x, to.z)
 	# nearest first, so a shot that stops at the first body stops at the right one

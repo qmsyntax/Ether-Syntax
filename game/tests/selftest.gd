@@ -3105,7 +3105,8 @@ func _test_earth() -> void:
 	plain.global_position = here + Vector3.UP
 	var before: float = _lost(stood)
 	_fly(plain)
-	_check("your own shots stop on it", _near(_lost(stood), before) and _near(float(s.get("hp")), 150.0))
+	# your own shots pass it (combat review R4c, 2026-11-03: your stone no longer eats your shots); it stays whole
+	_check("your own shots pass it, and leave it whole", _lost(stood) > before and _near(float(s.get("hp")), 150.0), "lost %f" % (_lost(stood) - before))
 	# ... and theirs, which wear it down
 	var ShotScript: GDScript = load("res://scripts/enemy_shot.gd")
 	var arrow: Node3D = ShotScript.new()
@@ -3191,7 +3192,9 @@ func _test_earth() -> void:
 	e.call("cast_ability", 0)
 	e.call("_tick_windup", 0.31)
 	_fly(_bolt_of(e))
-	_check("Slingstone thrown into your own stone shatters it over whoever is behind", s3.is_queued_for_deletion() and _near(_lost(behind), 80.0), "lost %f" % _lost(behind))
+	# ... and flies on through it (R4c): shrapnel and the stone itself both land
+	_check("Slingstone thrown into your own stone shatters it over whoever is behind, and flies on into them",
+		s3.is_queued_for_deletion() and _near(_lost(behind), 80.0 + float(GameData.ability("slingstone")["damage"])), "lost %f" % _lost(behind))
 	behind.free()
 
 	# ---------- Landslide Blow

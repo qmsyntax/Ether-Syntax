@@ -4015,7 +4015,10 @@ func _fire_beam(ab: Dictionary, stage_mult: float, color: Color, tags: Array) ->
 func _beam_leg(origin: Vector3, dir: Vector3, reach_in: float, ab: Dictionary, stage_mult: float, color: Color, tags: Array) -> Dictionary:
 	var reach: float = reach_in
 	var normal: Variant = null
-	var wall: Dictionary = _ray(origin, origin + dir * reach)
+	# your own standing stone lets your beam through (combat review R4c) unless the skill asks to stop at it, or
+	# glances off stone (bounces)
+	var own_through: bool = not bool(ab.get("stops_at_own_stone", false)) and int(ab.get("bounces", 0)) <= 0
+	var wall: Dictionary = _ray(origin, origin + dir * reach, own_through)
 	if not wall.is_empty():
 		reach = origin.distance_to(wall["position"])
 		normal = wall["normal"]
@@ -4130,11 +4133,18 @@ func _blink(spot: Vector3, ab: Dictionary, stage_mult: float, color: Color, tags
 			apply_hit(e, payload, tags, stage_mult)
 
 
-## First thing in the world (walls, blocks, floor - not bodies) between two points, or {}.
-func _ray(from: Vector3, to: Vector3) -> Dictionary:
+## First thing in the world (walls, blocks, floor - not bodies) between two points, or {}. With
+## `past_own_stone` your own standing stone is not in the way (your shots pass it - combat review R4c).
+func _ray(from: Vector3, to: Vector3, past_own_stone: bool = false) -> Dictionary:
 	if not is_inside_tree():
 		return {}
 	var q := PhysicsRayQueryParameters3D.create(from, to, 1)
+	if past_own_stone:
+		var own: Array[RID] = []
+		for st: Variant in stones:
+			if is_instance_valid(st):
+				own.append((st as CollisionObject3D).get_rid())
+		q.exclude = own
 	return get_world_3d().direct_space_state.intersect_ray(q)
 
 

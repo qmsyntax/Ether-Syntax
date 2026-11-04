@@ -1224,7 +1224,7 @@
       },
       "verse": "A stone has all the time there is. Lend it yours.",
       "icon": "stone",
-      "summary": "A slow, heavy stone thrown Braced: 70 damage, 45 poise, it stops what it hits mid-swing, and it Taunts it for 4 s - it drops what it was doing and comes for you. Thrown into your own stone, it shatters it.",
+      "summary": "A slow, heavy stone thrown Braced: 70 damage, 45 poise, it stops what it hits mid-swing, and it Taunts it for 4 s - it drops what it was doing and comes for you. Thrown into your own stone, it shatters it and flies on (combat review R4c: your stone no longer eats your shots).",
       "good_modifiers": [
         "Weigh",
         "Harden",

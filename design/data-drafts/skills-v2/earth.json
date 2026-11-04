@@ -19,7 +19,7 @@
    "serves": "role",
    "kind": "projectile",
    "targeting": "aimed",
-   "summary": "A slow, heavy stone thrown Braced: 70 damage, 45 poise, it stops what it hits mid-swing, and it Taunts it for 4 s - it drops what it was doing and comes for you. Thrown into your own stone, it shatters it.",
+   "summary": "A slow, heavy stone thrown Braced: 70 damage, 45 poise, it stops what it hits mid-swing, and it Taunts it for 4 s - it drops what it was doing and comes for you. Thrown into your own stone, it shatters it and flies on (combat review R4c: your stone no longer eats your shots).",
    "verb_fit": "Dig is \"tear into the ground and bring stone up to throw\": a stone torn up and thrown, and for the tank the throw is a challenge: the archer at the back now walks to you.",
    "numbers": {
     "cost": 4.0,

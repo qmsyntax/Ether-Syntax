@@ -30,6 +30,7 @@ func run() -> void:
 	await _refusals()
 	await _walk_in()
 	await _lead()
+	await _own_stone()
 	for n: Node in _made:
 		if is_instance_valid(n):
 			n.queue_free()
@@ -453,6 +454,72 @@ func _lead() -> void:
 	p.set("cursor_fixed", null)
 	_gone(p)
 	_gone(e)
+
+
+# --- R4c: your own stone does not stop your shots ------------------------------------------------
+
+func _stone_at(owner: Node3D, at: Vector3) -> Node3D:
+	var st: Node3D = owner.call("raise_stone", at, Vector3(0, 0, -1), GameData.ability("raise_slab"))
+	st.call("tick", 0.6)                           # risen: solid, on layer 1
+	return st
+
+
+func _own_stone() -> void:
+	var p := _player("dark", AT + Vector3(0, 0, 420))
+	_full(p)
+	var e := _foe(p, Vector3(0, 0, -9.0))
+	e.set_physics_process(false)
+	p.set("cursor_fixed", e.global_position)
+	var mine: Node3D = _stone_at(p, p.global_position + Vector3(0, 0, -4.5))
+	await _wait(STEP * 3.0)
+	check.call("your own risen stone stands between you and the foe", is_instance_valid(mine) and bool(mine.call("is_up")))
+	check.call("your shot passes your own stone and hits the foe behind it", _shot_hits(p, 0, e, Vector3.ZERO))
+	check.call("... and the stone still stands (a plain shot does not break it)", is_instance_valid(mine) and not mine.is_queued_for_deletion())
+	# a skill that asks to stop at your stone still does
+	var blot: Dictionary = GameData.ability("blot")
+	blot["stops_at_own_stone"] = true
+	p.set("_recover_t", 0.0)
+	var stopped: bool = not _shot_hits(p, 0, e, Vector3.ZERO)
+	blot.erase("stops_at_own_stone")
+	check.call("a skill with stops_at_own_stone is stopped by it, as before", stopped)
+	# someone else's stone still blocks your shot
+	mine.call("crumble")
+	var other := _player("earth", AT + Vector3(30, 0, 420))
+	var theirs: Node3D = _stone_at(other, p.global_position + Vector3(0, 0, -4.5))
+	await _wait(STEP * 3.0)
+	p.set("_recover_t", 0.0)
+	check.call("a stone that is not yours still stops your shot", is_instance_valid(theirs) and not _shot_hits(p, 0, e, Vector3.ZERO))
+	theirs.call("crumble")
+	_gone(other)
+	_gone(p)
+	# a beam: Dayline through your own stone
+	var l := _player("light", AT + Vector3(60, 0, 420))
+	_full(l)
+	var f := _foe(l, Vector3(0, 0, -9.0))
+	f.set_physics_process(false)
+	l.set("cursor_fixed", f.global_position)
+	var ls: Node3D = _stone_at(l, l.global_position + Vector3(0, 0, -4.5))
+	await _wait(STEP * 3.0)
+	l.call("cast_slot", 0)
+	check.call("a beam (Dayline) passes your own stone too", _lost(f) > 0.0, "lost %f" % _lost(f))
+	ls.call("crumble")
+	# Slingstone (asks to shatter your stone): it breaks it and flies on to the foe behind
+	var s := _player("earth", AT + Vector3(90, 0, 420))
+	_full(s)
+	var g := _foe(s, Vector3(0, 0, -9.0))
+	g.set_physics_process(false)
+	s.set("cursor_fixed", g.global_position)
+	var ss: Node3D = _stone_at(s, s.global_position + Vector3(0, 0, -4.5))
+	await _wait(STEP * 3.0)
+	s.call("cast_slot", 0)                          # 0.3 s wind-up, then the stone flies
+	var hp0: float = (g.get("body") as Body).hp
+	for i: int in 40:
+		await t.get_tree().physics_frame
+	check.call("Slingstone shatters your stone and flies on to hit the foe behind it",
+		(not is_instance_valid(ss) or ss.is_queued_for_deletion() or not bool(ss.call("is_up"))) and (g.get("body") as Body).hp < hp0,
+		"lost %f" % (hp0 - (g.get("body") as Body).hp))
+	for n: Node in [l, f, s, g, e]:
+		_gone(n)
 
 
 ## Actions whose default keys collide (each binding is meant to be one action's).
