@@ -216,8 +216,11 @@ func _process(_delta: float) -> void:
 			var ctx: RuneContext = player.call("rune_context", 0)
 			_expect("it opens the seal screen at the level 1 lock: stage 0, ring 1 forming, no free edit", s != null and str(s.call("seal_view")) == "bind"
 				and ctx.stage == 0 and ctx.forming == 1 and ctx.rings == 1 and str((main.find_child("SealBanner", true, false) as Label).text).begins_with("FORMING RING 1"))
-			_expect("the vestiges carried are offered there as the keystone, one button per concept, none set yet", GameData.concept_ids().all(func(c: Variant) -> bool:
-				return main.find_child("LockConstruct_%s" % str(c), true, false) is Button) and main.find_child("KeystoneHead", true, false) != null
+			# Brent 2026-11-04: a vestige of every rune that fits - the affinity's and the universal ones
+			var vest: Array = (player.call("construct_groups", "vestige") as Array)
+			_expect("the vestiges carried are offered there as the keystone, one button per word (%d), every one fitting, none set yet" % vest.size(),
+				not vest.is_empty() and vest.all(func(g: Dictionary) -> bool: return bool(g["fits"]) and main.find_child("LockConstruct_%s" % str(g["concept"]), true, false) is Button)
+				and main.find_child("KeystoneHead", true, false) != null and main.find_child("KeystoneScroll", true, false) != null
 				and int(player.call("seal_construct")) < 0)
 			_expect("a test character knows every rune", (player.call("rune_palette") as Array).all(func(id: String) -> bool: return bool(player.call("knows_rune", id))))
 			var anchor: String = GameData.skill_anchor(str(((player.get("abilities") as Array)[0] as Dictionary)["id"]))
@@ -255,11 +258,15 @@ func _process(_delta: float) -> void:
 				var w: Dictionary = player.call("ability_word", 0)
 				_expect("every place of ring 1 set by clicks and bonded by drags: the word is closed and the ring full", RuneWord.ring_nodes(w, 1).size() == rules.ring_capacity(1)
 					and bool(Runes.active().word_state(w, player.call("rune_context", 0))["closed"]), str(w))
-				_reveal(main.find_child("LockConstruct_reach", true, false) as Control)
-				_click(main.find_child("LockConstruct_reach", true, false) as Control))
+				# the keystone list scrolls (Brent 2026-11-04: a vestige of every rune that fits): bring Far
+				# into view first, then click it once the scroll has moved
+				_reveal(main.find_child("LockConstruct_UNI-06b", true, false) as Control))
+			_queue.append(func() -> void:
+				_reveal(main.find_child("LockConstruct_UNI-06b", true, false) as Control)
+				_click(main.find_child("LockConstruct_UNI-06b", true, false) as Control))
 			_queue.append(func() -> void:
 				var ks: Dictionary = player.call("seal_keystone")
-				_expect("clicking a concept sets that vestige over ring 1 as its keystone", str(ks.get("tier", "")) == "vestige" and str(ks.get("concept", "")) == "reach" and bool(ks.get("set", false)))
+				_expect("clicking a word sets that vestige (of Far) over ring 1 as its keystone", str(ks.get("tier", "")) == "vestige" and str(ks.get("concept", "")) == "UNI-06b" and bool(ks.get("set", false)))
 				_chance = GameData.num("binding", "success_chance")
 				(GameData.balance["binding"] as Dictionary)["success_chance"] = 1.0
 				_click(main.find_child("SealBindButton", true, false) as Control))
@@ -267,9 +274,9 @@ func _process(_delta: float) -> void:
 				(GameData.balance["binding"] as Dictionary)["success_chance"] = _chance
 				var st: Dictionary = (player.get("abilities") as Array)[0]
 				var w1: Dictionary = st.get("word", {})
-				_expect("Bind and lock locks the level: stage 1, ring 1 full and sealed, the vestige of Reach its keystone",
+				_expect("Bind and lock locks the level: stage 1, ring 1 full and sealed, the vestige of Far its keystone",
 					int(st["stage"]) == 1 and RuneWord.sealed(w1) == 1 and RuneWord.ring_nodes(w1, 1).size() == rules.ring_capacity(1)
-					and str(RuneWord.keystone(w1, 1).get("concept", "")) == "reach" and str(RuneWord.keystone(w1, 1).get("tier", "")) == "vestige", str(st))
+					and str(RuneWord.keystone(w1, 1).get("concept", "")) == "UNI-06b" and str(RuneWord.keystone(w1, 1).get("tier", "")) == "vestige", str(st))
 				var s2: Node = main.get("screen")
 				var ctx2: RuneContext = player.call("rune_context", 0)
 				_expect("the bar is refilled (a test override) and the level 2 lock is open at once: ring 1 sealed, ring 2 forming, the remnants offered as its keystone",

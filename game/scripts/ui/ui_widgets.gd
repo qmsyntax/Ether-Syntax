@@ -171,6 +171,22 @@ class TipLabel extends Label:
 		return UiWidgets.wrapped_tip(for_text)
 
 
+## A Button whose tooltip wraps (a keystone's runes and effect run long).
+class TipButton extends Button:
+	func _make_custom_tooltip(for_text: String) -> Object:
+		return UiWidgets.wrapped_tip(for_text)
+
+
+## small_button, as a TipButton.
+static func tip_button(text: String, on_press: Callable, enabled: bool = true) -> Button:
+	var b := TipButton.new()
+	b.text = text
+	b.disabled = not enabled
+	b.focus_mode = Control.FOCUS_NONE
+	b.pressed.connect(on_press)
+	return b
+
+
 ## A big clickable row: bold title, smaller description underneath, optional price on the right.
 static func service_button(title: String, desc: String, right: String, on_press: Callable, enabled: bool = true) -> Button:
 	var b := Button.new()

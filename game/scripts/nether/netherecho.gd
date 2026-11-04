@@ -51,10 +51,14 @@ func populate_site(centre: Vector3, half: Vector2) -> void:
 		var at := centre + Vector3(rng.randf_range(-half.x, half.x), 0.0, rng.randf_range(-half.y, half.y))
 		spawn_wisp(at, _roll_wisp_affinity())
 	if rng.randf() < float(_cfg["construct_chance_per_site"]):
-		var ids: Array = GameData.concept_ids()
 		var tier: String = "remnant" if rng.randf() < float(_cfg["remnant_chance"]) else "vestige"
 		var at2 := centre + Vector3(rng.randf_range(-half.x, half.x) * 0.6, 0.0, rng.randf_range(-half.y, half.y) * 0.6)
-		spawn_construct(at2, tier, str(ids[rng.randi() % ids.size()]), rng.randf() < float(_cfg["docile_chance"]))
+		# a word of the tier, leaning toward the traveller's affinities (Brent 2026-11-04: "wild spawns lean
+		# toward the player's affinities so drops stay useful"; balance.json nether word_weights)
+		var held: Array = player.get("affinities") if player != null else []
+		var wid: String = ConstructWords.pick_wild(tier, held, rng)
+		if wid != "":
+			spawn_construct(at2, tier, wid, rng.randf() < float(_cfg["docile_chance"]))
 
 
 ## A zone's own Netherecho, from its data (zones.json "nether"): the landmarks' echoes, and sites
@@ -119,6 +123,9 @@ func spawn_wisp(local_pos: Vector3, affinity: String) -> Node3D:
 
 
 func spawn_construct(local_pos: Vector3, tier: String, concept: String, docile: bool) -> Node3D:
+	var wid: String = GameData.construct_word_id(tier, concept)       # an old concept id: the word it now is
+	if wid != "":
+		concept = wid
 	var c: Node3D = ConstructScript.new()
 	c.call("setup", tier, concept, docile)
 	c.position = local_pos
@@ -229,7 +236,8 @@ func _on_subdued(construct: Node) -> void:
 	(player.get("constructs") as Array).append({"tier": str(construct.get("tier")), "concept": str(construct.get("concept"))})
 	player.call("note", "The %s is subdued. It is yours to bind." % str(construct.get("display_name")))
 	player.call("add_aura", 6.0 if str(construct.get("tier")) == "vestige" else 18.0)
-	# subduing a construct reveals a rune of its concept (Brent 2026-10-23, design/14 section 8)
+	# subduing a construct reveals runes of its word, its own first (Brent 2026-10-23 and 2026-11-04,
+	# design/14 sections 8 and 14)
 	player.call("on_construct_subdued", str(construct.get("tier")), str(construct.get("concept")))
 
 

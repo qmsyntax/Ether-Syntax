@@ -273,6 +273,16 @@ func add_shape(part: String, mesh: Mesh, color: Color, pos: Vector3 = Vector3.ZE
 	_shapes[part].append({"mesh": mesh, "xform": xform, "color": color, "glow": glow, "gloss": gloss, "flat": flat, "kind": kind})
 
 
+## Recolours every shape added so far (call before finish): each colour keeps its brightness and
+## takes `hue_of`'s hue, its saturation moved `amount` of the way to `hue_of`'s. For a design drawn
+## once and shown in several palettes (a construct in its word's affinity colour).
+func tint_shapes(hue_of: Color, amount: float = 1.0) -> void:
+	for part: String in _shapes:
+		for sh: Dictionary in _shapes[part]:
+			var c: Color = sh["color"]
+			sh["color"] = Color.from_hsv(hue_of.h, lerpf(c.s, hue_of.s, amount), c.v, c.a)
+
+
 ## Bakes every part's shapes into meshes and records the rest pose. Call once after building.
 func finish() -> void:
 	for part: String in _parts:

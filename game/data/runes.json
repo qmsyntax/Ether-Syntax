@@ -589,16 +589,11 @@
 			"anchor_valence_per_ring": 1,
 			"anchor_bonds_any_ring": true,
 			"keystone": {
-				"_note": "Brent 2026-10-24 (design/14 section 12): the chosen construct (vestige at lock 1, remnant at 2, then spirit, eidolon, asura) is set over the forming ring as its keystone and sealed with the word (since Brent 2026-11-03 the ring need not be full). Its concept's effect counts for more than a regular rune's: every multiplier of the concept (constructs.json concepts.mods, or its fallback) has its distance from 1 scaled by the tier's weight, weight = weight_base + weight_per_tier x the tier's place (vestige 0 ... asura 4), so a vestige of Acceleration's speed x1.5 becomes x(1 + 0.5 x 1.25) = x1.625. A regular rune works at its strength, at most 1.0 before conversion. No multiplier goes below mult_floor. 'parts' are the hit payloads a concept's field is also looked for in. The concept is applied only through the keystone (the ability's 'bound' list is a record). [MODEL numbers, B rule; not in the workbook yet]",
+				"_note": "Brent 2026-10-24 (design/14 section 12): the chosen construct (vestige at lock 1, remnant at 2, then spirit, eidolon, asura) is set over the forming ring as its keystone and sealed with the word (since Brent 2026-11-03 the ring need not be full). Its effect counts for more than a regular rune's. Since Brent 2026-11-04 (design/14 section 14) a construct carries a word of runes (constructs.json words: a vestige one rune, a remnant two ... an asura five) and the keystone applies every op of the word's runes as a rune at strength = weight, weight = weight_base + weight_per_tier x the tier's place (vestige 0 ... asura 4): a multiplier m becomes max(mult_floor, 1 + (m - 1) x weight), so a vestige of Motion's speed x1.25 becomes x1.3125; an amount (shove, pull, marks, jumps, a bonus) is multiplied by weight; a status, interrupt or brace always takes hold, and lasts longer, stacks and silences by strength as the on/off rules give any rune (effects_v2); what the skill cannot use lands as the runes' fallback (a share as power, or a cost cut), and if even that has nowhere to go, every hit's damage x fallback_damage_all (weighted) - so no keystone is wasted. No op hurts the caster (Brent 2026-10-11: skills never hurt their caster). A regular rune works at its strength, at most 1.0 before conversion. The word is applied only through the keystone (the ability's 'bound' list is a record). [MODEL numbers, B rule; not in the workbook yet]",
 				"weight_base": 1.25,
 				"weight_per_tier": 0.25,
 				"mult_floor": 0.1,
-				"parts": [
-					"on_hit",
-					"on_pass",
-					"on_arrive",
-					"on_rise"
-				]
+				"fallback_damage_all": 1.1
 			},
 			"structure": "Each vestige binding forms a seal: a new ring around the skill. Forming a seal you may rework every inner ring and add the new one. Runes on a ring bond to their neighbours on that ring and to runes on the rings just inside and outside. A rune's strength = its ring's fade x the product of every bond's transmission on its path to the skill (each bond's kind factor, read from the side further out). An ionic bond hands the weaker rune's whole effect to the stronger rune. Ring 1 plus the skill's own rune keeps Brent's \"level 0 holds 4\"; each later seal adds 2 (\"+2 per level\").",
 			"interactions": [

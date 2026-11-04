@@ -325,6 +325,12 @@
     "foreign_wisp_chance": 0.2,
     "construct_chance_per_site": 0.5,
     "remnant_chance": 0.18,
+    "word_weights": {
+      "_note": "Brent 2026-11-04 (design/14 section 14): wild constructs (and enemy drops) lean toward the player's affinities so drops stay useful. A wild construct's word is drawn by class - 'own' (a word of an affinity the player holds), 'universal' (all universal runes: fits any skill), 'other' (an affinity the player lacks: fits none of its skills) - each class by its weight, then any word of it at random; an empty class gives its share to the rest (ConstructWords.pick_wild). [MODEL]",
+      "own": 0.55,
+      "universal": 0.35,
+      "other": 0.1
+    },
     "aggro_radius": 4.5,
     "docile_chance": 0.4,
     "docile_snap_chance_per_s": 0.06,

@@ -24,8 +24,10 @@ extends BondRules
 ##     Brent 2026-10-24 ("Every slot should be filled to be fully formed ... Its all or nothing at
 ##     each level"), which made a ring formed only when full and refused ring k while ring k-1 had an
 ##     empty place; with seal_needs_full_rings true that rule comes back (ring_formed);
-##   - each sealed ring carries the construct bound at its lock as its keystone, whose concept's
-##     effect is weighted above a rune's (params.keystone; keystone_effect, folded into effects).
+##   - each sealed ring carries the construct bound at its lock as its keystone: the word it carries
+##     (Brent 2026-11-04, design/14 section 14 - a vestige one rune ... an asura five) applies its
+##     runes' ops as a rune at the tier's weight, above any rune's (params.keystone; keystone_effect,
+##     folded into effects).
 ## No numbers here: they are this rule set's params in runes.json.
 
 
@@ -170,13 +172,20 @@ func can_seal(word: Dictionary, ctx: RuneContext) -> Dictionary:
 	return r
 
 
-# --- keystones (Brent 2026-10-24, design/14 section 12) ------------------------------------------
+# --- keystones (Brent 2026-10-24, design/14 section 12; words since 2026-11-04, section 14) ------
 # "Then a vestige is placed over the top with its effect being worth more than a regular rune...and
-# that locks the level." The construct bound at a lock is set over its full ring as the keystone and
-# sealed with the word (RuneWord.keystones). It works through the word's effects - the ONE place a
-# construct's concept reaches a skill (the ability's "bound" list is only a record) - taken before the
-# runes, so its concept multiplies the skill's own numbers as a bind always did, but weighted: every
-# multiplier's distance from 1 is scaled by the tier's weight (params.keystone).
+# that locks the level." The construct bound at a lock is set over its ring as the keystone and sealed
+# with the word (RuneWord.keystones). It works through the word's effects - the ONE place a construct
+# reaches a skill (the ability's "bound" list is only a record) - taken before the runes. Since Brent
+# 2026-11-04 a construct carries a word of runes (constructs.json words): its keystone applies every op
+# of those runes through the effects interaction's own op rules as a rune at strength = the tier's
+# weight (params.keystone): a multiplier's distance from 1 times the weight (floored); an amount times
+# the weight; a status / interrupt / brace always takes hold, lasting longer and stacking by strength as
+# any rune's would (effects_v2's on/off rules); what the skill cannot use lands as the runes' fallback,
+# and failing that as every hit's damage - so no keystone is wasted. No op hurts the caster.
+
+const _Fx := preload("res://scripts/runes/interactions/effects_v1.gd")
+
 
 func keystone_params() -> Dictionary:
 	return params.get("keystone", {})
@@ -190,45 +199,44 @@ func keystone_weight(tier: String) -> float:
 	return float(kp.get("weight_base", 1.0)) + float(kp.get("weight_per_tier", 0.0)) * float(at)
 
 
-## A concept's multiplier `m`, weighted: its distance from 1 times `weight`, never under the floor.
+## A rune multiplier `m`, weighted: its distance from 1 times `weight`, never under the floor.
 func keystone_mult(m: float, weight: float) -> float:
 	return maxf(float(keystone_params().get("mult_floor", 0.0)), 1.0 + (m - 1.0) * weight)
 
 
+## The effects interaction of this rule set (the one that reads ops), or null.
+func effects_interaction() -> RuneInteraction:
+	for it: RuneInteraction in interactions:
+		if it.has_method("keystone"):
+			return it
+	return null
+
+
 ## What one keystone {ring, tier, concept} does to ability `ab` (its data, before any word): {ring,
-## tier, concept, label, weight, patch, lines, text}. Every field of the concept the skill has - at the
-## top or in one of params.keystone.parts - is multiplied by the weighted multiplier; a concept with
-## none of them gives its fallback, weighted, so no keystone is wasted.
+## tier, concept, label, weight, patch, lines, text, runes}. `concept` names the word (an old concept id
+## resolves through constructs.json "legacy"). Every op of the word's runes goes through the effects
+## interaction at strength = weight (keystone_weight); if nothing at all lands, every hit's damage
+## takes params.keystone.fallback_damage_all, weighted, so no keystone is wasted.
 func keystone_effect(ab: Dictionary, ks: Dictionary) -> Dictionary:
 	var tier: String = str(ks.get("tier", ""))
 	var cid: String = str(ks.get("concept", ""))
-	var c: Dictionary = GameData.concept(cid)
 	var w: float = keystone_weight(tier)
 	var patch: Array = []
 	var lines: Array[String] = []
-	var mods: Dictionary = c.get("mods", {})
-	for key: String in mods:
-		var m: float = keystone_mult(float(mods[key]), w)
-		var hit := false
-		if ab.has(key) and _is_num(ab[key]):
-			patch.append({"op": "mul", "path": key, "value": m})
-			hit = true
-		for part: Variant in keystone_params().get("parts", []):
-			var pd: Variant = ab.get(str(part))
-			if typeof(pd) == TYPE_DICTIONARY and (pd as Dictionary).has(key) and _is_num((pd as Dictionary)[key]):
-				patch.append({"op": "mul", "path": "%s.%s" % [str(part), key], "value": m})
-				hit = true
-		if hit:
-			lines.append("%s x%s" % [_field_word(key), _x(m)])
+	var it: RuneInteraction = effects_interaction()
+	if it != null and not ab.is_empty():
+		var r: Dictionary = it.call("keystone", ab, ConstructWords.ops(tier, cid), w, float(keystone_params().get("mult_floor", 0.0)))
+		patch = r.get("patch", [])
+		for l: Variant in r.get("summary", []):
+			lines.append(str(l))
 	if patch.is_empty():
-		var fb: Dictionary = c.get("fallback", {})
-		for key2: String in fb:
-			var m2: float = keystone_mult(float(fb[key2]), w)
-			patch.append({"op": "mul", "path": key2, "value": m2})
-			lines.append("%s x%s (none of its fields is on this skill)" % ["every hit's damage" if key2 == "damage_all" else _field_word(key2), _x(m2)])
-	var label: String = "%s of %s" % [tier, str(c.get("label", cid))]
+		var m2: float = keystone_mult(float(keystone_params().get("fallback_damage_all", 1.1)), w)
+		patch.append({"op": "mul", "path": "damage_all", "value": m2})
+		lines.append("every hit's damage x%s (nothing else of it reaches this skill)" % _x(m2))
+	var label: String = ConstructWords.phrase(tier, cid)
 	return {"ring": int(ks.get("ring", 0)), "tier": tier, "concept": cid, "label": label, "weight": w, "patch": patch, "lines": lines,
-		"text": "Keystone over ring %d - the %s (x%s, a rune at most x1): %s" % [int(ks.get("ring", 0)), label, _x(w), ", ".join(PackedStringArray(lines))]}
+		"runes": ConstructWords.spelling(tier, cid),
+		"text": "Keystone over ring %d - the %s (%s; x%s, a rune at most x1): %s" % [int(ks.get("ring", 0)), label, ConstructWords.spelling(tier, cid), _x(w), ", ".join(PackedStringArray(lines))]}
 
 
 ## The word's effects, with its keystones folded in first (their patch ahead of the runes').
@@ -255,7 +263,8 @@ func effects(word: Dictionary, ctx: RuneContext) -> Dictionary:
 		summary.append("keystone %s: %s" % [str(ke["label"]), ", ".join(PackedStringArray(ke["lines"]))])
 		for p: Dictionary in ke["patch"]:
 			var path: String = str(p["path"])
-			if have.has(path):
+			# a row for a number the keystone multiplies that the runes' list lacks (not a status it adds)
+			if have.has(path) or str(p.get("op", "")) != "mul" or (path != "damage_all" and not _is_num(_Fx.get_path_value(ab, path))):
 				continue
 			have[path] = true
 			var f2: Dictionary = {"path": path, "group": "keystone", "label": _field_word(path).capitalize() if path != "damage_all" else "Damage, every hit",

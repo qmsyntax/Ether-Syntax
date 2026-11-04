@@ -25,6 +25,8 @@ What it writes:
   strength on on/off effects (status duration, extra stacks, silence) and the ionic conversion
   (rate and cap), plus STRENGTH_RULES and NATURE_WORDS below. A new rule set gets an entry here and
   a script in game/scripts/runes/;
+- (then game/data/constructs.json, by tools/runes/construct_words.py: a vestige of every rune and the
+  authored words of the higher tiers, design/14 section 14);
 - skill_anchor: ability id (game/data/abilities.json) -> the base rune it is built on: each ability's
   "base_rune" (written by tools/skills/emit_abilities.py from the skill drafts, build brief
   2026-10-22). The affinity sheets' "Skills on it" names are still read, as a cross-check only:
@@ -108,16 +110,21 @@ RING_RULES = OrderedDict([
 KEYSTONE_RULES = OrderedDict([
     ("_note", "Brent 2026-10-24 (design/14 section 12): the chosen construct "
               "(vestige at lock 1, remnant at 2, then spirit, eidolon, asura) is set over the forming ring as its keystone and sealed with "
-              "the word (since Brent 2026-11-03 the ring need not be full). Its concept's effect counts for more than a regular rune's: every multiplier of the concept (constructs.json "
-              "concepts.mods, or its fallback) has its distance from 1 scaled by the tier's weight, weight = weight_base + "
-              "weight_per_tier x the tier's place (vestige 0 ... asura 4), so a vestige of Acceleration's speed x1.5 becomes "
-              "x(1 + 0.5 x 1.25) = x1.625. A regular rune works at its strength, at most 1.0 before conversion. No multiplier goes "
-              "below mult_floor. 'parts' are the hit payloads a concept's field is also looked for in. The concept is applied only "
-              "through the keystone (the ability's 'bound' list is a record). [MODEL numbers, B rule; not in the workbook yet]"),
+              "the word (since Brent 2026-11-03 the ring need not be full). Its effect counts for more than a regular rune's. Since Brent "
+              "2026-11-04 (design/14 section 14) a construct carries a word of runes (constructs.json words: a vestige one rune, a remnant "
+              "two ... an asura five) and the keystone applies every op of the word's runes as a rune at strength = weight, weight = "
+              "weight_base + weight_per_tier x the tier's place (vestige 0 ... asura 4): a multiplier m becomes max(mult_floor, 1 + (m - 1) "
+              "x weight), so a vestige of Motion's speed x1.25 becomes x1.3125; an amount (shove, pull, marks, jumps, a bonus) is "
+              "multiplied by weight; a status, interrupt or brace always takes hold, and lasts longer, stacks and silences by strength "
+              "as the on/off rules give any rune (effects_v2); what the skill cannot use lands as the runes' fallback (a share as power, "
+              "or a cost cut), and if even that has nowhere to go, every hit's damage x fallback_damage_all (weighted) - so no keystone is "
+              "wasted. No op hurts the caster (Brent 2026-10-11: skills never hurt their caster). A regular rune works at its strength, "
+              "at most 1.0 before conversion. The word is applied only through the keystone (the ability's 'bound' list is a record). "
+              "[MODEL numbers, B rule; not in the workbook yet]"),
     ("weight_base", 1.25),
     ("weight_per_tier", 0.25),
     ("mult_floor", 0.1),
-    ("parts", ["on_hit", "on_pass", "on_arrive", "on_rise"]),
+    ("fallback_damage_all", 1.1),
 ])
 
 # [MODEL] the generic "repeat once" a great ring gives: how long after the cast, and which kinds of
@@ -675,6 +682,18 @@ def main():
         print("  ability with no rune: " + a)
     for c in conflicts:
         print("  conflict: " + c)
+    # the words constructs carry are made from the runes (Brent 2026-11-04, design/14 section 14):
+    # constructs.json follows every export, so a rune that changes or goes is caught at once
+    _construct_words().write(json.loads(json.dumps(out)))
+    print("  next: python -P -E tools/runes/rune_sources.py (discovery follows the words)")
+
+
+def _construct_words():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("construct_words", Path(__file__).resolve().parent / "construct_words.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 if __name__ == "__main__":

@@ -66,6 +66,7 @@ func _ready() -> void:
 		_test_strength_rules()
 		await _test_seal_editing()
 		await _test_rune_discovery()
+		_test_construct_words()
 		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 		get_tree().quit(1 if _failed > 0 else 0)
@@ -117,6 +118,7 @@ func _ready() -> void:
 	_test_strength_rules()
 	await _test_seal_editing()
 	await _test_rune_discovery()
+	_test_construct_words()
 	await _test_build_1022()
 	await _test_status_text()
 	await BeastChecks.new(self, _check).run()
@@ -466,15 +468,23 @@ func _test_build_1022() -> void:
 			and bool(tc.get("test_character")), "%d of %d" % [have.size(), want_ids.size()])
 		var each: int = GameData.inum("skills", "test_constructs_each")
 		var held: Array = tc.get("constructs")
-		var every_kind: bool = GameData.construct_tiers.all(func(t: Variant) -> bool: return GameData.concept_ids().all(func(c: Variant) -> bool:
-			return held.filter(func(h: Dictionary) -> bool: return str(h["tier"]) == str(t) and str(h["concept"]) == str(c)).size() == each))
-		_check("and carries %d of every construct tier and concept, its bars full: ready to bind (Brent 2026-10-23)" % each,
-			every_kind and held.size() == each * GameData.construct_tiers.size() * GameData.concept_ids().size()
+		# every word that fits the character, of every tier (Brent 2026-11-04: its own affinity's and the universal ones)
+		var fitting: Array = []
+		for t0: Variant in GameData.construct_tiers:
+			for c0: Variant in GameData.construct_word_ids(str(t0)):
+				if bool(ConstructWords.fits(str(t0), str(c0), [aff])["ok"]):
+					fitting.append([str(t0), str(c0)])
+		var every_kind: bool = fitting.all(func(tc2: Array) -> bool:
+			return held.filter(func(h: Dictionary) -> bool: return str(h["tier"]) == str(tc2[0]) and str(h["concept"]) == str(tc2[1])).size() == each)
+		_check("and carries %d of every word of every tier that fits it (%d words), none that does not, its bars full: ready to bind (Brent 2026-10-23, 2026-11-04)" % [each, fitting.size()],
+			every_kind and held.size() == each * fitting.size()
+			and held.all(func(h: Dictionary) -> bool: return bool(tc.call("construct_fits", str(h["tier"]), str(h["concept"]))["ok"]))
 			and str(tc.call("pending_tier", (tc.get("abilities") as Array)[0])) == GameData.tier_for_stage(GameData.inum("skills", "test_stage")),
 			"%d carried" % held.size())
-		_check("carried constructs group by tier and concept with a count",
-			(tc.call("construct_groups", "eidolon") as Array).size() == GameData.concept_ids().size()
-			and int(((tc.call("construct_groups", "eidolon") as Array)[0] as Dictionary)["count"]) == each)
+		var eid: Array = tc.call("construct_groups", "eidolon")
+		_check("carried constructs group by tier and word with a count",
+			eid.size() == fitting.filter(func(tc3: Array) -> bool: return str(tc3[0]) == "eidolon").size()
+			and int((eid[0] as Dictionary)["count"]) == each and bool((eid[0] as Dictionary)["fits"]))
 		tc.call("next_hotbar_page")
 		_check("its bar turns to the next six", int((tc.get("hotbar") as Array)[0]) == 6)
 		tc.queue_free()
@@ -844,11 +854,12 @@ func _test_abilities() -> void:
 	_check("the bind's own arithmetic shapes nothing: a concept reaches a skill only as the keystone of a sealed ring (Brent 2026-10-24)",
 		_near(float((stats["on_hit"] as Dictionary)["shove"]), own_shove) and (ab[1]["bound"] as Array).size() == 1, str(stats["on_hit"]))
 	var ks_rules: RingRules = Runes.active() as RingRules
-	var ks_word: Dictionary = RuneWord.with_keystone(RuneWord.make(GameData.skill_anchor("tsunami_strike"), "bond_v2"), 1, "vestige", "acceleration")
+	# a vestige of Surge (WAT-2a, "shove +1.5") over ring 1: its rune's amount times the vestige's weight
+	var ks_word: Dictionary = RuneWord.with_keystone(RuneWord.make(GameData.skill_anchor("tsunami_strike"), "bond_v2"), 1, "vestige", "WAT-2a")
 	var ks_stats: Dictionary = p.call("ability_stats", ab[1], ks_word)
-	var ks_m: float = ks_rules.keystone_mult(float((GameData.concept("acceleration")["mods"] as Dictionary)["shove"]), ks_rules.keystone_weight("vestige"))
-	_check("as a keystone the concept reaches into what the skill does on a hit (acceleration's shove x2, weighted: x%s)" % RingRules._x(ks_m),
-		_near(float((ks_stats["on_hit"] as Dictionary)["shove"]), own_shove * ks_m), str(ks_stats["on_hit"]))
+	var ks_add: float = 1.5 * ks_rules.keystone_weight("vestige")
+	_check("as a keystone the word's rune reaches into what the skill does on a hit (a vestige of Surge: shove +1.5 x%s)" % RingRules._x(ks_rules.keystone_weight("vestige")),
+		_near(float((ks_stats["on_hit"] as Dictionary)["shove"]), own_shove + ks_add), str(ks_stats["on_hit"]))
 	_check("stage 1 full now needs a remnant", (func() -> bool:
 		ab[1]["progress"] = 100.0
 		return str(p.call("pending_tier", ab[1])) == "remnant").call())
@@ -1209,30 +1220,31 @@ func _test_playtest_1011() -> void:
 	var spit: Dictionary = GameData.ability(str(bolt["id"]))
 	var spit_speed: float = float(spit["speed"])
 	var spit_cost: float = float(spit["cost"])
-	var rows: Array[Dictionary] = q.call("preview_bind", bolt, "acceleration")
+	# a vestige of Motion (UNI-01a, "speed x1.25") - Brent 2026-11-04: a vestige carries one rune
+	var rows: Array[Dictionary] = q.call("preview_bind", bolt, "UNI-01a")
 	var by := {}
 	for r: Dictionary in rows:
 		by[str(r["label"])] = r
 	var kr: RingRules = Runes.active() as RingRules
-	var acc_m: float = kr.keystone_mult(float((GameData.concept("acceleration")["mods"] as Dictionary)["speed"]), kr.keystone_weight("vestige"))
+	var acc_m: float = kr.keystone_mult(1.25, kr.keystone_weight("vestige"))
 	var want_speed: String = "%d" % int(round(spit_speed * acc_m))
-	_check("preview: acceleration as the vestige keystone makes the bolt faster (%d -> %s: x1.5 weighted to x%s) and reach further" % [int(spit_speed), want_speed, RingRules._x(acc_m)],
+	_check("preview: a vestige of Motion as the keystone makes the bolt faster (%d -> %s: x1.25 weighted to x%s) and reach further" % [int(spit_speed), want_speed, RingRules._x(acc_m)],
 		by.has("Bolt speed") and str(by["Bolt speed"]["before"]) == "%d" % int(spit_speed) and str(by["Bolt speed"]["after"]) == want_speed
 		and by.has("Range") and bool(by["Range"]["better"]), str(rows))
 	_check("preview: the stage and its damage step are shown", by.has("Stage") and str(by["Stage"]["after"]) == "1" and by.has("Damage") and bool(by["Damage"]["better"]))
 	_check("preview: numbers that do not move are left out", not by.has("Essence cost"))
-	rows = q.call("preview_bind", bolt, "compression")
+	rows = q.call("preview_bind", bolt, "UNI-25a")
 	by.clear()
 	for r: Dictionary in rows:
 		by[str(r["label"])] = r
-	var want_cost: String = "%d" % int(round(spit_cost * kr.keystone_mult(float((GameData.concept("compression")["mods"] as Dictionary)["cost"]), kr.keystone_weight("vestige"))))
-	_check("preview: compression lowers the cost (%d -> %s), shown as an improvement" % [int(spit_cost), want_cost], by.has("Essence cost") and str(by["Essence cost"]["before"]) == "%d" % int(spit_cost)
+	var want_cost: String = "%d" % int(round(spit_cost * kr.keystone_mult(0.85, kr.keystone_weight("vestige"))))
+	_check("preview: a vestige of Essence (cost x0.85) lowers the cost (%d -> %s), shown as an improvement" % [int(spit_cost), want_cost], by.has("Essence cost") and str(by["Essence cost"]["before"]) == "%d" % int(spit_cost)
 		and str(by["Essence cost"]["after"]) == want_cost and bool(by["Essence cost"]["better"]), str(rows))
-	rows = q.call("preview_bind", (q.get("abilities") as Array)[1], "tension")
+	rows = q.call("preview_bind", (q.get("abilities") as Array)[1], "UNI-12a")
 	by.clear()
 	for r: Dictionary in rows:
 		by[str(r["label"])] = r
-	_check("preview: tension hits harder and no longer costs you anything", by.has("Damage per target") and bool(by["Damage per target"]["better"]) and not by.has("Harm to yourself"))
+	_check("preview: a vestige of Hold hits harder and no longer costs you anything", by.has("Damage per target") and bool(by["Damage per target"]["better"]) and not by.has("Harm to yourself"))
 	var costly: Array[Dictionary] = []
 	q.call("_preview_row", costly, "Harm to yourself", 2.0, 3.0, "%.1f", false)
 	_check("preview: a number that gets worse is marked as worse", costly.size() == 1 and not bool(costly[0]["better"]))
@@ -4031,11 +4043,11 @@ func _test_models() -> void:
 	p.call("refresh_gear")
 	_check("unequipping takes it out again", rig.get_weapon() == null)
 	p.queue_free()
-	for tier: String in ["vestige", "remnant"]:
-		for c: String in GameData.concept_ids():
-			var m: Node3D = NetherArt.construct(tier, c, 1.0, 0.4)
+	for tier: String in ["vestige", "remnant", "spirit"]:
+		for c: Variant in GameData.construct_word_ids(tier).slice(0, 24):
+			var m: Node3D = NetherArt.construct(tier, str(c), 1.0, 0.4)
 			if not (m is ModelRig):
-				_check("every wild construct has a real model", false, "%s %s" % [tier, c])
+				_check("every wild construct has a real model", false, "%s %s" % [tier, str(c)])
 			m.free()
 	var proj_model: Node3D = NetherArt.projection()
 	var wisp_model: Node3D = NetherArt.wisp("water")
@@ -4105,7 +4117,7 @@ func _test_netherecho() -> void:
 		proj.call("click", c.global_position)
 		n.tick(0.1, null)
 	var got: Array = p.get("constructs")
-	_check("a beaten construct is subdued and yours to bind", got.size() == had + 1 and str((got[got.size() - 1] as Dictionary)["concept"]) == "tension" and n.subdued_this_trip == 1,
+	_check("a beaten construct is subdued and yours to bind", got.size() == had + 1 and str((got[got.size() - 1] as Dictionary)["concept"]) == "UNI-12a" and n.subdued_this_trip == 1,
 		"constructs %d" % got.size())
 	await get_tree().process_frame
 
@@ -5456,7 +5468,7 @@ func _test_runes() -> void:
 	p.set("test_character", true)              # a test character: its bar refills after each bind (two level locks)
 	var pst: Dictionary = (p.get("abilities") as Array)[0]
 	pst["progress"] = 100.0
-	(p.get("constructs") as Array).append_array([{"tier": "vestige", "concept": "reach"}, {"tier": "remnant", "concept": "reach"}])
+	(p.get("constructs") as Array).append_array([{"tier": "vestige", "concept": "UNI-06b"}, {"tier": "remnant", "concept": "reach"}])
 	p.call("open_seal", 0)
 	var adds: Array = [p.call("word_add", 0, hub, 0)]
 	adds.append_array(_fill_places(p, 0, caps))           # every place of ring 1 (no longer required since 2026-11-03)
@@ -6197,9 +6209,9 @@ func _known_pool(p: Node) -> Array:
 ## keystone. Returns choose_seal_construct's answer.
 func _choose_keystone(p: Node, index: int) -> Dictionary:
 	var need: String = str(p.call("pending_tier", (p.get("abilities") as Array)[index]))
-	var groups: Array = p.call("construct_groups", need)
+	var groups: Array = (p.call("construct_groups", need) as Array).filter(func(g: Dictionary) -> bool: return bool(g["fits"]))
 	if groups.is_empty():
-		return {"ok": false, "reason": "no_construct", "text": "none of the tier carried"}
+		return {"ok": false, "reason": "no_construct", "text": "none of the tier carried that fits"}
 	return p.call("choose_seal_construct", int((groups[0] as Dictionary)["index"]))
 
 
@@ -6445,29 +6457,32 @@ func _test_level_locks() -> void:
 	_check("the bind locks the whole level: stage 1, ring 1 full and sealed, the vestige of Reach set over it as its keystone, and used up",
 		res1 == "bound" and int(st["stage"]) == 1 and RuneWord.sealed(w1) == 1 and rules.ring_full(w1, 1) and str(ks1.get("concept", "")) == "reach"
 		and str(ks1.get("tier", "")) == "vestige" and (p.get("constructs") as Array).is_empty() and _near(float(st["progress"]), 0.0), res1)
-	# ---- the keystone's effect: the concept's times the tier weight, counted once
+	# ---- the keystone's effect: the word's runes' ops at the tier weight, counted once (Brent 2026-11-04:
+	# the old "reach" carried as a vestige is now a vestige of Far, UNI-06b: "reach x1.4; power x0.9")
 	var bare_w: Dictionary = RuneWord.make(anchor, rules.id)
 	var with_k: Dictionary = p.call("ability_stats", st, RuneWord.with_keystone(bare_w, 1, "vestige", "reach"))
 	var without_k: Dictionary = p.call("ability_stats", st, bare_w)
-	var mods: Dictionary = GameData.concept("reach")["mods"]
 	var wv: float = rules.keystone_weight("vestige")
+	var fx: RuneInteraction = rules.effects_interaction()
+	var want_by_group: Dictionary = {"reach": rules.keystone_mult(1.4, wv), "power": rules.keystone_mult(0.9, wv)}
 	var checked: Array[String] = []
 	var eff_ok := true
-	for key: String in mods:
-		if without_k.has(key) and typeof(without_k[key]) in [TYPE_FLOAT, TYPE_INT] and float(without_k[key]) != 0.0:
-			var ratio: float = float(with_k[key]) / float(without_k[key])
-			checked.append("%s x%s (the concept's x%s)" % [key, RingRules._x(ratio), RingRules._x(float(mods[key]))])
-			eff_ok = eff_ok and _near(ratio, 1.0 + (float(mods[key]) - 1.0) * wv, 0.0001)
-	_check("the keystone's effect is the concept's effect times the tier weight (Reach as a vestige keystone, x%s: %s)" % [RingRules._x(wv), ", ".join(checked)],
+	for g: String in want_by_group:
+		for path: Variant in fx.call("_group_fields", GameData.ability(str(st["id"])), g):
+			var b0: Variant = PlayerScript._Fx.get_path_value(without_k, str(path))
+			var b1: Variant = PlayerScript._Fx.get_path_value(with_k, str(path))
+			if typeof(b0) in [TYPE_FLOAT, TYPE_INT] and float(b0) != 0.0:
+				var ratio: float = float(b1) / float(b0)
+				checked.append("%s x%s" % [str(path), RingRules._x(ratio)])
+				eff_ok = eff_ok and _near(ratio, float(want_by_group[g]), 0.0001)
+	_check("the keystone's effect is the word's runes' ops times the tier weight (the vestige of Far over ring 1, x%s: reach x1.4 -> x%s, power x0.9 -> x%s: %s)" % [
+		RingRules._x(wv), RingRules._x(float(want_by_group["reach"])), RingRules._x(float(want_by_group["power"])), ", ".join(checked)],
 		eff_ok and not checked.is_empty(), "%s vs %s" % [str(with_k), str(without_k)])
 	_check("and it is counted once: the sealed skill's numbers are its sealed word's alone - the bind's own record (\"bound\") adds nothing on top",
-		JSON.stringify(p.call("ability_stats", st)) == JSON.stringify(p.call("ability_stats", st, w1)) and (st.get("bound", []) as Array).size() == 1
-		and (Runes.active().locked_effects(w1, RuneContext.of(st, p.get("affinities")))["patch"] as Array).filter(func(o: Dictionary) -> bool:
-			return str(o["path"]) in mods.keys() and _near(float(o["value"]), rules.keystone_mult(float(mods[str(o["path"])]), wv))).size()
-			== mods.keys().filter(func(k4: String) -> bool: return without_k.has(k4)).size())
+		JSON.stringify(p.call("ability_stats", st)) == JSON.stringify(p.call("ability_stats", st, w1)) and (st.get("bound", []) as Array).size() == 1)
 	var det: Dictionary = p.call("skill_details", 0)
 	_check("the ethercosm's skill details carry the keystone and what it does", (det.get("keystones", []) as Array).size() == 1
-		and str((det["keystones"] as Array)[0]["label"]).contains("Reach"))
+		and str((det["keystones"] as Array)[0]["label"]).contains("Far"))
 
 	# ---- lock 2: ring 1 may be reworked and left with an empty place (Brent 2026-11-03); a failed bind keeps the sealed word exactly
 	st["progress"] = 100.0
@@ -7070,6 +7085,169 @@ func _test_seal_editing() -> void:
 	await get_tree().process_frame
 
 
+
+## The words constructs carry (Brent 2026-11-04, design/14 section 14: "There should be vestiges for
+## every rune word we have....and so on up the complexity ladder"): the catalogue, fit, the keystone of a
+## word, the old ids, wild picks and names. Discovery from a word is in _test_rune_discovery.
+func _test_construct_words() -> void:
+	print("construct words (design/14 section 14):")
+	var every_rune: Array = (GameData.runes["base_runes"] as Dictionary).keys() + (GameData.runes["universal_runes"] as Dictionary).keys()
+	var no_vestige: Array = every_rune.filter(func(rid: Variant) -> bool:
+		var w: Dictionary = GameData.construct_word("vestige", str(rid))
+		return w.is_empty() or (w["runes"] as Array) != [str(rid)] or str(w["label"]) != str(GameData.rune(str(rid))["name"]))
+	_check("every rune has a vestige carrying it alone, named for it (%d runes: %d base, %d universal)" % [every_rune.size(),
+		(GameData.runes["base_runes"] as Dictionary).size(), (GameData.runes["universal_runes"] as Dictionary).size()], no_vestige.is_empty() and every_rune.size() == 262, str(no_vestige))
+	var per_tier: Dictionary = GameData.construct_tier_runes
+	var bad: Array[String] = []
+	var spelled: Dictionary = {}
+	var count: Dictionary = {}
+	for id: Variant in GameData.construct_word_ids():
+		var w2: Dictionary = GameData.construct_words[id]
+		var t: String = str(w2["tier"])
+		var rs: Array = w2["runes"]
+		count[t] = int(count.get(t, 0)) + 1
+		if not GameData.construct_tiers.has(t) or rs.size() != int(per_tier.get(t, -1)):
+			bad.append("%s: %d runes for a %s" % [id, rs.size(), t])
+		var affs: Dictionary = {}
+		for rid2: Variant in rs:
+			if GameData.rune(str(rid2)).is_empty():
+				bad.append("%s: no rune %s" % [id, rid2])
+			elif str(GameData.rune(str(rid2)).get("affinity", "")) != "":
+				affs[str(GameData.rune(str(rid2))["affinity"])] = true
+		if affs.size() > 1 or str(w2.get("affinity", "")) != ("" if affs.is_empty() else str(affs.keys()[0])):
+			bad.append("%s: affinity %s from runes %s" % [id, str(w2.get("affinity", "")), str(affs.keys())])
+		if spelled.has(str(rs)):
+			bad.append("%s: spelled as %s" % [id, spelled[str(rs)]])
+		spelled[str(rs)] = id
+	_check("every word's runes exist and its length is its tier's (vestige 1 ... asura 5), one affinity at most, no two spelled alike (%s)" % str(count),
+		bad.is_empty() and int(count.get("eidolon", 0)) > 0 and int(count.get("asura", 0)) > 0, ", ".join(bad))
+	var aff_ok: bool = GameData.affinity_ids().all(func(a: Variant) -> bool:
+		return (GameData.construct_word_ids("remnant").filter(func(id: Variant) -> bool: return str(GameData.construct_words[id]["affinity"]) == str(a)).size() >= 2
+			and GameData.construct_word_ids("spirit").filter(func(id: Variant) -> bool: return str(GameData.construct_words[id]["affinity"]) == str(a)).size() >= 1))
+	var uni_rem: int = GameData.construct_word_ids("remnant").filter(func(id: Variant) -> bool: return str(GameData.construct_words[id]["affinity"]) == "").size()
+	_check("each affinity has remnants and a spirit; about a dozen universal remnants (%d)" % uni_rem, aff_ok and uni_rem >= 10)
+	var olds: Array = ["acceleration", "piercing", "compression", "tension", "reach", "stillness"]
+	_check("the six old concepts are universal remnants now, ids kept, each spelled from real runes",
+		olds.all(func(o: Variant) -> bool:
+			var w3: Dictionary = GameData.construct_word("remnant", str(o))
+			return str(w3.get("id", "")) == str(o) and str(w3["affinity"]) == "" and (w3["runes"] as Array).size() == 2))
+	var fr: Dictionary = GameData.construct_word("remnant", "friction")
+	var lu: Dictionary = GameData.construct_word("remnant", "lurch")
+	_check("order matters: Motion + Stillness is Friction, Stillness + Motion is Lurch (design/13)",
+		(fr["runes"] as Array) == ["UNI-01a", "UNI-01b"] and (lu["runes"] as Array) == ["UNI-01b", "UNI-01a"])
+	_check("names: \"%s\", \"%s\"" % [ConstructWords.title("vestige", "WAT-1a"), ConstructWords.title("remnant", "acceleration")],
+		ConstructWords.title("vestige", "WAT-1a") == "Vestige of Flood" and ConstructWords.title("remnant", "acceleration") == "Remnant of Acceleration"
+		and ConstructWords.spelling("remnant", "undertow").contains("Ebb") and ConstructWords.spelling("remnant", "undertow").contains("Drown"))
+
+	# ---- fit: a word with an affinity rune fits only where that rune could be set (Player.can_use_rune)
+	var fp: Node = _new_player()
+	fp.call("set_affinities", ["fire"])
+	var water_fit: Dictionary = fp.call("construct_fits", "vestige", "WAT-1a")
+	_check("a water vestige (Flood) does not fit a fire character's skills (\"%s\")" % str(water_fit["text"]), not bool(water_fit["ok"]) and str(water_fit["reason"]) == "affinity"
+		and not bool(fp.call("can_use_rune", "WAT-1a")))
+	_check("a universal vestige (Motion) and a fire one (Burn) fit; a universal remnant fits; a fire remnant fits, a water one does not",
+		bool(fp.call("construct_fits", "vestige", "UNI-01a")["ok"]) and bool(fp.call("construct_fits", "vestige", "FIR-1a")["ok"])
+		and bool(fp.call("construct_fits", "remnant", "tension")["ok"]) and bool(fp.call("construct_fits", "remnant", "wildfire")["ok"])
+		and not bool(fp.call("construct_fits", "remnant", "undertow")["ok"]))
+	var fst: Dictionary = (fp.get("abilities") as Array)[0]
+	fst["progress"] = 100.0
+	var fcons: Array = fp.get("constructs")
+	fcons.append({"tier": "vestige", "concept": "WAT-1a"})
+	var no_fit: Dictionary = fp.call("can_open_seal", 0)
+	_check("with only the water vestige carried, the fire skill's lock does not open: it does not count (\"%s\")" % str(no_fit["text"]),
+		not bool(no_fit["ok"]) and str(no_fit["reason"]) == "no_fit" and str(no_fit["text"]).contains("water") and not bool((fp.call("open_seal", 0) as Dictionary)["ok"]))
+	fcons.append({"tier": "vestige", "concept": "UNI-01a"})
+	var opened: Dictionary = fp.call("open_seal", 0)
+	var refused: Dictionary = fp.call("choose_seal_construct", 0)
+	var groups: Array = fp.call("construct_groups", "vestige")
+	_check("with a universal vestige too it opens; the water one is refused as its keystone (\"%s\") and listed as not fitting" % str(refused["text"]),
+		bool(opened["ok"]) and str(refused["reason"]) == "unfit" and int(fp.call("seal_construct")) < 0
+		and groups.size() == 2 and not bool((groups[0] as Dictionary)["fits"]) and bool((groups[1] as Dictionary)["fits"]) and str((groups[0] as Dictionary)["why"]) != "")
+	_check("and the universal one is taken", bool((fp.call("choose_seal_construct", 1) as Dictionary)["ok"]) and str((fp.call("seal_keystone") as Dictionary).get("concept", "")) == "UNI-01a")
+	fp.call("close_seal")
+	var hyb: Node = _new_player()
+	hyb.call("set_affinities", ["holy"])
+	_check("a hybrid follows the same rule: a holy character takes a holy word, not a light one",
+		bool(hyb.call("construct_fits", "remnant", "judgement")["ok"]) and not bool(hyb.call("construct_fits", "remnant", "dazzle")["ok"]))
+	hyb.queue_free()
+
+	# ---- the keystone of a word: its runes' ops at the tier's weight
+	var rr: RingRules = Runes.active() as RingRules
+	var anchor: String = GameData.skill_anchor(str(fst["id"]))
+	var bare: Dictionary = RuneWord.make(anchor, rr.id)
+	var base_ab: Dictionary = fp.call("ability_stats", fst, bare)
+	var wr: float = rr.keystone_weight("remnant")
+	var with_acc: Dictionary = fp.call("ability_stats", fst, RuneWord.with_keystone(bare, 1, "remnant", "acceleration"))
+	var want_speed: float = float(base_ab["speed"]) * rr.keystone_mult(1.25, wr)
+	var want_rec: float = float(base_ab["recovery"]) * rr.keystone_mult(0.75, wr)
+	_check("a remnant of Acceleration (Motion speed x1.25 + Haste wind-up x0.75) at the remnant's x%s: speed x%s, recovery x%s (%s -> %s)" % [
+		RingRules._x(wr), RingRules._x(rr.keystone_mult(1.25, wr)), RingRules._x(rr.keystone_mult(0.75, wr)), str(base_ab["speed"]), str(with_acc["speed"])],
+		_near(float(with_acc["speed"]), want_speed, 0.001) and _near(float(with_acc["recovery"]), want_rec, 0.0001), "%s / %s" % [str(with_acc["speed"]), str(with_acc["recovery"])])
+	var wv: float = rr.keystone_weight("vestige")
+	var with_mot: Dictionary = fp.call("ability_stats", fst, RuneWord.with_keystone(bare, 1, "vestige", "UNI-01a"))
+	_check("the same rune as a vestige counts less (x%s): speed x%s" % [RingRules._x(wv), RingRules._x(rr.keystone_mult(1.25, wv))],
+		_near(float(with_mot["speed"]), float(base_ab["speed"]) * rr.keystone_mult(1.25, wv), 0.001))
+	var with_soak: Dictionary = fp.call("ability_stats", fst, RuneWord.with_keystone(bare, 1, "vestige", "WAT-3a"))
+	var hit: Dictionary = with_soak.get("on_hit", {})
+	_check("a status op always takes hold and lasts longer by the weight (a vestige of Soak: Soaked, x%s as long)" % RingRules._x(minf(wv, 2.5)),
+		(hit.get("statuses", []) as Array).any(func(e: Dictionary) -> bool: return str(e["id"]) == "soaked")
+		and _near(float((hit.get("status_time_of", {}) as Dictionary).get("soaked", 0.0)), 1.0 + (wv - 1.0), 0.001), str(hit))
+	var wasted: Array[String] = []
+	var hurts: Array[String] = []
+	for aid: String in [str(fst["id"]), "riptide_lash", "tsunami_strike"]:
+		var ab2: Dictionary = GameData.ability(aid)
+		for t2: String in GameData.construct_tiers:
+			for id2: Variant in GameData.construct_word_ids(t2):
+				var ke: Dictionary = rr.keystone_effect(ab2, {"ring": 1, "tier": t2, "concept": str(id2)})
+				if (ke["patch"] as Array).is_empty():
+					wasted.append("%s %s on %s" % [t2, id2, aid])
+				for op: Dictionary in ke["patch"]:
+					if str(op["path"]).contains("self_harm") or str(op["path"]).contains("health"):
+						hurts.append("%s %s" % [t2, id2])
+	_check("no keystone is wasted: every word of every tier changes something on a bolt, a lash and a strike", wasted.is_empty(), ", ".join(wasted.slice(0, 6)))
+	_check("and no keystone hurts its caster (skills never do)", hurts.is_empty(), ", ".join(hurts.slice(0, 6)))
+	fp.queue_free()
+
+	# ---- old ids: the six concepts of 2026-09 map to the words they now are, on load
+	var op: Node = _new_player()
+	op.call("set_affinities", ["water"])
+	var save: Dictionary = op.call("to_save")
+	save["constructs"] = [{"tier": "vestige", "concept": "tension"}, {"tier": "remnant", "concept": "piercing"}, {"tier": "spirit", "concept": "reach"},
+		{"tier": "vestige", "concept": "nonsense"}]
+	var ab0: Dictionary = (save["abilities"] as Array)[0]
+	ab0["stage"] = 2
+	ab0["word"] = {"nodes": [GameData.skill_anchor(str(ab0["id"]))], "links": [], "rings": [0], "sealed": 2,
+		"keystones": [{"ring": 1, "tier": "vestige", "concept": "reach"}, {"ring": 2, "tier": "remnant", "concept": "stillness"}]}
+	var lp: Node = _new_player()
+	lp.call("from_save", JSON.parse_string(JSON.stringify(save)))
+	var lc: Array = (lp.get("constructs") as Array).map(func(c: Dictionary) -> String: return "%s:%s" % [c["tier"], c["concept"]])
+	var lk: Array = RuneWord.keystones(lp.call("ability_word", 0)).map(func(k: Dictionary) -> String: return "%s:%s" % [k["tier"], k["concept"]])
+	_check("old carried constructs load as their words (%s; a construct naming no word is dropped)" % str(lc),
+		lc == ["vestige:UNI-12a", "remnant:piercing", "spirit:cascade"])
+	_check("and old keystones too (%s)" % str(lk), lk == ["vestige:UNI-06b", "remnant:stillness"])
+	op.queue_free()
+	lp.queue_free()
+
+	# ---- wild words lean toward the player's affinities (balance.json nether word_weights)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261104
+	var tally: Dictionary = {"own": 0, "universal": 0, "other": 0}
+	var invalid := 0
+	for i: int in 600:
+		var wid: String = ConstructWords.pick_wild("vestige", ["water"], rng)
+		if GameData.construct_word("vestige", wid).is_empty():
+			invalid += 1
+		else:
+			tally[ConstructWords.word_class("vestige", wid, ["water"])] = int(tally[ConstructWords.word_class("vestige", wid, ["water"])]) + 1
+	var ww: Dictionary = (GameData.balance["nether"] as Dictionary)["word_weights"]
+	_check("wild vestiges for a water character: mostly water or universal, few of affinities it lacks (%s; weights own %s, universal %s, other %s)" % [
+		str(tally), str(ww["own"]), str(ww["universal"]), str(ww["other"])],
+		invalid == 0 and int(tally["own"]) > int(tally["other"]) * 3 and int(tally["universal"]) > int(tally["other"]) and int(tally["other"]) > 0)
+	var nc: Node3D = (load("res://scripts/nether/nether_construct.gd") as GDScript).new()
+	nc.call("setup", "remnant", "undertow", true)
+	_check("a wild construct is named for its word: \"%s\"" % str(nc.get("display_name")), str(nc.get("display_name")) == "Remnant of Undertow")
+	nc.free()
+
 ## Rune discovery (Brent 2026-10-23, design/14 section 8): starting knowledge, the three sources
 ## (subduing a construct, kills, rune stones in zones and the passage), permanence and saves, the
 ## test character's every-rune knowledge, the palette and the HUD card. Chances are data; the
@@ -7077,7 +7255,7 @@ func _test_seal_editing() -> void:
 func _test_rune_discovery() -> void:
 	print("rune discovery (design/14 section 8):")
 	var disc: Dictionary = GameData.rune_discovery
-	_check("rune_discovery.json is loaded: start runes, construct concepts, kill pools, passage stones",
+	_check("rune_discovery.json is loaded: start runes, construct words, kill pools, passage stones",
 		disc.has("start") and disc.has("construct") and disc.has("kills") and disc.has("inscriptions"))
 	var p: Node = _new_player()
 	p.call("set_affinities", ["water"])
@@ -7106,15 +7284,29 @@ func _test_rune_discovery() -> void:
 	p.call("close_seal")
 	(p.get("constructs") as Array).clear()
 
-	# subduing a construct reveals a rune of its concept
+	# subduing a construct reveals runes of its word, its own first (Brent 2026-11-04, design/14 section 14)
 	var heard: Array = []
 	p.connect("rune_discovered", func(id: String, _src: String) -> void: heard.append(id))
-	var pool_reach: Array = ((((disc["construct"] as Dictionary)["concepts"] as Dictionary)["reach"] as Dictionary)["base"] as Dictionary)["water"]
+	var words_disc: Dictionary = (disc["construct"] as Dictionary)["words"]
+	_check("every construct word has a discovery entry (its nearest runes per affinity)", GameData.construct_word_ids().all(func(id: Variant) -> bool: return words_disc.has(str(id))))
 	var before: int = (p.get("known_runes") as Array).size()
-	var got: Array = p.call("on_construct_subdued", "vestige", "reach")
-	_check("subduing a vestige of Reach reveals a rune of its concept (%s)" % str(got.map(func(id: String) -> String: return str(GameData.rune(id)["name"]))),
-		got.size() == 1 and pool_reach.has(str(got[0])) and (p.get("known_runes") as Array).size() == before + 1 and heard == got
-		and str((p.get("last_rune") as Dictionary)["id"]) == str(got[0]) and str((p.get("log_lines") as Array).back()).begins_with("Rune discovered: "))
+	var heave_known: bool = bool(p.call("knows_rune", "WAT-4a"))
+	var got: Array = p.call("on_construct_subdued", "vestige", "WAT-4a")
+	_check("subduing a vestige of Heave reveals its own rune, Heave, first (%s)" % str(got.map(func(id: String) -> String: return str(GameData.rune(id)["name"]))),
+		not heave_known and got == ["WAT-4a"] and (p.get("known_runes") as Array).size() == before + 1 and heard == got
+		and str((p.get("last_rune") as Dictionary)["id"]) == "WAT-4a" and str((p.get("log_lines") as Array).back()).begins_with("Rune discovered: ")
+		and str((p.get("log_lines") as Array).back()).contains("vestige of Heave"))
+	var pool_heave: Array = ((words_disc["WAT-4a"] as Dictionary)["base"] as Dictionary)["water"]
+	var got_again: Array = p.call("on_construct_subdued", "vestige", "WAT-4a")
+	_check("a second one, its rune known, falls back to the runes nearest the word (%s, of %s)" % [str(got_again), str(pool_heave)],
+		got_again.size() == 1 and str(got_again[0]) != "WAT-4a" and pool_heave.has(str(got_again[0])))
+	var got_fire: Array = p.call("on_construct_subdued", "vestige", "FIR-1a")
+	_check("a fire vestige subdued by a water character cannot teach Burn: it reveals a water rune near the word (%s)" % str(got_fire),
+		got_fire.size() == 1 and str(GameData.rune(str(got_fire[0])).get("affinity", "")) == "water" and not bool(p.call("knows_rune", "FIR-1a")))
+	var undertow: Array = ConstructWords.runes("remnant", "undertow")
+	var got_rem: Array = p.call("on_construct_subdued", "remnant", "undertow")
+	_check("a remnant of Undertow (Ebb + Drown) reveals one of its own runes (%s)" % str(got_rem),
+		got_rem.size() == 1 and undertow.has(str(got_rem[0])))
 	var n_echo := Netherecho.new()
 	add_child(n_echo)
 	n_echo.player = p
@@ -7124,7 +7316,7 @@ func _test_rune_discovery() -> void:
 	_check("and in the Netherecho itself: a subdued construct reveals one", (p.get("known_runes") as Array).size() == before2 + 1)
 	n_echo.queue_free()
 	var uni_id: String = str(p.call("reveal_rune", [], (GameData.runes["universal_runes"] as Dictionary).keys(), 1.0, "test"))
-	_check("universal runes come from deeper sources: a vestige never gives one, a deep roll does",
+	_check("universal runes come from deeper sources: a vestige's nearest-rune reveal never gives one (only its own universal rune, if it carries one), a deep roll does",
 		float((((disc["construct"] as Dictionary)["by_tier"] as Dictionary)["vestige"] as Dictionary)["universal_chance"]) == 0.0
 		and float((((disc["construct"] as Dictionary)["by_tier"] as Dictionary)["remnant"] as Dictionary)["universal_chance"]) > 0.0
 		and uni_id != "" and not GameData.rune(uni_id).has("affinity"))

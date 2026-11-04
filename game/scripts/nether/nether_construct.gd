@@ -1,12 +1,13 @@
 extends Node3D
-## A wild ether construct: a concept given form. It wants nothing (Brent 2026-09-18); it simply is,
+## A wild ether construct: a word given form (Brent 2026-11-04, design/14 section 14: a vestige carries
+## one rune, a remnant two ... an asura five; `concept` is the word's id, ConstructWords). It wants nothing (Brent 2026-09-18); it simply is,
 ## and some of them simply attack. Beat it down and it is subdued, not killed - it can then be
 ## carried out and bound into an ability.
 
 signal subdued(construct: Node)
 
 var tier := "vestige"
-var concept := "tension"
+var concept := "tension"           # the word it carries (an id of constructs.json words)
 var display_name := "Vestige"
 var body: Body
 var height := 0.9
@@ -51,7 +52,8 @@ func setup(construct_tier: String, construct_concept: String, is_docile: bool) -
 	_cooldown = float(wild.get("cooldown", 1.4))
 	_windup_time = float(wild.get("windup", 0.5))
 	_reach = float(wild.get("reach", 1.6))
-	display_name = "%s of %s" % [tier.capitalize(), str(GameData.concept(concept).get("label", concept.capitalize()))]
+	# "Vestige of Flood", "Remnant of Acceleration" (Brent 2026-11-04: a construct carries a word)
+	display_name = ConstructWords.title(tier, concept)
 	_model = NetherArt.construct(tier, concept, height, radius)
 	add_child(_model)
 	add_to_group("nether_hittable")

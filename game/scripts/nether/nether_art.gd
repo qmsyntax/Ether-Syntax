@@ -35,11 +35,12 @@ static func wisp(affinity: String) -> Node3D:
 	return n
 
 
+## A construct carrying word `concept` (Brent 2026-11-04): the word's silhouette (constructs.json
+## "form", one of the six designs) in its affinity's colour, or a pale neutral for a universal word.
 static func construct(tier: String, concept: String, height: float, radius: float) -> Node3D:
 	if _has("construct"):
 		return _models.call("construct", tier, concept)
-	var hues := {"acceleration": 0.12, "piercing": 0.0, "compression": 0.75, "tension": 0.9, "reach": 0.45, "stillness": 0.58}
-	return _glow_shape(height, radius, Color.from_hsv(float(hues.get(concept, 0.6)), 0.6, 1.0), true)
+	return _glow_shape(height, radius, ConstructWords.color(tier, concept), true)
 
 
 static func _glow_shape(height: float, radius: float, color: Color, tall: bool) -> Node3D:

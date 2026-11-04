@@ -372,6 +372,52 @@ func fields_of(ab: Dictionary) -> Array:
 	return _fields_shown(ab)
 
 
+## A keystone (Brent 2026-11-04, design/14 section 14): every op of the word a construct carries,
+## applied to skill `ab` as a rune at strength `weight` (the tier's keystone weight, RingRules) through
+## the same op rules as any rune - a multiplier's distance from 1 times the weight, never under
+## `mult_floor`; an amount (shove, pull, marks, jumps, a bonus) times the weight; a status, interrupt or
+## brace always takes hold (weight > the threshold), and in later effects versions lasts, stacks and
+## silences by strength; what the skill cannot use lands as the fallback. No op hurts the caster.
+## Returns {patch, groups, lines, summary, fields} like a word's effects.
+func keystone(ab: Dictionary, ops: Array, weight: float, mult_floor: float) -> Dictionary:
+	var out: Dictionary = {"patch": [], "groups": {}, "lines": [], "runes": [], "anchor": {}}
+	if ab.is_empty() or ops.is_empty():
+		out["summary"] = []
+		return out
+	var groups: Dictionary = {}
+	var patch: Array = []
+	var lines: Array = []
+	var fallback_mult := 1.0
+	var threshold: float = float(params.get("status_threshold", 0.5))
+	for op: Dictionary in ops:
+		var o: Dictionary = op
+		var s: float = weight
+		if str(op["op"]) == "mul":
+			o = op.duplicate()
+			o["value"] = maxf(mult_floor, 1.0 + (float(op["value"]) - 1.0) * weight)
+			s = 1.0
+		var res: Dictionary = _apply_op(ab, o, s, threshold, groups, patch)
+		if bool(res["used"]):
+			if str(res.get("line", "")) != "":
+				lines.append(str(res["line"]))
+		else:
+			fallback_mult *= 1.0 + float(res["change"]) * float(params.get("fallback_fraction", 0.25))
+	_finish(ab, groups, fallback_mult, patch, lines, [], out)
+	# the summary's fallback line repeats what its group line already counts: say it once, in words
+	# that fit a keystone (a fallback with nowhere to go leaves an empty patch: RingRules lands it)
+	var summary: Array = []
+	var fell := false
+	for l: Variant in out.get("summary", []):
+		if str(l).begins_with("runes it cannot use"):
+			fell = true
+		else:
+			summary.append(l)
+	if fell and not patch.is_empty():
+		summary.append("(what it cannot use here lands as %s)" % ("damage" if _group_acts(ab, "power") else "a cheaper cast"))
+	out["summary"] = summary
+	return out
+
+
 ## True if the group reaches something in this skill once the 2026-10-22 rules are counted.
 func _group_acts(ab: Dictionary, g: String) -> bool:
 	if not _group_fields(ab, g).is_empty():

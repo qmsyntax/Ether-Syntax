@@ -111,11 +111,17 @@ static func wisp(affinity: String) -> Node3D:
 
 
 ## A wild ether construct: `tier` is "vestige" (~0.9 tall), "remnant" (~1.5) or "spirit"
-## (~2.3); `concept` is "acceleration", "piercing", "compression", "tension", "reach" or
-## "stillness" (anything else is a generic floating shape). Translucent and self-lit;
-## supports set_highlight / flash / set_windup / animate, and sets height and radius.
+## (~2.3, and deeper tiers); `concept` is the word it carries (constructs.json words, Brent
+## 2026-11-04): it is drawn as the word's "form" - one of the six designs "acceleration",
+## "piercing", "compression", "tension", "reach", "stillness" (an id that is itself a form name
+## draws that form; anything else a generic floating shape) - tinted by the word's affinity, a
+## pale neutral when universal. Translucent and self-lit; supports set_highlight / flash /
+## set_windup / animate, and sets height and radius.
 static func construct(tier: String, concept: String) -> ModelRig:
-	return _stamp("construct:%s:%s" % [tier, concept], NetherModels.build_construct.bind(tier, concept))
+	var w: Dictionary = GameData.construct_word(tier, concept)
+	var form: String = str(w.get("form", concept))
+	var aff: String = str(w.get("affinity", "")) if not w.is_empty() else "-"
+	return _stamp("construct:%s:%s:%s" % [tier, form, aff], NetherModels.build_construct.bind(tier, form, aff))
 
 
 # ---------------------------------------------------------------- enemies
