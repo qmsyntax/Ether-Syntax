@@ -29,6 +29,7 @@ func run() -> void:
 	await _sidestep()
 	await _refusals()
 	await _walk_in()
+	await _lead()
 	for n: Node in _made:
 		if is_instance_valid(n):
 			n.queue_free()
@@ -387,6 +388,71 @@ func _walk_in() -> void:
 		and str((q.get("last_refusal") as Dictionary).get("reason", "")) == "out_of_reach", "%s rec %.2f stag %.2f wind %.2f dash %.2f held %s" % [str(q.get("last_refusal")), float(q.get("_recover_t")), float(q.get("_stagger_t")), float(q.get("_windup_t")), float(q.get("_dash_time")), str(q.get("_held"))])
 	_gone(q)
 	_gone(h)
+
+
+# --- R4b: slow shots lead their foe ---------------------------------------------------------------
+
+## Cast slot `slot` and fly its shot by hand while `foe` walks at `vel`; true if the shot hit it.
+func _shot_hits(p: Node3D, slot: int, foe: CharacterBody3D, vel: Vector3) -> bool:
+	foe.set_physics_process(false)
+	foe.velocity = vel
+	var before: Array[Node] = t.get_children()
+	p.call("cast_slot", slot)
+	var bolt: Node = null
+	for n: Node in t.get_children():
+		if not before.has(n) and n.get("shooter") == p:
+			bolt = n
+	if bolt == null:
+		return false
+	var hp0: float = (foe.get("body") as Body).hp
+	for i: int in 180:
+		if not is_instance_valid(bolt) or bolt.is_queued_for_deletion():
+			break
+		foe.global_position += vel * STEP
+		bolt.call("tick", STEP)
+	return (foe.get("body") as Body).hp < hp0
+
+
+func _lead() -> void:
+	var sk: Dictionary = GameData.balance["skills"]
+	check.call("balance.json skills has the slow-shot lead knobs, with a note", float(sk.get("slow_shot_speed", 0.0)) > 0.0
+		and float(sk.get("slow_shot_turn_max_deg", 0.0)) > 0.0 and str(sk["_note"]).contains("slow_shot_speed"))
+	var blot: Dictionary = GameData.ability("blot")
+	check.call("Blot (18 m/s) is a slow shot; Cinder Spit (24 m/s) is not", float(blot["speed"]) < float(sk["slow_shot_speed"])
+		and float(GameData.ability("cinder_spit")["speed"]) >= float(sk["slow_shot_speed"]))
+	var p := _player("dark", AT + Vector3(0, 0, 360))
+	_full(p)
+	var e := _foe(p, Vector3(0, 0, -9.0))
+	p.set("cursor_fixed", e.global_position)
+	await _wait(STEP)
+	var walk := Vector3(3.0, 0, 0)                 # it walks across your line at 3 m/s
+	check.call("a slow shot leads a foe walking across its line, and hits it", _shot_hits(p, 0, e, walk))
+	# the same shot with the lead turned off misses: the lead is what made it land
+	e.global_position = p.global_position + Vector3(0, 0, -9.0)
+	p.set("_recover_t", 0.0)
+	var keep: float = float(sk["slow_shot_speed"])
+	sk["slow_shot_speed"] = 0.0
+	var unled: bool = _shot_hits(p, 0, e, walk)
+	sk["slow_shot_speed"] = keep
+	check.call("... where the same shot, unled, flies past it", not unled)
+	# a foe standing still: straight at it; a foe off to the side: not chased past the cone
+	e.global_position = p.global_position + Vector3(0, 0, -9.0)
+	e.velocity = Vector3.ZERO
+	var dir: Vector3 = p.call("lead_aim", blot, Vector3(0, 0, -1))
+	check.call("a still foe on the line: the shot goes straight", dir.angle_to(Vector3(0, 0, -1)) < 0.01)
+	e.global_position = p.global_position + Vector3(6.0, 0, -6.0)
+	e.velocity = Vector3(0, 0, 3.0)
+	dir = p.call("lead_aim", blot, Vector3(0, 0, -1))
+	check.call("a foe 45 degrees off your aim is not chased (slow_shot_cone_deg)", dir.angle_to(Vector3(0, 0, -1)) < 0.01)
+	e.global_position = p.global_position + Vector3(0, 0, -9.0)
+	e.velocity = Vector3(30.0, 0, 0)
+	dir = p.call("lead_aim", blot, Vector3(0, 0, -1))
+	check.call("the turn is at most slow_shot_turn_max_deg (a little)", rad_to_deg(dir.angle_to(Vector3(0, 0, -1))) <= float(sk["slow_shot_turn_max_deg"]) + 0.1)
+	var fast: Vector3 = p.call("lead_aim", GameData.ability("cinder_spit"), Vector3(0, 0, -1))
+	check.call("a fast shot is not led", fast.angle_to(Vector3(0, 0, -1)) < 0.01)
+	p.set("cursor_fixed", null)
+	_gone(p)
+	_gone(e)
 
 
 ## Actions whose default keys collide (each binding is meant to be one action's).

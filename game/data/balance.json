@@ -228,7 +228,7 @@
   },
   "skills": {
     "ambush_cast_window_s": 0.6,
-    "_note": "Rules shared by the 2026-10-22 skills (build brief; every number ours [MODEL]). jump_radius / jump_damage_mult: a hit payload with 'jumps' (the rune Many, Reflect, Spread, Conjure) arcs on to that many more enemies, each the nearest not yet struck within jump_radius of the last, for jump_damage_mult of the damage. channel_max_s: how long a held skill (channel) runs when it was not started from a held key (a test, the bot) and has no duration of its own. charge_tap_s: a charge_release let go sooner than this counts as a tap (its least). test_stage: the stage every skill of a test character starts at - 0 since Brent 2026-10-23 (\"you should not be able to build level 2 until level 1 is fully formed with construct\"): a test character walks through every level lock in order, vestige to asura, like anyone else. test_stars: its stars - a TEST OVERRIDE; the stage cap is stars + 1, so 4 stars make the asura lock (stage 4 -> 5) reachable. test_constructs_each: a test character carries this many constructs of every tier and concept, to bind with (Brent 2026-10-23), and starts every skill's bar full. test_refill_after_bind: a TEST OVERRIDE - after a test character's bind takes, the skill's bar is filled again so its next level lock is open at once (a real character grows it by use). Binds otherwise follow the normal rules: they can fail and the construct is used up. smite_needs_line: a smite (hex, seize, gaze) is blocked by walls and stone unless its payload goes through.",
+    "_note": "Rules shared by the 2026-10-22 skills (build brief; every number ours [MODEL]). jump_radius / jump_damage_mult: a hit payload with 'jumps' (the rune Many, Reflect, Spread, Conjure) arcs on to that many more enemies, each the nearest not yet struck within jump_radius of the last, for jump_damage_mult of the damage. channel_max_s: how long a held skill (channel) runs when it was not started from a held key (a test, the bot) and has no duration of its own. charge_tap_s: a charge_release let go sooner than this counts as a tap (its least). test_stage: the stage every skill of a test character starts at - 0 since Brent 2026-10-23 (\"you should not be able to build level 2 until level 1 is fully formed with construct\"): a test character walks through every level lock in order, vestige to asura, like anyone else. test_stars: its stars - a TEST OVERRIDE; the stage cap is stars + 1, so 4 stars make the asura lock (stage 4 -> 5) reachable. test_constructs_each: a test character carries this many constructs of every tier and concept, to bind with (Brent 2026-10-23), and starts every skill's bar full. test_refill_after_bind: a TEST OVERRIDE - after a test character's bind takes, the skill's bar is filled again so its next level lock is open at once (a real character grows it by use). Binds otherwise follow the normal rules: they can fail and the construct is used up. smite_needs_line: a smite (hex, seize, gaze) is blocked by walls and stone unless its payload goes through. SLOW SHOTS LEAD (combat review 2026-11-03 R4b, approved by Brent; Player.lead_aim): a projectile slower than slow_shot_speed (m/s) is aimed, as it leaves, at where the foe nearest its line (within slow_shot_cone_deg of where you aimed, and within its flight) will be when it arrives, slow_shot_lead_frac of the way, turned at most slow_shot_turn_max_deg from your aim; it still flies straight. Faster shots, beams and anything with nobody near its line fly where you aimed.",
     "jump_radius": 4.0,
     "jump_damage_mult": 0.6,
     "channel_max_s": 4.0,
@@ -237,7 +237,11 @@
     "test_stars": 4,
     "test_constructs_each": 3,
     "test_refill_after_bind": true,
-    "smite_needs_line": true
+    "smite_needs_line": true,
+    "slow_shot_speed": 23.0,
+    "slow_shot_lead_frac": 1.0,
+    "slow_shot_cone_deg": 20.0,
+    "slow_shot_turn_max_deg": 20.0
   },
   "light": {
     "_note": "Light levels (Dark's rule, 2026-10-22 drafts): every spot is lit, dim or dark. The level's base light by game state (scripts/light.gd: light sources make lit circles, dark ground makes dark); default for anything not listed. [MODEL]",

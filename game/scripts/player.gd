@@ -5928,7 +5928,7 @@ func _fire_projectile(ab: Dictionary, stage_mult: float, color: Color, tags: Arr
 	bolt.set("hit_radius", maxf(0.35, float(ab.get("width", 0.0)) * 0.5))
 	bolt.set("ab", ab)
 	bolt.set("stage_mult", stage_mult)
-	bolt.set("dir", _facing)
+	bolt.set("dir", lead_aim(ab, _facing))          # a slow shot leads its foe a little (combat review R4b)
 	bolt.set("damage", float(ab["damage"]) * stage_mult)
 	bolt.set("speed", float(ab["speed"]))
 	bolt.set("life", float(ab["life"]))
@@ -7747,3 +7747,51 @@ func _walk_cast_step(delta: float, input: Vector2) -> Variant:
 		_forced_target = null
 		return Vector3.ZERO
 	return to.normalized()
+
+
+# --- slow shots lead their foe (combat review R4b, approved by Brent 2026-11-03) --------------------
+# A slow projectile flew in a straight line to where the cursor was and missed anything walking (Slingstone
+# hit 32% of the time). Now a shot slower than skills.slow_shot_speed is aimed, as it leaves, at where the
+# foe nearest its line (within slow_shot_cone_deg of it) will be when it arrives - slow_shot_lead_frac of
+# the way - turned at most slow_shot_turn_max_deg from where you aimed. It still flies straight.
+
+## The direction a shot of skill `ab` leaves in, given the way it was aimed.
+func lead_aim(ab: Dictionary, aim: Vector3) -> Vector3:
+	var cfg: Dictionary = GameData.balance["skills"]
+	var speed: float = float(ab.get("speed", 999.0))
+	var flat_aim := Vector3(aim.x, 0.0, aim.z)
+	if speed <= 0.0 or speed >= float(cfg["slow_shot_speed"]) or flat_aim.length() < 0.01 or not is_inside_tree():
+		return aim
+	flat_aim = flat_aim.normalized()
+	var reach: float = speed * float(ab.get("life", 1.0))
+	var cone: float = deg_to_rad(float(cfg["slow_shot_cone_deg"]))
+	var foe: Node3D = null
+	var best: float = cone
+	for node: Node in get_tree().get_nodes_in_group("enemies"):
+		var e := node as Node3D
+		if e == null or bool(e.call("is_dead")):
+			continue
+		var to := Vector3(e.global_position.x - global_position.x, 0.0, e.global_position.z - global_position.z)
+		if to.length() < 0.3 or to.length() > reach + float(e.get("radius")):
+			continue
+		var ang: float = flat_aim.angle_to(to.normalized())
+		if ang <= best:
+			best = ang
+			foe = e
+	if foe == null:
+		return aim
+	var vel := Vector3.ZERO
+	if foe is CharacterBody3D:
+		vel = (foe as CharacterBody3D).velocity
+		vel.y = 0.0
+	var at := Vector3(foe.global_position.x, global_position.y, foe.global_position.z)
+	var ahead: Vector3 = at
+	for i: int in 2:                              # where it will be when the shot gets there (twice, to settle)
+		ahead = at + vel * (Vector3(ahead.x - global_position.x, 0.0, ahead.z - global_position.z).length() / speed) * float(cfg["slow_shot_lead_frac"])
+	var want := Vector3(ahead.x - global_position.x, 0.0, ahead.z - global_position.z)
+	if want.length() < 0.05:
+		return aim
+	want = want.normalized()
+	var turn: float = flat_aim.signed_angle_to(want, Vector3.UP)
+	var cap: float = deg_to_rad(float(cfg["slow_shot_turn_max_deg"]))
+	return flat_aim.rotated(Vector3.UP, clampf(turn, -cap, cap))
