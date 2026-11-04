@@ -19,6 +19,14 @@ fights - Q3's knob); melee bursts touching nothing for the mid character (15-18%
 earth character's Slingstone hits (35-45%; a new character's are 95-100%) [?]. Decisions left to Brent: the
 movement starters' price (Q1 names none; unchanged), and "Skip the rest" moving from Space to G.
 
+**2026-11-03, later: R3 reworked per Brent** [B] ("the side step stops the player from moving. We need endurance to
+make sure its not cheesed. But also, keep the motion smooth ... almost like a dash, but with the animation"): the
+sidestep is now priced in a new resource, **endurance** (balance.json "endurance": 100, 30/s after 0.6 s, 38 a step -
+two steps, a pause, then more), not reflux, and has no Winded chain of its own; it is a 0.32 s eased run (2.75 m, fast
+then easing into your run speed) with the dodge clip fitted to it, and a held move key or a pending click carries on
+the moment it ends. Untested by hand - needs Brent. The review's `--dodge=step` runs above were measured with the old
+reflux-priced step.
+
 | Id | Change | Why (from the review) | What it needs before it can start |
 |---|---|---|---|
 | R2 | **Essence from kills**: a small mote rises from each kill, worth the kind's `aura_value` x k, walked through or gathered within 2 m | Chains kill -> cast -> kill; the setting harvests essence from kills [F] | Brent's ruling on essence from kills (it changes how essence enters the game). Measure after R1 lands, which may be enough on its own |
