@@ -136,6 +136,9 @@ func _ready() -> void:
 	await _seq("buffer_expires", "water", [
 		{"t": 0.0, "do": "slot", "slot": 2, "label": "dash"},
 		{"t": 0.05, "do": "slot", "slot": 0, "label": "bolt pressed early in the dash"}], 1.2, {"no_enemy_near": true, "check_window": true})
+	await _seq("sidestep", "water", [
+		{"t": 0.0, "do": "sidestep", "label": "sidestep (Space)"},
+		{"t": 0.08, "do": "slot", "slot": 1, "label": "breaker pressed mid-step (waits)"}], 0.9, {"no_enemy_near": true})
 	_report()
 
 
@@ -277,6 +280,7 @@ func _seq(name: String, aff: String, inputs: Array, duration: float, opts: Dicti
 	var t := 0.0
 	var inputs_left: Array = inputs.duplicate(true)
 	var strike_count := 0
+	var steps_seen := 0
 	var held_until := -1.0
 	while t < duration:
 		await get_tree().physics_frame
@@ -312,6 +316,9 @@ func _seq(name: String, aff: String, inputs: Array, duration: float, opts: Dicti
 		last_hits = hits.size()
 		if p.velocity.length() > 0.3:
 			_effect(pending, results, "move", -1, seen)
+		if int(p.get("sidesteps")) > steps_seen:
+			steps_seen = int(p.get("sidesteps"))
+			_effect(pending, results, "step", -1, seen)
 		if ap != null:
 			var now: String = String(ap.current_animation)
 			if now != last_anim:
@@ -365,6 +372,10 @@ func _seq(name: String, aff: String, inputs: Array, duration: float, opts: Dicti
 				"aim":
 					p.set("cursor_fixed", inp["at"])
 					rec["type"] = "none"
+				"sidestep":
+					# the free sidestep (combat review R3), as main.gd answers its key
+					p.call("press_sidestep")
+					rec["type"] = "step"
 				"slot":
 					_press_slot(p, int(inp["slot"]))
 					releases.append([t + TAP_S, "ability_%d" % (int(inp["slot"]) + 1)])
