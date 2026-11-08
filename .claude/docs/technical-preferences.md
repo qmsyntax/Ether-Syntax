@@ -8,7 +8,7 @@
 - **Engine**: Godot 4.7.2 (Godot project root is `game/`)
 - **Language**: GDScript (statically typed)
 - **Rendering**: Forward+ (confirmed in `game/project.godot` features). Backend is the engine default for the platform — D3D12 on Windows since 4.6; not overridden in project settings.
-- **Physics**: 3D physics engine is **not set explicitly** in `game/project.godot`, so the project runs whatever the engine default is for a hand-written project file. Jolt is the default for projects created through the 4.6+ editor; whether that applies here is unverified. Decide and pin it explicitly (Project Settings → Physics → 3D → Physics Engine) before any physics-sensitive tuning.
+- **Physics**: 3D physics engine is pinned to **GodotPhysics3D** (`[physics] 3d/physics_engine="GodotPhysics3D"` in `game/project.godot`, 2026-11-08). Pinned to what the game already ran, so nothing changed: with the setting absent the engine reported `DEFAULT`, and a fingerprint run (a tilted box dropped on a floor, 120 fixed 60 fps physics frames, `PhysicsServer3D.get_process_info`) gave bit-for-bit the same result as forcing `GodotPhysics3D` (box at y 0.493226, 1 collision pair) and a different one under `Jolt Physics` (y 0.499997, 0 pairs). Jolt is only the default for projects *created* by the 4.6+ editor; this project file was hand-written, so `DEFAULT` meant Godot Physics. Every physics-sensitive number (shoves, dashes, navigation, the combat-review probe) was tuned on Godot Physics; switching to Jolt would be its own change with a re-tune and a before/after probe.
 
 ## Input & Platform
 

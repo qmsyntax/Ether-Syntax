@@ -23,6 +23,7 @@ var errors: ErrorCatcher
 
 
 func _ready() -> void:
+	RngSeed.fix_from_args()             # every random roll the same each run (-- --seed=<n> for another)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	hardcore = OS.get_cmdline_user_args().has("--hardcore")
 	errors = ErrorCatcher.install()

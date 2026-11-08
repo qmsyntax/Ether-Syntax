@@ -1140,7 +1140,7 @@ func _physics_process(delta: float) -> void:
 
 	velocity *= pace
 	if _leap_left <= 0.0 and _charge_left <= 0.0:
-		move_and_slide()
+		ExactSlide.slide(self, delta)
 	_keep_leash()
 	if not winding_before and _windup >= 0.0:
 		_attack_started()
@@ -2084,7 +2084,7 @@ func _walk_home(delta: float, pace: float) -> void:
 			way = stepped
 	_turn_toward(way, delta)
 	velocity = way * speed * pace
-	move_and_slide()
+	ExactSlide.slide(self, delta)
 	_look(delta)
 
 

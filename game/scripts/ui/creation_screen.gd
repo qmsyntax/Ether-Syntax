@@ -31,7 +31,7 @@ func backdrop() -> float:
 
 func _init(game_node: Node) -> void:
 	super(game_node)
-	_rng.randomize()
+	RngSeed.apply(_rng, "creation")
 	var cfg: Dictionary = GameData.creation
 	rerolls_left = GameData.inum("primes", "rerolls")
 	spec = {"name": "", "identity": str((cfg["identities"][0] as Dictionary)["id"]), "look": CharacterLook.default_look(), "skills": []}
@@ -59,6 +59,22 @@ func build(root: Control) -> void:
 	_right = framed(root, 0.68, 0.04, 0.98, 0.96)
 	_right.add_theme_constant_override("separation", 8)
 	_build_preview(root)
+	# which build this is, small in the gap under the turntable (the panels are full)
+	var build_label := UiTheme.body(BuildInfo.label(), UiTheme.FS_SMALL, UiTheme.TEXT_FAINT)
+	build_label.name = "BuildLabel"
+	build_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	build_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	build_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	build_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(build_label)
+	build_label.anchor_left = 0.3
+	build_label.anchor_right = 0.68
+	build_label.anchor_top = 0.96
+	build_label.anchor_bottom = 1.0
+	build_label.offset_left = 0.0
+	build_label.offset_right = 0.0
+	build_label.offset_top = 0.0
+	build_label.offset_bottom = 0.0
 	_refresh()
 
 
@@ -309,6 +325,13 @@ func _build_left() -> void:
 	var save: Dictionary = SaveGame.read()
 	if not save.is_empty() and str(save.get("talent_id", "")) != "":
 		_left.add_child(UiWidgets.small_button("Continue  -  %s" % SaveGame.who(save), func() -> void: game.call("continue_game")))
+	SaveGame.take_note()
+	var save_note: String = str(SaveGame.inspect().get("note", ""))   # read from a backup copy, damaged, or from a newer build
+	if save_note != "":
+		var warn := UiTheme.body(save_note, 12, UiTheme.TEXT_DIM)
+		warn.name = "SaveNote"
+		warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_left.add_child(warn)
 	for slot: int in range(1, SaveGame.SLOTS + 1):
 		if SaveGame.exists(SaveGame.slot_path(slot)):
 			_left.add_child(UiWidgets.small_button("Load a saved character", func() -> void: game.call("open_saves")))

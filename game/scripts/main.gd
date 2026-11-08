@@ -119,7 +119,12 @@ var _menu_return := false
 
 
 func _ready() -> void:
-	rng.randomize()
+	var run_args: PackedStringArray = OS.get_cmdline_user_args()
+	if run_args.has("--bot-dungeon") or run_args.has("--bot-full") or run_args.has("--bot-die"):
+		RngSeed.fix_from_args()         # the passage bots are tests: the same layout and rolls every run
+	RngSeed.apply(rng, "main")
+	if _under_test():
+		UserFiles.sandbox(TEST_SANDBOX)  # tests, shots and bots never read or write the player's own files
 	add_to_group("router")              # where there is no navigation mesh yet: the way through a doorway
 	_hold_effect_shaders()
 	_build_world()
@@ -545,6 +550,21 @@ func set_zoom_start(z: float) -> void:
 ## player's own settings applied, so tests and screenshots look the same on every machine.
 func _plays() -> bool:
 	return not _test_mode and OS.get_cmdline_user_args().is_empty()
+
+
+## Where every run that is not play keeps its saves, key bindings and settings (UserFiles.sandbox).
+const TEST_SANDBOX := "user://test_sandbox/"
+
+
+## A run that must not touch the player's files: test, shot or bot arguments, the test flag, or a
+## scene from res://tests/ hosting this one. A test that set its own folder first keeps it.
+func _under_test() -> bool:
+	if UserFiles.sandbox_dir != "" or SaveGame.test_dir != "":
+		return false
+	if not _plays():
+		return true
+	var top: Node = get_tree().current_scene
+	return top != null and top != self and top.scene_file_path.begins_with("res://tests/")
 
 
 ## Throw this game away and put a fresh one in its place - the title, as at the first start - and,
@@ -1557,14 +1577,21 @@ func start_test_character(aff: String) -> void:
 func save_to_slot(slot: int) -> bool:
 	if str(player.get("talent_id")) == "":
 		return false
+	if str(player.get("char_id")) == "":
+		player.set("char_id", SaveGame.new_char_id())   # one id for every save of this character
 	var data: Dictionary = player.call("to_save")
 	data["day"] = day
 	data["delves"] = delves
 	data["hardcore"] = hardcore
 	data["place"] = _place_for_save()
 	var ok: bool = SaveGame.write(data, SaveGame.slot_path(slot))
+	var said: String = SaveGame.take_note()   # a displaced autosave kept, or a newer save not written over
+	if said != "":
+		player.call("note", said)
 	if slot > 0:
 		player.call("note", "Saved to slot %d." % slot if ok else "Could not write slot %d." % slot)
+	elif not ok and said == "":
+		player.call("note", "The autosave could not be written (see the log); your last save is unchanged.")
 	return ok
 
 
@@ -1576,9 +1603,14 @@ func continue_game() -> bool:
 ## Load a slot into town; the loaded character becomes the autosave too.
 func load_slot(slot: int) -> bool:
 	var data: Dictionary = SaveGame.read(SaveGame.slot_path(slot))
+	var said: String = SaveGame.take_note()       # recovered from a backup copy, or refused as newer
 	if data.is_empty() or str(data.get("talent_id", "")) == "":
+		if said != "":
+			player.call("note", said)
 		return false
 	player.call("from_save", data)
+	if said != "":
+		player.call("note", said)
 	day = int(data.get("day", 1))
 	delves = int(data.get("delves", 0))
 	hardcore = bool(data.get("hardcore", false))
@@ -2161,8 +2193,10 @@ func _spawn_scenery(kind: String, local_pos: Vector3) -> void:
 func _on_player_died() -> void:
 	if hardcore:
 		state = "dead"
-		if not _bot_mode and not _test_mode:
-			SaveGame.delete()
+		# permadeath: every save of this character goes - the autosave, any slot, every backup copy
+		# (a test or bot run is sandboxed, so this only ever reaches the player's files in play)
+		if _plays() or SaveGame.test_dir != "":
+			SaveGame.clear_character(str(player.get("char_id")))
 		_prompt = ""
 		_show_screen(MessageScreen.new(self, "YOU DIED", "Hardcore: that was the only life this character had.", "Begin again", new_character), false)
 		return
@@ -2553,7 +2587,7 @@ func _where() -> String:
 ## the menu over a test character.
 func _setup_menu_shot(which: String) -> void:
 	player.set("char_name", "Maren")
-	SaveGame.test_dir = "user://shot_saves/"
+	# a shot run is sandboxed (UserFiles.sandbox in _ready: an empty folder of its own), never the real saves
 	save_to_slot(0)                         # an autosave and slot 2, so Load has something to list
 	save_to_slot(2)
 	if which == "menu-field":

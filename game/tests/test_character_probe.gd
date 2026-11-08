@@ -53,6 +53,7 @@ func _board() -> RuneBoard:
 
 
 func _ready() -> void:
+	RngSeed.fix_from_args()             # every random roll the same each run (-- --seed=<n> for another)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var scene: PackedScene = load("res://scenes/main.tscn")
 	main = scene.instantiate()

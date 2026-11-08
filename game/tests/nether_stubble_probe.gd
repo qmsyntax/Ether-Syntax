@@ -22,6 +22,7 @@ var target_vestige: Node3D
 
 
 func _ready() -> void:
+	RngSeed.fix_from_args()             # every random roll the same each run (-- --seed=<n> for another)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	errors = ErrorCatcher.install()
 	Engine.time_scale = 2.0

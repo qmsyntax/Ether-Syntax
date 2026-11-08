@@ -32,7 +32,7 @@ var _foreign_note_cd := 0.0
 
 
 func _init() -> void:
-	rng.randomize()
+	RngSeed.apply(rng, "netherecho")
 	_cfg = GameData.balance["nether"]
 	visible = false                 # nothing here can be seen from the waking world
 

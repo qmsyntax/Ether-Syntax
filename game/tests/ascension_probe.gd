@@ -25,6 +25,7 @@ var _progress0 := 0.0
 
 
 func _ready() -> void:
+	RngSeed.fix_from_args()             # every random roll the same each run (-- --seed=<n> for another)
 	_errors = ErrorCatcher.install()
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var scene: PackedScene = load("res://scenes/main.tscn")

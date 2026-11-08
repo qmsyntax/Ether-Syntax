@@ -22,6 +22,7 @@ var _waypoints: Array = [[66, 24], [58, 14], [44, 9], [40, 3], [40, -1]]
 
 
 func _ready() -> void:
+	RngSeed.fix_from_args()             # every random roll the same each run (-- --seed=<n> for another)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	errors = ErrorCatcher.install()
 	Engine.time_scale = 4.0
