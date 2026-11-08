@@ -119,6 +119,10 @@ func _build_main(root: Control) -> void:
 		func() -> void: confirm_leave("Quit to title", func() -> void: game.call("quit_to_title")))
 	_item(box, "QuitGame", "Quit game", "Close Ether Syntax.",
 		func() -> void: confirm_leave("Quit the game", func() -> void: game.call("quit_game")))
+	var build := UiTheme.body("Ether Syntax  %s" % BuildInfo.label(), UiTheme.FS_SMALL, UiTheme.TEXT_FAINT)
+	build.name = "BuildLabel"
+	build.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(build)
 
 
 func _build_new(root: Control) -> void:
