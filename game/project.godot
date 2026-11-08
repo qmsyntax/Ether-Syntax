@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Ether Syntax (prototype)"
-config/version="0.55.0+4959094"
+config/version="0.56.0+b4d5d0b"
 config/use_custom_user_dir=true
 config/custom_user_dir_name="Ether Syntax"
 run/main_scene="res://scenes/main.tscn"
