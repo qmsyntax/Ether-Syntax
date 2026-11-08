@@ -54,8 +54,15 @@ phases below run to A, then B.
   death clears every slot.
 - Move the test suite into the repo (`tools/test/run_all.sh`: headless + windowed, one Godot at a time). Fix the
   move probe's flake at its cause. The self-test must back up and restore the player's key bindings.
-- Pin the physics engine; a version stamp in the game and in saves.
-- **A Windows export**: a preset, the export templates (a download - your yes), and an .exe on S:\Passage from then on.
+- [x] Pin the physics engine; a version stamp in the game and in saves. *(2026-11-08: pinned to GodotPhysics3D, what
+  the game already ran - evidence in `.claude/docs/technical-preferences.md`; `application/config/version` stamped
+  "X.Y.Z+sha" by `tools/release/stamp_version.sh`, read through `BuildInfo`, shown on the title and in the game menu.
+  Writing it into saves is the save-safety item above.)*
+- [x] **A Windows export**: a preset, the export templates (a download - your yes), and an .exe on S:\Passage from then on.
+  *(2026-11-08: `game/export_presets.cfg` (Windows x86_64, PCK embedded, `tests/` left out), the official 4.7.2
+  templates installed (SHA512 checked against the release's sums), `tools/release/export_windows.sh` ->
+  `build/windows/EtherSyntax.exe`, run and checked; `tools/release/mirror_passage.ps1` puts it in S:\Passage\build\
+  at the next release's mirror.)*
 - Performance: measure a full wall of real enemies, the Stubble and the town crowd. Then pool enemies, strip hidden
   pieces, share materials, add visibility ranges and a shader warm-up. Target: 60 fps on your machine with headroom.
 - Done when: one command runs every test, a full-wall fps number is on record and meets budget, a save survives a kill
