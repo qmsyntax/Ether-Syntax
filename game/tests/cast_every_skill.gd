@@ -26,6 +26,7 @@ var _failures: Array[String] = []
 
 
 func _ready() -> void:
+	RngSeed.fix_from_args()             # every random roll the same each run (-- --seed=<n> for another)
 	_errors = ErrorCatcher.install()
 	# procedural bodies: the real ones take seconds each to build and say nothing about the skills
 	(GameData.balance["art"] as Dictionary)["real_bodies"] = false

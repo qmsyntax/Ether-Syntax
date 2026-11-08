@@ -38,7 +38,7 @@ func setup(owner_main: Node, zone_builder: ZoneBuilder) -> void:
 	player = main.get("player")
 	_cfg = GameData.balance.get("camps", {})
 	name = "FieldCamps"
-	rng.randomize()
+	RngSeed.apply(rng, "field_camps")
 
 
 func _level() -> Node3D:

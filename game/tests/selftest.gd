@@ -17,6 +17,7 @@ var _errors: ErrorCatcher
 
 
 func _ready() -> void:
+	RngSeed.fix_from_args()             # every random roll the same each run (-- --seed=<n> for another)
 	_errors = ErrorCatcher.install()
 	# `-- --only=beasts` runs just the Stubble's beast and camp checks (tests/beast_checks.gd)
 	if OS.get_cmdline_user_args().has("--only=beasts"):

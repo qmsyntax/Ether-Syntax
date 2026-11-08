@@ -28,6 +28,7 @@ var _done := false
 
 
 func _ready() -> void:
+	RngSeed.fix_from_args()             # every random roll the same each run (-- --seed=<n> for another)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_errors = ErrorCatcher.install()
 	_started_ms = Time.get_ticks_msec()
