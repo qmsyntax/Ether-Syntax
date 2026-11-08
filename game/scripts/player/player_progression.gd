@@ -314,7 +314,7 @@ func add_aura(amount: float) -> void:
 func _on_kill(target: Node) -> void:
 	for bid: String in player.buffs:
 		if int((player.buffs[bid] as Dictionary).get("kill_blood", 0)) > 0:
-			player.gain_blood(int(player.buffs[bid]["kill_blood"]))                      # Red Frenzy: every kill feeds it
+			player.hits_part.gain_blood(int(player.buffs[bid]["kill_blood"]))                      # Red Frenzy: every kill feeds it
 	var hurt: float = 1.0 - player.body.total() / player.body.total_max()
 	var risk: float = 1.0 + hurt * float(player._p["aura_hurt_risk_bonus"])
 	var aura: float = float(target.get("aura_value")) * kill_aura_mult(target)

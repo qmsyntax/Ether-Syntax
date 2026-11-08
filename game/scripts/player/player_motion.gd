@@ -188,7 +188,7 @@ func _tick_slipstream(delta: float) -> void:
 		while player._pip_dist >= per:
 			player._pip_dist -= per
 			player.pips = mini(int(cfg["max"]), player.pips + 1)
-	elif not player.buffs.has("veil") and not player._zone_flag("freeze_pips"):     # behind the veil (or in dead air) the wind stays with you
+	elif not player.buffs.has("veil") and not player.hits_part._zone_flag("freeze_pips"):     # behind the veil (or in dead air) the wind stays with you
 		_still_t += delta
 		if _still_t >= float(cfg["still_delay_s"]):
 			_pip_decay_t += delta
