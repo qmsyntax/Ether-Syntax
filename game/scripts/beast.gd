@@ -168,7 +168,7 @@ func _graze(delta: float, pace: float) -> void:
 	if want != Vector3.ZERO:
 		_turn_toward(want.normalized(), delta)
 	velocity = want * pace
-	move_and_slide()
+	ExactSlide.slide(self, delta)
 	_look(delta)
 
 
@@ -205,7 +205,7 @@ func _runner_tick(delta: float, pace: float) -> void:
 		_turn_toward(want, delta)
 		facing = want                           # it does not look back
 	velocity = want * speed * pace
-	move_and_slide()
+	ExactSlide.slide(self, delta)
 	_look(delta)
 
 

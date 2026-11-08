@@ -778,7 +778,7 @@ func _physics_process(delta: float) -> void:
 			_end_dash()
 			_dash_pass = {}
 	else:
-		move_and_slide()
+		ExactSlide.slide(self, delta)
 
 	_tick_slipstream(delta)
 	_hold_facing(delta)
