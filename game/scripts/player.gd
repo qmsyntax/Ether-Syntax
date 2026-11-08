@@ -1,3 +1,4 @@
+class_name Player
 extends CharacterBody3D
 ## Player archhuman: three-layer body, essence tank + satellite, reflux heat, hidden latent aura.
 ## Talents (and later items, summons, techniques) are TalentEffect objects hooked into the damage
@@ -18,6 +19,11 @@ const Projectile := preload("res://scripts/projectile.gd")
 const _Fx := preload("res://scripts/runes/interactions/effects_v1.gd")
 const TALENT_SCRIPT_DIR := "res://scripts/talents/"
 const ISO_YAW := deg_to_rad(45.0)
+
+## The player's parts, one per concern (docs/architecture/player-split.md). Each holds that concern's
+## logic and its private state, with a typed back-reference to this node; shared and saved state stays
+## here, and the forwarders at the end of this file keep every outside caller unchanged.
+var save_part: PlayerSave
 
 var body: Body
 var talent_id := ""
@@ -305,6 +311,7 @@ var melee_arc := deg_to_rad(75.0)
 
 
 func _init() -> void:
+	save_part = PlayerSave.new(self)
 	_p = GameData.balance["player"]
 	_arm = GameData.balance["arm"]
 	_reflux_cfg = GameData.balance["reflux"]
@@ -5783,7 +5790,6 @@ func take_pickup(drop: Node3D) -> bool:
 	return true
 
 
-## Everything that must survive between sessions.
 ## A test character (title screen "Test characters"): this one affinity, and every skill of it
 ## learned in tree order (any not on the tree after), each at balance.skills.test_stage (0: Brent
 ## 2026-10-23 - a test character walks through every level lock in order, vestige to asura, on the
@@ -5829,133 +5835,6 @@ func make_test_character(aff: String) -> void:
 				constructs.append({"tier": str(tier), "concept": str(concept)})
 	note("TEST CHARACTER: every %s skill, stage %d, each ready for its level lock (the ethercosm). %s turns the skill bar to the next six." % [
 		str(GameData.affinity(aff).get("label", aff)).to_lower(), stage, Keybinds.binding_text("hotbar_page")])
-
-
-func to_save() -> Dictionary:
-	return {
-		"test_character": test_character, "char_id": char_id,
-		"name": char_name, "identity": identity, "look": look.duplicate(), "affinities": affinities.duplicate(),
-		"tempering": tempering.duplicate(true),
-		"talent_id": talent_id, "stars": stars, "star_pct": star_pct.duplicate(), "money": money,
-		"ascension_pending": ascension_pending.duplicate(true),
-		"essence": essence, "latent_aura": _latent_aura,
-		"body": body.to_dict(),
-		"arm_right": arm_right, "arm_right_lost": arm_right_lost,
-		"abilities": abilities.duplicate(true), "hotbar": hotbar.duplicate(),
-		"skill_points": skill_points, "skill_growth": skill_growth,
-		"craft_skill": craft_skill.duplicate(), "craft_known": craft_known.duplicate(), "craft_made": craft_made.duplicate(),
-		"tool_uses": tool_uses.duplicate(),
-		"constructs": constructs.duplicate(true), "discoveries": discoveries.duplicate(),
-		"known_runes": known_runes.duplicate(), "read_inscriptions": read_inscriptions.duplicate(),
-		"heal_points_total": heal_points_total, "inventory": inventory.to_dict(), "corpses": corpses.duplicate(true), "explored": explored.duplicate(),
-	}
-
-
-func from_save(d: Dictionary) -> void:
-	set_talent(str(d.get("talent_id", "")))
-	test_character = bool(d.get("test_character", false))
-	char_id = str(d.get("char_id", ""))
-	char_name = str(d.get("name", ""))
-	identity = str(d.get("identity", ""))
-	# a save keeps the affinities it was made with; saves from before affinities were all water
-	affinities.clear()
-	for a: Variant in d.get("affinities", ["water"]):
-		affinities.append(str(a))
-	clear_reflux()
-	_reset_loadout()                  # the kit for those affinities, unless the save lists abilities below
-	# tempering: what the save has, on top of what such a character starts knowing. The health it
-	# added is already in the saved body_max, so stages are set here without applying it again.
-	tempering.clear()
-	for id: String in GameData.technique_ids():
-		var t_aff: String = str(GameData.technique(id).get("affinity", ""))
-		if t_aff == "" or affinities.has(t_aff):
-			tempering[id] = {"stage": 0, "progress": 0.0}
-	var saved_temper: Dictionary = d.get("tempering", {})
-	for id: String in saved_temper:
-		if not GameData.technique(id).is_empty():
-			tempering[id] = {"stage": int((saved_temper[id] as Dictionary).get("stage", 0)), "progress": float((saved_temper[id] as Dictionary).get("progress", 0.0))}
-	set_look(d.get("look", {}))
-	stars = int(d.get("stars", 1))
-	star_pct.clear()
-	for pct: Variant in d.get("star_pct", [GameData.num("stars", "first_star_start_pct")]):
-		star_pct.append(float(pct))
-	_recompute_essence_max()
-	money = int(d.get("money", 0))
-	essence = minf(essence_max, float(d.get("essence", essence_max)))
-	_latent_aura = float(d.get("latent_aura", 0.0))
-	ascension_pending = (d.get("ascension_pending", {}) as Dictionary).duplicate(true)
-	# older saves kept three wound layers; their totals become the bar
-	body.from_dict(d.get("body", {}), d.get("body_hp", {}), d.get("body_max", {}))
-	arm_right = float(d.get("arm_right", arm_right))
-	arm_right_lost = bool(d.get("arm_right_lost", false))
-	if arm_right_lost and not body.has_wound("lost_arm"):
-		var arm_wound: Dictionary = GameData.balance["wounds"]["lost_arm"]
-		body.add_wound("lost_arm", str(arm_wound["name"]), maxf(1.0, float(_arm["regrow_heal_points"]) - float(d.get("arm_regrow", 0.0))), float(arm_wound["cut"]), false)
-	_wound_seq = body.wounds.size()
-	var saved_abilities: Array = d.get("abilities", [])
-	if not saved_abilities.is_empty():
-		abilities.clear()
-		for a: Dictionary in saved_abilities:
-			a["stage"] = int(a.get("stage", 0))
-			a["progress"] = float(a.get("progress", 0.0))
-			if a.has("word"):
-				# rule-free data: read back as it was; the rules in force report what no longer fits.
-				# No seal outlasts its skill's level (a word locked before seals, on a stage-0 skill,
-				# comes back unsealed: before the first binding a skill has no word).
-				var w: Dictionary = RuneWord.normalize(a["word"], GameData.skill_anchor(str(a.get("id", ""))))
-				if RuneWord.sealed(w) > int(a["stage"]):
-					w["sealed"] = int(a["stage"])
-				if RuneWord.sealed(w) <= 0:
-					w.erase("sealed")
-				# a keystone sits only over a sealed ring
-				if w.has("keystones"):
-					w["keystones"] = RuneWord.keystones(w).filter(func(ks: Dictionary) -> bool: return int(ks["ring"]) <= RuneWord.sealed(w))
-				a["word"] = w
-			abilities.append(a)
-	var saved_hotbar: Array = d.get("hotbar", [])
-	for i: int in mini(saved_hotbar.size(), hotbar.size()):
-		hotbar[i] = int(saved_hotbar[i])
-	skill_points = int(d.get("skill_points", 0))
-	skill_growth = float(d.get("skill_growth", 0.0))
-	craft_skill.clear()
-	var saved_craft: Dictionary = d.get("craft_skill", {})
-	for s: String in saved_craft:
-		craft_skill[s] = int(saved_craft[s])
-	craft_known = (d.get("craft_known", []) as Array).map(func(v: Variant) -> String: return str(v))
-	craft_made = (d.get("craft_made", []) as Array).map(func(v: Variant) -> String: return str(v))
-	tool_uses.clear()
-	var saved_uses: Dictionary = d.get("tool_uses", {})
-	for t: String in saved_uses:
-		tool_uses[t] = int(saved_uses[t])
-	constructs.clear()
-	for c: Variant in d.get("constructs", []):
-		# an old concept id becomes the word it now is at that tier (constructs.json legacy); a construct
-		# naming no word at all is dropped
-		if typeof(c) == TYPE_DICTIONARY:
-			var cd: Dictionary = (c as Dictionary).duplicate()
-			var wid: String = GameData.construct_word_id(str(cd.get("tier", "")), str(cd.get("concept", "")))
-			if wid != "":
-				cd["concept"] = wid
-				constructs.append(cd)
-	discoveries.clear()
-	for line: Variant in d.get("discoveries", []):
-		discoveries.append(str(line))
-	seal_draft = {}
-	known_runes.clear()
-	if d.has("known_runes"):
-		for rid: Variant in d["known_runes"]:
-			if not GameData.rune(str(rid)).is_empty() and not known_runes.has(str(rid)):
-				known_runes.append(str(rid))
-	else:
-		_grant_start_runes()              # a save from before discovery: what a new character knows
-	read_inscriptions.clear()
-	for sid: Variant in d.get("read_inscriptions", []):
-		read_inscriptions.append(str(sid))
-	heal_points_total = float(d.get("heal_points_total", 0.0))
-	corpses = (d.get("corpses", []) as Array).duplicate(true)
-	explored = (d.get("explored", {}) as Dictionary).duplicate()
-	inventory.from_dict(d.get("inventory", {}))
-	refresh_gear()
 
 
 # --- stars ----------------------------------------------------------------------
@@ -7951,3 +7830,9 @@ func lead_aim(ab: Dictionary, aim: Vector3) -> Vector3:
 	var turn: float = flat_aim.signed_angle_to(want, Vector3.UP)
 	var cap: float = deg_to_rad(float(cfg["slow_shot_turn_max_deg"]))
 	return flat_aim.rotated(Vector3.UP, clampf(turn, -cap, cap))
+
+
+# --- forwarded to PlayerSave (scripts/player/player_save.gd) ------------------------------------------
+# Outside callers (main.gd, the HUD, the screens, the tests, talents) still call these on the player.
+func to_save() -> Dictionary: return save_part.to_save()
+func from_save(d: Dictionary) -> void: save_part.from_save(d)
