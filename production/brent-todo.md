@@ -1,6 +1,6 @@
 # Brent's to-do
 
-Kept by Claude; last updated 2026-11-08 (build v0.55.0-construct-words). Tick a box by telling Claude the answer, and
+Kept by Claude; last updated 2026-11-08 (build v0.56.0-groundwork). Tick a box by telling Claude the answer, and
 Claude records the ruling in the design doc it belongs to and moves it to "Done" at the bottom. The order is the order
 they unblock work in (`production/finish-plan.md`).
 
@@ -74,9 +74,10 @@ they unblock work in (`production/finish-plan.md`).
 - [ ] **Audio**: a CC0 library (e.g. Freesound's CC0 subset) or generated. The game has no sound at all.
 - [ ] **UI font** from Google Fonts (design/09 Q1).
 - [ ] **Git LFS** for the big binaries (the repo is 484 MB and every model re-export adds 10-13 MB).
-- [ ] **A Windows export**: OK to download Godot 4.7.2's export templates (official, from godotengine.org), add an
-      export preset, and put a built .exe on S:\Passage beside the project folder? (The game has never been exported.)
 
 ## Done
 
 (moved here with the date and where the ruling was recorded)
+
+- [x] **A Windows export** - yes (2026-11-08, "do all the work to make it safe"). Templates from the official
+      4.7.2 release (checksum matched); `build\EtherSyntax.exe` is on S:\Passage from v0.56.0-groundwork on.
