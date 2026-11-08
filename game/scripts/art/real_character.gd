@@ -68,6 +68,8 @@ var _strike_side := false
 var _was_attacking := false
 var _place := ""                           # set_stance: where the character is shown
 var _held_at_rest := ""                    # the stance whose rest grip holds the weapon now ("" = the usual grip)
+var _overlay_on := false                   # the glow pass is on the pieces (only while it shows something)
+var _stripped := false                     # strip_hidden(): the pieces never shown are gone
 
 
 ## True if a real model exists for this body ("body_male", ...).
@@ -153,7 +155,6 @@ func _build(packed: PackedScene) -> void:
 	_overlay.albedo_color = Color(0, 0, 0, 0)
 	for mesh_name: String in _mesh:
 		var mi: MeshInstance3D = _mesh[mesh_name]
-		mi.material_overlay = _overlay
 		if mesh_name == "body" or mesh_name == "stump_r":
 			mi.material_override = _skin
 		elif mesh_name == "eyes":
@@ -459,6 +460,28 @@ func _refresh() -> void:
 	if _dead:
 		c = Color(0, 0, 0, 0)
 	_overlay.albedo_color = c
+	_show_overlay(c.a > 0.0)
+
+
+## The glow is a second, additive pass over every piece; while there is no glow it is taken off, so
+## a body nobody is pointing at, hitting or winding up costs one pass, not two (perf, 2026-11-08).
+func _show_overlay(on: bool) -> void:
+	if on == _overlay_on:
+		return
+	_overlay_on = on
+	var with: Material = _overlay if on else null
+	var all: Array[MeshInstance3D] = []
+	for mi: MeshInstance3D in _mesh.values():
+		all.append(mi)
+	for p: Node3D in _props:
+		if is_instance_valid(p):
+			for part: Node in p.get_children():
+				if part is MeshInstance3D:
+					all.append(part)
+	for mi2: MeshInstance3D in all:
+		# someone else's overlay (a thrall's risen wash) stays: it replaced the glow before, too
+		if is_instance_valid(mi2) and (mi2.material_overlay == null or mi2.material_overlay == _overlay):
+			mi2.material_overlay = with
 
 
 ## "arm_right" off: the forearm and hand are gone (a bandaged stump shows), the weapon moves to
@@ -517,6 +540,24 @@ func _scale_under_model(n: Node3D) -> float:
 			s *= (p as Node3D).scale.x
 		p = p.get_parent()
 	return maxf(s, 0.0001)
+
+
+## For a body whose look is settled for good (an enemy, a townsperson): free the pieces it does not
+## show. The model carries every garment, hair style and beard (~114 meshes) and a dressed body shows
+## about a dozen; the rest still cost a node each that every move of the body was passed through
+## (perf, 2026-11-08). After this, set_outfit / apply_look can only show the pieces that are left.
+func strip_hidden() -> void:
+	if _stripped:
+		return
+	_stripped = true
+	for mesh_name: String in _mesh.keys():
+		var mi: MeshInstance3D = _mesh[mesh_name]
+		if mi.visible:
+			continue
+		_mesh.erase(mesh_name)
+		if mi.get_parent() != null:
+			mi.get_parent().remove_child(mi)
+		mi.queue_free()
 
 
 ## Triangles drawn now: the visible pieces of the body (index counts / 3), plus props and weapon.
@@ -625,7 +666,7 @@ func _add_prop(id: String) -> void:
 		else:
 			var key: String = "prop_%s_%d" % [id, root.get_child_count()]
 			mi.material_override = _material_for(key, {"material": pd.get("material", "wood"), "color": pd.get("color", [0.4, 0.3, 0.2])}, "")
-		mi.material_overlay = _overlay
+		mi.material_overlay = _overlay if _overlay_on else null
 		root.add_child(mi)
 	var place: Array = cfg.get("pos", [0, 0, 0])
 	var turn: Array = cfg.get("rot_deg", [0, 0, 0])
