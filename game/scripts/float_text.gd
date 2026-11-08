@@ -34,7 +34,8 @@ func _process(delta: float) -> void:
 	var pop: float = 1.0 + 0.3 * clampf(1.0 - age / POP_S, 0.0, 1.0)
 	scale = Vector3.ONE * pop
 	var a: float = clampf(life / (LIFETIME * 0.5), 0.0, 1.0)      # hold, then fade over the second half
-	modulate.a = a
-	outline_modulate.a = 0.9 * a
+	# faded as a whole (text and outline alike), not through modulate: a Label3D rebuilds its mesh
+	# whenever its colours change, and that every frame for every number was a real cost (perf, 2026-11-08)
+	transparency = 1.0 - a
 	if life <= 0.0:
 		queue_free()
