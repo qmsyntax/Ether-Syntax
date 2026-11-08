@@ -41,7 +41,7 @@ func setup(construct_tier: String, construct_concept: String, is_docile: bool) -
 	tier = construct_tier
 	concept = construct_concept
 	docile = is_docile
-	rng.randomize()
+	RngSeed.apply(rng, "nether_construct")
 	_cfg = GameData.balance["nether"]
 	var wild: Dictionary = GameData.wild_construct(tier)
 	body = Body.new(float(wild.get("hp", 90.0)))

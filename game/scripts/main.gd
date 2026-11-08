@@ -119,7 +119,10 @@ var _menu_return := false
 
 
 func _ready() -> void:
-	rng.randomize()
+	var run_args: PackedStringArray = OS.get_cmdline_user_args()
+	if run_args.has("--bot-dungeon") or run_args.has("--bot-full") or run_args.has("--bot-die"):
+		RngSeed.fix_from_args()         # the passage bots are tests: the same layout and rolls every run
+	RngSeed.apply(rng, "main")
 	if _under_test():
 		UserFiles.sandbox(TEST_SANDBOX)  # tests, shots and bots never read or write the player's own files
 	add_to_group("router")              # where there is no navigation mesh yet: the way through a doorway

@@ -14,6 +14,7 @@ const PlayerScript := preload("res://scripts/player.gd")
 
 
 func _ready() -> void:
+	RngSeed.fix_from_args()             # every random roll the same each run (-- --seed=<n> for another)
 	var errors: ErrorCatcher = ErrorCatcher.install()
 	(GameData.balance["art"] as Dictionary)["real_bodies"] = false
 	var rules: RingRules = Runes.active() as RingRules

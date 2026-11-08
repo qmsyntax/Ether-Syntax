@@ -31,7 +31,7 @@ func backdrop() -> float:
 
 func _init(game_node: Node) -> void:
 	super(game_node)
-	_rng.randomize()
+	RngSeed.apply(_rng, "creation")
 	var cfg: Dictionary = GameData.creation
 	rerolls_left = GameData.inum("primes", "rerolls")
 	spec = {"name": "", "identity": str((cfg["identities"][0] as Dictionary)["id"]), "look": CharacterLook.default_look(), "skills": []}

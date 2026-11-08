@@ -10,7 +10,8 @@ extends Node
 ## every click: the player must head for the clicked ground point (direction within ANGLE_TOL,
 ## distance shrinking); a click that takes a target must have had it under the cursor (or its
 ## footprint under the clicked point); and the drawn body (shoulders and hips of the skeleton) must
-## face the way it runs, averaged over the run.
+## face the way it runs (the median sample over the run). Every case starts from the same state: the
+## player put back and facing the same way, the field's camps asleep and lurkers buried (_reset).
 ## Regression test for (2026-10-24): a body straddling the camera's plane caught every click
 ## (Pick.standing_in_view); a click above the horizon went backwards (Pick.ground); a ground click
 ## in town was overridden by an earlier click on a townsperson (main._town_click).
@@ -22,6 +23,7 @@ extends Node
 const ANGLE_TOL := 35.0             # degrees between where it went and where it was sent
 const FACE_TOL := 40.0              # degrees between where the body faces and where it went
 const WATCH_S := 0.5                # how long a click is watched for
+const FREE_RUN_FRAC := 0.9          # facing is judged on frames running at least this share of walk_speed()
 const TIMEOUT_MS := 600000
 
 var main: Node
@@ -48,15 +50,20 @@ var _under := false                 # the thing hovered at the press really is u
 var _took: Node3D = null            # what the click took as its target (attack or pickup), if anything
 var _took_footprint := false        # ... and its footprint held the clicked ground point then
 var _strikable: Array = []          # what the click may rightly strike (under the cursor or the point)
-var _face_mid := -1.0               # degrees between the body's facing and its velocity, mid-run
-var _face_sum := Vector3.ZERO
-var _vel_sum := Vector3.ZERO
+var _face_mid := -1.0               # degrees between the body's facing and its velocity, mid-run (median)
+var _face_worst := -1.0             # ... the worst single sample
+var _face_samples: Array[float] = []
 var _plane_beast: Node3D = null
 var _target_after := ""
 var _target_before := ""
+var _press_physics := 0             # the physics frame count when the button went down
+var _hits_taken := 0                # blows that landed on the player while the case ran
+var _hp_healed := 0.0               # the bar as _keep_alive left it last frame
+var _field_touched := false         # the last case woke, moved or fought the field's beasts
 
 
 func _ready() -> void:
+	RngSeed.fix_from_args()             # every random roll the same each run (-- --seed=<n> for another)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_errors = ErrorCatcher.install()
 	_started_ms = Time.get_ticks_msec()
@@ -300,8 +307,10 @@ func _process(delta: float) -> void:
 			_target_after = "none"
 			_took = null
 			_face_mid = -1.0
-			_face_sum = Vector3.ZERO
-			_vel_sum = Vector3.ZERO
+			_face_worst = -1.0
+			_face_samples.clear()
+			_hits_taken = 0
+			_press_physics = Engine.get_physics_frames()
 			_button(at3, true)
 			_drag_k = 0
 			_t = 0.0
@@ -337,10 +346,21 @@ func _process(delta: float) -> void:
 			if _t < 0.15:
 				_note_took()
 			var vel: Vector3 = _flat(player.get("velocity"))
-			if _t > 0.15 and vel.length() > 1.0:
-				_face_sum += _body_facing()
-				_vel_sum += vel.normalized()
-				_face_mid = _deg(_face_sum, _vel_sum)
+			# facing is sampled only while running free (near full speed): sliding along something the body
+			# rightly faces where it was sent, not where the slide takes it, and the slow-down drops the loop
+			# from the sprint to the run - in the full sequence the arena case "z0.0 click (0.50,0.68)" slides
+			# along a prop, and its facing came out anywhere from 11 to 53 degrees, run to run
+			if _t > 0.15 and vel.length() >= FREE_RUN_FRAC * float(player.call("walk_speed")):
+				# the median sample, not the mean: a run of a couple of metres is over in ~0.35 s, and one
+				# brief pose pop (the run and the sprint cross-fading on a dip in speed swings the shoulders
+				# ~80 degrees for a few frames, 2026-11-08) in a dozen samples pulled the mean past FACE_TOL
+				# or not depending on frame timing - v0.53's "lurker z1.0 click (0.30,0.70)", 41 degrees.
+				# A body that faces the wrong way stays wrong for most of the run, which the median sees.
+				_face_samples.append(_deg(_body_facing(), vel))
+				var sorted: Array[float] = _face_samples.duplicate()
+				sorted.sort()
+				_face_mid = sorted[floori(sorted.size() / 2.0)]
+				_face_worst = sorted[sorted.size() - 1]
 			if _t < float(c.get("watch", WATCH_S)):
 				return
 			_judge(c)
@@ -348,8 +368,12 @@ func _process(delta: float) -> void:
 
 
 ## The first thing the click takes as its target (a bush cut in one blow is gone by the next frame).
+## Only once a physics step has run since the press: the player reads the click in its physics step,
+## and until then attack_target still holds what an earlier click took (v0.54's "field z0.0 re-click
+## opposite" failure: read in the same rendered frame as the press, the first click's bush was taken
+## for the second click's target).
 func _note_took() -> void:
-	if _took != null:
+	if _took != null or Engine.get_physics_frames() <= _press_physics:
 		return
 	for key: String in ["attack_target", "pickup_target"]:
 		var v: Variant = player.get(key)
@@ -403,15 +427,24 @@ func _go(place: String) -> void:
 			main.call("enter_arena")
 
 
-## Nothing in the field should end a case early: no wounds that matter, no stagger, no death.
+## Nothing in the field should end a case early: no wounds that matter, no stagger, no death. A blow
+## taken since the last frame (the bar lower than it was healed to) is counted for the case's report.
 func _keep_alive() -> void:
 	if str(main.get("state")) == "arena_rest":
 		main.set("rest_timer", 999.0)          # no wave: the arena cases are about the ground
-	var body: Variant = player.get("body")
+	var body: Body = player.get("body")
 	if body != null:
-		(body as Object).call("heal", 1000.0)
+		if body.hp < _hp_healed - 0.01:
+			_hits_taken += 1
+		body.heal(1000.0)
+		_hp_healed = body.hp
 
 
+## Every case starts from the same state, whatever the case before it did. Before 2026-11-08 only
+## the player's place and the beasts' positions were put back: a camp woken by "camp-awake" was still
+## awake in the "camp-asleep" case after it, and a Sod-Lurker raised by one case was up and swinging
+## at the player through the next ones - a blow landing mid-run threw the body's facing off (v0.53's
+## "lurker z1.0 click (0.30,0.70)", 41 degrees), or not, depending on where its swing timer stood.
 func _reset(c: Dictionary) -> void:
 	_button(Vector2.ZERO, false)
 	player.global_position = _base.get(_place, player.global_position)
@@ -421,15 +454,25 @@ func _reset(c: Dictionary) -> void:
 	player.set("velocity", Vector3.ZERO)
 	player.set("_stagger_t", 0.0)
 	player.set("_shoved_left", 0.0)
+	player.set("_strike_credit", 0)
+	player.set("_buffered_slot", -1)
+	player.set("_face_hold_t", 0.0)
+	player.set("_recover_t", 0.0)
+	player.set("_melee_cd", 0.0)
+	player.call("cancel_walk_cast")
+	# the same facing every case, body and all, so no case inherits a half-finished turn
+	player.set("_facing", Vector3.FORWARD)
+	player.set("_snap_body", true)
 	main.set("_walk_to", null)
 	main.set("_cam_zoom_target", float(c["zoom"]))
 	main.set("cam_zoom", float(c["zoom"]))
-	# beasts woken by an earlier case go back to where they were
+	# the field as it was built: camps asleep (the herd calm), lurkers buried, no fight going on
 	var camps: FieldCamps = _camps()
-	if camps != null and _place == "field":
-		for e: Node in camps.all_living():
-			(e as Node3D).global_position = (e as Node3D).get_meta("probe_home", (e as Node3D).global_position)
-			(e as Node3D).set_meta("probe_home", (e as Node3D).global_position)
+	if camps != null and _place == "field" and (_field_touched or not camps.at_rest()):
+		camps.reset_all()
+		if _verbose:
+			print("MOVE: (the field's camps and lurkers put back before %s)" % str(c["name"]))
+	_field_touched = false
 
 
 func _setup(c: Dictionary) -> void:
@@ -437,6 +480,8 @@ func _setup(c: Dictionary) -> void:
 	if camps == null and _place == "field":
 		_failures.append("%s: no camps in the field" % str(c["name"]))
 		return
+	if str(c.get("setup", "")) in ["camp_awake", "camp_asleep", "herd", "beast_behind", "beast_at_camera", "lurker"]:
+		_field_touched = true                   # beasts moved or woken: put back before the next case
 	match str(c.get("setup", "")):
 		"camp_awake", "camp_asleep", "herd":
 			var id: String = "the_herd" if str(c["setup"]) == "herd" else "tip_pickers"
@@ -548,8 +593,8 @@ func _judge(c: Dictionary) -> void:
 	var face: float = _face_mid
 	var at: Vector2 = _px(c["at"])
 	var target: Variant = player.get("attack_target")
-	var detail := "moved %.2f m at %.0f deg off the click, %.2f -> %.2f m from it, body faces %.0f deg off, goal %s, target %s, ray.y %.3f, cursor %s; at the press hovered %s, target %s; after the click target %s" % [
-		moved.length(), turn, before, after, face,
+	var detail := "moved %.2f m at %.0f deg off the click, %.2f -> %.2f m from it, body faces %.0f deg off (median of %d samples, worst %.0f), hurt %d times, goal %s, target %s, ray.y %.3f, cursor %s; at the press hovered %s, target %s; after the click target %s" % [
+		moved.length(), turn, before, after, face, _face_samples.size(), _face_worst, _hits_taken,
 		str(player.get("move_goal")) if bool(player.get("has_move_goal")) else "none",
 		_describe(target),
 		cam.project_ray_normal(at).y, str(at), _hover_at_press, _target_before, _target_after]

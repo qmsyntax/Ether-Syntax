@@ -22,6 +22,7 @@ var _real_before: Dictionary = {}
 
 
 func _ready() -> void:
+	RngSeed.fix_from_args()             # every random roll the same each run (-- --seed=<n> for another)
 	_errors = ErrorCatcher.install()
 	# never the player's files: note them as they are, then point everything at the sandbox
 	_real_before = UserFiles.real_snapshot()
@@ -1531,6 +1532,36 @@ func _test_combat_rules() -> void:
 	_check("a skill sheds none", _near(float(p.call("reflux_of", "water")), shed_1))
 	d.queue_free()
 	await get_tree().process_frame
+
+	# ---------- exact steps (build-plan Phase 0): a body stepped by hand moves velocity x the step it is
+	# given. move_and_slide() alone uses the last frame's delta outside a physics frame (as here, after
+	# process_frame), so the brutes below walked a different distance each run and the slam checks flaked.
+	var slid_body := CharacterBody3D.new()
+	var slid_col := CollisionShape3D.new()
+	slid_col.shape = CapsuleShape3D.new()
+	slid_body.add_child(slid_col)
+	slid_body.position = p.global_position + Vector3(0, 1.0, 8.0)
+	add_child(slid_body)
+	slid_body.velocity = Vector3(3.0, 0, 0)
+	var slid_from: Vector3 = slid_body.global_position
+	for k: int in 30:
+		ExactSlide.slide(slid_body, 1.0 / 60.0)
+	_check("a body stepped by hand outside a physics frame moves velocity x the step it was given (ExactSlide)",
+		not Engine.is_in_physics_frame() and _near(slid_body.global_position.distance_to(slid_from), 1.5, 0.005) and _near(slid_body.velocity.length(), 3.0),
+		"moved %.4f m, velocity %s" % [slid_body.global_position.distance_to(slid_from), str(slid_body.velocity)])
+	slid_body.queue_free()
+	var sliders: Array[String] = []
+	var code_dirs: Array[String] = ["res://scripts"]
+	while not code_dirs.is_empty():
+		var cd: String = code_dirs.pop_back()
+		for sub: String in DirAccess.get_directories_at(cd):
+			code_dirs.append(cd.path_join(sub))
+		for f: String in DirAccess.get_files_at(cd):
+			if f.ends_with(".gd") and f != "exact_slide.gd":
+				for line: String in FileAccess.get_file_as_string(cd.path_join(f)).split("\n"):
+					if line.contains("move_and_slide()") and not line.strip_edges().begins_with("#"):
+						sliders.append(f)
+	_check("no game script calls move_and_slide() itself: bodies move through ExactSlide.slide(self, delta)", sliders.is_empty(), str(sliders))
 
 	# ---------- interrupts
 	var slam := _fighter(p, Vector3(0, 0, -2.5), "brute")

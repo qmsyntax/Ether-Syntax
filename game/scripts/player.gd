@@ -312,7 +312,7 @@ func _init() -> void:
 	_natural = GameData.balance["natural_healing"]
 	body = Body.new(float(_p["health"]))
 	body.min_max_frac = 1.0 - float(GameData.balance["wounds"]["max_cut_frac"])
-	rng.randomize()
+	RngSeed.apply(rng, "player")
 	star_pct = [GameData.num("stars", "first_star_start_pct")]
 	_recompute_essence_max()
 	essence = essence_max
@@ -781,7 +781,7 @@ func _physics_process(delta: float) -> void:
 			_end_dash()
 			_dash_pass = {}
 	else:
-		move_and_slide()
+		ExactSlide.slide(self, delta)
 
 	_tick_slipstream(delta)
 	_hold_facing(delta)

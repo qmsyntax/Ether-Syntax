@@ -70,6 +70,7 @@ var _totals := {"inputs": 0, "dropped": 0, "delay_sum": 0.0, "delayed": 0, "skat
 
 
 func _ready() -> void:
+	RngSeed.fix_from_args()             # every random roll the same each run (-- --seed=<n> for another)
 	errors = ErrorCatcher.install()
 	for a: String in OS.get_cmdline_user_args():
 		if a.begins_with("--only="):
