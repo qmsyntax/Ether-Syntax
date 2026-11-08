@@ -50,8 +50,14 @@ phases below run to A, then B.
 ## The plan
 
 ### Phase 0 - Safe to build on (M) - starts now, needs nothing from you except the export yes
-- Save safety: write to a temp file, then rename, keeping a backup; a real schema version with migrations; hardcore
-  death clears every slot.
+- [x] Save safety: write to a temp file, then rename, keeping a backup; a real schema version with migrations; hardcore
+  death clears every slot. Done 2026-11-08 (CLAUDE.md "Saves"): `UserFiles` writes every user:// file (.new -> .bak ->
+  rename, .prev per run) and reads the newest good copy; `SaveGame.SCHEMA` 2 with migrations, a newer save refused and
+  never written over; each save stamped with `build` and `char_id`; a hardcore death removes every copy of that
+  character; the autosave keeps a different character it would overwrite. Also ticked here: [x] the self-test (and
+  every test, shot and bot) no longer touches the player's key bindings, settings or saves - sandboxed, and checked
+  byte-identical; [x] the version stamp in saves (`build`); [x] a save survives a kill mid-write (simulated in the
+  self-test, real in `tools/test/save_kill.sh`).
 - [x] Move the test suite into the repo (`tools/test/run_all.sh`: headless + windowed, one Godot at a time) - done
   2026-11-08, with the lock wrapper `tools/test/godot.sh`; see CLAUDE.md "Tests - one command".
 - [x] Fix the move probe's flake at its cause - done 2026-11-08, in the probe: state leaked between cases (a camp
@@ -61,9 +67,15 @@ phases below run to A, then B.
   hand now move the exact step, `ExactSlide`), and every test's random rolls are seeded (`RngSeed`). Found, not
   fixed (game, art pipeline): when the sprint and the run cross-fade on a dip in speed, the body's shoulders and
   hips swing ~80 degrees for a few frames.
-- [ ] The self-test must back up and restore the player's key bindings.
-- Pin the physics engine; a version stamp in the game and in saves.
-- **A Windows export**: a preset, the export templates (a download - your yes), and an .exe on S:\Passage from then on.
+- [x] Pin the physics engine; a version stamp in the game and in saves. *(2026-11-08: pinned to GodotPhysics3D, what
+  the game already ran - evidence in `.claude/docs/technical-preferences.md`; `application/config/version` stamped
+  "X.Y.Z+sha" by `tools/release/stamp_version.sh`, read through `BuildInfo`, shown on the title and in the game menu.
+  Writing it into saves is the save-safety item above.)*
+- [x] **A Windows export**: a preset, the export templates (a download - your yes), and an .exe on S:\Passage from then on.
+  *(2026-11-08: `game/export_presets.cfg` (Windows x86_64, PCK embedded, `tests/` left out), the official 4.7.2
+  templates installed (SHA512 checked against the release's sums), `tools/release/export_windows.sh` ->
+  `build/windows/EtherSyntax.exe`, run and checked; `tools/release/mirror_passage.ps1` puts it in S:\Passage\build\
+  at the next release's mirror.)*
 - Performance: measure a full wall of real enemies, the Stubble and the town crowd. Then pool enemies, strip hidden
   pieces, share materials, add visibility ranges and a shader warm-up. Target: 60 fps on your machine with headroom.
 - Done when: one command runs every test, a full-wall fps number is on record and meets budget, a save survives a kill

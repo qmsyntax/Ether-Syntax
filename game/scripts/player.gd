@@ -23,6 +23,9 @@ var body: Body
 var talent_id := ""
 ## Who this is (character creation). `look` is a CharacterLook dictionary of option ids.
 var char_name := ""
+## Which character this is, across all its saves (SaveGame.new_char_id; given on its first save).
+## A hardcore death removes every save carrying it (SaveGame.clear_character).
+var char_id := ""
 var identity := ""
 var look: Dictionary = {}
 var _wound_seq := 0
@@ -5830,7 +5833,7 @@ func make_test_character(aff: String) -> void:
 
 func to_save() -> Dictionary:
 	return {
-		"test_character": test_character,
+		"test_character": test_character, "char_id": char_id,
 		"name": char_name, "identity": identity, "look": look.duplicate(), "affinities": affinities.duplicate(),
 		"tempering": tempering.duplicate(true),
 		"talent_id": talent_id, "stars": stars, "star_pct": star_pct.duplicate(), "money": money,
@@ -5851,6 +5854,7 @@ func to_save() -> Dictionary:
 func from_save(d: Dictionary) -> void:
 	set_talent(str(d.get("talent_id", "")))
 	test_character = bool(d.get("test_character", false))
+	char_id = str(d.get("char_id", ""))
 	char_name = str(d.get("name", ""))
 	identity = str(d.get("identity", ""))
 	# a save keeps the affinities it was made with; saves from before affinities were all water

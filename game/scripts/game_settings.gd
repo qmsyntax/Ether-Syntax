@@ -15,9 +15,14 @@ static var _cfg: ConfigFile
 
 static func _file() -> ConfigFile:
 	if _cfg == null:
-		_cfg = ConfigFile.new()
-		_cfg.load(path)                 # a missing file is simply empty
+		# a missing file is simply empty; a damaged one falls back to its backup (UserFiles)
+		_cfg = UserFiles.read_cfg(path)["cfg"]
 	return _cfg
+
+
+## Written through UserFiles: a new copy, the old one kept as the backup, then a rename.
+static func _save() -> void:
+	UserFiles.write_cfg(path, _file())
 
 
 ## Point at another file (tests) and forget what was read from the old one.
@@ -32,7 +37,7 @@ static func fullscreen() -> bool:
 
 static func set_fullscreen(on: bool) -> void:
 	_file().set_value("display", "fullscreen", on)
-	_file().save(path)
+	_save()
 	apply_window()
 
 
@@ -43,13 +48,13 @@ static func zoom_start() -> float:
 
 static func set_zoom_start(z: float) -> void:
 	_file().set_value("camera", "zoom_start", clampf(z, 0.0, 1.0))
-	_file().save(path)
+	_save()
 
 
 static func reset_zoom_start() -> void:
 	if _file().has_section_key("camera", "zoom_start"):
 		_file().erase_section_key("camera", "zoom_start")
-		_file().save(path)
+		_save()
 
 
 ## Put the window in the saved mode. Nothing to do without a window (headless runs).

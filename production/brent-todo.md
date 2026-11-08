@@ -6,7 +6,7 @@ they unblock work in (`production/finish-plan.md`).
 
 ## 1. Play (nothing since v0.52 has had hands on it)
 
-- [ ] **The fun gate** - a session or two on the current build: create a character, the trainer, the Stubble, the
+- [ ] **The fun gate** (in progress: Brent is playing the S:\Passage build, 2026-11-08) - a session or two on the current build: create a character, the trainer, the Stubble, the
       assault passage, the arena, a death and the corpse run, a level lock. Then a verdict: keep going as is / change
       direction / stop. Everything in the plan assumes "keep going".
 - [ ] **Sidestep (v0.54)**: Space. Does the 0.32 s roll look smooth or frantic? Is 38 of 100 endurance a step right
@@ -47,6 +47,12 @@ they unblock work in (`production/finish-plan.md`).
 - [ ] Six of the old talents' wording.
 - [ ] Clicks above the horizon (today: "that way").
 - [ ] Test characters in save slots; the innkeeper's confirm; saving in the field (town only today).
+- [ ] **Saves (v0.56)**: starting a new character or loading another slot used to overwrite the autosave silently.
+      Now the old character is kept in the first empty slot (or a `displaced` folder if all are full), with a note.
+      Keep that, or go back to overwriting?
+- [ ] **Saves inside a passage**: reading a rune stone, settling an ascension, the ethercosm and equipping still save
+      wherever you are, which breaks "nothing is saved inside a passage". On load you are put in town, and no
+      character is lost. Should those saves wait until you are back in town?
 
 **Design questions never ruled on** (each has a recommendation; "go with your recommendations" settles a list)
 - [ ] `design/10-item-catalogue-v0.md` section 16 (14 questions: bands at +5%, money x4 a star, the Loud rule, weight

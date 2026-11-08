@@ -9,7 +9,7 @@ extends Node
 ## saved) with every ice skill; Settings -> a nearer starting zoom -> Controls -> Esc -> Esc;
 ## the test character saved to slot 2 in town; the field (Save disabled) and the Netherecho; Load
 ## slot 1 from the field brings the real character back; Esc closes an open screen before the menu
-## opens; Resume. Saves go to user://probe_saves/ and settings to user://probe_settings.cfg, never
+## opens; Resume. Saves, settings and key bindings go to user://probe_saves/ (UserFiles.sandbox), never
 ## the real ones. Prints "GAMEMENU: PASS" / "GAMEMENU: FAIL" and exits 0/1.
 
 const SAVE_DIR := "user://probe_saves/"
@@ -32,12 +32,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_errors = ErrorCatcher.install()
 	_started_ms = Time.get_ticks_msec()
-	SaveGame.test_dir = SAVE_DIR
-	for slot: int in SaveGame.SLOTS + 1:
-		SaveGame.delete(SaveGame.slot_path(slot))
-	GameSettings.use_path("user://probe_settings.cfg")
-	if FileAccess.file_exists(GameSettings.path):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(GameSettings.path))
+	UserFiles.sandbox(SAVE_DIR)        # saves, settings and key bindings in a folder of its own, emptied
 	_adopt((load("res://scenes/main.tscn") as PackedScene).instantiate())
 	main.set("_test_mode", true)
 	main.process_mode = Node.PROCESS_MODE_PAUSABLE      # as in the game: the menu's pause stops it
