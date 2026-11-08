@@ -58,6 +58,49 @@ static func normalize_look(look: Dictionary) -> Dictionary:
 ## An enemy model for a kind in data/enemies.json ("grunt", "brute", "commander"). Radius,
 ## height and base colour come from that file. Unknown kinds get a plain figure.
 static func enemy(kind: String) -> ModelRig:
+	var ready: Array = _prebuilt.get(kind, [])
+	if not ready.is_empty():
+		return ready.pop_back()                   # built ahead (prebuild)
+	return _build_enemy_model(kind)
+
+
+## Real enemy bodies built ahead of need (main.gd's _prebuild_bodies; perf, 2026-11-08): kind ->
+## Array[ModelRig], none of them in the tree. enemy() hands them out.
+static var _prebuilt: Dictionary = {}
+
+
+## True when `kind` is drawn with a real body (the only kind worth building ahead).
+static func is_real_enemy(kind: String) -> bool:
+	if str(GameData.enemy(kind).get("creature", "")) != "":
+		return false
+	var look: Dictionary = GameData.enemy_looks.get(kind, {})
+	var real: bool = bool((GameData.balance.get("art", {}) as Dictionary).get("real_bodies", false)) or OS.get_cmdline_user_args().has("--real-body")
+	return real and not look.is_empty() and RealCharacter.exists("body_" + str(look.get("body", "male")))
+
+
+## Build one body of `kind` now and keep it for the next enemy() of that kind.
+static func prebuild(kind: String) -> void:
+	if not is_real_enemy(kind):
+		return
+	if not _prebuilt.has(kind):
+		_prebuilt[kind] = []
+	(_prebuilt[kind] as Array).append(_build_enemy_model(kind))
+
+
+static func prebuilt_count(kind: String) -> int:
+	return (_prebuilt.get(kind, []) as Array).size()
+
+
+## Free every body built ahead and never used (they are in no tree, so nothing else would).
+static func free_prebuilt() -> void:
+	for kind: Variant in _prebuilt:
+		for r: Variant in _prebuilt[kind]:
+			if is_instance_valid(r) and (r as Node).get_parent() == null:
+				(r as Node).free()
+	_prebuilt.clear()
+
+
+static func _build_enemy_model(kind: String) -> ModelRig:
 	if str(GameData.enemy(kind).get("creature", "")) != "":
 		return CreatureModels.make(kind)          # an unstarred beast: a procedural stand-in (creature_models.gd)
 	var look: Dictionary = GameData.enemy_looks.get(kind, {})
@@ -65,6 +108,7 @@ static func enemy(kind: String) -> ModelRig:
 	if real and not look.is_empty() and RealCharacter.exists("body_" + str(look.get("body", "male"))):
 		var rc: RealCharacter = RealCharacter.create("body_" + str(look.get("body", "male")))
 		rc.make_enemy(look, GameData.enemies.get(kind, {}))
+		rc.strip_hidden()                         # an enemy's costume never changes
 		return rc
 	return _stamp("enemy:" + kind, _build_enemy.bind(kind))
 

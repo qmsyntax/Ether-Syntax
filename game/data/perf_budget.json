@@ -1,0 +1,12 @@
+{
+  "_note": "Performance budgets (finish plan Phase 0; .claude/docs/technical-preferences.md, Brent 2026-09-18). Read only by res://tests/perf_probe.tscn, which prints PERF: PASS / FAIL against them. fps_avg_min / fps_low1_min: the average frame rate and the 1% low (the mean of the slowest 1% of frames, as a rate) while a scene is measured, vsync off. frame_ms: the frame budget the averages are judged by. draw_calls_max: the most draw calls in any measured frame (shadow passes included). memory_mb_max: the process's working set at the end. hitch_ms: a frame slower than this is a hitch; hitches_max is how many the measured stretch may have, startup_hitches_max how many the first seconds of the scene may have (after its build frame - startup_skip_frames - which is loading, not play).",
+  "fps_avg_min": 60.0,
+  "fps_low1_min": 60.0,
+  "frame_ms": 16.6,
+  "draw_calls_max": 2000,
+  "memory_mb_max": 2048,
+  "hitch_ms": 33.3,
+  "hitches_max": 0,
+  "startup_hitches_max": 0,
+  "startup_skip_frames": 3
+}

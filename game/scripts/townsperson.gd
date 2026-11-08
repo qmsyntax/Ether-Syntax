@@ -45,6 +45,8 @@ func setup(def: Dictionary, rng: RandomNumberGenerator) -> void:
 					worn[slot] = str(id)
 					break
 		_rig.call("set_outfit", worn)
+	if _rig.has_method("strip_hidden"):
+		_rig.call("strip_hidden")                  # dressed once, for good
 	height = maxf(1.4, float(_rig.height))
 
 	var col := CollisionShape3D.new()

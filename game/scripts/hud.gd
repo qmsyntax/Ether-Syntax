@@ -281,12 +281,29 @@ func _keyed(text: String) -> String:
 	return text.replace("  %s to" % k, "  [%s] to" % k)
 
 
+## A slot's skill as Player.ability_stats has it, worked out again only when something it reads changed:
+## the skill's state (stage, word, ascension), the affinities, worn gear's cost (perf, 2026-11-08 - every
+## slot every frame was a deep copy of the skill's data, and with a sealed word a run of the rune engine).
+var _slot_cache: Dictionary = {}           # slot index -> [key, stats]
+
+
+func _slot_stats(i: int, st: Dictionary) -> Dictionary:
+	var inv: Variant = player.get("inventory")
+	var key: int = hash([st, player.get("affinities"), inv.call("stat", "cost_mult", true) if inv != null else 1.0])
+	var hit: Variant = _slot_cache.get(i)
+	if hit is Array and int((hit as Array)[0]) == key:
+		return (hit as Array)[1]
+	var ab: Dictionary = player.call("ability_stats", st)
+	_slot_cache[i] = [key, ab]
+	return ab
+
+
 func _draw_slot(r: Rect2, i: int, idx: int, abilities: Array, essence: float, recovering: float) -> void:
 	UiDraw.frame(self, r, "slot")
 	var border := Color(0, 0, 0, 0)
 	if idx >= 0 and idx < abilities.size():
 		var st: Dictionary = abilities[idx]
-		var ab: Dictionary = player.call("ability_stats", st)
+		var ab: Dictionary = _slot_stats(i, st)
 		var cost: float = float(ab.get("cost", 0.0))
 		var aff: String = str(ab.get("affinity", ""))
 		var locked: bool = bool(player.call("is_locked", aff))

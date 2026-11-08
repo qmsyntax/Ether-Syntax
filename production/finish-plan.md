@@ -78,8 +78,14 @@ phases below run to A, then B.
   at the next release's mirror.)*
 - Performance: measure a full wall of real enemies, the Stubble and the town crowd. Then pool enemies, strip hidden
   pieces, share materials, add visibility ranges and a shader warm-up. Target: 60 fps on your machine with headroom.
-- Done when: one command runs every test, a full-wall fps number is on record and meets budget, a save survives a kill
-  mid-write, and S:\Passage has a working .exe.
+  **Done 2026-11-08** (`docs/perf/baseline-2026-11-08.md`): the probe `game/tests/perf_probe.tscn` (wall, Stubble,
+  town, Netherecho, a skill storm; budgets in `game/data/perf_budget.json`) measured on your machine, then: enemy
+  kinds loaded with the level and the next wall built ahead (the wall's 391 ms spawn frame -> 13 ms), one glow pass
+  instead of two, unseen pieces dropped, cheap combat numbers, the effects' shaders held from boot, the HUD's skill
+  numbers cached. Visibility ranges / LOD were not needed at this machine's numbers (see the doc's "Not done").
+- Done when: one command runs every test, a full-wall fps number is on record and meets budget (**on record and met,
+  2026-11-08**: wall 10 at ~360 fps average, 1% low ~230, no hitch), a save survives a kill mid-write, and S:\Passage
+  has a working .exe.
 
 ### Phase 1 - The fun gate (you; runs alongside Phase 0)
 - You play a session or two using the checklist in the to-do. Claude writes up a playtest report from your notes (or
@@ -168,5 +174,7 @@ then:    Phase 6 (stars 3-4, regions 2-3) -> Phase 7 (ship-ready) = first act (B
 - **Depth before breadth again.** New rune or skill rulings are welcome, but each one is weighed against the slice.
 - **Asset sources**: creatures, audio and the modern town each need a source you approve. Creatures come first.
 - **Canon runs out** near 6 stars. Target B stays inside what the books cover; C does not.
-- **Performance** of real bodies at crowd sizes is unmeasured.
+- **Performance** of real bodies at crowd sizes: measured 2026-11-08 on your machine (`docs/perf/`), in budget with
+  wide headroom; a weaker machine is unmeasured (Phase 7's minimum-spec pass), and character textures are imported
+  uncompressed (VRAM compression is the first lever there).
 - **Repo size** (484 MB) grows with every art pass; Git LFS is worth deciding before Phase 4.
