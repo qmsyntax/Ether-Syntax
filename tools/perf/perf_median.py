@@ -10,7 +10,7 @@ import statistics
 import sys
 
 COLS = ["fps_avg", "fps_low1", "ms_avg", "ms_max", "cpu_render_ms", "gpu_ms", "process_ms", "physics_ms",
-        "draw_calls", "draw_calls_max", "objects", "primitives", "ws_mb", "hitches", "startup_hitches", "startup_max_ms", "spawn_ms"]
+        "draw_calls", "draw_calls_max", "objects", "primitives", "ws_mb", "hitches", "startup_hitches", "startup_max_ms", "spawn_ms", "setup_ms"]
 
 
 def main() -> None:

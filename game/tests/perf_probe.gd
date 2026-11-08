@@ -68,6 +68,7 @@ var _cast_i := 0
 var _skill_index: Array[int] = []
 var _wake_frame := -1                      # wall / skills: the warm-up frame the wall woke in
 var _spawn_ms := 0.0
+var _setup_ms := 0.0                       # building the scene (the level load, a loading moment)
 var _tail: Tail
 var proc_start_us := 0
 var phys_start_us := 0
@@ -169,10 +170,16 @@ func _process(delta: float) -> void:
 		"boot":
 			_boot_frames += 1
 			if _boot_frames >= 3:
+				var s0: int = Time.get_ticks_usec()
 				_setup()
+				_setup_ms = float(Time.get_ticks_usec() - s0) / 1000.0
 				_phase = "warm"
 				_t = 0.0
 		"warm":
+			if trace_ms > 0.0 and frame_ms > trace_ms:
+				print("PERF trace warm t=%.2f frame_ms=%.1f process_ms=%.1f physics_ms=%.1f nodes=%d last=%s" % [_t, frame_ms,
+					_tail.last_proc_ms, _tail.phys_ms_frame, int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)), _last_event])
+			_tail.phys_ms_frame = 0.0
 			_drive(delta)
 			_startup_ms.append(frame_ms)
 			if _wake_frame >= 0 and _startup_ms.size() - 1 >= _wake_frame and _startup_ms.size() - 1 <= _wake_frame + 1:
@@ -411,7 +418,7 @@ func _finish() -> void:
 		"nav_ms": _nav / s, "draw_calls": _draws / s, "draw_calls_max": _draws_max, "objects": _objects / s, "primitives": _prims / s,
 		"nodes": int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)), "mem_static_mb": Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0,
 		"vmem_mb": Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0, "ws_mb": ws, "hitches": hitches,
-		"startup_hitches": startup_hitches, "startup_max_ms": startup_max, "spawn_ms": _spawn_ms, "actors": _actors, "errors": errors.count(),
+		"startup_hitches": startup_hitches, "startup_max_ms": startup_max, "spawn_ms": _spawn_ms, "setup_ms": _setup_ms, "actors": _actors, "errors": errors.count(),
 	}
 	var parts: Array[String] = []
 	for k: String in r:
