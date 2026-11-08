@@ -62,7 +62,7 @@ phases below run to A, then B.
   2026-11-08, with the lock wrapper `tools/test/godot.sh`; see CLAUDE.md "Tests - one command".
 - [x] Fix the move probe's flake at its cause - done 2026-11-08, in the probe: state leaked between cases (a camp
   woken by one case was still awake in the next "asleep" one; the body kept the last case's facing), a click's
-  target was read before the click was handled, and the facing check averaged a short run's samples, so a brief
+  target was read before the click was handled, and the facing check averaged a short run's samples (and sliding ones), so a brief
   pose pop (below) swung it past the limit or not with frame timing. The brute-slam flake too (bodies stepped by
   hand now move the exact step, `ExactSlide`), and every test's random rolls are seeded (`RngSeed`). Found, not
   fixed (game, art pipeline): when the sprint and the run cross-fade on a dip in speed, the body's shoulders and

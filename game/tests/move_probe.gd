@@ -23,6 +23,7 @@ extends Node
 const ANGLE_TOL := 35.0             # degrees between where it went and where it was sent
 const FACE_TOL := 40.0              # degrees between where the body faces and where it went
 const WATCH_S := 0.5                # how long a click is watched for
+const FREE_RUN_FRAC := 0.9          # facing is judged on frames running at least this share of walk_speed()
 const TIMEOUT_MS := 600000
 
 var main: Node
@@ -345,7 +346,11 @@ func _process(delta: float) -> void:
 			if _t < 0.15:
 				_note_took()
 			var vel: Vector3 = _flat(player.get("velocity"))
-			if _t > 0.15 and vel.length() > 1.0:
+			# facing is sampled only while running free (near full speed): sliding along something the body
+			# rightly faces where it was sent, not where the slide takes it, and the slow-down drops the loop
+			# from the sprint to the run - in the full sequence the arena case "z0.0 click (0.50,0.68)" slides
+			# along a prop, and its facing came out anywhere from 11 to 53 degrees, run to run
+			if _t > 0.15 and vel.length() >= FREE_RUN_FRAC * float(player.call("walk_speed")):
 				# the median sample, not the mean: a run of a couple of metres is over in ~0.35 s, and one
 				# brief pose pop (the run and the sprint cross-fading on a dip in speed swings the shoulders
 				# ~80 degrees for a few frames, 2026-11-08) in a dozen samples pulled the mean past FACE_TOL
