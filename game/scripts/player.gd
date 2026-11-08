@@ -24,6 +24,7 @@ const ISO_YAW := deg_to_rad(45.0)
 ## logic and its private state, with a typed back-reference to this node; shared and saved state stays
 ## here, and the forwarders at the end of this file keep every outside caller unchanged.
 var save_part: PlayerSave
+var bot_part: PlayerBot
 
 var body: Body
 var talent_id := ""
@@ -129,7 +130,6 @@ var bot := false
 var bot_goal := Vector3.ZERO
 var bot_damage_mult := 25.0
 var _bot_dir := Vector3.ZERO
-var _bot_path := NavPath.new()
 
 # Hidden from the player on purpose: the notebook only ever gives a vague read.
 var _latent_aura := 0.0
@@ -312,6 +312,7 @@ var melee_arc := deg_to_rad(75.0)
 
 func _init() -> void:
 	save_part = PlayerSave.new(self)
+	bot_part = PlayerBot.new(self)
 	_p = GameData.balance["player"]
 	_arm = GameData.balance["arm"]
 	_reflux_cfg = GameData.balance["reflux"]
@@ -638,7 +639,7 @@ func _physics_process(delta: float) -> void:
 		_update_model(delta)
 		return
 	if bot:
-		_bot_think(delta)
+		bot_part._bot_think(delta)
 	else:
 		_update_aim()
 	if _windup_t > 0.0:
@@ -680,7 +681,7 @@ func _physics_process(delta: float) -> void:
 
 	# Diablo-style: click something to walk to it and hit it; click ground to walk there.
 	if bot:
-		attack_target = _nearest_enemy()
+		attack_target = bot_part._nearest_enemy()
 		_strike_once = false
 	else:
 		_update_hover()
@@ -2766,7 +2767,7 @@ func _overcharge_target(reach: float) -> Node3D:
 		var under: Node3D = hovered
 		if under != null:
 			candidates.append(under)
-	var near: Node3D = _nearest_enemy()
+	var near: Node3D = bot_part._nearest_enemy()
 	if near != null:
 		candidates.append(near)
 	for t: Node3D in candidates:
@@ -4092,7 +4093,7 @@ func _skill_target(reach: float) -> Node3D:
 func _skill_candidate() -> Node3D:
 	if _forced_target != null and is_instance_valid(_forced_target) and not bool(_forced_target.call("is_dead")):
 		return _forced_target                    # a walked-in cast lands on the foe it walked to
-	for c: Variant in [hovered, attack_target, _nearest_enemy()]:
+	for c: Variant in [hovered, attack_target, bot_part._nearest_enemy()]:
 		if c != null and is_instance_valid(c) and (c as Node).is_in_group("enemies") and not bool((c as Node).call("is_dead")):
 			return c
 	return null
@@ -5790,53 +5791,6 @@ func take_pickup(drop: Node3D) -> bool:
 	return true
 
 
-## A test character (title screen "Test characters"): this one affinity, and every skill of it
-## learned in tree order (any not on the tree after), each at balance.skills.test_stage (0: Brent
-## 2026-10-23 - a test character walks through every level lock in order, vestige to asura, on the
-## seal screen like anyone else) with its bar full. TEST OVERRIDES: the stage cap is stars + 1, so it
-## is given balance.skills.test_stars full stars (4: the asura lock is reachable) - a full tank; it
-## carries test_constructs_each of every construct; and after each bind that takes, its bar is filled
-## again (test_refill_after_bind, in _bind_seal). The first six skills are on the bar; the
-## hotbar_page key shows the next six.
-func make_test_character(aff: String) -> void:
-	set_affinities([aff])
-	test_character = true
-	hotbar_page = 0
-	var n: int = GameData.inum("skills", "test_stars")
-	stars = n
-	star_pct.clear()
-	for i: int in n:
-		star_pct.append(GameData.num("stars", "max_pct"))
-	_recompute_essence_max()
-	essence = essence_max
-	var ids: Array[String] = []
-	for id: String in GameData.skill_tree_of(aff):
-		ids.append(id)
-	for id: String in GameData.abilities:
-		if str(GameData.ability(id).get("affinity", "")) == aff and not ids.has(id):
-			ids.append(id)
-	abilities.clear()
-	for i: int in hotbar.size():
-		hotbar[i] = -1
-	var stage: int = mini(GameData.inum("skills", "test_stage"), stars + 1)
-	for id: String in ids:
-		abilities.append({"id": id, "stage": stage, "progress": 100.0})       # full bars: ready for the first lock
-	for i: int in mini(hotbar.size(), abilities.size()):
-		hotbar[i] = i
-	# every construct tier, test_constructs_each of every word that fits it, to bind with (Brent 2026-10-23;
-	# words since 2026-11-04: a vestige of every rune, the authored words above - only those this
-	# character's skills can take, its affinities' and the universal ones)
-	constructs.clear()
-	for tier: Variant in GameData.construct_tiers:
-		for concept: Variant in GameData.construct_word_ids(str(tier)):
-			if not bool(construct_fits(str(tier), str(concept))["ok"]):
-				continue
-			for k: int in GameData.inum("skills", "test_constructs_each"):
-				constructs.append({"tier": str(tier), "concept": str(concept)})
-	note("TEST CHARACTER: every %s skill, stage %d, each ready for its level lock (the ethercosm). %s turns the skill bar to the next six." % [
-		str(GameData.affinity(aff).get("label", aff)).to_lower(), stage, Keybinds.binding_text("hotbar_page")])
-
-
 # --- stars ----------------------------------------------------------------------
 
 func _recompute_essence_max() -> void:
@@ -6086,51 +6040,6 @@ func rest_night() -> void:
 	clear_reflux()
 	essence = essence_max
 	note("You sleep. The body refills; wounds knit a little. What is gone stays gone.")
-
-
-func _nearest_enemy() -> Node3D:
-	var best: Node3D = null
-	var best_d := INF
-	for node: Node in get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
-		if e == null or bool(e.call("is_dead")):
-			continue
-		var d: float = e.global_position.distance_to(global_position)
-		if d < best_d:
-			best_d = d
-			best = e
-	return best
-
-
-## Test bot: returns true when it wants to swing.
-func _bot_think(delta: float = 0.0) -> bool:
-	var near: Node3D = _nearest_enemy()
-	var goal: Vector3 = near.global_position if near != null else bot_goal
-	var to: Vector3 = goal - global_position
-	to.y = 0.0
-	var dist: float = to.length()
-	_bot_dir = _bot_way(goal, delta) if dist > 0.6 else Vector3.ZERO
-	if dist > 0.2:
-		_facing = to / dist
-	if near == null:
-		return false
-	return dist <= reach_now() + float(near.get("radius"))
-
-
-## Test bot: the way to walk to `goal` - along the level's navigation mesh, or where there is
-## none yet through the passage's doorway (Route, via the `router` group), else straight.
-func _bot_way(goal: Vector3, delta: float) -> Vector3:
-	var nav: LevelNav = LevelNav.find(get_tree(), global_position)
-	if nav != null:
-		var way: Vector3 = _bot_path.steer(nav, global_position, goal, 0.4, delta)
-		if way != Vector3.ZERO or _bot_path.blocked:
-			return way
-	var next: Vector3 = goal
-	var router: Node = get_tree().get_first_node_in_group("router")
-	if router != null:
-		next = router.call("route", global_position, goal, 0.4)
-	var flat := Vector3(next.x - global_position.x, 0.0, next.z - global_position.z)
-	return flat.normalized() if flat.length() > 0.05 else Vector3.ZERO
 
 
 func start_fight() -> void:
@@ -7836,3 +7745,9 @@ func lead_aim(ab: Dictionary, aim: Vector3) -> Vector3:
 # Outside callers (main.gd, the HUD, the screens, the tests, talents) still call these on the player.
 func to_save() -> Dictionary: return save_part.to_save()
 func from_save(d: Dictionary) -> void: save_part.from_save(d)
+
+
+# --- forwarded to PlayerBot (scripts/player/player_bot.gd) ------------------------------------------
+# Outside callers (main.gd, the HUD, the screens, the tests, talents) still call these on the player.
+func make_test_character(aff: String) -> void: bot_part.make_test_character(aff)
+func _bot_way(goal: Vector3, delta: float) -> Vector3: return bot_part._bot_way(goal, delta)
