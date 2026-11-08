@@ -6,6 +6,8 @@ extends Node
 ## Menu choices (number keys on the talent/town screens) are not actions and are not rebindable.
 
 const SAVE_PATH := "user://keybinds.cfg"
+## The file in use: SAVE_PATH, or a test's own file (use_path) so a test never touches the player's.
+var path := SAVE_PATH
 
 ## action -> [label, default event]. Order is the order the settings screen lists them.
 const ACTIONS: Array = [
@@ -117,11 +119,26 @@ func rebind(action: String, event: InputEvent) -> String:
 	return displaced
 
 
+## Every action back to its default. Written as a file of defaults (UserFiles keeps the bindings it
+## replaces as the backup), so a reset by mistake can still be undone by hand.
 func reset_defaults() -> void:
+	_set_defaults()
+	if UserFiles.any_exists(path):
+		_save()
+	changed.emit()
+
+
+func _set_defaults() -> void:
 	for a: Array in ACTIONS:
 		_set_binding(a[0], _default_event(a))
-	if FileAccess.file_exists(SAVE_PATH):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
+
+
+## Use another file (tests: UserFiles.sandbox). The bindings go back to their defaults and are then
+## read from that file, so a test sees the same keys on every machine.
+func use_path(p: String) -> void:
+	path = p
+	_set_defaults()
+	_load()
 	changed.emit()
 
 
@@ -172,13 +189,13 @@ func _save() -> void:
 			cfg.set_value("binds", action, "key:%d%s%s" % [key.physical_keycode, ":ctrl" if key.ctrl_pressed else "", ":alt" if key.alt_pressed else ""])
 		else:
 			cfg.set_value("binds", action, "mouse:%d" % (events[0] as InputEventMouseButton).button_index)
-	cfg.save(SAVE_PATH)
+	UserFiles.write_cfg(path, cfg)
 
 
 func _load() -> void:
-	var cfg := ConfigFile.new()
-	if cfg.load(SAVE_PATH) != OK:
+	if not UserFiles.any_exists(path):
 		return
+	var cfg: ConfigFile = UserFiles.read_cfg(path)["cfg"]
 	for action: String in action_names():
 		var raw: String = str(cfg.get_value("binds", action, ""))
 		if raw == "":

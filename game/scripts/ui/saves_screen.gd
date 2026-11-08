@@ -59,7 +59,12 @@ func build(root: Control) -> void:
 
 
 func _row(slot: int, can_save: bool) -> Control:
-	var data: Dictionary = SaveGame.read(SaveGame.slot_path(slot))
+	var info: Dictionary = SaveGame.inspect(SaveGame.slot_path(slot))
+	var st: String = str(info["state"])
+	var data: Dictionary = info["data"] if st == "ok" or st == "recovered" else {}
+	var line: String = SaveGame.describe_slot(SaveGame.slot_path(slot)) if st == "newer" or st == "broken" else SaveGame.describe(data)
+	if st == "recovered":
+		line += "   (read from a backup copy)"
 	var card := PanelContainer.new()
 	card.name = "Slot_%d" % slot
 	card.add_theme_stylebox_override("panel", UiTheme.frame("panel_plain", 12.0))
@@ -71,8 +76,11 @@ func _row(slot: int, can_save: bool) -> Control:
 	text.add_theme_constant_override("separation", 2)
 	row.add_child(text)
 	text.add_child(UiTheme.heading("Autosave" if slot == 0 else "Slot %d" % slot, UiTheme.FS_HEAD - 1, UiTheme.GOLD if not data.is_empty() else UiTheme.TEXT_DIM))
-	text.add_child(UiTheme.body(SaveGame.describe(data), UiTheme.FS_SMALL, UiTheme.TEXT_FAINT if data.is_empty() else UiTheme.TEXT))
-	if can_save and slot > 0:
+	var line_label := UiTheme.body(line, UiTheme.FS_SMALL, UiTheme.TEXT_FAINT if data.is_empty() else UiTheme.TEXT)
+	line_label.name = "SlotLine_%d" % slot
+	line_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.add_child(line_label)
+	if can_save and slot > 0 and st != "newer":           # a save from a newer build is never written over
 		var save: Button = UiWidgets.small_button("Save here" if data.is_empty() else "Overwrite", func() -> void:
 			game.call("save_to_slot", slot)
 			rebuild())

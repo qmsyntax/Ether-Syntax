@@ -309,6 +309,13 @@ func _build_left() -> void:
 	var save: Dictionary = SaveGame.read()
 	if not save.is_empty() and str(save.get("talent_id", "")) != "":
 		_left.add_child(UiWidgets.small_button("Continue  -  %s" % SaveGame.who(save), func() -> void: game.call("continue_game")))
+	SaveGame.take_note()
+	var save_note: String = str(SaveGame.inspect().get("note", ""))   # read from a backup copy, damaged, or from a newer build
+	if save_note != "":
+		var warn := UiTheme.body(save_note, 12, UiTheme.TEXT_DIM)
+		warn.name = "SaveNote"
+		warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_left.add_child(warn)
 	for slot: int in range(1, SaveGame.SLOTS + 1):
 		if SaveGame.exists(SaveGame.slot_path(slot)):
 			_left.add_child(UiWidgets.small_button("Load a saved character", func() -> void: game.call("open_saves")))

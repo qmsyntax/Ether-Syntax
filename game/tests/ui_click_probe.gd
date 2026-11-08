@@ -18,7 +18,6 @@ var main: Node
 var frames := 0
 var results: Array[String] = []
 var failed := false
-var _binds_backup: Variant = null      # user://keybinds.cfg as it was, or null if there was none
 var _step := ""
 var _step_ms := 0
 var _trainer_from := 0                 # the frame the trainer part began, 0 until then
@@ -243,8 +242,6 @@ func _process(_delta: float) -> void:
 			_expect("a point on the strike slot is over the interface", bool(hud.call("ui_at", strike.get_center())))
 			_expect("a point on open ground is not", not bool(hud.call("ui_at", get_viewport().get_visible_rect().size * Vector2(0.5, 0.45))))
 		135:
-			if FileAccess.file_exists(Keybinds.SAVE_PATH):
-				_binds_backup = FileAccess.get_file_as_string(Keybinds.SAVE_PATH)
 			main.call("open_settings")
 		145:
 			var menu: Node = main.get("settings_menu")
@@ -775,15 +772,10 @@ func _click(c: Control) -> void:
 	_mouse(_centre(c), MOUSE_BUTTON_LEFT, false)
 
 
-## Put the player's own key bindings back as they were before the test touched them.
+## The bindings back to their defaults. The run is sandboxed (main.gd: UserFiles.sandbox), so the
+## rebinds above were written to the test folder and the player's own keybinds.cfg was never touched.
 func _restore_binds() -> void:
-	if _binds_backup != null:
-		var f := FileAccess.open(Keybinds.SAVE_PATH, FileAccess.WRITE)
-		f.store_string(str(_binds_backup))
-		f.close()
-		Keybinds.call("_load")
-	else:
-		Keybinds.reset_defaults()
+	Keybinds.reset_defaults()
 
 
 func _finish() -> void:
