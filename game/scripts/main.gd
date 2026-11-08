@@ -121,6 +121,7 @@ var _menu_return := false
 func _ready() -> void:
 	rng.randomize()
 	add_to_group("router")              # where there is no navigation mesh yet: the way through a doorway
+	_hold_effect_shaders()
 	_build_world()
 	_build_player()
 	_build_hud()
@@ -2028,6 +2029,44 @@ func _charge_rent(rate: float, delta: float) -> void:
 		var due: int = int(_rent_accum)
 		_rent_accum -= float(due)
 		player.call("charge", due)
+
+
+# --- the effects' shaders, held for the whole game (perf, 2026-11-08) -----------------------------
+# Skill and status effects (blast rings, zones, clouds, arcs, shots, lures, auras) each make their own
+# StandardMaterial3D. Godot shares one shader among the materials with the same features and FREES it
+# when the last of them goes - so with no blast on the ground, the next Cave-In compiled its ring's
+# shader again, a ~20 ms frame every time (docs/perf/baseline-2026-11-08.md). One material of each
+# feature set the effects use is kept here from the start, so those shaders are made once, at boot,
+# and never thrown away. A new effect with a new combination of these switches belongs in the list.
+
+var _held_materials: Array[Material] = []
+
+
+func _hold_effect_shaders() -> void:
+	# [unshaded, alpha, emission, additive, both faces]
+	var sets: Array = [
+		[true, true, false, false, false],     # rings, zones, bursts, auras, patches
+		[true, true, true, false, false],      # glowing zones, lures, arcs, the risen wash
+		[false, true, false, false, false],    # blood pools, seed traps
+		[false, true, true, false, false],     # the Netherecho's glowing pieces
+		[false, false, true, false, false],    # shots, rods, lamps, stone glow
+		[true, false, false, false, false],    # flat marks
+		[true, true, false, true, false],      # a real body's glow (RealCharacter)
+		[true, true, false, false, true],      # the navigation debug mesh
+	]
+	for s: Array in sets:
+		var m := StandardMaterial3D.new()
+		if bool(s[0]):
+			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		if bool(s[1]):
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.emission_enabled = bool(s[2])
+		if bool(s[3]):
+			m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		if bool(s[4]):
+			m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.get_rid()                          # a material makes its shader when first asked for it: ask now
+		_held_materials.append(m)
 
 
 # --- bodies built ahead (perf, 2026-11-08; docs/perf/baseline-2026-11-08.md) ----------------------
