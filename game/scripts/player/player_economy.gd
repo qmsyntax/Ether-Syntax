@@ -106,7 +106,7 @@ func take_pickup(drop: Node3D) -> bool:
 		player.note("%s is too heavy - you are carrying %d of %d kg." % [item_name, int(player.inventory.weight()), int(player.inventory.capacity())])
 		return false
 	drop.call("take")
-	player._rig_action("pickup")
+	player.motion_part._rig_action("pickup")
 	player.note("Picked up %s." % item_name)
 	return true
 
@@ -204,8 +204,8 @@ func respawn_naked() -> void:
 	player._charge = 0.0
 	player.clear_reflux()
 	player.buffs.clear()
-	player._end_step()
-	player.refill_endurance()
+	player.motion_part._end_step()
+	player.motion_part.refill_endurance()
 	player.body.hp = maxf(player.body.hp, player.body.total_max() * float(town["revive_health_frac"]))
 	player._build_model()
 	refresh_gear()

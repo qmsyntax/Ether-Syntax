@@ -385,7 +385,7 @@ func try_ascend() -> void:
 	for e: TalentEffect in player.effects:
 		e.on_ascend(player.stars)
 	_begin_ascension()
-	player._rig_action("power_up")
+	player.motion_part._rig_action("power_up")
 	player.note("ASCENDED. Star %d splits off - tiny, for now." % player.stars)
 	if player.talent.has("evolve_%d" % player.stars):
 		player.note("Talent evolves: %s" % str(player.talent["evolve_%d" % player.stars]))
