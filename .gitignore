@@ -41,7 +41,7 @@ dist/
 # === Engine: Godot ===
 .godot/
 *.translation
-export_presets.cfg
+# export_presets.cfg IS committed (game/export_presets.cfg, no secrets: credentials would go in .godot/export_credentials.cfg)
 # Uncomment if using Godot:
 # *.import
 
@@ -146,7 +146,9 @@ $RECYCLE.BIN/
 # Godot
 game/.godot/
 *.translation
-export_presets.cfg
+
+# Release builds (tools/release/export_windows.sh writes build/windows/ at the repo root)
+/build/
 
 # Project
 shots/
