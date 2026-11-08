@@ -29,7 +29,8 @@ to_unix() {
 }
 
 # name | mode | strict (0/1: any non-noise ERROR line fails it) | timeout s | result line (extended regex, matched at line start) |
-# godot arguments ({GAME} = the project). The timeouts are a few times the usual run: a script that fails to load
+# godot arguments ({GAME} = the project), or "@<script> <args>" for a script in tools/test/ that starts Godot itself
+# (given GODOT="bash tools/test/godot.sh", so it takes the same lock). The timeouts are a few times the usual run: a script that fails to load
 # leaves a test waiting forever, and it should cost minutes, not the lock's 20.
 TESTS=(
   "import|headless|1|600||--headless --path {GAME} --import"
@@ -47,6 +48,7 @@ TESTS=(
   "stubble_bot|headless|0|600|STUBBLEBOT: PASS|--headless --path {GAME} res://tests/stubble_bot.tscn"
   "duels|headless|0|1000|DUELS: PASS|--headless --path {GAME} res://tests/newbie_duels.tscn"
   "full_ring|headless|0|600|FULLRINGS: .* 0 script errors|--headless --path {GAME} res://tests/full_ring_check.tscn"
+  "save_kill|headless|0|900|SAVEKILL ALL: PASS|@save_kill.sh {GAME} 2"
   "ui_click|windowed|0|600|UICLICK: PASS|--path {GAME} res://tests/ui_click_probe.tscn"
   "ui_click_field|windowed|0|600|UICLICK: PASS|--path {GAME} res://tests/ui_click_probe.tscn -- --field"
   "test_character|windowed|0|600|TESTCHAR: PASS|--path {GAME} res://tests/test_character_probe.tscn"
@@ -138,12 +140,21 @@ for t in "${selected[@]}"; do
   args="${args//\{GAME\}/$GAME_W}"
   start=$(date +%s)
   # shellcheck disable=SC2086 # the argument list is meant to split on spaces
-  GODOT_TIMEOUT="$limit" bash "$HERE/godot.sh" $args > "$log" 2>&1 < /dev/null
+  if [ "${args:0:1}" = "@" ]; then
+    # a script that runs Godot itself (save_kill.sh: a write that kills itself, then a verify, per round)
+    # shellcheck disable=SC2086
+    GODOT="bash $HERE/godot.sh" GODOT_TIMEOUT=300 timeout "$limit" bash "$HERE/"${args:1} > "$log" 2>&1 < /dev/null
+  else
+    GODOT_TIMEOUT="$limit" bash "$HERE/godot.sh" $args > "$log" 2>&1 < /dev/null
+  fi
   code=$?
   secs=$(( $(date +%s) - start ))
   # the time Godot ran, without the wait for the lock (godot.sh says how long it waited)
-  waited_s="$(grep -E -m1 '^godot.sh: waited [0-9]+s' "$log" | grep -E -o '[0-9]+' | head -1)"
-  secs=$(( secs - ${waited_s:-0} ))
+  waited_s=0
+  for w in $(grep -E '^godot.sh: waited [0-9]+s' "$log" | grep -E -o '[0-9]+'); do
+    waited_s=$(( waited_s + w ))
+  done
+  secs=$(( secs - waited_s ))
   why=""
   line=""
   if [ -n "$pass" ]; then
