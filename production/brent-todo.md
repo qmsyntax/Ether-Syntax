@@ -6,7 +6,7 @@ they unblock work in (`production/finish-plan.md`).
 
 ## 1. Play (nothing since v0.52 has had hands on it)
 
-- [ ] **The fun gate** - a session or two on the current build: create a character, the trainer, the Stubble, the
+- [ ] **The fun gate** (in progress: Brent is playing the S:\Passage build, 2026-11-08) - a session or two on the current build: create a character, the trainer, the Stubble, the
       assault passage, the arena, a death and the corpse run, a level lock. Then a verdict: keep going as is / change
       direction / stop. Everything in the plan assumes "keep going".
 - [ ] **Sidestep (v0.54)**: Space. Does the 0.32 s roll look smooth or frantic? Is 38 of 100 endurance a step right
