@@ -50,8 +50,14 @@ phases below run to A, then B.
 ## The plan
 
 ### Phase 0 - Safe to build on (M) - starts now, needs nothing from you except the export yes
-- Save safety: write to a temp file, then rename, keeping a backup; a real schema version with migrations; hardcore
-  death clears every slot.
+- [x] Save safety: write to a temp file, then rename, keeping a backup; a real schema version with migrations; hardcore
+  death clears every slot. Done 2026-11-08 (CLAUDE.md "Saves"): `UserFiles` writes every user:// file (.new -> .bak ->
+  rename, .prev per run) and reads the newest good copy; `SaveGame.SCHEMA` 2 with migrations, a newer save refused and
+  never written over; each save stamped with `build` and `char_id`; a hardcore death removes every copy of that
+  character; the autosave keeps a different character it would overwrite. Also ticked here: [x] the self-test (and
+  every test, shot and bot) no longer touches the player's key bindings, settings or saves - sandboxed, and checked
+  byte-identical; [x] the version stamp in saves (`build`); [x] a save survives a kill mid-write (simulated in the
+  self-test, real in `tools/test/save_kill.sh`).
 - Move the test suite into the repo (`tools/test/run_all.sh`: headless + windowed, one Godot at a time). Fix the
   move probe's flake at its cause. The self-test must back up and restore the player's key bindings.
 - Pin the physics engine; a version stamp in the game and in saves.

@@ -10,14 +10,30 @@ const FreeRules := preload("res://tests/free_rules.gd")
 const BeastChecks := preload("res://tests/beast_checks.gd")
 const V2Checks := preload("res://tests/v2_checks.gd")
 const FeelChecks := preload("res://tests/feel_checks.gd")
+const SaveChecks := preload("res://tests/save_checks.gd")
+## The self-test's own folder for saves, key bindings and settings (UserFiles.sandbox).
+const SANDBOX := "user://selftest_sandbox/"
 
 var _failed := 0
 var _passed := 0
 var _errors: ErrorCatcher
+## The player's own files as they were before the run (UserFiles.real_snapshot).
+var _real_before: Dictionary = {}
 
 
 func _ready() -> void:
 	_errors = ErrorCatcher.install()
+	# never the player's files: note them as they are, then point everything at the sandbox
+	_real_before = UserFiles.real_snapshot()
+	UserFiles.sandbox(SANDBOX)
+	# `-- --only=saves` runs just the save-safety checks (tests/save_checks.gd, 2026-11-08)
+	if OS.get_cmdline_user_args().has("--only=saves"):
+		await SaveChecks.new(self, _check).run()
+		_check_real_files()
+		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
+		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
+		get_tree().quit(1 if _failed > 0 else 0)
+		return
 	# `-- --only=beasts` runs just the Stubble's beast and camp checks (tests/beast_checks.gd)
 	if OS.get_cmdline_user_args().has("--only=beasts"):
 		await BeastChecks.new(self, _check).run()
@@ -125,6 +141,8 @@ func _ready() -> void:
 	await V2Checks.new(self, _check).run()
 	await FeelChecks.new(self, _check).run()
 	await CombatFixChecks.new(self, _check).run()
+	await SaveChecks.new(self, _check).run()
+	_check_real_files()
 	# a script error aborts one function and lets the checks around it pass; count it as a failure
 	_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 	print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
@@ -491,6 +509,15 @@ func _test_build_1022() -> void:
 	p.queue_free()
 	world.queue_free()
 	await get_tree().process_frame
+
+
+## The player's own saves, key bindings and settings (and every other file at the top of user://)
+## are byte-identical to how they were before the run (Phase 0: the self-test once deleted the
+## player's key bindings).
+func _check_real_files() -> void:
+	print("the player's own files:")
+	var diff: String = UserFiles.snapshot_diff(_real_before, UserFiles.real_snapshot())
+	_check("the real saves, keybinds.cfg and settings.cfg are byte-identical after the run (%d files and copies watched)" % _real_before.size(), diff == "", diff)
 
 
 func _check(label: String, ok: bool, detail: String = "") -> void:
@@ -1068,10 +1095,10 @@ func _test_inventory() -> void:
 	(p.get("abilities") as Array)[0]["progress"] = 42.0
 	(p.get("constructs") as Array).append({"tier": "vestige", "concept": "tension"})
 	var data: Dictionary = p.call("to_save")
-	var path := "user://selftest_save.json"
+	var path: String = SaveGame.test_dir + "selftest_save.json"
 	_check("the save file is written", SaveGame.write(data, path) and SaveGame.exists(path))
 	_check("slot 0 is the autosave and numbered slots are separate files",
-		SaveGame.slot_path(0) == SaveGame.PATH and SaveGame.slot_path(2) != SaveGame.slot_path(3) and SaveGame.slot_path(2) != SaveGame.PATH)
+		SaveGame.slot_path(0).get_file() == SaveGame.PATH.get_file() and SaveGame.slot_path(2) != SaveGame.slot_path(3) and SaveGame.slot_path(2) != SaveGame.slot_path(0))
 	_check("a save describes itself, an empty slot says so", SaveGame.describe(SaveGame.read(path)).contains("day") and SaveGame.describe({}) == "empty",
 		SaveGame.describe(SaveGame.read(path)))
 	_check("a new character starts with money", GameData.inum("town", "starting_money") == 10000)
