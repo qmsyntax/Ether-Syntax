@@ -348,6 +348,56 @@ func all_living() -> Array:
 	return out
 
 
+## True while everything is as build() left it: every camp asleep (a herd calm), every lurker buried.
+func at_rest() -> bool:
+	for id: String in camps:
+		var c: Dictionary = camps[id]
+		var def: Dictionary = c["def"]
+		if str(c["state"]) != ("calm" if bool(def.get("herd", false)) else "asleep"):
+			return false
+		var full: int = (def.get("edge", []) as Array).size()
+		for m: Dictionary in def.get("members", []):
+			full += int(m.get("n", 1))
+		if members_of(id).size() != full:
+			return false                         # one was killed
+		for e: Node3D in members_of(id):
+			if not bool(e.get("asleep")) and not (e.has_method("is_calm") and bool(e.call("is_calm"))):
+				return false
+	for patch: Dictionary in patches:
+		var l: Variant = patch["lurker"]
+		if l == null or not is_instance_valid(l) or not bool((l as Node).get("buried")):
+			return false
+	return not _fighting
+
+
+## Put the field back as build() made it (tests): every camp's beasts and every lurker are freed and
+## spawned afresh at home - asleep, calm or buried, nobody chasing anyone - and the fight ends. A
+## probe that runs case after case in one field calls this between cases, so a camp woken by one
+## case is not still fighting in the next.
+func reset_all() -> void:
+	for id: String in camps:
+		var c: Dictionary = camps[id]
+		for e: Variant in (c["members"] as Array) + (c["edge"] as Array):
+			if e != null and is_instance_valid(e):
+				(e as Node).queue_free()
+		var def: Dictionary = c["def"]
+		var at: Array = def["at"]
+		c["centre"] = zone.to_local(float(at[0]), float(at[1]))
+		c["leash"] = float(def.get("leash", _cfg.get("leash", 24.0)))
+		c["path_i"] = 0
+		c["timer"] = 0.0
+		_populate(id)
+	for patch: Dictionary in patches:
+		var l: Variant = patch["lurker"]
+		if l != null and is_instance_valid(l):
+			(l as Node).queue_free()
+		patch["timer"] = 0.0
+		_spawn_lurker(patch)
+	if _fighting:
+		_fighting = false
+		player.call("end_fight")
+
+
 ## Seconds until camp `id` refills (tests); set it with the same key.
 func set_respawn_timer(id: String, seconds: float) -> void:
 	if camps.has(id):
