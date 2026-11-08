@@ -15,6 +15,9 @@ they unblock work in (`production/finish-plan.md`).
       ring 2. Does "bind no matter what" feel right?
 - [ ] **Construct words (v0.55)**: subdue a few constructs in the Netherecho; set one as a keystone. Do the names read
       well? Does the keystone list feel usable (its last row hides behind Bind until you scroll)?
+- [ ] **Watch for a twitch while running**: the tests found the shoulders and hips swing about 80 degrees for a few
+      frames when the run switches between sprint and run (worst when sliding along a wall or prop). Tell Claude
+      if you see it; the fix is small (a gap between the two speeds).
 - [ ] **Combat fixes (v0.53)**: strikes now gather essence, starters are cheaper, reflux sheds faster, close skills
       walk you in. Does a new character feel like it can fight?
 
