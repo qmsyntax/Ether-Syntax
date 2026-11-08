@@ -26,6 +26,7 @@ const ISO_YAW := deg_to_rad(45.0)
 var save_part: PlayerSave
 var bot_part: PlayerBot
 var economy_part: PlayerEconomy
+var progress_part: PlayerProgression
 
 var body: Body
 var talent_id := ""
@@ -314,6 +315,7 @@ func _init() -> void:
 	save_part = PlayerSave.new(self)
 	bot_part = PlayerBot.new(self)
 	economy_part = PlayerEconomy.new(self)
+	progress_part = PlayerProgression.new(self)
 	_p = GameData.balance["player"]
 	_arm = GameData.balance["arm"]
 	_reflux_cfg = GameData.balance["reflux"]
@@ -323,7 +325,7 @@ func _init() -> void:
 	body.min_max_frac = 1.0 - float(GameData.balance["wounds"]["max_cut_frac"])
 	RngSeed.apply(rng, "player")
 	star_pct = [GameData.num("stars", "first_star_start_pct")]
-	_recompute_essence_max()
+	progress_part._recompute_essence_max()
 	essence = essence_max
 	inventory = Inventory.new()
 	economy_part.refresh_gear()
@@ -336,7 +338,7 @@ func _init() -> void:
 		hotbar.append(-1)
 	affinities = GameData.default_affinities()
 	_reset_loadout()
-	_reset_tempering()
+	progress_part._reset_tempering()
 	skill_points = int((GameData.skill_tree.get("points", {}) as Dictionary).get("start", 0))
 
 
@@ -416,103 +418,11 @@ func set_affinities(list: Array) -> void:
 	ascension_pending = {}
 	_reset_loadout()
 	clear_reflux()
-	_reset_tempering()
+	progress_part._reset_tempering()
 	known_runes.clear()
 	read_inscriptions.clear()
 	seal_draft = {}
 	_grant_start_runes()
-
-
-# --- tempering ------------------------------------------------------------------------
-
-## The techniques a new character knows: the plain one, and one for each affinity it holds.
-## Any health they had added is taken back out first.
-func _reset_tempering() -> void:
-	for id: String in tempering:
-		_apply_temper_health(id, -int((tempering[id] as Dictionary)["stage"]))
-	tempering.clear()
-	for id: String in GameData.technique_ids():
-		var aff: String = str(GameData.technique(id).get("affinity", ""))
-		if aff == "" or affinities.has(aff):
-			tempering[id] = {"stage": 0, "progress": 0.0}
-
-
-## Stages may not outrun the soul: star count + 1, as for abilities.
-func temper_stage_cap() -> int:
-	return stars + 1
-
-
-## A multiplier from everything tempered so far ("reflux_shed_mult", "incoming_mult",
-## "move_speed_mult", "melee_cooldown_mult"): each stage multiplies it in once more.
-func temper_stat(stat: String) -> float:
-	var v := 1.0
-	for id: String in tempering:
-		var eff: Dictionary = GameData.technique(id).get("effect", {})
-		if str(eff.get("stat", "")) == stat:
-			v *= pow(float(eff["per_stage"]), float(int((tempering[id] as Dictionary)["stage"])))
-	return v
-
-
-## "+16 health", "reflux sheds 32% faster" ... what a technique gives at `stage`.
-func temper_effect_text(id: String, stage: int) -> String:
-	var eff: Dictionary = GameData.technique(id).get("effect", {})
-	var per: float = float(eff.get("per_stage", 0.0))
-	var amount: float
-	if str(eff.get("stat", "")).begins_with("max_"):
-		amount = per * float(stage)
-	else:
-		amount = absf(pow(per, float(stage)) - 1.0) * 100.0
-	return str(eff.get("text", "%d")) % int(round(amount))
-
-
-## What one session strains the body by: taken off the health bar's maximum until it is mended.
-func temper_session_damage(id: String) -> float:
-	var s: Dictionary = GameData.tempering_session()
-	return float(s["strain_base"]) + float(s["strain_per_stage"]) * float(int((tempering[id] as Dictionary)["stage"]))
-
-
-func temper_session_progress(id: String) -> float:
-	var s: Dictionary = GameData.tempering_session()
-	return float(s["progress_base"]) * pow(float(s["progress_falloff_per_stage"]), float(int((tempering[id] as Dictionary)["stage"])))
-
-
-## Why a session cannot be trained right now, or "" if it can.
-func cannot_temper_reason(id: String) -> String:
-	if not tempering.has(id):
-		return "You do not know it."
-	if int((tempering[id] as Dictionary)["stage"]) >= temper_stage_cap():
-		return "Needs another star."
-	if body.max_cut() + temper_session_damage(id) > body.max_hp * float(GameData.tempering_session()["max_cut_frac"]):
-		return "Your body cannot take it. Mend first."
-	return ""
-
-
-## One training session: it costs bone and moves the technique along; a full bar is a new stage.
-## Returns false if the session could not be trained.
-func temper_session(id: String) -> bool:
-	if cannot_temper_reason(id) != "":
-		return false
-	var st: Dictionary = tempering[id]
-	var strain: float = temper_session_damage(id)
-	body.add_wound("temper_strain", str(GameData.balance["wounds"]["temper"]["name"]), strain, strain, true, true)
-	st["progress"] = float(st["progress"]) + temper_session_progress(id)
-	if float(st["progress"]) >= 99.999:
-		st["progress"] = 0.0
-		st["stage"] = int(st["stage"]) + 1
-		_apply_temper_health(id, 1)
-		note("%s reaches stage %d: %s." % [str(GameData.technique(id).get("name", id)), int(st["stage"]), temper_effect_text(id, int(st["stage"]))])
-	return true
-
-
-## Techniques that add health change the body itself, `stages` stages' worth (negative to undo).
-func _apply_temper_health(id: String, stages: int) -> void:
-	var eff: Dictionary = GameData.technique(id).get("effect", {})
-	var stat: String = str(eff.get("stat", ""))
-	if stat != "max_health" or stages == 0:
-		return
-	var add: float = float(eff["per_stage"]) * float(stages)
-	body.max_hp = maxf(1.0, body.max_hp + add)
-	body.hp = clampf(body.hp + add, 0.0, body.total_max())
 
 
 ## Start over with the kits of the current affinities, on the bar in order.
@@ -559,7 +469,7 @@ func clear_reflux() -> void:
 
 ## Every affinity cools at once; one that drops far enough unlocks.
 func _shed_reflux(amount: float) -> void:
-	var shed: float = amount * inventory.stat("reflux_shed_mult", true) * temper_stat("reflux_shed_mult")
+	var shed: float = amount * inventory.stat("reflux_shed_mult", true) * progress_part.temper_stat("reflux_shed_mult")
 	for aff: String in reflux_by:
 		var a_def: Dictionary = GameData.affinity(aff)
 		var rate: float = float(a_def.get("reflux_shed_mult_combat", 1.0)) if in_combat else 1.0
@@ -634,8 +544,8 @@ func _physics_process(delta: float) -> void:
 		pickup_target = null
 		has_move_goal = false
 		_shed_reflux(float(_reflux_cfg["shed_meditating"]) * delta)
-		_meditate_gather(delta)
-		grow_star(GameData.num("stars", "growth_pct_per_s_meditating") * delta)
+		progress_part._meditate_gather(delta)
+		progress_part.grow_star(GameData.num("stars", "growth_pct_per_s_meditating") * delta)
 		velocity = Vector3.ZERO
 		_update_model(delta)
 		return
@@ -663,9 +573,9 @@ func _physics_process(delta: float) -> void:
 	var shed: float = float(_reflux_cfg["shed_meditating"]) if meditating else (
 		float(_reflux_cfg["shed_in_combat"]) if in_combat else float(_reflux_cfg["shed_resting"]))
 	_shed_reflux(shed * delta)
-	_meditate_gather(delta)
+	progress_part._meditate_gather(delta)
 	if meditating:
-		grow_star(GameData.num("stars", "growth_pct_per_s_meditating") * delta)
+		progress_part.grow_star(GameData.num("stars", "growth_pct_per_s_meditating") * delta)
 
 	# The body mends itself between fights - but only what a body can mend.
 	if not in_combat and not _heal_blocked():
@@ -730,7 +640,7 @@ func _physics_process(delta: float) -> void:
 			if _melee_cd <= 0.0 and _stagger_t <= 0.0 and not stepping():
 				_strike_credit = maxi(0, _strike_credit - 1)       # a click is one blow (_strike_spent)
 				_strike_target(attack_target, float(_p["off_hand_factor"]) if arm_right_lost else 1.0, ["melee"])
-				_melee_cd = float(_p["melee_cooldown"]) * economy_part.weapon_stat("melee_cooldown_mult", true) * temper_stat("melee_cooldown_mult") / maxf(0.1, strike_rate_mult())
+				_melee_cd = float(_p["melee_cooldown"]) * economy_part.weapon_stat("melee_cooldown_mult", true) * progress_part.temper_stat("melee_cooldown_mult") / maxf(0.1, strike_rate_mult())
 		elif input == Vector2.ZERO:
 			dir = to.normalized()                  # walk into reach
 			if bot and _bot_dir != Vector3.ZERO:
@@ -802,7 +712,7 @@ func _physics_process(delta: float) -> void:
 ## window or the shooting stance, quickened by buffs and Slipstream. Wind-ups and staggers stop you
 ## separately. The sidestep eases out into this.
 func walk_speed() -> float:
-	var speed: float = float(_p["move_speed"]) * temper_stat("move_speed_mult") * (float(_p["charge_move_factor"]) if _charging else 1.0) * buff_num("move_speed_mult") * _zone_num("caster_speed_mult")
+	var speed: float = float(_p["move_speed"]) * progress_part.temper_stat("move_speed_mult") * (float(_p["charge_move_factor"]) if _charging else 1.0) * buff_num("move_speed_mult") * _zone_num("caster_speed_mult")
 	if not _held.is_empty():
 		speed *= float((_held["ab"] as Dictionary).get("move_factor", 1.0))     # holding a skill: you walk slowly, or not at all
 	speed *= buff_num("move_factor")          # a counter window roots you (Abiding Guard, Turning Palm, Turn the Edge)
@@ -944,7 +854,7 @@ func deal_damage(target: Node, base: float, tags: Array = [], opts: Dictionary =
 	for e: TalentEffect in effects:
 		e.on_dealt(ctx)
 	if ctx.killed:
-		_on_kill(target)
+		progress_part._on_kill(target)
 	return ctx
 
 
@@ -957,7 +867,7 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 	ctx.target = self
 	# What the body and what it wears take off the blow comes first, so every talent works on
 	# the same reduced number - including one that swallows the hit and delivers it later.
-	ctx.base = amount * temper_stat("incoming_mult") * (1.0 - armour() / 100.0) * buff_num("incoming_mult") * _inured_mult()
+	ctx.base = amount * progress_part.temper_stat("incoming_mult") * (1.0 - armour() / 100.0) * buff_num("incoming_mult") * _inured_mult()
 	var braced: bool = is_braced()
 	if braced:
 		ctx.base *= GameData.num("braced", "damage_taken_mult")
@@ -965,7 +875,7 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 		return 0.0
 	ctx.base *= ally_zone_mult(self)
 	# a buff that softens blows and keeps what it softened (Kind Light's softened_return, paid back when it ends)
-	var unsoftened: float = amount * temper_stat("incoming_mult") * (1.0 - armour() / 100.0) * _inured_mult()
+	var unsoftened: float = amount * progress_part.temper_stat("incoming_mult") * (1.0 - armour() / 100.0) * _inured_mult()
 	for sid: String in buffs:
 		var sb: Dictionary = buffs[sid]
 		if float(sb.get("softened_return", 0.0)) > 0.0:
@@ -1657,208 +1567,6 @@ func _dash_met(e: Node3D) -> void:
 		e.call("take_poise", _dash_heavy_poise)
 		return
 	apply_hit(e, _dash_on_stop, _dash_tags, 1.0, _dash_vel.normalized())
-
-
-# --- learning skills (design/05 step 5: scrolls) ----------------------------------------------
-
-func knows(ability_id: String) -> bool:
-	for st: Dictionary in abilities:
-		if str(st["id"]) == ability_id:
-			return true
-	return false
-
-
-## Why this character cannot learn that skill, or "" if they can.
-func can_learn(ability_id: String) -> String:
-	var ab: Dictionary = GameData.ability(ability_id)
-	if ab.is_empty():
-		return "That is not a skill."
-	if knows(ability_id):
-		return "You already know %s." % str(ab.get("name", ability_id))
-	var aff: String = str(ab.get("affinity", ""))
-	if not affinities.has(aff):
-		return "You have no %s affinity: the words mean nothing to you." % str(GameData.affinity(aff).get("label", aff)).to_lower()
-	return ""
-
-
-## The skill is yours: it goes on the first empty key, or waits in the soul screen if the bar is full.
-func learn(ability_id: String) -> bool:
-	if can_learn(ability_id) != "":
-		return false
-	abilities.append({"id": ability_id, "stage": 0, "progress": 0.0})
-	for i: int in hotbar.size():
-		if hotbar[i] < 0:
-			hotbar[i] = abilities.size() - 1
-			break
-	_know(GameData.skill_anchor(ability_id))          # a skill's own rune comes with it [MODEL]
-	return true
-
-
-## Read a scroll out of the pack. Returns "" if it taught its skill (and is gone), else why not.
-func read_scroll(item_id: String) -> String:
-	var def: Dictionary = GameData.item(item_id)
-	if str(def.get("kind", "")) != "scroll" or not inventory.bag.has(item_id):
-		return "That is not something you can read."
-	var why: String = can_learn(str(def.get("teaches", "")))
-	if why != "":
-		return why
-	inventory.remove(item_id)
-	learn(str(def["teaches"]))
-	var ab: Dictionary = GameData.ability(str(def["teaches"]))
-	note("You read the scroll. %s is yours%s." % [str(ab.get("name", "?")), "" if hotbar.has(abilities.size() - 1) else " - the bar is full; place it from the soul screen"])
-	_float("LEARNED", GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3))
-	return ""
-
-
-## A scroll this character could read and does not already carry, picked at random; "" if none.
-func scroll_for_me() -> String:
-	var pool: Array[String] = []
-	var items: Dictionary = GameData.items_file.get("items", {})
-	for id: String in items:
-		var def: Dictionary = items[id]
-		if str(def.get("kind", "")) == "scroll" and can_learn(str(def.get("teaches", ""))) == "" and not inventory.bag.has(id):
-			pool.append(id)
-	return pool[rng.randi() % pool.size()] if not pool.is_empty() else ""
-
-
-# --- the skill tree (design/08) -----------------------------------------------------------
-# No skill is given (Brent 2026-10-18): a new character picks two root skills, and the rest are
-# trained in town for skill points and money. The trainer is main.gd's business (train_skill only
-# goes through there); scrolls (read_scroll) still teach anywhere and skip the tree's rules.
-
-## Start the character over with exactly these skills, on the bar in order. They must be
-## `start_picks` different root skills of affinities the character holds. Returns "" or why not.
-func start_with_skills(ids: Array) -> String:
-	var want: int = int(GameData.skill_tree.get("start_picks", 2))
-	var roots: Array[String] = GameData.skill_roots(affinities)
-	var picked: Array[String] = []
-	for id: Variant in ids:
-		if not roots.has(str(id)):
-			return "%s is not a starting skill of your affinities." % str(GameData.ability(str(id)).get("name", id))
-		if picked.has(str(id)):
-			return "The same skill twice."
-		picked.append(str(id))
-	if picked.size() != want:
-		return "Pick %d starting skills." % want
-	drop_stones()
-	buffs.clear()
-	abilities.clear()
-	for i: int in hotbar.size():
-		hotbar[i] = -1
-	for id: String in picked:
-		learn(id)
-	known_runes.clear()
-	_grant_start_runes()
-	return ""
-
-
-## The first `start_picks` root skills - only for quick starts in tests (start_new_character).
-func default_start_skills() -> Array[String]:
-	var roots: Array[String] = GameData.skill_roots(affinities)
-	return roots.slice(0, int(GameData.skill_tree.get("start_picks", 2)))
-
-
-## What learning a node costs at a trainer: {points, price}.
-func skill_cost(ability_id: String) -> Dictionary:
-	var node: Dictionary = GameData.skill_node(ability_id)
-	var tier: Dictionary = (GameData.skill_tree.get("tiers", {}) as Dictionary).get(str(int(node.get("tier", 1))), {})
-	return {"points": int(tier.get("points", 1)), "price": int(tier.get("price", 0))}
-
-
-## A node's prerequisites are met: it has none, or the character knows any one of them.
-func skill_unlocked(ability_id: String) -> bool:
-	var needs: Array = GameData.skill_node(ability_id).get("requires", [])
-	if needs.is_empty():
-		return true
-	for id: Variant in needs:
-		if knows(str(id)):
-			return true
-	return false
-
-
-## Why a trainer could not teach this skill now, or "" if they could.
-func cannot_train_reason(ability_id: String) -> String:
-	var why: String = can_learn(ability_id)
-	if why != "":
-		return why
-	if GameData.skill_node(ability_id).is_empty():
-		return "No trainer teaches that; it is not on any tree."
-	if not skill_unlocked(ability_id):
-		var names: Array[String] = []
-		for id: Variant in GameData.skill_node(ability_id).get("requires", []):
-			names.append(str(GameData.ability(str(id)).get("name", id)))
-		return "Learn %s first." % " or ".join(names)
-	var cost: Dictionary = skill_cost(ability_id)
-	if skill_points < int(cost["points"]):
-		return _points_short(int(cost["points"]))
-	if not economy_part.can_afford(int(cost["price"])):
-		return "Nobody trains on that much debt."
-	return ""
-
-
-func _points_short(need: int) -> String:
-	return "Needs %d skill point%s; you have %d." % [need, "" if need == 1 else "s", skill_points]
-
-
-## Be taught a skill: the points and the fee are spent and the skill is yours. Only main.gd calls
-## this, and only while you are talking to a trainer. Returns "" or why not.
-func train_skill(ability_id: String) -> String:
-	var why: String = cannot_train_reason(ability_id)
-	if why != "":
-		return why
-	var cost: Dictionary = skill_cost(ability_id)
-	skill_points -= int(cost["points"])
-	economy_part.charge(int(cost["price"]))
-	learn(ability_id)
-	var ab: Dictionary = GameData.ability(ability_id)
-	note("Trained: %s%s." % [str(ab.get("name", ability_id)), "" if hotbar.has(abilities.size() - 1) else " - the bar is full; place it from the soul screen"])
-	return ""
-
-
-## Why a trainer could not drill this skill now, or "" if they could.
-func cannot_drill_reason(ability_id: String) -> String:
-	var st: Dictionary = {}
-	for a: Dictionary in abilities:
-		if str(a["id"]) == ability_id:
-			st = a
-	if st.is_empty():
-		return "You do not know that skill."
-	if float(st["progress"]) >= 100.0:
-		return "Its bar is full. Only a bound construct takes it further."
-	var cfg: Dictionary = GameData.skill_tree.get("drill", {})
-	if skill_points < int(cfg.get("points", 1)):
-		return _points_short(int(cfg.get("points", 1)))
-	if not economy_part.can_afford(int(cfg.get("price", 0))):
-		return "Nobody trains on that much debt."
-	return ""
-
-
-## Drill a known skill: its stage progress moves on (capped at 100 - the stage still needs a
-## bound construct, Brent 2026-09-23). Only main.gd calls this, at a trainer.
-func drill_skill(ability_id: String) -> String:
-	var why: String = cannot_drill_reason(ability_id)
-	if why != "":
-		return why
-	var cfg: Dictionary = GameData.skill_tree.get("drill", {})
-	skill_points -= int(cfg.get("points", 1))
-	economy_part.charge(int(cfg.get("price", 0)))
-	for a: Dictionary in abilities:
-		if str(a["id"]) == ability_id:
-			a["progress"] = minf(100.0, float(a["progress"]) + float(cfg.get("progress", 0.0)))
-	note("You drill %s until your hands know it better." % str(GameData.ability(ability_id).get("name", ability_id)))
-	return ""
-
-
-## Star growth banks toward skill points: one per `points.per_star_pct` percentage points grown.
-func _earn_skill_points(grown: float) -> void:
-	var per: float = float((GameData.skill_tree.get("points", {}) as Dictionary).get("per_star_pct", 10.0))
-	if grown <= 0.0 or per <= 0.0:
-		return
-	skill_growth += grown
-	while skill_growth >= per:
-		skill_growth -= per
-		skill_points += 1
-		note("A skill point. A trainer in town can spend it (%s shows the tree)." % Keybinds.binding_text("skills"))
 
 
 # --- more skill behaviours (design/05 Appendix A) -------------------------------------------------
@@ -2581,7 +2289,7 @@ func _maybe_wound(applied: float) -> void:
 
 ## Add a wound. Tempering can make every wound shallower. `merge` deepens an existing one.
 func take_wound(id: String, wound_name: String, sink: float, cut: float, natural: bool = true, merge: bool = false) -> void:
-	body.add_wound(id, wound_name, sink * temper_stat("wound_sink_mult"), cut, natural, merge)
+	body.add_wound(id, wound_name, sink * progress_part.temper_stat("wound_sink_mult"), cut, natural, merge)
 	_float(wound_name.to_upper(), Color(1, 0.35, 0.2))
 	note("%s. It will not close on its own." % wound_name if not natural else "%s. Rest alone will not close it in the field." % wound_name)
 
@@ -2613,25 +2321,6 @@ func _spend_heal_points(points: float) -> float:
 	if left > 0.0:
 		left -= body.heal(left)
 	return points - left
-
-
-## Latent aura from a deed that was not a kill (subduing a construct, for one).
-func add_aura(amount: float) -> void:
-	_latent_aura += amount
-
-
-func _on_kill(target: Node) -> void:
-	for bid: String in buffs:
-		if int((buffs[bid] as Dictionary).get("kill_blood", 0)) > 0:
-			gain_blood(int(buffs[bid]["kill_blood"]))                      # Red Frenzy: every kill feeds it
-	var hurt: float = 1.0 - body.total() / body.total_max()
-	var risk: float = 1.0 + hurt * float(_p["aura_hurt_risk_bonus"])
-	var aura: float = float(target.get("aura_value")) * kill_aura_mult(target)
-	_latent_aura += aura * risk
-	grow_star(aura * GameData.num("stars", "growth_pct_per_aura"))
-	_roll_drops(target)
-	economy_part._roll_loot(target)
-	_roll_kill_rune(target)
 
 
 # --- click targeting ------------------------------------------------------------
@@ -5503,7 +5192,7 @@ func skill_details(index: int) -> Dictionary:
 			"changed": absf(float(d["a"]) - float(d["b"])) > 0.0001, "better": (float(d["a"]) < float(d["b"])) == bool(d.get("lower", false))})
 	return {"rows": rows, "statuses": StatusText.compare(before, after), "works_on": StatusText.read_by(after),
 		"keystones": fx.get("keystones", []) if word_locked(index) else [],
-		"sealed": word_locked(index), "boosted": ascension_summary(index) != "", "before": before, "after": after}
+		"sealed": word_locked(index), "boosted": progress_part.ascension_summary(index) != "", "before": before, "after": after}
 
 
 ## Short lines on what a SEALED word does to ability `index` ([] if it has none), for tooltips and
@@ -5696,30 +5385,6 @@ func _roll_drops(target: Node) -> void:
 			note("It leaves a %s behind." % ConstructWords.phrase(tier, concept_id))
 
 
-# --- stars ----------------------------------------------------------------------
-
-func _recompute_essence_max() -> void:
-	var total := 0.0
-	for pct: float in star_pct:
-		total += GameData.num("stars", "full_tank") * pct / 100.0
-	essence_max = total
-
-
-## Grow the newest star's capacity by `pct` points, capped at max_pct.
-func grow_star(pct: float) -> void:
-	if star_pct.is_empty():
-		return
-	var i: int = star_pct.size() - 1
-	var before: float = star_pct[i]
-	var cap: float = GameData.num("stars", "max_pct")
-	star_pct[i] = minf(cap, star_pct[i] + pct)
-	if star_pct[i] != before:
-		_recompute_essence_max()
-		_earn_skill_points(star_pct[i] - before)
-		if before < cap and star_pct[i] >= cap:
-			note("Your newest star is full. It will grow no further without ascending.")
-
-
 func _enemy_nearby() -> bool:
 	for node: Node in get_tree().get_nodes_in_group("enemies"):
 		if not bool(node.call("is_dead")):
@@ -5763,12 +5428,6 @@ func _fire_projectile(ab: Dictionary, stage_mult: float, color: Color, tags: Arr
 	bolt.global_position = _muzzle()
 
 
-## Meditation gathers wisps and refills essence (Brent 2026-09-23).
-func _meditate_gather(delta: float) -> void:
-	if meditating:
-		essence = minf(essence_max, essence + GameData.num("meditation", "gather_per_s") * delta)
-
-
 func _check_death() -> void:
 	if not dead and body.is_dead():
 		dead = true
@@ -5786,150 +5445,10 @@ func end_fight() -> void:
 	in_combat = false
 
 
-func aura_read() -> String:
-	var frac: float = _latent_aura / _aura_threshold
-	if frac < 0.25:
-		return "The star is quiet."
-	if frac < 0.6:
-		return "The star stirs."
-	if frac < 1.0 or star_pct.back() < GameData.num("stars", "max_pct"):
-		return "The star feels heavy." if frac >= 0.6 else "The star stirs."
-	return "The star strains against itself.  %s to ascend" % Keybinds.binding_text("ascend")
-
-
 ## A one-off motion on a real body (RealCharacter.play_action); the procedural body has none.
 func _rig_action(motion: String) -> void:
 	if _rig != null and _rig.has_method("play_action"):
 		_rig.call("play_action", motion)
-
-
-func try_ascend() -> void:
-	var full: bool = star_pct.back() >= GameData.num("stars", "max_pct")
-	if not full or _latent_aura < _aura_threshold:            # every star ascends (Brent 2026-10-24: no cap)
-		note("Nothing happens. The star is not ready.")
-		return
-	# the body grows by the new star's "ascension_<n>" block, else by the second star's
-	var asc: Dictionary = GameData.balance.get("ascension_%d" % (stars + 1), GameData.balance["ascension_2"])
-	_latent_aura -= _aura_threshold
-	stars += 1
-	# A new star is born tiny (Brent 2026-09-23) and grows from here.
-	star_pct.append(GameData.num("stars", "new_star_start_pct"))
-	_recompute_essence_max()
-	essence = essence_max
-	body.scale_max(float(asc["body_scale"]))
-	clear_reflux()
-	skill_points += int((GameData.skill_tree.get("points", {}) as Dictionary).get("on_ascend", 0))
-	for e: TalentEffect in effects:
-		e.on_ascend(stars)
-	_begin_ascension()
-	_rig_action("power_up")
-	note("ASCENDED. Star %d splits off - tiny, for now." % stars)
-	if talent.has("evolve_%d" % stars):
-		note("Talent evolves: %s" % str(talent["evolve_%d" % stars]))
-	if talent_id != "one_percent_lifesteal":
-		note("(this talent's evolution is not wired into the prototype yet)")
-	ascended.emit(stars)
-
-
-# --- what an ascension gives (Brent 2026-10-24; rules in Ascension, numbers balance.json "ascension") ---
-
-## Roll what this ascension offers, alongside the talents' on_ascend: the affinities to choose from
-## and each skill's boost, measured now (skills held and their stages at the moment of ascending).
-## It waits in `ascension_pending` (saved) until `resolve_ascension`.
-func _begin_ascension() -> void:
-	ascension_pending = {"star": stars, "offer": Ascension.offer(affinities, rng), "skills": Ascension.boosts(abilities, stars)}
-
-
-## The affinity is yours: its skill tree, its tempering technique and its starting runes - and no
-## skill (Brent 2026-10-18: nothing is given automatically; the tree's roots are trained). Returns
-## "" or why not.
-func add_affinity(id: String) -> String:
-	if affinities.has(id):
-		return "You already hold %s." % str(GameData.affinity(id).get("label", id))
-	if GameData.affinity(id).is_empty() or not GameData.affinity_playable(id):
-		return "There is no such affinity."
-	affinities.append(id)
-	for tid: String in GameData.technique_ids():
-		if str(GameData.technique(tid).get("affinity", "")) == id and not tempering.has(tid):
-			tempering[tid] = {"stage": 0, "progress": 0.0}
-	var start: Dictionary = (GameData.rune_discovery.get("start", {}) as Dictionary).get("affinity_runes", {})
-	for rid: Variant in start.get(id, []):
-		_know(str(rid))
-	return ""
-
-
-## Settle the pending ascension: add `affinity` (one of the offer, or "" to decline when the data
-## allows it) and put each skill's boost into an aspect - `aspects` maps a skill's index (int or
-## its string) to an aspect id; a skill left out, or given an aspect that does nothing to it, gets
-## its main aspect (Ascension.main_aspect). Boosts add to the skill's "ascension" totals. Returns ""
-## or why not (nothing is changed then).
-func resolve_ascension(affinity: String, aspects: Dictionary = {}) -> String:
-	if ascension_pending.is_empty():
-		return "Nothing is waiting from an ascension."
-	var offered: Array = ascension_pending.get("offer", [])
-	if affinity == "" and not Ascension.allow_decline() and not offered.is_empty():
-		return "An affinity must be chosen."
-	if affinity != "" and not offered.has(affinity):
-		return "That affinity was not offered."
-	if affinity != "":
-		var why: String = add_affinity(affinity)
-		if why != "":
-			return why
-	for b: Dictionary in ascension_pending.get("skills", []):
-		var i: int = int(b["index"])
-		if i < 0 or i >= abilities.size() or str((abilities[i] as Dictionary)["id"]) != str(b["id"]):
-			continue                            # the skill list changed under the offer; skip what no longer matches
-		var asp: String = ascension_aspect(i, str(aspects.get(i, aspects.get(str(i), ""))))
-		var st: Dictionary = abilities[i]
-		var totals: Dictionary = st.get("ascension", {})
-		totals[asp] = float(totals.get(asp, 0.0)) + float(b["amount"])
-		st["ascension"] = totals
-	ascension_pending = {}
-	note("The star settles.%s" % ((" %s is yours." % str(GameData.affinity(affinity).get("label", affinity))) if affinity != "" else ""))
-	return ""
-
-
-## The aspect a boost to skill `index` goes into: `wanted` if it changes something there, else the
-## skill's main aspect.
-func ascension_aspect(index: int, wanted: String) -> String:
-	var ab: Dictionary = ability_stats(abilities[index])
-	if wanted != "" and Ascension.aspect_ids().has(wanted) and Ascension.aspect_acts(ab, wanted):
-		return wanted
-	return Ascension.main_aspect(ab)
-
-
-## What putting `amount` into `aspect` would change on skill `index`: the rule set's rows for that
-## aspect's stat groups, before -> after ([{label, before, after, changed, better}]), numbers formatted.
-func ascension_preview(index: int, aspect: String, amount: float) -> Array[Dictionary]:
-	if index < 0 or index >= abilities.size():
-		return []
-	var st: Dictionary = abilities[index]
-	var trial: Dictionary = st.duplicate(true)
-	var totals: Dictionary = trial.get("ascension", {})
-	totals[aspect] = float(totals.get(aspect, 0.0)) + amount
-	trial["ascension"] = totals
-	var before: Dictionary = ability_stats(st)
-	var after: Dictionary = ability_stats(trial)
-	var groups: Dictionary = Ascension.aspect_groups(aspect)
-	var fields: Array = Runes.active().fields_of(before).filter(func(f: Dictionary) -> bool:
-		return groups.has(str(f["group"])) or (str(f["path"]) == "recovery" and groups.has("windup")))
-	if groups.has("power"):
-		# a buff's or channel's strength (its magnitude paths) counts as power but is in no field list
-		for mag: Variant in before.get("magnitude", []):
-			var mp: String = str((mag as Dictionary).get("path", ""))
-			if mp != "" and not fields.any(func(f: Dictionary) -> bool: return str(f["path"]) == mp):
-				fields.append({"path": mp, "group": "power", "label": "Strength (%s)" % mp.get_slice(".", mp.get_slice_count(".") - 1).replace("_", " "),
-					"unit": "", "lower_is_better": str((mag as Dictionary).get("dir", "up")) == "down", "scaled_by_stage": false})
-	var stage_mult: float = ability_damage_mult(int(st["stage"])) * float(before.get("damage_all", 1.0))
-	return _stat_rows(before, after, fields, stage_mult).filter(func(r: Dictionary) -> bool: return bool(r["changed"]))
-
-
-## "Ascension: +22% power" for skill `index`, or "" if it has never been boosted.
-func ascension_summary(index: int) -> String:
-	if index < 0 or index >= abilities.size():
-		return ""
-	var s: String = Ascension.summary((abilities[index] as Dictionary).get("ascension", {}))
-	return ("Ascension: " + s) if s != "" else ""
 
 
 # --- the 2026-10-22 skill kinds (build brief: smite, channel, charge_release, summon, seed, grapple,
@@ -6873,22 +6392,6 @@ func _swing_visual(reach: float, heavy: bool, narrow: bool) -> void:
 	tween.tween_callback(arc.queue_free)
 
 
-# --- the unstarred tier and field consumables (2026-10-23, the Stubble) --------------------------
-
-## How much of a kill's aura counts (design/01 LAW 2, Brent 2026-10-19): a starred foe in full; an
-## unstarred one (enemies.json stars 0) less for every star you hold, and less again as your newest
-## star fills (balance.json "unstarred").
-func kill_aura_mult(target: Node) -> float:
-	var kind_v: Variant = target.get("kind")
-	if kind_v == null or int(GameData.enemy(str(kind_v)).get("stars", 1)) > 0:
-		return 1.0
-	var cfg: Dictionary = GameData.balance.get("unstarred", {})
-	var fill: float = 0.0
-	if not star_pct.is_empty():
-		fill = clampf(star_pct[star_pct.size() - 1] / GameData.num("stars", "max_pct"), 0.0, 1.0)
-	return pow(float(cfg.get("star_falloff", 0.35)), float(maxi(0, stars - 1))) * lerpf(1.0, float(cfg.get("at_full_star", 0.25)), fill)
-
-
 # --- feel (Brent 2026-10-24: "make them feel more fluid. It feels a bit clunky right now") ----------
 # How the controls answer; numbers in balance.json "feel", measured by tests/combat_timeline_probe.
 # Responsiveness only: nothing here changes what a skill or a strike does, costs or commits you to.
@@ -7475,3 +6978,40 @@ func buy_corpse_retrieval() -> String: return economy_part.buy_corpse_retrieval(
 func rest_night() -> void: economy_part.rest_night()
 static func remains_of(kind: String) -> Array[String]: return PlayerEconomy.remains_of(kind)
 func use_consumable(item_id: String) -> String: return economy_part.use_consumable(item_id)
+
+
+# --- forwarded to PlayerProgression (scripts/player/player_progression.gd) ------------------------------------------
+# Outside callers (main.gd, the HUD, the screens, the tests, talents) still call these on the player.
+func temper_stage_cap() -> int: return progress_part.temper_stage_cap()
+func temper_stat(stat: String) -> float: return progress_part.temper_stat(stat)
+func temper_effect_text(id: String, stage: int) -> String: return progress_part.temper_effect_text(id, stage)
+func temper_session_damage(id: String) -> float: return progress_part.temper_session_damage(id)
+func temper_session_progress(id: String) -> float: return progress_part.temper_session_progress(id)
+func cannot_temper_reason(id: String) -> String: return progress_part.cannot_temper_reason(id)
+func temper_session(id: String) -> bool: return progress_part.temper_session(id)
+func knows(ability_id: String) -> bool: return progress_part.knows(ability_id)
+func can_learn(ability_id: String) -> String: return progress_part.can_learn(ability_id)
+func learn(ability_id: String) -> bool: return progress_part.learn(ability_id)
+func read_scroll(item_id: String) -> String: return progress_part.read_scroll(item_id)
+func scroll_for_me() -> String: return progress_part.scroll_for_me()
+func start_with_skills(ids: Array) -> String: return progress_part.start_with_skills(ids)
+func default_start_skills() -> Array[String]: return progress_part.default_start_skills()
+func skill_cost(ability_id: String) -> Dictionary: return progress_part.skill_cost(ability_id)
+func skill_unlocked(ability_id: String) -> bool: return progress_part.skill_unlocked(ability_id)
+func cannot_train_reason(ability_id: String) -> String: return progress_part.cannot_train_reason(ability_id)
+func train_skill(ability_id: String) -> String: return progress_part.train_skill(ability_id)
+func cannot_drill_reason(ability_id: String) -> String: return progress_part.cannot_drill_reason(ability_id)
+func drill_skill(ability_id: String) -> String: return progress_part.drill_skill(ability_id)
+func add_aura(amount: float) -> void: progress_part.add_aura(amount)
+func _recompute_essence_max() -> void: progress_part._recompute_essence_max()
+func grow_star(pct: float) -> void: progress_part.grow_star(pct)
+func _meditate_gather(delta: float) -> void: progress_part._meditate_gather(delta)
+func aura_read() -> String: return progress_part.aura_read()
+func try_ascend() -> void: progress_part.try_ascend()
+func _begin_ascension() -> void: progress_part._begin_ascension()
+func add_affinity(id: String) -> String: return progress_part.add_affinity(id)
+func resolve_ascension(affinity: String, aspects: Dictionary = {}) -> String: return progress_part.resolve_ascension(affinity, aspects)
+func ascension_aspect(index: int, wanted: String) -> String: return progress_part.ascension_aspect(index, wanted)
+func ascension_preview(index: int, aspect: String, amount: float) -> Array[Dictionary]: return progress_part.ascension_preview(index, aspect, amount)
+func ascension_summary(index: int) -> String: return progress_part.ascension_summary(index)
+func kill_aura_mult(target: Node) -> float: return progress_part.kill_aura_mult(target)

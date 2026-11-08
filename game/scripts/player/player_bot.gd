@@ -31,7 +31,7 @@ func make_test_character(aff: String) -> void:
 	player.star_pct.clear()
 	for i: int in n:
 		player.star_pct.append(GameData.num("stars", "max_pct"))
-	player._recompute_essence_max()
+	player.progress_part._recompute_essence_max()
 	player.essence = player.essence_max
 	var ids: Array[String] = []
 	for id: String in GameData.skill_tree_of(aff):

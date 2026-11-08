@@ -76,7 +76,7 @@ func _roll_loot(target: Node) -> void:
 	for entry: Dictionary in GameData.enemy(str(kind_v)).get("loot", []):
 		if player.rng.randf() < float(entry["chance"]):
 			if bool(entry.get("learnable", false)):
-				var scroll: String = player.scroll_for_me()
+				var scroll: String = player.progress_part.scroll_for_me()
 				if scroll != "":
 					spawn_pickup(parent, scroll, (target as Node3D).global_position + Vector3(player.rng.randf_range(-0.8, 0.8), 0.0, player.rng.randf_range(-0.8, 0.8)))
 				continue

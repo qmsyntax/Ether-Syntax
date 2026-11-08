@@ -61,7 +61,7 @@ func from_save(d: Dictionary) -> void:
 	player.star_pct.clear()
 	for pct: Variant in d.get("star_pct", [GameData.num("stars", "first_star_start_pct")]):
 		player.star_pct.append(float(pct))
-	player._recompute_essence_max()
+	player.progress_part._recompute_essence_max()
 	player.money = int(d.get("money", 0))
 	player.essence = minf(player.essence_max, float(d.get("essence", player.essence_max)))
 	player._latent_aura = float(d.get("latent_aura", 0.0))
