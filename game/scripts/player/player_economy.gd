@@ -30,7 +30,7 @@ func weapon_stat(stat_name: String, multiplicative: bool = false) -> float:
 ## How far a base strike reaches right now.
 func reach_now() -> float:
 	var r: float = player.melee_range + weapon_stat("melee_range_bonus")
-	var c: Dictionary = player.conjured()
+	var c: Dictionary = player.combat_part.conjured()
 	if c.has("melee_range"):
 		r = float(c["melee_range"])                     # a conjured weapon's own reach (Thirsting Glaive)
 	for bid: String in player.buffs:
@@ -272,7 +272,7 @@ func buy_corpse_retrieval() -> String:
 func rest_night() -> void:
 	var night: Dictionary = GameData.balance["night"]
 	var mended: Dictionary = player.body.fill_sinks(float(night["sink_healed"]), true)      # never a lost limb
-	player._wounds_closed(mended["closed"])
+	player.combat_part._wounds_closed(mended["closed"])
 	player.body.heal(player.body.total_max())
 	if not player.arm_right_lost:
 		player.arm_right = minf(float(player._arm["max"]), player.arm_right + float(night["arm_restored"]))

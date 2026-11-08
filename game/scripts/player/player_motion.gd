@@ -34,16 +34,16 @@ func _tick_move(delta: float) -> void:
 	else:
 		_update_hover()
 	var was_stance: bool = player.ranged_stance
-	player.ranged_stance = not player.bot and not player._sitting and not player.ui_blocked and Input.is_action_pressed("ranged_stance") and not player.ranged_weapon().is_empty()
+	player.ranged_stance = not player.bot and not player._sitting and not player.ui_blocked and Input.is_action_pressed("ranged_stance") and not player.combat_part.ranged_weapon().is_empty()
 	if player.ranged_stance != was_stance:
-		player._show_range_ring(player.ranged_stance)
+		player.combat_part._show_range_ring(player.ranged_stance)
 	if player.ranged_stance:
 		# feet stay where they are: no walking to a click, no closing to strike
 		player.attack_target = null
 		player.pickup_target = null
 		player.has_move_goal = false
 		if Input.is_action_pressed("strike"):
-			player.fire_ranged(player._ranged_aim())
+			player.combat_part.fire_ranged(player.combat_part._ranged_aim())
 	if not player.bot and not player.ranged_stance and Input.is_action_just_pressed("strike") and not player._sitting and not player.ui_blocked:
 		_click_cursor()
 		_strike_clicked()
@@ -76,8 +76,8 @@ func _tick_move(delta: float) -> void:
 			dir = Vector3.ZERO if input == Vector2.ZERO else dir
 			if player._melee_cd <= 0.0 and player._stagger_t <= 0.0 and not stepping():
 				player._strike_credit = maxi(0, player._strike_credit - 1)       # a click is one blow (_strike_spent)
-				player._strike_target(player.attack_target, float(player._p["off_hand_factor"]) if player.arm_right_lost else 1.0, ["melee"])
-				player._melee_cd = float(player._p["melee_cooldown"]) * player.economy_part.weapon_stat("melee_cooldown_mult", true) * player.progress_part.temper_stat("melee_cooldown_mult") / maxf(0.1, player.strike_rate_mult())
+				player.combat_part._strike_target(player.attack_target, float(player._p["off_hand_factor"]) if player.arm_right_lost else 1.0, ["melee"])
+				player._melee_cd = float(player._p["melee_cooldown"]) * player.economy_part.weapon_stat("melee_cooldown_mult", true) * player.progress_part.temper_stat("melee_cooldown_mult") / maxf(0.1, player.combat_part.strike_rate_mult())
 		elif input == Vector2.ZERO:
 			dir = to.normalized()                  # walk into reach
 			if player.bot and player._bot_dir != Vector3.ZERO:

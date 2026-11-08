@@ -235,9 +235,9 @@ func _bind_construct(ability_index: int, construct_index: int, roll: float = -1.
 	if r >= GameData.num("binding", "success_chance"):
 		var burn_wound: Dictionary = GameData.balance["wounds"]["bind_fail"]
 		player._wound_seq += 1
-		player.take_wound("bind_%d" % player._wound_seq, str(burn_wound["name"]), float(burn_wound["sink"]), float(burn_wound["cut"]))
+		player.combat_part.take_wound("bind_%d" % player._wound_seq, str(burn_wound["name"]), float(burn_wound["sink"]), float(burn_wound["cut"]))
 		player.note("The %s of %s tears free. The bind fails and it is gone." % [con["tier"], label])
-		player._check_death()
+		player.combat_part._check_death()
 		return "failed"
 	# a record of the bind only: the concept reaches the skill as the keystone the seal sets over its
 	# ring (bind_seal; RingRules.keystone_effect), never from this list
@@ -770,7 +770,7 @@ func skill_details(index: int) -> Dictionary:
 	var rows: Array[Dictionary] = _stat_rows(before, after, fields, stage_mult)
 	# worked out from the fields: what a strike-scaled hit does, where a shot reaches, how far a dash
 	# goes, what an arc does on a jump, and the reflux the cost leaves
-	var strike: float = player.strike_damage()
+	var strike: float = player.combat_part.strike_damage()
 	var derived: Array[Dictionary] = []
 	for part: String in ["", "on_hit."]:
 		if _num_at(before, part + "damage_mult") > 0.0:
