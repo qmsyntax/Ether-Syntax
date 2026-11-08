@@ -189,6 +189,7 @@ func _process(delta: float) -> void:
 				player.call("end_fight")
 				state = "arena_rest"
 				rest_timer = GameData.num("arena", "rest_between_waves")
+				_prebuild_bodies(_wave_kinds(wave + 1))     # built during the rest
 				player.call("note", "Wave %d cleared." % wave)
 		"dungeon":
 			_tick_dungeon(delta)
@@ -217,6 +218,7 @@ func _process(delta: float) -> void:
 			_save_shot()
 	if _bot_mode:
 		_tick_bot_report()
+	_tick_prebuild()
 
 
 ## Zoom (0 far .. 1 near) and where it is easing to; the wheel sets the target.
@@ -1625,6 +1627,16 @@ func _enter_arena() -> void:
 	player.global_position = Vector3.ZERO
 	player.set("active", true)
 	_place_corpses("arena")
+	# every kind the waves bring, loaded with the level: by the wave after the last threshold all have come
+	var last: int = 1
+	for key: String in GameData.balance["arena"]:
+		if key.ends_with("_every_n_waves") or key.ends_with("_from_wave"):
+			last = maxi(last, GameData.inum("arena", key) + 1)
+	var roster: Array[String] = []
+	for w: int in range(1, last + 1):
+		roster.append_array(_wave_kinds(w))
+	_warm_bodies(roster + _calls_of(roster))
+	_prebuild_bodies(_wave_kinds(1))
 	wave = 0
 	rest_timer = GameData.num("arena", "first_rest")
 	state = "arena_rest"
@@ -1635,21 +1647,31 @@ func _start_wave() -> void:
 	state = "arena_fight"
 	hud.call("announce", "WAVE %d" % wave)
 	player.call("start_fight")
-	for i: int in GameData.inum("arena", "grunts_base") + wave:
-		_spawn_arena_enemy("grunt")
-	for i: int in wave / GameData.inum("arena", "brute_every_n_waves"):
-		_spawn_arena_enemy("brute")
-	for i: int in wave / GameData.inum("arena", "archer_every_n_waves"):
-		_spawn_arena_enemy("archer")
-	for i: int in wave / GameData.inum("arena", "harrier_every_n_waves"):
-		_spawn_arena_enemy("harrier")
-	for i: int in wave / GameData.inum("arena", "pavise_every_n_waves"):
-		_spawn_arena_enemy("pavise")
+	var kinds: Array[String] = _wave_kinds(wave)
+	for kind: String in kinds:
+		_spawn_arena_enemy(kind)
+	_prebuild_bodies(_calls_of(kinds))
+
+
+## Who comes in arena wave `w`, in the order they are placed.
+func _wave_kinds(w: int) -> Array[String]:
+	var kinds: Array[String] = []
+	for i: int in GameData.inum("arena", "grunts_base") + w:
+		kinds.append("grunt")
+	for i: int in w / GameData.inum("arena", "brute_every_n_waves"):
+		kinds.append("brute")
+	for i: int in w / GameData.inum("arena", "archer_every_n_waves"):
+		kinds.append("archer")
+	for i: int in w / GameData.inum("arena", "harrier_every_n_waves"):
+		kinds.append("harrier")
+	for i: int in w / GameData.inum("arena", "pavise_every_n_waves"):
+		kinds.append("pavise")
 	# one problem per pack: never more than one of each
-	if wave >= GameData.inum("arena", "censer_from_wave") and wave % 2 == 1:
-		_spawn_arena_enemy("censer")
-	if wave >= GameData.inum("arena", "drummer_from_wave"):
-		_spawn_arena_enemy("drummer")
+	if w >= GameData.inum("arena", "censer_from_wave") and w % 2 == 1:
+		kinds.append("censer")
+	if w >= GameData.inum("arena", "drummer_from_wave"):
+		kinds.append("drummer")
+	return kinds
 
 
 func _spawn_arena_enemy(kind: String) -> void:
@@ -1716,6 +1738,13 @@ func _enter_dungeon() -> void:
 	player.global_position = level.to_global(Vector3(0.0, 0.0, -4.0))
 	player.set("active", true)
 	_place_corpses("passage")
+	# everyone the passage can put up is loaded now, with the level, not the first time each kind wakes;
+	# the first wall's bodies are built ahead (the rest after each wall falls - _on_wall_cleared)
+	var roster: Array[String] = []
+	for c3: int in range(1, chambers + 1):
+		roster.append_array(_wall_kinds(c3))
+	_warm_bodies(roster + _calls_of(roster))
+	_prebuild_bodies(_wall_kinds(1))
 	state = "dungeon"
 	player.call("note", "You step through into %s. Walk up the corridor (%s)." % [str(_biome.get("label", biome)).to_lower(), Keybinds.binding_text("move_up")])
 
@@ -1771,9 +1800,9 @@ func _tick_dungeon(delta: float) -> void:
 		player.set("bot_goal", level.to_global(goal_local))
 
 
-func _activate(c: int) -> void:
-	current = c
-	var strength: float = late_strength if c > gate_at else 1.0
+## Who stands in wall `c`, in the order they are placed: the front line of grunts, the brutes, a
+## commander at the gate and at the last wall, then the wall's recipe (design/05 6.2).
+func _wall_kinds(c: int) -> Array[String]:
 	var kinds: Array[String] = []
 	for i: int in GameData.inum("passage", "grunts_base") + c / 2:
 		kinds.append("grunt")
@@ -1786,6 +1815,13 @@ func _activate(c: int) -> void:
 	for kind: String in recipe:
 		for i: int in int(recipe[kind]):
 			kinds.append(kind)
+	return kinds
+
+
+func _activate(c: int) -> void:
+	current = c
+	var strength: float = late_strength if c > gate_at else 1.0
+	var kinds: Array[String] = _wall_kinds(c)
 	for kind: String in kinds:
 		# archers start at the back of the chamber, where a back line belongs
 		var back: bool = str(GameData.enemy(kind).get("behaviour", "melee")) == "ranged"
@@ -1793,6 +1829,7 @@ func _activate(c: int) -> void:
 			rng.randf_range(-float(c + 1) * ch_len + 2.0, -float(c + 1) * ch_len + 4.0) if back
 			else rng.randf_range(-float(c + 1) * ch_len + 2.0, -float(c) * ch_len - 7.0))
 		_spawn_enemy(kind, local, strength)
+	_prebuild_bodies(_calls_of(kinds))         # a commander's call for help lands mid-fight: its bodies wait ready
 	player.call("start_fight")
 	player.call("note", "Wall %d of %d." % [c, chambers])
 	hud.call("announce", "WALL %d" % c if c != chambers else "THE LAST WALL")
@@ -1831,6 +1868,8 @@ func _on_wall_cleared() -> void:
 		barriers.erase(next_c)
 		if gates.has(next_c):
 			(gates[next_c] as Node).call("set_open", true)
+	if cleared < chambers:
+		_prebuild_bodies(_wall_kinds(cleared + 1))   # built while you walk to the next doorway
 	if cleared >= gate_at:
 		_spawn_pad(cleared)
 	player.call("note", "Wall %d cleared. Spoils worth $%d waiting - yours only if you walk out with them." % [cleared, bank])
@@ -1989,6 +2028,59 @@ func _charge_rent(rate: float, delta: float) -> void:
 		var due: int = int(_rent_accum)
 		_rent_accum -= float(due)
 		player.call("charge", due)
+
+
+# --- bodies built ahead (perf, 2026-11-08; docs/perf/baseline-2026-11-08.md) ----------------------
+# A real body costs ~2 ms to build once its kind's model and textures are loaded, and far more the first
+# time a kind appears (the female body's model, the kind's garments and props): a whole wall built in the
+# frame it woke stalled that frame for ~0.4 s. So a level loads every kind it can put up as it is built
+# (_warm_bodies), and the bodies of the next wall or wave are built ahead, one a frame, while you walk or
+# rest (_prebuild_bodies); Models.enemy hands out a ready one. Nothing about the enemies changes.
+
+var _prebuild_queue: Array[String] = []
+
+
+## The kinds these enemies may call for help (enemies.json "calls"), so their bodies can wait ready.
+func _calls_of(kinds: Array[String]) -> Array[String]:
+	var out: Array[String] = []
+	for kind: String in kinds:
+		for k2: Variant in GameData.enemy(kind).get("calls", []):
+			out.append(str(k2))
+	return out
+
+
+## Load every kind in `kinds` now (in a level's own loading frame): one body of each is built and kept
+## ready, which brings in its model and textures.
+func _warm_bodies(kinds: Array[String]) -> void:
+	var seen: Dictionary = {}
+	for kind: String in kinds:
+		if seen.has(kind):
+			continue
+		seen[kind] = true
+		if Models.prebuilt_count(kind) == 0:
+			Models.prebuild(kind)
+
+
+## Have bodies for `kinds` (one entry per body) ready before they are needed: what is not already
+## built or queued is queued, and built one a frame (_tick_prebuild).
+func _prebuild_bodies(kinds: Array[String]) -> void:
+	var want: Dictionary = {}
+	for kind: String in kinds:
+		if Models.is_real_enemy(kind):
+			want[kind] = int(want.get(kind, 0)) + 1
+	for kind: String in want:
+		var short: int = int(want[kind]) - Models.prebuilt_count(kind) - _prebuild_queue.count(kind)
+		for i: int in short:
+			_prebuild_queue.append(kind)
+
+
+func _tick_prebuild() -> void:
+	if not _prebuild_queue.is_empty():
+		Models.prebuild(_prebuild_queue.pop_front())
+
+
+func _exit_tree() -> void:
+	Models.free_prebuilt()                   # bodies never placed are in no tree: nothing else frees them
 
 
 func _spawn_enemy(kind: String, local_pos: Vector3, strength: float) -> void:
