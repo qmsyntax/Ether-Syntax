@@ -87,7 +87,7 @@ func _bot_think(delta: float = 0.0) -> bool:
 		player._facing = to / dist
 	if near == null:
 		return false
-	return dist <= player.reach_now() + float(near.get("radius"))
+	return dist <= player.economy_part.reach_now() + float(near.get("radius"))
 
 
 ## Test bot: the way to walk to `goal` - along the level's navigation mesh, or where there is

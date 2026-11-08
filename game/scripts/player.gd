@@ -25,6 +25,7 @@ const ISO_YAW := deg_to_rad(45.0)
 ## here, and the forwarders at the end of this file keep every outside caller unchanged.
 var save_part: PlayerSave
 var bot_part: PlayerBot
+var economy_part: PlayerEconomy
 
 var body: Body
 var talent_id := ""
@@ -239,7 +240,6 @@ var _focus_t := 0.0
 var _focus_fill_next := false
 ## Bodies you died in and have not recovered: {id, where, chamber, pos, equipped, bag}.
 var corpses: Array = []
-var _corpse_seq := 0
 ## What you have seen of each overland zone: zone id -> FogMap.to_text().
 var explored: Dictionary = {}
 var rod: Node3D                      # the one Ground Rod standing, if any
@@ -313,6 +313,7 @@ var melee_arc := deg_to_rad(75.0)
 func _init() -> void:
 	save_part = PlayerSave.new(self)
 	bot_part = PlayerBot.new(self)
+	economy_part = PlayerEconomy.new(self)
 	_p = GameData.balance["player"]
 	_arm = GameData.balance["arm"]
 	_reflux_cfg = GameData.balance["reflux"]
@@ -325,7 +326,7 @@ func _init() -> void:
 	_recompute_essence_max()
 	essence = essence_max
 	inventory = Inventory.new()
-	refresh_gear()
+	economy_part.refresh_gear()
 	_aura_threshold = float(_p["aura_threshold"])
 	arm_right = float(_arm["max"])
 	melee_range = float(_p["melee_range"])
@@ -368,7 +369,7 @@ func _build_model() -> void:
 	_shown_arm_lost = arm_right_lost
 	_shown_weapon = ""
 	if inventory != null:
-		_show_weapon()
+		economy_part._show_weapon()
 
 
 ## Keep the model in step with the character: lost arm, overcharge wind-up, meditation glow, walk.
@@ -721,7 +722,7 @@ func _physics_process(delta: float) -> void:
 	if attack_target != null and not meditating and not _charging:
 		var to: Vector3 = attack_target.global_position - global_position
 		to.y = 0.0
-		var reach: float = reach_now() + float(attack_target.get("radius"))
+		var reach: float = economy_part.reach_now() + float(attack_target.get("radius"))
 		if to.length() > 0.2:
 			_facing = to.normalized()
 		if to.length() <= reach:
@@ -729,7 +730,7 @@ func _physics_process(delta: float) -> void:
 			if _melee_cd <= 0.0 and _stagger_t <= 0.0 and not stepping():
 				_strike_credit = maxi(0, _strike_credit - 1)       # a click is one blow (_strike_spent)
 				_strike_target(attack_target, float(_p["off_hand_factor"]) if arm_right_lost else 1.0, ["melee"])
-				_melee_cd = float(_p["melee_cooldown"]) * weapon_stat("melee_cooldown_mult", true) * temper_stat("melee_cooldown_mult") / maxf(0.1, strike_rate_mult())
+				_melee_cd = float(_p["melee_cooldown"]) * economy_part.weapon_stat("melee_cooldown_mult", true) * temper_stat("melee_cooldown_mult") / maxf(0.1, strike_rate_mult())
 		elif input == Vector2.ZERO:
 			dir = to.normalized()                  # walk into reach
 			if bot and _bot_dir != Vector3.ZERO:
@@ -738,7 +739,7 @@ func _physics_process(delta: float) -> void:
 		var to_item: Vector3 = pickup_target.global_position - global_position
 		to_item.y = 0.0
 		if to_item.length() <= GameData.num("player", "pickup_reach"):
-			take_pickup(pickup_target)
+			economy_part.take_pickup(pickup_target)
 			pickup_target = null
 		elif input == Vector2.ZERO:
 			dir = to_item.normalized()
@@ -1072,7 +1073,7 @@ func _tick_buffs(delta: float) -> void:
 			_buff_ended(id, b)
 			if id == "conjured":
 				_shown_weapon = ""                        # the worn weapon comes back
-				_show_weapon()
+				economy_part._show_weapon()
 
 
 ## An aura (Stonehide's mud, Millstone's pull and taunt, Gloom Mantle's dark): every tick_s its payload lands on
@@ -1790,7 +1791,7 @@ func cannot_train_reason(ability_id: String) -> String:
 	var cost: Dictionary = skill_cost(ability_id)
 	if skill_points < int(cost["points"]):
 		return _points_short(int(cost["points"]))
-	if not can_afford(int(cost["price"])):
+	if not economy_part.can_afford(int(cost["price"])):
 		return "Nobody trains on that much debt."
 	return ""
 
@@ -1807,7 +1808,7 @@ func train_skill(ability_id: String) -> String:
 		return why
 	var cost: Dictionary = skill_cost(ability_id)
 	skill_points -= int(cost["points"])
-	charge(int(cost["price"]))
+	economy_part.charge(int(cost["price"]))
 	learn(ability_id)
 	var ab: Dictionary = GameData.ability(ability_id)
 	note("Trained: %s%s." % [str(ab.get("name", ability_id)), "" if hotbar.has(abilities.size() - 1) else " - the bar is full; place it from the soul screen"])
@@ -1827,7 +1828,7 @@ func cannot_drill_reason(ability_id: String) -> String:
 	var cfg: Dictionary = GameData.skill_tree.get("drill", {})
 	if skill_points < int(cfg.get("points", 1)):
 		return _points_short(int(cfg.get("points", 1)))
-	if not can_afford(int(cfg.get("price", 0))):
+	if not economy_part.can_afford(int(cfg.get("price", 0))):
 		return "Nobody trains on that much debt."
 	return ""
 
@@ -1840,7 +1841,7 @@ func drill_skill(ability_id: String) -> String:
 		return why
 	var cfg: Dictionary = GameData.skill_tree.get("drill", {})
 	skill_points -= int(cfg.get("points", 1))
-	charge(int(cfg.get("price", 0)))
+	economy_part.charge(int(cfg.get("price", 0)))
 	for a: Dictionary in abilities:
 		if str(a["id"]) == ability_id:
 			a["progress"] = minf(100.0, float(a["progress"]) + float(cfg.get("progress", 0.0)))
@@ -2629,7 +2630,7 @@ func _on_kill(target: Node) -> void:
 	_latent_aura += aura * risk
 	grow_star(aura * GameData.num("stars", "growth_pct_per_aura"))
 	_roll_drops(target)
-	_roll_loot(target)
+	economy_part._roll_loot(target)
 	_roll_kill_rune(target)
 
 
@@ -2753,8 +2754,8 @@ func _strike_target(target: Node3D, multiplier: float, tags: Array) -> void:
 	_strike_t = 0.2
 	_snap_body_now()
 	_face_hold_t = 0.0
-	_swing_visual(reach_now(), multiplier > 1.0, true)
-	deal_damage(target, float(_p["melee_damage"]) * weapon_stat("melee_damage_mult", true) * multiplier, tags)
+	_swing_visual(economy_part.reach_now(), multiplier > 1.0, true)
+	deal_damage(target, float(_p["melee_damage"]) * economy_part.weapon_stat("melee_damage_mult", true) * multiplier, tags)
 
 
 ## The overcharged blow lands on the clicked target, else whatever is under the cursor, else the
@@ -2788,7 +2789,7 @@ func _swing(multiplier: float, reach: float, tags: Array) -> void:
 
 ## What one bare strike does, before any skill or stage multiplies it.
 func strike_damage() -> float:
-	return float(_p["melee_damage"]) * weapon_stat("melee_damage_mult", true) * float(conjured().get("melee_damage_mult", 1.0))
+	return float(_p["melee_damage"]) * economy_part.weapon_stat("melee_damage_mult", true) * float(conjured().get("melee_damage_mult", 1.0))
 
 
 ## The weapon conjured in your hand, or {} (Blood's conjure_weapon: Clotblade, Thirsting Glaive). One at a time.
@@ -4207,7 +4208,7 @@ func _release_overcharge() -> void:
 	var applied: float = body.apply_self_harm(self_cost)
 	_float("arm -%d" % int(applied), Color(1, 0.4, 0.3))
 	_rig_action("heavy")
-	var heavy_target: Node3D = _overcharge_target(reach_now() + float(_p["overcharge_reach_bonus"]))
+	var heavy_target: Node3D = _overcharge_target(economy_part.reach_now() + float(_p["overcharge_reach_bonus"]))
 	if heavy_target != null:
 		_strike_target(heavy_target, 1.0 + c * float(_p["overcharge_damage_per_charge"]), ["melee", "overcharge"])
 	else:
@@ -4297,7 +4298,7 @@ func cast_ability(index: int) -> void:
 	# Some skills need something to point at; find out before anything is spent.
 	var strike_target: Node3D = null
 	var blink_to := Vector3.ZERO
-	var reach: float = float(ab["range"]) if ab.has("range") else reach_now() + float(ab.get("range_bonus", 0.0))
+	var reach: float = float(ab["range"]) if ab.has("range") else economy_part.reach_now() + float(ab.get("range_bonus", 0.0))
 	if kind == "targeted_strike" or kind == "chain" or (kind == "displace" and ["pull_target", "throw_target"].has(str(ab.get("mode", "")))) \
 			or (kind == "smite" and not bool(ab.get("nearest_to_point", false))) or (kind == "channel" and str(ab.get("shape", "")) == "tether") \
 			or (kind == "detonate" and str(ab.get("gather_into", "")) == "target"):
@@ -4836,7 +4837,7 @@ func preview_bind(state: Dictionary, concept: String) -> Array[Dictionary]:
 	var then: Dictionary = ability_stats(trial, RuneWord.with_keystone(base, stage + 1, tier, concept))
 	if now.is_empty():
 		return out
-	var strike: float = float(_p["melee_damage"]) * weapon_stat("melee_damage_mult", true)
+	var strike: float = float(_p["melee_damage"]) * economy_part.weapon_stat("melee_damage_mult", true)
 	# the stage step comes with every keystone: the damage rows carry it too
 	var mult_now: float = ability_damage_mult(stage) * float(now.get("damage_all", 1.0))
 	var mult_then: float = ability_damage_mult(stage + 1) * float(then.get("damage_all", 1.0))
@@ -5695,102 +5696,6 @@ func _roll_drops(target: Node) -> void:
 			note("It leaves a %s behind." % ConstructWords.phrase(tier, concept_id))
 
 
-# --- gear, loot, saving ----------------------------------------------------------
-
-## A stat of the weapon in hand. A weapon is held in the striking arm, so with that arm lost it
-## counts for nothing (neutral value) until the arm is regrown.
-func weapon_stat(stat_name: String, multiplicative: bool = false) -> float:
-	var neutral: float = 1.0 if multiplicative else 0.0
-	if arm_right_lost:
-		return neutral
-	var stats: Dictionary = GameData.item(str(inventory.equipped.get("weapon", ""))).get("stats", {})
-	return float(stats.get(stat_name, neutral))
-
-
-## How far a base strike reaches right now.
-func reach_now() -> float:
-	var r: float = melee_range + weapon_stat("melee_range_bonus")
-	var c: Dictionary = conjured()
-	if c.has("melee_range"):
-		r = float(c["melee_range"])                     # a conjured weapon's own reach (Thirsting Glaive)
-	for bid: String in buffs:
-		r += float((buffs[bid] as Dictionary).get("strike_reach_bonus", 0.0))       # Red Frenzy
-	return r
-
-
-## Re-read what equipment grants. Call after anything is equipped or removed.
-func refresh_gear() -> void:
-	satellite_rate = float(_p["starter_satellite_rate"]) + inventory.stat("satellite_rate")
-	_show_weapon()
-
-
-## Put the equipped weapon in the model's hand (or take it away).
-func _show_weapon() -> void:
-	if _rig == null:
-		return
-	if _rig.has_method("set_outfit"):
-		_rig.call("set_outfit", inventory.equipped)       # a real body wears what is equipped
-	var id: String = str(inventory.equipped.get("weapon", ""))
-	if id == _shown_weapon:
-		return
-	_shown_weapon = id
-	_rig.set_weapon(Models.weapon(id) if id != "" else null)
-
-
-## Kills leave items on the ground where the enemy fell.
-func _roll_loot(target: Node) -> void:
-	var kind_v: Variant = target.get("kind")
-	if kind_v == null or str(kind_v) == "" or not is_inside_tree():
-		return
-	var parent: Node = target.get_parent()
-	if parent == null:
-		return
-	# every kill leaves something to sell: the kind's remains (nothing pays cash - Brent 2026-10-18);
-	# a beast may leave several (hide, bone, meat, fat - enemies.json "remains" as a list)
-	if not bool(target.get("is_scenery")):
-		var k: int = 0
-		for remains: String in remains_of(str(kind_v)):
-			var off := Vector3(0.45 * float(k), 0.0, -0.3 * float(k))
-			spawn_pickup(parent, remains, (target as Node3D).global_position + off)
-			k += 1
-	for entry: Dictionary in GameData.enemy(str(kind_v)).get("loot", []):
-		if rng.randf() < float(entry["chance"]):
-			if bool(entry.get("learnable", false)):
-				var scroll: String = scroll_for_me()
-				if scroll != "":
-					spawn_pickup(parent, scroll, (target as Node3D).global_position + Vector3(rng.randf_range(-0.8, 0.8), 0.0, rng.randf_range(-0.8, 0.8)))
-				continue
-			var at: Vector3 = (target as Node3D).global_position + Vector3(rng.randf_range(-0.8, 0.8), 0.0, rng.randf_range(-0.8, 0.8))
-			spawn_pickup(parent, str(entry["item"]), at)
-
-
-static func spawn_pickup(parent: Node, item_id: String, at: Vector3) -> Node3D:
-	var script: GDScript = load("res://scripts/pickup.gd")
-	var drop: Node3D = script.new()
-	drop.call("setup", item_id)
-	parent.add_child(drop)
-	drop.global_position = Vector3(at.x, 0.0, at.z)
-	return drop
-
-
-## Put a ground item in the bag, if there is room to carry it.
-func take_pickup(drop: Node3D) -> bool:
-	if drop.get("corpse_id") != null:
-		var back: bool = recover_corpse(str(drop.get("corpse_id")))
-		if back:
-			drop.call("take")
-		return back
-	var id: String = str(drop.get("item_id"))
-	var item_name: String = str(GameData.item(id).get("name", id))
-	if not inventory.add(id):
-		note("%s is too heavy - you are carrying %d of %d kg." % [item_name, int(inventory.weight()), int(inventory.capacity())])
-		return false
-	drop.call("take")
-	_rig_action("pickup")
-	note("Picked up %s." % item_name)
-	return true
-
-
 # --- stars ----------------------------------------------------------------------
 
 func _recompute_essence_max() -> void:
@@ -5870,176 +5775,6 @@ func _check_death() -> void:
 		if _rig != null:
 			_rig.set_dead_look()
 		died.emit()
-
-
-# --- between fights -----------------------------------------------------------
-
-## Rent keeps ticking while you rest. Money may go negative: that is debt.
-func charge(amount: int) -> void:
-	money -= amount
-
-
-func _can_afford(cost: int) -> bool:
-	return money - cost >= int(_p["debt_limit"])
-
-
-## Public form for the town: will anyone extend this much credit?
-func can_afford(cost: int) -> bool:
-	return _can_afford(cost)
-
-
-## What the healer would do next and what it would cost - for the town screen.
-func next_healing() -> Dictionary:
-	if arm_right_lost:
-		return {"desc": "Regrow your striking arm. The only way without a talent.", "cost": int(_arm["regrow_price"])}
-	var w: Dictionary = _healer_wound()
-	if not w.is_empty():
-		var work: float = minf(float(_heal_cfg["sink_per_visit"]), float(w["sink"]))
-		return {"desc": "Work on your %s (%s). Slow, careful, and not cheap." % [str(w["name"]).to_lower(), Body.wound_state(w)],
-			"cost": int(ceil(work * float(_heal_cfg["price_per_sink_point"])))}
-	var gap: float = body.missing()
-	if gap > 0.5:
-		var amount: float = minf(float(_heal_cfg["health_per_visit"]), gap)
-		return {"desc": "Patch you up: %d health now. A night's rest does it for the price of a bed." % int(ceil(amount)),
-			"cost": int(ceil(amount * float(_heal_cfg["price_per_health_point"])))}
-	return {"desc": "Nothing to mend. You are whole.", "cost": 0}
-
-
-## The wound the healer would work on next: the oldest that is not a lost limb.
-func _healer_wound() -> Dictionary:
-	for w: Dictionary in body.wounds:
-		if str(w["id"]) != "lost_arm":
-			return w
-	return {}
-
-
-## The healer sells speed, and the one thing rest cannot do: regrowth. Credit is extended to a limit.
-func buy_healing() -> void:
-	if arm_right_lost:
-		var price: int = int(_arm["regrow_price"])
-		if not _can_afford(price):
-			note("Healer: regrowing an arm is $%d. Your credit won't stretch that far." % price)
-			return
-		money -= price
-		arm_right_lost = false
-		arm_right = float(_arm["max"])
-		body.remove_wound("lost_arm")
-		note("Healer: -$%d, arm regrown." % price)
-		return
-	var next: Dictionary = next_healing()
-	var cost: int = int(next["cost"])
-	if cost <= 0:
-		note("Healer: nothing to mend.")
-		return
-	if not _can_afford(cost):
-		note("Healer: that is $%d. You have $%d and no more credit." % [cost, money])
-		return
-	money -= cost
-	var w: Dictionary = _healer_wound()
-	if not w.is_empty():
-		var wound_name: String = str(w["name"])
-		var work: float = minf(float(_heal_cfg["sink_per_visit"]), float(w["sink"]))
-		w["sink"] = float(w["sink"]) - work
-		if float(w["sink"]) <= 0.0001:
-			body.remove_wound(str(w["id"]))
-			note("Healer: -$%d. Your %s is closed." % [cost, wound_name.to_lower()])
-		else:
-			note("Healer: -$%d of work on your %s. It is %s." % [cost, wound_name.to_lower(), Body.wound_state(w)])
-		return
-	var healed: float = body.heal(float(_heal_cfg["health_per_visit"]))
-	note("Healer: -$%d, patched up %d health." % [cost, int(round(healed))])
-
-
-## Standard-mode death (design/03 section 7b): dragged out, patched up, and billed for it.
-## The fee is charged with no credit check - this is how a character ends up in debt.
-## You wake in town with nothing (Brent 2026-10-18: corpse runs). Patched up, not healed: enough
-## to stand, and nothing lost comes back. What you had is on your corpse (die_to_corpse).
-func respawn_naked() -> void:
-	var town: Dictionary = GameData.balance["town"]
-	dead = false
-	in_combat = false
-	meditating = false
-	effects.clear()
-	set_talent(talent_id)
-	_charging = false
-	_charge = 0.0
-	clear_reflux()
-	buffs.clear()
-	_end_step()
-	refill_endurance()
-	body.hp = maxf(body.hp, body.total_max() * float(town["revive_health_frac"]))
-	_build_model()
-	refresh_gear()
-	note("You wake on a cot in town with nothing on you. Your body is where you fell.")
-
-
-## Everything worn and carried stays with the body, where it fell: `where` is "passage" or "arena",
-## `chamber` and `local_pos` place it in that level's own frame. Returns the corpse, or {} if
-## there was nothing on you to leave.
-func die_to_corpse(where: String, chamber: int, local_pos: Vector3) -> Dictionary:
-	if inventory.equipped.is_empty() and inventory.bag.is_empty():
-		return {}
-	_corpse_seq += 1
-	var c: Dictionary = {"id": "corpse_%d_%d" % [Time.get_unix_time_from_system(), _corpse_seq], "where": where, "chamber": chamber,
-		"pos": [local_pos.x, local_pos.y, local_pos.z], "equipped": inventory.equipped.duplicate(), "bag": inventory.bag.duplicate()}
-	corpses.append(c)
-	inventory.equipped.clear()
-	inventory.bag.clear()
-	refresh_gear()
-	return c
-
-
-## Take back everything on one of your corpses. What you are wearing now stays on; anything that
-## would have gone in a taken slot goes in the pack. It all comes back, however heavy.
-func recover_corpse(id: String) -> bool:
-	for i: int in corpses.size():
-		var c: Dictionary = corpses[i]
-		if str(c["id"]) != id:
-			continue
-		var gear: Dictionary = c.get("equipped", {})
-		for slot: String in gear:
-			if inventory.equipped.has(slot):
-				inventory.bag.append(str(gear[slot]))
-			else:
-				inventory.equipped[slot] = str(gear[slot])
-		for item: Variant in c.get("bag", []):
-			inventory.bag.append(str(item))
-		corpses.remove_at(i)
-		refresh_gear()
-		note("You take back everything that was on your corpse.")
-		_float("RECOVERED", Color(0.9, 0.85, 0.7))
-		return true
-	return false
-
-
-## The price to have one corpse brought to you: flat, by how many stars you have.
-func corpse_fee() -> int:
-	return GameData.inum("town", "corpse_fee_per_star") * stars
-
-
-## Pay to have the most recent corpse brought back. Returns "" or why not.
-func buy_corpse_retrieval() -> String:
-	if corpses.is_empty():
-		return "You have no corpse lying anywhere."
-	var fee: int = corpse_fee()
-	if not can_afford(fee):
-		return "The collectors will not go out on that much debt."
-	money -= fee
-	recover_corpse(str((corpses.back() as Dictionary)["id"]))
-	return ""
-
-
-## A night in town: the body does what bodies do. Rent for the night is charged by the caller.
-func rest_night() -> void:
-	var night: Dictionary = GameData.balance["night"]
-	var mended: Dictionary = body.fill_sinks(float(night["sink_healed"]), true)      # never a lost limb
-	_wounds_closed(mended["closed"])
-	body.heal(body.total_max())
-	if not arm_right_lost:
-		arm_right = minf(float(_arm["max"]), arm_right + float(night["arm_restored"]))
-	clear_reflux()
-	essence = essence_max
-	note("You sleep. The body refills; wounds knit a little. What is gone stays gone.")
 
 
 func start_fight() -> void:
@@ -7154,39 +6889,6 @@ func kill_aura_mult(target: Node) -> float:
 	return pow(float(cfg.get("star_falloff", 0.35)), float(maxi(0, stars - 1))) * lerpf(1.0, float(cfg.get("at_full_star", 0.25)), fill)
 
 
-## Every remains item a kill of `kind` leaves ("remains" may be one id or a list).
-static func remains_of(kind: String) -> Array[String]:
-	var out: Array[String] = []
-	var r: Variant = GameData.enemy(kind).get("remains", "")
-	if r is Array:
-		for id: Variant in r:
-			out.append(str(id))
-	elif str(r) != "":
-		out.append(str(r))
-	return out
-
-
-## Use a consumable from the pack (items.json kind "consumable", "use"). Returns "" if it was used
-## (and is gone), else why not. Only "heal" is built: a field dressing, out of a fight.
-func use_consumable(item_id: String) -> String:
-	var def: Dictionary = GameData.item(item_id)
-	if str(def.get("kind", "")) != "consumable" or not inventory.bag.has(item_id):
-		return "That is not something you can use."
-	var use: Dictionary = def.get("use", {})
-	if bool(use.get("out_of_combat", false)) and in_combat:
-		return "Not in the middle of a fight."
-	match str(use.get("effect", "")):
-		"heal":
-			if body.total() >= body.total_max():
-				return "You are not hurt."
-			body.heal(float(use.get("amount", 0.0)))
-		_:
-			return "Nothing comes of it."
-	inventory.remove(item_id)
-	note("You use the %s." % str(def.get("name", item_id)).to_lower())
-	return ""
-
-
 # --- feel (Brent 2026-10-24: "make them feel more fluid. It feels a bit clunky right now") ----------
 # How the controls answer; numbers in balance.json "feel", measured by tests/combat_timeline_probe.
 # Responsiveness only: nothing here changes what a skill or a strike does, costs or commits you to.
@@ -7751,3 +7453,25 @@ func from_save(d: Dictionary) -> void: save_part.from_save(d)
 # Outside callers (main.gd, the HUD, the screens, the tests, talents) still call these on the player.
 func make_test_character(aff: String) -> void: bot_part.make_test_character(aff)
 func _bot_way(goal: Vector3, delta: float) -> Vector3: return bot_part._bot_way(goal, delta)
+
+
+# --- forwarded to PlayerEconomy (scripts/player/player_economy.gd) ------------------------------------------
+# Outside callers (main.gd, the HUD, the screens, the tests, talents) still call these on the player.
+func weapon_stat(stat_name: String, multiplicative: bool = false) -> float: return economy_part.weapon_stat(stat_name, multiplicative)
+func reach_now() -> float: return economy_part.reach_now()
+func refresh_gear() -> void: economy_part.refresh_gear()
+func _roll_loot(target: Node) -> void: economy_part._roll_loot(target)
+static func spawn_pickup(parent: Node, item_id: String, at: Vector3) -> Node3D: return PlayerEconomy.spawn_pickup(parent, item_id, at)
+func take_pickup(drop: Node3D) -> bool: return economy_part.take_pickup(drop)
+func charge(amount: int) -> void: economy_part.charge(amount)
+func can_afford(cost: int) -> bool: return economy_part.can_afford(cost)
+func next_healing() -> Dictionary: return economy_part.next_healing()
+func buy_healing() -> void: economy_part.buy_healing()
+func respawn_naked() -> void: economy_part.respawn_naked()
+func die_to_corpse(where: String, chamber: int, local_pos: Vector3) -> Dictionary: return economy_part.die_to_corpse(where, chamber, local_pos)
+func recover_corpse(id: String) -> bool: return economy_part.recover_corpse(id)
+func corpse_fee() -> int: return economy_part.corpse_fee()
+func buy_corpse_retrieval() -> String: return economy_part.buy_corpse_retrieval()
+func rest_night() -> void: economy_part.rest_night()
+static func remains_of(kind: String) -> Array[String]: return PlayerEconomy.remains_of(kind)
+func use_consumable(item_id: String) -> String: return economy_part.use_consumable(item_id)

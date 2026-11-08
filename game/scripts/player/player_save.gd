@@ -137,4 +137,4 @@ func from_save(d: Dictionary) -> void:
 	player.corpses = (d.get("corpses", []) as Array).duplicate(true)
 	player.explored = (d.get("explored", {}) as Dictionary).duplicate()
 	player.inventory.from_dict(d.get("inventory", {}))
-	player.refresh_gear()
+	player.economy_part.refresh_gear()
