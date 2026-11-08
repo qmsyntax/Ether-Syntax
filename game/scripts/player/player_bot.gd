@@ -53,7 +53,7 @@ func make_test_character(aff: String) -> void:
 	player.constructs.clear()
 	for tier: Variant in GameData.construct_tiers:
 		for concept: Variant in GameData.construct_word_ids(str(tier)):
-			if not bool(player.construct_fits(str(tier), str(concept))["ok"]):
+			if not bool(player.runes_part.construct_fits(str(tier), str(concept))["ok"]):
 				continue
 			for k: int in GameData.inum("skills", "test_constructs_each"):
 				player.constructs.append({"tier": str(tier), "concept": str(concept)})

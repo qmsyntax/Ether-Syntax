@@ -135,7 +135,7 @@ func learn(ability_id: String) -> bool:
 		if player.hotbar[i] < 0:
 			player.hotbar[i] = player.abilities.size() - 1
 			break
-	player._know(GameData.skill_anchor(ability_id))          # a skill's own rune comes with it [MODEL]
+	player.runes_part._know(GameData.skill_anchor(ability_id))          # a skill's own rune comes with it [MODEL]
 	return true
 
 
@@ -193,7 +193,7 @@ func start_with_skills(ids: Array) -> String:
 	for id: String in picked:
 		learn(id)
 	player.known_runes.clear()
-	player._grant_start_runes()
+	player.runes_part._grant_start_runes()
 	return ""
 
 
@@ -320,9 +320,9 @@ func _on_kill(target: Node) -> void:
 	var aura: float = float(target.get("aura_value")) * kill_aura_mult(target)
 	player._latent_aura += aura * risk
 	grow_star(aura * GameData.num("stars", "growth_pct_per_aura"))
-	player._roll_drops(target)
+	player.runes_part._roll_drops(target)
 	player.economy_part._roll_loot(target)
-	player._roll_kill_rune(target)
+	player.runes_part._roll_kill_rune(target)
 
 
 # --- stars ----------------------------------------------------------------------
@@ -417,7 +417,7 @@ func add_affinity(id: String) -> String:
 			player.tempering[tid] = {"stage": 0, "progress": 0.0}
 	var start: Dictionary = (GameData.rune_discovery.get("start", {}) as Dictionary).get("affinity_runes", {})
 	for rid: Variant in start.get(id, []):
-		player._know(str(rid))
+		player.runes_part._know(str(rid))
 	return ""
 
 
@@ -455,7 +455,7 @@ func resolve_ascension(affinity: String, aspects: Dictionary = {}) -> String:
 ## The aspect a boost to skill `index` goes into: `wanted` if it changes something there, else the
 ## skill's main aspect.
 func ascension_aspect(index: int, wanted: String) -> String:
-	var ab: Dictionary = player.ability_stats(player.abilities[index])
+	var ab: Dictionary = player.runes_part.ability_stats(player.abilities[index])
 	if wanted != "" and Ascension.aspect_ids().has(wanted) and Ascension.aspect_acts(ab, wanted):
 		return wanted
 	return Ascension.main_aspect(ab)
@@ -471,8 +471,8 @@ func ascension_preview(index: int, aspect: String, amount: float) -> Array[Dicti
 	var totals: Dictionary = trial.get("ascension", {})
 	totals[aspect] = float(totals.get(aspect, 0.0)) + amount
 	trial["ascension"] = totals
-	var before: Dictionary = player.ability_stats(st)
-	var after: Dictionary = player.ability_stats(trial)
+	var before: Dictionary = player.runes_part.ability_stats(st)
+	var after: Dictionary = player.runes_part.ability_stats(trial)
 	var groups: Dictionary = Ascension.aspect_groups(aspect)
 	var fields: Array = Runes.active().fields_of(before).filter(func(f: Dictionary) -> bool:
 		return groups.has(str(f["group"])) or (str(f["path"]) == "recovery" and groups.has("windup")))
@@ -484,7 +484,7 @@ func ascension_preview(index: int, aspect: String, amount: float) -> Array[Dicti
 				fields.append({"path": mp, "group": "power", "label": "Strength (%s)" % mp.get_slice(".", mp.get_slice_count(".") - 1).replace("_", " "),
 					"unit": "", "lower_is_better": str((mag as Dictionary).get("dir", "up")) == "down", "scaled_by_stage": false})
 	var stage_mult: float = player.ability_damage_mult(int(st["stage"])) * float(before.get("damage_all", 1.0))
-	return player._stat_rows(before, after, fields, stage_mult).filter(func(r: Dictionary) -> bool: return bool(r["changed"]))
+	return player.runes_part._stat_rows(before, after, fields, stage_mult).filter(func(r: Dictionary) -> bool: return bool(r["changed"]))
 
 
 ## "Ascension: +22% power" for skill `index`, or "" if it has never been boosted.

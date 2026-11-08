@@ -129,7 +129,7 @@ func from_save(d: Dictionary) -> void:
 			if not GameData.rune(str(rid)).is_empty() and not player.known_runes.has(str(rid)):
 				player.known_runes.append(str(rid))
 	else:
-		player._grant_start_runes()              # a save from before discovery: what a new character knows
+		player.runes_part._grant_start_runes()              # a save from before discovery: what a new character knows
 	player.read_inscriptions.clear()
 	for sid: Variant in d.get("read_inscriptions", []):
 		player.read_inscriptions.append(str(sid))
