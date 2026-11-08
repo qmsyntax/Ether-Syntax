@@ -1,3 +1,5 @@
+> **Superseded 2026-11-08 by `production/finish-plan.md`** (re-ordered with v0.42-v0.55). Kept for history.
+
 # Passage — full build plan (2026-10-18)
 
 Updated 2026-10-19 for Brent's ruling that the early levels are spent hunting non-starred monsters. Written after a three-part review of main at `v0.41.0-real-enemies` (+ design commits to `bdd6983`): the designs against the
