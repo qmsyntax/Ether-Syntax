@@ -166,7 +166,7 @@ None in the game. Two things about the tools, which matter for step 4b:
 
 - **A typed receiver does not make Godot check the member's name.** In 4.7.2 `p.no_such()` and `p.no_such_prop` on
   `p: Player` (or on a `Node3D`) compile; they fail only when that line runs. "Godot's checks are the safety net"
-  safety net" holds for types (a String passed where an int is wanted fails at load), not for names.
+  holds for types (a String passed where an int is wanted fails at load), not for names.
 - **The headless import does not compile scripts nothing loads.** A deliberate bad line in `crafting.gd` passed
   `run_all.sh --only=import,smoke` cleanly; only loading the script found it. A one-line test that loads every
   script (as the compile check above did) would catch parse and type errors in scripts no test touches - worth adding
