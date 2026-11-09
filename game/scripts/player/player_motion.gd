@@ -126,15 +126,15 @@ func _tick_move(delta: float) -> void:
 		var step: Vector3 = player._dash_vel * step_t
 		player._dash_time -= step_t
 		player.velocity = Vector3.ZERO
-		var met: Node3D = player._body_ahead(player._dash_vel.normalized(), step.length()) if player._dash_stops else null
+		var met: Node3D = player.moves_part._body_ahead(player._dash_vel.normalized(), step.length()) if player._dash_stops else null
 		if met != null:
 			player._dash_time = 0.0                     # this one does not go through people
-			player._dash_met(met)
+			player.moves_part._dash_met(met)
 		elif player.move_and_collide(step) != null:
 			player._dash_time = 0.0                     # a wall
-		player._dash_touch()
+		player.moves_part._dash_touch()
 		if player._dash_time <= 0.0:
-			player._end_dash()
+			player.moves_part._end_dash()
 			player._dash_pass = {}
 	else:
 		ExactSlide.slide(player, delta)
@@ -148,7 +148,7 @@ func _tick_move(delta: float) -> void:
 ## window or the shooting stance, quickened by buffs and Slipstream. Wind-ups and staggers stop you
 ## separately. The sidestep eases out into this.
 func walk_speed() -> float:
-	var speed: float = float(player._p["move_speed"]) * player.progress_part.temper_stat("move_speed_mult") * (float(player._p["charge_move_factor"]) if player._charging else 1.0) * player.casting_part.buff_num("move_speed_mult") * player._zone_num("caster_speed_mult")
+	var speed: float = float(player._p["move_speed"]) * player.progress_part.temper_stat("move_speed_mult") * (float(player._p["charge_move_factor"]) if player._charging else 1.0) * player.casting_part.buff_num("move_speed_mult") * player.world_part._zone_num("caster_speed_mult")
 	if not player._held.is_empty():
 		speed *= float((player._held["ab"] as Dictionary).get("move_factor", 1.0))     # holding a skill: you walk slowly, or not at all
 	speed *= player.casting_part.buff_num("move_factor")          # a counter window roots you (Abiding Guard, Turning Palm, Turn the Edge)
@@ -183,7 +183,7 @@ func _tick_slipstream(delta: float) -> void:
 	if player._moving:
 		_still_t = 0.0
 		_pip_decay_t = 0.0
-		player._pip_dist += dist * player._zone_num("pip_gain_mult")
+		player._pip_dist += dist * player.world_part._zone_num("pip_gain_mult")
 		var per: float = float(cfg["metres_per_pip"])
 		while player._pip_dist >= per:
 			player._pip_dist -= per
@@ -359,7 +359,7 @@ func press_slot(slot: int) -> void:
 	if not player._held.is_empty():
 		if str(player._held.get("action", "")) == "ability_%d" % (slot + 1):
 			return                               # its own key: the hold answers it
-		player._end_held()
+		player.moves_part._end_held()
 	if _cast_busy():
 		var window: float = GameData.num("feel", "input_buffer_s")
 		if window > 0.0:
@@ -580,7 +580,7 @@ func press_sidestep() -> void:
 	player._buffered_slot = -1
 	cancel_walk_cast()
 	if not player._held.is_empty():
-		player._end_held()
+		player.moves_part._end_held()
 	if _cast_busy():
 		_step_buffer_t = GameData.num("feel", "input_buffer_s")
 		return
@@ -673,7 +673,7 @@ func _tick_step_move(delta: float) -> void:
 	var metres: float = _step_dist_at(u1) - _step_dist_at(u0)
 	player._facing = _step_dir
 	player.velocity = _step_dir * _step_speed_at(u1)    # moved by hand below; this is what the body's animation reads
-	if player._body_ahead(_step_dir, metres) != null:
+	if player.moves_part._body_ahead(_step_dir, metres) != null:
 		_end_step()                               # a step does not carry you through a body
 	elif player.move_and_collide(_step_dir * metres) != null:
 		_end_step()                               # a wall

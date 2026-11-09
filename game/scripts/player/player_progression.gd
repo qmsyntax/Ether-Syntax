@@ -185,7 +185,7 @@ func start_with_skills(ids: Array) -> String:
 		picked.append(str(id))
 	if picked.size() != want:
 		return "Pick %d starting skills." % want
-	player.drop_stones()
+	player.world_part.drop_stones()
 	player.buffs.clear()
 	player.abilities.clear()
 	for i: int in player.hotbar.size():

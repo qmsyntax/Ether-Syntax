@@ -320,7 +320,7 @@ func zone_ally_tick(zone: GroundZone) -> void:
 	var cap: float = float(ap.get("ward_max", GameData.num("ward", "cap")))
 	if zone.has_point(player.global_position):
 		player.combat_part.add_ward(amount, -1.0, {"from": "zone_%d" % zone.get_instance_id(), "source_cap": cap})
-	for s: Node3D in player.summons_near(zone.from, zone.radius + 1.0):
+	for s: Node3D in player.world_part.summons_near(zone.from, zone.radius + 1.0):
 		if zone.has_point(s.global_position):
 			s.call("add_ward", minf(amount, maxf(0.0, cap - float(s.get("ward")))), GameData.num("ward", "default_lasts"))
 

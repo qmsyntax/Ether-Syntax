@@ -99,7 +99,7 @@ func deal_damage(target: Node, base: float, tags: Array = [], opts: Dictionary =
 		var regrow: float = 0.0
 		for bid: String in player.buffs:
 			regrow += float((player.buffs[bid] as Dictionary).get("heal_per_hit", 0.0))       # Overgrowth
-		for s: Node3D in player.summons_near(player.global_position, 999.0):
+		for s: Node3D in player.world_part.summons_near(player.global_position, 999.0):
 			regrow += float(s.get("heal_per_hit"))                                    # a Heartseed at your side
 		if regrow > 0.0:
 			life_heal(regrow)
@@ -222,7 +222,7 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 	player._meditate_block = 1.0
 	player.meditating = false
 	if not player._held.is_empty() and bool((player._held["ab"] as Dictionary).get("breaks_on_hit", false)):
-		player._end_held()
+		player.moves_part._end_held()
 	elif not player._held.is_empty() and float((player._held["ab"] as Dictionary).get("pause_on_hit_s", 0.0)) > 0.0:
 		player._held["paused"] = float((player._held["ab"] as Dictionary)["pause_on_hit_s"])        # Regrowth: a blow stops it a moment
 	for e: TalentEffect in player.effects:

@@ -16,7 +16,7 @@ func _init(of: Player) -> void:
 
 ## Start over with the kits of the current affinities, on the bar in order.
 func _reset_loadout() -> void:
-	player.drop_stones()
+	player.world_part.drop_stones()
 	player.buffs.clear()
 	player._windup = {}
 	player._windup_t = 0.0
@@ -174,7 +174,7 @@ func _take_buff(ab: Dictionary) -> void:
 		player.get_parent().add_child(dz)
 	if str(ab.get("set_focus", "")) == "max":
 		player._focus_fill_next = true                  # Red Iron: your next metal hit starts the edge white-hot
-	player._share_buff(ab, bid, float(b["t"]))
+	player.world_part._share_buff(ab, bid, float(b["t"]))
 	# what the buff does round you as it starts (Stoke's flare, Red Iron's heat): on_cast within its radius
 	if ab.get("on_cast") is Dictionary:
 		var oc: Dictionary = (ab["on_cast"] as Dictionary).duplicate()
@@ -408,7 +408,7 @@ func cast_ability(index: int) -> void:
 	if player._recover_t > 0.0 or (player._stagger_t > 0.0 and not player.hits_part._lifts(ab, "staggered")):
 		return                                   # still finishing the last one, or off your feet (a cleanse that lifts it may)
 	if not player._held.is_empty():
-		player._end_held()                              # a new cast lets go of what you were holding
+		player.moves_part._end_held()                              # a new cast lets go of what you were holding
 		return
 	var heat: float = reflux_of(aff)
 	var cost: float = float(ab["cost"]) * (float(player._reflux_cfg["pain_cost_mult"]) if heat >= float(player._reflux_cfg["pain_at"]) else 1.0)
@@ -466,8 +466,8 @@ func cast_ability(index: int) -> void:
 			player.note("%s needs someone near where you point." % str(ab["name"]))
 			return
 	elif kind == "blink" or kind == "grapple":
-		var spot: Variant = player._blink_point(float(ab.get("range", 6.0)))
-		var special: Variant = player._special_landing(ab)
+		var spot: Variant = player.moves_part._blink_point(float(ab.get("range", 6.0)))
+		var special: Variant = player.moves_part._special_landing(ab)
 		if special != null:
 			spot = special
 		elif bool(ab.get("needs_shadow", false)) and spot != null and not Light.is_dark(player.get_tree(), spot):
@@ -480,7 +480,7 @@ func cast_ability(index: int) -> void:
 			return
 		blink_to = spot
 	elif kind == "prop" and str(ab.get("shape", "")) == "":
-		var where: Variant = player._prop_point(ab)
+		var where: Variant = player.world_part._prop_point(ab)
 		if where == null:
 			_refuse("no_landing", "No room there")
 			player.note("There is no room to raise stone there.")
@@ -490,7 +490,7 @@ func cast_ability(index: int) -> void:
 			or kind == "summon" or (kind == "field_pulse" and ab.has("range")) or (kind == "charge_release" and str(ab.get("release", "")) == "delayed_blast"):
 		blink_to = _aim_point(float(ab.get("range", 8.0)))
 	if str(ab.get("needs", "")).begins_with("corpse"):
-		var body_at: Fallen = player._corpse_near(blink_to, float(GameData.num("skills", "jump_radius")))
+		var body_at: Fallen = player.world_part._corpse_near(blink_to, float(GameData.num("skills", "jump_radius")))
 		if body_at == null and str(ab["needs"]) == "corpse":
 			_refuse("no_target", "Needs a body there")
 			player.note("%s needs a body where you point." % str(ab["name"]))
@@ -498,7 +498,7 @@ func cast_ability(index: int) -> void:
 		if body_at != null:
 			blink_to = body_at.global_position
 	elif kind == "summon" and str(ab.get("needs", "")) == "growth":
-		if player._growth_at(blink_to, 1.5) == null:
+		if player.world_part._growth_at(blink_to, 1.5) == null:
 			_refuse("no_target", "Needs your growth there")
 			player.note("%s needs your growth where you point." % str(ab["name"]))
 			return
@@ -547,12 +547,12 @@ func cast_ability(index: int) -> void:
 		player._shoved_left = 0.0
 	# held skills start now and do their work while held
 	if kind == "channel" or kind == "charge_release":
-		player._start_held(ab, kind, aff, stage_mult, tags, strike_target, blink_to, state)
+		player.moves_part._start_held(ab, kind, aff, stage_mult, tags, strike_target, blink_to, state)
 	# Stone starts rising at once; everything else with a wind-up goes off when it ends.
 	elif windup <= 0.0 or kind == "prop" or kind == "delayed_blast":
 		_perform_cast(ab, kind, aff, stage_mult, tags, strike_target, blink_to)
 	if kind != "rod":
-		player._rod_relay(aff, stage_mult)
+		player.world_part._rod_relay(aff, stage_mult)
 	if windup > 0.0:
 		player._windup_t = windup
 		player._windup_total = windup
@@ -613,12 +613,12 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 	player.motion_part._snap_body_now()
 	match kind:
 		"projectile":
-			player._fire_projectile(ab, stage_mult, GameData.affinity_color(aff), tags + ["projectile"])
+			player.moves_part._fire_projectile(ab, stage_mult, GameData.affinity_color(aff), tags + ["projectile"])
 		"melee_burst":
 			if float(ab.get("self_harm", 0.0)) > 0.0:     # only a build that earns it; no ability has it by default
 				var hurt: float = player.body.apply_self_harm(float(ab["self_harm"]))
 				player._float("-%d" % int(hurt), Color(1, 0.4, 0.3))
-			player._burst(ab, stage_mult, tags if bool(ab.get("not_melee", false)) else tags + ["melee"])
+			player.moves_part._burst(ab, stage_mult, tags if bool(ab.get("not_melee", false)) else tags + ["melee"])
 			player._melee_cd = GameData.num("feel", "strike_after_skill_s")      # a melee skill counts as one swing
 		"dash":
 			var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -664,12 +664,12 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 				player._dash_stops = true                     # bare bodies stop it; armoured ones it punches through (_body_ahead)
 			# blood pools along the way carry you further (Thinblood Rush)
 			if float(ab.get("pool_bonus_m", 0.0)) > 0.0:
-				var crossed: int = player._pools_along(player.global_position, player.global_position + dir * float(ab["dash_speed"]) * float(ab["dash_time"]))
+				var crossed: int = player.world_part._pools_along(player.global_position, player.global_position + dir * float(ab["dash_speed"]) * float(ab["dash_time"]))
 				crossed = mini(crossed, int(ab.get("pool_bonus_max", 2)))
 				player._dash_time += float(ab["pool_bonus_m"]) * float(crossed) / float(ab["dash_speed"])
 			# what it leaves where it started: a phantom of you, a little cloud
 			if ab.has("leave_decoy"):
-				player._leave_lure(player.global_position, ab["leave_decoy"], aff, tags)
+				player.world_part._leave_lure(player.global_position, ab["leave_decoy"], aff, tags)
 			if ab.has("leave_zone") and str((ab["leave_zone"] as Dictionary).get("at", "start")) == "start":
 				player.hits_part.lay_cloud(player.global_position, ab["leave_zone"], tags + ["cloud"])
 			if float(ab.get("after_speed_mult", 0.0)) > 0.0:
@@ -677,7 +677,7 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 			if player.motion_part.has_slipstream():
 				player.pips = mini(GameData.inum("slipstream", "max"), player.pips + int(ab.get("gain_pips", 0)))
 		"beam":
-			player._fire_beam(ab, stage_mult, GameData.affinity_color(aff), tags)
+			player.moves_part._fire_beam(ab, stage_mult, GameData.affinity_color(aff), tags)
 		"targeted_strike":
 			var to_t: Vector3 = strike_target.global_position - player.global_position
 			to_t.y = 0.0
@@ -732,7 +732,7 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 			if int(ab.get("swallow_per_hit", 0)) > 0:
 				player.hits_part.store_add("swallowed", int(ab["swallow_per_hit"]), 5, 12.0)       # Hungry Dark swallows the light it strikes
 			if ab.get("zone") is Dictionary:
-				player._lay_ground(ab["zone"], 2.0, ab, tags)                            # and leaves dark ground at your feet
+				player.world_part._lay_ground(ab["zone"], 2.0, ab, tags)                            # and leaves dark ground at your feet
 			if (spent > 0 or bool(ab.get("burst_always", false))) and ab.has("burst"):
 				var centre: Vector3 = strike_target.global_position if is_instance_valid(strike_target) else player.global_position + player._facing * 1.5
 				for node: Node in player.get_tree().get_nodes_in_group("enemies"):
@@ -746,17 +746,17 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 				player.hits_part.lay_cloud(strike_target.global_position if is_instance_valid(strike_target) else player.global_position, bz, tags + ["cloud"])
 			player._melee_cd = float(player._p["melee_cooldown"])
 		"blink":
-			player._blink(blink_to, ab, stage_mult, GameData.affinity_color(aff), tags)
+			player.moves_part._blink(blink_to, ab, stage_mult, GameData.affinity_color(aff), tags)
 		"prop":
-			player._raise_prop(blink_to, ab, stage_mult, tags)
+			player.world_part._raise_prop(blink_to, ab, stage_mult, tags)
 		"displace":
-			player._displace(blink_to, strike_target, ab, stage_mult, tags)
+			player.moves_part._displace(blink_to, strike_target, ab, stage_mult, tags)
 		"delayed_blast":
-			player._start_blast(blink_to, ab, stage_mult, tags)
+			player.world_part._start_blast(blink_to, ab, stage_mult, tags)
 		"detonate":
-			player._detonate(ab, stage_mult, tags, strike_target)
+			player.world_part._detonate(ab, stage_mult, tags, strike_target)
 		"ground_zone":
-			player._lay_zone(blink_to, ab, stage_mult, tags)
+			player.world_part._lay_zone(blink_to, ab, stage_mult, tags)
 			if bool(ab.get("drops_aggro", false)):
 				# Pall: everyone coming for you loses you (as when Unseen begins) and gives up its place at your side
 				for node: Node in player.get_tree().get_nodes_in_group("enemies"):
@@ -766,21 +766,21 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 		"self_buff":
 			_take_buff(ab)
 		"rod":
-			player._plant_rod(blink_to, ab)
+			player.world_part._plant_rod(blink_to, ab)
 		"chain":
-			player._chain(strike_target, ab, stage_mult, tags)
+			player.moves_part._chain(strike_target, ab, stage_mult, tags)
 		"smite":
-			player._smite(strike_target, blink_to, ab, stage_mult, tags)
+			player.moves_part._smite(strike_target, blink_to, ab, stage_mult, tags)
 		"summon":
-			player._summon(blink_to, ab, stage_mult, tags)
+			player.world_part._summon(blink_to, ab, stage_mult, tags)
 		"seed":
-			player._sow(blink_to, ab, stage_mult, tags)
+			player.world_part._sow(blink_to, ab, stage_mult, tags)
 		"grapple":
-			player._grapple(blink_to, ab, stage_mult, tags)
+			player.moves_part._grapple(blink_to, ab, stage_mult, tags)
 		"streak":
-			player._streak(ab, stage_mult, tags)
+			player.moves_part._streak(ab, stage_mult, tags)
 		"field_pulse":
-			player._field_pulse(blink_to, ab, stage_mult, tags)
+			player.world_part._field_pulse(blink_to, ab, stage_mult, tags)
 	if kind != "self_buff" and ab.get("coat") is Dictionary:
 		player.combat_part._put_coat(ab)                            # the cast leaves its coat on your weapon (Venom Edge, Steeped Blade)
 	if ab.get("conjure_weapon") is Dictionary:
