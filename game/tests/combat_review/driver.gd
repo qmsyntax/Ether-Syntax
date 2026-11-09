@@ -297,7 +297,7 @@ func _physics_process(delta: float) -> void:
 			_fight_t0 = t
 			fights += 1
 		_release_meditate()
-		_fight(foes)
+		_fight(foes, delta)
 		return
 	if _fight_t0 >= 0.0 and foes.is_empty():
 		fight_lens.append(t - _fight_t0)
@@ -391,7 +391,7 @@ func _engaged() -> Array:
 
 # ---------------------------------------------------------------- fighting: a careful new player
 
-func _fight(foes: Array) -> void:
+func _fight(foes: Array, delta: float) -> void:
 	var me: Vector3 = (player as Node3D).global_position
 	phase = "fight"
 	# 1. step out of what is telegraphed (as tests/newbie_duels.gd does), by walking or by the movement skill
@@ -446,7 +446,12 @@ func _fight(foes: Array) -> void:
 		if near == null or _flat(me, e2.global_position) < _flat(me, near.global_position):
 			near = e2
 	var d: float = _flat(me, near.global_position)
-	player.set("attack_target", near)
+	# out of reach: walk round what stands between (NavPath, as _walk_to does between fights), not straight at it -
+	# a straight walk stuck on an arena block behind which a drummer kept away until the time cap (step 3, 2026-11-09)
+	if d > float(player.call("reach_now")) + float(near.get("radius")) + 1.0:
+		_walk_to(near.global_position, delta)
+	else:
+		player.set("attack_target", near)
 	player.set("cursor_fixed", near.global_position)
 	# 2. the sling at what keeps away (a runner, a darter, an archer)
 	if d > float(player.call("reach_now")) + float(near.get("radius")) + 2.5 and str(near.get("behaviour")) in ["runner", "darter", "ranged"]:
@@ -693,7 +698,7 @@ func _tick_arena(delta: float) -> void:
 		if not left.is_empty():
 			if not bool(player.get("in_combat")):
 				push_warning("PROBE arena fight with in_combat false")
-			_fight(left)
+			_fight(left, delta)
 		return
 	if st == "arena_rest":
 		if int(main.get("wave")) >= _arena_wave_cap:
@@ -710,7 +715,7 @@ func _tick_arena(delta: float) -> void:
 	var foes: Array = get_tree().get_nodes_in_group("enemies")
 	if not foes.is_empty():
 		var near: Node3D = foes[0]
-		player.set("attack_target", near)
+		_walk_to(near.global_position, delta)              # round the blocks, as in the field (NavPath)
 
 
 func _tick_passage(delta: float) -> void:
