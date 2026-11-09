@@ -119,6 +119,7 @@ var factory_part: LevelFactory          # the world, levels, biomes, props, navi
 var arena_part: MainArena               # state "arena_rest" / "arena_fight": the practice arena
 var passage_part: MainPassage           # state "dungeon": the assault passage
 var field_part: MainField               # state "field": an overland zone
+var town_part: MainTown                 # state "town": the town, its people, crafting and services
 
 
 func _init() -> void:
@@ -126,6 +127,7 @@ func _init() -> void:
 	arena_part = MainArena.new(self)
 	passage_part = MainPassage.new(self)
 	field_part = MainField.new(self)
+	town_part = MainTown.new(self)
 
 
 func _ready() -> void:
@@ -140,7 +142,7 @@ func _ready() -> void:
 	factory_part._build_world()
 	_build_player()
 	_build_hud()
-	_build_town()
+	town_part._build_town()
 	if _plays():
 		GameSettings.apply_window()
 	if _go_on(_then):
@@ -167,7 +169,7 @@ func _process(delta: float) -> void:
 
 	match state:
 		"town":
-			_tick_town(delta)
+			town_part.tick(delta)
 		"arena_rest", "arena_fight":
 			arena_part.tick(delta)
 		"dungeon":
@@ -274,13 +276,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	match state:
 		"town":
-			# no skills in town: nothing here to use them on (a test character may still turn its bar)
-			if event.is_action_pressed("hotbar_page") and bool(player.get("test_character")):
-				player.call("next_hotbar_page")
-			elif event.is_action_pressed("interact"):
-				_town_interact()
-			elif event.is_action_pressed("strike"):
-				_town_click((event as InputEventMouseButton).position if event is InputEventMouseButton else get_viewport().get_mouse_position())
+			town_part.handle_input(event)
 		"arena_rest", "arena_fight":
 			arena_part.handle_input(event)
 		"field":
@@ -538,127 +534,8 @@ func _select_talent(index: int) -> void:
 	player.call("set_talent", TALENT_CHOICES[index])
 
 
-func _enter_town(arrive: String = "square") -> void:
-	if nether.active:
-		nether.exit("")
-	_build_town()
-	player.call("end_fight")
-	player.call("refill_endurance")             # the town gives you your wind back (balance.json endurance)
-	player.global_position = level.to_global(_town.arrival(arrive))
-	player.set("attack_target", null)
-	player.set("pickup_target", null)
-	player.set("has_move_goal", false)
-	player.set("active", true)                # the town is a place you walk round (design/08)
-	state = "town"
-	_prompt = ""
-	_talking_to = ""
-	_walk_to = null
-	save_now()
-	_show_screen(null, false)
-
-
-# --- the town as a place (design/08) -----------------------------------------------------------
-
-## Each frame in town: who is close enough to talk to, the gateways you walk through, and the
-## person you clicked being walked up to. Walking away from someone closes what they showed you.
-func _tick_town(_delta: float) -> void:
-	_prompt = ""
-	if _town == null:
-		return
-	var near: Townsperson = _town.folk_in_reach(player.global_position)
-	for p: Townsperson in _town.folk:
-		var on: bool = p == near and screen == null
-		if is_instance_valid(p) and p.focused != on:
-			p.set_focus(on)
-	if _talking_to != "":
-		var who: Townsperson = _town.person(_talking_to)
-		if screen == null:
-			_talking_to = ""
-		elif who != null and _flat_dist(who.global_position, player.global_position) > float(GameData.town.get("leave_reach", 4.5)):
-			_talking_to = ""
-			_show_screen(null, false)
-	if _walk_to != null:
-		if not is_instance_valid(_walk_to) or screen != null or not bool(player.get("has_move_goal")):
-			_walk_to = null
-		elif _flat_dist(_walk_to.global_position, player.global_position) <= float(GameData.town.get("talk_reach", 2.7)):
-			var role: String = _walk_to.role
-			_walk_to = null
-			player.set("has_move_goal", false)
-			talk_to(role)
-			return
-		elif not Input.is_action_pressed("strike"):
-			player.set("move_goal", _walk_to.global_position)
-	var ex: Dictionary = _town.exit_at(player.global_position)
-	if not ex.is_empty() and bool(ex.get("walk_through", false)):
-		player.call("note", "You go through %s." % str(ex.get("name", "the gate")))
-		call(str(ex["action"]))
-		return
-	if screen != null:
-		return
-	if near != null:
-		_prompt = "%s talk to %s, %s" % [_k("interact"), near.folk_name, near.title]
-		return
-	var door: Dictionary = _town_door_in_reach()
-	if not door.is_empty():
-		_prompt = "%s the door into %s - an owned passage: ticket $%d, and a meter while you are inside." % [_k("interact"), str(door.get("prompt", "the passage")), ticket_price]
-		return
-	for gate: Dictionary in _town.exits:
-		if bool(gate.get("walk_through", false)) and _flat_dist(level.to_global(gate["centre"]), player.global_position) < 6.0:
-			_prompt = str(gate.get("prompt", ""))
-
-
 func _flat_dist(a: Vector3, b: Vector3) -> float:
 	return Vector2(a.x - b.x, a.z - b.z).length()
-
-
-## A shut door in town you are standing at (the passage), or {}.
-func _town_door_in_reach() -> Dictionary:
-	if _town == null:
-		return {}
-	for ex: Dictionary in _town.exits:
-		if not bool(ex.get("walk_through", false)) and _flat_dist(level.to_global(ex["centre"]), player.global_position) <= float(GameData.town.get("exit_reach", 1.5)) * 2.0:
-			return ex
-	return {}
-
-
-## The interact key in town: stop talking, talk to whoever is close, or use the door you are at.
-func _town_interact() -> void:
-	if screen != null:
-		close_screen()
-		return
-	var who: Townsperson = _town.folk_in_reach(player.global_position) if _town != null else null
-	if who != null:
-		talk_to(who.role)
-		return
-	var door: Dictionary = _town_door_in_reach()
-	if not door.is_empty():
-		call(str(door["action"]))
-		return
-	player.call("note", "Nobody close enough to talk to. Walk up to someone.")
-
-
-## A click in town at a screen point: on a person, walk up to them and talk.
-func _town_click(at: Vector2) -> void:
-	if screen != null or _town == null or bool(hud.call("ui_at", at)):
-		return
-	var who: Townsperson = _town.pick_screen(at, camera)
-	if who == null:
-		_walk_to = null                 # a click elsewhere is a new walk: _tick_town would steer back to them
-		return
-	if _flat_dist(who.global_position, player.global_position) <= float(GameData.town.get("talk_reach", 2.7)):
-		talk_to(who.role)
-		return
-	_walk_to = who
-	player.set("move_goal", who.global_position)
-	player.set("has_move_goal", true)
-
-
-## Talk to the townsperson who does `role` (data/town.json "folk"): their panel opens.
-func talk_to(role: String) -> void:
-	if state != "town" or GameData.town_folk(role).is_empty():
-		return
-	_talking_to = role
-	_show_screen(TalkScreen.new(self, role), false)
 
 
 ## The skill tree. From the trainer (`at_trainer`, only while talking to them in town) its Learn
@@ -671,89 +548,6 @@ func open_skill_tree(at_trainer: bool = false) -> void:
 		return
 	var teaching: bool = at_trainer and state == "town" and _talking_to == "trainer"
 	_show_screen(SkillTreeScreen.new(self, teaching), state != "town")
-
-
-## Learn a skill from the trainer: only in town, only while talking to them. Returns "" or why not.
-func train_skill(ability_id: String) -> String:
-	if state != "town" or _talking_to != "trainer":
-		return "Only a trainer can teach you a skill. Find one in town."
-	var why: String = player.call("train_skill", ability_id)
-	if why == "":
-		save_now()
-	return why
-
-
-## Drill a known skill with the trainer: the same rule. Returns "" or why not.
-func drill_skill(ability_id: String) -> String:
-	if state != "town" or _talking_to != "trainer":
-		return "Only a trainer can drill you. Find one in town."
-	var why: String = player.call("drill_skill", ability_id)
-	if why == "":
-		save_now()
-	return why
-
-# --- crafting (design/12) ------------------------------------------------------------------------
-
-## The station of the craftsperson you are talking to, or "".
-func _talking_station() -> String:
-	return str(GameData.town_folk(_talking_to).get("station", "")) if state == "town" and _talking_to != "" else ""
-
-
-## Work at a station: only in town, while talking to the person who keeps it.
-func open_crafting(station_id: String) -> void:
-	if _talking_station() != station_id or Crafting.station(station_id).is_empty():
-		return
-	_show_screen(CraftScreen.new(self, {"station": station_id, "grade": int(Crafting.station(station_id).get("grade", 1)), "kit": ""}), false)
-
-
-## The craftsperson's tools and supplies (data/crafting.json stations.<id>.sells).
-func open_station_shop(station_id: String) -> void:
-	if _talking_station() != station_id:
-		return
-	var st: Dictionary = Crafting.station(station_id)
-	_show_screen(ShopScreen.new(self, st.get("sells", []), str(st.get("name", "Supplies"))), false)
-
-
-## Pay the craftsperson you are talking to and learn every recipe of their skill.
-func learn_trade(station_id: String) -> String:
-	if _talking_station() != station_id:
-		return "Only the keeper of that station can teach it."
-	var why: String = Crafting.teach(player, str(Crafting.station(station_id).get("skill", "")))
-	if why == "":
-		save_now()
-	return why
-
-
-## Open a field kit from the pack: its station's recipes, anywhere, with no fee and no salvage.
-## Out of town it pauses the game, like the pack itself.
-func open_field_kit(kit_id: String) -> void:
-	var kit: Dictionary = GameData.item(kit_id).get("kit", {})
-	if kit.is_empty() or not (player.get("inventory") as Inventory).bag.has(kit_id) or state == "select" or state == "dead":
-		return
-	_talking_to = ""
-	_show_screen(CraftScreen.new(self, {"station": str(kit["station"]), "grade": int(kit.get("grade", 1)), "kit": kit_id}), state != "town")
-
-
-## One combine, if this is a place you may make it: the station of the person you are talking to,
-## or a kit in your pack. Returns Crafting.combine's result ({ok, why, success, ...}).
-func craft(recipe_id: String, ctx: Dictionary) -> Dictionary:
-	var kit: String = str(ctx.get("kit", ""))
-	var here: Dictionary
-	if kit != "":
-		var k: Dictionary = GameData.item(kit).get("kit", {})
-		if k.is_empty() or not (player.get("inventory") as Inventory).bag.has(kit):
-			return {"ok": false, "why": "You do not have that kit."}
-		here = {"station": str(k["station"]), "grade": int(k.get("grade", 1)), "kit": kit}
-	else:
-		var station_id: String = _talking_station()
-		if station_id == "" or station_id != str(ctx.get("station", "")):
-			return {"ok": false, "why": "You can only work at a station whose keeper you are talking to."}
-		here = {"station": station_id, "grade": int(Crafting.station(station_id).get("grade", 1)), "kit": ""}
-	var res: Dictionary = Crafting.combine(player, recipe_id, here, player.get("rng"))
-	player.call("refresh_gear")
-	if bool(res.get("ok", false)):
-		save_now()
-	return res
 
 
 # --- the Netherecho ------------------------------------------------------------------------
@@ -930,58 +724,6 @@ func drop_item(item_id: String) -> void:
 		player.call("note", "Dropped %s." % item_name)
 
 
-# --- town services (logic only; the UI calls these) ------------------------------
-
-## Sell every piece of loot in the bag. Returns what it fetched.
-func town_sell_loot() -> int:
-	var inv: Inventory = player.get("inventory")
-	var got: int = inv.sell_loot()
-	if got > 0:
-		player.set("money", int(player.get("money")) + got)
-		player.call("note", "Sold your loot for $%d." % got)
-	else:
-		player.call("note", "Nothing in your pack that anyone wants.")
-	save_now()
-	return got
-
-
-## Sell one item from the bag (loot at full value, gear at a fraction).
-func town_sell_item(item_id: String) -> int:
-	var inv: Inventory = player.get("inventory")
-	var got: int = inv.sell_item(item_id)
-	if got > 0:
-		player.set("money", int(player.get("money")) + got)
-		player.call("note", "Sold %s for $%d." % [str(GameData.item(item_id).get("name", item_id)), got])
-		save_now()
-	return got
-
-
-## Buy a shop item on credit (to the debt limit). Returns "" on success, else why not.
-func town_buy(item_id: String) -> String:
-	var def: Dictionary = GameData.item(item_id)
-	if def.is_empty():
-		return "no such item"
-	var price: int = int(def.get("value", 0))
-	if not bool(player.call("can_afford", price)):
-		return "Nobody will lend you that much."
-	var inv: Inventory = player.get("inventory")
-	if not inv.can_add(item_id):
-		return "You cannot carry it - %d of %d kg." % [int(inv.weight()), int(inv.capacity())]
-	player.call("charge", price)
-	inv.add(item_id)
-	player.call("note", "Bought %s for $%d." % [str(def.get("name", item_id)), price])
-	save_now()
-	return ""
-
-
-## A room at the inn for the night - the only rent there is (Brent 2026-10-18).
-func town_rest_night() -> void:
-	player.call("rest_night")
-	player.call("charge", night_rent)
-	day += 1
-	save_now()
-
-
 # --- saving ------------------------------------------------------------------------
 
 ## The autosave.
@@ -1156,16 +898,6 @@ func _on_player_died() -> void:
 	_enter_town()
 
 
-## The town is a level (design/08): data/town.json built by TownBuilder - streets, gateways and
-## the people who do what the old town menu did.
-func _build_town() -> void:
-	factory_part._new_level(0.0)
-	var cfg: Dictionary = GameData.balance["biomes"]
-	factory_part._use_biome(cfg["town"], false)            # the town is always the town
-	_town = TownBuilder.new(self, GameData.town)
-	_town.build()
-
-
 # --- construction ---------------------------------------------------------------
 
 
@@ -1229,7 +961,7 @@ func _build_hud() -> void:
 func _where() -> String:
 	match state:
 		"town":
-			return "Town  -  day %d" % day
+			return town_part.where()
 		"arena_rest", "arena_fight":
 			return arena_part.where()
 		"dungeon":
@@ -1275,3 +1007,21 @@ func minimap_info() -> Dictionary: return field_part.minimap_info()
 func _field_interact() -> void: field_part._field_interact()
 func _place_for_save() -> Dictionary: return field_part._place_for_save()
 func _resume_place(place: Variant) -> bool: return field_part._resume_place(place)
+
+
+# --- town_part (MainTown)
+func _enter_town(arrive: String = "square") -> void: town_part._enter_town(arrive)
+func _town_interact() -> void: town_part._town_interact()
+func _town_click(at: Vector2) -> void: town_part._town_click(at)
+func talk_to(role: String) -> void: town_part.talk_to(role)
+func train_skill(ability_id: String) -> String: return town_part.train_skill(ability_id)
+func drill_skill(ability_id: String) -> String: return town_part.drill_skill(ability_id)
+func open_crafting(station_id: String) -> void: town_part.open_crafting(station_id)
+func open_station_shop(station_id: String) -> void: town_part.open_station_shop(station_id)
+func learn_trade(station_id: String) -> String: return town_part.learn_trade(station_id)
+func open_field_kit(kit_id: String) -> void: town_part.open_field_kit(kit_id)
+func craft(recipe_id: String, ctx: Dictionary) -> Dictionary: return town_part.craft(recipe_id, ctx)
+func town_sell_loot() -> int: return town_part.town_sell_loot()
+func town_sell_item(item_id: String) -> int: return town_part.town_sell_item(item_id)
+func town_buy(item_id: String) -> String: return town_part.town_buy(item_id)
+func town_rest_night() -> void: town_part.town_rest_night()

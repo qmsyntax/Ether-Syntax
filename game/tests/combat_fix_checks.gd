@@ -300,7 +300,11 @@ func _sidestep() -> void:
 	for part: String in DirAccess.get_files_at("res://scripts/player"):
 		if part.ends_with(".gd"):
 			src += (load("res://scripts/player".path_join(part)) as GDScript).source_code
+	# and main.gd is split by concern too (docs/architecture/main-split.md): read it and its parts
 	var main_src: String = (load("res://scripts/main.gd") as GDScript).source_code
+	for part: String in DirAccess.get_files_at("res://scripts/main"):
+		if part.ends_with(".gd"):
+			main_src += (load("res://scripts/main".path_join(part)) as GDScript).source_code
 	check.call("respawn_naked and the town call refill_endurance", RegEx.create_from_string("refill_endurance\\(\\)\\n\\t(player\\.)?body\\.hp").search(src) != null and main_src.contains("player.call(\"refill_endurance\")"))
 	p.set("cursor_fixed", null)
 	_gone(p)
