@@ -110,7 +110,7 @@ func _enter_dungeon() -> void:
 
 	# rune stones (design/14 section 8): one cut into the wall of each chamber the data names
 	for ins: Dictionary in (GameData.rune_discovery.get("inscriptions", {}) as Dictionary).get("passage", []):
-		var c2: int = int(ins.get("chamber", 1))
+		var c2: int = int(GameData.opt(ins, "discovery.inscription", "chamber"))
 		if c2 < 0 or c2 > main.chambers:
 			continue
 		var stone := RuneStone.new()
@@ -278,7 +278,7 @@ func grant_spoils(value: int) -> Array:
 	var inv: Inventory = main.player.inventory
 	var left: int = value
 	for id: Variant in GameData.items_file.get("spoils", []):
-		var each: int = int(GameData.item(str(id)).get("value", 0))
+		var each: int = int(GameData.opt(GameData.item(str(id)), "item", "value"))
 		while each > 0 and left >= each and inv.add(str(id)):
 			left -= each
 	main.player.refresh_gear()
@@ -289,9 +289,9 @@ func grant_spoils(value: int) -> Array:
 ## Whatever you cannot carry is left behind.
 func grant_exit_rewards(walls_cleared: int, full_clear: bool) -> Array[String]:
 	var cfg: Dictionary = GameData.items_file.get("exit_rewards", {})
-	var rolls: int = int(float(walls_cleared) / float(cfg.get("walls_per_roll", 2.5)))
+	var rolls: int = int(float(walls_cleared) / float(GameData.opt(cfg, "items.exit_rewards", "walls_per_roll")))
 	if full_clear:
-		rolls += int(cfg.get("bonus_rolls_full_clear", 0))
+		rolls += int(GameData.opt(cfg, "items.exit_rewards", "bonus_rolls_full_clear"))
 	var table: Array = GameData.items_file.get("exit_reward_table", [])
 	var total := 0.0
 	for entry: Dictionary in table:

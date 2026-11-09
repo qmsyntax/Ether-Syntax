@@ -305,7 +305,7 @@ func _draw_slot(r: Rect2, i: int, idx: int, abilities: Array, essence: float, re
 	if idx >= 0 and idx < abilities.size():
 		var st: Dictionary = abilities[idx]
 		var ab: Dictionary = _slot_stats(i, st)
-		var cost: float = float(ab.get("cost", 0.0))
+		var cost: float = float(GameData.opt(ab, "ability", "cost"))
 		var aff: String = str(ab.get("affinity", ""))
 		var locked: bool = bool(player.is_locked(aff))
 		var afford: bool = essence >= cost
@@ -623,7 +623,7 @@ func _draw_essence_orb(c: Vector2) -> void:
 		var a_locked: bool = bool(player.is_locked(a))
 		var a_hot: bool = a_locked or heat >= burn
 		var ring_col: Color = UiTheme.REFLUX_HOT if a_hot else (UiTheme.REFLUX if heat >= pain else UiTheme.REFLUX.darkened(0.25))
-		if float(GameData.affinity(a).get("damage_per_reflux", 0.0)) > 0.0 and not a_locked:
+		if float(GameData.opt(GameData.affinity(a), "affinity", "damage_per_reflux")) > 0.0 and not a_locked:
 			# this affinity's heat is its damage: the ring brightens as the bonus climbs
 			ring_col = GameData.affinity_color(a).darkened(0.35).lerp(Color(1.0, 0.86, 0.5), clampf(heat / lock, 0.0, 1.0))
 		if a_locked:
@@ -657,7 +657,7 @@ func _draw_essence_orb(c: Vector2) -> void:
 	# heat as a damage bonus, for an affinity that has one (shown for the hottest such affinity)
 	var bonus_aff := ""
 	for a2: Variant in affs:
-		if float(GameData.affinity(str(a2)).get("damage_per_reflux", 0.0)) > 0.0 and (bonus_aff == "" or float(player.reflux_of(str(a2))) > float(player.reflux_of(bonus_aff))):
+		if float(GameData.opt(GameData.affinity(str(a2)), "affinity", "damage_per_reflux")) > 0.0 and (bonus_aff == "" or float(player.reflux_of(str(a2))) > float(player.reflux_of(bonus_aff))):
 			bonus_aff = str(a2)
 	if bonus_aff != "" and not locked:
 		var bonus: int = int(round((float(player.heat_mult(bonus_aff)) - 1.0) * 100.0))
@@ -1056,7 +1056,7 @@ func _draw_statuses(e: Node3D, at: Vector2) -> void:
 	if have.has("live"):
 		var live: Dictionary = GameData.status("live")
 		var n: int = int((have["live"] as Dictionary)["stacks"])
-		var total: int = int(live.get("stacks", 3))
+		var total: int = int(GameData.opt(live, "status", "stacks", "draw_statuses"))
 		var col := Color(str(live.get("color", "d9c8ff")))
 		x = at.x - float(total - 1) * 6.0
 		for i: int in total:
@@ -1235,7 +1235,7 @@ func _draw_minimap(vs: Vector2) -> void:
 	var pts: Array = road.get("points", [])
 	for i: int in pts.size() - 1:
 		draw_line(to_map.call(float(pts[i][0]), float(pts[i][1])), to_map.call(float(pts[i + 1][0]), float(pts[i + 1][1])),
-			Color(0.6, 0.51, 0.36), maxf(2.0, float(road.get("width", 8.0)) * k), true)
+			Color(0.6, 0.51, 0.36), maxf(2.0, float(GameData.opt(road, "zone.road", "width")) * k), true)
 	_draw_minimap_country(def, to_map, k)
 	# the Cut House and its door
 	var ch: Dictionary = def.get("cut_house", {})
@@ -1313,7 +1313,7 @@ func _draw_minimap_country(def: Dictionary, to_map: Callable, k: float) -> void:
 		var tp: Array = track.get("points", [])
 		for i: int in tp.size() - 1:
 			draw_line(to_map.call(float(tp[i][0]), float(tp[i][1])), to_map.call(float(tp[i + 1][0]), float(tp[i + 1][1])),
-				Color(0.55, 0.46, 0.33), maxf(1.5, float(track.get("width", 4.0)) * k), true)
+				Color(0.55, 0.46, 0.33), maxf(1.5, float(GameData.opt(track, "zone.track", "width")) * k), true)
 	var poles: Array = (def.get("power_line", {}) as Dictionary).get("poles", [])
 	for i: int in poles.size():
 		var p: Vector2 = to_map.call(float(poles[i][0]), float(poles[i][1]))
@@ -1466,17 +1466,17 @@ func _draw_tooltip(vs: Vector2) -> void:
 			if str(ab.get("summary", "")) != "":
 				lines.append([str(ab["summary"]), body_px, UiTheme.TEXT])
 			lines.append(["%s affinity" % str(GameData.affinity(str(ab.get("affinity", ""))).get("label", "?")), body_px, GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3)])
-			lines.append(["Costs %d essence and leaves %d reflux" % [int(round(float(ab.get("cost", 0.0)))), int(round(float(ab.get("cost", 0.0)) * float(ab.get("reflux_per_cost", 1.0))))], body_px, UiTheme.TEXT])
+			lines.append(["Costs %d essence and leaves %d reflux" % [int(round(float(GameData.opt(ab, "ability", "cost")))), int(round(float(GameData.opt(ab, "ability", "cost")) * float(GameData.opt(ab, "ability", "reflux_per_cost"))))], body_px, UiTheme.TEXT])
 			match str(ab.get("kind", "")):
 				"projectile":
-					lines.append(["%d damage at range" % int(float(ab.get("damage", 0.0)) * float(player.ability_damage_mult(int(st["stage"]))) * float(ab.get("damage_all", 1.0))), body_px, UiTheme.TEXT])
+					lines.append(["%d damage at range" % int(float(GameData.opt(ab, "ability", "damage")) * float(player.ability_damage_mult(int(st["stage"]))) * float(GameData.opt(ab, "ability", "damage_all"))), body_px, UiTheme.TEXT])
 				"melee_burst":
-					lines.append(["Hits everything in front of you for x%.1f a normal blow" % float(ab.get("damage_mult", 1.0)), body_px, UiTheme.TEXT])
+					lines.append(["Hits everything in front of you for x%.1f a normal blow" % float(GameData.opt(ab, "ability", "damage_mult")), body_px, UiTheme.TEXT])
 				"dash":
 					lines.append(["A burst of movement in the direction you are heading", body_px, UiTheme.TEXT])
 				"prop":
-					lines.append(["A wall %d m across that stands for %d s" % [int(round(float(ab.get("width", 3.0)))), int(round(float(ab.get("life", 12.0))))], body_px, UiTheme.TEXT])
-			if float(ab.get("windup", 0.0)) > 0.0:
+					lines.append(["A wall %d m across that stands for %d s" % [int(round(float(GameData.opt(ab, "ability", "width")))), int(round(float(GameData.opt(ab, "ability", "life"))))], body_px, UiTheme.TEXT])
+			if float(GameData.opt(ab, "ability", "windup")) > 0.0:
 				var set_text: String = ""
 				if bool(ab.get("braced", false)):
 					set_text = "   -   Braced: %d%% less damage, and nothing staggers you" % int(round((1.0 - GameData.num("braced", "damage_taken_mult")) * 100.0))

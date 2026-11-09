@@ -174,7 +174,7 @@ func tick(delta: float) -> void:
 		if overrun_at > 0 and is_instance_valid(e) and not bool(e.call("is_dead")) and not _overrun.has(e.get_instance_id()) \
 				and int(e.call("status_stacks", "infected")) >= overrun_at:
 			_overrun[e.get_instance_id()] = true
-			e.call("stagger", float(GameData.status("staggered").get("lasts", 1.5)))
+			e.call("stagger", float(GameData.opt(GameData.status("staggered"), "status", "lasts")))
 
 
 ## True if a body of radius `margin` at `point` touches the zone.

@@ -79,17 +79,17 @@ func add_status(id: String, stacks: int = 1, by: Node = null, opts: Dictionary =
 		return add_status(str(def["needs_first"]), 1, by)
 	if id == "aloft":
 		if _shove_class() < 1.0:
-			enemy.hits_part.take_poise(float(def.get("heavy_poise", 50.0)))    # too heavy to leave the ground: it loses its footing instead
+			enemy.hits_part.take_poise(float(GameData.opt(def, "status", "heavy_poise")))    # too heavy to leave the ground: it loses its footing instead
 			return 0
 		enemy.hits_part.interrupt()
 		enemy._leap_left = 0.0
-	var cap: int = int(def.get("stacks", 1))
+	var cap: int = int(GameData.opt(def, "status", "stacks"))
 	for other: String in enemy.statuses:
 		cap = maxi(cap, int((_sdef(other).get("cap_raise", {}) as Dictionary).get(id, 0)))
 	var had: Dictionary = enemy.statuses.get(id, {})
 	var now: int = mini(cap, int(had.get("stacks", 0)) + stacks)
 	var who: Node = by if by != null else (had.get("by") as Node)
-	var lasts: float = float(opts.get("lasts", def.get("lasts", 1.0)))
+	var lasts: float = float(opts.get("lasts", GameData.opt(def, "status", "lasts", "add_status")))
 	lasts *= float(opts.get("time_mult", 1.0))
 	if enemy.heavy and def.has("heavy_lasts_mult"):
 		lasts *= float(def["heavy_lasts_mult"])
@@ -121,7 +121,7 @@ func add_status(id: String, stacks: int = 1, by: Node = null, opts: Dictionary =
 		enemy._leap_left = 0.0 if bool(def.get("cannot_act", false)) else enemy._leap_left
 	# a status that fills up turns into another (Chill, at five, is Frozen)
 	var on_cap: Dictionary = def.get("on_cap", {})
-	if not on_cap.is_empty() and now >= int(def.get("stacks", 1)):
+	if not on_cap.is_empty() and now >= int(GameData.opt(def, "status", "stacks")):
 		if bool(on_cap.get("clear", false)):
 			enemy.statuses.erase(id)
 		var next: String = str(on_cap.get("elite_status", "")) if bool(enemy._def.get("elite", false)) and on_cap.has("elite_status") else str(on_cap.get("status", ""))
@@ -203,9 +203,9 @@ func status_data(id: String) -> Dictionary:
 
 ## Its front armour after what is on it (Lit, Rotting, Rusting halve it; Corroded takes a third a stack).
 func front_armour() -> float:
-	var a: float = float(enemy._def.get("front_armour", 0.0)) * _st_mult("armour_mult")
+	var a: float = float(GameData.opt(enemy._def, "enemy", "front_armour")) * _st_mult("armour_mult")
 	for id: String in enemy.statuses:
-		var per: float = float(_sdef(id).get("armour_mult_per_stack", 1.0))
+		var per: float = float(GameData.opt(_sdef(id), "status", "armour_mult_per_stack"))
 		if per != 1.0:
 			a *= pow(per, float(int((enemy.statuses[id] as Dictionary)["stacks"])))
 	return a
@@ -213,14 +213,14 @@ func front_armour() -> float:
 
 ## How much metal it wears: 0 bare, 1 mailed, 2 plated (enemies.json "metal"); Stripped is bare.
 func metal_class() -> int:
-	return 0 if _st_any("metal_class_off") else int(enemy._def.get("metal", 0))
+	return 0 if _st_any("metal_class_off") else int(GameData.opt(enemy._def, "enemy", "metal"))
 
 
 ## The share of it not under worn armour (enemies.json "flesh"), raised by Corroded.
 func flesh() -> float:
-	var f: float = float(enemy._def.get("flesh", 1.0))
+	var f: float = float(GameData.opt(enemy._def, "enemy", "flesh"))
 	for id: String in enemy.statuses:
-		f += float(_sdef(id).get("flesh_per_stack", 0.0)) * float(int((enemy.statuses[id] as Dictionary)["stacks"]))
+		f += float(GameData.opt(_sdef(id), "status", "flesh_per_stack")) * float(int((enemy.statuses[id] as Dictionary)["stacks"]))
 	return clampf(f, 0.0, 1.0)
 
 
@@ -245,7 +245,7 @@ func _shove_class() -> float:
 func light_radius() -> float:
 	var r := 0.0
 	for id: String in enemy.statuses:
-		r = maxf(r, float(_sdef(id).get("light_radius", 0.0)))
+		r = maxf(r, float(GameData.opt(_sdef(id), "status", "light_radius")))
 	return r
 
 
@@ -333,7 +333,7 @@ func _expire(id: String) -> void:
 	var who: Node = by if (by != null and is_instance_valid(by)) else null
 	var ex: Dictionary = def.get("on_expire", {})
 	if ex.has("status"):
-		add_status(str(ex["status"]), int(ex.get("stacks", 1)), who)
+		add_status(str(ex["status"]), int(GameData.opt(ex, "status.on_expire", "stacks")), who)
 	if ex.has("damage_per_stack"):
 		var dmg: float = float(ex["damage_per_stack"]) * float(int(s.get("stacks", 1)))
 		for other: String in enemy.statuses:
@@ -357,7 +357,7 @@ func _expire(id: String) -> void:
 	_end_with(id)
 	# a status that raised another's cap is gone: what is above the plain cap falls away (Contained's Infected)
 	for other: String in enemy.statuses.keys():
-		var cap: int = int(_sdef(other).get("stacks", 1))
+		var cap: int = int(GameData.opt(_sdef(other), "status", "stacks"))
 		for o2: String in enemy.statuses:
 			cap = maxi(cap, int((_sdef(o2).get("cap_raise", {}) as Dictionary).get(other, 0)))
 		if int((enemy.statuses[other] as Dictionary).get("stacks", 1)) > cap:
@@ -379,15 +379,15 @@ func _death_effects() -> void:
 		if okh is Dictionary and who != null and who.has_method("heal_over"):
 			who.call("heal_over", float((okh as Dictionary).get("heal", 0.0)), float((okh as Dictionary).get("over_s", 2.0)))
 		if bool(def.get("jumps_on_death", false)):
-			var heir: Node3D = _nearest_enemy_within(float(def.get("spread_radius", 1.2)))
+			var heir: Node3D = _nearest_enemy_within(float(GameData.opt(def, "status", "spread_radius")))
 			if heir != null:
 				heir.call("add_status", id, 1, who)
 		var od: Dictionary = def.get("on_death", {})
 		if od.is_empty() or who == null:
 			continue
 		if bool(od.get("pool", false)) and who.has_method("spill_blood"):
-			who.call("spill_blood", enemy.global_position, int(GameData.affinity("blood").get("pool", {}).get("death_measures", 3)), true)
-		if int(od.get("held_blood", 0)) > 0 and who.has_method("gain_blood"):
+			who.call("spill_blood", enemy.global_position, int(GameData.opt(GameData.affinity("blood").get("pool", {}), "affinity.pool", "death_measures")), true)
+		if int(GameData.opt(od, "status.on_death", "held_blood")) > 0 and who.has_method("gain_blood"):
 			who.call("gain_blood", int(od["held_blood"]))
 		if od.has("cloud") and who.has_method("lay_cloud"):
 			who.call("lay_cloud", enemy.global_position, od["cloud"], ["disease", "cloud"])
@@ -439,16 +439,16 @@ func _tick_status(id: String, delta: float) -> void:
 	var data: Dictionary = s.get("data", {})
 	# spread: one stack jumps to an enemy that has stood close for long enough
 	if def.has("spread_radius") and not _st_any("no_death_effects"):
-		var near: Node3D = _nearest_enemy_within(float(def.get("spread_radius", 1.2)))
+		var near: Node3D = _nearest_enemy_within(float(GameData.opt(def, "status", "spread_radius")))
 		s["spread"] = float(s.get("spread", 0.0)) + delta if near != null else 0.0
-		if near != null and float(s["spread"]) >= float(def.get("spread_time", 1.0)):
+		if near != null and float(s["spread"]) >= float(GameData.opt(def, "status", "spread_time")):
 			s["spread"] = 0.0
 			near.call("add_status", id, 1, who)
-	var dps: float = float(def.get("dps_per_stack", 0.0)) * float(int(s["stacks"]))
-	dps += float(def.get("dps_per_metal_class", 0.0)) * float(metal_class())
+	var dps: float = float(GameData.opt(def, "status", "dps_per_stack")) * float(int(s["stacks"]))
+	dps += float(GameData.opt(def, "status", "dps_per_metal_class")) * float(metal_class())
 	if dps > 0.0:
 		s["acc"] = float(s.get("acc", 0.0)) + delta
-		var every: float = float(def.get("tick_s", 0.5))
+		var every: float = float(GameData.opt(def, "status", "tick_s"))
 		while float(s["acc"]) >= every and enemy.statuses.has(id) and not enemy.body.is_dead():
 			s["acc"] = float(s["acc"]) - every
 			var dmg: float = dps * every
@@ -462,7 +462,7 @@ func _tick_status(id: String, delta: float) -> void:
 			if who != null and who.has_method("deal_damage"):
 				var dot: Variant = who.call("deal_damage", enemy, dmg, def.get("dot_tags", ["dot"]))
 				# Tormented: part of every tick feeds whoever put it there
-				if float(def.get("drain_frac", 0.0)) > 0.0 and dot is HitContext and who.has_method("drain_heal"):
+				if float(GameData.opt(def, "status", "drain_frac")) > 0.0 and dot is HitContext and who.has_method("drain_heal"):
 					who.call("drain_heal", (dot as HitContext).applied * float(def["drain_frac"]), enemy, false)
 			else:
 				enemy.take_hit(dmg, false, null, def.get("dot_tags", ["dot"]))
@@ -474,9 +474,9 @@ func _tick_status(id: String, delta: float) -> void:
 	var adds: Variant = def.get("adds_status")
 	if adds is Dictionary:
 		s["add_t"] = float(s.get("add_t", 0.0)) + delta
-		if float(s["add_t"]) >= float(data.get("every", (adds as Dictionary).get("every", 1.0))):
+		if float(s["add_t"]) >= float(data.get("every", GameData.opt((adds as Dictionary), "status.adds_status", "every"))):
 			s["add_t"] = 0.0
-			add_status(str((adds as Dictionary).get("status", "")), int((adds as Dictionary).get("stacks", 1)), who)
+			add_status(str((adds as Dictionary).get("status", "")), int(GameData.opt((adds as Dictionary), "status.adds_status", "stacks")), who)
 	# Bleeding drips a pool every so often
 	if def.has("drips_pool_s") and who != null and who.has_method("spill_blood"):
 		s["drip"] = float(s.get("drip", 0.0)) + delta
@@ -484,26 +484,26 @@ func _tick_status(id: String, delta: float) -> void:
 			s["drip"] = 0.0
 			who.call("spill_blood", enemy.global_position, 1, false)
 	# Dripping: nudged away from the caster and losing footing, a little every second
-	var nudge_per: float = float(data.get("nudge_per_s", def.get("nudge_per_s", 0.0)))
+	var nudge_per: float = float(data.get("nudge_per_s", GameData.opt(def, "status", "nudge_per_s")))
 	if nudge_per > 0.0 and who is Node3D:
 		var away: Vector3 = enemy.global_position - (who as Node3D).global_position
 		away.y = 0.0
 		if away.length() > 0.05:
 			enemy.hits_part.nudge(away.normalized() * nudge_per * delta)
-	var poise_per: float = float(data.get("poise_per_s", def.get("poise_per_s", 0.0)))
+	var poise_per: float = float(data.get("poise_per_s", GameData.opt(def, "status", "poise_per_s")))
 	if poise_per > 0.0:
 		s["pacc"] = float(s.get("pacc", 0.0)) + delta
 		if float(s["pacc"]) >= 1.0:
 			s["pacc"] = 0.0
 			enemy.hits_part.take_poise(poise_per)
 	# Sick: every so often it retches, loses what it was doing and stands still
-	var retch_every: float = float(data.get("retch_every", def.get("retch_every", 0.0)))
+	var retch_every: float = float(data.get("retch_every", GameData.opt(def, "status", "retch_every")))
 	if retch_every > 0.0:
 		_retch_t += delta
 		if _retch_t >= retch_every:
 			_retch_t = 0.0
 			enemy.hits_part.interrupt()
-			enemy._held_t = float(data.get("retch_s", def.get("retch_s", 0.5)))
+			enemy._held_t = float(data.get("retch_s", GameData.opt(def, "status", "retch_s")))
 
 
 ## Burning: kept for old callers; the status engine burns every status with dps_per_stack.
@@ -533,7 +533,9 @@ func _nearest_enemy_within(reach: float) -> Node3D:
 func lure_reach() -> float:
 	var r := 0.0
 	for id: String in enemy.statuses:
-		r = maxf(r, float(_sdef(id).get("lure_radius", 0.0)))
+		var def: Dictionary = _sdef(id)
+		if def.has("lure_radius"):        # a status without one draws nobody (the schema's 0, which adds nothing here)
+			r = maxf(r, float(def["lure_radius"]))
 	return r
 
 
@@ -545,7 +547,7 @@ func _charmed() -> bool:
 ## Spared and Dying: it kneels and does nothing.
 func _kneeling() -> bool:
 	for id: String in enemy.statuses:
-		var below: float = float((enemy.statuses[id] as Dictionary).get("data", {}).get("kneels_below", _sdef(id).get("kneels_below", 0.0)))
+		var below: float = float((enemy.statuses[id] as Dictionary).get("data", {}).get("kneels_below", GameData.opt(_sdef(id), "status", "kneels_below")))
 		if below > 0.0 and enemy.body.total() < enemy.body.total_max() * below:
 			return true
 	return false

@@ -14,12 +14,12 @@ const FloatText := preload("res://scripts/float_text.gd")
 ## stone leaves it dazed.
 func think(delta: float, dir: Vector3, dist: float) -> void:
 	var frac: float = enemy.body.total() / enemy.body.total_max()
-	if enemy.phase < 2 and frac <= float(enemy._def.get("phase2_at", 0.6)) and not enemy.status_part._st_any("no_call"):
+	if enemy.phase < 2 and frac <= float(GameData.opt(enemy._def, "enemy", "phase2_at")) and not enemy.status_part._st_any("no_call"):
 		enemy.phase = 2
 		enemy.reinforcements.emit(enemy, enemy._def.get("calls", []))
 		if enemy.is_inside_tree():
 			FloatText.spawn(enemy.get_parent(), enemy.global_position + Vector3.UP * (enemy.height + 0.4), "TO ME!", Color(1.0, 0.85, 0.4))
-	if enemy.phase < 3 and frac <= float(enemy._def.get("phase3_at", 0.3)):
+	if enemy.phase < 3 and frac <= float(GameData.opt(enemy._def, "enemy", "phase3_at")):
 		enemy.phase = 3
 		enemy._special_cd["charge"] = 0.0
 	if enemy._charge_left > 0.0:
@@ -100,5 +100,5 @@ func _tick_charge(delta: float) -> void:
 				FloatText.spawn(enemy.get_parent(), enemy.global_position + Vector3.UP * (enemy.height + 0.4), "CRASH", Color(1, 0.95, 0.6))
 			return
 	if enemy._charge_left <= 0.0:
-		enemy._stuck_t = float(cfg.get("stuck_s", 1.0))
+		enemy._stuck_t = float(GameData.opt(cfg, "enemy.charge", "stuck_s"))
 		enemy._attack_cd = enemy._cooldown

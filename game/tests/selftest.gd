@@ -10,6 +10,7 @@ const FreeRules := preload("res://tests/free_rules.gd")
 const BeastChecks := preload("res://tests/beast_checks.gd")
 const V2Checks := preload("res://tests/v2_checks.gd")
 const FeelChecks := preload("res://tests/feel_checks.gd")
+const DataChecks := preload("res://tests/data_checks.gd")
 const SaveChecks := preload("res://tests/save_checks.gd")
 ## The self-test's own folder for saves, key bindings and settings (UserFiles.sandbox).
 const SANDBOX := "user://selftest_sandbox/"
@@ -45,6 +46,13 @@ func _ready() -> void:
 	# `-- --only=runes` runs just the rune checks (quicker while working on runes)
 	if OS.get_cmdline_user_args().has("--only=statuses"):
 		await _test_status_text()
+		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
+		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
+		get_tree().quit(1 if _failed > 0 else 0)
+		return
+	# `-- --only=data` runs just the data schema's checks (tests/data_checks.gd, 2026-11-09)
+	if OS.get_cmdline_user_args().has("--only=data"):
+		DataChecks.new(_check).run()
 		_check("no script error was raised during the run", _errors.count() == 0, "%d, first: %s" % [_errors.count(), _errors.first()])
 		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 		get_tree().quit(1 if _failed > 0 else 0)
@@ -88,6 +96,7 @@ func _ready() -> void:
 		print("SELFTEST: %d passed, %d failed" % [_passed, _failed])
 		get_tree().quit(1 if _failed > 0 else 0)
 		return
+	DataChecks.new(_check).run()
 	_test_body()
 	_test_natural_healing()
 	_test_arm_loss_and_regrowth()

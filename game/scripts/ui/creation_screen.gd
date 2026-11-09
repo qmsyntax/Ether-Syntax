@@ -620,7 +620,7 @@ func _rarity_color(slots: int) -> Color:
 
 ## How many starting skills are picked (data/skill_tree.json "start_picks").
 func picks() -> int:
-	return int(GameData.skill_tree.get("start_picks", 2))
+	return int(GameData.opt(GameData.skill_tree, "skill_tree", "start_picks"))
 
 
 func _chosen() -> Array:

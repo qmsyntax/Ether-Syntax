@@ -23,12 +23,12 @@ static func spill(parent: Node, at: Vector3, measures_in: int = 1, big: bool = f
 		var p := node as BloodPool
 		if p != null and Vector2(p.global_position.x - at.x, p.global_position.z - at.z).length() <= p.radius + r:
 			p.measures = mini(3, p.measures + measures_in)
-			p.radius = minf(float(cfg.get("radius", 0.5)) * 2.0, maxf(p.radius, r) + 0.15)
-			p.life = float(cfg.get("life", 15.0))
+			p.radius = minf(float(GameData.opt(cfg, "affinity.pool", "radius")) * 2.0, maxf(p.radius, r) + 0.15)
+			p.life = float(GameData.opt(cfg, "affinity.pool", "life"))
 			p._resize()
 			return p
 	var pools: Array = parent.get_tree().get_nodes_in_group("blood_pools")
-	if pools.size() >= int(cfg.get("max", 12)):
+	if pools.size() >= int(GameData.opt(cfg, "affinity.pool", "max")):
 		var oldest: BloodPool = null
 		for node: Node in pools:
 			if oldest == null or (node as BloodPool)._born < oldest._born:
@@ -39,7 +39,7 @@ static func spill(parent: Node, at: Vector3, measures_in: int = 1, big: bool = f
 	var pool := BloodPool.new()
 	pool.radius = r
 	pool.measures = measures_in
-	pool.life = float(cfg.get("life", 15.0))
+	pool.life = float(GameData.opt(cfg, "affinity.pool", "life"))
 	pool._born = Time.get_ticks_usec()
 	parent.add_child(pool)
 	pool.global_position = Vector3(at.x, at.y, at.z)

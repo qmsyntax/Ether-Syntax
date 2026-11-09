@@ -72,8 +72,8 @@ func populate_zone(def: Dictionary, to_local: Callable) -> void:
 		var at: Array = echo["at"]
 		var node: Node3D = NetherEchoes.build(str(echo["kind"]))
 		node.position = to_local.call(float(at[0]), float(at[1]))
-		node.rotation.y = deg_to_rad(float(echo.get("yaw", 0.0)))
-		node.scale = Vector3.ONE * float(echo.get("scale", 1.0))
+		node.rotation.y = deg_to_rad(float(GameData.opt(echo, "zone.nether_echo", "yaw")))
+		node.scale = Vector3.ONE * float(GameData.opt(echo, "zone.nether_echo", "scale"))
 		node.add_to_group("nether_echoes")
 		add_child(node)
 	var by_tier: Dictionary = def.get("scale", {})
@@ -82,7 +82,7 @@ func populate_zone(def: Dictionary, to_local: Callable) -> void:
 		var centre: Vector3 = to_local.call(float(at2[0]), float(at2[1]))
 		var half: Array = site.get("half", [4.0, 4.0])
 		for w: Dictionary in site.get("wisps", []):
-			for i: int in int(w.get("n", 1)):
+			for i: int in int(GameData.opt(w, "zone.nether_wisp", "n")):
 				var spot := centre + Vector3(rng.randf_range(-float(half[0]), float(half[0])), 0.0, rng.randf_range(-float(half[1]), float(half[1])))
 				var aff: String = str(w.get("affinity", "plain"))
 				if aff == "own":
@@ -97,7 +97,7 @@ func populate_zone(def: Dictionary, to_local: Callable) -> void:
 			var tier: String = str(c.get("tier", "vestige"))
 			var made: Node3D = spawn_construct(spot2, tier, str(c.get("concept", "stillness")), bool(c.get("docile", false)))
 			var ts: Dictionary = by_tier.get(tier, {})
-			made.call("scale_for", float(ts.get("hp_mult", 1.0)) * float(c.get("hp_mult", 1.0)), float(ts.get("damage_mult", 1.0)) * float(c.get("damage_mult", 1.0)))
+			made.call("scale_for", float(GameData.opt(ts, "zone.nether_scale", "hp_mult")) * float(GameData.opt(c, "zone.nether_construct", "hp_mult")), float(GameData.opt(ts, "zone.nether_scale", "damage_mult")) * float(GameData.opt(c, "zone.nether_construct", "damage_mult")))
 			made.set_meta("site", str(site.get("id", "")))
 
 

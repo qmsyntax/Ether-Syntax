@@ -1,0 +1,3699 @@
+{
+  "_note": "The data schema (Phase 2 step 4b, docs/architecture/data-schema.md). Hand-maintained: a new key goes into its kind here. files.<file>.paths: which dictionary is which kind ('*' = any key of an id map, '[]' = each element of a list); idmaps: dictionaries whose keys are ids; maps: dictionaries whose keys name ids (or free names) and whose values share one type; skip: not looked into. kinds.<kind>.keys.<key>: [type] or [type, default] or [type, default, {variant: default}] - the default is what a read through GameData.opt gets when the entry lacks the key; required: keys every entry must have; refs: keys naming ids ('key[]' = a list of ids; targets ability, status, item, enemy, affinity, rune, word, station, craft_skill).",
+  "files": {
+    "abilities": {
+      "paths": {
+        "": "abilities",
+        "abilities.*": "ability",
+        "abilities.*.age_scales": "age_scales",
+        "abilities.*.ascension_fields": "ascension_fields",
+        "abilities.*.aura": "zone",
+        "abilities.*.aura.payload": "payload",
+        "abilities.*.burst": "payload",
+        "abilities.*.burst.statuses[]": "status_entry",
+        "abilities.*.burst_zone": "zone",
+        "abilities.*.coat": "coat",
+        "abilities.*.coat.payload": "payload",
+        "abilities.*.coat.strike_payload": "payload",
+        "abilities.*.coat.strike_payload.statuses[]": "status_entry",
+        "abilities.*.conjure_weapon": "conjure",
+        "abilities.*.conjure_weapon.on_strike": "payload",
+        "abilities.*.corpse_burst": "payload",
+        "abilities.*.counter": "payload",
+        "abilities.*.counter.statuses[]": "status_entry",
+        "abilities.*.decoy_burst": "payload",
+        "abilities.*.first_hit": "payload",
+        "abilities.*.leave_decoy": "lure",
+        "abilities.*.leave_growth": "growth_spec",
+        "abilities.*.leave_prop": "prop",
+        "abilities.*.leave_prop.vents": "zone",
+        "abilities.*.leave_prop.vents.payload": "payload",
+        "abilities.*.leave_zone": "zone",
+        "abilities.*.leave_zone.payload": "payload",
+        "abilities.*.magnitude[]": "magnitude",
+        "abilities.*.on_arrive": "payload",
+        "abilities.*.on_break": "payload",
+        "abilities.*.on_cast": "payload",
+        "abilities.*.on_end": "payload",
+        "abilities.*.on_hit": "payload",
+        "abilities.*.on_hit.consume": "consume",
+        "abilities.*.on_hit.on_kill": "kill_reward",
+        "abilities.*.on_hit.status_data": "status_data",
+        "abilities.*.on_hit.status_data.on_kill_heal": "status_data.on_kill_heal",
+        "abilities.*.on_hit.status_s_if_not": "status_if_not",
+        "abilities.*.on_hit.statuses[]": "status_entry",
+        "abilities.*.on_infected_hit": "payload",
+        "abilities.*.on_infected_hit.statuses[]": "status_entry",
+        "abilities.*.on_land": "payload",
+        "abilities.*.on_pass": "payload",
+        "abilities.*.on_rise": "payload",
+        "abilities.*.on_stop": "payload",
+        "abilities.*.on_stop.status_data": "status_data",
+        "abilities.*.payload": "payload",
+        "abilities.*.relay_hit": "payload",
+        "abilities.*.shatter_burst": "payload",
+        "abilities.*.spall": "payload",
+        "abilities.*.split": "split",
+        "abilities.*.split.on_hit": "payload",
+        "abilities.*.summon_buff": "summon_buff",
+        "abilities.*.summon_hit": "payload",
+        "abilities.*.thrall": "thrall",
+        "abilities.*.thrall.on_hit": "payload",
+        "abilities.*.trail": "zone",
+        "abilities.*.trail.payload": "payload",
+        "abilities.*.zone": "zone",
+        "abilities.*.zone.ally_payload": "ally_payload",
+        "abilities.*.zone.on_enter": "payload",
+        "abilities.*.zone.payload": "payload",
+        "abilities.*.zone.payload.statuses[]": "status_entry"
+      },
+      "idmaps": ["abilities"],
+      "maps": {"abilities.*.consume_counts": {"keys": "status", "values": "number"}, "abilities.*.zone.dps_mult": {"keys": "status", "values": "number"}, "abilities.*.on_arrive.bonus_flat_vs": {"keys": "status", "values": "number"}, "abilities.*.on_hit.consume.counts": {"keys": "status", "values": "number"}, "abilities.*.on_hit.bonus_flat_vs": {"keys": "status", "values": "number"}, "abilities.*.on_hit.consume_stacks": {"keys": "status", "values": "number"}, "abilities.*.conjure_weapon.on_strike.consume_stacks": {"keys": "status", "values": "number"}, "abilities.*.on_hit.bonus_vs": {"keys": "status", "values": "number"}}
+    },
+    "affinities": {
+      "paths": {
+        "": "affinities",
+        "affinities.*": "affinity",
+        "affinities.*.bonus_stacks_vs": "affinity.bonus_stacks_vs",
+        "affinities.*.crush_ward": "affinity.crush_ward",
+        "affinities.*.drain_mult_vs": "affinities.affinities.*.drain_mult_vs",
+        "affinities.*.growth": "affinity.growth",
+        "affinities.*.growth.bramble": "affinity.growth_rule",
+        "affinities.*.growth.bramble.payload": "payload",
+        "affinities.*.growth.snarevine": "affinity.growth_rule",
+        "affinities.*.growth.snarevine.payload": "payload",
+        "affinities.*.in_the_green": "affinity.in_the_green",
+        "affinities.*.light_mult": "affinity.light_mult",
+        "affinities.*.pool": "affinity.pool",
+        "affinities.*.stolen": "affinity.stolen",
+        "affinities.*.ward_break_payload": "payload"
+      },
+      "idmaps": ["affinities"],
+      "maps": {"affinities.*.bonus_stacks_vs.vs": {"keys": "status", "values": "number"}, "affinities.*.bonus_vs_status": {"keys": "status", "values": "number"}, "affinities.*.status_time_vs": {"keys": "status", "values": "number"}}
+    },
+    "balance": {
+      "paths": {
+        "": "balance",
+        "abilities": "balance.abilities",
+        "arena": "balance.arena",
+        "arm": "balance.arm",
+        "art": "balance.art",
+        "ascension": "balance.ascension",
+        "ascension.aspects": "balance.ascension.aspects",
+        "ascension.aspects.cost": "balance.ascension.aspects.cost",
+        "ascension.aspects.cost.groups": "balance.ascension.aspects.cost.groups",
+        "ascension.aspects.power": "balance.ascension.aspects.power",
+        "ascension.aspects.power.groups": "balance.ascension.aspects.power.groups",
+        "ascension.aspects.reach": "balance.ascension.aspects.reach",
+        "ascension.aspects.reach.groups": "balance.ascension.aspects.reach.groups",
+        "ascension.aspects.speed": "balance.ascension.aspects.speed",
+        "ascension.aspects.speed.groups": "balance.ascension.aspects.speed.groups",
+        "ascension_2": "balance.ascension_2",
+        "binding": "balance.binding",
+        "biomes": "balance.biomes",
+        "biomes.ambient_boost": "balance.biomes.ambient_boost",
+        "braced": "balance.braced",
+        "camera": "balance.camera",
+        "camps": "balance.camps",
+        "cleanse": "balance.cleanse",
+        "combat": "balance.combat",
+        "endurance": "balance.endurance",
+        "feel": "balance.feel",
+        "gear": "balance.gear",
+        "healer": "balance.healer",
+        "hud": "balance.hud",
+        "life_healing": "balance.life_healing",
+        "light": "balance.light",
+        "light.by_state": "balance.light.by_state",
+        "meditation": "balance.meditation",
+        "minimap": "balance.minimap",
+        "natural_healing": "balance.natural_healing",
+        "navigation": "balance.navigation",
+        "nether": "balance.nether",
+        "nether.word_weights": "balance.nether.word_weights",
+        "night": "balance.night",
+        "passage": "balance.passage",
+        "player": "balance.player",
+        "primes": "balance.primes",
+        "primes.talent_weight_by_value": "balance.primes.talent_weight_by_value",
+        "ranged": "balance.ranged",
+        "reflux": "balance.reflux",
+        "scenery": "balance.scenery",
+        "shove": "balance.shove",
+        "sidestep": "balance.sidestep",
+        "skills": "balance.skills",
+        "slipstream": "balance.slipstream",
+        "stars": "balance.stars",
+        "stone": "balance.stone",
+        "stone.shrapnel": "balance.stone.shrapnel",
+        "talent_healing": "balance.talent_healing",
+        "town": "balance.town",
+        "unstarred": "balance.unstarred",
+        "ward": "balance.ward",
+        "wounds": "balance.wounds",
+        "wounds.bind_fail": "balance.wounds.bind_fail",
+        "wounds.lost_arm": "balance.wounds.lost_arm",
+        "wounds.temper": "balance.wounds.temper"
+      },
+      "idmaps": ["passage.wall_recipes"],
+      "maps": {"ascension.pool_by_star": {"keys": null, "values": "number"}, "passage.wall_recipes.*": {"keys": "enemy", "values": "number"}}
+    },
+    "constructs": {
+      "paths": {
+        "": "constructs",
+        "legacy.*": "construct_legacy",
+        "wild.*": "construct_wild",
+        "words.*": "construct_word"
+      },
+      "idmaps": ["words", "legacy", "wild"],
+      "maps": {"tier_runes": {"keys": null, "values": "number"}}
+    },
+    "crafting": {
+      "paths": {
+        "": "crafting",
+        "items.*": "item",
+        "items.*.kit": "item.kit",
+        "items.*.tool": "item.tool",
+        "recipes.*": "recipe",
+        "recipes.*.tool": "recipe.tool",
+        "rules": "crafting.rules",
+        "skills.*": "craft_skill",
+        "stations.*": "craft_station",
+        "tools.*": "craft_tool"
+      },
+      "idmaps": ["items", "recipes", "tools", "stations", "skills"],
+      "maps": {"recipes.*.inputs": {"keys": "item", "values": "number"}, "recipes.*.byproducts": {"keys": "item", "values": "number"}}
+    },
+    "creation": {
+      "paths": {
+        "": "creation",
+        "hidden_options": "creation.hidden_options",
+        "hidden_options.female": "creation.hidden_options.female",
+        "identities[]": "creation.identities[]",
+        "look_labels": "creation.look_labels"
+      }
+    },
+    "enemies": {
+      "paths": {
+        "": "enemies",
+        "enemies.*": "enemy",
+        "enemies.*.aura_ring": "enemy.aura_ring",
+        "enemies.*.charge": "enemy.charge",
+        "enemies.*.counter": "enemy.counter",
+        "enemies.*.death_burst": "enemy.death_burst",
+        "enemies.*.kick": "enemy.kick",
+        "enemies.*.loot[]": "enemy.loot",
+        "enemies.*.rise": "enemy.rise",
+        "enemies.*.sweep": "enemy.sweep",
+        "enemies.*.swell": "enemy.swell"
+      },
+      "idmaps": ["enemies"],
+      "maps": {"enemies.*.drops": {"keys": "item", "values": "any"}}
+    },
+    "enemy_looks": {
+      "paths": {
+        "*": "enemy_look"
+      },
+      "idmaps": [""],
+      "maps": {"*.colors": {"keys": null, "values": "array|string"}}
+    },
+    "items": {
+      "paths": {
+        "": "items",
+        "exit_reward_table[]": "items.exit_reward",
+        "exit_rewards": "items.exit_rewards",
+        "items.*": "item",
+        "items.*.stats": "item.stats",
+        "items.*.use": "item.use"
+      },
+      "idmaps": ["items"],
+      "maps": {"starting_equipped": {"keys": null, "values": "string", "value_refs": "item"}}
+    },
+    "rune_discovery": {
+      "paths": {
+        "": "discovery",
+        "construct": "rune_discovery.construct",
+        "construct.by_tier.*": "discovery.construct_tier",
+        "inscriptions": "discovery.inscriptions",
+        "inscriptions.passage[]": "discovery.inscription",
+        "kills": "discovery.kills",
+        "kills.chance_by_kind": "rune_discovery.kills.chance_by_kind"
+      },
+      "idmaps": ["construct.by_tier"],
+      "skip": ["construct.words", "start", "kills.profiles", "kills.by_kind", "axes"]
+    },
+    "runes": {
+      "paths": {
+        "": "runes",
+        "base_runes.*": "rune",
+        "base_runes.*.ops[]": "rune_op",
+        "rule_sets.*": "rule_set",
+        "rule_sets.*.bond_kinds[]": "rule_set.bond_kind",
+        "rule_sets.*.interaction_params.*": "effects",
+        "rule_sets.*.interaction_params.*.fade[]": "effects.fade",
+        "rule_sets.*.interaction_params.*.field_caps": "runes.rule_sets.*.interaction_params.*.field_caps",
+        "rule_sets.*.interaction_params.*.group_units": "runes.rule_sets.*.interaction_params.*.group_units",
+        "rule_sets.*.interaction_params.*.group_words": "runes.rule_sets.*.interaction_params.*.group_words",
+        "rule_sets.*.interaction_params.*.ionic_conversion": "effects.ionic_conversion",
+        "rule_sets.*.interaction_params.*.kind_factors": "runes.rule_sets.*.interaction_params.*.kind_factors",
+        "rule_sets.*.interaction_params.*.kind_factors.even": "runes.rule_sets.*.interaction_params.*.kind_factors.even",
+        "rule_sets.*.interaction_params.*.kind_factors.ionic": "runes.rule_sets.*.interaction_params.*.kind_factors.ionic",
+        "rule_sets.*.interaction_params.*.kind_factors.polar": "runes.rule_sets.*.interaction_params.*.kind_factors.polar",
+        "rule_sets.*.interaction_params.*.nature_words": "runes.rule_sets.*.interaction_params.*.nature_words",
+        "rule_sets.*.interaction_params.*.on_off": "effects.on_off",
+        "rule_sets.*.interaction_params.*.repeat": "effects.repeat",
+        "rule_sets.*.interaction_params.*.ring_fade[]": "effects.fade",
+        "rule_sets.*.interaction_params.*.shape_traits.*": "shape_trait",
+        "rule_sets.*.interaction_params.*.shape_traits.*.ops[]": "shape_trait.op",
+        "rule_sets.*.interaction_params.*.shown_fields[]": "effects.shown_field",
+        "rule_sets.*.interaction_params.*.stat_groups": "runes.rule_sets.*.interaction_params.*.stat_groups",
+        "rule_sets.*.keystone": "rule_set.keystone",
+        "rule_sets.*.rings[]": "rule_set.ring",
+        "rule_sets.*.roles": "runes.rule_sets.*.roles",
+        "rule_sets.*.roles.branch": "runes.rule_sets.*.roles.branch",
+        "rule_sets.*.roles.cap": "runes.rule_sets.*.roles.cap",
+        "rule_sets.*.roles.frame": "runes.rule_sets.*.roles.frame",
+        "rule_sets.*.roles.link": "runes.rule_sets.*.roles.link",
+        "universal_runes.*": "rune",
+        "universal_runes.*.ops[]": "rune_op"
+      },
+      "idmaps": ["base_runes", "universal_runes", "rule_sets", "rule_sets.*.interaction_params", "rule_sets.*.interaction_params.*.shape_traits"],
+      "maps": {"rule_sets.*.interaction_params.*.field_units": {"keys": null, "values": "string"}, "rule_sets.*.interaction_params.*.field_labels": {"keys": null, "values": "string"}},
+      "skip": ["skill_anchor", "unmatched", "affinity_positions", "axes"]
+    },
+    "scrolls": {
+      "paths": {
+        "": "scrolls",
+        "items.*": "item"
+      },
+      "idmaps": ["items"]
+    },
+    "skill_tree": {
+      "paths": {
+        "": "skill_tree",
+        "drill": "skill_tree.drill",
+        "points": "skill_tree.points",
+        "tiers.*": "skill_tree.tier",
+        "trees.*.*": "tree_node"
+      },
+      "idmaps": ["trees", "trees.*", "tiers"],
+      "maps": {"trees": {"keys": "affinity", "values": "object"}, "trees.*": {"keys": "ability", "values": "object"}}
+    },
+    "statuses": {
+      "paths": {
+        "": "statuses",
+        "player_states.*": "player_state",
+        "statuses.*": "status",
+        "statuses.*.adds_status": "status.adds_status",
+        "statuses.*.blinded": "status.blinded",
+        "statuses.*.on_cap": "status.on_cap",
+        "statuses.*.on_death": "status.on_death",
+        "statuses.*.on_death.cloud": "zone",
+        "statuses.*.on_death.cloud.payload": "payload",
+        "statuses.*.on_expire": "status.on_expire",
+        "statuses.*.shatter": "status.shatter",
+        "statuses.*.shatter.shard": "payload"
+      },
+      "idmaps": ["statuses", "player_states"],
+      "maps": {"statuses.*.dps_mult": {"keys": "status", "values": "number"}, "statuses.*.damage_taken_from": {"keys": "affinity", "values": "number"}, "statuses.*.cap_raise": {"keys": "status", "values": "number"}, "statuses.*.adds_time": {"keys": "status", "values": "number"}, "statuses.*.bill_mult": {"keys": "status", "values": "number"}}
+    },
+    "talents": {
+      "paths": {
+        "": "talents",
+        "talents[]": "talent"
+      }
+    },
+    "tempering": {
+      "paths": {
+        "": "tempering",
+        "session": "tempering.session",
+        "techniques.*": "technique",
+        "techniques.*.effect": "technique.effect"
+      },
+      "idmaps": ["techniques"]
+    },
+    "town": {
+      "paths": {
+        "": "town",
+        "arrive": "town.arrive",
+        "exits[]": "town.exit",
+        "folk[]": "town.folk",
+        "stations[]": "town.station",
+        "walls": "town.walls"
+      }
+    },
+    "wardrobe": {
+      "paths": {
+        "": "wardrobe",
+        "action_impact_s": "wardrobe.action_impact_s",
+        "action_speed": "wardrobe.action_speed",
+        "action_window_s": "wardrobe.action_window_s",
+        "armed_loops": "wardrobe.armed_loops",
+        "bodies.*": "wardrobe.body",
+        "builds.*": "wardrobe.build",
+        "faces.*": "wardrobe.face",
+        "grip": "wardrobe.grip",
+        "grip.items": "wardrobe.grip.items",
+        "grip.items.iron_knuckles": "wardrobe.grip.items.iron_knuckles",
+        "grip.items.iron_knuckles.left": "wardrobe.grip.items.iron_knuckles.left",
+        "grip.items.iron_knuckles.right": "wardrobe.grip.items.iron_knuckles.right",
+        "grip.left": "wardrobe.grip.left",
+        "grip.right": "wardrobe.grip.right",
+        "materials.*": "wardrobe.material",
+        "pieces.*": "wardrobe.piece",
+        "props.*": "wardrobe.props.*",
+        "props.*.parts[]": "wardrobe.props.*.parts[]",
+        "stances": "wardrobe.stances",
+        "stances.places": "wardrobe.stances.places",
+        "stances.stand": "wardrobe.stand",
+        "stances.stand.by_body.body_female": "wardrobe.stances.stand.by_body.body_female",
+        "stances.stand.grip_rest": "wardrobe.stances.stand.grip_rest",
+        "stances.stand.grip_rest.items": "wardrobe.stances.stand.grip_rest.items",
+        "stances.stand.grip_rest.items.iron_knuckles": "wardrobe.stances.stand.grip_rest.items.iron_knuckles",
+        "stances.stand.grip_rest.items.iron_knuckles.left": "wardrobe.stances.stand.grip_rest.items.iron_knuckles.left",
+        "stances.stand.grip_rest.items.iron_knuckles.right": "wardrobe.stances.stand.grip_rest.items.iron_knuckles.right",
+        "stances.stand.grip_rest.left": "wardrobe.stances.stand.grip_rest.left",
+        "stances.stand.grip_rest.right": "wardrobe.stances.stand.grip_rest.right",
+        "stances.stand.pose.*": "wardrobe.pose"
+      },
+      "idmaps": ["pieces", "items", "materials", "builds", "faces", "bodies", "hair", "stances.stand.pose", "props"],
+      "maps": {"stances.stand.pose": {"keys": null, "values": "array|object"}, "stances.stand.finger_close": {"keys": null, "values": "number"}, "stances.stand.breath": {"keys": null, "values": "array"}, "stances.stand.by_body": {"keys": null, "values": "object"}, "hair_luma": {"keys": null, "values": "number"}}
+    },
+    "zones": {
+      "paths": {
+        "": "zones",
+        "zones.*": "zone",
+        "zones.*.arrive": "zones.zones.*.arrive",
+        "zones.*.camps[]": "zone.camp",
+        "zones.*.camps[].edge[]": "zone.camp_edge",
+        "zones.*.camps[].members[]": "zone.camp_member",
+        "zones.*.cut_house": "zone.cut_house",
+        "zones.*.decor[]": "zone.decor",
+        "zones.*.edge_kits": "zones.zones.*.edge_kits",
+        "zones.*.entrances[]": "zone.entrance",
+        "zones.*.inscriptions[]": "zone.inscription",
+        "zones.*.landmarks[]": "zone.landmark",
+        "zones.*.lines[]": "zone.line",
+        "zones.*.lurker_patches[]": "zone.lurker_patch",
+        "zones.*.nether": "zone.nether",
+        "zones.*.nether.echoes[]": "zone.nether_echo",
+        "zones.*.nether.scale.*": "zone.nether_scale",
+        "zones.*.nether.sites[]": "zone.nether_site",
+        "zones.*.nether.sites[].constructs[]": "zone.nether_construct",
+        "zones.*.nether.sites[].wisps[]": "zone.nether_wisp",
+        "zones.*.power_line": "zone.power_line",
+        "zones.*.road": "zone.road",
+        "zones.*.tracks[]": "zone.track"
+      },
+      "idmaps": ["zones", "zones.*.nether.scale"]
+    }
+  },
+  "kinds": {
+    "abilities": {
+      "required": ["abilities"],
+      "keys": {
+        "abilities": ["object"]
+      }
+    },
+    "ability": {
+      "required": ["name", "affinity", "kind", "targeting", "base_rune", "rune", "signature", "ascension_fields", "cost", "reflux_per_cost", "verse", "icon", "summary", "good_modifiers"],
+      "refs": {"affinity": "affinity", "base_rune": "rune", "consume_status": "status", "needs_status": "status", "self_status": "player_state", "after_status": "status", "collapse_status": "status", "attacker_status": "status", "strike_status": "status"},
+      "keys": {
+        "name": ["string"],
+        "affinity": ["string"],
+        "kind": ["string"],
+        "targeting": ["string"],
+        "base_rune": ["string"],
+        "rune": ["string"],
+        "signature": ["array"],
+        "ascension_fields": ["object"],
+        "role_fit": ["string"],
+        "starter": ["bool"],
+        "cost": ["number", 0.0],
+        "reflux_per_cost": ["number", 1.0],
+        "damage_mult": ["number", 1.0],
+        "reach_bonus": ["number", 0.0],
+        "arc_deg": ["number", 0.0, {"channel_pulse": 60.0}],
+        "on_hit": ["object"],
+        "recovery": ["number"],
+        "verse": ["string"],
+        "icon": ["string"],
+        "summary": ["string"],
+        "good_modifiers": ["array"],
+        "charge_max": ["number", 1.0],
+        "move_factor": ["number", 1.0],
+        "braced": ["bool"],
+        "release": ["string"],
+        "damage_mult_min": ["number"],
+        "mode": ["string"],
+        "range": ["number", 10.0, {"cast_ability": 6.0, "cast_ability_8": 8.0, "perform_cast": 99.0, "fire_beam": 9.0, "streak": 7.0, "channel_pulse": 5.0, "release_charge": 12.0}],
+        "pull": ["number", 10.0, {"displace": 4.0, "burst": 0.0}],
+        "keep": ["number", 1.5],
+        "turn_s": ["number", 1.0],
+        "zone": ["object"],
+        "magnitude": ["array"],
+        "consume_status": ["array|string"],
+        "refund_per_stack": ["number", 0.0],
+        "pool_pull_mult": ["number"],
+        "simplified": ["string"],
+        "radius": ["number", 6.0, {"take_buff": 2.5, "take_hit": 0.0, "tick_roles": 12.0, "inured_mult": 8.0, "displace": 3.0, "channel_pulse": 5.0, "start_blast": 2.0}],
+        "delay": ["number", 0.0, {"start_blast": 0.5, "sow": 6.0}],
+        "range_bonus": ["number", 0.0],
+        "per_stack_damage": ["number", 0.0, {"field_pulse": 30.0, "beats": 8.0}],
+        "consume_counts": ["object"],
+        "throw": ["number", 6.0],
+        "on_land": ["object"],
+        "draft_kind": ["string"],
+        "buff": ["string"],
+        "duration": ["number", 2.0, {"take_buff": -1.0, "put_coat": 6.0, "summon": 15.0, "sow": 20.0}],
+        "hits": ["int", 1],
+        "melee_taken_mult": ["number", 0.5],
+        "dash_speed": ["number", 24.0],
+        "dash_time": ["number", 0.0],
+        "on_pass": ["object"],
+        "pass_radius": ["number", 1.0, {"streak": 1.1}],
+        "damage": ["number", 0.0, {"detonate": 70.0, "raise_prop": 40.0}],
+        "speed": ["number", 999.0],
+        "life": ["number", 12.0, {"lead_aim": 1.0, "plant_rod": 10.0, "raise_prop": 3.0, "raise_prop_5": 5.0, "raise_prop_30": 30.0}],
+        "burst_radius": ["number", 2.0, {"detonate": 2.5, "sow": 1.2}],
+        "burst": ["object"],
+        "stops_at_bodies": ["bool"],
+        "trail": ["object"],
+        "windup": ["number", 0.0],
+        "per_stack_burst": ["number"],
+        "damage_from_heat": ["number"],
+        "heat_floor": ["number", 0.0],
+        "pull_before_blast": ["bool"],
+        "cost_per_s": ["bool|number"],
+        "shape": ["string"],
+        "tick": ["number", 0.5],
+        "add_reflux": ["number", 0.0],
+        "on_cast": ["object"],
+        "coat": ["object"],
+        "heat_cost": ["number", 0.0],
+        "needs_status": ["string"],
+        "spread_stacks": ["int|string", 1],
+        "spread_radius": ["number", 0.0, {"smite": 4.0}],
+        "spread_max": ["number"],
+        "shatters_stone": ["bool"],
+        "on_stop": ["object"],
+        "heavy_poise": ["number", 0.0],
+        "arrive_radius": ["number", 1.5],
+        "on_arrive": ["object"],
+        "min_range": ["number", 1.5],
+        "width": ["number", 3.0, {"fire_projectile": 0.0, "channel_pulse": 1.0}],
+        "thickness": ["number", 0.6],
+        "height": ["number", 1.8],
+        "rise_time": ["number", 0.35],
+        "on_rise": ["object"],
+        "leave_prop": ["object"],
+        "incoming_mult": ["number", 1.0],
+        "move_speed_mult": ["number"],
+        "aura": ["object"],
+        "shatters_all_stone": ["bool"],
+        "immovable": ["bool"],
+        "on_end": ["object"],
+        "damage_full": ["number"],
+        "shatter_bonus": ["number"],
+        "under": ["bool"],
+        "pierce": ["bool"],
+        "spend_pips": ["int", 0],
+        "pip_damage": ["number", 0.0],
+        "through": ["bool"],
+        "through_dist": ["number", 2.0],
+        "pip_mult": ["number"],
+        "spend_all_pips": ["bool"],
+        "force_rear": ["bool"],
+        "gain_pips": ["int", 0],
+        "no_recovery": ["bool"],
+        "deflect_radius": ["number", 0.0],
+        "gain_pips_per_deflect": ["int", 0],
+        "at": ["string"],
+        "pip_cost_per_s": ["number", 0.0],
+        "leap": ["bool"],
+        "window_s": ["number", 5.0],
+        "counter_reach": ["number", 3.0],
+        "behind_dist": ["number", 0.0],
+        "counter": ["object"],
+        "refund_unused": ["number", 0.0],
+        "pip_seconds": ["number", 0.2, {"lay_zone": 0.0}],
+        "pip_shove": ["number", 0.0],
+        "clears_clouds": ["bool"],
+        "kill_projectiles": ["bool"],
+        "jumps": ["int", 7, {"chain": 3, "fire_beam": 0}],
+        "jump_radius": ["number", 3.0, {"chain": 5.0, "fire_beam": 4.0}],
+        "burst_always": ["bool"],
+        "self_status": ["string"],
+        "self_status_s": ["number", 2.0],
+        "retaliate": ["number", 0.0],
+        "range_min": ["number"],
+        "damage_min": ["number"],
+        "marks_by_charge": ["array"],
+        "overload_fracs": ["array"],
+        "carries_caster": ["bool"],
+        "relay_radius": ["number", 8.0],
+        "relay_range": ["number", 5.0],
+        "relay_hit": ["object"],
+        "parent_trait": ["string"],
+        "length": ["number"],
+        "max_count": ["int", 2, {"raise_prop": 0}],
+        "shatter_burst": ["object"],
+        "ward": ["number", 0.0],
+        "on_break": ["object"],
+        "crushes": ["bool"],
+        "consume_zone": ["string"],
+        "drops_aggro": ["bool"],
+        "needs_shadow": ["bool"],
+        "arrive_behind": ["bool"],
+        "rear_window": ["number", 0.0],
+        "unaware_mult": ["number"],
+        "hush_radius": ["number", 0.0],
+        "lure_radius": ["number", 8.0],
+        "crack_radius": ["number", 1.5],
+        "swallow_per_hit": ["int", 0],
+        "consume": ["string"],
+        "daze_at": ["number"],
+        "spall": ["object"],
+        "pass_armoured": ["bool"],
+        "set_focus": ["string"],
+        "focus_spend": ["bool"],
+        "per_focus_mult": ["number", 0.0],
+        "focus_gain": ["int", 0],
+        "attacker_status": ["string"],
+        "attacker_status_s": ["number", 3.0],
+        "attacker_reach": ["number"],
+        "blood_per_wound": ["int", 0],
+        "pool_radius": ["number", 0.0, {"field_pulse": 4.0}],
+        "max_take": ["number"],
+        "blood_per_take": ["int", 1],
+        "spend_blood": ["int|string", 0],
+        "pools_per_two_spent": ["int", 0],
+        "conjure_weapon": ["object"],
+        "passes_bodies": ["bool"],
+        "pool_bonus_m": ["number", 0.0],
+        "pool_bonus_max": ["int", 2],
+        "after_speed_mult": ["number", 0.0],
+        "attack_rate_mult": ["number"],
+        "strike_reach_bonus": ["number", 0.0],
+        "poise_loss_mult": ["number"],
+        "upkeep_blood_per_s": ["number", 0.0],
+        "upkeep_grace_s": ["number", 0.0],
+        "shed_per_blood": ["number", 0.0],
+        "poise_mult": ["number"],
+        "shed_mult": ["number"],
+        "heal_per_s": ["number", 0.0],
+        "overflow_to_sink": ["number", 0.0],
+        "clears_winded": ["bool"],
+        "never_winds": ["bool"],
+        "after_heal_per_s": ["number", 0.0],
+        "heal_per_target": ["number", 0.0],
+        "heal_over_s": ["number", 2.0, {"burst": 3.0}],
+        "heal_targets_max": ["int", 99],
+        "strike_mult": ["number"],
+        "strike_poise_mult": ["number"],
+        "heal_to_poise": ["number", 0.0],
+        "cleanse": ["string"],
+        "new_status_mult": ["number"],
+        "heal_per_cleansed": ["number", 0.0],
+        "heal_cleansed_max": ["number"],
+        "cost_note": ["string"],
+        "sink_per_s": ["number", 0.0],
+        "arm_rate": ["number", 0.0],
+        "pause_on_hit_s": ["number", 0.0],
+        "summon_heal_per_s": ["number", 0.0],
+        "break_range": ["number", 9.0],
+        "thrall": ["object"],
+        "needs": ["string"],
+        "max_count_from": ["string"],
+        "max_corpses": ["number"],
+        "per_corpse_essence": ["number", 0.0],
+        "per_corpse_reflux": ["number", 0.0],
+        "drag_radius": ["number", 2.0],
+        "hits_corpses": ["bool"],
+        "corpse_burst": ["object"],
+        "thrall_incoming_mult": ["number"],
+        "thrall_time_paused": ["bool"],
+        "corpse_hold": ["bool"],
+        "recent_death_s": ["number"],
+        "spends_corpse": ["bool"],
+        "corpse_range": ["number", 0.0],
+        "breaks_aim": ["bool"],
+        "thrall_range": ["number", 14.0],
+        "swap_thrall": ["bool"],
+        "swap_heal": ["number", 0.0],
+        "hp": ["number", 150.0, {"raise_prop": 300.0}],
+        "blocks": ["bool"],
+        "collapse_radius": ["number", 3.0],
+        "corpse_life": ["number"],
+        "corpse_hp_mult": ["number", 1.0],
+        "collapse_status": ["string"],
+        "consume_thralls": ["bool"],
+        "hp_frac": ["number", 0.0],
+        "heal_per_hit": ["number", 0.0],
+        "on_death_growth": ["string"],
+        "leave_growth": ["object"],
+        "hp_per_s": ["number", 0.0],
+        "spread_every": ["number", 0.0, {"raise_prop": 5.0}],
+        "spread_kind": ["string"],
+        "decoy_radius": ["number", 5.0],
+        "decoy_s": ["number", 0.0],
+        "age_scales": ["bool|object"],
+        "ages_added": ["int", 0],
+        "spreads": ["int", 0],
+        "effect_mult": ["number", 1.0],
+        "green_heal_mult": ["number", 1.0],
+        "green_damage_mult": ["number", 1.0],
+        "patch_bonus": ["number", 0.0],
+        "patch_bonus_max": ["number", 0.6],
+        "per_patch_essence": ["number", 0.0],
+        "per_patch_heal": ["number", 0.0],
+        "seeds": ["int", 5],
+        "trigger_radius": ["number", 0.6],
+        "frees_caster": ["bool"],
+        "spends_patch_age": ["bool"],
+        "bloom_count": ["int", 1],
+        "command_radius": ["number", 0.0],
+        "leap_speed": ["number"],
+        "summon_hit": ["object"],
+        "summon_buff": ["object"],
+        "light_radius": ["number", 5.0],
+        "tick_s": ["number", 0.5],
+        "payload": ["object"],
+        "blocks_movement": ["bool"],
+        "blocks_shots": ["bool"],
+        "sear_bonus": ["number", 0.0],
+        "needs_clear_line": ["bool"],
+        "per_target_damage": ["number"],
+        "ray_damage": ["number", 0.0],
+        "not_melee": ["bool"],
+        "reveal_radius": ["number", 0.0],
+        "lit_front_armour_mult": ["number"],
+        "bounces": ["int", 0],
+        "bounce_off": ["array"],
+        "follows_lit": ["bool"],
+        "line_width": ["number", 0.6],
+        "split": ["object"],
+        "buff_targets": ["array"],
+        "status_time_mult": ["number"],
+        "recovery_mult": ["number"],
+        "summon_deals_mult": ["number"],
+        "phantom_extra_hits": ["int", 0],
+        "leave_decoy": ["object"],
+        "bonus_vs_asleep": ["number", 0.0],
+        "after_status": ["string"],
+        "decoy_burst": ["object"],
+        "elite_ok": ["bool"],
+        "nearest_to_point": ["bool"],
+        "weapon": ["bool"],
+        "pass_through": ["bool"],
+        "shot": ["bool"],
+        "gather_radius": ["number", 6.0],
+        "gather_into": ["string"],
+        "gather_cap": ["int", 20],
+        "shot_range_mult": ["number"],
+        "coat_free": ["bool"],
+        "clock_to": ["number"],
+        "bill_mult": ["number", 1.0],
+        "lobbed": ["bool"],
+        "leave_zone": ["object"],
+        "stagger_at": ["int", 0],
+        "fan": ["bool"],
+        "depth": ["int", 2],
+        "first_hit": ["object"],
+        "dying_stacks": ["int", 0],
+        "on_infected_hit": ["object"],
+        "burst_zone": ["object"],
+        "dr_per_infected": ["number", 0.0],
+        "dr_max": ["number", 0.3],
+        "max_sites": ["int", 0, {"exhume": 4}],
+        "recent_infected_death_s": ["number", 15.0],
+        "summon_ward": ["number", 0.0],
+        "expire_heal_frac": ["number"],
+        "strike_status": ["string"],
+        "ward_per_cleansed": ["number", 0.0],
+        "ward_cleansed_max": ["number"],
+        "turns_away": ["int", 0],
+        "softened_return": ["number", 0.0],
+        "arrive_ward": ["number", 0.0],
+        "counter_ward": ["number", 0.0],
+        "patience_ward": ["number", 0.0],
+        "refuses_shots": ["bool"],
+        "per_stack_poise": ["number", 0.0],
+        "poise_max": ["number"],
+        "ward_from": ["string"],
+        "ward_max": ["number"],
+        "no_stagger": ["bool"],
+        "dir": ["string"],
+        "damage_all": ["number", 1.0],
+        "vent_reflux": ["number", 0.0],
+        "self_harm": ["number", 0.0],
+        "shove": ["number", 3.0],
+        "floor_health": ["number", 0.0],
+        "kill_blood": ["int", 0],
+        "essence_per_hit": ["number", 0.0],
+        "essence_max_hits": ["int", 99],
+        "gain_pips_per_hit": ["int", 0],
+        "gain_pips_max": ["int", 99],
+        "pools_per_tick": ["int", 0],
+        "bonus_damage": ["number", 0.0],
+        "beats": ["int", 0, {"beats": 3}],
+        "pool_per_beat": ["int", 0],
+        "beat_s": ["number", 0.5]
+      }
+    },
+    "affinities": {
+      "required": ["prime_default", "affinities"],
+      "keys": {
+        "prime_default": ["array"],
+        "affinities": ["object"]
+      }
+    },
+    "affinities.affinities.*.drain_mult_vs": {
+      "required": [],
+      "keys": {
+        "dying": ["number"],
+        "in_dark": ["number"]
+      }
+    },
+    "affinity": {
+      "required": ["label", "color", "desc", "kit", "reflux_tier", "rule", "kind", "parents", "role"],
+      "refs": {"kit[]": "ability", "parents[]": "affinity"},
+      "keys": {
+        "label": ["string"],
+        "color": ["string"],
+        "desc": ["string"],
+        "marks_adrift": ["bool"],
+        "crush_ward": ["object"],
+        "kit": ["array"],
+        "reflux_tier": ["string"],
+        "rule": ["string"],
+        "kind": ["string"],
+        "parents": ["array"],
+        "role": ["string"],
+        "damage_per_reflux": ["number", 0.0],
+        "reflux_shed_mult_combat": ["number", 1.0],
+        "stone": ["bool"],
+        "reflux_shed_mult": ["number", 1.0],
+        "slipstream": ["bool"],
+        "reflux_shed_mult_moving": ["number"],
+        "reflux_shed_mult_standing": ["number", 1.0],
+        "rear_bonus": ["number", 0.0],
+        "quicken_on_overload": ["number", 0.0],
+        "bonus_stacks_vs": ["object"],
+        "light_mult": ["object"],
+        "unseen_in_dark": ["bool"],
+        "ambush_mult": ["number", 1.0],
+        "unseen_beyond": ["number", 4.0],
+        "reveal_s": ["number", 1.0],
+        "per_metal_class": ["number", 0.0],
+        "through": ["bool"],
+        "focus_max": ["int", 0],
+        "focus_mult": ["number", 0.08],
+        "focus_cools_s": ["number", 0.0],
+        "held_blood": ["bool"],
+        "damage_per_held_blood": ["number", 0.0],
+        "held_blood_max": ["int", 10],
+        "held_blood_thin_s": ["number", 5.0],
+        "held_blood_per_bleeding_kill": ["number"],
+        "pool": ["object"],
+        "living_only": ["bool"],
+        "hale_mult": ["number"],
+        "heal_mult_after_hit": ["number", 1.0],
+        "after_hit_s": ["number", 0.0],
+        "shares_living_only": ["bool"],
+        "shares_buffs": ["bool"],
+        "dying_mult": ["number"],
+        "corpse_lie_s": ["number", 0.0],
+        "thrall_cap": ["number"],
+        "growth": ["object"],
+        "in_the_green": ["object"],
+        "sear_vs_lit": ["number"],
+        "needs_seen": ["bool"],
+        "bonus_vs_status": ["object"],
+        "status_time_vs": ["object"],
+        "status_time_dim": ["number"],
+        "times_flesh": ["bool"],
+        "ward_break_payload": ["object"],
+        "drain_frac": ["number", 0.0],
+        "drain_mult_vs": ["object"],
+        "drain_max_frac": ["number", 0.0],
+        "drain_living_only": ["bool"],
+        "drain_heals": ["string"],
+        "stolen": ["object"]
+      }
+    },
+    "affinity.bonus_stacks_vs": {
+      "required": [],
+      "refs": {"status": "status"},
+      "keys": {
+        "status": ["string"],
+        "vs": ["object"],
+        "ends_vs": ["bool"]
+      }
+    },
+    "affinity.crush_ward": {
+      "required": [],
+      "keys": {
+        "per_crush": ["number", 15.0],
+        "cap": ["number", 60.0],
+        "lasts": ["number", 6.0]
+      }
+    },
+    "affinity.growth": {
+      "required": [],
+      "keys": {
+        "radius": ["number", 1.0],
+        "ages": ["array"],
+        "age_mult": ["array"],
+        "spread_every": ["number", 5.0],
+        "max": ["int", 12],
+        "bramble": ["object"],
+        "snarevine": ["object"]
+      }
+    },
+    "affinity.growth_rule": {
+      "required": [],
+      "keys": {
+        "tick_s": ["number", 1.0],
+        "payload": ["object"]
+      }
+    },
+    "affinity.in_the_green": {
+      "required": [],
+      "keys": {
+        "heal_per_s": ["number", 0.0],
+        "shove_mult": ["number", 1.0],
+        "poise_loss_mult": ["number", 1.0]
+      }
+    },
+    "affinity.light_mult": {
+      "required": [],
+      "keys": {
+        "dark": ["number"],
+        "lit": ["number"]
+      }
+    },
+    "affinity.pool": {
+      "required": [],
+      "keys": {
+        "radius": ["number", 0.5],
+        "life": ["number", 15.0],
+        "max": ["int", 12],
+        "death_radius": ["number"],
+        "death_measures": ["int", 3]
+      }
+    },
+    "affinity.stolen": {
+      "required": [],
+      "keys": {
+        "max": ["int", 100],
+        "fade_s": ["number", 12.0]
+      }
+    },
+    "age_scales": {
+      "required": [],
+      "keys": {
+        "grown": ["number"],
+        "bloom": ["number"]
+      }
+    },
+    "ally_payload": {
+      "required": [],
+      "keys": {
+        "ward_per_s": ["number", 0.0],
+        "ward_max": ["number"],
+        "damage_taken_mult": ["number"]
+      }
+    },
+    "ascension_fields": {
+      "required": ["power", "reach", "speed", "cost"],
+      "keys": {
+        "power": ["string"],
+        "reach": ["string"],
+        "speed": ["string"],
+        "cost": ["string"],
+        "power_dir": ["string"]
+      }
+    },
+    "balance": {
+      "required": ["player", "natural_healing", "arm", "reflux", "healer", "ascension_2", "ascension", "night", "town", "arena", "passage", "scenery", "abilities", "skills", "light", "meditation", "stars", "binding", "primes", "camera", "nether", "wounds", "talent_healing", "biomes", "shove", "ranged", "gear", "combat", "sidestep", "endurance", "feel", "slipstream", "stone", "navigation", "braced", "ward", "life_healing", "enemy_boons", "cleanse", "minimap", "hud", "art", "camps", "unstarred"],
+      "keys": {
+        "player": ["object"],
+        "natural_healing": ["object"],
+        "arm": ["object"],
+        "reflux": ["object"],
+        "healer": ["object"],
+        "ascension_2": ["object"],
+        "ascension": ["object"],
+        "night": ["object"],
+        "town": ["object"],
+        "arena": ["object"],
+        "passage": ["object"],
+        "scenery": ["object"],
+        "abilities": ["object"],
+        "skills": ["object"],
+        "light": ["object"],
+        "meditation": ["object"],
+        "stars": ["object"],
+        "binding": ["object"],
+        "primes": ["object"],
+        "camera": ["object"],
+        "nether": ["object"],
+        "wounds": ["object"],
+        "talent_healing": ["object"],
+        "biomes": ["object"],
+        "shove": ["object"],
+        "ranged": ["object"],
+        "gear": ["object"],
+        "combat": ["object"],
+        "sidestep": ["object"],
+        "endurance": ["object"],
+        "feel": ["object"],
+        "slipstream": ["object"],
+        "stone": ["object"],
+        "navigation": ["object"],
+        "braced": ["object"],
+        "ward": ["object"],
+        "life_healing": ["object"],
+        "enemy_boons": ["array"],
+        "cleanse": ["object"],
+        "minimap": ["object"],
+        "hud": ["object"],
+        "art": ["object"],
+        "camps": ["object"],
+        "unstarred": ["object"]
+      }
+    },
+    "balance.abilities": {
+      "required": ["progress_per_essence", "use_mult_monster", "use_mult_scenery", "use_mult_nothing", "stage_damage_bonus", "hotbar_slots", "cast_recovery"],
+      "keys": {
+        "progress_per_essence": ["number"],
+        "use_mult_monster": ["number"],
+        "use_mult_scenery": ["number"],
+        "use_mult_nothing": ["number"],
+        "stage_damage_bonus": ["number"],
+        "hotbar_slots": ["number"],
+        "cast_recovery": ["number"]
+      }
+    },
+    "balance.arena": {
+      "required": ["half_size", "first_rest", "rest_between_waves", "rest_extend", "grunts_base", "brute_every_n_waves", "scenery_count", "bush_every_n", "blocks", "block_size", "archer_every_n_waves", "harrier_every_n_waves", "pavise_every_n_waves", "censer_from_wave", "drummer_from_wave"],
+      "keys": {
+        "half_size": ["number"],
+        "first_rest": ["number"],
+        "rest_between_waves": ["number"],
+        "rest_extend": ["number"],
+        "grunts_base": ["number"],
+        "brute_every_n_waves": ["number"],
+        "scenery_count": ["number"],
+        "bush_every_n": ["number"],
+        "blocks": ["array"],
+        "block_size": ["array"],
+        "archer_every_n_waves": ["number"],
+        "harrier_every_n_waves": ["number"],
+        "pavise_every_n_waves": ["number"],
+        "censer_from_wave": ["number"],
+        "drummer_from_wave": ["number"]
+      }
+    },
+    "balance.arm": {
+      "required": ["max", "cost_per_self_harm", "regrow_heal_points", "regrow_price", "regrown_by_talent_integrity"],
+      "keys": {
+        "max": ["number"],
+        "cost_per_self_harm": ["number"],
+        "regrow_heal_points": ["number"],
+        "regrow_price": ["number"],
+        "regrown_by_talent_integrity": ["number"]
+      }
+    },
+    "balance.art": {
+      "required": ["real_bodies"],
+      "keys": {
+        "real_bodies": ["bool"]
+      }
+    },
+    "balance.ascension": {
+      "required": ["offer_count", "allow_decline", "pool_by_star", "stage_weight", "aspects"],
+      "keys": {
+        "offer_count": ["int", 2],
+        "allow_decline": ["bool"],
+        "pool_by_star": ["object"],
+        "stage_weight": ["number", 0.0],
+        "aspects": ["object"]
+      }
+    },
+    "balance.ascension.aspects": {
+      "required": ["power", "reach", "speed", "cost"],
+      "keys": {
+        "power": ["object"],
+        "reach": ["object"],
+        "speed": ["object"],
+        "cost": ["object"]
+      }
+    },
+    "balance.ascension.aspects.cost": {
+      "required": ["label", "word", "desc", "groups"],
+      "keys": {
+        "label": ["string"],
+        "word": ["string"],
+        "desc": ["string"],
+        "groups": ["object"]
+      }
+    },
+    "balance.ascension.aspects.cost.groups": {
+      "required": ["cost"],
+      "keys": {
+        "cost": ["string"]
+      }
+    },
+    "balance.ascension.aspects.power": {
+      "required": ["label", "word", "desc", "groups"],
+      "keys": {
+        "label": ["string"],
+        "word": ["string"],
+        "desc": ["string"],
+        "groups": ["object"]
+      }
+    },
+    "balance.ascension.aspects.power.groups": {
+      "required": ["power"],
+      "keys": {
+        "power": ["string"]
+      }
+    },
+    "balance.ascension.aspects.reach": {
+      "required": ["label", "word", "desc", "groups"],
+      "keys": {
+        "label": ["string"],
+        "word": ["string"],
+        "desc": ["string"],
+        "groups": ["object"]
+      }
+    },
+    "balance.ascension.aspects.reach.groups": {
+      "required": ["reach"],
+      "keys": {
+        "reach": ["string"]
+      }
+    },
+    "balance.ascension.aspects.speed": {
+      "required": ["label", "word", "desc", "groups"],
+      "keys": {
+        "label": ["string"],
+        "word": ["string"],
+        "desc": ["string"],
+        "groups": ["object"]
+      }
+    },
+    "balance.ascension.aspects.speed.groups": {
+      "required": ["speed", "windup", "duration"],
+      "keys": {
+        "speed": ["string"],
+        "windup": ["string"],
+        "duration": ["string"]
+      }
+    },
+    "balance.ascension_2": {
+      "required": ["body_scale"],
+      "keys": {
+        "body_scale": ["number"]
+      }
+    },
+    "balance.binding": {
+      "required": ["success_chance"],
+      "keys": {
+        "success_chance": ["number"]
+      }
+    },
+    "balance.biomes": {
+      "required": ["passage", "arena", "town", "props_per_chamber", "arena_props", "town_props", "lights_per_chamber", "living_prop_kinds", "cuttable_hp", "wall_height_far", "wall_height_side", "wall_height_near", "wall_height_divider", "blocker_collider_max", "blocker_gap", "ambient_boost"],
+      "keys": {
+        "passage": ["array"],
+        "arena": ["array"],
+        "town": ["string"],
+        "props_per_chamber": ["number"],
+        "arena_props": ["number"],
+        "town_props": ["number"],
+        "lights_per_chamber": ["number"],
+        "living_prop_kinds": ["array"],
+        "cuttable_hp": ["number"],
+        "wall_height_far": ["number"],
+        "wall_height_side": ["number"],
+        "wall_height_near": ["number"],
+        "wall_height_divider": ["number"],
+        "blocker_collider_max": ["number"],
+        "blocker_gap": ["number"],
+        "ambient_boost": ["object"]
+      }
+    },
+    "balance.biomes.ambient_boost": {
+      "required": ["dungeon", "city", "swamp"],
+      "keys": {
+        "dungeon": ["number"],
+        "city": ["number"],
+        "swamp": ["number"]
+      }
+    },
+    "balance.braced": {
+      "required": ["damage_taken_mult"],
+      "keys": {
+        "damage_taken_mult": ["number"]
+      }
+    },
+    "balance.camera": {
+      "required": ["ortho_size", "zoom_default", "zoom_step", "zoom_smoothing", "distance_far", "distance_near", "pitch_far_deg", "pitch_near_deg", "fov_far_deg", "fov_near_deg", "look_height_far", "look_height_near", "yaw_deg"],
+      "keys": {
+        "ortho_size": ["number"],
+        "zoom_default": ["number"],
+        "zoom_step": ["number"],
+        "zoom_smoothing": ["number"],
+        "distance_far": ["number"],
+        "distance_near": ["number"],
+        "pitch_far_deg": ["number"],
+        "pitch_near_deg": ["number"],
+        "fov_far_deg": ["number"],
+        "fov_near_deg": ["number"],
+        "look_height_far": ["number"],
+        "look_height_near": ["number"],
+        "yaw_deg": ["number"]
+      }
+    },
+    "balance.camps": {
+      "required": ["aggro_radius", "leash", "home_reached", "respawn_s", "respawn_clear_m", "fight_radius", "spread", "roam_speed", "lurker_strength", "lurker_respawn_s", "field_autosave_s"],
+      "keys": {
+        "aggro_radius": ["number", 12.0],
+        "leash": ["number", 24.0],
+        "home_reached": ["number", 1.5],
+        "respawn_s": ["number", 480.0],
+        "respawn_clear_m": ["number", 60.0],
+        "fight_radius": ["number", 30.0],
+        "spread": ["number", 3.0],
+        "roam_speed": ["number", 0.6],
+        "lurker_strength": ["number", 0.7],
+        "lurker_respawn_s": ["number", 300.0],
+        "field_autosave_s": ["number", 30.0]
+      }
+    },
+    "balance.cleanse": {
+      "required": ["binds", "afflictions"],
+      "keys": {
+        "binds": ["array"],
+        "afflictions": ["array"]
+      }
+    },
+    "balance.combat": {
+      "required": ["corpse_lie_s", "strike_poise", "skill_poise", "poise_regen_per_s", "poise_regen_delay_s", "opening_mult", "strike_sheds_reflux", "strike_gathers_essence", "rear_arc_deg", "rear_mult", "turn_rate_deg", "interrupt_stagger_s", "ring_slots", "ring_wait_distance", "player_poise", "heavy_poise_damage", "player_stagger_s", "dash_recovery_s", "winded_s", "winded_cost_mult", "player_shove_speed"],
+      "keys": {
+        "corpse_lie_s": ["number"],
+        "strike_poise": ["number"],
+        "skill_poise": ["number"],
+        "poise_regen_per_s": ["number"],
+        "poise_regen_delay_s": ["number"],
+        "opening_mult": ["number"],
+        "strike_sheds_reflux": ["number"],
+        "strike_gathers_essence": ["number"],
+        "rear_arc_deg": ["number"],
+        "rear_mult": ["number"],
+        "turn_rate_deg": ["number"],
+        "interrupt_stagger_s": ["number"],
+        "ring_slots": ["number"],
+        "ring_wait_distance": ["number"],
+        "player_poise": ["number"],
+        "heavy_poise_damage": ["number"],
+        "player_stagger_s": ["number"],
+        "dash_recovery_s": ["number"],
+        "winded_s": ["number"],
+        "winded_cost_mult": ["number"],
+        "player_shove_speed": ["number"]
+      }
+    },
+    "balance.endurance": {
+      "required": ["max", "regen_per_s", "regen_delay_s", "step_cost"],
+      "keys": {
+        "max": ["number"],
+        "regen_per_s": ["number"],
+        "regen_delay_s": ["number"],
+        "step_cost": ["number"]
+      }
+    },
+    "balance.feel": {
+      "required": ["input_buffer_s", "skill_walk_in_max_m", "skill_walk_in_max_s", "skill_walk_in_margin_m", "strike_queue_max", "held_strike_retargets", "strike_after_skill_s", "cast_faces_cursor", "cast_face_hold_s", "body_turn_rate", "anim_action_lead_s", "anim_move_cancel_s", "anim_cancel_blend_s", "anim_action_blend_s", "anim_loop_blend_s", "hit_stop_s", "hit_stop_heavy_s", "camera_kick_m", "camera_kick_heavy_m", "camera_kick_hurt_m", "camera_kick_decay"],
+      "keys": {
+        "input_buffer_s": ["number"],
+        "skill_walk_in_max_m": ["number"],
+        "skill_walk_in_max_s": ["number"],
+        "skill_walk_in_margin_m": ["number"],
+        "strike_queue_max": ["number"],
+        "held_strike_retargets": ["bool"],
+        "strike_after_skill_s": ["number"],
+        "cast_faces_cursor": ["bool"],
+        "cast_face_hold_s": ["number"],
+        "body_turn_rate": ["number"],
+        "anim_action_lead_s": ["number"],
+        "anim_move_cancel_s": ["number"],
+        "anim_cancel_blend_s": ["number"],
+        "anim_action_blend_s": ["number"],
+        "anim_loop_blend_s": ["number"],
+        "hit_stop_s": ["number"],
+        "hit_stop_heavy_s": ["number"],
+        "camera_kick_m": ["number"],
+        "camera_kick_heavy_m": ["number"],
+        "camera_kick_hurt_m": ["number"],
+        "camera_kick_decay": ["number"]
+      }
+    },
+    "balance.gear": {
+      "required": ["armour_cap"],
+      "keys": {
+        "armour_cap": ["number"]
+      }
+    },
+    "balance.healer": {
+      "required": ["sink_per_visit", "price_per_sink_point", "health_per_visit", "price_per_health_point"],
+      "keys": {
+        "sink_per_visit": ["number"],
+        "price_per_sink_point": ["number"],
+        "health_per_visit": ["number"],
+        "price_per_health_point": ["number"]
+      }
+    },
+    "balance.hud": {
+      "required": ["log_seconds", "log_max", "hints_alpha_in_combat", "show_untouched_enemy_bars", "wisp_label_range", "tooltip_delay_s", "refusal_show_s", "refusal_flash_s", "endurance_fade_s", "endurance_bar_w"],
+      "keys": {
+        "log_seconds": ["number"],
+        "log_max": ["number"],
+        "hints_alpha_in_combat": ["number"],
+        "show_untouched_enemy_bars": ["number"],
+        "wisp_label_range": ["number"],
+        "tooltip_delay_s": ["number"],
+        "refusal_show_s": ["number"],
+        "refusal_flash_s": ["number"],
+        "endurance_fade_s": ["number"],
+        "endurance_bar_w": ["number"]
+      }
+    },
+    "balance.life_healing": {
+      "required": ["sink_frac", "tick_s"],
+      "keys": {
+        "sink_frac": ["number"],
+        "tick_s": ["number"]
+      }
+    },
+    "balance.light": {
+      "required": ["default", "by_state"],
+      "keys": {
+        "default": ["string"],
+        "by_state": ["object"]
+      }
+    },
+    "balance.light.by_state": {
+      "required": ["town", "field", "arena_rest", "arena_fight", "dungeon", "select"],
+      "keys": {
+        "town": ["string"],
+        "field": ["string"],
+        "arena_rest": ["string"],
+        "arena_fight": ["string"],
+        "dungeon": ["string"],
+        "select": ["string"]
+      }
+    },
+    "balance.meditation": {
+      "required": ["gather_per_s", "settle_s"],
+      "keys": {
+        "gather_per_s": ["number"],
+        "settle_s": ["number"]
+      }
+    },
+    "balance.minimap": {
+      "required": ["fog_cell_m", "sight_m", "size_px"],
+      "keys": {
+        "fog_cell_m": ["number"],
+        "sight_m": ["number"],
+        "size_px": ["number"]
+      }
+    },
+    "balance.natural_healing": {
+      "required": ["health_per_s", "arm_per_s"],
+      "keys": {
+        "health_per_s": ["number"],
+        "arm_per_s": ["number"]
+      }
+    },
+    "balance.navigation": {
+      "required": ["agent_radius_small", "agent_radius_large", "large_from_radius", "agent_height", "agent_max_climb", "cell_size", "cell_height", "repath_s", "repath_moved", "corner_reached", "unreachable_slack", "vantage_max_path"],
+      "keys": {
+        "agent_radius_small": ["number"],
+        "agent_radius_large": ["number"],
+        "large_from_radius": ["number"],
+        "agent_height": ["number"],
+        "agent_max_climb": ["number"],
+        "cell_size": ["number"],
+        "cell_height": ["number"],
+        "repath_s": ["number"],
+        "repath_moved": ["number"],
+        "corner_reached": ["number"],
+        "unreachable_slack": ["number"],
+        "vantage_max_path": ["number"]
+      }
+    },
+    "balance.nether": {
+      "required": ["leash_base", "leash_per_star", "projection_hp", "projection_speed", "strike_damage", "strike_damage_per_star", "strike_cooldown", "strike_reach", "return_distance", "return_arm_distance", "wisp_reach", "wisp_attuned_star_pct", "wisp_attuned_essence", "wisp_plain_essence", "wisps_per_site", "attuned_wisp_chance", "foreign_wisp_chance", "construct_chance_per_site", "remnant_chance", "word_weights", "aggro_radius", "docile_chance", "docile_snap_chance_per_s", "wander_radius"],
+      "keys": {
+        "leash_base": ["number"],
+        "leash_per_star": ["number"],
+        "projection_hp": ["number"],
+        "projection_speed": ["number"],
+        "strike_damage": ["number"],
+        "strike_damage_per_star": ["number"],
+        "strike_cooldown": ["number"],
+        "strike_reach": ["number"],
+        "return_distance": ["number"],
+        "return_arm_distance": ["number"],
+        "wisp_reach": ["number"],
+        "wisp_attuned_star_pct": ["number"],
+        "wisp_attuned_essence": ["number"],
+        "wisp_plain_essence": ["number"],
+        "wisps_per_site": ["number"],
+        "attuned_wisp_chance": ["number"],
+        "foreign_wisp_chance": ["number"],
+        "construct_chance_per_site": ["number"],
+        "remnant_chance": ["number"],
+        "word_weights": ["object"],
+        "aggro_radius": ["number"],
+        "docile_chance": ["number"],
+        "docile_snap_chance_per_s": ["number"],
+        "wander_radius": ["number"]
+      }
+    },
+    "balance.nether.word_weights": {
+      "required": ["own", "universal", "other"],
+      "keys": {
+        "own": ["number"],
+        "universal": ["number"],
+        "other": ["number"]
+      }
+    },
+    "balance.night": {
+      "required": ["rent", "arm_restored", "sink_healed"],
+      "keys": {
+        "rent": ["number"],
+        "arm_restored": ["number"],
+        "sink_healed": ["number"]
+      }
+    },
+    "balance.passage": {
+      "required": ["chamber_length", "half_width", "chambers", "gate_at", "gap_half", "rent_per_s", "ticket_price", "stage_value", "full_clear_bonus", "repeat_factor", "repeat_floor", "late_strength", "exit_reach", "grunts_base", "antechamber_tufts", "chamber_tufts", "brute_offset", "brute_every", "wall_recipes"],
+      "keys": {
+        "chamber_length": ["number"],
+        "half_width": ["number"],
+        "chambers": ["number"],
+        "gate_at": ["number"],
+        "gap_half": ["number"],
+        "rent_per_s": ["number"],
+        "ticket_price": ["number"],
+        "stage_value": ["number"],
+        "full_clear_bonus": ["number"],
+        "repeat_factor": ["number"],
+        "repeat_floor": ["number"],
+        "late_strength": ["number"],
+        "exit_reach": ["number"],
+        "grunts_base": ["number"],
+        "antechamber_tufts": ["number"],
+        "chamber_tufts": ["number"],
+        "brute_offset": ["number"],
+        "brute_every": ["number"],
+        "wall_recipes": ["object"]
+      }
+    },
+    "balance.player": {
+      "required": ["move_speed", "charge_move_factor", "melee_damage", "melee_range", "melee_arc_deg", "melee_cooldown", "charge_max", "overcharge_min_charge", "overcharge_self_cost_base", "overcharge_self_cost_per_charge", "overcharge_damage_per_charge", "overcharge_reach_bonus", "overcharge_cooldown_factor", "off_hand_factor", "starter_satellite_rate", "debt_limit", "aura_threshold", "aura_hurt_risk_bonus", "pick_margin_px", "pickup_reach", "health"],
+      "keys": {
+        "move_speed": ["number"],
+        "charge_move_factor": ["number"],
+        "melee_damage": ["number"],
+        "melee_range": ["number"],
+        "melee_arc_deg": ["number"],
+        "melee_cooldown": ["number"],
+        "charge_max": ["number"],
+        "overcharge_min_charge": ["number"],
+        "overcharge_self_cost_base": ["number"],
+        "overcharge_self_cost_per_charge": ["number"],
+        "overcharge_damage_per_charge": ["number"],
+        "overcharge_reach_bonus": ["number"],
+        "overcharge_cooldown_factor": ["number"],
+        "off_hand_factor": ["number"],
+        "starter_satellite_rate": ["number"],
+        "debt_limit": ["number"],
+        "aura_threshold": ["number"],
+        "aura_hurt_risk_bonus": ["number"],
+        "pick_margin_px": ["number"],
+        "pickup_reach": ["number"],
+        "health": ["number"]
+      }
+    },
+    "balance.primes": {
+      "required": ["offered", "slot_weights", "talent_weight_by_value", "rerolls"],
+      "keys": {
+        "offered": ["number"],
+        "slot_weights": ["array"],
+        "talent_weight_by_value": ["object"],
+        "rerolls": ["number"]
+      }
+    },
+    "balance.primes.talent_weight_by_value": {
+      "required": ["low", "mid", "high"],
+      "keys": {
+        "low": ["number"],
+        "mid": ["number"],
+        "high": ["number"]
+      }
+    },
+    "balance.ranged": {
+      "required": ["ranged_damage", "projectile_speed", "stance_move_factor", "off_arm_damage_factor", "default_interval", "default_range"],
+      "keys": {
+        "ranged_damage": ["number"],
+        "projectile_speed": ["number"],
+        "stance_move_factor": ["number"],
+        "off_arm_damage_factor": ["number"],
+        "default_interval": ["number"],
+        "default_range": ["number"]
+      }
+    },
+    "balance.reflux": {
+      "required": ["shed_meditating", "shed_in_combat", "shed_resting", "unlock_below", "pain_at", "pain_cost_mult", "burn_at", "lock_at", "burn_recovery_mult", "burn_recovery_add"],
+      "keys": {
+        "shed_meditating": ["number"],
+        "shed_in_combat": ["number"],
+        "shed_resting": ["number"],
+        "unlock_below": ["number"],
+        "pain_at": ["number"],
+        "pain_cost_mult": ["number"],
+        "burn_at": ["number"],
+        "lock_at": ["number"],
+        "burn_recovery_mult": ["number"],
+        "burn_recovery_add": ["number"]
+      }
+    },
+    "balance.scenery": {
+      "required": ["grass_hp", "bush_hp"],
+      "keys": {
+        "grass_hp": ["number"],
+        "bush_hp": ["number"]
+      }
+    },
+    "balance.shove": {
+      "required": ["speed", "crush_base", "crush_per_m", "crush_other_frac", "min_left"],
+      "keys": {
+        "speed": ["number"],
+        "crush_base": ["number"],
+        "crush_per_m": ["number"],
+        "crush_other_frac": ["number"],
+        "min_left": ["number"]
+      }
+    },
+    "balance.sidestep": {
+      "required": ["distance_m", "time_s", "ease_power", "end_speed_frac", "end_speed_frac_still", "cast_lockout_s", "anim_blend_out_s"],
+      "keys": {
+        "distance_m": ["number"],
+        "time_s": ["number"],
+        "ease_power": ["number", 2.0],
+        "end_speed_frac": ["number", 1.0],
+        "end_speed_frac_still": ["number", 0.0],
+        "cast_lockout_s": ["number", 0.0],
+        "anim_blend_out_s": ["number", 0.12]
+      }
+    },
+    "balance.skills": {
+      "required": ["ambush_cast_window_s", "jump_radius", "jump_damage_mult", "channel_max_s", "charge_tap_s", "test_stage", "test_stars", "test_constructs_each", "test_refill_after_bind", "smite_needs_line", "slow_shot_speed", "slow_shot_lead_frac", "slow_shot_cone_deg", "slow_shot_turn_max_deg"],
+      "keys": {
+        "ambush_cast_window_s": ["number"],
+        "jump_radius": ["number"],
+        "jump_damage_mult": ["number"],
+        "channel_max_s": ["number"],
+        "charge_tap_s": ["number"],
+        "test_stage": ["number"],
+        "test_stars": ["number"],
+        "test_constructs_each": ["number"],
+        "test_refill_after_bind": ["bool"],
+        "smite_needs_line": ["bool"],
+        "slow_shot_speed": ["number"],
+        "slow_shot_lead_frac": ["number"],
+        "slow_shot_cone_deg": ["number"],
+        "slow_shot_turn_max_deg": ["number"]
+      }
+    },
+    "balance.slipstream": {
+      "required": ["max", "metres_per_pip", "still_delay_s", "decay_s", "speed_pips", "speed_mult"],
+      "keys": {
+        "max": ["number"],
+        "metres_per_pip": ["number"],
+        "still_delay_s": ["number"],
+        "decay_s": ["number"],
+        "speed_pips": ["number"],
+        "speed_mult": ["number"]
+      }
+    },
+    "balance.stars": {
+      "required": ["full_tank", "first_star_start_pct", "new_star_start_pct", "max_pct", "growth_pct_per_aura", "growth_pct_per_s_meditating"],
+      "keys": {
+        "full_tank": ["number"],
+        "first_star_start_pct": ["number"],
+        "new_star_start_pct": ["number"],
+        "max_pct": ["number"],
+        "growth_pct_per_aura": ["number"],
+        "growth_pct_per_s_meditating": ["number"]
+      }
+    },
+    "balance.stone": {
+      "required": ["max_count", "hp", "life_s", "solid_delay_s", "shrapnel"],
+      "keys": {
+        "max_count": ["number"],
+        "hp": ["number"],
+        "life_s": ["number"],
+        "solid_delay_s": ["number"],
+        "shrapnel": ["object"]
+      }
+    },
+    "balance.stone.shrapnel": {
+      "required": ["range", "cone_deg", "damage", "poise"],
+      "keys": {
+        "range": ["number"],
+        "cone_deg": ["number"],
+        "damage": ["number"],
+        "poise": ["number"]
+      }
+    },
+    "balance.talent_healing": {
+      "required": ["dynamic_health_first_frac"],
+      "keys": {
+        "dynamic_health_first_frac": ["number"]
+      }
+    },
+    "balance.town": {
+      "required": ["starting_money", "revive_health_frac", "corpse_fee_per_star"],
+      "keys": {
+        "starting_money": ["number"],
+        "revive_health_frac": ["number"],
+        "corpse_fee_per_star": ["number"]
+      }
+    },
+    "balance.unstarred": {
+      "required": ["star_falloff", "at_full_star"],
+      "keys": {
+        "star_falloff": ["number", 0.35],
+        "at_full_star": ["number", 0.25]
+      }
+    },
+    "balance.ward": {
+      "required": ["cap", "default_lasts"],
+      "keys": {
+        "cap": ["number"],
+        "default_lasts": ["number"]
+      }
+    },
+    "balance.wounds": {
+      "required": ["big_hit_frac", "low_health_frac", "sink_per_damage", "sink_min", "cut_frac", "max_cut_frac", "wound_cooldown_s", "names_big_hit", "names_low", "bind_fail", "lost_arm", "temper"],
+      "keys": {
+        "big_hit_frac": ["number"],
+        "low_health_frac": ["number"],
+        "sink_per_damage": ["number"],
+        "sink_min": ["number"],
+        "cut_frac": ["number"],
+        "max_cut_frac": ["number"],
+        "wound_cooldown_s": ["number"],
+        "names_big_hit": ["array"],
+        "names_low": ["array"],
+        "bind_fail": ["object"],
+        "lost_arm": ["object"],
+        "temper": ["object"]
+      }
+    },
+    "balance.wounds.bind_fail": {
+      "required": ["name", "sink", "cut"],
+      "keys": {
+        "name": ["string"],
+        "sink": ["number"],
+        "cut": ["number"]
+      }
+    },
+    "balance.wounds.lost_arm": {
+      "required": ["name", "cut"],
+      "keys": {
+        "name": ["string"],
+        "cut": ["number"]
+      }
+    },
+    "balance.wounds.temper": {
+      "required": ["name"],
+      "keys": {
+        "name": ["string"]
+      }
+    },
+    "coat": {
+      "required": ["duration"],
+      "keys": {
+        "duration": ["number"],
+        "payload": ["object"],
+        "charges": ["int", 0],
+        "strike_payload": ["object"]
+      }
+    },
+    "conjure": {
+      "required": [],
+      "keys": {
+        "weapon": ["string"],
+        "lasts": ["number", 8.0],
+        "extend_per_blood": ["number", 0.0],
+        "spend_blood_max": ["int", 0],
+        "melee_damage_mult": ["number", 1.0],
+        "melee_poise_mult": ["number", 1.0],
+        "on_strike": ["object"],
+        "melee_range": ["number", 0.0],
+        "melee_arc_deg": ["number"],
+        "empty_rate_bonus": ["number"]
+      }
+    },
+    "construct_legacy": {
+      "required": ["vestige", "remnant", "spirit", "eidolon", "asura"],
+      "refs": {"vestige": "word", "remnant": "word", "spirit": "word", "eidolon": "word", "asura": "word"},
+      "keys": {
+        "vestige": ["string"],
+        "remnant": ["string"],
+        "spirit": ["string"],
+        "eidolon": ["string"],
+        "asura": ["string"]
+      }
+    },
+    "construct_wild": {
+      "required": ["hp", "damage", "speed", "cooldown", "windup", "reach", "height", "radius"],
+      "keys": {
+        "hp": ["number", 90.0],
+        "damage": ["number", 4.0],
+        "speed": ["number", 3.0],
+        "cooldown": ["number", 1.4],
+        "windup": ["number", 0.5],
+        "reach": ["number", 1.6],
+        "height": ["number", 0.9],
+        "radius": ["number", 0.45]
+      }
+    },
+    "construct_word": {
+      "required": ["id", "label", "tier", "runes", "meaning", "affinity", "form"],
+      "refs": {"runes[]": "rune", "affinity": "affinity"},
+      "keys": {
+        "id": ["string"],
+        "label": ["string"],
+        "tier": ["string"],
+        "runes": ["array"],
+        "meaning": ["string"],
+        "affinity": ["string"],
+        "form": ["string"]
+      }
+    },
+    "constructs": {
+      "required": ["tiers", "tier_runes", "words", "legacy", "wild"],
+      "keys": {
+        "tiers": ["array"],
+        "tier_runes": ["object"],
+        "words": ["object"],
+        "legacy": ["object"],
+        "wild": ["object"]
+      }
+    },
+    "consume": {
+      "required": ["status"],
+      "refs": {"status": "status"},
+      "keys": {
+        "status": ["string"],
+        "per_stack_damage": ["number", 0.0],
+        "vent_per_stack": ["number", 0.0],
+        "counts": ["object"],
+        "per_stack_poise": ["number", 0.0],
+        "stun_per_stack": ["number", 0.0],
+        "stun_max": ["number", 99.0]
+      }
+    },
+    "craft_skill": {
+      "required": ["name", "tool", "makes", "teach_price"],
+      "keys": {
+        "name": ["string"],
+        "tool": ["string"],
+        "makes": ["string"],
+        "teach_price": ["int", 0]
+      }
+    },
+    "craft_station": {
+      "required": ["name", "skill", "grade", "what", "sells"],
+      "refs": {"skill": "craft_skill"},
+      "keys": {
+        "name": ["string"],
+        "skill": ["string"],
+        "grade": ["int", 1],
+        "what": ["string"],
+        "sells": ["array"]
+      }
+    },
+    "craft_tool": {
+      "required": ["name", "skill"],
+      "keys": {
+        "name": ["string"],
+        "skill": ["string"]
+      }
+    },
+    "crafting": {
+      "required": ["rules", "skills", "tools", "stations", "recipes", "items"],
+      "keys": {
+        "rules": ["object"],
+        "skills": ["object"],
+        "tools": ["object"],
+        "stations": ["object"],
+        "recipes": ["object"],
+        "items": ["object"]
+      }
+    },
+    "crafting.rules": {
+      "required": ["skill_max", "attempt_window", "success_at_trivial", "success_per_point", "success_floor", "success_cap", "certain_past_trivial", "tool_tier_bonus", "station_grade_success", "salvage", "salvage_per_grade", "skillup_k", "skillup_scale", "skillup_cap", "skillup_fail_mult", "first_success_up", "tool_uses_per_tier"],
+      "keys": {
+        "skill_max": ["number"],
+        "attempt_window": ["number"],
+        "success_at_trivial": ["number"],
+        "success_per_point": ["number"],
+        "success_floor": ["number"],
+        "success_cap": ["number"],
+        "certain_past_trivial": ["number"],
+        "tool_tier_bonus": ["number"],
+        "station_grade_success": ["number"],
+        "salvage": ["number"],
+        "salvage_per_grade": ["number"],
+        "skillup_k": ["number"],
+        "skillup_scale": ["number"],
+        "skillup_cap": ["number"],
+        "skillup_fail_mult": ["number"],
+        "first_success_up": ["number"],
+        "tool_uses_per_tier": ["number"]
+      }
+    },
+    "creation": {
+      "required": ["name_max_length", "identities", "look_labels", "look_order", "names", "hidden_options"],
+      "keys": {
+        "name_max_length": ["number"],
+        "identities": ["array"],
+        "look_labels": ["object"],
+        "look_order": ["array"],
+        "names": ["array"],
+        "hidden_options": ["object"]
+      }
+    },
+    "creation.hidden_options": {
+      "required": ["female"],
+      "keys": {
+        "female": ["object"]
+      }
+    },
+    "creation.hidden_options.female": {
+      "required": ["face"],
+      "keys": {
+        "face": ["array"]
+      }
+    },
+    "creation.identities[]": {
+      "required": [],
+      "keys": {
+        "id": ["string"],
+        "label": ["string"],
+        "they": ["string"],
+        "them": ["string"],
+        "their": ["string"],
+        "sex": ["string"]
+      }
+    },
+    "creation.look_labels": {
+      "required": ["body", "skin", "face", "beard", "hair", "hair_color", "band", "coat", "accent", "features"],
+      "keys": {
+        "body": ["string"],
+        "skin": ["string"],
+        "face": ["string"],
+        "beard": ["string"],
+        "hair": ["string"],
+        "hair_color": ["string"],
+        "band": ["string"],
+        "coat": ["string"],
+        "accent": ["string"],
+        "features": ["string"]
+      }
+    },
+    "discovery": {
+      "required": ["axes", "start", "construct", "kills", "inscriptions"],
+      "keys": {
+        "axes": ["array"],
+        "start": ["object"],
+        "construct": ["object"],
+        "kills": ["object"],
+        "inscriptions": ["object"]
+      }
+    },
+    "discovery.construct_tier": {
+      "required": ["reveals", "universal_chance"],
+      "keys": {
+        "reveals": ["int", 0],
+        "universal_chance": ["number", 0.0]
+      }
+    },
+    "discovery.inscription": {
+      "required": [],
+      "keys": {
+        "id": ["string"],
+        "chamber": ["int", 1],
+        "pool": ["string"],
+        "name": ["string"]
+      }
+    },
+    "discovery.inscriptions": {
+      "required": ["reach", "base_fallback", "passage"],
+      "keys": {
+        "reach": ["number", 2.5],
+        "base_fallback": ["bool"],
+        "passage": ["array"]
+      }
+    },
+    "discovery.kills": {
+      "required": ["chance", "chance_by_kind", "universal_chance", "profiles", "by_kind"],
+      "keys": {
+        "chance": ["number", 0.0],
+        "chance_by_kind": ["object"],
+        "universal_chance": ["number", 0.0],
+        "profiles": ["object"],
+        "by_kind": ["object"]
+      }
+    },
+    "effects": {
+      "required": [],
+      "keys": {
+        "fade": ["array"],
+        "kind_factors": ["object"],
+        "status_threshold": ["number", 0.5],
+        "mult_min": ["number", 0.0],
+        "mult_max": ["number", 100.0],
+        "fallback_fraction": ["number", 0.25],
+        "grant_as_change": ["number", 0.2],
+        "fallback_groups": ["array"],
+        "lower_is_better": ["array"],
+        "stat_groups": ["object"],
+        "payload_parts": ["array"],
+        "field_caps": ["object"],
+        "stage_scaled_groups": ["array"],
+        "group_units": ["object"],
+        "field_units": ["object"],
+        "group_words": ["object"],
+        "field_labels": ["object"],
+        "shown_fields": ["array"],
+        "anchor_rule": ["string"],
+        "syntax": ["string"],
+        "ring_fade": ["array"],
+        "shape_traits": ["object"],
+        "repeat": ["object"],
+        "on_off": ["object"],
+        "ionic_conversion": ["object"],
+        "nature_words": ["object"],
+        "strength_rule": ["string"]
+      }
+    },
+    "effects.fade": {
+      "required": ["or_more"],
+      "keys": {
+        "bonds": ["number"],
+        "or_more": ["bool"],
+        "strength": ["number"],
+        "ring": ["number"],
+        "fade": ["number"]
+      }
+    },
+    "effects.ionic_conversion": {
+      "required": [],
+      "keys": {
+        "rate": ["number", 0.0],
+        "cap": ["number"]
+      }
+    },
+    "effects.on_off": {
+      "required": [],
+      "keys": {
+        "status_time_per_strength": ["number", 0.0],
+        "status_time_cap": ["number"],
+        "stack_per_strength": ["int", 0],
+        "silence_above": ["number"],
+        "silence_s_per_strength": ["number", 0.0],
+        "silence_status": ["string"]
+      }
+    },
+    "effects.repeat": {
+      "required": [],
+      "keys": {
+        "delay_s": ["number", 0.4],
+        "no_repeat_kinds": ["array"]
+      }
+    },
+    "effects.shown_field": {
+      "required": ["path", "label"],
+      "keys": {
+        "path": ["string"],
+        "label": ["string"],
+        "unit": ["string"],
+        "lower_is_better": ["bool"],
+        "default": ["array"],
+        "bool": ["bool"],
+        "pct": ["bool"]
+      }
+    },
+    "enemies": {
+      "required": ["enemies"],
+      "keys": {
+        "enemies": ["object"]
+      }
+    },
+    "enemy": {
+      "required": ["metal", "flesh", "living", "hp", "radius", "height", "speed", "damage", "heavy", "aura_value", "color", "attack_cooldown", "windup", "drops", "loot", "name", "shove_resist", "poise", "behaviour", "remains"],
+      "refs": {"remains": "item", "remains[]": "item"},
+      "keys": {
+        "metal": ["int", 0],
+        "flesh": ["number", 1.0],
+        "living": ["bool"],
+        "hp": ["number", 240.0],
+        "radius": ["number", 0.5],
+        "height": ["number", 1.7, {"setup": 1.6, "make": 1.0}],
+        "speed": ["number", 3.0, {"setup": 3.4}],
+        "damage": ["number", 10.0],
+        "heavy": ["bool"],
+        "aura_value": ["number", 4.0],
+        "color": ["array"],
+        "attack_cooldown": ["number", 1.3],
+        "windup": ["number", 0.45],
+        "reach": ["number", 2.3],
+        "drops": ["object"],
+        "loot": ["array"],
+        "name": ["string"],
+        "shove_resist": ["number", 1.0],
+        "poise": ["number", 40.0],
+        "behaviour": ["string"],
+        "remains": ["array|string"],
+        "front_armour": ["number", 0.0],
+        "attack_shape": ["string"],
+        "attack_radius": ["number", 3.0],
+        "interruptible": ["bool"],
+        "stuck_after_miss": ["number", 0.0, {"tick_leap": 1.0}],
+        "elite": ["bool"],
+        "front_armour_until_frac": ["number"],
+        "counter": ["object"],
+        "phase2_at": ["number", 0.6],
+        "phase3_at": ["number", 0.3],
+        "calls": ["array"],
+        "sweep": ["object"],
+        "charge": ["object"],
+        "keep_range_min": ["number", 9.0],
+        "keep_range_max": ["number", 12.0],
+        "back_off_within": ["number", 4.0],
+        "aim_lock": ["number", 0.3],
+        "shot_speed": ["number", 30.0],
+        "shot_range": ["number", 16.0],
+        "shot_radius": ["number", 0.7],
+        "circle_distance": ["number", 7.0],
+        "pounce_after_retreat_s": ["number", 1.5],
+        "retreat_speed": ["number", 2.0],
+        "pounce_range": ["number", 8.0],
+        "pounce_speed": ["number", 20.0],
+        "pounce_hit_radius": ["number", 1.3],
+        "knockdown_s": ["number", 2.0],
+        "turn_rate_deg": ["number"],
+        "blocks_shots": ["bool"],
+        "stagger_s": ["number", 0.7],
+        "attack_shove": ["number", 0.0],
+        "death_burst": ["object"],
+        "aura_ring": ["object"],
+        "aura_radius": ["number", 6.0],
+        "stand_behind": ["number", 6.0],
+        "aura_status": ["string"],
+        "roll_status": ["string"],
+        "stars": ["int", 1],
+        "creature": ["string"],
+        "retreat_s": ["number", 1.3],
+        "retreat_distance": ["number", 5.0],
+        "stand_in": ["bool"],
+        "swell": ["object"],
+        "flank_distance": ["number", 2.6],
+        "rear_bite_mult": ["number", 1.5],
+        "patience_s": ["number", 3.5],
+        "front_arc_deg": ["number", 110.0],
+        "shy_radius": ["number", 9.0],
+        "angry_s": ["number", 10.0, {"provoke": 12.0}],
+        "calm_distance": ["number", 14.0],
+        "kick": ["object"],
+        "keep_away": ["number", 10.0],
+        "fetch_reach": ["number", 5.0],
+        "rise": ["object"],
+        "tether": ["number", 8.0],
+        "burrow_s": ["number", 4.0],
+        "angry_speed": ["number"],
+        "graze_radius": ["number", 5.0],
+        "bounty": ["int", 150]
+      }
+    },
+    "enemy.aura_ring": {
+      "required": [],
+      "keys": {
+        "radius": ["number"],
+        "color": ["array"]
+      }
+    },
+    "enemy.charge": {
+      "required": ["windup", "length", "speed", "damage", "width", "cooldown", "min_dist", "crash_stun_s", "crash_status", "stuck_s"],
+      "refs": {"crash_status": "status"},
+      "keys": {
+        "windup": ["number", 1.0],
+        "length": ["number", 12.0],
+        "speed": ["number"],
+        "damage": ["number"],
+        "width": ["number", 2.0],
+        "cooldown": ["number", 6.0],
+        "min_dist": ["number", 5.0],
+        "crash_stun_s": ["number"],
+        "crash_status": ["string"],
+        "stuck_s": ["number", 1.0],
+        "max_dist": ["number", 14.0],
+        "shove": ["number", 0.0]
+      }
+    },
+    "enemy.counter": {
+      "required": [],
+      "keys": {
+        "windup": ["number", 0.25],
+        "cooldown": ["number", 2.5]
+      }
+    },
+    "enemy.death_burst": {
+      "required": [],
+      "refs": {"status": "status"},
+      "keys": {
+        "delay": ["number", 1.1, {"take_hit": 0.8}],
+        "radius": ["number", 2.6, {"take_hit": 4.0}],
+        "heal_frac": ["number", 0.4],
+        "status": ["string"],
+        "kind": ["string"],
+        "damage": ["number", 22.0],
+        "color": ["array"]
+      }
+    },
+    "enemy.kick": {
+      "required": [],
+      "keys": {
+        "windup": ["number", 0.4],
+        "damage": ["number", 24.0],
+        "reach": ["number", 2.3],
+        "arc_deg": ["number", 110.0],
+        "shove": ["number", 3.0],
+        "cooldown": ["number", 2.6]
+      }
+    },
+    "enemy.loot": {
+      "required": ["chance"],
+      "refs": {"item": "item"},
+      "keys": {
+        "item": ["string"],
+        "chance": ["number"],
+        "learnable": ["bool"],
+        "rarity": ["string"]
+      }
+    },
+    "enemy.rise": {
+      "required": [],
+      "keys": {
+        "trigger_radius": ["number", 2.2],
+        "windup": ["number", 0.7],
+        "radius": ["number", 2.4],
+        "damage": ["number", 26.0],
+        "shove": ["number", 0.0]
+      }
+    },
+    "enemy.sweep": {
+      "required": [],
+      "keys": {
+        "windup": ["number"],
+        "radius": ["number"],
+        "arc_deg": ["number"],
+        "damage": ["number"],
+        "cooldown": ["number"],
+        "within": ["number"]
+      }
+    },
+    "enemy.swell": {
+      "required": [],
+      "keys": {
+        "below_frac": ["number", 0.5],
+        "speed_mult": ["number", 1.5]
+      }
+    },
+    "enemy_look": {
+      "required": ["body", "build", "skin", "features", "hair", "pieces", "colors", "attack", "impact"],
+      "keys": {
+        "body": ["string"],
+        "build": ["string"],
+        "skin": ["string"],
+        "features": ["string"],
+        "hair": ["string"],
+        "pieces": ["array"],
+        "colors": ["object"],
+        "weapon": ["string"],
+        "attack": ["array"],
+        "impact": ["number", 0.45],
+        "props": ["array"],
+        "idle": ["string"]
+      }
+    },
+    "growth_spec": {
+      "required": ["kind", "radius"],
+      "keys": {
+        "kind": ["string"],
+        "radius": ["number"]
+      }
+    },
+    "item": {
+      "required": ["name", "slot", "weight", "value", "desc"],
+      "refs": {"teaches": "ability"},
+      "keys": {
+        "name": ["string"],
+        "slot": ["string"],
+        "kind": ["string"],
+        "category": ["string"],
+        "band": ["number"],
+        "weight": ["number", 0.0],
+        "value": ["int", 0],
+        "desc": ["string"],
+        "icon": ["string"],
+        "tool": ["object"],
+        "kit": ["object"],
+        "stats": ["object"],
+        "rank": ["number"],
+        "teaches": ["string"],
+        "rarity": ["string"],
+        "use": ["object"]
+      }
+    },
+    "item.kit": {
+      "required": [],
+      "refs": {"station": "station"},
+      "keys": {
+        "station": ["string"],
+        "grade": ["int", 1],
+        "salvage": ["number", 0.0]
+      }
+    },
+    "item.stats": {
+      "required": [],
+      "keys": {
+        "carry_capacity": ["number"],
+        "satellite_rate": ["number"],
+        "cost_mult": ["number"],
+        "reflux_shed_mult": ["number"],
+        "melee_damage_mult": ["number"],
+        "melee_cooldown_mult": ["number"],
+        "melee_range_bonus": ["number"],
+        "armour": ["number"],
+        "ranged_damage_mult": ["number", 1.0],
+        "ranged_interval": ["number"],
+        "ranged_range": ["number"],
+        "ranged_interval_mult": ["number"]
+      }
+    },
+    "item.tool": {
+      "required": ["skill", "kind", "tier", "uses", "success_add_per_tier"],
+      "keys": {
+        "skill": ["string"],
+        "kind": ["string"],
+        "tier": ["int", 0],
+        "uses": ["number"],
+        "success_add_per_tier": ["number"]
+      }
+    },
+    "item.use": {
+      "required": [],
+      "keys": {
+        "effect": ["string"],
+        "amount": ["number", 0.0],
+        "out_of_combat": ["bool"]
+      }
+    },
+    "items": {
+      "required": ["base_carry_capacity", "starting_equipped", "starting_bag", "items", "shop", "exit_reward_table", "exit_rewards", "gear_sell_factor", "shop_scrolls", "spoils"],
+      "refs": {"starting_bag[]": "item", "shop[]": "item", "shop_scrolls[]": "item", "spoils[]": "item"},
+      "keys": {
+        "base_carry_capacity": ["number", 0.0],
+        "starting_equipped": ["object"],
+        "starting_bag": ["array"],
+        "items": ["object"],
+        "shop": ["array"],
+        "exit_reward_table": ["array"],
+        "exit_rewards": ["object"],
+        "gear_sell_factor": ["number", 0.5],
+        "shop_scrolls": ["array"],
+        "spoils": ["array"]
+      }
+    },
+    "items.exit_reward": {
+      "required": ["item", "weight"],
+      "refs": {"item": "item"},
+      "keys": {
+        "item": ["string"],
+        "weight": ["number"]
+      }
+    },
+    "items.exit_rewards": {
+      "required": ["walls_per_roll", "bonus_rolls_full_clear"],
+      "keys": {
+        "walls_per_roll": ["number", 2.5],
+        "bonus_rolls_full_clear": ["int", 0]
+      }
+    },
+    "kill_reward": {
+      "required": [],
+      "keys": {
+        "essence": ["number", 0.0],
+        "swallow": ["int", 0],
+        "self_unseen_s": ["number", 0.0],
+        "blood": ["int", 0],
+        "blood_per_stack": ["int", 0],
+        "steals": ["bool"]
+      }
+    },
+    "lure": {
+      "required": [],
+      "keys": {
+        "life": ["number", 3.0],
+        "breaks_on_hits": ["int", 0],
+        "fools": ["string"],
+        "lure_radius": ["number"],
+        "hp": ["number", 1.0],
+        "radius": ["number", 8.0],
+        "collapse_radius": ["number", 0.0]
+      }
+    },
+    "magnitude": {
+      "required": ["path", "as", "dir"],
+      "keys": {
+        "path": ["string"],
+        "as": ["string"],
+        "dir": ["string"]
+      }
+    },
+    "payload": {
+      "required": [],
+      "refs": {"status": "status"},
+      "keys": {
+        "shove": ["number", 0.0],
+        "poise": ["number"],
+        "status": ["string"],
+        "against_wall_mult": ["number", 0.0],
+        "damage": ["number", 0.0, {"detonate": 40.0}],
+        "interrupts": ["bool"],
+        "pull": ["number", 0.0],
+        "status_s": ["number"],
+        "radius": ["number", 2.5, {"buff_ended": 3.0, "burst_at": 2.0, "throw": 1.5}],
+        "shove_dir": ["string"],
+        "release_shove": ["number"],
+        "through": ["bool"],
+        "stacks": ["int", 1],
+        "consume": ["object"],
+        "hard_interrupt": ["bool"],
+        "quells_censer": ["bool"],
+        "status_s_per_heat": ["number"],
+        "status_s_max": ["number", 99.0],
+        "needs_facing": ["bool"],
+        "heat_scale": ["number"],
+        "bonus_flat_vs": ["object"],
+        "damage_mult": ["number", 1.0],
+        "marks": ["int", 0],
+        "statuses": ["array"],
+        "jumps": ["int", 0],
+        "jump_radius": ["number"],
+        "stun_per_mark": ["number"],
+        "stun_min": ["number", 0.2],
+        "elite_stun_mult": ["number", 0.5],
+        "shatter_radius": ["number", -1.0],
+        "burst_radius": ["number", 1.5],
+        "blind_if_dark": ["bool"],
+        "dark_status_s": ["number"],
+        "execute_below": ["number"],
+        "on_kill": ["object"],
+        "status_data": ["object"],
+        "damage_per_class": ["number", 30.0],
+        "status_s_per_class": ["number"],
+        "dps_per_class": ["number"],
+        "consume_stacks": ["object"],
+        "status_s_if_not": ["object"],
+        "blood_per_take": ["int", 0],
+        "execute_excludes": ["array"],
+        "execute_needs": ["string"],
+        "bonus_vs": ["object"],
+        "drain_frac": ["number", 0.0],
+        "unliving_mult": ["number"],
+        "purge": ["bool"],
+        "warded_mult": ["number", 0.0],
+        "drain_cap": ["number"],
+        "turn_s": ["number", 0.0],
+        "status_time_mult": ["number", 1.0]
+      }
+    },
+    "player_state": {
+      "required": ["label", "desc"],
+      "keys": {
+        "label": ["string"],
+        "desc": ["string"],
+        "move_speed_mult": ["number"],
+        "recovery_mult": ["number"],
+        "unseen_anywhere": ["bool"],
+        "ends_on_hit": ["bool"],
+        "pool": ["bool"],
+        "where": ["string"],
+        "buff": ["bool"]
+      }
+    },
+    "prop": {
+      "required": ["life"],
+      "keys": {
+        "width": ["number"],
+        "thickness": ["number"],
+        "height": ["number"],
+        "rise_time": ["number"],
+        "life": ["number"],
+        "shape": ["string"],
+        "radius": ["number"],
+        "blocks_shots": ["bool"],
+        "slow_radius": ["number"],
+        "slow": ["number"],
+        "hp": ["number"],
+        "vents": ["object"]
+      }
+    },
+    "recipe": {
+      "required": ["output", "makes", "skill", "trivial", "min_skill", "tool", "station", "grade", "inputs", "fee", "hours"],
+      "refs": {"output": "item", "station": "station", "skill": "craft_skill"},
+      "keys": {
+        "output": ["string"],
+        "makes": ["int", 1],
+        "skill": ["string"],
+        "trivial": ["int", 0],
+        "min_skill": ["int", 0],
+        "tool": ["object"],
+        "station": ["string"],
+        "grade": ["int", 1],
+        "inputs": ["object"],
+        "fee": ["int", 0],
+        "hours": ["int", 1],
+        "byproducts": ["object"]
+      }
+    },
+    "recipe.tool": {
+      "required": ["kind", "tier"],
+      "keys": {
+        "kind": ["string"],
+        "tier": ["int", 1]
+      }
+    },
+    "rule_set": {
+      "required": [],
+      "keys": {
+        "script": ["string"],
+        "title": ["string"],
+        "refuse_below": ["number"],
+        "weaken_below": ["number"],
+        "electronegativity_centre": ["number"],
+        "roles": ["object"],
+        "bond_kinds": ["array"],
+        "capacity_base": ["int", 0],
+        "capacity_per_level": ["int", 0],
+        "anchor_counts": ["bool"],
+        "allow_repeats": ["bool"],
+        "closed_needs_connected": ["bool"],
+        "lock_needs_closed": ["bool"],
+        "interactions": ["array"],
+        "interaction_params": ["object"],
+        "notes": ["array"],
+        "rings": ["array"],
+        "ring_capacity": ["string"],
+        "anchor_fills_by_ring": ["bool"],
+        "seal_needs_closed": ["bool"],
+        "seal_needs_full_rings": ["bool"],
+        "anchor_valence_per_ring": ["int", 0],
+        "anchor_bonds_any_ring": ["bool"],
+        "keystone": ["object"],
+        "structure": ["string"]
+      }
+    },
+    "rule_set.bond_kind": {
+      "required": ["kind", "from"],
+      "keys": {
+        "kind": ["string"],
+        "from": ["number", 0.0]
+      }
+    },
+    "rule_set.keystone": {
+      "required": [],
+      "keys": {
+        "weight_base": ["number", 1.0],
+        "weight_per_tier": ["number", 0.0],
+        "mult_floor": ["number", 0.0],
+        "fallback_damage_all": ["number", 1.1]
+      }
+    },
+    "rule_set.ring": {
+      "required": ["ring", "or_more", "fade", "adds"],
+      "keys": {
+        "ring": ["number"],
+        "or_more": ["bool"],
+        "fade": ["number", 0.0],
+        "adds": ["int", 0]
+      }
+    },
+    "rune": {
+      "required": ["id", "name", "character", "opposite", "valence", "electronegativity", "meaning", "effect", "ops"],
+      "refs": {"affinity": "affinity", "opposite": "rune"},
+      "keys": {
+        "id": ["string"],
+        "affinity": ["string"],
+        "name": ["string"],
+        "character": ["string"],
+        "opposite": ["string"],
+        "role": ["string"],
+        "valence": ["int", 0],
+        "electronegativity": ["number", 0.0],
+        "meaning": ["string"],
+        "effect": ["string"],
+        "ops": ["array"],
+        "as_means": ["string"],
+        "placeholder": ["bool"]
+      }
+    },
+    "rune_discovery.construct": {
+      "required": ["by_tier", "words"],
+      "keys": {
+        "by_tier": ["object"],
+        "words": ["object"]
+      }
+    },
+    "rune_discovery.kills.chance_by_kind": {
+      "required": ["brute", "commander", "drummer", "chaff_wren", "kettle_beetle", "ditch_hound", "gleaner", "burr_hog", "wirehorn", "sod_lurker", "thornback"],
+      "keys": {
+        "brute": ["number"],
+        "commander": ["number"],
+        "drummer": ["number"],
+        "chaff_wren": ["number"],
+        "kettle_beetle": ["number"],
+        "ditch_hound": ["number"],
+        "gleaner": ["number"],
+        "burr_hog": ["number"],
+        "wirehorn": ["number"],
+        "sod_lurker": ["number"],
+        "thornback": ["number"]
+      }
+    },
+    "rune_op": {
+      "required": ["op"],
+      "refs": {"id": "status", "status": "status"},
+      "keys": {
+        "op": ["string"],
+        "group": ["string"],
+        "value": ["number"],
+        "id": ["string"],
+        "stacks": ["int", 1],
+        "status": ["string"]
+      }
+    },
+    "runes": {
+      "required": ["rule_set", "rule_sets", "axes", "affinity_positions", "base_runes", "universal_runes", "skill_anchor", "unmatched"],
+      "keys": {
+        "rule_set": ["string"],
+        "rule_sets": ["object"],
+        "axes": ["array"],
+        "affinity_positions": ["object"],
+        "base_runes": ["object"],
+        "universal_runes": ["object"],
+        "skill_anchor": ["object"],
+        "unmatched": ["object"]
+      }
+    },
+    "runes.rule_sets.*.interaction_params.*.field_caps": {
+      "required": [],
+      "keys": {
+        "arc_deg": ["number"]
+      }
+    },
+    "runes.rule_sets.*.interaction_params.*.group_units": {
+      "required": [],
+      "keys": {
+        "windup": ["string"],
+        "duration": ["string"]
+      }
+    },
+    "runes.rule_sets.*.interaction_params.*.group_words": {
+      "required": [],
+      "keys": {
+        "power": ["string"],
+        "reach": ["string"],
+        "speed": ["string"],
+        "cost": ["string"],
+        "reflux": ["string"],
+        "windup": ["string"],
+        "duration": ["string"],
+        "poise": ["string"]
+      }
+    },
+    "runes.rule_sets.*.interaction_params.*.kind_factors": {
+      "required": [],
+      "keys": {
+        "even": ["object"],
+        "polar": ["object"],
+        "ionic": ["object"]
+      }
+    },
+    "runes.rule_sets.*.interaction_params.*.kind_factors.even": {
+      "required": [],
+      "keys": {
+        "more_pull": ["number"],
+        "less_pull": ["number"]
+      }
+    },
+    "runes.rule_sets.*.interaction_params.*.kind_factors.ionic": {
+      "required": [],
+      "keys": {
+        "more_pull": ["number"],
+        "less_pull": ["number"]
+      }
+    },
+    "runes.rule_sets.*.interaction_params.*.kind_factors.polar": {
+      "required": [],
+      "keys": {
+        "more_pull": ["number"],
+        "less_pull": ["number"]
+      }
+    },
+    "runes.rule_sets.*.interaction_params.*.nature_words": {
+      "required": [],
+      "keys": {
+        "power": ["string"],
+        "reach": ["string"],
+        "speed": ["string"],
+        "cost": ["string"],
+        "reflux": ["string"],
+        "windup": ["string"],
+        "duration": ["string"],
+        "poise": ["string"],
+        "interrupts": ["string"],
+        "shove": ["string"],
+        "pull": ["string"],
+        "marks": ["string"],
+        "jumps": ["string"],
+        "pierce": ["string"],
+        "braced": ["string"],
+        "through": ["string"],
+        "bonus": ["string"]
+      }
+    },
+    "runes.rule_sets.*.interaction_params.*.stat_groups": {
+      "required": [],
+      "keys": {
+        "power": ["array"],
+        "reach": ["array"],
+        "speed": ["array"],
+        "cost": ["array"],
+        "reflux": ["array"],
+        "windup": ["array"],
+        "duration": ["array"],
+        "poise": ["array"]
+      }
+    },
+    "runes.rule_sets.*.roles": {
+      "required": [],
+      "keys": {
+        "cap": ["object"],
+        "link": ["object"],
+        "branch": ["object"],
+        "frame": ["object"]
+      }
+    },
+    "runes.rule_sets.*.roles.branch": {
+      "required": [],
+      "keys": {
+        "valence": ["number"],
+        "spread": ["number"]
+      }
+    },
+    "runes.rule_sets.*.roles.cap": {
+      "required": [],
+      "keys": {
+        "valence": ["number"],
+        "spread": ["number"]
+      }
+    },
+    "runes.rule_sets.*.roles.frame": {
+      "required": [],
+      "keys": {
+        "valence": ["number"],
+        "spread": ["number"]
+      }
+    },
+    "runes.rule_sets.*.roles.link": {
+      "required": [],
+      "keys": {
+        "valence": ["number"],
+        "spread": ["number"]
+      }
+    },
+    "scrolls": {
+      "required": ["items"],
+      "keys": {
+        "items": ["object"]
+      }
+    },
+    "shape_trait": {
+      "required": ["label", "needs", "change", "what"],
+      "keys": {
+        "label": ["string"],
+        "needs": ["string"],
+        "change": ["string"],
+        "what": ["string"],
+        "min_runes": ["int", 3, {"shape_traits": 5}],
+        "ops": ["array"],
+        "repeats": ["int", 1],
+        "mult": ["number", 0.0],
+        "min_rings": ["int", 3],
+        "free_rings": ["int", 2],
+        "min_bonds": ["int", 3],
+        "max_count": ["int", 3],
+        "anchor_factor": ["number", 1.0]
+      }
+    },
+    "shape_trait.op": {
+      "required": ["op", "group", "value"],
+      "keys": {
+        "op": ["string"],
+        "group": ["string"],
+        "value": ["number"]
+      }
+    },
+    "skill_tree": {
+      "required": ["start_picks", "points", "drill", "tiers", "trees"],
+      "keys": {
+        "start_picks": ["int", 2],
+        "points": ["object"],
+        "drill": ["object"],
+        "tiers": ["object"],
+        "trees": ["object"]
+      }
+    },
+    "skill_tree.drill": {
+      "required": ["points", "price", "progress"],
+      "keys": {
+        "points": ["int", 1],
+        "price": ["int", 0],
+        "progress": ["number", 0.0]
+      }
+    },
+    "skill_tree.points": {
+      "required": ["per_star_pct", "on_ascend", "start"],
+      "keys": {
+        "per_star_pct": ["number", 10.0],
+        "on_ascend": ["int", 0],
+        "start": ["int", 0]
+      }
+    },
+    "skill_tree.tier": {
+      "required": ["points", "price"],
+      "keys": {
+        "points": ["int", 1],
+        "price": ["int", 0]
+      }
+    },
+    "split": {
+      "required": [],
+      "keys": {
+        "count": ["int", 3],
+        "arc_deg": ["number", 60.0],
+        "range": ["number", 7.0],
+        "width": ["number", 0.4],
+        "damage": ["number", 20.0],
+        "on_hit": ["object"]
+      }
+    },
+    "status": {
+      "required": [],
+      "refs": {"counts_as[]": "status", "elite_status": "status"},
+      "keys": {
+        "label": ["string"],
+        "desc": ["string"],
+        "stacks": ["int", 1, {"draw_statuses": 3}],
+        "lasts": ["number", 1.5, {"add_status": 1.0, "rules_of": 0.0}],
+        "color": ["string"],
+        "shove_mult": ["number", 1.0],
+        "conduct_radius": ["number", 4.0],
+        "conduct_marks": ["int", 1],
+        "overload_damage": ["number", 150.0, {"rules_of": 0.0}],
+        "stun": ["number", 1.0],
+        "arc_damage": ["number", 60.0, {"rules_of": 0.0}],
+        "arc_radius": ["number", 12.0, {"rules_of": 0.0}],
+        "grounds": ["number", 0.0],
+        "cannot_act": ["bool"],
+        "control": ["bool"],
+        "damage_taken_mult": ["number", 1.0],
+        "dps_per_stack": ["number", 0.0],
+        "tick_s": ["number", 0.5],
+        "spread_radius": ["number", 1.2],
+        "spread_time": ["number", 1.0],
+        "dot_tags": ["array"],
+        "jumps_on_death": ["bool"],
+        "ends": ["array"],
+        "light_radius": ["number", 0.0],
+        "heavy_poise": ["number", 50.0],
+        "speed_mult": ["number", 1.0],
+        "attack_rate_mult": ["number", 1.0],
+        "poise_mult": ["number", 1.0],
+        "cannot_attack": ["bool"],
+        "no_call": ["bool"],
+        "heavy_lasts_mult": ["number"],
+        "move_mult_per_stack": ["number", 1.0],
+        "on_cap": ["object"],
+        "damage_taken_except": ["array"],
+        "counts_as": ["array"],
+        "on_expire": ["object"],
+        "shatter": ["object"],
+        "blinded": ["object"],
+        "armour_mult": ["number"],
+        "counts_rear": ["bool"],
+        "front_block_off": ["bool"],
+        "cannot_move": ["bool"],
+        "immovable": ["bool"],
+        "dps_per_metal_class": ["number", 0.0],
+        "move_mult": ["number"],
+        "metal_class_off": ["bool"],
+        "deals_mult": ["number"],
+        "no_poise_damage": ["bool"],
+        "moving_mult": ["number"],
+        "drips_pool_s": ["number"],
+        "on_death": ["object"],
+        "windup_mult": ["number"],
+        "dps_mult": ["object"],
+        "living_only": ["bool"],
+        "attack_speed_mult": ["number"],
+        "poise_max_mult": ["number"],
+        "retch_every": ["number", 0.0],
+        "retch_s": ["number", 0.5],
+        "no_heal": ["bool"],
+        "poise_regen_off": ["bool"],
+        "freezes": ["array"],
+        "derived": ["string"],
+        "floor_health": ["number", 0.0],
+        "kneels_below": ["number", 0.0],
+        "flees": ["string"],
+        "lighter_class": ["bool"],
+        "reach_mult": ["number"],
+        "damage_taken_from": ["object"],
+        "alias_of": ["string"],
+        "wakes_on_hit": ["bool"],
+        "then_status": ["string"],
+        "needs_first": ["string"],
+        "blocked_by": ["array"],
+        "elite_status": ["string"],
+        "lure_radius": ["number", 0.0],
+        "makes_interruptible": ["bool"],
+        "staggers_in_windup": ["bool"],
+        "goes_to_goal": ["bool"],
+        "blocks": ["array"],
+        "no_refresh": ["bool"],
+        "armour_mult_per_stack": ["number", 1.0],
+        "flesh_per_stack": ["number", 0.0],
+        "times_flesh": ["bool"],
+        "cap_raise": ["object"],
+        "no_death_effects": ["bool"],
+        "ends_after_damage": ["number"],
+        "nudge_per_s": ["number", 0.0],
+        "poise_per_s": ["number", 0.0],
+        "hidden": ["bool"],
+        "ends_on_shove": ["bool"],
+        "no_conduct": ["bool"],
+        "forced_target": ["string"],
+        "closes_in": ["bool"],
+        "turn_away": ["bool"],
+        "heals_attacker_frac": ["number"],
+        "summons_target": ["bool"],
+        "summon_damage_mult": ["number", 1.0],
+        "summon_rate_mult": ["number", 1.0],
+        "fights_for_source": ["bool"],
+        "ends_on_source_hit": ["bool"],
+        "adds_time": ["object"],
+        "bill_mult": ["object"],
+        "ends_with": ["array"],
+        "adds_status": ["object"],
+        "ward_to_attacker": ["number"],
+        "ward_from_one": ["number"],
+        "on_attack_damage": ["number", 0.0],
+        "deals_mult_vs_source": ["number"],
+        "keeps_away": ["number", 0.0],
+        "elites_immune": ["bool"],
+        "drain_to_source": ["number"],
+        "leash_m": ["number", 0.0],
+        "drain_frac": ["number", 0.0]
+      }
+    },
+    "status.adds_status": {
+      "required": [],
+      "refs": {"status": "status"},
+      "keys": {
+        "status": ["string"],
+        "stacks": ["int", 1],
+        "every": ["number", 1.0]
+      }
+    },
+    "status.blinded": {
+      "required": [],
+      "keys": {
+        "sight": ["number", 2.0],
+        "melee_reach": ["number", 1.5]
+      }
+    },
+    "status.on_cap": {
+      "required": [],
+      "refs": {"status": "status", "elite_status": "status"},
+      "keys": {
+        "status": ["string"],
+        "clear": ["bool"],
+        "elite_status": ["string"]
+      }
+    },
+    "status.on_death": {
+      "required": [],
+      "keys": {
+        "pool": ["bool"],
+        "held_blood": ["int", 0],
+        "cloud": ["object"]
+      }
+    },
+    "status.on_expire": {
+      "required": [],
+      "refs": {"status": "status"},
+      "keys": {
+        "status": ["string"],
+        "stacks": ["int", 1],
+        "damage_per_stack": ["number"],
+        "tags": ["array"]
+      }
+    },
+    "status.shatter": {
+      "required": [],
+      "keys": {
+        "hard_poise": ["number", 40.0],
+        "damage": ["number", 100.0],
+        "radius": ["number", 2.5],
+        "shard": ["object"],
+        "ends": ["array"]
+      }
+    },
+    "status_data": {
+      "required": [],
+      "keys": {
+        "leash_m": ["number"],
+        "on_kill_heal": ["object"],
+        "retch_every": ["number"],
+        "retch_s": ["number"],
+        "kneels_below": ["number"],
+        "summon_damage_mult": ["number"],
+        "summon_rate_mult": ["number"],
+        "stand_s": ["number", 2.0],
+        "every": ["number"],
+        "clock_add": ["number"],
+        "bill_mult": ["number"]
+      }
+    },
+    "status_data.on_kill_heal": {
+      "required": [],
+      "keys": {
+        "heal": ["number"],
+        "over_s": ["number"]
+      }
+    },
+    "status_entry": {
+      "required": ["id"],
+      "refs": {"id": "status"},
+      "keys": {
+        "id": ["string"],
+        "stacks": ["int", 1],
+        "lasts": ["number"]
+      }
+    },
+    "status_if_not": {
+      "required": [],
+      "refs": {"status": "status"},
+      "keys": {
+        "status": ["string"],
+        "frac": ["number", 1.0]
+      }
+    },
+    "statuses": {
+      "required": ["statuses", "player_states"],
+      "keys": {
+        "statuses": ["object"],
+        "player_states": ["object"]
+      }
+    },
+    "summon_buff": {
+      "required": [],
+      "keys": {
+        "buff": ["string"],
+        "duration": ["number", 6.0],
+        "damage_mult": ["number"],
+        "attack_rate_mult": ["number"]
+      }
+    },
+    "talent": {
+      "required": ["id", "name", "category", "combat", "value", "verse", "rule", "hidden", "evolve_2"],
+      "keys": {
+        "id": ["string"],
+        "name": ["string"],
+        "canon": ["bool"],
+        "category": ["string"],
+        "combat": ["bool"],
+        "value": ["string"],
+        "verse": ["string"],
+        "rule": ["string"],
+        "hidden": ["array"],
+        "evolve_2": ["string"]
+      }
+    },
+    "talents": {
+      "required": ["categories", "talents"],
+      "keys": {
+        "categories": ["array"],
+        "talents": ["array"]
+      }
+    },
+    "technique": {
+      "required": ["name", "affinity", "verse", "desc", "effect"],
+      "refs": {"affinity": "affinity"},
+      "keys": {
+        "name": ["string"],
+        "affinity": ["string"],
+        "verse": ["string"],
+        "desc": ["string"],
+        "effect": ["object"]
+      }
+    },
+    "technique.effect": {
+      "required": ["stat", "per_stage", "text"],
+      "keys": {
+        "stat": ["string"],
+        "per_stage": ["number", 0.0],
+        "text": ["string"]
+      }
+    },
+    "tempering": {
+      "required": ["session", "techniques"],
+      "keys": {
+        "session": ["object"],
+        "techniques": ["object"]
+      }
+    },
+    "tempering.session": {
+      "required": ["strain_base", "strain_per_stage", "progress_base", "progress_falloff_per_stage", "max_cut_frac"],
+      "keys": {
+        "strain_base": ["number"],
+        "strain_per_stage": ["number"],
+        "progress_base": ["number"],
+        "progress_falloff_per_stage": ["number"],
+        "max_cut_frac": ["number"]
+      }
+    },
+    "thrall": {
+      "required": ["hp", "damage", "speed", "living"],
+      "keys": {
+        "hp": ["number", 120.0],
+        "damage": ["number", 15.0],
+        "speed": ["number", 5.0],
+        "living": ["bool"],
+        "behaviour": ["string"],
+        "model": ["string"],
+        "heal_per_s": ["number", 0.0],
+        "heal_per_hit": ["number", 0.0],
+        "strikable_within": ["number", -1.0],
+        "attack_s": ["number", 1.2],
+        "on_hit": ["object"]
+      }
+    },
+    "town": {
+      "required": ["size", "floor_margin", "walls", "talk_reach", "leave_reach", "exit_reach", "face_player_within", "look_seed", "exits", "arrive", "folk", "stations", "props"],
+      "keys": {
+        "size": ["array"],
+        "floor_margin": ["number", 6.0],
+        "walls": ["object"],
+        "talk_reach": ["number", 2.7],
+        "leave_reach": ["number", 4.5],
+        "exit_reach": ["number", 2.1, {"town_door_in_reach": 1.5}],
+        "face_player_within": ["number", 6.0],
+        "look_seed": ["int", 1],
+        "exits": ["array"],
+        "arrive": ["object"],
+        "folk": ["array"],
+        "stations": ["array"],
+        "props": ["array"]
+      }
+    },
+    "town.arrive": {
+      "required": ["square", "arena", "dross_gate", "passage"],
+      "keys": {
+        "square": ["array"],
+        "arena": ["array"],
+        "dross_gate": ["array"],
+        "passage": ["array"]
+      }
+    },
+    "town.exit": {
+      "required": ["id", "edge", "at", "width", "open", "walk_through", "action", "name", "prompt"],
+      "keys": {
+        "id": ["string"],
+        "edge": ["string"],
+        "at": ["number"],
+        "width": ["number"],
+        "open": ["bool"],
+        "walk_through": ["bool"],
+        "action": ["string"],
+        "name": ["string"],
+        "prompt": ["string"]
+      }
+    },
+    "town.folk": {
+      "required": ["role", "name", "title", "sex", "at", "face", "outfit", "line"],
+      "refs": {"station": "station"},
+      "keys": {
+        "role": ["string"],
+        "name": ["string"],
+        "title": ["string"],
+        "sex": ["string"],
+        "at": ["array"],
+        "face": ["array"],
+        "outfit": ["array"],
+        "line": ["string"],
+        "station": ["string"]
+      }
+    },
+    "town.station": {
+      "required": ["id", "at", "yaw", "solid"],
+      "refs": {"id": "station"},
+      "keys": {
+        "id": ["string"],
+        "at": ["array"],
+        "yaw": ["number", 0.0],
+        "solid": ["array"]
+      }
+    },
+    "town.walls": {
+      "required": ["north", "west", "south", "east"],
+      "keys": {
+        "north": ["number"],
+        "west": ["number"],
+        "south": ["number"],
+        "east": ["number"]
+      }
+    },
+    "tree_node": {
+      "required": ["tier", "col"],
+      "refs": {"requires[]": "ability"},
+      "keys": {
+        "tier": ["int", 1],
+        "col": ["number", 0.0],
+        "requires": ["array"]
+      }
+    },
+    "wardrobe": {
+      "required": ["materials", "pieces", "base", "items", "hair", "builds", "faces", "bodies", "armed_loops", "stances", "grip", "action_speed", "action_impact_s", "action_window_s", "skin_source", "hair_luma", "props"],
+      "keys": {
+        "materials": ["object"],
+        "pieces": ["object"],
+        "base": ["array"],
+        "items": ["object"],
+        "hair": ["object"],
+        "builds": ["object"],
+        "faces": ["object"],
+        "bodies": ["object"],
+        "armed_loops": ["object"],
+        "stances": ["object"],
+        "grip": ["object"],
+        "action_speed": ["object"],
+        "action_impact_s": ["object"],
+        "action_window_s": ["object"],
+        "skin_source": ["string"],
+        "hair_luma": ["object"],
+        "props": ["object"]
+      }
+    },
+    "wardrobe.action_impact_s": {
+      "required": ["slash_in", "slash_out", "heavy", "cast", "cast_area"],
+      "keys": {
+        "slash_in": ["number"],
+        "slash_out": ["number"],
+        "heavy": ["number"],
+        "cast": ["number"],
+        "cast_area": ["number"]
+      }
+    },
+    "wardrobe.action_speed": {
+      "required": ["slash_in", "slash_out", "heavy", "cast", "cast_area", "dodge", "hit", "pickup", "throw", "power_up"],
+      "keys": {
+        "slash_in": ["number"],
+        "slash_out": ["number"],
+        "heavy": ["number"],
+        "cast": ["number"],
+        "cast_area": ["number"],
+        "dodge": ["number"],
+        "hit": ["number"],
+        "pickup": ["number"],
+        "throw": ["number"],
+        "power_up": ["number"]
+      }
+    },
+    "wardrobe.action_window_s": {
+      "required": ["dodge"],
+      "keys": {
+        "dodge": ["array"]
+      }
+    },
+    "wardrobe.armed_loops": {
+      "required": ["run", "sprint"],
+      "keys": {
+        "run": ["string"],
+        "sprint": ["string"]
+      }
+    },
+    "wardrobe.body": {
+      "required": [],
+      "keys": {
+        "walk_speed": ["number"],
+        "run_speed": ["number"],
+        "run_armed_speed": ["number"],
+        "sprint_speed": ["number"],
+        "height": ["number", 1.72],
+        "stature": ["number", 1.68]
+      }
+    },
+    "wardrobe.build": {
+      "required": ["scale", "heavy", "slight"],
+      "keys": {
+        "scale": ["number", 1.0],
+        "heavy": ["number", 0.0],
+        "slight": ["number", 0.0]
+      }
+    },
+    "wardrobe.face": {
+      "required": [],
+      "keys": {
+        "scar": ["number", 0.0],
+        "brow": ["number", 0.0],
+        "brow_weight": ["number", 1.0],
+        "gaunt": ["number", 0.0],
+        "stubble": ["number", 0.0],
+        "beard": ["bool"]
+      }
+    },
+    "wardrobe.grip": {
+      "required": ["right", "left", "items"],
+      "keys": {
+        "right": ["object"],
+        "left": ["object"],
+        "items": ["object"]
+      }
+    },
+    "wardrobe.grip.items": {
+      "required": ["iron_knuckles"],
+      "keys": {
+        "iron_knuckles": ["object"]
+      }
+    },
+    "wardrobe.grip.items.iron_knuckles": {
+      "required": ["right", "left"],
+      "keys": {
+        "right": ["object"],
+        "left": ["object"]
+      }
+    },
+    "wardrobe.grip.items.iron_knuckles.left": {
+      "required": ["rot_deg", "pos"],
+      "keys": {
+        "rot_deg": ["array"],
+        "pos": ["array"]
+      }
+    },
+    "wardrobe.grip.items.iron_knuckles.right": {
+      "required": ["rot_deg", "pos"],
+      "keys": {
+        "rot_deg": ["array"],
+        "pos": ["array"]
+      }
+    },
+    "wardrobe.grip.left": {
+      "required": ["rot_deg", "pos"],
+      "keys": {
+        "rot_deg": ["array"],
+        "pos": ["array"]
+      }
+    },
+    "wardrobe.grip.right": {
+      "required": ["rot_deg", "pos"],
+      "keys": {
+        "rot_deg": ["array"],
+        "pos": ["array"]
+      }
+    },
+    "wardrobe.material": {
+      "required": ["tex", "tint", "uv_scale", "rough_bias", "grime", "fold_depth"],
+      "keys": {
+        "tex": ["string"],
+        "tint": ["number"],
+        "uv_scale": ["number"],
+        "rough_bias": ["number"],
+        "grime": ["number"],
+        "normal_depth": ["number"],
+        "fold_depth": ["number"],
+        "sheen": ["number"],
+        "quilt": ["number"],
+        "metallic": ["number"]
+      }
+    },
+    "wardrobe.piece": {
+      "required": ["meshes", "material", "color", "covers", "layer"],
+      "keys": {
+        "meshes": ["array"],
+        "material": ["string"],
+        "color": ["array|string"],
+        "covers": ["array"],
+        "layer": ["int", 0],
+        "replaces": ["array"],
+        "hair": ["string"]
+      }
+    },
+    "wardrobe.pose": {
+      "required": [],
+      "keys": {
+        "rot": ["array"],
+        "flat": ["bool"],
+        "twist": ["number", 0.0]
+      }
+    },
+    "wardrobe.props.*": {
+      "required": ["bone", "pos", "rot_deg", "parts"],
+      "keys": {
+        "bone": ["string"],
+        "pos": ["array"],
+        "rot_deg": ["array"],
+        "parts": ["array"],
+        "hang": ["bool"]
+      }
+    },
+    "wardrobe.props.*.parts[]": {
+      "required": ["shape", "size"],
+      "keys": {
+        "shape": ["string"],
+        "size": ["array"],
+        "pos": ["array"],
+        "material": ["string"],
+        "color": ["array"],
+        "rot_deg": ["array"],
+        "glow": ["array"]
+      }
+    },
+    "wardrobe.stances": {
+      "required": ["places", "stand"],
+      "keys": {
+        "places": ["object"],
+        "stand": ["object"]
+      }
+    },
+    "wardrobe.stances.places": {
+      "required": ["menu", "town"],
+      "keys": {
+        "menu": ["string"],
+        "town": ["string"]
+      }
+    },
+    "wardrobe.stances.stand.by_body.body_female": {
+      "required": [],
+      "keys": {
+
+      }
+    },
+    "wardrobe.stances.stand.grip_rest": {
+      "required": ["right", "left", "items"],
+      "keys": {
+        "right": ["object"],
+        "left": ["object"],
+        "items": ["object"]
+      }
+    },
+    "wardrobe.stances.stand.grip_rest.items": {
+      "required": ["iron_knuckles"],
+      "keys": {
+        "iron_knuckles": ["object"]
+      }
+    },
+    "wardrobe.stances.stand.grip_rest.items.iron_knuckles": {
+      "required": ["right", "left"],
+      "keys": {
+        "right": ["object"],
+        "left": ["object"]
+      }
+    },
+    "wardrobe.stances.stand.grip_rest.items.iron_knuckles.left": {
+      "required": ["rot_deg", "pos"],
+      "keys": {
+        "rot_deg": ["array"],
+        "pos": ["array"]
+      }
+    },
+    "wardrobe.stances.stand.grip_rest.items.iron_knuckles.right": {
+      "required": ["rot_deg", "pos"],
+      "keys": {
+        "rot_deg": ["array"],
+        "pos": ["array"]
+      }
+    },
+    "wardrobe.stances.stand.grip_rest.left": {
+      "required": ["rot_deg", "pos"],
+      "keys": {
+        "rot_deg": ["array"],
+        "pos": ["array"]
+      }
+    },
+    "wardrobe.stances.stand.grip_rest.right": {
+      "required": ["rot_deg", "pos"],
+      "keys": {
+        "rot_deg": ["array"],
+        "pos": ["array"]
+      }
+    },
+    "wardrobe.stand": {
+      "required": ["length", "keys", "weapon", "grip_rest", "pose", "finger_curl", "finger_close", "pinky_extra", "breath", "by_body"],
+      "keys": {
+        "length": ["number", 4.0],
+        "keys": ["int", 25],
+        "weapon": ["string"],
+        "grip_rest": ["object"],
+        "pose": ["object"],
+        "finger_curl": ["array"],
+        "finger_close": ["object"],
+        "pinky_extra": ["number", 0.0],
+        "breath": ["object"],
+        "by_body": ["object"]
+      }
+    },
+    "zone": {
+      "required": [],
+      "keys": {
+        "shape": ["string"],
+        "radius": ["number", 3.0, {"lay_cloud": 2.0, "projectile_landed": 2.5, "rules_of": 1.0}],
+        "life": ["number", 4.0, {"end_dash": 3.0, "projectile_landed": 6.0, "lay_ground": 5.0}],
+        "tick_s": ["number", 1.0, {"tick_aura": 0.5}],
+        "payload": ["object"],
+        "extra_status": ["string"],
+        "shove_mult": ["number", 1.0],
+        "width": ["number", 1.0, {"lay_zone": 2.0}],
+        "bright": ["bool"],
+        "blocks_sight": ["bool"],
+        "banks": ["string"],
+        "dps_mult": ["object"],
+        "life_per_heat": ["number"],
+        "life_max": ["number", 99.0],
+        "on_enter": ["object"],
+        "pull_per_s": ["number", 0.0],
+        "length": ["number", 10.0],
+        "push_per_s": ["number", 0.0],
+        "caster_speed_mult": ["number", 1.0],
+        "pip_gain_mult": ["number", 1.0],
+        "kill_projectiles": ["bool"],
+        "freeze_pips": ["bool"],
+        "shed_standing": ["bool"],
+        "ends_if_left": ["bool"],
+        "drift_speed": ["number", 0.0],
+        "drift": ["string"],
+        "dark": ["bool"],
+        "stills_pools": ["bool"],
+        "hides": ["bool"],
+        "lit_shows": ["bool"],
+        "lit_bonus": ["number"],
+        "no_heal": ["bool"],
+        "ends_status": ["array"],
+        "blocks_status": ["array"],
+        "dose_bonus": ["number", 0.0],
+        "kind": ["string"],
+        "drift_dir": ["string"],
+        "at": ["string"],
+        "overrun_at": ["int", 0],
+        "every": ["number"],
+        "ally_payload": ["object"],
+        "name": ["string"],
+        "desc": ["string"],
+        "biome": ["string"],
+        "size": ["array"],
+        "yaw": ["number", 0.0],
+        "edge_kits": ["object"],
+        "lines": ["array"],
+        "road": ["object"],
+        "inscriptions": ["array"],
+        "landmarks": ["array"],
+        "cut_house": ["object"],
+        "props_per_100m2": ["number", 1.0],
+        "tufts": ["int", 0],
+        "edge_blockers": ["int", 0],
+        "arrive": ["object"],
+        "decor": ["array"],
+        "tracks": ["array"],
+        "power_line": ["object"],
+        "features": ["array"],
+        "entrances": ["array"],
+        "camps": ["array"],
+        "lurker_patches": ["array"],
+        "nether": ["object"],
+        "dark_extra_ticks": ["int", 0]
+      }
+    },
+    "zone.camp": {
+      "required": ["id", "name", "at", "strength", "leash", "members", "job"],
+      "keys": {
+        "id": ["string"],
+        "name": ["string"],
+        "at": ["array"],
+        "strength": ["number", 1.0],
+        "leash": ["number"],
+        "members": ["array"],
+        "job": ["string"],
+        "edge": ["array"],
+        "herd": ["bool"],
+        "clear": ["number", 5.0],
+        "live_chance": ["number", 1.0],
+        "path": ["array"],
+        "roam_speed": ["number"]
+      }
+    },
+    "zone.camp_edge": {
+      "required": [],
+      "refs": {"kind": "enemy"},
+      "keys": {
+        "kind": ["string"],
+        "runs_to": ["string"],
+        "offset": ["array"]
+      }
+    },
+    "zone.camp_member": {
+      "required": ["kind", "n"],
+      "refs": {"kind": "enemy"},
+      "keys": {
+        "kind": ["string"],
+        "n": ["int", 1]
+      }
+    },
+    "zone.cut_house": {
+      "required": [],
+      "keys": {
+        "name": ["string"],
+        "to": ["string"],
+        "yard": ["array"],
+        "door": ["array"],
+        "door_width": ["number", 4.0]
+      }
+    },
+    "zone.decor": {
+      "required": ["model", "count", "scale"],
+      "keys": {
+        "model": ["string"],
+        "count": ["int", 0],
+        "scale": ["array"],
+        "solid": ["number", 0.0]
+      }
+    },
+    "zone.entrance": {
+      "required": [],
+      "keys": {
+        "id": ["string"],
+        "name": ["string"],
+        "kind": ["string"],
+        "at": ["array"],
+        "size": ["number", 0.0],
+        "solid": ["number"],
+        "reach": ["number", 3.0],
+        "dungeon": ["string"],
+        "state": ["string"],
+        "flavour": ["string"],
+        "sealed": ["string"],
+        "yaw": ["number", 0.0],
+        "clear": ["number", 4.0]
+      }
+    },
+    "zone.inscription": {
+      "required": [],
+      "keys": {
+        "id": ["string"],
+        "name": ["string"],
+        "at": ["array"],
+        "pool": ["string"]
+      }
+    },
+    "zone.landmark": {
+      "required": ["id", "name", "at", "site", "props"],
+      "keys": {
+        "id": ["string"],
+        "name": ["string"],
+        "at": ["array"],
+        "site": ["bool"],
+        "props": ["array"],
+        "solid": ["number", 0.0]
+      }
+    },
+    "zone.line": {
+      "required": ["id", "name", "to", "edge", "at", "width", "open"],
+      "keys": {
+        "id": ["string"],
+        "name": ["string"],
+        "to": ["string"],
+        "edge": ["string"],
+        "at": ["number"],
+        "width": ["number"],
+        "open": ["bool"],
+        "sign": ["string"]
+      }
+    },
+    "zone.lurker_patch": {
+      "required": ["id", "at", "radius"],
+      "keys": {
+        "id": ["string"],
+        "at": ["array"],
+        "radius": ["number", 2.2]
+      }
+    },
+    "zone.nether": {
+      "required": [],
+      "keys": {
+        "note": ["string"],
+        "scale": ["object"],
+        "echoes": ["array"],
+        "sites": ["array"]
+      }
+    },
+    "zone.nether_construct": {
+      "required": ["tier", "concept"],
+      "refs": {"concept": "word"},
+      "keys": {
+        "tier": ["string"],
+        "concept": ["string"],
+        "docile": ["bool"],
+        "hp_mult": ["number", 1.0],
+        "damage_mult": ["number", 1.0]
+      }
+    },
+    "zone.nether_echo": {
+      "required": ["kind", "at"],
+      "keys": {
+        "kind": ["string"],
+        "at": ["array"],
+        "scale": ["number", 1.0],
+        "yaw": ["number", 0.0]
+      }
+    },
+    "zone.nether_scale": {
+      "required": [],
+      "keys": {
+        "hp_mult": ["number", 1.0],
+        "damage_mult": ["number", 1.0]
+      }
+    },
+    "zone.nether_site": {
+      "required": ["id", "name", "at", "half", "wisps", "constructs"],
+      "keys": {
+        "id": ["string"],
+        "name": ["string"],
+        "at": ["array"],
+        "half": ["array"],
+        "wisps": ["array"],
+        "constructs": ["array"]
+      }
+    },
+    "zone.nether_wisp": {
+      "required": ["affinity", "n"],
+      "refs": {"affinity": "affinity+own+plain"},
+      "keys": {
+        "affinity": ["string"],
+        "n": ["int", 1]
+      }
+    },
+    "zone.power_line": {
+      "required": [],
+      "keys": {
+        "note": ["string"],
+        "poles": ["array"],
+        "sag": ["number", 1.1]
+      }
+    },
+    "zone.road": {
+      "required": [],
+      "keys": {
+        "points": ["array"],
+        "width": ["number", 8.0],
+        "color": ["array"],
+        "note": ["string"]
+      }
+    },
+    "zone.track": {
+      "required": [],
+      "keys": {
+        "name": ["string"],
+        "points": ["array"],
+        "width": ["number", 4.0],
+        "color": ["array"],
+        "shade": ["number", 0.14]
+      }
+    },
+    "zones": {
+      "required": ["zones"],
+      "keys": {
+        "zones": ["object"]
+      }
+    },
+    "zones.zones.*.arrive": {
+      "required": [],
+      "keys": {
+        "dross_gate": ["array"],
+        "cut_house_door": ["array"]
+      }
+    },
+    "zones.zones.*.edge_kits": {
+      "required": [],
+      "keys": {
+        "north": ["string"],
+        "south": ["string"],
+        "east": ["string"],
+        "west": ["string"]
+      }
+    }
+  }
+}

@@ -113,8 +113,8 @@ func _detail(box: VBoxContainer) -> void:
 	box.add_child(UiTheme.rule())
 	var node: Dictionary = GameData.skill_node(selected)
 	var cost: Dictionary = player.skill_cost(selected)
-	box.add_child(UiWidgets.stat_row("Tier", str(int(node.get("tier", 1)))))
-	box.add_child(UiWidgets.stat_row("Essence cost", "%d" % int(round(float(ab.get("cost", 0.0))))))
+	box.add_child(UiWidgets.stat_row("Tier", str(int(GameData.opt(node, "tree_node", "tier")))))
+	box.add_child(UiWidgets.stat_row("Essence cost", "%d" % int(round(float(GameData.opt(ab, "ability", "cost"))))))
 	var needs: Array = node.get("requires", [])
 	if not needs.is_empty():
 		var names: Array[String] = []
@@ -126,8 +126,8 @@ func _detail(box: VBoxContainer) -> void:
 		box.add_child(UiTheme.body("You know this skill.", 15, UiTheme.GOOD))
 		var drill: Dictionary = GameData.skill_tree.get("drill", {})
 		var why_d: String = str(player.cannot_drill_reason(selected))
-		var d := UiWidgets.service_button("Drill it", "+%d%% toward its next stage. The stage itself still needs a bound construct." % int(float(drill.get("progress", 0.0))),
-			"%d pt  $%d" % [int(drill.get("points", 1)), int(drill.get("price", 0))], func() -> void:
+		var d := UiWidgets.service_button("Drill it", "+%d%% toward its next stage. The stage itself still needs a bound construct." % int(float(GameData.opt(drill, "skill_tree.drill", "progress"))),
+			"%d pt  $%d" % [int(GameData.opt(drill, "skill_tree.drill", "points")), int(GameData.opt(drill, "skill_tree.drill", "price"))], func() -> void:
 				var why: String = game.drill_skill(selected)
 				if why != "":
 					player.note(why)
@@ -194,10 +194,10 @@ class TreeView extends Control:
 		var widest := 3
 		var per: Dictionary = {}
 		for id: String in tree:
-			var t: int = int((tree[id] as Dictionary).get("tier", 1))
+			var t: int = int(GameData.opt((tree[id] as Dictionary), "tree_node", "tier"))
 			tiers = maxi(tiers, t)
 			per[t] = int(per.get(t, 0)) + 1
-			widest = maxi(widest, int(ceil(float((tree[id] as Dictionary).get("col", 0.0)) + 0.5)))
+			widest = maxi(widest, int(ceil(float(GameData.opt((tree[id] as Dictionary), "tree_node", "col")) + 0.5)))
 		for t2: Variant in per:
 			widest = maxi(widest, int(per[t2]))
 		return Vector2(widest, tiers)
@@ -211,9 +211,9 @@ class TreeView extends Control:
 	func _centre_of(id: String) -> Vector2:
 		var node: Dictionary = tree[id]
 		var span: Vector2 = _span()
-		var col: float = float(node.get("col", 0.0))
+		var col: float = float(GameData.opt(node, "tree_node", "col"))
 		var x: float = size.x * (col + 0.5) / span.x
-		var y: float = size.y * (float(int(node.get("tier", 1))) - 0.5) / span.y
+		var y: float = size.y * (float(int(GameData.opt(node, "tree_node", "tier"))) - 0.5) / span.y
 		return Vector2(x, y)
 
 	func _layout() -> void:

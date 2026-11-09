@@ -42,14 +42,14 @@ func ring_capacity(k: int) -> int:
 	var grows: bool = str(params.get("ring_capacity", "grows")) == "grows"
 	var total := 0
 	for j: int in range(1, k + 1):
-		var adds: int = int(_ring_row(j).get("adds", 0))
+		var adds: int = int(GameData.opt(_ring_row(j), "rule_set.ring", "adds"))
 		total = total + adds if grows else adds
 	return total
 
 
 ## A ring's fade (its runes' strength before the bonds on their path).
 func ring_fade(k: int) -> float:
-	return float(_ring_row(k).get("fade", 0.0)) if k >= 1 else 1.0
+	return float(GameData.opt(_ring_row(k), "rule_set.ring", "fade")) if k >= 1 else 1.0
 
 
 func _ring_row(k: int) -> Dictionary:
@@ -196,12 +196,12 @@ func keystone_params() -> Dictionary:
 func keystone_weight(tier: String) -> float:
 	var kp: Dictionary = keystone_params()
 	var at: int = maxi(0, GameData.construct_tiers.find(tier))
-	return float(kp.get("weight_base", 1.0)) + float(kp.get("weight_per_tier", 0.0)) * float(at)
+	return float(GameData.opt(kp, "rule_set.keystone", "weight_base")) + float(GameData.opt(kp, "rule_set.keystone", "weight_per_tier")) * float(at)
 
 
 ## A rune multiplier `m`, weighted: its distance from 1 times `weight`, never under the floor.
 func keystone_mult(m: float, weight: float) -> float:
-	return maxf(float(keystone_params().get("mult_floor", 0.0)), 1.0 + (m - 1.0) * weight)
+	return maxf(float(GameData.opt(keystone_params(), "rule_set.keystone", "mult_floor")), 1.0 + (m - 1.0) * weight)
 
 
 ## The effects interaction of this rule set (the one that reads ops), or null.
@@ -225,12 +225,12 @@ func keystone_effect(ab: Dictionary, ks: Dictionary) -> Dictionary:
 	var lines: Array[String] = []
 	var it: RuneInteraction = effects_interaction()
 	if it != null and not ab.is_empty():
-		var r: Dictionary = it.call("keystone", ab, ConstructWords.ops(tier, cid), w, float(keystone_params().get("mult_floor", 0.0)))
+		var r: Dictionary = it.call("keystone", ab, ConstructWords.ops(tier, cid), w, float(GameData.opt(keystone_params(), "rule_set.keystone", "mult_floor")))
 		patch = r.get("patch", [])
 		for l: Variant in r.get("summary", []):
 			lines.append(str(l))
 	if patch.is_empty():
-		var m2: float = keystone_mult(float(keystone_params().get("fallback_damage_all", 1.1)), w)
+		var m2: float = keystone_mult(float(GameData.opt(keystone_params(), "rule_set.keystone", "fallback_damage_all")), w)
 		patch.append({"op": "mul", "path": "damage_all", "value": m2})
 		lines.append("every hit's damage x%s (nothing else of it reaches this skill)" % _x(m2))
 	var label: String = ConstructWords.phrase(tier, cid)
@@ -371,7 +371,7 @@ static func rings_held(word: Dictionary, ctx: RuneContext = null) -> int:
 ## 1 (Brent 2026-11-03: "the base run may need to have valence added each new ring so it can connect
 ## directly. At least one.").
 func anchor_extra(word: Dictionary, ctx: RuneContext = null) -> int:
-	return int(params.get("anchor_valence_per_ring", 0)) * maxi(0, rings_held(word, ctx) - 1)
+	return int(GameData.opt(params, "rule_set", "anchor_valence_per_ring")) * maxi(0, rings_held(word, ctx) - 1)
 
 
 ## The skill's own rune grows with the rings (anchor_extra); every other rune has its valence.
@@ -493,37 +493,37 @@ func shape_traits(word: Dictionary) -> Array[Dictionary]:
 	var great_def: Dictionary = tp.get("great_ring", {})
 	for k: int in range(1, RuneWord.outer_ring(word) + 1):
 		var on: Array[int] = RuneWord.ring_nodes(word, k)
-		if on.size() < int(closed_def.get("min_runes", 3)) or not _ring_round(word, on, rs):
+		if on.size() < int(GameData.opt(closed_def, "shape_trait", "min_runes")) or not _ring_round(word, on, rs):
 			continue
 		if not on.any(func(i: int) -> bool: return dist[i] >= 0):
 			continue
 		if not closed_def.is_empty():
 			out.append({"id": "closed_ring", "label": str(closed_def.get("label", "Closed ring")), "ring": k, "nodes": on, "count": 1,
 				"text": "%s (ring %d): %s" % [str(closed_def.get("label", "Closed ring")), k, str(closed_def.get("change", ""))]})
-		if not great_def.is_empty() and on.size() >= int(great_def.get("min_runes", 5)):
+		if not great_def.is_empty() and on.size() >= int(GameData.opt(great_def, "shape_trait", "min_runes", "shape_traits")):
 			out.append({"id": "great_ring", "label": str(great_def.get("label", "Great ring")), "ring": k, "nodes": on, "count": 1,
 				"text": "%s (ring %d, %d runes): %s" % [str(great_def.get("label", "Great ring")), k, on.size(), str(great_def.get("change", ""))]})
 	# the spoke: the longest chain straight out from ring 1
 	var spoke_def: Dictionary = tp.get("spoke", {})
 	if not spoke_def.is_empty():
 		var chain: Array[int] = _longest_spoke(word, rs)
-		if chain.size() >= int(spoke_def.get("min_rings", 3)):
+		if chain.size() >= int(GameData.opt(spoke_def, "shape_trait", "min_rings")):
 			out.append({"id": "spoke", "label": str(spoke_def.get("label", "Spoke")), "nodes": chain, "rings": chain.size(),
-				"count": chain.size() - int(spoke_def.get("free_rings", 2)),
+				"count": chain.size() - int(GameData.opt(spoke_def, "shape_trait", "free_rings")),
 				"text": "%s through %d rings: %s" % [str(spoke_def.get("label", "Spoke")), chain.size(), str(spoke_def.get("change", ""))]})
 	# branch runes
 	var branch_def: Dictionary = tp.get("branch", {})
 	if not branch_def.is_empty():
 		var hubs: Array[int] = []
 		for i: int in range(1, RuneWord.size(word)):
-			if RuneWord.degree(word, i) >= int(branch_def.get("min_bonds", 3)):
+			if RuneWord.degree(word, i) >= int(GameData.opt(branch_def, "shape_trait", "min_bonds")):
 				hubs.append(i)
 		if not hubs.is_empty():
 			var names: Array[String] = []
 			for i: int in hubs:
 				names.append(rune_name(word, i))
 			out.append({"id": "branch", "label": str(branch_def.get("label", "Branch")), "nodes": hubs,
-				"count": mini(hubs.size(), int(branch_def.get("max_count", 3))),
+				"count": mini(hubs.size(), int(GameData.opt(branch_def, "shape_trait", "max_count"))),
 				"text": "%s x%d (%s): %s" % [str(branch_def.get("label", "Branch")), hubs.size(), ", ".join(names), str(branch_def.get("change", ""))]})
 	# balanced
 	var bal_def: Dictionary = tp.get("balanced", {})

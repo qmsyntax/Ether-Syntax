@@ -35,6 +35,8 @@ to_unix() {
 TESTS=(
   "import|headless|1|600||--headless --path {GAME} --import"
   "smoke|headless|1|600|shot: player at |--headless --path {GAME} --quit-after 400 -- --shot"
+  # every script load()ed (the import does not compile a script nothing loads) and the data checked against data/schema.json
+  "loadall|headless|0|300|LOADALL: PASS|--headless --path {GAME} res://tests/load_all.tscn"
   "selftest|headless|0|600|SELFTEST: [0-9]+ passed, 0 failed|--headless --path {GAME} res://tests/selftest.tscn"
   "bot_dungeon|headless|0|600|BOT\[gate\]: .*-> PASS|--headless --path {GAME} -- --bot-dungeon"
   "bot_full|headless|0|600|BOT\[full\]: .*-> PASS|--headless --path {GAME} -- --bot-full"
@@ -46,7 +48,9 @@ TESTS=(
   "nether_death_hc|headless|0|600|NETHERDEATH: PASS|--headless --path {GAME} res://tests/nether_death_probe.tscn -- --hardcore"
   "nether_stubble|headless|0|600|NETHERSTUBBLE: PASS|--headless --path {GAME} res://tests/nether_stubble_probe.tscn"
   "stubble_bot|headless|0|600|STUBBLEBOT: PASS|--headless --path {GAME} res://tests/stubble_bot.tscn"
-  "duels|headless|0|1000|DUELS: PASS|--headless --path {GAME} res://tests/newbie_duels.tscn"
+  # at a fixed 60 fps the duels are deterministic; without --fixed-fps a headless run's frame times vary and so do the
+  # fights (Phase 2 step 3 measured it), which made the line wobble between runs
+  "duels|headless|0|1000|DUELS: PASS|--headless --fixed-fps 60 --path {GAME} res://tests/newbie_duels.tscn"
   "full_ring|headless|0|600|FULLRINGS: .* 0 script errors|--headless --path {GAME} res://tests/full_ring_check.tscn"
   "save_kill|headless|0|900|SAVEKILL ALL: PASS|@save_kill.sh {GAME} 2"
   "ui_click|windowed|0|600|UICLICK: PASS|--path {GAME} res://tests/ui_click_probe.tscn"

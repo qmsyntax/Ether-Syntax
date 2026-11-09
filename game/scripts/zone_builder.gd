@@ -133,7 +133,7 @@ func _road(level: Node3D) -> void:
 		var b: Vector3 = to_local(float(pts[i + 1][0]), float(pts[i + 1][1]))
 		var strip := MeshInstance3D.new()
 		var box := BoxMesh.new()
-		box.size = Vector3(float(road.get("width", 8.0)), 0.02, a.distance_to(b) + float(road.get("width", 8.0)) * 0.5)
+		box.size = Vector3(float(GameData.opt(road, "zone.road", "width")), 0.02, a.distance_to(b) + float(GameData.opt(road, "zone.road", "width")) * 0.5)
 		strip.mesh = box
 		strip.material_override = mat
 		level.add_child(strip)
@@ -151,7 +151,7 @@ func on_road(local: Vector3, margin: float) -> bool:
 		for i: int in pts.size() - 1:
 			var a: Vector3 = to_local(float(pts[i][0]), float(pts[i][1]))
 			var b: Vector3 = to_local(float(pts[i + 1][0]), float(pts[i + 1][1]))
-			if Geometry2D.get_closest_point_to_segment(p, Vector2(a.x, a.z), Vector2(b.x, b.z)).distance_to(p) <= float(road.get("width", 8.0)) * 0.5 + margin:
+			if Geometry2D.get_closest_point_to_segment(p, Vector2(a.x, a.z), Vector2(b.x, b.z)).distance_to(p) <= float(GameData.opt(road, "zone.road", "width")) * 0.5 + margin:
 				return true
 	return false
 
@@ -168,7 +168,7 @@ func _cut_house(level: Node3D) -> void:
 	var y1: float = float(y[3])
 	var h: float = float(GameData.balance["biomes"]["wall_height_divider"])
 	var door: Array = ch["door"]
-	var dw: float = float(ch.get("door_width", 4.0))
+	var dw: float = float(GameData.opt(ch, "zone.cut_house", "door_width"))
 	_house_wall(level, to_local(x0, y0), to_local(x1, y0), h)                      # north side of the yard
 	_house_wall(level, to_local(x0, y1), to_local(x1, y1), h)                      # south side
 	_house_wall(level, to_local(x1, y0), to_local(x1, float(door[1]) - dw * 0.5), h)      # the back, either side of the door
@@ -210,7 +210,7 @@ func _landmarks(level: Node3D) -> Array:
 			prop.position = centre + Vector3(float(p[2]), 0.0, float(p[3]))
 			prop.rotation.y = float(hash(str(mark["id"]) + str(p[1]))) * 0.001
 			level.add_child(prop)
-		if float(mark.get("solid", 0.0)) > 0.0:
+		if float(GameData.opt(mark, "zone.landmark", "solid")) > 0.0:
 			var sb := StaticBody3D.new()
 			var col := CollisionShape3D.new()
 			var shape := CylinderShape3D.new()
@@ -258,8 +258,8 @@ func _scatter(level: Node3D, keep_clear: Array) -> void:
 	var total := 0.0
 	for e: Dictionary in table:
 		total += float(e["weight"])
-	var count: int = int(size.x * size.y / 100.0 * float(def.get("props_per_100m2", 1.0)))
-	var edge_blockers: int = int(def.get("edge_blockers", 0))
+	var count: int = int(size.x * size.y / 100.0 * float(GameData.opt(def, "zone", "props_per_100m2")))
+	var edge_blockers: int = int(GameData.opt(def, "zone", "edge_blockers"))
 	var placed := 0
 	for i: int in count * 4:
 		if placed >= count:
@@ -297,7 +297,7 @@ func _scatter(level: Node3D, keep_clear: Array) -> void:
 			sb.add_child(col)
 			sb.position = pos + Vector3.UP
 			level.add_child(sb)
-	for i: int in int(def.get("tufts", 0)):
+	for i: int in int(GameData.opt(def, "zone", "tufts")):
 		var spot: Vector3 = _free_spot(rng, keep_clear, 0.6, false)
 		if spot != Vector3.INF:
 			main.call("_spawn_cuttable", i, spot)
@@ -312,8 +312,8 @@ func _decor(level: Node3D, keep_clear: Array) -> void:
 		if not RealProps.exists(id):
 			continue
 		var range_s: Array = d.get("scale", [1.0, 1.0])
-		var solid: float = float(d.get("solid", 0.0))
-		for i: int in int(d.get("count", 0)):
+		var solid: float = float(GameData.opt(d, "zone.decor", "solid"))
+		for i: int in int(GameData.opt(d, "zone.decor", "count")):
 			var spot: Vector3 = _free_spot(rng, keep_clear, maxf(solid, 0.5) + 0.5, false)
 			if spot == Vector3.INF:
 				continue
@@ -369,11 +369,11 @@ func _tracks(level: Node3D) -> void:
 	for track: Dictionary in def.get("tracks", []):
 		var pts: Array = track.get("points", [])
 		var mat := StandardMaterial3D.new()
-		var tc: Array = track.get("color", [0.0, 0.0, 0.0, float(track.get("shade", 0.14))])
+		var tc: Array = track.get("color", [0.0, 0.0, 0.0, float(GameData.opt(track, "zone.track", "shade"))])
 		mat.albedo_color = Color(float(tc[0]), float(tc[1]), float(tc[2]), float(tc[3]))
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.roughness = 1.0
-		var w: float = float(track.get("width", 4.0))
+		var w: float = float(GameData.opt(track, "zone.track", "width"))
 		for i: int in pts.size() - 1:
 			var a: Vector3 = to_local(float(pts[i][0]), float(pts[i][1]))
 			var b: Vector3 = to_local(float(pts[i + 1][0]), float(pts[i + 1][1]))
@@ -476,7 +476,7 @@ func _power_line(level: Node3D) -> Array:
 			var radii := PackedFloat32Array()
 			for j: int in 13:
 				var t: float = float(j) / 12.0
-				pts.append(a.lerp(b, t) - Vector3.UP * float(line.get("sag", 1.1)) * 4.0 * t * (1.0 - t))
+				pts.append(a.lerp(b, t) - Vector3.UP * float(GameData.opt(line, "zone.power_line", "sag")) * 4.0 * t * (1.0 - t))
 				radii.append(0.018)
 			var wire := MeshInstance3D.new()
 			wire.mesh = MeshKit.tube(pts, radii, 3)
@@ -494,9 +494,9 @@ func _entrances(level: Node3D) -> Array:
 		var node := FieldEntrance.new()
 		node.setup(e)
 		node.position = to_local(float(at[0]), float(at[1]))
-		node.rotation.y = deg_to_rad(float(e.get("yaw", 0.0)))
+		node.rotation.y = deg_to_rad(float(GameData.opt(e, "zone.entrance", "yaw")))
 		level.add_child(node)
-		clear.append([node.position, float(e.get("clear", 4.0))])
+		clear.append([node.position, float(GameData.opt(e, "zone.entrance", "clear"))])
 	return clear
 
 
@@ -505,10 +505,10 @@ func _camp_grounds() -> Array:
 	var clear: Array = []
 	for c: Dictionary in def.get("camps", []):
 		var at: Array = c["at"]
-		clear.append([to_local(float(at[0]), float(at[1])), float(c.get("clear", 5.0))])
+		clear.append([to_local(float(at[0]), float(at[1])), float(GameData.opt(c, "zone.camp", "clear"))])
 	for p: Dictionary in def.get("lurker_patches", []):
 		var at2: Array = p["at"]
-		clear.append([to_local(float(at2[0]), float(at2[1])), float(p.get("radius", 2.2)) + 0.5])
+		clear.append([to_local(float(at2[0]), float(at2[1])), float(GameData.opt(p, "zone.lurker_patch", "radius")) + 0.5])
 	return clear
 
 

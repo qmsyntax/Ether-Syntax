@@ -85,9 +85,9 @@ func take_hit(amount: float, heavy_hit: bool, source: Node, tags: Array = []) ->
 	if calm:
 		provoke(source as Node3D)
 	elif behaviour == "skittish":
-		_angry_t = float(_def.get("angry_s", 10.0))
+		_angry_t = float(GameData.opt(_def, "enemy", "angry_s"))
 	if behaviour == "runner" and not has_status("staggered"):
-		stagger(float(_def.get("stagger_s", 0.7)))       # it stumbles: the way to catch a runner
+		stagger(float(GameData.opt(_def, "enemy", "stagger_s")))       # it stumbles: the way to catch a runner
 	return applied
 
 
@@ -105,7 +105,7 @@ func provoke(who: Node3D = null) -> void:
 	calm = false
 	asleep = false
 	_going_home = false
-	_angry_t = float(_def.get("angry_s", 12.0))
+	_angry_t = float(GameData.opt(_def, "enemy", "angry_s", "provoke"))
 	var foe: Node3D = who if (who != null and is_instance_valid(who) and who.has_method("take_hit") and not who.is_in_group("enemies")) else _player
 	if foe != null:
 		target = foe
@@ -162,14 +162,14 @@ func _graze(delta: float, pace: float) -> void:
 	if behaviour == "skittish" and is_instance_valid(_player) and not bool(_player.get("dead")):
 		var away: Vector3 = global_position - _player.global_position
 		away.y = 0.0
-		if away.length() < float(_def.get("shy_radius", 9.0)):
+		if away.length() < float(GameData.opt(_def, "enemy", "shy_radius")):
 			want = away.normalized() * speed * 0.8           # it shies off - and shows you its back
 	if want == Vector3.ZERO:
 		_graze_t -= delta
 		if _graze_t <= 0.0:
 			_graze_t = randf_range(4.0, 9.0)
 			var a: float = randf() * TAU
-			_graze_goal = home + Vector3(cos(a), 0.0, sin(a)) * randf() * float(_def.get("graze_radius", 5.0))
+			_graze_goal = home + Vector3(cos(a), 0.0, sin(a)) * randf() * float(GameData.opt(_def, "enemy", "graze_radius"))
 		var to: Vector3 = _graze_goal - global_position
 		to.y = 0.0
 		if to.length() > 0.6:
@@ -195,7 +195,7 @@ func _runner_tick(delta: float, pace: float) -> void:
 		var goal: Vector3 = run_to
 		var to: Vector3 = goal - global_position
 		to.y = 0.0
-		if to.length() <= float(_def.get("fetch_reach", 5.0)):
+		if to.length() <= float(GameData.opt(_def, "enemy", "fetch_reach")):
 			var camp_id: String = run_camp
 			run_to = null
 			run_camp = ""
@@ -210,7 +210,7 @@ func _runner_tick(delta: float, pace: float) -> void:
 	elif is_instance_valid(_player) and not bool(_player.get("dead")):
 		var away: Vector3 = global_position - _player.global_position
 		away.y = 0.0
-		if away.length() < float(_def.get("keep_away", 10.0)):
+		if away.length() < float(GameData.opt(_def, "enemy", "keep_away")):
 			want = away.normalized()
 	if want != Vector3.ZERO:
 		_turn_toward(want, delta)
@@ -268,7 +268,7 @@ func is_rising() -> bool:
 func rise() -> void:
 	var cfg: Dictionary = _def.get("rise", {})
 	buried = false
-	_rise_t = float(cfg.get("windup", 0.7))
+	_rise_t = float(GameData.opt(cfg, "enemy.rise", "windup"))
 	collision_layer = 4
 	add_to_group("hittable")
 	add_to_group("enemies")
@@ -290,15 +290,15 @@ func _lurker_tick(delta: float, pace: float) -> bool:
 		if is_instance_valid(_player) and not bool(_player.get("dead")) and not bool(_player.get("projecting")):
 			var d: Vector3 = _player.global_position - home
 			d.y = 0.0
-			if d.length() <= float(cfg.get("trigger_radius", 2.2)):
+			if d.length() <= float(GameData.opt(cfg, "enemy.rise", "trigger_radius")):
 				rise()
 				return true
 		return true
 	if _rise_t >= 0.0:
-		var total: float = maxf(0.01, float(cfg.get("windup", 0.7)))
+		var total: float = maxf(0.01, float(GameData.opt(cfg, "enemy.rise", "windup")))
 		_rise_t -= delta
 		var frac: float = clampf(1.0 - _rise_t / total, 0.0, 1.0)
-		telegraph = {"kind": "circle", "radius": float(cfg.get("radius", 2.4)), "frac": frac, "interruptible": false}
+		telegraph = {"kind": "circle", "radius": float(GameData.opt(cfg, "enemy.rise", "radius")), "frac": frac, "interruptible": false}
 		if _rig != null:
 			_rig.position.y = lerpf(-height * 0.9, 0.0, frac * frac)
 			_rig.set_windup(true)
@@ -313,9 +313,9 @@ func _lurker_tick(delta: float, pace: float) -> bool:
 			if is_instance_valid(_player):
 				var to: Vector3 = _player.global_position - global_position
 				to.y = 0.0
-				if to.length() <= float(cfg.get("radius", 2.4)) and not bool(_player.get("dead")):
-					_player.call("take_hit", float(cfg.get("damage", 26.0)) * _strength, true, self)
-					if _player.has_method("shove") and float(cfg.get("shove", 0.0)) > 0.0:
+				if to.length() <= float(GameData.opt(cfg, "enemy.rise", "radius")) and not bool(_player.get("dead")):
+					_player.call("take_hit", float(GameData.opt(cfg, "enemy.rise", "damage")) * _strength, true, self)
+					if _player.has_method("shove") and float(GameData.opt(cfg, "enemy.rise", "shove")) > 0.0:
 						_player.call("shove", to, float(cfg["shove"]))
 			if is_instance_valid(_player):
 				target = _player
@@ -328,7 +328,7 @@ func _lurker_tick(delta: float, pace: float) -> bool:
 	if is_instance_valid(target):
 		off = target.global_position - home
 		off.y = 0.0
-	var gone: bool = not is_instance_valid(target) or bool(target.get("dead")) or off.length() > float(_def.get("tether", 8.0))
+	var gone: bool = not is_instance_valid(target) or bool(target.get("dead")) or off.length() > float(GameData.opt(_def, "enemy", "tether"))
 	if gone:
 		var at_home: Vector3 = global_position - home
 		at_home.y = 0.0
@@ -339,7 +339,7 @@ func _lurker_tick(delta: float, pace: float) -> bool:
 		velocity = Vector3.ZERO
 		telegraph = {}
 		_look(delta)
-		if _burrow_t >= float(_def.get("burrow_s", 4.0)):
+		if _burrow_t >= float(GameData.opt(_def, "enemy", "burrow_s")):
 			bury()
 		return true
 	_burrow_t = 0.0
@@ -372,9 +372,9 @@ func _swell() -> void:
 	var cfg: Dictionary = _def.get("swell", {})
 	if cfg.is_empty() or _swollen:
 		return
-	if body.total() <= body.total_max() * float(cfg.get("below_frac", 0.5)):
+	if body.total() <= body.total_max() * float(GameData.opt(cfg, "enemy.swell", "below_frac")):
 		_swollen = true
-		speed = _base_speed * float(cfg.get("speed_mult", 1.5))
+		speed = _base_speed * float(GameData.opt(cfg, "enemy.swell", "speed_mult"))
 		if _rig != null:
 			_rig.scale = Vector3(1.12, 1.18, 1.12)
 
@@ -390,14 +390,14 @@ func _think_charging(delta: float, dir: Vector3, dist: float) -> void:
 		if _charge_left <= 0.0:
 			collision_mask = 1 | 4
 		if not was_hit and _charge_hit and is_instance_valid(target) and target.has_method("shove"):
-			target.call("shove", _charge_dir, float(cfg.get("shove", 0.0)))
+			target.call("shove", _charge_dir, float(GameData.opt(cfg, "enemy.charge", "shove")))
 		if _charge_left <= 0.0 and _charge_hit:
 			_stuck_t = minf(_stuck_t, 0.5)          # it found you: it does not stand there gaping
 		return
 	if _special == "charge":
 		_windup -= delta
-		var filled: float = 1.0 - maxf(0.0, _windup) / maxf(0.001, float(cfg.get("windup", 1.0)))
-		telegraph = {"kind": "lane", "to": global_position + _charge_dir * _charge_len, "width": float(cfg.get("width", 2.0)), "frac": filled}
+		var filled: float = 1.0 - maxf(0.0, _windup) / maxf(0.001, float(GameData.opt(cfg, "enemy.charge", "windup")))
+		telegraph = {"kind": "lane", "to": global_position + _charge_dir * _charge_len, "width": float(GameData.opt(cfg, "enemy.charge", "width")), "frac": filled}
 		if _windup < 0.0:
 			_special = ""
 			telegraph = {}
@@ -405,16 +405,16 @@ func _think_charging(delta: float, dir: Vector3, dist: float) -> void:
 			_charge_hit = false
 		return
 	if _windup < 0.0 and not _no_attack() and not cfg.is_empty() and float(_special_cd["charge"]) <= 0.0 \
-			and dist >= float(cfg.get("min_dist", 5.0)) and dist <= float(cfg.get("max_dist", 14.0)) and _sees_target():
+			and dist >= float(GameData.opt(cfg, "enemy.charge", "min_dist")) and dist <= float(GameData.opt(cfg, "enemy.charge", "max_dist")) and _sees_target():
 		_release_slot()
 		_special = "charge"
-		_windup = float(cfg.get("windup", 1.0))
-		_special_cd["charge"] = float(cfg.get("cooldown", 6.0))
+		_windup = float(GameData.opt(cfg, "enemy.charge", "windup"))
+		_special_cd["charge"] = float(GameData.opt(cfg, "enemy.charge", "cooldown"))
 		_charge_dir = dir
-		_charge_len = maxf(float(cfg.get("length", 12.0)), dist + 3.0)
+		_charge_len = maxf(float(GameData.opt(cfg, "enemy.charge", "length")), dist + 3.0)
 		facing = dir
 		return
-	if behaviour == "grazer" and _windup < 0.0 and dist < float(cfg.get("min_dist", 5.0)) + 1.0 and float(_special_cd["charge"]) > 1.0:
+	if behaviour == "grazer" and _windup < 0.0 and dist < float(GameData.opt(cfg, "enemy.charge", "min_dist")) + 1.0 and float(_special_cd["charge"]) > 1.0:
 		# a herd beast is no brawler: after a charge it wheels away to run at you again, goring
 		# only whoever crowds it as it turns
 		if dist <= _reach + radius and _attack_cd <= 0.0 and not _no_attack():
@@ -460,7 +460,7 @@ func _think_flanker(delta: float, dir: Vector3, dist: float) -> void:
 			var hit: bool = dist <= _reach + radius and is_in_front(target.global_position) and _sees_target()
 			if hit:
 				var rear: bool = is_at_targets_back()
-				_strike(damage * (float(_def.get("rear_bite_mult", 1.5)) if rear else 1.0), heavy)
+				_strike(damage * (float(GameData.opt(_def, "enemy", "rear_bite_mult")) if rear else 1.0), heavy)
 				if rear and is_inside_tree():
 					FloatText.spawn(get_parent(), target.global_position + Vector3.UP * 1.9, "BITTEN FROM BEHIND", Color(1.0, 0.5, 0.4))
 			_attack_cd = _cooldown
@@ -470,12 +470,12 @@ func _think_flanker(delta: float, dir: Vector3, dist: float) -> void:
 	var f: Vector3 = _target_facing()
 	var from: Vector3 = global_position - target.global_position
 	from.y = 0.0
-	var seen: bool = from.length() > 0.05 and f.angle_to(from.normalized()) <= deg_to_rad(float(_def.get("front_arc_deg", 110.0)) * 0.5)
+	var seen: bool = from.length() > 0.05 and f.angle_to(from.normalized()) <= deg_to_rad(float(GameData.opt(_def, "enemy", "front_arc_deg")) * 0.5)
 	var strike_dist: float = _reach + radius - 0.2
-	if not is_at_targets_back() and _flank_wait < float(_def.get("patience_s", 3.5)):
+	if not is_at_targets_back() and _flank_wait < float(GameData.opt(_def, "enemy", "patience_s")):
 		# not at your back yet: circle round toward it
 		_flank_wait += delta
-		var behind: Vector3 = target.global_position - f * float(_def.get("flank_distance", 2.6))
+		var behind: Vector3 = target.global_position - f * float(GameData.opt(_def, "enemy", "flank_distance"))
 		var side := Vector3(-f.z, 0.0, f.x) * _circle_sign
 		var goal: Vector3 = behind + (side * 1.5 if seen else Vector3.ZERO)
 		var to: Vector3 = goal - global_position
@@ -503,17 +503,17 @@ func _think_skittish(delta: float, dir: Vector3, dist: float) -> void:
 	var kick: Dictionary = _def.get("kick", {})
 	if _windup >= 0.0:
 		_windup -= delta
-		telegraph = {"kind": "cone", "radius": float(kick.get("reach", 2.3)) + radius, "arc_deg": float(kick.get("arc_deg", 110.0)), "dir": -facing,
-			"frac": 1.0 - _windup / maxf(0.01, float(kick.get("windup", 0.4)))} if _kick else {"kind": "swing", "interruptible": false}
+		telegraph = {"kind": "cone", "radius": float(GameData.opt(kick, "enemy.kick", "reach")) + radius, "arc_deg": float(GameData.opt(kick, "enemy.kick", "arc_deg")), "dir": -facing,
+			"frac": 1.0 - _windup / maxf(0.01, float(GameData.opt(kick, "enemy.kick", "windup")))} if _kick else {"kind": "swing", "interruptible": false}
 		if _windup < 0.0:
 			telegraph = {}
 			_strike_t = 0.3
 			if _kick:
-				_special_cd["counter"] = float(kick.get("cooldown", 2.6))
-				if dist <= float(kick.get("reach", 2.3)) + radius and is_behind(target.global_position):
-					_strike(float(kick.get("damage", 24.0)) * _strength, true)
+				_special_cd["counter"] = float(GameData.opt(kick, "enemy.kick", "cooldown"))
+				if dist <= float(GameData.opt(kick, "enemy.kick", "reach")) + radius and is_behind(target.global_position):
+					_strike(float(GameData.opt(kick, "enemy.kick", "damage")) * _strength, true)
 					if target.has_method("shove"):
-						target.call("shove", -facing, float(kick.get("shove", 3.0)))
+						target.call("shove", -facing, float(GameData.opt(kick, "enemy.kick", "shove")))
 			else:
 				if dist <= _reach + radius and is_in_front(target.global_position):
 					_strike(damage, heavy)
@@ -521,13 +521,13 @@ func _think_skittish(delta: float, dir: Vector3, dist: float) -> void:
 			if _rig is CreatureRig:
 				(_rig as CreatureRig).use_alt = false
 		return
-	if _angry_t <= 0.0 and dist > float(_def.get("calm_distance", 14.0)):
+	if _angry_t <= 0.0 and dist > float(GameData.opt(_def, "enemy", "calm_distance")):
 		pacify()
 		return
 	if not kick.is_empty() and float(_special_cd["counter"]) <= 0.0 and not _no_attack() \
-			and dist <= float(kick.get("reach", 2.3)) + radius and is_behind(target.global_position):
+			and dist <= float(GameData.opt(kick, "enemy.kick", "reach")) + radius and is_behind(target.global_position):
 		_kick = true
-		_windup = float(kick.get("windup", 0.4))
+		_windup = float(GameData.opt(kick, "enemy.kick", "windup"))
 		if _rig is CreatureRig:
 			(_rig as CreatureRig).use_alt = true
 		return
@@ -540,7 +540,7 @@ func _think_darter(delta: float, dir: Vector3, dist: float) -> void:
 	if _scatter_t > 0.0:
 		_scatter_t -= delta
 		var away: Vector3 = -dir
-		var want: float = float(_def.get("retreat_distance", 5.0))
+		var want: float = float(GameData.opt(_def, "enemy", "retreat_distance"))
 		if dist < want:
 			_turn_toward(away, delta)
 			velocity = (away + Vector3(-dir.z, 0.0, dir.x) * _circle_sign * 0.5).normalized() * speed
@@ -551,5 +551,5 @@ func _think_darter(delta: float, dir: Vector3, dist: float) -> void:
 	var was: bool = _windup >= 0.0
 	_think_melee(delta, dir, dist)
 	if was and _windup < 0.0:
-		_scatter_t = float(_def.get("retreat_s", 1.3))
+		_scatter_t = float(GameData.opt(_def, "enemy", "retreat_s"))
 		_release_slot()

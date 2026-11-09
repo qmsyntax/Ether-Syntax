@@ -116,14 +116,22 @@ phases below run to A, then B.
   behaviour (melee, ranged, pouncer, support, commander) picked by `Enemy._brain_for`. `Beast` is unchanged: its
   behaviours stay overrides of the node's hooks. No outside caller changed; the suite, the timeline and
   cast-every-skill output, the self-test count and the duels table at a fixed 60 fps are the same before and after.
-- Give the big objects class names and typed calls. Validate data once on load and remove the silent numeric fallbacks.
+- [x] Give the big objects class names and typed calls. Validate data once on load and remove the silent numeric fallbacks.
   *(Typed calls done 2026-11-09, step 4a (`docs/architecture/typed-calls.md`): the player's, main's and the enemies'
   holders are typed and their string calls direct where the receiver's type is certain - 1,767 object-shaped string
   calls in `game/scripts` down to 744, the rest duck-typed targets, other classes, the harness and the open screen;
-  public readers for the private names outside code reached; 22 dead enemy forwarders gone. Data validation and the
-  numeric fallbacks are step 4b.)*
+  public readers for the private names outside code reached; 22 dead enemy forwarders gone. Data validation done
+  2026-11-09, step 4b (`docs/architecture/data-schema.md`): one schema, `game/data/schema.json` (246 kinds: keys,
+  types, required keys, id references, each optional key's default), checked on every start by `GameData` (about
+  28 ms); the 870 numeric-fallback reads of data entries in `game/scripts` now take their default from the schema
+  (869 through `GameData.opt`, one hot loop reads the key only where an entry has it; 0 left; 134 reads of saves, runtime state and code tables keep their own); the real data
+  had no errors; new test `loadall` (every script loaded, the data checked, every schema read named); the suite's
+  duels run at a fixed 60 fps.)*
 - No behaviour change: the full suite and the combat-review probe must give the same numbers before and after.
-- Done when no gameplay file is over ~1,500 lines and the suite is green.
+- Done when no gameplay file is over ~1,500 lines and the suite is green. *(Held 2026-11-09: the largest gameplay
+  script is `player/player_hits.gd`, 1,018 lines, and the suite is green; three interface scripts are just over the
+  line - `ui/ethercosm_screen.gd` 1,610, `hud.gd` 1,562, `ui/rune_board.gd` 1,549 - counted as UI, not gameplay,
+  and left for the interface work.)*
 
 ### Phase 3 - Systems to slice depth (XL; three streams in parallel once Phase 2 lands)
 - **Combat**: your rulings on R2 / R5 / Q4, then R6 (juice: hit sounds, death bursts, kill knockback, bigger skill

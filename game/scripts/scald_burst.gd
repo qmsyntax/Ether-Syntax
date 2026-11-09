@@ -26,9 +26,9 @@ var _done := false
 static func leave(parent: Node, at: Vector3, cfg: Dictionary, strength: float, who: Node3D) -> ScaldBurst:
 	var b := ScaldBurst.new()
 	b.victim = who
-	b.radius = float(cfg.get("radius", 2.6))
-	b.delay = float(cfg.get("delay", 1.1))
-	b.damage = float(cfg.get("damage", 22.0)) * strength
+	b.radius = float(GameData.opt(cfg, "enemy.death_burst", "radius"))
+	b.delay = float(GameData.opt(cfg, "enemy.death_burst", "delay"))
+	b.damage = float(GameData.opt(cfg, "enemy.death_burst", "damage")) * strength
 	var c: Array = cfg.get("color", [1.0, 0.78, 0.6])
 	b.color = Color(float(c[0]), float(c[1]), float(c[2]))
 	parent.add_child(b)

@@ -14,13 +14,13 @@ func think(delta: float, dir: Vector3, dist: float) -> void:
 		enemy.telegraph = {"kind": "swing", "interruptible": true}
 		if enemy._windup < 0.0:
 			enemy.telegraph = {}
-			enemy._leap_left = float(enemy._def.get("pounce_range", 8.0))
+			enemy._leap_left = float(GameData.opt(enemy._def, "enemy", "pounce_range"))
 			enemy._leap_hit = false
 		return
 	enemy.telegraph = {}
 	enemy.motion_part._turn_toward(dir, delta)
 	# circle at a distance, doing nothing
-	var want: float = float(enemy._def.get("circle_distance", 7.0))
+	var want: float = float(GameData.opt(enemy._def, "enemy", "circle_distance"))
 	var side := Vector3(-dir.z, 0.0, dir.x) * enemy._circle_sign
 	if dist > want + 1.0:
 		enemy.velocity = enemy._walk_dir * enemy.speed
@@ -39,9 +39,9 @@ func think(delta: float, dir: Vector3, dist: float) -> void:
 		tv.y = 0.0
 		var away: Vector3 = enemy.target.global_position - pack
 		away.y = 0.0
-		var fleeing: bool = away.length() > 0.5 and tv.dot(away.normalized()) >= float(enemy._def.get("retreat_speed", 2.0))
+		var fleeing: bool = away.length() > 0.5 and tv.dot(away.normalized()) >= float(GameData.opt(enemy._def, "enemy", "retreat_speed"))
 		enemy._retreat_t = enemy._retreat_t + delta if fleeing else 0.0
-	if enemy._retreat_t >= float(enemy._def.get("pounce_after_retreat_s", 1.5)) and enemy._attack_cd <= 0.0 and dist <= float(enemy._def.get("pounce_range", 8.0)) + 1.0 and not enemy._no_attack():
+	if enemy._retreat_t >= float(GameData.opt(enemy._def, "enemy", "pounce_after_retreat_s")) and enemy._attack_cd <= 0.0 and dist <= float(GameData.opt(enemy._def, "enemy", "pounce_range")) + 1.0 and not enemy._no_attack():
 		enemy._retreat_t = 0.0
 		enemy._windup = enemy._windup_len()
 		enemy.velocity = Vector3.ZERO
@@ -61,7 +61,7 @@ func _pack_centre() -> Vector3:
 
 
 func _tick_leap(delta: float) -> void:
-	var step: float = minf(enemy._leap_left, float(enemy._def.get("pounce_speed", 20.0)) * delta)
+	var step: float = minf(enemy._leap_left, float(GameData.opt(enemy._def, "enemy", "pounce_speed")) * delta)
 	var from: Vector3 = enemy.global_position
 	var col: KinematicCollision3D = enemy.move_and_collide(enemy._aim * step)
 	enemy._leap_left -= step
@@ -71,11 +71,11 @@ func _tick_leap(delta: float) -> void:
 		var a := Vector2(from.x, from.z)
 		var b := Vector2(enemy.global_position.x, enemy.global_position.z)
 		var p := Vector2(enemy.target.global_position.x, enemy.target.global_position.z)
-		if Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= float(enemy._def.get("pounce_hit_radius", 1.3)):
+		if Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= float(GameData.opt(enemy._def, "enemy", "pounce_hit_radius")):
 			enemy._leap_hit = true
 			enemy._leap_left = 0.0
 			enemy._strike(enemy.damage, enemy.heavy)
 	if enemy._leap_left <= 0.0:
 		enemy._attack_cd = enemy._cooldown
 		if not enemy._leap_hit:
-			enemy._stuck_t = float(enemy._def.get("stuck_after_miss", 1.0))
+			enemy._stuck_t = float(GameData.opt(enemy._def, "enemy", "stuck_after_miss", "tick_leap"))

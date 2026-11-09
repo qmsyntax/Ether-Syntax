@@ -297,7 +297,7 @@ func _init() -> void:
 	affinities = GameData.default_affinities()
 	casting_part._reset_loadout()
 	progress_part._reset_tempering()
-	skill_points = int((GameData.skill_tree.get("points", {}) as Dictionary).get("start", 0))
+	skill_points = int(GameData.opt((GameData.skill_tree.get("points", {}) as Dictionary), "skill_tree.points", "start"))
 
 
 func _ready() -> void:

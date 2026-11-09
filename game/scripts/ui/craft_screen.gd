@@ -78,9 +78,9 @@ func _row(rid: String) -> Button:
 	b.focus_mode = Control.FOCUS_NONE
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.clip_text = true
-	var n: int = int(r.get("makes", 1))
+	var n: int = int(GameData.opt(r, "recipe", "makes"))
 	b.text = "%s%s      trivial %d%s" % [str(GameData.item(str(r["output"])).get("name", r["output"])), "" if n == 1 else " x%d" % n,
-		int(r.get("trivial", 0)), "" if known else "   - not learned"]
+		int(GameData.opt(r, "recipe", "trivial")), "" if known else "   - not learned"]
 	var col: Color = UiTheme.TEXT if known and reach else (UiTheme.TEXT_FAINT if not known else UiTheme.TEXT_DIM)
 	b.add_theme_color_override("font_color", col)
 	if rid == selected:
@@ -111,7 +111,7 @@ func _detail(box: VBoxContainer, rid: String) -> void:
 
 	var skill: String = str(r.get("skill", ""))
 	box.add_child(UiWidgets.stat_row("Skill", "%s %d   -   trivial %d, can try from %d" % [Crafting.skill_name(skill), Crafting.skill_of(player, skill),
-		int(r.get("trivial", 0)), int(r.get("min_skill", 0))]))
+		int(GameData.opt(r, "recipe", "trivial")), int(GameData.opt(r, "recipe", "min_skill"))]))
 	var p: float = Crafting.chance(player, rid, ctx)
 	var chance_row := UiWidgets.stat_row("Chance", "certain" if p >= 1.0 else "%d%%" % int(round(p * 100.0)), UiTheme.GOOD if p >= 0.7 else (UiTheme.GOLD if p >= 0.4 else UiTheme.BAD))
 	chance_row.name = "ChanceRow"
@@ -120,9 +120,9 @@ func _detail(box: VBoxContainer, rid: String) -> void:
 	var t: Dictionary = r.get("tool", {})
 	var tool_id: String = Crafting.best_tool(player, str(t.get("kind", "")))
 	var tool_name: String = str(((GameData.crafting.get("tools", {}) as Dictionary).get(str(t.get("kind", "")), {}) as Dictionary).get("name", t.get("kind", "")))
-	box.add_child(UiWidgets.stat_row("Tool", ("%s - %d uses left" % [tool_name, Crafting.tool_uses_left(player, tool_id)]) if tool_id != "" else "%s (tier %d) - you have none" % [tool_name, int(t.get("tier", 1))],
+	box.add_child(UiWidgets.stat_row("Tool", ("%s - %d uses left" % [tool_name, Crafting.tool_uses_left(player, tool_id)]) if tool_id != "" else "%s (tier %d) - you have none" % [tool_name, int(GameData.opt(t, "recipe.tool", "tier"))],
 		UiTheme.TEXT if tool_id != "" else UiTheme.BAD))
-	box.add_child(UiWidgets.stat_row("Takes", "%d hours of work" % int(r.get("hours", 1)), UiTheme.TEXT_DIM))
+	box.add_child(UiWidgets.stat_row("Takes", "%d hours of work" % int(GameData.opt(r, "recipe", "hours")), UiTheme.TEXT_DIM))
 
 	box.add_child(UiTheme.heading("In", 17))
 	var ins: Dictionary = r.get("inputs", {})
@@ -132,7 +132,7 @@ func _detail(box: VBoxContainer, rid: String) -> void:
 	box.add_child(UiTheme.heading("Out", 17))
 	var outs: Dictionary = Crafting.outputs(rid)
 	for id: String in outs:
-		box.add_child(UiWidgets.stat_row("   %s" % str(GameData.item(id).get("name", id)), "x%d   ($%d each)" % [int(outs[id]), int(GameData.item(id).get("value", 0))]))
+		box.add_child(UiWidgets.stat_row("   %s" % str(GameData.item(id).get("name", id)), "x%d   ($%d each)" % [int(outs[id]), int(GameData.opt(GameData.item(id), "item", "value"))]))
 
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL

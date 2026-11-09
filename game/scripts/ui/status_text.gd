@@ -132,7 +132,7 @@ static func rules_of(def: Dictionary, lasts: float = -1.0, with_lasts: bool = tr
 	var der: String = str(def.get("derived", ""))
 	if der != "":
 		p.append("read from its health (%s half), never put on it" % ("above" if der == "above_half" else "below"))
-	var secs: float = lasts if lasts >= 0.0 else float(def.get("lasts", 0.0))
+	var secs: float = lasts if lasts >= 0.0 else float(GameData.opt(def, "status", "lasts", "rules_of"))
 	if with_lasts and (der == "" and def.has("lasts") or lasts >= 0.0):
 		if secs > 0.0:
 			p.append("lasts %s s" % _n(secs))
@@ -140,7 +140,7 @@ static func rules_of(def: Dictionary, lasts: float = -1.0, with_lasts: bool = tr
 		p.append("heavy enemies %s" % ("half as long" if is_equal_approx(float(def["heavy_lasts_mult"]), 0.5) else "x%s as long" % _n(float(def["heavy_lasts_mult"]))))
 	if bool(def.get("no_refresh", false)):
 		p.append("more of it does not reset the clock")
-	if int(def.get("stacks", 1)) > 1:
+	if int(GameData.opt(def, "status", "stacks")) > 1:
 		p.append("stacks to %d" % int(def["stacks"]))
 	for other: String in (def.get("cap_raise", {}) as Dictionary):
 		p.append("%s on it stacks to %d" % [label(other), int((def["cap_raise"] as Dictionary)[other])])
@@ -168,13 +168,13 @@ static func rules_of(def: Dictionary, lasts: float = -1.0, with_lasts: bool = tr
 	if bool(def.get("control", false)):
 		p.append("a hold: a lingering skill lays it on each enemy only once a cast")
 	# how it moves and fights
-	var move: float = float(def.get("move_mult", def.get("speed_mult", 1.0)))
+	var move: float = float(def.get("move_mult", GameData.opt(def, "status", "speed_mult")))
 	if def.has("move_mult") or def.has("speed_mult"):
 		p.append("moves at %d%%" % int(round(move * 100.0)))
 	if def.has("move_mult_per_stack"):
 		p.append("%d%% slower a stack" % int(round((1.0 - float(def["move_mult_per_stack"])) * 100.0)))
 	if def.has("attack_speed_mult") or def.has("attack_rate_mult"):
-		p.append("attacks %s" % _more_less(float(def.get("attack_speed_mult", def.get("attack_rate_mult", 1.0))), "faster", "slower"))
+		p.append("attacks %s" % _more_less(float(def.get("attack_speed_mult", GameData.opt(def, "status", "attack_rate_mult"))), "faster", "slower"))
 	if def.has("windup_mult"):
 		p.append("wind-ups take %s" % _more_less(float(def["windup_mult"]), "longer", "less long"))
 	if def.has("reach_mult"):
@@ -209,7 +209,7 @@ static func rules_of(def: Dictionary, lasts: float = -1.0, with_lasts: bool = tr
 		p.append("walks to the spot it was sent to")
 	if def.get("blinded") is Dictionary:
 		var b: Dictionary = def["blinded"]
-		p.append("sees no further than %s m, cannot aim, and its swings land only within %s m in front" % [_n(float(b.get("sight", 2.0))), _n(float(b.get("melee_reach", 1.5)))])
+		p.append("sees no further than %s m, cannot aim, and its swings land only within %s m in front" % [_n(float(GameData.opt(b, "status.blinded", "sight"))), _n(float(GameData.opt(b, "status.blinded", "melee_reach")))])
 	if def.has("retch_every"):
 		p.append("every %s s it retches%s" % [_n(float(def["retch_every"])), (" and stands still %s s" % _n(float(def["retch_s"]))) if def.has("retch_s") else ", losing what it was doing"])
 	if bool(def.get("makes_interruptible", false)):
@@ -281,7 +281,7 @@ static func rules_of(def: Dictionary, lasts: float = -1.0, with_lasts: bool = tr
 	# damage over time, in the name of whoever put it there
 	var tick: String = (", every %s s" % _n(float(def["tick_s"]))) if def.has("tick_s") else ""
 	if def.has("dps_per_stack"):
-		p.append("%s damage a second%s%s" % [_n(float(def["dps_per_stack"])), " a stack" if int(def.get("stacks", 1)) > 1 else "", tick])
+		p.append("%s damage a second%s%s" % [_n(float(def["dps_per_stack"])), " a stack" if int(GameData.opt(def, "status", "stacks")) > 1 else "", tick])
 	if def.has("dps_per_metal_class"):
 		p.append("%s damage a second per class of metal worn%s" % [_n(float(def["dps_per_metal_class"])), tick])
 	if not def.has("dps_per_stack") and not def.has("dps_per_metal_class") and def.has("tick_s"):
@@ -317,24 +317,24 @@ static func rules_of(def: Dictionary, lasts: float = -1.0, with_lasts: bool = tr
 		p.append("then %s" % label(str(def["then_status"])))
 	var exp: Dictionary = def.get("on_expire", {})
 	if exp.has("status"):
-		p.append("leaves %d %s when it ends" % [int(exp.get("stacks", 1)), label(str(exp["status"]))])
+		p.append("leaves %d %s when it ends" % [int(GameData.opt(exp, "status.on_expire", "stacks")), label(str(exp["status"]))])
 	if exp.has("damage_per_stack"):
 		p.append("when it runs out: %s damage a stack, all at once" % _n(float(exp["damage_per_stack"])))
 	var cap: Dictionary = def.get("on_cap", {})
 	if not cap.is_empty():
-		p.append("at %d stacks it becomes %s%s%s" % [int(def.get("stacks", 1)), label(str(cap.get("status", ""))), " (the stacks go)" if bool(cap.get("clear", false)) else "",
+		p.append("at %d stacks it becomes %s%s%s" % [int(GameData.opt(def, "status", "stacks")), label(str(cap.get("status", ""))), " (the stacks go)" if bool(cap.get("clear", false)) else "",
 			(", elites %s" % label(str(cap["elite_status"]))) if cap.has("elite_status") else ""])
 	var od: Dictionary = def.get("on_death", {})
 	if not od.is_empty():
 		var bits: Array[String] = []
 		if bool(od.get("pool", false)):
 			bits.append("a blood pool")
-		if int(od.get("held_blood", 0)) > 0:
+		if int(GameData.opt(od, "status.on_death", "held_blood")) > 0:
 			bits.append("%d held blood for you" % int(od["held_blood"]))
 		if od.get("cloud") is Dictionary:
 			var c: Dictionary = od["cloud"]
 			var gives: String = str((c.get("payload", {}) as Dictionary).get("status", ""))
-			bits.append("a cloud %s m across for %s s%s" % [_n(float(c.get("radius", 1.0)) * 2.0), _n(float(c.get("life", 4.0))), (" that gives %s" % label(gives)) if gives != "" else ""])
+			bits.append("a cloud %s m across for %s s%s" % [_n(float(GameData.opt(c, "zone", "radius", "rules_of")) * 2.0), _n(float(GameData.opt(c, "zone", "life"))), (" that gives %s" % label(gives)) if gives != "" else ""])
 		p.append("dying leaves " + " and ".join(PackedStringArray(bits)))
 	if def.has("ends"):
 		p.append("ends %s" % _labels(def["ends"], ", "))
@@ -350,23 +350,23 @@ static func rules_of(def: Dictionary, lasts: float = -1.0, with_lasts: bool = tr
 		p.append("%s's bill on it is x%s" % [label(st_b), _n(float((def["bill_mult"] as Dictionary)[st_b]))])
 	if def.get("adds_status") is Dictionary:
 		var ad: Dictionary = def["adds_status"]
-		p.append("every %s s it adds %d %s" % [_n(float(ad.get("every", 1.0))), int(ad.get("stacks", 1)), label(str(ad.get("status", "")))])
+		p.append("every %s s it adds %d %s" % [_n(float(GameData.opt(ad, "status.adds_status", "every"))), int(GameData.opt(ad, "status.adds_status", "stacks")), label(str(ad.get("status", "")))])
 	if def.has("ends_with"):
 		p.append("ends with %s" % _labels(def["ends_with"], ", "))
 	if def.get("shatter") is Dictionary:
 		var sh: Dictionary = def["shatter"]
 		var shard: Dictionary = sh.get("shard", {})
-		p.append("a hard hit (%s+ poise) Shatters it: %s damage, and %s%s to everyone within %s m" % [_n(float(sh.get("hard_poise", 40.0))), _n(float(sh.get("damage", 100.0))),
-			_n(float(shard.get("damage", 0.0))), (" and %s" % label(str(shard["status"]))) if shard.has("status") else "", _n(float(sh.get("radius", 2.5)))])
+		p.append("a hard hit (%s+ poise) Shatters it: %s damage, and %s%s to everyone within %s m" % [_n(float(GameData.opt(sh, "status.shatter", "hard_poise"))), _n(float(GameData.opt(sh, "status.shatter", "damage"))),
+			_n(float(GameData.opt(shard, "payload", "damage"))), (" and %s" % label(str(shard["status"]))) if shard.has("status") else "", _n(float(GameData.opt(sh, "status.shatter", "radius")))])
 	# Soaked and Live: lightning's rules ride on them
 	if def.has("conduct_radius") or def.has("conduct_marks"):
 		p.append("a Live mark on it %s every other Soaked enemy%s" % [("adds %d to" % int(def["conduct_marks"])) if def.has("conduct_marks") else "carries to",
 			(" within %s m" % _n(float(def["conduct_radius"]))) if def.has("conduct_radius") else " close by"])
 	if def.has("overload_damage") or def.has("stun"):
-		p.append("at %d marks it Overloads: %s damage%s" % [int(def.get("stacks", 3)), _n(float(def.get("overload_damage", 0.0))),
+		p.append("at %d marks it Overloads: %s damage%s" % [int(GameData.opt(def, "status", "stacks", "draw_statuses")), _n(float(GameData.opt(def, "status", "overload_damage", "rules_of"))),
 			(" and stunned %s s" % _n(float(def["stun"]))) if def.has("stun") else ""])
 	if def.has("arc_damage") or def.has("arc_radius"):
-		p.append("the Overload arcs %s to every other marked enemy within %s m" % [_n(float(def.get("arc_damage", 0.0))), _n(float(def.get("arc_radius", 0.0)))])
+		p.append("the Overload arcs %s to every other marked enemy within %s m" % [_n(float(GameData.opt(def, "status", "arc_damage", "rules_of"))), _n(float(GameData.opt(def, "status", "arc_radius", "rules_of")))])
 	if def.has("grounds"):
 		p.append("an Overload grounds %s of your lightning reflux" % _n(float(def["grounds"])))
 	if p.is_empty():
@@ -416,7 +416,7 @@ static func _walk_applied(d: Dictionary, path: String, out: Array[Dictionary]) -
 		_add_applied(out, str(d["status"]), int(d.get("stacks", 1)), d, {}, path)
 	for e: Variant in d.get("statuses", []):
 		if e is Dictionary and exists(str((e as Dictionary).get("id", ""))):
-			_add_applied(out, str(e["id"]), int((e as Dictionary).get("stacks", 1)), d, e, path)
+			_add_applied(out, str(e["id"]), int(GameData.opt((e as Dictionary), "status_entry", "stacks")), d, e, path)
 	for k: String in d:
 		if k.ends_with("_status") and not READ_KEYS.has(k) and d[k] is String and exists(str(d[k])):
 			var lasts_key: String = k + "_s"
@@ -432,7 +432,7 @@ static func _add_applied(out: Array[Dictionary], id: String, stacks: int, payloa
 		if str(have["id"]) == resolve(id):
 			return
 	var def: Dictionary = def_of(id)
-	var lasts: float = float(def.get("lasts", 0.0))
+	var lasts: float = float(GameData.opt(def, "status", "lasts", "rules_of"))
 	var notes: Array[String] = []
 	if entry.has("lasts"):
 		lasts = float(entry["lasts"])
@@ -441,13 +441,13 @@ static func _add_applied(out: Array[Dictionary], id: String, stacks: int, payloa
 	if payload.has("status_s_per_class"):
 		notes.append("+%s s per class of metal it wears" % _n(float(payload["status_s_per_class"])))
 	if payload.has("status_s_per_heat") and float(payload["status_s_per_heat"]) > 0.0:
-		notes.append("+1 s per %s heat, up to %s s" % [_n(roundf(1.0 / float(payload["status_s_per_heat"]))), _n(float(payload.get("status_s_max", 99.0)))])
+		notes.append("+1 s per %s heat, up to %s s" % [_n(roundf(1.0 / float(payload["status_s_per_heat"]))), _n(float(GameData.opt(payload, "payload", "status_s_max")))])
 	if payload.has("dark_status_s"):
 		notes.append("%s s in the Dark" % _n(float(payload["dark_status_s"])))
 	if payload.get("status_s_if_not") is Dictionary:
 		var c: Dictionary = payload["status_s_if_not"]
-		notes.append("%s s unless it is %s" % [_n(lasts * float(c.get("frac", 1.0))), label(str(c.get("status", "")))])
-	var m: float = float(payload.get("status_time_mult", 1.0)) * float((payload.get("status_time_of", {}) as Dictionary).get(id, 1.0))
+		notes.append("%s s unless it is %s" % [_n(lasts * float(GameData.opt(c, "status_if_not", "frac"))), label(str(c.get("status", "")))])
+	var m: float = float(GameData.opt(payload, "payload", "status_time_mult")) * float((payload.get("status_time_of", {}) as Dictionary).get(id, 1.0))
 	if not entry.has("lasts"):
 		lasts *= m
 	if path.begins_with("zone.") or path.begins_with("trail.") or path.begins_with("leave_zone."):

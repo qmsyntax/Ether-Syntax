@@ -56,7 +56,7 @@ func build(root: Control) -> void:
 
 func _row(id: String, inv: Inventory) -> Control:
 	var def: Dictionary = GameData.item(id)
-	var price: int = int(def.get("value", 0))
+	var price: int = int(GameData.opt(def, "item", "value"))
 	var afford: bool = bool(player.can_afford(price))
 	var carry: bool = inv.can_add(id)
 
@@ -76,7 +76,7 @@ func _row(id: String, inv: Inventory) -> Control:
 	var stats: String = UiWidgets.item_stats_text(def)
 	if stats != "":
 		col.add_child(UiTheme.body(stats, 14, UiTheme.GOOD))
-	col.add_child(UiTheme.body("%s   %.1f kg" % [str(def.get("desc", "")), float(def.get("weight", 0.0))], 13, UiTheme.TEXT_DIM))
+	col.add_child(UiTheme.body("%s   %.1f kg" % [str(def.get("desc", "")), float(GameData.opt(def, "item", "weight"))], 13, UiTheme.TEXT_DIM))
 
 	var buy_col := VBoxContainer.new()
 	buy_col.alignment = BoxContainer.ALIGNMENT_CENTER

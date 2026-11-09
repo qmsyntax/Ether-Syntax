@@ -24,7 +24,7 @@ func _init(owner_main: Main, town_def: Dictionary) -> void:
 
 func build() -> void:
 	var level: Node3D = main.level
-	var margin: float = float(def.get("floor_margin", 6.0))
+	var margin: float = float(GameData.opt(def, "town", "floor_margin"))
 	main.biome_floor(Vector3.ZERO, size + Vector2(margin, margin) * 2.0)
 	for edge: String in ["north", "south", "east", "west"]:
 		_edge(level, edge)
@@ -136,7 +136,7 @@ func _stations(level: Node3D) -> void:
 		var at: Array = st.get("at", [0.0, 0.0])
 		var model: Node3D = StationModels.build(str(st["id"]))
 		model.position = Vector3(float(at[0]), 0.0, float(at[1]))
-		model.rotation_degrees.y = float(st.get("yaw", 0.0))
+		model.rotation_degrees.y = float(GameData.opt(st, "town.station", "yaw"))
 		level.add_child(model)
 		var solid: Array = st.get("solid", [2.0, 1.5])
 		var sb: StaticBody3D = main.static_box(model.position + Vector3.UP, Vector3(float(solid[0]), 2.0, float(solid[1])), Color.BLACK, false)
@@ -146,7 +146,7 @@ func _stations(level: Node3D) -> void:
 ## One person per service, looking the same every visit (a fixed seed).
 func _folk(level: Node3D) -> void:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = int(def.get("look_seed", 1))
+	rng.seed = int(GameData.opt(def, "town", "look_seed"))
 	for f: Dictionary in def.get("folk", []):
 		var at: Array = f.get("at", [0.0, 0.0])
 		var person := Townsperson.new()
@@ -158,7 +158,7 @@ func _folk(level: Node3D) -> void:
 
 ## The person you could talk to from `world_pos`: the nearest within talk_reach, or null.
 func folk_in_reach(world_pos: Vector3) -> Townsperson:
-	var reach: float = float(def.get("talk_reach", 2.7))
+	var reach: float = float(GameData.opt(def, "town", "talk_reach"))
 	var best: Townsperson = null
 	var best_d := INF
 	for p: Townsperson in folk:
@@ -186,7 +186,7 @@ func exit_at(world_pos: Vector3) -> Dictionary:
 	var here: Vector3 = level.to_local(world_pos)
 	for ex: Dictionary in exits:
 		var c: Vector3 = ex["centre"]
-		if Vector2(here.x - c.x, here.z - c.z).length() <= float(def.get("exit_reach", 2.1)):
+		if Vector2(here.x - c.x, here.z - c.z).length() <= float(GameData.opt(def, "town", "exit_reach")):
 			return ex
 	return {}
 

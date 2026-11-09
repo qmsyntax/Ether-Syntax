@@ -172,15 +172,15 @@ static func construct(tier: String, concept: String) -> ModelRig:
 
 static func _build_enemy(kind: String) -> ModelRig:
 	var def: Dictionary = _enemy_def(kind)
-	var radius: float = float(def.get("radius", 0.5))
-	var height: float = float(def.get("height", 1.7))
+	var radius: float = float(GameData.opt(def, "enemy", "radius"))
+	var height: float = float(GameData.opt(def, "enemy", "height"))
 	var rgb: Array = def.get("color", [0.6, 0.6, 0.6])
 	var color := Color(float(rgb[0]), float(rgb[1]), float(rgb[2]))
 	var r := ModelRig.new()
 	r.name = "EnemyModel_" + kind
 	r.radius = radius
 	r.height = height
-	r.stride_speed = float(def.get("speed", 3.0))
+	r.stride_speed = float(GameData.opt(def, "enemy", "speed"))
 	# The three original kinds were authored with coarse primitives: build them with every
 	# round form subdivided further so they hold up next to the hero.
 	_detail = 1.75

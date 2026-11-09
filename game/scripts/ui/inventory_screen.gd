@@ -510,7 +510,7 @@ func _fill_inspect() -> void:
 	head.add_child(col)
 	col.add_child(UiTheme.body(str(def.get("name", id)), 18, UiTheme.TEXT))
 	var kind: String = str(SLOT_LABELS.get(item_slot, "Loot"))
-	col.add_child(UiTheme.body("%s%s   -   %.1f kg   -   worth $%d" % [kind, "  (worn)" if worn else "", float(def.get("weight", 0.0)), int(def.get("value", 0))], 12, UiTheme.TEXT_DIM))
+	col.add_child(UiTheme.body("%s%s   -   %.1f kg   -   worth $%d" % [kind, "  (worn)" if worn else "", float(GameData.opt(def, "item", "weight")), int(GameData.opt(def, "item", "value"))], 12, UiTheme.TEXT_DIM))
 	var act: Button
 	if worn:
 		var from: String = _inspect_slot
@@ -609,7 +609,7 @@ func _build_soul(box: VBoxContainer) -> void:
 		col.add_child(UiTheme.body("%s   -   stage %d" % [str(ab.get("name", "?")), int(st["stage"])], UiTheme.FS_BODY + 1, UiTheme.TEXT))
 		var need: String = str(player.pending_tier(st))
 		col.add_child(UiWidgets.Bar.new(float(st["progress"]) / 100.0, UiTheme.GOLD if need != "" else UiTheme.ESSENCE,
-			("FULL - needs a %s" % need) if need != "" else "%d%%   costs %d essence" % [int(float(st["progress"])), int(round(float(ab.get("cost", 0.0))))], 22.0))
+			("FULL - needs a %s" % need) if need != "" else "%d%%   costs %d essence" % [int(float(st["progress"])), int(round(float(GameData.opt(ab, "ability", "cost"))))], 22.0))
 		var keys: Array[Dictionary] = RuneWord.keystones(st.get("word", {}))
 		if not keys.is_empty():
 			var names: Array[String] = []

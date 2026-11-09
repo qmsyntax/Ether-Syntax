@@ -127,21 +127,21 @@ func setup(enemy_kind: String, player: Node3D, strength: float = 1.0) -> void:
 	var d: Dictionary = GameData.enemy(enemy_kind)
 	_def = d
 	behaviour = str(d.get("behaviour", "melee"))
-	height = float(d.get("height", 1.6))
+	height = float(GameData.opt(d, "enemy", "height", "setup"))
 	display_name = str(d.get("name", enemy_kind.capitalize()))
-	radius = float(d.get("radius", 0.5))
-	speed = float(d.get("speed", 3.4))
-	damage = float(d.get("damage", 10.0)) * strength
+	radius = float(GameData.opt(d, "enemy", "radius"))
+	speed = float(GameData.opt(d, "enemy", "speed", "setup"))
+	damage = float(GameData.opt(d, "enemy", "damage")) * strength
 	_strength = strength
 	heavy = bool(d.get("heavy", false))
-	aura_value = float(d.get("aura_value", 4.0))
-	bounty = int(d.get("bounty", 150))
-	_cooldown = float(d.get("attack_cooldown", 1.3))
-	_windup_time = float(d.get("windup", 0.45))
-	_reach = float(d.get("reach", 2.3))
-	shove_resist = float(d.get("shove_resist", 1.0))
+	aura_value = float(GameData.opt(d, "enemy", "aura_value"))
+	bounty = int(GameData.opt(d, "enemy", "bounty"))
+	_cooldown = float(GameData.opt(d, "enemy", "attack_cooldown"))
+	_windup_time = float(GameData.opt(d, "enemy", "windup"))
+	_reach = float(GameData.opt(d, "enemy", "reach"))
+	shove_resist = float(GameData.opt(d, "enemy", "shove_resist"))
 	is_living = bool(d.get("living", true))
-	poise_max = float(d.get("poise", 40.0))
+	poise_max = float(GameData.opt(d, "enemy", "poise"))
 	poise = poise_max
 	_turn_rate = deg_to_rad(float(d.get("turn_rate_deg", _cfg["turn_rate_deg"])))
 	_circle_sign = 1.0 if randf() < 0.5 else -1.0
@@ -149,7 +149,7 @@ func setup(enemy_kind: String, player: Node3D, strength: float = 1.0) -> void:
 		_attack_cd = _cooldown * 0.5           # the first roll comes half way through its count
 	var c: Array = d.get("color", [0.75, 0.2, 0.2])
 	_base_color = Color(float(c[0]), float(c[1]), float(c[2]))
-	body = Body.new(float(d.get("hp", 240.0)) * strength)
+	body = Body.new(float(GameData.opt(d, "enemy", "hp")) * strength)
 
 	looks_part.build(d)
 
@@ -215,7 +215,7 @@ func _physics_process(delta: float) -> void:
 	var rate: float = _st_mult("attack_speed_mult", "attack_rate_mult")
 	var pace: float = _st_mult("move_mult", "speed_mult")
 	for id: String in statuses:
-		var per: float = float(_sdef(id).get("move_mult_per_stack", 1.0))
+		var per: float = float(GameData.opt(_sdef(id), "status", "move_mult_per_stack"))
 		if per != 1.0:
 			pace *= pow(per, float(int((statuses[id] as Dictionary)["stacks"])))
 	if _st_any("cannot_move") or _held_t > 0.0:
@@ -308,7 +308,7 @@ func _attack_started() -> void:
 	for id: String in statuses.keys():
 		if not statuses.has(id):
 			continue
-		var hurt_by: float = float(_sdef(id).get("on_attack_damage", 0.0))
+		var hurt_by: float = float(GameData.opt(_sdef(id), "status", "on_attack_damage"))
 		var by: Variant = (statuses[id] as Dictionary).get("by")
 		if hurt_by > 0.0 and by != null and is_instance_valid(by) and (by as Node).has_method("deal_damage"):
 			(by as Node).call("deal_damage", self, hurt_by, ["ability", "holy", "through", "penance"])
@@ -379,7 +379,7 @@ func _walk_home(delta: float, pace: float) -> void:
 	telegraph = {}
 	var to: Vector3 = home - global_position
 	to.y = 0.0
-	if to.length() <= float((GameData.balance.get("camps", {}) as Dictionary).get("home_reached", 1.5)):
+	if to.length() <= float(GameData.opt((GameData.balance.get("camps", {}) as Dictionary), "balance.camps", "home_reached")):
 		_going_home = false
 		body.heal(body.total_max())
 		poise = poise_max

@@ -61,11 +61,11 @@ func _shed_reflux(amount: float) -> void:
 	var shed: float = amount * player.inventory.stat("reflux_shed_mult", true) * player.progress_part.temper_stat("reflux_shed_mult")
 	for aff: String in player.reflux_by:
 		var a_def: Dictionary = GameData.affinity(aff)
-		var rate: float = float(a_def.get("reflux_shed_mult_combat", 1.0)) if player.in_combat else 1.0
+		var rate: float = float(GameData.opt(a_def, "affinity", "reflux_shed_mult_combat")) if player.in_combat else 1.0
 		if player.in_combat and a_def.has("reflux_shed_mult_moving"):
 			# wind: its heat blows off while you run and sits while you stand (unless you stand in Dead Air)
-			rate = float(a_def["reflux_shed_mult_moving"]) if (player._moving or player.hits_part._zone_flag("shed_standing")) else float(a_def.get("reflux_shed_mult_standing", 1.0))
-		rate *= float(a_def.get("reflux_shed_mult", 1.0))       # earth keeps what little it makes
+			rate = float(a_def["reflux_shed_mult_moving"]) if (player._moving or player.hits_part._zone_flag("shed_standing")) else float(GameData.opt(a_def, "affinity", "reflux_shed_mult_standing"))
+		rate *= float(GameData.opt(a_def, "affinity", "reflux_shed_mult"))       # earth keeps what little it makes
 		rate *= buff_num("shed_mult")                            # Long Breath
 		player.reflux_by[aff] = maxf(0.0, float(player.reflux_by[aff]) - shed * rate)
 		if is_locked(aff) and float(player.reflux_by[aff]) < float(player._reflux_cfg["unlock_below"]):
@@ -88,11 +88,11 @@ func _tick_buffs(delta: float) -> void:
 		var b: Dictionary = player.buffs[id]
 		b["t"] = float(b["t"]) - delta
 		# Knit: health a second, up to the ceiling your wounds allow; then a trickle into the oldest wound
-		if float(b.get("heal_per_s", 0.0)) > 0.0 and not player.hits_part._heal_blocked():
+		if float(GameData.opt(b, "ability", "heal_per_s")) > 0.0 and not player.hits_part._heal_blocked():
 			var pts: float = float(b["heal_per_s"]) * delta * player.combat_part.heal_rate_mult()       # Life: faster just after you land a hit
 			var used: float = player.body.heal(pts)
 			if pts - used > 0.0:
-				var filled: Dictionary = player.body.fill_sinks((pts - used) * float(b.get("overflow_to_sink", 0.0)))
+				var filled: Dictionary = player.body.fill_sinks((pts - used) * float(GameData.opt(b, "ability", "overflow_to_sink")))
 				player.combat_part._wounds_closed(filled["closed"])
 		if b.get("aura") is Dictionary:
 			_tick_aura(b, delta)
@@ -109,9 +109,9 @@ func _tick_buffs(delta: float) -> void:
 ## pull_per_s. It moves with you; with dark it is Dark ground (a zone that follows you, laid when the buff starts).
 func _tick_aura(b: Dictionary, delta: float) -> void:
 	var aura: Dictionary = b["aura"]
-	var r: float = float(aura.get("radius", 3.0))
+	var r: float = float(GameData.opt(aura, "zone", "radius"))
 	var near: Array[Node3D] = _enemies_near(player.global_position, r)
-	if float(aura.get("pull_per_s", 0.0)) > 0.0:
+	if float(GameData.opt(aura, "zone", "pull_per_s")) > 0.0:
 		for e: Node3D in near:
 			var inward: Vector3 = player.global_position - e.global_position
 			inward.y = 0.0
@@ -120,7 +120,7 @@ func _tick_aura(b: Dictionary, delta: float) -> void:
 	b["aura_t"] = float(b.get("aura_t", 0.0)) - delta
 	if float(b["aura_t"]) > 0.0:
 		return
-	b["aura_t"] = float(aura.get("tick_s", 0.5))
+	b["aura_t"] = float(GameData.opt(aura, "zone", "tick_s", "tick_aura"))
 	if not b.has("aura_memo"):
 		b["aura_memo"] = {}
 	var payload: Dictionary = aura.get("payload", {})
@@ -133,17 +133,17 @@ func _tick_aura(b: Dictionary, delta: float) -> void:
 ## A buff has run out: its end payload (Millstone's on_end), a counter that was never used (patience_ward, or a
 ## share of the essence back: refund_unused), its following dark.
 func _buff_ended(id: String, b: Dictionary) -> void:
-	if float(b.get("softened", 0.0)) > 0.0 and float(b.get("softened_return", 0.0)) > 0.0:
+	if float(b.get("softened", 0.0)) > 0.0 and float(GameData.opt(b, "ability", "softened_return")) > 0.0:
 		player.combat_part.life_heal(float(b["softened"]) * float(b["softened_return"]))         # Kind Light: what it softened comes back
 	if b.get("on_end") is Dictionary:
 		var oe: Dictionary = (b["on_end"] as Dictionary).duplicate()
-		oe["burst_radius"] = float(oe.get("radius", 3.0))
+		oe["burst_radius"] = float(GameData.opt(oe, "payload", "radius", "buff_ended"))
 		player.hits_part._burst_at(player.global_position, oe, ["ability", str(b.get("affinity", "")), id, "burst"])
 	if b.has("window_s") and not bool(b.get("countered", false)):
-		if float(b.get("patience_ward", 0.0)) > 0.0:
+		if float(GameData.opt(b, "ability", "patience_ward")) > 0.0:
 			player.combat_part.add_ward(float(b["patience_ward"]), -1.0, {"from": id})
-		if float(b.get("refund_unused", 0.0)) > 0.0:
-			player.essence = minf(player.essence_max, player.essence + float(b.get("cost", 0.0)) * float(b["refund_unused"]))
+		if float(GameData.opt(b, "ability", "refund_unused")) > 0.0:
+			player.essence = minf(player.essence_max, player.essence + float(GameData.opt(b, "ability", "cost")) * float(b["refund_unused"]))
 
 
 ## self_buff: the skill's own numbers ride on you for its duration. Some do something at once too:
@@ -151,7 +151,7 @@ func _buff_ended(id: String, b: Dictionary) -> void:
 ## holds you (Fever Break).
 func _take_buff(ab: Dictionary) -> void:
 	var b: Dictionary = ab.duplicate(true)
-	b["t"] = float(ab.get("duration", ab.get("window_s", 5.0)))      # a counter lasts its window
+	b["t"] = float(ab.get("duration", GameData.opt(ab, "ability", "window_s")))      # a counter lasts its window
 	var bid: String = str(ab.get("buff", ab.get("name", "buff")))
 	b.erase("coat")
 	player.buffs[bid] = b
@@ -164,7 +164,7 @@ func _take_buff(ab: Dictionary) -> void:
 		dz.dark = true
 		dz.kind = "dark_ground"
 		dz.bright = false
-		dz.radius = float((b["aura"] as Dictionary).get("radius", 3.0))
+		dz.radius = float(GameData.opt((b["aura"] as Dictionary), "zone", "radius"))
 		dz.life = float(b["t"])
 		dz.tags = ["ability", str(ab.get("affinity", "")), "aura", "zone"]
 		dz.color = GameData.affinity_color(str(ab.get("affinity", "")))
@@ -178,11 +178,11 @@ func _take_buff(ab: Dictionary) -> void:
 	# what the buff does round you as it starts (Stoke's flare, Red Iron's heat): on_cast within its radius
 	if ab.get("on_cast") is Dictionary:
 		var oc: Dictionary = (ab["on_cast"] as Dictionary).duplicate()
-		oc["burst_radius"] = float(oc.get("radius", ab.get("radius", 2.5)))
+		oc["burst_radius"] = float(oc.get("radius", GameData.opt(ab, "ability", "radius", "take_buff")))
 		player.hits_part._burst_at(player.global_position, oc, ["ability", str(ab.get("affinity", "")), str(bid), "burst"])
 	# a buff's ward (Dawnward, Ice Shell, Black Shroud): into the one pool; ward_from spends a store of yours into it
-	if float(ab.get("ward", 0.0)) > 0.0 or str(ab.get("ward_from", "")) != "":
-		var amount: float = float(ab.get("ward", 0.0))
+	if float(GameData.opt(ab, "ability", "ward")) > 0.0 or str(ab.get("ward_from", "")) != "":
+		var amount: float = float(GameData.opt(ab, "ability", "ward"))
 		if str(ab.get("ward_from", "")) != "":
 			amount += float(player.hits_part.store_take(str(ab["ward_from"])))
 		if ab.has("ward_max"):
@@ -193,28 +193,28 @@ func _take_buff(ab: Dictionary) -> void:
 				opts[k] = ab[k]
 		if opts.has("on_break"):
 			opts["on_break_tags"] = ["ability", str(ab.get("affinity", "")), "ward"]
-		player.combat_part.add_ward(amount, float(ab.get("duration", -1.0)), opts)
-	if float(ab.get("add_reflux", 0.0)) > 0.0:
+		player.combat_part.add_ward(amount, float(GameData.opt(ab, "ability", "duration", "take_buff")), opts)
+	if float(GameData.opt(ab, "ability", "add_reflux")) > 0.0:
 		var aff: String = str(ab.get("affinity", ""))
 		player.reflux_by[aff] = reflux_of(aff) + float(ab["add_reflux"])
-	if ab.has("spend_blood") and float(ab.get("shed_per_blood", 0.0)) > 0.0:
-		var spent: int = player.hits_part._spend_blood_first_pools(int(ab["spend_blood"]), float(ab.get("pool_radius", 0.0)))
+	if ab.has("spend_blood") and float(GameData.opt(ab, "ability", "shed_per_blood")) > 0.0:
+		var spent: int = player.hits_part._spend_blood_first_pools(int(ab["spend_blood"]), float(GameData.opt(ab, "ability", "pool_radius")))
 		player.hits_part._vent_hottest(float(ab["shed_per_blood"]) * float(spent))
 		player.poise = float(GameData.num("combat", "player_poise"))
-	if float(ab.get("reveal_radius", 0.0)) > 0.0:
+	if float(GameData.opt(ab, "ability", "reveal_radius")) > 0.0:
 		for e: Enemy in _enemies_near(player.global_position, float(ab["reveal_radius"])):
 			e.add_status("lit", 1, player)
 	if ab.get("cleanse") is String or (ab.get("cleanse") is bool and bool(ab["cleanse"])):
 		# lift what the list names (balance.json cleanse: binds, afflictions), and pay per one lifted
 		var lifted: int = player.hits_part.cleanse(str(ab["cleanse"]) if ab["cleanse"] is String else "binds")
-		if float(ab.get("ward_per_cleansed", 0.0)) > 0.0 and lifted > 0:
+		if float(GameData.opt(ab, "ability", "ward_per_cleansed")) > 0.0 and lifted > 0:
 			var w: float = float(ab["ward_per_cleansed"]) * float(lifted)
 			if ab.has("ward_cleansed_max"):
 				w = minf(w, float(ab["ward_cleansed_max"]))           # Absolution: up to 40 ward
-			player.combat_part.add_ward(w, float(ab.get("duration", -1.0)), {"from": bid + "_cleansed"})
-		if float(ab.get("heal_per_cleansed", 0.0)) > 0.0 and lifted > 0:
+			player.combat_part.add_ward(w, float(GameData.opt(ab, "ability", "duration", "take_buff")), {"from": bid + "_cleansed"})
+		if float(GameData.opt(ab, "ability", "heal_per_cleansed")) > 0.0 and lifted > 0:
 			var counted: int = mini(lifted, int(ab.get("heal_cleansed_max", lifted)))       # Fever Break: up to 4 of them
-			player.combat_part.heal_over(float(ab["heal_per_cleansed"]) * float(counted), float(ab.get("heal_over_s", 2.0)))
+			player.combat_part.heal_over(float(ab["heal_per_cleansed"]) * float(counted), float(GameData.opt(ab, "ability", "heal_over_s")))
 	player._float(str(ab.get("name", "")).to_lower(), GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3))
 
 
@@ -425,14 +425,14 @@ func cast_ability(index: int) -> void:
 		_refuse("essence", "Not enough essence")
 		player.note("Not enough essence for %s." % str(ab["name"]))
 		return
-	if float(ab.get("heat_cost", 0.0)) > 0.0 and heat < float(ab["heat_cost"]):
+	if float(GameData.opt(ab, "ability", "heat_cost")) > 0.0 and heat < float(ab["heat_cost"]):
 		_refuse("heat", "Needs %d heat" % int(ab["heat_cost"]))
 		player.note("%s needs %d heat." % [str(ab["name"]), int(ab["heat_cost"])])
 		return
 	# Some skills need something to point at; find out before anything is spent.
 	var strike_target: Node3D = null
 	var blink_to := Vector3.ZERO
-	var reach: float = float(ab["range"]) if ab.has("range") else player.economy_part.reach_now() + float(ab.get("range_bonus", 0.0))
+	var reach: float = float(ab["range"]) if ab.has("range") else player.economy_part.reach_now() + float(GameData.opt(ab, "ability", "range_bonus"))
 	if kind == "targeted_strike" or kind == "chain" or (kind == "displace" and ["pull_target", "throw_target"].has(str(ab.get("mode", "")))) \
 			or (kind == "smite" and not bool(ab.get("nearest_to_point", false))) or (kind == "channel" and str(ab.get("shape", "")) == "tether") \
 			or (kind == "detonate" and str(ab.get("gather_into", "")) == "target"):
@@ -466,7 +466,7 @@ func cast_ability(index: int) -> void:
 			player.note("%s needs someone near where you point." % str(ab["name"]))
 			return
 	elif kind == "blink" or kind == "grapple":
-		var spot: Variant = player.moves_part._blink_point(float(ab.get("range", 6.0)))
+		var spot: Variant = player.moves_part._blink_point(float(GameData.opt(ab, "ability", "range", "cast_ability")))
 		var special: Variant = player.moves_part._special_landing(ab)
 		if special != null:
 			spot = special
@@ -488,7 +488,7 @@ func cast_ability(index: int) -> void:
 		blink_to = where
 	elif kind == "displace" or kind == "delayed_blast" or kind == "ground_zone" or kind == "rod" or kind == "prop" or kind == "seed" \
 			or kind == "summon" or (kind == "field_pulse" and ab.has("range")) or (kind == "charge_release" and str(ab.get("release", "")) == "delayed_blast"):
-		blink_to = _aim_point(float(ab.get("range", 8.0)))
+		blink_to = _aim_point(float(GameData.opt(ab, "ability", "range", "cast_ability_8")))
 	if str(ab.get("needs", "")).begins_with("corpse"):
 		var body_at: Fallen = player.world_part._corpse_near(blink_to, float(GameData.num("skills", "jump_radius")))
 		if body_at == null and str(ab["needs"]) == "corpse":
@@ -502,14 +502,14 @@ func cast_ability(index: int) -> void:
 			_refuse("no_target", "Needs your growth there")
 			player.note("%s needs your growth where you point." % str(ab["name"]))
 			return
-	if kind == "melee_burst" and player.motion_part._walk_in(index, player.melee_range + float(ab.get("reach_bonus", 0.0))):
+	if kind == "melee_burst" and player.motion_part._walk_in(index, player.melee_range + float(GameData.opt(ab, "ability", "reach_bonus"))):
 		return                                   # its foe is out of the sweep: walk in, then cast
 	player.essence -= cost
-	if float(ab.get("heat_cost", 0.0)) > 0.0:
+	if float(GameData.opt(ab, "ability", "heat_cost")) > 0.0:
 		player.reflux_by[aff] = heat - float(ab["heat_cost"])          # paid in heat, not essence (Wickpinch)
 	else:
 		player.reflux_by[aff] = heat + cost * float(ab["reflux_per_cost"])
-	if float(ab.get("vent_reflux", 0.0)) > 0.0:
+	if float(GameData.opt(ab, "ability", "vent_reflux")) > 0.0:
 		player.reflux_by[aff] = maxf(0.0, reflux_of(aff) - float(ab["vent_reflux"]))
 	_advance(state, maxf(cost, float(ab["cost"]) * 0.5))
 	if movement:
@@ -522,14 +522,14 @@ func cast_ability(index: int) -> void:
 	if player.hits_part._hidden():
 		player._cast_hidden_t = GameData.num("skills", "ambush_cast_window_s")             # this cast's hits come out of Unseen
 	if not _cast_is_quiet():
-		player._unseen_reveal_t = float(GameData.affinity("dark").get("reveal_s", 1.0))     # casting shows you for a moment
+		player._unseen_reveal_t = float(GameData.opt(GameData.affinity("dark"), "affinity", "reveal_s"))     # casting shows you for a moment
 
-	var stage_mult: float = ability_damage_mult(int(state["stage"])) * float(ab.get("damage_all", 1.0))
+	var stage_mult: float = ability_damage_mult(int(state["stage"])) * float(GameData.opt(ab, "ability", "damage_all"))
 	var tags: Array = ["ability", aff, str(state["id"])]
 	player._drain_cast = 0.0                           # a drain's cap is per cast
 	if bool(ab.get("weapon", false)):
 		tags.append("weapon")                    # made with your weapon: it carries your coat (poison.json)
-	var windup: float = float(ab.get("windup", 0.0))
+	var windup: float = float(GameData.opt(ab, "ability", "windup"))
 	if player._forced_target == null:
 		player.motion_part._face_cast_aim(kind)                     # a walked-in cast already faces the foe it walked to
 	if kind == "prop" or kind == "delayed_blast" or kind == "ground_zone" or kind == "rod" or kind == "seed" or kind == "summon" \
@@ -573,14 +573,14 @@ func cast_ability(index: int) -> void:
 		player._float("seizing", Color(1, 0.5, 0.2))
 	if movement:
 		# the recovery starts when the movement ends, so the dash itself is not eaten by it
-		recovery = maxf(recovery, float(ab.get("dash_time", 0.0)) + (0.0 if bool(ab.get("no_recovery", false)) else GameData.num("combat", "dash_recovery_s")))
+		recovery = maxf(recovery, float(GameData.opt(ab, "ability", "dash_time")) + (0.0 if bool(ab.get("no_recovery", false)) else GameData.num("combat", "dash_recovery_s")))
 	player._recover_t = windup + recovery
 	player._melee_cd = maxf(player._melee_cd, windup + recovery)
 	# Braced on any skill (a braced word, or a braced skill with no wind-up): for the cast and its recovery
 	if bool(ab.get("braced", false)) and windup <= 0.0 and kind != "dash":
 		player._brace_t = recovery
 	if str(ab.get("self_status", "")) != "":
-		_take_state(str(ab["self_status"]), float(ab.get("self_status_s", 2.0)))
+		_take_state(str(ab["self_status"]), float(GameData.opt(ab, "ability", "self_status_s")))
 	if not movement:
 		player._face_dir = player._facing                      # keep facing where it went for a moment, unless you click
 		player._face_hold_t = GameData.num("feel", "cast_face_hold_s")
@@ -615,7 +615,7 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 		"projectile":
 			player.moves_part._fire_projectile(ab, stage_mult, GameData.affinity_color(aff), tags + ["projectile"])
 		"melee_burst":
-			if float(ab.get("self_harm", 0.0)) > 0.0:     # only a build that earns it; no ability has it by default
+			if float(GameData.opt(ab, "ability", "self_harm")) > 0.0:     # only a build that earns it; no ability has it by default
 				var hurt: float = player.body.apply_self_harm(float(ab["self_harm"]))
 				player._float("-%d" % int(hurt), Color(1, 0.4, 0.3))
 			player.moves_part._burst(ab, stage_mult, tags if bool(ab.get("not_melee", false)) else tags + ["melee"])
@@ -629,7 +629,7 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 				# Downdraft's leap: over bodies to the aimed point (walls and standing stone still stop it), no further
 				var aim_to: Vector3 = player.motion_part._cursor_ground() - player.global_position
 				aim_to.y = 0.0
-				var reach_l: float = minf(float(ab.get("range", 99.0)), float(ab["dash_speed"]) * float(ab["dash_time"]))
+				var reach_l: float = minf(float(GameData.opt(ab, "ability", "range", "perform_cast")), float(ab["dash_speed"]) * float(ab["dash_time"]))
 				if aim_to.length() > 0.3:
 					dir = aim_to.normalized()
 					reach_l = minf(reach_l, aim_to.length())
@@ -639,12 +639,12 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 			else:
 				player._dash_vel = dir * float(ab["dash_speed"])
 				player._dash_time = float(ab["dash_time"])
-			if float(ab.get("after_heal_per_s", 0.0)) > 0.0:
-				player.combat_part.heal_over(float(ab["after_heal_per_s"]) * float(ab.get("duration", 2.0)), float(ab.get("duration", 2.0)))      # Fresh Stride
+			if float(GameData.opt(ab, "ability", "after_heal_per_s")) > 0.0:
+				player.combat_part.heal_over(float(ab["after_heal_per_s"]) * float(GameData.opt(ab, "ability", "duration")), float(GameData.opt(ab, "ability", "duration")))      # Fresh Stride
 			if str(ab.get("dir", "")) == "back":
 				player._dash_vel = -player._facing * float(ab["dash_speed"])                       # Forsaken Ground: away from where you aim
 			player._dash_pass = ab.get("on_pass", {})
-			player._dash_pass_radius = float(ab.get("pass_radius", 1.0))
+			player._dash_pass_radius = float(GameData.opt(ab, "ability", "pass_radius"))
 			player._dash_tags = tags
 			player._dash_passed.clear()
 			player._dash_from = player.global_position
@@ -653,29 +653,29 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 			player._dash_stops = bool(ab.get("stops_at_bodies", false))
 			player._dash_braced = bool(ab.get("braced", false))
 			player._dash_on_stop = ab.get("on_stop", {})
-			player._dash_heavy_poise = float(ab.get("heavy_poise", 0.0))
+			player._dash_heavy_poise = float(GameData.opt(ab, "ability", "heavy_poise"))
 			player._dash_color = GameData.affinity_color(aff)
 			player._dash_on_arrive = ab.get("on_arrive", {})
-			player._dash_arrive_radius = float(ab.get("arrive_radius", 1.5))
+			player._dash_arrive_radius = float(GameData.opt(ab, "ability", "arrive_radius"))
 			player._dash_pass_armoured = bool(ab.get("pass_armoured", false))
 			player._dash_ab = ab
 			player._dash_stage_mult = stage_mult
 			if bool(ab.get("pass_armoured", false)):
 				player._dash_stops = true                     # bare bodies stop it; armoured ones it punches through (_body_ahead)
 			# blood pools along the way carry you further (Thinblood Rush)
-			if float(ab.get("pool_bonus_m", 0.0)) > 0.0:
+			if float(GameData.opt(ab, "ability", "pool_bonus_m")) > 0.0:
 				var crossed: int = player.world_part._pools_along(player.global_position, player.global_position + dir * float(ab["dash_speed"]) * float(ab["dash_time"]))
-				crossed = mini(crossed, int(ab.get("pool_bonus_max", 2)))
+				crossed = mini(crossed, int(GameData.opt(ab, "ability", "pool_bonus_max")))
 				player._dash_time += float(ab["pool_bonus_m"]) * float(crossed) / float(ab["dash_speed"])
 			# what it leaves where it started: a phantom of you, a little cloud
 			if ab.has("leave_decoy"):
 				player.world_part._leave_lure(player.global_position, ab["leave_decoy"], aff, tags)
 			if ab.has("leave_zone") and str((ab["leave_zone"] as Dictionary).get("at", "start")) == "start":
 				player.hits_part.lay_cloud(player.global_position, ab["leave_zone"], tags + ["cloud"])
-			if float(ab.get("after_speed_mult", 0.0)) > 0.0:
-				player.buffs["after_" + str(ab.get("name", "dash")).to_lower()] = {"t": float(ab.get("duration", 2.0)) + float(ab["dash_time"]), "move_speed_mult": float(ab["after_speed_mult"])}
+			if float(GameData.opt(ab, "ability", "after_speed_mult")) > 0.0:
+				player.buffs["after_" + str(ab.get("name", "dash")).to_lower()] = {"t": float(GameData.opt(ab, "ability", "duration")) + float(ab["dash_time"]), "move_speed_mult": float(ab["after_speed_mult"])}
 			if player.motion_part.has_slipstream():
-				player.pips = mini(GameData.inum("slipstream", "max"), player.pips + int(ab.get("gain_pips", 0)))
+				player.pips = mini(GameData.inum("slipstream", "max"), player.pips + int(GameData.opt(ab, "ability", "gain_pips")))
 		"beam":
 			player.moves_part._fire_beam(ab, stage_mult, GameData.affinity_color(aff), tags)
 		"targeted_strike":
@@ -690,11 +690,11 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 			if bool(ab.get("force_rear", false)):
 				strike_tags.append("rear")              # it lands on the back whichever way they were facing
 			if ab.has("pip_mult"):
-				var burned: int = player.motion_part.spend_pips(-1 if bool(ab.get("spend_all_pips", false)) else int(ab.get("spend_pips", 0)))
-				strike_payload["damage_mult"] = float(strike_payload.get("damage_mult", 1.0)) * (1.0 + float(ab["pip_mult"]) * float(burned))
+				var burned: int = player.motion_part.spend_pips(-1 if bool(ab.get("spend_all_pips", false)) else int(GameData.opt(ab, "ability", "spend_pips")))
+				strike_payload["damage_mult"] = float(GameData.opt(strike_payload, "payload", "damage_mult")) * (1.0 + float(ab["pip_mult"]) * float(burned))
 			if bool(ab.get("through", false)):
 				# cut through: you end up behind them, unless something solid is there
-				var beyond: Vector3 = strike_target.global_position + player._facing * (float(ab.get("through_dist", 2.0)) + float(strike_target.get("radius")))
+				var beyond: Vector3 = strike_target.global_position + player._facing * (float(GameData.opt(ab, "ability", "through_dist")) + float(strike_target.get("radius")))
 				beyond.y = player.global_position.y
 				var blocked: Dictionary = _ray(player.global_position + Vector3.UP, beyond + Vector3.UP)
 				_line_visual(player.global_position + Vector3.UP, (blocked["position"] if not blocked.is_empty() else beyond + Vector3.UP), GameData.affinity_color(aff))
@@ -714,22 +714,22 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 						strike_target.call("clear_status", alt)
 				if spent > 0:
 					strike_target.call("clear_status", str(ab["consume_status"]))
-					player.combat_part.deal_damage(strike_target, float(ab.get("per_stack_damage", 0.0)) * float(spent) * stage_mult, tags + ["melee", "burst"])
+					player.combat_part.deal_damage(strike_target, float(GameData.opt(ab, "ability", "per_stack_damage")) * float(spent) * stage_mult, tags + ["melee", "burst"])
 			var sp_metal: int = int(strike_target.call("metal_class")) if strike_target.has_method("metal_class") else 0
 			var sp_at: Vector3 = strike_target.global_position
-			if spent > 0 and strike_payload.get("on_kill") is Dictionary and int((strike_payload["on_kill"] as Dictionary).get("blood_per_stack", 0)) > 0:
+			if spent > 0 and strike_payload.get("on_kill") is Dictionary and int(GameData.opt((strike_payload["on_kill"] as Dictionary), "kill_reward", "blood_per_stack")) > 0:
 				var ok2: Dictionary = (strike_payload["on_kill"] as Dictionary).duplicate()
-				ok2["blood"] = int(ok2.get("blood", 0)) + int(ok2["blood_per_stack"]) * spent     # Last Draught: more for every stack it drank
+				ok2["blood"] = int(GameData.opt(ok2, "kill_reward", "blood")) + int(ok2["blood_per_stack"]) * spent     # Last Draught: more for every stack it drank
 				strike_payload["on_kill"] = ok2
 			if is_instance_valid(strike_target) and not bool(strike_target.call("is_dead")):
 				player.hits_part.apply_hit(strike_target, strike_payload, strike_tags, stage_mult)
 			if ab.get("spall") is Dictionary and sp_metal > 0:
 				# Splitting Blow: the armour it splits flies off into whoever stands near, per class of metal it wore
 				var spl: Dictionary = ab["spall"]
-				for o: Enemy in _enemies_near(sp_at, float(spl.get("radius", 2.5))):
+				for o: Enemy in _enemies_near(sp_at, float(GameData.opt(spl, "payload", "radius"))):
 					if o != strike_target:
-						player.combat_part.deal_damage(o, float(spl.get("damage_per_class", 30.0)) * float(sp_metal) * stage_mult, tags + ["spall"])
-			if int(ab.get("swallow_per_hit", 0)) > 0:
+						player.combat_part.deal_damage(o, float(GameData.opt(spl, "payload", "damage_per_class")) * float(sp_metal) * stage_mult, tags + ["spall"])
+			if int(GameData.opt(ab, "ability", "swallow_per_hit")) > 0:
 				player.hits_part.store_add("swallowed", int(ab["swallow_per_hit"]), 5, 12.0)       # Hungry Dark swallows the light it strikes
 			if ab.get("zone") is Dictionary:
 				player.world_part._lay_ground(ab["zone"], 2.0, ab, tags)                            # and leaves dark ground at your feet
@@ -738,7 +738,7 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 				for node: Enemy in player.get_tree().get_nodes_in_group("enemies"):
 					var near: Enemy = node
 					var self_too: bool = bool(ab.get("burst_always", false))      # Thunderclap's crack takes the target too
-					if near != null and (near != strike_target or self_too) and near.global_position.distance_to(centre) <= float(ab.get("burst_radius", 2.0)) + float(near.radius):
+					if near != null and (near != strike_target or self_too) and near.global_position.distance_to(centre) <= float(GameData.opt(ab, "ability", "burst_radius")) + float(near.radius):
 						player.hits_part.apply_hit(near, ab["burst"], tags + ["burst"], stage_mult)
 			if spent > 0 and ab.has("burst_zone"):
 				var bz: Dictionary = (ab["burst_zone"] as Dictionary).duplicate()
@@ -903,12 +903,12 @@ func _refuse(reason: String, text: String) -> void:
 ## The direction a shot of skill `ab` leaves in, given the way it was aimed.
 func lead_aim(ab: Dictionary, aim: Vector3) -> Vector3:
 	var cfg: Dictionary = GameData.balance["skills"]
-	var speed: float = float(ab.get("speed", 999.0))
+	var speed: float = float(GameData.opt(ab, "ability", "speed"))
 	var flat_aim := Vector3(aim.x, 0.0, aim.z)
 	if speed <= 0.0 or speed >= float(cfg["slow_shot_speed"]) or flat_aim.length() < 0.01 or not player.is_inside_tree():
 		return aim
 	flat_aim = flat_aim.normalized()
-	var reach: float = speed * float(ab.get("life", 1.0))
+	var reach: float = speed * float(GameData.opt(ab, "ability", "life", "lead_aim"))
 	var cone: float = deg_to_rad(float(cfg["slow_shot_cone_deg"]))
 	var foe: Node3D = null
 	var best: float = cone

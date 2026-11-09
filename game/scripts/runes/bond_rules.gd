@@ -23,7 +23,7 @@ func legend() -> Array[Dictionary]:
 
 
 func capacity(ctx: RuneContext) -> int:
-	return int(params.get("capacity_base", 0)) + int(params.get("capacity_per_level", 0)) * maxi(0, ctx.stage)
+	return int(GameData.opt(params, "rule_set", "capacity_base")) + int(GameData.opt(params, "rule_set", "capacity_per_level")) * maxi(0, ctx.stage)
 
 
 func used(word: Dictionary, _ctx: RuneContext) -> int:
@@ -34,11 +34,11 @@ func used(word: Dictionary, _ctx: RuneContext) -> int:
 # --- the chemistry -------------------------------------------------------------------------
 
 static func valence(rune_id: String) -> int:
-	return int(GameData.rune(rune_id).get("valence", 0))
+	return int(GameData.opt(GameData.rune(rune_id), "rune", "valence"))
 
 
 static func electronegativity(rune_id: String) -> float:
-	return float(GameData.rune(rune_id).get("electronegativity", 0.0))
+	return float(GameData.opt(GameData.rune(rune_id), "rune", "electronegativity"))
 
 
 ## The cosine between two affinities' positions; 1.0 if either is unplaced (universal) or the same.
@@ -81,7 +81,7 @@ func bond_kind(rune_a: String, rune_b: String) -> String:
 	var kind := ""
 	var best := -INF
 	for k: Dictionary in params.get("bond_kinds", []):
-		var from: float = float(k.get("from", 0.0))
+		var from: float = float(GameData.opt(k, "rule_set.bond_kind", "from"))
 		if diff + 0.000001 >= from and from > best:        # a hair of tolerance: 3.7 - 2.0 reaches 1.7
 			best = from
 			kind = str(k.get("kind", ""))

@@ -93,7 +93,7 @@ func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
 	var fallback_mult := 1.0                  # power change from fallbacks, op by op
 	var patch: Array = []
 	var lines: Array = []
-	var threshold: float = float(params.get("status_threshold", 0.5))
+	var threshold: float = float(GameData.opt(params, "effects", "status_threshold"))
 
 	# the anchor: scale the skill's own signature
 	var af: float = _anchor_factor(word)
@@ -124,7 +124,7 @@ func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
 					if str(res.get("line", "")) != "":
 						lines.append(str(res["line"]))
 				else:
-					fallback_mult *= 1.0 + float(res["change"]) * float(params.get("fallback_fraction", 0.25))
+					fallback_mult *= 1.0 + float(res["change"]) * float(GameData.opt(params, "effects", "fallback_fraction"))
 					(row["fallback"] as Array).append("%s -> %s" % [op_words(op, s), str(res["why"])])
 		(out["runes"] as Array).append(row)
 	_finish(ab, groups, fallback_mult, patch, lines, anchor_lines, out)
@@ -151,8 +151,8 @@ func _finish(ab: Dictionary, groups: Dictionary, fallback_mult: float, patch: Ar
 			lines.append("runes it cannot use have nowhere to go")
 
 	# group multipliers, clamped, onto every field of the group
-	var lo: float = float(params.get("mult_min", 0.0))
-	var hi: float = float(params.get("mult_max", 100.0))
+	var lo: float = float(GameData.opt(params, "effects", "mult_min"))
+	var hi: float = float(GameData.opt(params, "effects", "mult_max"))
 	var clamped: Dictionary = {}
 	for g: String in groups:
 		clamped[g] = clampf(float(groups[g]), lo, hi)
@@ -271,8 +271,8 @@ func _kind(word: Dictionary, a: int, b: int) -> String:
 
 ## "more" if node i pulls harder than node j (higher electronegativity), "less" if weaker.
 func _side(word: Dictionary, i: int, j: int) -> String:
-	var ei: float = float(GameData.rune(RuneWord.node_id(word, i)).get("electronegativity", 0.0))
-	var ej: float = float(GameData.rune(RuneWord.node_id(word, j)).get("electronegativity", 0.0))
+	var ei: float = float(GameData.opt(GameData.rune(RuneWord.node_id(word, i)), "rune", "electronegativity"))
+	var ej: float = float(GameData.opt(GameData.rune(RuneWord.node_id(word, j)), "rune", "electronegativity"))
 	return "more" if ei >= ej else "less"
 
 
@@ -388,7 +388,7 @@ func keystone(ab: Dictionary, ops: Array, weight: float, mult_floor: float) -> D
 	var patch: Array = []
 	var lines: Array = []
 	var fallback_mult := 1.0
-	var threshold: float = float(params.get("status_threshold", 0.5))
+	var threshold: float = float(GameData.opt(params, "effects", "status_threshold"))
 	for op: Dictionary in ops:
 		var o: Dictionary = op
 		var s: float = weight
@@ -401,7 +401,7 @@ func keystone(ab: Dictionary, ops: Array, weight: float, mult_floor: float) -> D
 			if str(res.get("line", "")) != "":
 				lines.append(str(res["line"]))
 		else:
-			fallback_mult *= 1.0 + float(res["change"]) * float(params.get("fallback_fraction", 0.25))
+			fallback_mult *= 1.0 + float(res["change"]) * float(GameData.opt(params, "effects", "fallback_fraction"))
 	_finish(ab, groups, fallback_mult, patch, lines, [], out)
 	# the summary's fallback line repeats what its group line already counts: say it once, in words
 	# that fit a keystone (a fallback with nowhere to go leaves an empty patch: RingRules lands it)
@@ -514,7 +514,7 @@ func _part_deals_damage(ab: Dictionary, part: String) -> bool:
 ## A rune's op at strength s. Returns {used, text, line} or {used: false, change, why}.
 func _apply_op(ab: Dictionary, op: Dictionary, s: float, threshold: float, groups: Dictionary, patch: Array) -> Dictionary:
 	var kind: String = str(op["op"])
-	var grant_change: float = float(params.get("grant_as_change", 0.2)) * s
+	var grant_change: float = float(GameData.opt(params, "effects", "grant_as_change")) * s
 	match kind:
 		"mul":
 			var g: String = str(op["group"])
@@ -538,11 +538,11 @@ func _apply_op(ab: Dictionary, op: Dictionary, s: float, threshold: float, group
 				# the skill already applies it: more stacks of it (2026-10-22)
 				var p: Dictionary = get_path_value(ab, part)
 				if str(p.get("status", "")) == id:
-					patch.append({"op": "set", "path": part + ".stacks", "value": int(p.get("stacks", 1)) + int(op.get("stacks", 1))})
+					patch.append({"op": "set", "path": part + ".stacks", "value": int(GameData.opt(p, "payload", "stacks")) + int(GameData.opt(op, "rune_op", "stacks"))})
 				else:
-					patch.append({"op": "append", "path": part + ".statuses", "value": {"id": id, "stacks": int(op.get("stacks", 1))}})
-				return {"used": true, "text": "+%d %s" % [int(op.get("stacks", 1)), label], "line": "+%d stack%s of %s" % [int(op.get("stacks", 1)), "" if int(op.get("stacks", 1)) == 1 else "s", label]}
-			patch.append({"op": "append", "path": part + ".statuses", "value": {"id": id, "stacks": int(op.get("stacks", 1))}})
+					patch.append({"op": "append", "path": part + ".statuses", "value": {"id": id, "stacks": int(GameData.opt(op, "rune_op", "stacks"))}})
+				return {"used": true, "text": "+%d %s" % [int(GameData.opt(op, "rune_op", "stacks")), label], "line": "+%d stack%s of %s" % [int(GameData.opt(op, "rune_op", "stacks")), "" if int(GameData.opt(op, "rune_op", "stacks")) == 1 else "s", label]}
+			patch.append({"op": "append", "path": part + ".statuses", "value": {"id": id, "stacks": int(GameData.opt(op, "rune_op", "stacks"))}})
 			return {"used": true, "text": "applies %s" % label, "line": "applies %s" % label}
 		"shove", "pull":
 			var part2: String = _payload_part(ab)
