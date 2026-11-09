@@ -25,7 +25,7 @@ func _init(owner_main: Main, town_def: Dictionary) -> void:
 func build() -> void:
 	var level: Node3D = main.level
 	var margin: float = float(def.get("floor_margin", 6.0))
-	main.call("_biome_floor", Vector3.ZERO, size + Vector2(margin, margin) * 2.0)
+	main.biome_floor(Vector3.ZERO, size + Vector2(margin, margin) * 2.0)
 	for edge: String in ["north", "south", "east", "west"]:
 		_edge(level, edge)
 	_props(level)
@@ -81,7 +81,7 @@ func _edge(level: Node3D, edge: String) -> void:
 		var out_dir: Vector3 = centre.normalized() if centre.length() > 0.01 else Vector3.FORWARD
 		out_dir = Vector3(signf(out_dir.x), 0.0, 0.0) if yaw == 90.0 else Vector3(0.0, 0.0, signf(out_dir.z))
 		var stop_at: Vector3 = centre if not open else centre + out_dir * 2.4
-		var bar: StaticBody3D = main.call("_static_box", stop_at + Vector3.UP, Vector3(float(ex["width"]) + (0.0 if not open else 2.0), 2.0, 0.6), Color.BLACK, false)
+		var bar: StaticBody3D = main.static_box(stop_at + Vector3.UP, Vector3(float(ex["width"]) + (0.0 if not open else 2.0), 2.0, 0.6), Color.BLACK, false)
 		bar.rotation_degrees.y = yaw
 		var placed: Dictionary = ex.duplicate(true)
 		placed["centre"] = centre
@@ -96,13 +96,13 @@ func _wall_run(edge: String, from: float, to: float, height: float) -> void:
 	var length: float = to - from
 	match edge:
 		"north":
-			main.call("_biome_wall", Vector3(mid, 0, -size.y * 0.5 - 0.5), length, 0.0, height)
+			main.biome_wall(Vector3(mid, 0, -size.y * 0.5 - 0.5), length, 0.0, height)
 		"south":
-			main.call("_biome_wall", Vector3(mid, 0, size.y * 0.5 + 0.5), length, 180.0, height)
+			main.biome_wall(Vector3(mid, 0, size.y * 0.5 + 0.5), length, 180.0, height)
 		"east":
-			main.call("_biome_wall", Vector3(size.x * 0.5 + 0.5, 0, mid), length, -90.0, height)
+			main.biome_wall(Vector3(size.x * 0.5 + 0.5, 0, mid), length, -90.0, height)
 		_:
-			main.call("_biome_wall", Vector3(-size.x * 0.5 - 0.5, 0, mid), length, 90.0, height)
+			main.biome_wall(Vector3(-size.x * 0.5 - 0.5, 0, mid), length, 90.0, height)
 
 
 ## The stalls, lamps and clutter, each solid if the kit says it blocks.
@@ -139,7 +139,7 @@ func _stations(level: Node3D) -> void:
 		model.rotation_degrees.y = float(st.get("yaw", 0.0))
 		level.add_child(model)
 		var solid: Array = st.get("solid", [2.0, 1.5])
-		var sb: StaticBody3D = main.call("_static_box", model.position + Vector3.UP, Vector3(float(solid[0]), 2.0, float(solid[1])), Color.BLACK, false)
+		var sb: StaticBody3D = main.static_box(model.position + Vector3.UP, Vector3(float(solid[0]), 2.0, float(solid[1])), Color.BLACK, false)
 		sb.rotation_degrees.y = model.rotation_degrees.y
 
 

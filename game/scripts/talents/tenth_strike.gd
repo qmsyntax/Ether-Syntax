@@ -11,4 +11,4 @@ func on_outgoing(ctx: HitContext) -> void:
 	if count % 10 == 0:
 		ctx.mult *= 5.0
 		ctx.tags.append("tenth")
-		owner.call("_text", ctx.target, "TENTH", Color(1, 0.85, 0.2))
+		owner.float_note_at(ctx.target, "TENTH", Color(1, 0.85, 0.2))

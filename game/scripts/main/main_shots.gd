@@ -37,7 +37,7 @@ func _setup_ui_shot(which: String) -> void:
 				var aim: Vector3 = ((main.player.global_position - (e as Node3D).global_position) * Vector3(1, 0, 1)).normalized()
 				e.facing = aim
 				e.telegraph = {"kind": "cone", "radius": 6.0, "arc_deg": 90.0, "dir": aim, "frac": 0.6}
-				e.call("_apply_facing")
+				e.apply_facing()
 			e.set_physics_process(false)
 		main.player.set_physics_process(false)
 		return
@@ -113,7 +113,7 @@ func _setup_ui_shot(which: String) -> void:
 		main.player.global_position = main.level.to_global(main._zone.to_local(56.0, 30.0) if which == "stubble" else main._zone.to_local(214.0, 108.0))
 		if OS.get_cmdline_user_args().has("--settle"):
 			main._harness()._shot_countdown = 420             # long enough for shaders to compile, so the frame rate means something
-		main.player.set("_facing", Vector3(0, 0, 1))
+		main.player.facing_dir = Vector3(0, 0, 1)
 		main.player.set_physics_process(false)
 		return
 	if which == "earth":
@@ -133,15 +133,15 @@ func _setup_ui_shot(which: String) -> void:
 			var stone: Node = main.player.raise_stone(main.player.global_position + (spot[0] as Vector3), spot[1], slab_def)
 			stone.call("tick", 0.6)
 			stone.set_physics_process(false)
-		main.player.set("_facing", Vector3(0, 0, -1))
-		main.player.set("_windup", {"braced": true, "release": false, "facing": Vector3(0, 0, -1)})
-		main.player.set("_windup_t", 0.25)
-		main.player.set("_windup_total", 0.6)
+		main.player.facing_dir = Vector3(0, 0, -1)
+		main.player.windup_cast = {"braced": true, "release": false, "facing": Vector3(0, 0, -1)}
+		main.player.windup_left = 0.25
+		main.player.windup_total = 0.6
 		for e: Enemy in main.get_tree().get_nodes_in_group("enemies"):
 			e.set_physics_process(false)
 		main.player.rotation.y = 0.0
 		main.player.set_physics_process(false)
-		main.player.call("_refresh_highlights")
+		main.player.refresh_highlights()
 		return
 	if which == "wind":
 		# a wind character on the move: pips over the bar, an enemy thrown aloft
@@ -162,7 +162,7 @@ func _setup_ui_shot(which: String) -> void:
 		for e: Enemy in foes:
 			e.set_physics_process(false)
 		main.player.set_physics_process(false)
-		main.player.call("_refresh_highlights")
+		main.player.refresh_highlights()
 		return
 	if which == "fire":
 		# a fire character running hot: burning enemies, a flame trail, the heat readout
@@ -193,7 +193,7 @@ func _setup_ui_shot(which: String) -> void:
 		for e: Enemy in foes:
 			e.set_physics_process(false)
 		main.player.set_physics_process(false)
-		main.player.call("_refresh_highlights")
+		main.player.refresh_highlights()
 		return
 	if which == "refusal" or which == "refusal-locked":
 		# a refused cast (combat review R4d): a water character presses Breaker at a grunt in reach with too
@@ -214,7 +214,7 @@ func _setup_ui_shot(which: String) -> void:
 			(main.player.locked_by as Dictionary)["water"] = true
 		foe.set_physics_process(false)
 		main.player.set_physics_process(false)
-		main.player.call("_refresh_highlights")
+		main.player.refresh_highlights()
 		main._harness()._shot_countdown = 60
 		main._harness()._shot_late = func() -> void:
 			main.hud.debug_cursor = main.camera.unproject_position(foe.global_position + Vector3.UP * 1.0)
@@ -265,7 +265,7 @@ func _setup_ui_shot(which: String) -> void:
 		for e: Enemy in foes:
 			e.set_physics_process(false)
 		main.player.set_physics_process(false)
-		main.player.call("_refresh_highlights")
+		main.player.refresh_highlights()
 		return
 	if which == "skills":
 		# a water + lightning character in the arena: marks, a Soaked enemy, a stunned one, a block
@@ -291,7 +291,7 @@ func _setup_ui_shot(which: String) -> void:
 		for e: Enemy in foes:
 			e.set_physics_process(false)
 		main.player.set_physics_process(false)
-		main.player.call("_refresh_highlights")
+		main.player.refresh_highlights()
 		return
 	if which == "nav" or which.begins_with("nav-"):
 		# the common walker's navigation mesh drawn over the passage, at the first doorway: --shot-ui=nav-city
@@ -361,14 +361,14 @@ func _setup_ui_shot(which: String) -> void:
 			main._enter_town("dross_gate" if which == "town-gate" else "passage")
 			if which == "town-folk":
 				main.player.global_position = main.level.to_global(Vector3(-11.0, 0.0, -1.5))
-			main.player.set("_facing", Vector3(0, 0, -1))
+			main.player.facing_dir = Vector3(0, 0, -1)
 			if OS.get_cmdline_user_args().has("--settle"):
 				main._harness()._shot_countdown = 300
 		"stations":
 			# the craft row along the south side: rendering block, tanning vats, forge
 			main._enter_town()
 			main.player.global_position = main.level.to_global(Vector3(3.0, 0.0, 12.8))
-			main.player.set("_facing", Vector3(0, 0, 1))
+			main.player.facing_dir = Vector3(0, 0, 1)
 			main._harness()._shot_countdown = 200
 		"craft", "craft-done", "craft-item":
 			# at the forge with what an iron knuckle needs: before the combine, after it, and the result worn
@@ -442,7 +442,7 @@ func _setup_ui_shot(which: String) -> void:
 			if which == "ethercosm-2":
 				# a later character: two stars, a bound vestige, a rearranged bar
 				main.player.grow_star(99.0)
-				main.player.set("_latent_aura", 1000.0)
+				main.player.latent_aura = 1000.0
 				main.player.try_ascend()
 				main.player.grow_star(33.0)
 				# a vestige bound in the past (the word itself is set by _shot_lock_word below)
@@ -544,7 +544,7 @@ func _setup_ui_shot(which: String) -> void:
 			for e: Enemy in main.get_tree().get_nodes_in_group("enemies"):
 				e.set_physics_process(false)
 			main.player.set_physics_process(false)
-			main.player.call("_refresh_highlights")
+			main.player.refresh_highlights()
 
 
 ## The game menu's screenshots (--shot-ui=menu-...): the menu in town and in the field (Save
@@ -595,7 +595,7 @@ func _shot_ascension(which: String) -> void:
 	(main.player.rng as RandomNumberGenerator).seed = 20261024
 	main._enter_town()
 	main.player.grow_star(99.0)
-	main.player.set("_latent_aura", 100000.0)
+	main.player.latent_aura = 100000.0
 	main.player.try_ascend()                  # opens the ascension screen (_on_ascended)
 	main.get_tree().paused = false                  # it pauses; the shot countdown has to tick
 	if which == "ascend-offer":
@@ -695,8 +695,8 @@ func _setup_stubble_shot(which: String) -> bool:
 				e.buried = false
 				if kind == "sod_lurker":
 					e.rise()
-					e.set("_rise_t", -1.0)
-					((e.get("_rig")) as Node3D).position.y = 0.0
+					e.rise_left = -1.0
+					((e.model_rig) as Node3D).position.y = 0.0
 				i += 1
 			main._cam_zoom_target = 0.35
 			main.cam_zoom = 0.35
@@ -706,13 +706,13 @@ func _setup_stubble_shot(which: String) -> bool:
 			stand.call(69.0, 137.0)
 		"herd":
 			stand.call(119.0, 131.0)
-			main.player.set("_facing", Vector3(0, 0, 1))
+			main.player.facing_dir = Vector3(0, 0, 1)
 			go = func() -> void: main.field_camps.wake_camp("the_herd")
 			main._cam_zoom_target = 0.2
 			main.cam_zoom = 0.2
 			until = func() -> bool:
-				for n: Node in main.field_camps.members_of("the_herd"):
-					if str(n.get("_special")) == "charge" and float(n.get("_windup")) < 0.4:
+				for n: Enemy in main.field_camps.members_of("the_herd"):
+					if str(n.special_move) == "charge" and float(n.windup_left) < 0.4:
 						return true
 				return false
 		"lurker":
@@ -723,8 +723,8 @@ func _setup_stubble_shot(which: String) -> bool:
 				main.player.set_physics_process(true)
 			until = func() -> bool:
 				for p: Dictionary in main.field_camps.patches:
-					var l: Node = p["lurker"]
-					if l != null and is_instance_valid(l) and bool(l.call("is_rising")) and float(l.get("_rise_t")) < 0.3:
+					var l: Beast = p["lurker"]
+					if l != null and is_instance_valid(l) and bool(l.is_rising()) and float(l.rise_left) < 0.3:
 						return true
 				return false
 		"gleaner":
@@ -753,7 +753,7 @@ func _setup_stubble_shot(which: String) -> bool:
 				return false
 			var kind: String = what.trim_prefix("fight-")
 			stand.call(140.0, 50.0)
-			main.player.set("_facing", Vector3(0, 0, -1))
+			main.player.facing_dir = Vector3(0, 0, -1)
 			var offs: Array = [Vector3(0, 0, -5)]
 			if kind == "chaff_wren":
 				offs = [Vector3(-2, 0, -5), Vector3(2, 0, -5), Vector3(0, 0, -6), Vector3(3, 0, -3)]
@@ -771,21 +771,21 @@ func _setup_stubble_shot(which: String) -> bool:
 					if e.has_method("provoke"):
 						e.provoke(main.player)
 					if kind == "wirehorn":
-						e.set("facing", Vector3(0, 0, -1))   # its back to you: the kick
+						e.facing = Vector3(0, 0, -1)   # its back to you: the kick
 			until = func() -> bool:
-				for e2: Node in made:
+				for e2: Beast in made:
 					if not is_instance_valid(e2):
 						continue
 					if kind == "burr_hog" or kind == "thornback":
-						if str(e2.get("_special")) == "charge" and float(e2.get("_windup")) < 0.6:
+						if str(e2.special_move) == "charge" and float(e2.windup_left) < 0.6:
 							return true
 					elif kind == "ditch_hound":
-						if float(e2.get("_windup")) >= 0.0 and bool(e2.call("is_at_targets_back")):
+						if float(e2.windup_left) >= 0.0 and bool(e2.is_at_targets_back()):
 							return true
 					elif kind == "wirehorn":
-						if bool(e2.get("_kick")) and float(e2.get("_windup")) >= 0.0 and float(e2.get("_windup")) < 0.2:
+						if bool(e2.kick_ready) and float(e2.windup_left) >= 0.0 and float(e2.windup_left) < 0.2:
 							return true
-					elif float(e2.get("_windup")) >= 0.0 and float(e2.get("_windup")) < 0.25:
+					elif float(e2.windup_left) >= 0.0 and float(e2.windup_left) < 0.25:
 						return true
 				return false
 	var watch := ShotWatch.new()

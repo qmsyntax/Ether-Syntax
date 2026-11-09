@@ -540,7 +540,7 @@ func cast_ability(index: int) -> void:
 			player._facing = to_spot.normalized()
 	if bool(ab.get("breaks_aim", false)):
 		for node: Enemy in player.get_tree().get_nodes_in_group("enemies"):
-			if str(node.behaviour) == "ranged" and float(node.get("_windup")) >= 0.0:
+			if str(node.behaviour) == "ranged" and float(node.windup_left) >= 0.0:
 				node.interrupt()           # everyone aiming at you loses the aim
 	if bool(ab.get("frees_caster", false)):
 		player._stagger_t = 0.0

@@ -9,7 +9,7 @@ const VENT_SELF_HARM := 8.0
 
 
 func on_reflux_cap() -> bool:
-	owner.call("_float", "VENT", Color(1, 0.6, 0.1))
+	owner.float_note("VENT", Color(1, 0.6, 0.1))
 	for node: Enemy in owner.get_tree().get_nodes_in_group("enemies"):
 		var e: Enemy = node
 		if e != null and e.global_position.distance_to((owner as Node3D).global_position) <= VENT_RADIUS:

@@ -61,6 +61,17 @@ func _ready() -> void:
 		bury()
 
 
+# --- public readers (docs/architecture/typed-calls.md): aliases of private fields the harness's shots reach ----------
+
+## A Sod-Lurker's rise: seconds left, below 0 when not rising (`_rise_t`).
+var rise_left: float:
+	get: return _rise_t
+	set(value): _rise_t = value
+## A Wirehorn's kick is readied (`_kick`).
+var kick_ready: bool:
+	get: return _kick
+
+
 # --- being hit ------------------------------------------------------------------------------
 
 func take_hit(amount: float, heavy_hit: bool, source: Node, tags: Array = []) -> float:

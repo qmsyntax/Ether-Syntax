@@ -153,9 +153,9 @@ func _process(delta: float) -> void:
 		if _last_hp >= 0.0 and hp < _last_hp - 0.5:
 			_hurt_flash = 1.0
 		_last_hp = hp
-		_recover_max = _track_max(_recover_max, float(player.get("_recover_t")))
-		_melee_max = _track_max(_melee_max, float(player.get("_melee_cd")))
-		_ranged_max = _track_max(_ranged_max, float(player.get("_ranged_cd")))
+		_recover_max = _track_max(_recover_max, float(player.recover_left))
+		_melee_max = _track_max(_melee_max, float(player.melee_cd_left))
+		_ranged_max = _track_max(_ranged_max, float(player.ranged_cd_left))
 		var refused: Dictionary = player.last_refusal
 		var refusal_n: int = int(refused.get("serial", 0))
 		if _refusal_serial >= 0 and refusal_n != _refusal_serial:
@@ -233,7 +233,7 @@ func _draw_dock(vs: Vector2) -> void:
 	# the six skill slots
 	var abilities: Array = player.abilities
 	var essence: float = float(player.essence)
-	var recovering: float = float(player.get("_recover_t")) / _recover_max if _recover_max > 0.0 else 0.0
+	var recovering: float = float(player.recover_left) / _recover_max if _recover_max > 0.0 else 0.0
 	_slot_rects.clear()
 	var y0: float = _dock.position.y + DOCK_TOP
 	for i: int in n:
@@ -386,7 +386,7 @@ func _draw_strike_slot(r: Rect2) -> void:
 	var arm_lost: bool = bool(player.arm_right_lost)
 	var col: Color = UiTheme.TEXT if not arm_lost else UiTheme.TEXT_FAINT
 	UiDraw.icon(self, UiDraw.item_icon(GameData.item(weapon)) if weapon != "" else "fist", r.get_center(), MINI * 0.46, col)
-	UiDraw.sweep(self, r.grow(-3.0), float(player.get("_melee_cd")) / _melee_max if _melee_max > 0.0 else 0.0)
+	UiDraw.sweep(self, r.grow(-3.0), float(player.melee_cd_left) / _melee_max if _melee_max > 0.0 else 0.0)
 	if arm_lost:
 		draw_line(r.position + Vector2(7, 7), r.end - Vector2(7, 7), UiTheme.BAD, 2.5, true)
 	_slot_key(r, Keybinds.binding_text("strike"))
@@ -400,7 +400,7 @@ func _draw_shoot_slot(r: Rect2) -> void:
 	UiDraw.icon(self, UiDraw.item_icon(ranged) if has else "sling", r.get_center(), MINI * 0.46,
 		(UiTheme.GOLD if aiming else UiTheme.TEXT) if has else Color(0.3, 0.28, 0.25))
 	if has:
-		UiDraw.sweep(self, r.grow(-3.0), float(player.get("_ranged_cd")) / _ranged_max if _ranged_max > 0.0 else 0.0)
+		UiDraw.sweep(self, r.grow(-3.0), float(player.ranged_cd_left) / _ranged_max if _ranged_max > 0.0 else 0.0)
 	if aiming:
 		draw_rect(r.grow(1.0), UiTheme.GOLD, false, 2.0)
 	_slot_key(r, Keybinds.binding_text("ranged_stance"))
@@ -482,7 +482,7 @@ func _draw_above_dock(cx: float) -> void:
 	var heat_now: int = int(player.focus)
 	if heat_now > 0:
 		var edge_col: Color = GameData.affinity_color("metal").lightened(0.3)
-		var label_e: String = "EDGE HEAT  %d / %d" % [heat_now, int(player.call("_focus_max"))]
+		var label_e: String = "EDGE HEAT  %d / %d" % [heat_now, int(player.edge_focus_max())]
 		var we: float = UiDraw.text_width(label_e, UiTheme.FS_CAPTION)
 		_chip_back(Rect2(cx - we * 0.5 - 10.0, strip_y - 16.0, we + 20.0, 22.0))
 		UiDraw.outlined(self, Vector2(cx - we * 0.5, strip_y), label_e, UiTheme.FS_CAPTION, edge_col)

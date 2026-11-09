@@ -455,6 +455,18 @@ func _where() -> String:
 # A new function outside code needs gets a forwarder in its part's block (docs/architecture/main-split.md).
 # ================================================================================================
 
+# --- public readers (docs/architecture/typed-calls.md): the level helpers the builders reach, and the payout the
+# innkeeper's ledger reads. Aliases: the private names stay (ZoneBuilder, which may hold the self-test's stub, calls
+# them by string).
+
+## What the last passage exit paid (`_last_payout`).
+var last_payout: int:
+	get: return _last_payout
+func biome_floor(centre: Vector3, size: Vector2) -> void: factory_part._biome_floor(centre, size)
+func biome_wall(centre: Vector3, length: float, yaw: float, height: float) -> StaticBody3D: return factory_part._biome_wall(centre, length, yaw, height)
+func static_box(pos: Vector3, size: Vector3, color: Color, show: bool = true) -> StaticBody3D: return factory_part._static_box(pos, size, color, show)
+
+
 # --- the test harness (MainHarness): a shot's watcher (MainShots.ShotWatch) calls this by name
 func _save_shot() -> void: _harness()._save_shot()
 

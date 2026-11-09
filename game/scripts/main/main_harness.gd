@@ -89,7 +89,7 @@ func bot_dungeon_tick() -> void:
 		# Kill the character outright to exercise the live death -> debt -> town path.
 		_bot_money_before = int(main.player.money)
 		(main.player.body as Body).apply_damage(99999.0)
-		main.player.call("_check_death")
+		main.player.check_death()
 		return
 	var leave_now: bool = _bot_scenario == "gate" or main.cleared >= main.chambers
 	if leave_now and main.passage_part._pad_in_reach():
@@ -141,13 +141,13 @@ func _tick_bot_report() -> void:
 		var here: Vector3 = main.level.to_local(main.player.global_position)
 		print("BOT:   bot at local (%.1f, %.1f) chamber %d  vel %s  target %s  melee_cd %.2f recover %.2f stagger %.2f" % [
 			here.x, here.z, int(-here.z / main.ch_len), str((main.player as CharacterBody3D).velocity), str(main.player.attack_target),
-			float(main.player.get("_melee_cd")), float(main.player.get("_recover_t")), float(main.player.get("_stagger_t"))])
+			float(main.player.melee_cd_left), float(main.player.recover_left), float(main.player.stagger_left)])
 		for n: Enemy in main.get_tree().get_nodes_in_group("enemies"):
 			var e: Enemy = n
 			var at: Vector3 = main.level.to_local(e.global_position)
 			print("BOT:   left: %s at local (%.1f, %.1f) chamber %d  %.1f m away  hp %d  windup %.2f  stuck %.2f  leap %.2f  retreat_t %.2f  statuses %s" % [
 				str(e.kind), at.x, at.z, int(-at.z / main.ch_len), e.global_position.distance_to(main.player.global_position), int((e.body as Body).hp),
-				float(e.get("_windup")), float(e.get("_stuck_t")), float(e.get("_leap_left")), float(e.get("_retreat_t")), str((e.statuses as Dictionary).keys())])
+				float(e.windup_left), float(e.stuck_left), float(e.leap_left), float(e.retreat_time), str((e.statuses as Dictionary).keys())])
 		Engine.time_scale = 1.0
 		main.get_tree().quit(1)
 

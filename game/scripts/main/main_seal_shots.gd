@@ -112,14 +112,14 @@ func _setup_test_shot(what: String) -> void:
 	var first: Node3D = main.get_tree().get_nodes_in_group("enemies")[0]
 	main.player.cursor_fixed = first.global_position
 	main.player.hovered = first
-	main.player.set("_facing", (first.global_position - main.player.global_position).normalized())
+	main.player.facing_dir = (first.global_position - main.player.global_position).normalized()
 	main._harness()._shot_countdown = 75
 	var order: Array = [0, 1, 3, 4, 2]
 	for k: int in order.size():
 		var slot: int = int(order[k])
 		SkillTimer.after(main.level, 0.05 + 0.32 * float(k), func(_i: int) -> void:
-			main.player.set("_recover_t", 0.0)
-			main.player.set("_held", {})
+			main.player.recover_left = 0.0
+			main.player.held_cast = {}
 			var live: Array = main.get_tree().get_nodes_in_group("enemies")
 			if not live.is_empty():
 				main.player.cursor_fixed = (live[k % live.size()] as Node3D).global_position
@@ -152,7 +152,7 @@ func _setup_role_shot(aff: String) -> void:
 	main.state = "arena_fight"
 	var foes: Array = main.get_tree().get_nodes_in_group("enemies")
 	var first: Node3D = foes[0]
-	main.player.set("_facing", ((first.global_position - main.player.global_position) * Vector3(1, 0, 1)).normalized())
+	main.player.facing_dir = ((first.global_position - main.player.global_position) * Vector3(1, 0, 1)).normalized()
 	if aff == "death":
 		# three of them fall where they stood, for the thralls to rise from
 		for i: int in 3:
@@ -174,8 +174,8 @@ func _setup_role_shot(aff: String) -> void:
 	for step: Array in ROLE_SHOTS.get(aff, []):
 		var id: String = str(step[0])
 		SkillTimer.after(main.level, float(step[1]), func(_i: int) -> void:
-			main.player.set("_recover_t", 0.0)
-			main.player.set("_held", {})
+			main.player.recover_left = 0.0
+			main.player.held_cast = {}
 			var dead_spots: Array = main.get_tree().get_nodes_in_group("fallen").filter(func(f: Node) -> bool: return not bool(f.get("spent")))
 			var live: Array = main.get_tree().get_nodes_in_group("enemies").filter(func(e: Node) -> bool: return not bool(e.call("is_dead")))
 			if id == "rise_again" and not dead_spots.is_empty():
@@ -261,7 +261,7 @@ func _shot_seal(index: int, stage: int, rows: Array, links: Array = [], concepts
 	else:
 		print("shot seal: refused: %s" % str(sealed["text"]))
 	for rid: Variant in RuneWord.nodes(w):
-		main.player.call("_know", str(rid))
+		main.player.know_rune(str(rid))
 
 
 ## The ring a shot row joined to node `to` goes on: one further out where the skill has it and there is
@@ -381,7 +381,7 @@ func _setup_seal_shot(which: String) -> void:
 			_shot_surge_first()
 			_shot_seal(0, 1, [["WAT-1a", 0], ["WAT-4a", 0], ["WAT-3b", 2]])
 			for rid2: String in ["WAT-6b", "WAT-4b", "WAT-7b", "UNI-05a"]:
-				main.player.call("_know", rid2)
+				main.player.know_rune(rid2)
 			(main.player.abilities as Array)[0]["progress"] = 100.0
 			(main.player.constructs as Array).append({"tier": "remnant", "concept": "tension"})
 			main._enter_town()
@@ -396,7 +396,7 @@ func _setup_seal_shot(which: String) -> void:
 			_shot_surge_first()
 			_shot_seal(0, 1, [["WAT-1a", 0], ["WAT-4a", 0], ["WAT-3b", 1]], [[1, 2]])     # Flood, Heave (joined), Dry
 			for rid: String in ["WAT-6b", "WAT-4b", "WAT-7b", "UNI-05a", "UNI-11a", "FIR-1b", "WAT-2b"]:
-				main.player.call("_know", rid)
+				main.player.know_rune(rid)
 			var own: Array = main.player.abilities
 			own[0]["progress"] = 100.0
 			(main.player.constructs as Array).append({"tier": "remnant", "concept": "tension"})

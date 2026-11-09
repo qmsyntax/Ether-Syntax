@@ -52,7 +52,7 @@ func _on_body_disturbed() -> void:
 func _on_projection_destroyed() -> void:
 	main.player.note("Your soul is torn apart in the echo.")
 	(main.player.body as Body).apply_damage(99999.0)
-	main.player.call("_check_death")
+	main.player.check_death()
 
 
 ## The echo of a place: dark, violet, lit from nowhere. Living enemies and loose loot do not show.

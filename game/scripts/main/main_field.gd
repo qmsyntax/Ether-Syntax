@@ -101,7 +101,7 @@ func zone_point(world: Vector3) -> Vector2:
 func minimap_info() -> Dictionary:
 	if main.state != "field" or main._zone == null or main.fog == null:
 		return {}
-	var facing: Vector3 = main.level.global_transform.basis.inverse() * (main.player.get("_facing") as Vector3)
+	var facing: Vector3 = main.level.global_transform.basis.inverse() * (main.player.facing_dir as Vector3)
 	var lying: Array = []
 	for c: Dictionary in main.player.corpses:
 		if str(c.get("where", "")) == main.zone_id:

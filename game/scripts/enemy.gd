@@ -428,6 +428,38 @@ func _think_behaviour(delta: float, dir: Vector3, dist: float) -> void:
 	_think_melee(delta, dir, dist)
 
 
+# --- public readers (docs/architecture/typed-calls.md) ---------------------------------------------------
+# Outside code (the harness, the player's skills) reaches these private fields and helpers through a public name, so
+# its calls stay typed. Each is a plain alias: the private name is untouched, so the parts and the tests that name it
+# by string read and write the same thing.
+
+## Seconds left on the wind-up of the attack being readied, below 0 when none is (`_windup`).
+var windup_left: float:
+	get: return _windup
+	set(value): _windup = value
+## Seconds it has stood open after a miss (`_stuck_t`).
+var stuck_left: float:
+	get: return _stuck_t
+## A pouncer's metres of leap still to cover (`_leap_left`).
+var leap_left: float:
+	get: return _leap_left
+## A pouncer: how long the player has been running from the pack (`_retreat_t`).
+var retreat_time: float:
+	get: return _retreat_t
+## A commander's special being wound up, "sweep" or "charge", else "" (`_special`).
+var special_move: String:
+	get: return _special
+## The model rig (`_rig`).
+var model_rig: ModelRig:
+	get: return _rig
+
+
+## Turn the rig to `facing` now (`_apply_facing`).
+func apply_facing() -> void: looks_part._apply_facing()
+## Redraw the melee wind-up's telegraph (`_update_melee_telegraph`).
+func update_melee_telegraph() -> void: looks_part._update_melee_telegraph()
+
+
 # --- forwarders: outside code (the player, projectiles, zones, the HUD, Beast, the tests) calls the
 # node by name; each part's functions answer here (docs/architecture/enemy-split.md)
 

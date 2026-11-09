@@ -184,7 +184,7 @@ func _ledger(root: Control) -> void:
 	right.add_child(UiTheme.heading("Ledger", 22))
 	right.add_child(UiTheme.rule())
 	right.add_child(UiWidgets.stat_row("Purse", UiTheme.money_text(money), UiTheme.BAD if money < 0 else UiTheme.GOLD))
-	var last: int = int(game.get("_last_payout"))
+	var last: int = int(game.last_payout)
 	if last > 0:
 		right.add_child(UiWidgets.stat_row("Last delve carried out", "$%d" % last))
 	right.add_child(UiWidgets.stat_row("Delves made", str(int(game.delves))))
