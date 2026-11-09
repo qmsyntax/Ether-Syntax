@@ -85,13 +85,10 @@ var _retreat_t := 0.0                # pouncer: how long the player has been run
 var _circle_sign := 1.0
 var _walk_dir := Vector3.ZERO        # the way to walk to reach the player: along its path
 var _router: Node
-var _nav: LevelNav                   # the level's navigation, once it has been baked (see LevelNav)
-var _chase := NavPath.new()          # its path to the player
 var _errand := NavPath.new()         # its path somewhere else: an archer's vantage, a drummer's spot
 var _flash := 0.0
 ## Who it fights when nothing lures it away (the player); `target` may be a lure for a while.
 var _player: Node3D
-var _lured := false
 ## Its death burst was snuffed out (Wickpinch): it no longer bursts when it dies.
 var quelled := false
 var _held_t := 0.0                   # Sick: standing still after a retch
@@ -109,11 +106,13 @@ var _strength := 1.0
 ## through its `enemy` back-reference. Outside code keeps calling the node (the forwarders at the end).
 var status_part: EnemyStatuses
 var hits_part: EnemyHits
+var motion_part: EnemyMotion
 
 
 func _init() -> void:
 	status_part = EnemyStatuses.new(self)
 	hits_part = EnemyHits.new(self)
+	motion_part = EnemyMotion.new(self)
 
 
 ## `strength` scales health and damage - dungeon stages past the midpoint hit harder.
@@ -220,22 +219,6 @@ func is_elite() -> bool:
 	return bool(_def.get("elite", false))
 
 
-## True if it can see `point`: in its front arc, nothing solid between, not blinded past its sight.
-## Asleep sees nothing (Dream reads that apart). Mindless kinds (enemies.json "mindless") see no mind.
-func sees_point(point: Vector3) -> bool:
-	if body.is_dead() or bool(_def.get("mindless", false)):
-		return false
-	if not is_in_front(point):
-		return false
-	var blind: Dictionary = _blinded()
-	if not blind.is_empty() and Vector2(point.x - global_position.x, point.z - global_position.z).length() > float(blind.get("sight", 2.0)):
-		return false
-	if not is_inside_tree():
-		return true
-	var q := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP, point + Vector3.UP, 1)
-	return get_world_3d().direct_space_state.intersect_ray(q).is_empty()
-
-
 ## Anyone can claim a place by it (a masked enemy is a lure for its friends).
 func claim_slot(_enemy: Node) -> bool:
 	return true
@@ -332,160 +315,11 @@ func _physics_process(delta: float) -> void:
 	_look(delta)
 
 
-## Leashed: it cannot go further than leash_m from whoever leashed it - a step beyond is undone, as a wall would
-## stop it (the leash length may come from the skill, status data "leash_m").
-func _keep_leash() -> void:
-	for id: String in statuses:
-		var s: Dictionary = statuses[id]
-		var m: float = float((s.get("data", {}) as Dictionary).get("leash_m", _sdef(id).get("leash_m", 0.0)))
-		var by: Variant = s.get("by")
-		if m <= 0.0 or not (by is Node3D) or not is_instance_valid(by):
-			continue
-		var off: Vector3 = global_position - (by as Node3D).global_position
-		off.y = 0.0
-		if off.length() > m:
-			var back: Vector3 = (by as Node3D).global_position + off.normalized() * m
-			global_position = Vector3(back.x, global_position.y, back.z)
-
-
-## Who it goes for: the player, unless a lure stands within its reach (a phantom, a death mask, a
-## thrall, a friend wearing your face) - then that, until it breaks. An enemy with no target (a
-## test's dummy) is never lured.
-func _pick_target() -> void:
-	if not is_inside_tree():
-		return
-	if not _lured and target == null:
-		return
-	# Taunted: whoever taunted it, and nobody else (no lure, decoy or thrall draws it)
-	var forced: Node3D = _forced_target()
-	if forced != null:
-		if target != forced:
-			interrupt()
-		target = forced
-		_lured = forced != _player
-		return
-	# Charmed: it fights for whoever charmed it - the nearest of its old friends
-	if _st_any("fights_for_source"):
-		var foe: Node3D = null
-		for node2: Node in get_tree().get_nodes_in_group("enemies"):
-			var o := node2 as Node3D
-			if o == null or o == self or bool(o.call("is_dead")) or bool(o.call("_charmed")):
-				continue
-			if foe == null or o.global_position.distance_to(global_position) < foe.global_position.distance_to(global_position):
-				foe = o
-		if foe != null:
-			if target != foe:
-				interrupt()
-			target = foe
-			_lured = true
-			return
-	var best: Node3D = null
-	var best_d := INF
-	for node: Node in get_tree().get_nodes_in_group("lures"):
-		var l := node as Node3D
-		if l == null or l == self or bool(l.call("is_dead")):
-			continue
-		var d: float = l.global_position.distance_to(global_position)
-		if d <= float(l.get("lure_radius")) and d < best_d:
-			best = l
-			best_d = d
-	if best == null:
-		# a friend that draws it (Masked wears your face; a Charmed one has turned on them): any status with lure_radius
-		for node: Node in get_tree().get_nodes_in_group("enemies"):
-			var m := node as Node3D
-			if m == null or m == self:
-				continue
-			var draw: float = float(m.call("lure_reach"))
-			var d2: float = m.global_position.distance_to(global_position)
-			if draw > 0.0 and d2 <= draw and d2 < best_d:
-				best = m
-				best_d = d2
-	if best != null:
-		if target != best:
-			interrupt()
-		target = best
-		_lured = true
-	elif _lured:
-		_lured = false
-		target = _player if is_instance_valid(_player) else null
-		interrupt()
-
-
-## Whoever a forced_target status on it names (Taunted: whoever put it there), if they still stand; else null.
-func _forced_target() -> Node3D:
-	for id: String in statuses:
-		if str(_sdef(id).get("forced_target", "")) != "source":
-			continue
-		var by: Variant = (statuses[id] as Dictionary).get("by")
-		if by is Node3D and is_instance_valid(by) and not _gone(by as Node):
-			return by as Node3D
-	return null
-
-
 ## True if a body (an enemy, a thrall, a lure: is_dead(); the player: dead) is down or gone.
 static func _gone(n: Node) -> bool:
 	if not is_instance_valid(n):
 		return true
 	return bool(n.call("is_dead")) if n.has_method("is_dead") else bool(n.get("dead"))
-
-
-## Terrified (from whoever frightened it) or Dreading (out of the zone): it walks away and does not
-## attack. Returns true while it is running.
-func _flee(_delta: float) -> bool:
-	for id: String in statuses:
-		# Exiled: it will not come within keeps_away of whoever cast it out (outside it, it fights - and shoots - as it will)
-		var keep: float = float(_sdef(id).get("keeps_away", 0.0))
-		var kby: Variant = (statuses[id] as Dictionary).get("by")
-		if keep > 0.0 and kby is Node3D and is_instance_valid(kby):
-			var off: Vector3 = global_position - (kby as Node3D).global_position
-			off.y = 0.0
-			if off.length() < keep:
-				_windup = -1.0
-				facing = (off if off.length() > 0.05 else -facing).normalized()
-				velocity = facing * speed
-				return true
-		var how: String = str(_sdef(id).get("flees", ""))
-		if how == "":
-			continue
-		var from := Vector3.INF
-		var s: Dictionary = statuses[id]
-		if how == "source" and s.get("by") is Node3D and is_instance_valid(s.get("by")):
-			from = (s["by"] as Node3D).global_position
-		elif how == "zone":
-			var at: Variant = (s.get("data", {}) as Dictionary).get("from")
-			if at is Vector3:
-				from = at
-			elif s.get("by") is Node3D and is_instance_valid(s.get("by")):
-				from = (s["by"] as Node3D).global_position
-		if from == Vector3.INF:
-			continue
-		var away: Vector3 = global_position - from
-		away.y = 0.0
-		if away.length() < 0.05:
-			away = -facing
-		_windup = -1.0
-		facing = away.normalized()
-		velocity = away.normalized() * speed
-		return true
-	return false
-
-
-## Commanded: it walks to the point it was given and stands there, starting nothing.
-func _walk_to_goal(_delta: float) -> bool:
-	for id: String in statuses:
-		if not bool(_sdef(id).get("goes_to_goal", false)):
-			continue
-		var goal: Variant = status_data(id).get("goal")
-		if not (goal is Vector3):
-			return true
-		var to: Vector3 = (goal as Vector3) - global_position
-		to.y = 0.0
-		_windup = -1.0
-		if to.length() > 0.4:
-			facing = to.normalized()
-			velocity = to.normalized() * speed
-		return true
-	return false
 
 
 ## True while a status keeps it from starting an attack (Shackled, Choked, Soothed...).
@@ -525,93 +359,6 @@ func _attack_started() -> void:
 			(by as Node).call("deal_damage", self, hurt_by, ["ability", "holy", "through", "penance"])
 			if body.is_dead():
 				return
-
-
-## The direction to walk in order to reach the player: along its path on the level's navigation
-## mesh (round walls, blocks, props and corners, through doorways), stepping round standing stone,
-## which is not in the mesh. Where there is no mesh yet (or none at all: a unit test's little
-## world), the old steering: round stone, through the passage's doorway (Route), else `straight`.
-## Zero when the player cannot be reached and it already stands as near as it can get.
-func _route_dir(straight: Vector3, delta: float = 0.0) -> Vector3:
-	var nav: LevelNav = _level_nav()
-	if nav == null:
-		return _fallback_dir(straight)
-	var way: Vector3 = _chase.steer(nav, global_position, target.global_position, radius, delta)
-	return _round_stone(nav, _chase.next_point(target.global_position), way)
-
-
-## The level's navigation where it stands, or null.
-func _level_nav() -> LevelNav:
-	if not is_inside_tree():
-		return null
-	if _nav == null or not is_instance_valid(_nav) or not _nav.covers(global_position):
-		_nav = LevelNav.find(get_tree(), global_position)
-	return _nav
-
-
-## Walking `way` toward `next` (a corner of its path): if standing stone is in the way, head for
-## the end of it that can be walked to instead. Stone is not baked into the mesh - it stands 12 s
-## and Stone.way_round() already knows its one corner; this only checks the end is walkable.
-func _round_stone(nav: LevelNav, next: Vector3, way: Vector3) -> Vector3:
-	for node: Node in get_tree().get_nodes_in_group("stones"):
-		var s := node as Stone
-		if s == null:
-			continue
-		var detour: Variant = s.way_round(global_position, next, radius)
-		if detour == null:
-			continue
-		var spot: Vector3 = detour as Vector3
-		if not nav.standable(spot, radius, radius):
-			# that end is against a wall: try the other one
-			var across: Vector3 = s.global_transform.basis.x
-			across.y = 0.0
-			across = across.normalized()
-			spot -= across * 2.0 * across.dot(spot - s.global_position)
-			if not nav.standable(spot, radius, radius):
-				continue                         # it closes the way: walk on and press against it
-		var side: Vector3 = spot - global_position
-		side.y = 0.0
-		if side.length() > 0.05:
-			return side.normalized()
-	return way
-
-
-## The old steering, for where there is no navigation mesh: round standing stone, else through
-## the passage's doorway (see Route), else `straight`.
-func _fallback_dir(straight: Vector3) -> Vector3:
-	if is_inside_tree():
-		for s: Node in get_tree().get_nodes_in_group("stones"):
-			var detour: Variant = s.call("way_round", global_position, target.global_position, radius)
-			if detour != null:
-				var side: Vector3 = (detour as Vector3) - global_position
-				side.y = 0.0
-				if side.length() > 0.05:
-					return side.normalized()
-	return _door_dir(straight)
-
-
-## The way through the passage's dividing walls (see Route), or `straight` where there are none.
-func _door_dir(straight: Vector3) -> Vector3:
-	if not is_inside_tree():
-		return straight
-	if _router == null or not is_instance_valid(_router):
-		_router = get_tree().get_first_node_in_group("router")
-	if _router == null:
-		return straight
-	var next: Vector3 = _router.call("route", global_position, target.global_position, radius)
-	var way: Vector3 = next - global_position
-	way.y = 0.0
-	return way.normalized() if way.length() > 0.05 else straight
-
-
-## Turn toward `want` at the turn rate. Nothing turns while it is committed to an attack.
-func _turn_toward(want: Vector3, delta: float) -> void:
-	if want.length() < 0.001 or _turned_t > 0.0:
-		return
-	var from: float = atan2(facing.x, facing.z)
-	var goal: float = atan2(want.x, want.z)
-	var step: float = clampf(wrapf(goal - from, -PI, PI), -_turn_rate * delta, _turn_rate * delta)
-	facing = Vector3(sin(from + step), 0.0, cos(from + step))
 
 
 func _think_melee(delta: float, dir: Vector3, dist: float) -> void:
@@ -932,22 +679,6 @@ func _loose() -> void:
 	get_parent().add_child(shot)
 
 
-## Nothing solid on the straight line between two points (walls, blocks, stone - not bodies).
-func _clear(from: Vector3, to: Vector3) -> bool:
-	if not is_inside_tree():
-		return true
-	var q := PhysicsRayQueryParameters3D.create(from, to, 1)
-	return get_world_3d().direct_space_state.intersect_ray(q).is_empty()
-
-
-## True if there is ground to stand on at `spot`.
-func _has_floor(spot: Vector3) -> bool:
-	if not is_inside_tree():
-		return true
-	var q := PhysicsRayQueryParameters3D.create(spot + Vector3.UP * 0.5, spot + Vector3.DOWN * 1.5, 1)
-	return not get_world_3d().direct_space_state.intersect_ray(q).is_empty()
-
-
 ## Which way to back off from the player: straight back if that is open, otherwise the nearest
 ## turn that is, keeping to the side it turned last time so it does not dither. Zero if it is
 ## boxed in. `dir` points at the player.
@@ -1037,26 +768,6 @@ func _find_vantage() -> Variant:
 			best = spot
 			best_cost = cost
 	return best
-
-
-## Nothing solid between it and the player; not blinded past its sight; not looking into or through
-## a zone that blocks sight (a pall, smoke); and the player not unseen from here.
-func _sees_target() -> bool:
-	if not is_inside_tree():
-		return true
-	var blind: Dictionary = _blinded()
-	if not blind.is_empty() and global_position.distance_to(target.global_position) > float(blind.get("sight", 2.0)):
-		return false
-	if target == _player and _player.has_method("unseen_from") and bool(_player.call("unseen_from", global_position)):
-		return false
-	for z: Node in get_tree().get_nodes_in_group("ground_zones"):
-		if (bool(z.get("blocks_sight")) or bool(z.get("hides"))) and bool(z.call("crosses", global_position, target.global_position)):
-			# Lit bodies show through a hiding zone
-			if bool(z.get("hides")) and target.has_method("has_status") and bool(target.call("has_status", "lit")):
-				continue
-			return false
-	var q := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP, target.global_position + Vector3.UP, 1)
-	return get_world_3d().direct_space_state.intersect_ray(q).is_empty()
 
 
 func _think_pouncer(delta: float, dir: Vector3, dist: float) -> void:
@@ -1326,3 +1037,20 @@ func turn_away_from(point: Vector3, seconds: float) -> void: hits_part.turn_away
 func is_shoved() -> bool: return hits_part.is_shoved()
 func _tick_shove(delta: float) -> void: hits_part._tick_shove(delta)
 func _shove_ended() -> void: hits_part._shove_ended()
+
+# EnemyMotion (motion_part): movement, routing and sight
+func _keep_leash() -> void: motion_part._keep_leash()
+func _pick_target() -> void: motion_part._pick_target()
+func _forced_target() -> Node3D: return motion_part._forced_target()
+func _flee(_delta: float) -> bool: return motion_part._flee(_delta)
+func _walk_to_goal(_delta: float) -> bool: return motion_part._walk_to_goal(_delta)
+func _route_dir(straight: Vector3, delta: float = 0.0) -> Vector3: return motion_part._route_dir(straight, delta)
+func _level_nav() -> LevelNav: return motion_part._level_nav()
+func _round_stone(nav: LevelNav, next: Vector3, way: Vector3) -> Vector3: return motion_part._round_stone(nav, next, way)
+func _fallback_dir(straight: Vector3) -> Vector3: return motion_part._fallback_dir(straight)
+func _door_dir(straight: Vector3) -> Vector3: return motion_part._door_dir(straight)
+func _turn_toward(want: Vector3, delta: float) -> void: motion_part._turn_toward(want, delta)
+func sees_point(point: Vector3) -> bool: return motion_part.sees_point(point)
+func _clear(from: Vector3, to: Vector3) -> bool: return motion_part._clear(from, to)
+func _has_floor(spot: Vector3) -> bool: return motion_part._has_floor(spot)
+func _sees_target() -> bool: return motion_part._sees_target()
