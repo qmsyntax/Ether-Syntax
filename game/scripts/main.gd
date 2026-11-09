@@ -54,7 +54,6 @@ var hud_layer: CanvasLayer
 var ui_root: Control                # themed parent of the HUD and every screen
 var screen: Control                 # the menu screen currently shown, if any
 var _prompt := ""                   # contextual hint shown in the HUD's prompt strip
-var _screen_paused := false
 var level: Node3D
 var settings_menu: Control
 var nether: Netherecho               # the spirit layer of the current level
@@ -109,8 +108,6 @@ var _test_mode := false
 ## What a fresh game does as soon as it is built (restart_game): {} = the title, {"test": affinity}
 ## or {"load": slot}.
 var _then: Dictionary = {}
-## The open screen was opened from the game menu, so closing it goes back to the menu.
-var _menu_return := false
 ## The test and screenshot harness (MainHarness): built only when a run has test, shot or bot arguments.
 var _harness_part: MainHarness = null
 ## The parts (docs/architecture/main-split.md), one per concern, made in _init. Each reaches the node through
@@ -121,6 +118,7 @@ var passage_part: MainPassage           # state "dungeon": the assault passage
 var field_part: MainField               # state "field": an overland zone
 var town_part: MainTown                 # state "town": the town, its people, crafting and services
 var nether_part: MainNether             # the Netherecho over a level: leaving the body, its look, its signals
+var screens_part: MainScreens           # the screens, the game menu, the controls menu, the seal and ascension
 
 
 func _init() -> void:
@@ -130,6 +128,7 @@ func _init() -> void:
 	field_part = MainField.new(self)
 	town_part = MainTown.new(self)
 	nether_part = MainNether.new(self)
+	screens_part = MainScreens.new(self)
 
 
 func _ready() -> void:
@@ -251,9 +250,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				or screen is TemperingScreen or screen is SkillTreeScreen or screen is CraftScreen or screen is SavesScreen:
 			close_screen()
 		elif screen == null and state != "select" and state != "dead":
-			open_game_menu()
+			screens_part.open_game_menu()
 		else:
-			_open_settings()            # the title and the hardcore death notice: the controls, as before
+			screens_part._open_settings()            # the title and the hardcore death notice: the controls, as before
 		get_viewport().set_input_as_handled()
 		return
 
@@ -304,162 +303,9 @@ func _cast_from_hotbar(event: InputEvent) -> bool:
 	return false
 
 
-func _open_settings() -> void:
-	if settings_menu != null:
-		return
-	settings_menu = SettingsMenuScript.new()
-	settings_menu.connect("closed", _on_settings_closed)
-	ui_root.add_child(settings_menu)
-	get_tree().paused = true
-
-
-func _on_settings_closed() -> void:
-	settings_menu = null
-	get_tree().paused = _screen_paused
-	if screen != null and screen.has_method("rebuild"):
-		screen.call("rebuild")          # key names on screen may have changed
-
-
 ## "[W]"-style tag for the current binding of an action, for on-screen prompts.
 func _k(action: String) -> String:
 	return "[%s]" % Keybinds.binding_text(action)
-
-
-# --- the game menu (Esc in play) ------------------------------------------------------------
-
-## The game menu: Resume, New game (and the test characters), Save, Load, Settings, Quit to title,
-## Quit game. Pauses the game in every state it opens in (town, field, passage, arena, the
-## Netherecho); not on the title or the hardcore death notice, which have their own buttons.
-func open_game_menu(view: String = "main") -> void:
-	if state == "select" or state == "dead":
-		return
-	_menu_return = false
-	_talking_to = ""
-	_walk_to = null
-	_show_screen(GameMenu.new(self, view), true)
-
-
-## The register (SavesScreen) from the game menu, as "save" or "load"; closing it comes back to the menu.
-func menu_open_saves(mode: String) -> void:
-	if mode == "save" and slot_save_block_reason() != "":
-		return
-	_show_screen(SavesScreen.new(self, mode), true)
-	_menu_return = true
-
-
-## Why the character cannot be written to a numbered slot now, or "" if it can. The rule is the one
-## the register already had (SavesScreen offered Save only in town; save_to_slot is "only
-## meaningful in town"): slots are written in town. A test character may be written to a slot: the
-## slot keeps it marked as one (Player.to_save), so loading it is still never autosaved. Nothing
-## writes a test character to the autosave (save_now).
-func slot_save_block_reason() -> String:
-	if state == "select" or str(player.get("talent_id")) == "":
-		return "There is no character to save."
-	if state == "dead":
-		return "This character is dead."
-	if state == "town":
-		return ""
-	var test: bool = bool(player.get("test_character"))
-	match state:
-		"field":
-			if test:
-				return "Saving to a slot is done in town, as at the inn's register. A test character is never autosaved."
-			return "Saving to a slot is done in town, as at the inn's register. Out here the autosave keeps your place every %d s." % int(
-				float((GameData.balance.get("camps", {}) as Dictionary).get("field_autosave_s", 30.0)))
-		"dungeon":
-			return "Saving to a slot is done in town. Nothing is saved inside a passage; the last autosave is from before you went in."
-	return "Saving to a slot is done in town. Nothing is saved in the arena; the last autosave is from town."
-
-
-## What leaving the character in play would lose, for the game menu's question; "" when there is
-## nothing to lose (no character, or a test character: never saved anyway). The game keeps no
-## record of what has changed since the last save, so a real character is always asked about.
-func leave_warning() -> String:
-	if state == "select" or state == "dead" or str(player.get("talent_id")) == "" or bool(player.get("test_character")):
-		return ""
-	var lines: Array[String] = []
-	match state:
-		"town":
-			lines.append("Anything since the last autosave is lost. In town the autosave is written each time something changes; the game does not track what has changed since, so it asks every time.")
-		"field":
-			lines.append("Out here the autosave runs every %d s; whatever happened since the last one is lost." % int(
-				float((GameData.balance.get("camps", {}) as Dictionary).get("field_autosave_s", 30.0))))
-		"dungeon":
-			lines.append("Nothing is saved inside a passage: this run, its spoils and anything picked up since you went in are lost.")
-		_:
-			lines.append("Nothing is saved in the arena: anything since you left town is lost.")
-	if nether.active:
-		lines.append("Your soul is out in the Netherecho.")
-	return "\n".join(lines)
-
-
-## The character's name for the menu ("Test: Fire", "Maren"), or its talent if it has none.
-func character_label() -> String:
-	var n: String = str(player.get("char_name"))
-	if n != "":
-		return n
-	var t: String = str(player.get("talent_id"))
-	return str(TalentDB.get_talent(t).get("name", "no character")) if t != "" else "no character"
-
-
-## Where the character is, for the menu's header.
-func menu_where() -> String:
-	var w: String = _where()
-	if w == "":
-		w = state
-	return ("The Netherecho of " + w.get_slice("  -  ", 0)) if nether.active else w
-
-
-## Whether any slot (the autosave or a numbered one) holds a character.
-func has_saves() -> bool:
-	for slot: int in SaveGame.SLOTS + 1:
-		if not SaveGame.read(SaveGame.slot_path(slot)).is_empty():
-			return true
-	return false
-
-
-## The game menu's Load: a fresh game that loads this slot (restart_game). The menu asked first.
-func load_from_menu(slot: int) -> void:
-	if SaveGame.read(SaveGame.slot_path(slot)).is_empty():
-		return
-	restart_game({"load": slot})
-
-
-## The game menu's test characters: a fresh game that starts this one in town at once.
-func menu_test_character(aff: String) -> void:
-	if GameData.affinity(aff).is_empty():
-		return
-	restart_game({"test": aff})
-
-
-## Back to the title (character creation and the test characters), as at the first start.
-func quit_to_title() -> void:
-	restart_game()
-
-
-func quit_game() -> void:
-	get_tree().quit()
-
-
-## Settings (the game menu's): the window, and the zoom a game starts at (-1 = the data's default).
-## A new starting zoom moves the camera there now too.
-func set_fullscreen(on: bool) -> void:
-	GameSettings.set_fullscreen(on)
-
-
-func zoom_start() -> float:
-	return GameSettings.zoom_start()
-
-
-func set_zoom_start(z: float) -> void:
-	if z < 0.0:
-		GameSettings.reset_zoom_start()
-	else:
-		GameSettings.set_zoom_start(z)
-	_cam_zoom_target = GameSettings.zoom_start()
-	cam_zoom = _cam_zoom_target
-	var focus: Vector3 = nether.projection.global_position if (nether.active and nether.projection != null) else player.global_position
-	_place_camera(focus, 0.0)                   # paused under the menu: move it now, so it shows
 
 
 ## Whether this run is the game being played (no test, shot or bot arguments): only then are the
@@ -538,82 +384,6 @@ func _select_talent(index: int) -> void:
 
 func _flat_dist(a: Vector3, b: Vector3) -> float:
 	return Vector2(a.x - b.x, a.z - b.z).length()
-
-
-## The skill tree. From the trainer (`at_trainer`, only while talking to them in town) its Learn
-## and Drill buttons work; opened anywhere else it is for looking. Out of town it pauses the game.
-func open_skill_tree(at_trainer: bool = false) -> void:
-	if screen is SkillTreeScreen and not at_trainer:
-		close_screen()
-		return
-	if state == "select" or state == "dead":
-		return
-	var teaching: bool = at_trainer and state == "town" and _talking_to == "trainer"
-	_show_screen(SkillTreeScreen.new(self, teaching), state != "town")
-
-
-# --- screens ---------------------------------------------------------------------------
-
-func _show_screen(new_screen: Control, pause: bool) -> void:
-	if screen != null:
-		screen.queue_free()
-	screen = new_screen
-	_screen_paused = pause and new_screen != null
-	if new_screen != null:
-		ui_root.add_child(new_screen)
-		if settings_menu != null:
-			ui_root.move_child(settings_menu, -1)
-	get_tree().paused = _screen_paused or settings_menu != null
-
-
-## Close the open screen. In town, a screen someone showed you goes back to talking to them, and
-## closing that leaves you standing in the street.
-func close_screen() -> void:
-	if _menu_return and screen != null and not (screen is GameMenu):
-		_show_screen(GameMenu.new(self), true)      # opened from the game menu: back to it
-		_menu_return = false
-		return
-	_menu_return = false
-	if state == "town":
-		if _talking_to != "" and not (screen is TalkScreen):
-			_show_screen(TalkScreen.new(self, _talking_to), false)
-		else:
-			_talking_to = ""
-			_show_screen(null, false)
-	elif state == "select":
-		_show_screen(CreationScreen.new(self), false)
-	else:
-		_show_screen(null, false)
-
-
-func open_settings() -> void:
-	_open_settings()
-
-
-func open_shop() -> void:
-	if state == "town":
-		_show_screen(ShopScreen.new(self), false)
-
-
-func open_tempering() -> void:
-	if state == "town":
-		_show_screen(TemperingScreen.new(self), false)
-
-
-## Toggle the inventory. Out in the field it pauses the game.
-func open_inventory() -> void:
-	if screen is InventoryScreen:
-		close_screen()
-	elif state != "select" and state != "dead":
-		_show_screen(InventoryScreen.new(self), state != "town")
-
-
-## Toggle the ethercosm - the view of your soul. Out in the field it pauses the game.
-func open_ethercosm() -> void:
-	if screen is EthercosmScreen:
-		close_screen()
-	elif state != "select" and state != "dead":
-		_show_screen(EthercosmScreen.new(self), state != "town")
 
 
 ## Quick start with a default look (tests and bots); the creation screen uses begin_character.
@@ -737,13 +507,8 @@ func load_slot(slot: int) -> bool:
 	hardcore = bool(data.get("hardcore", false))
 	if not _resume_place(data.get("place", {})):
 		_enter_town()
-	open_ascension()                       # an ascension left unsettled when it was saved
+	screens_part.open_ascension()                       # an ascension left unsettled when it was saved
 	return true
-
-
-func open_saves() -> void:
-	if state == "town" or state == "select":
-		_show_screen(SavesScreen.new(self), false)
 
 
 # --- rune stones (design/14 section 8) ------------------------------------------------------
@@ -778,35 +543,6 @@ func _stone_prompt() -> void:
 		return
 	var read: bool = (player.get("read_inscriptions") as Array).has(stone.stone_id)
 	_prompt = ("%s.   Already read." % stone.stone_name) if read else ("%s read %s - runes are cut into it." % [_k("interact"), stone.stone_name.to_lower()])
-
-
-## Open the seal screen of ability `ability_index` at its next level lock (design/14 sections 8 and
-## 11): the ring is built and the construct chosen and bound there - the only place a construct is
-## bound (Brent 2026-10-23), and only with the bar full and a construct of the tier carried (Brent
-## 2026-10-24). `construct_index` < 0: the keystone is chosen on the screen.
-func open_seal(ability_index: int, construct_index: int = -1) -> void:
-	if not (screen is EthercosmScreen):
-		if state == "select" or state == "dead":
-			return
-		_show_screen(EthercosmScreen.new(self), state != "town")
-	screen.call("select", ability_index)
-	screen.call("open_seal", construct_index)
-
-
-## The B key ("bind"): opens the seal screen of the first skill whose level lock can open - its bar
-## full and a construct of its tier carried (Brent 2026-10-24). With none, it says what the first full
-## skill is missing. It binds nothing itself.
-func open_seal_first_ready() -> void:
-	var abilities: Array = player.get("abilities")
-	var missing := ""
-	for ai: int in abilities.size():
-		var lock: Dictionary = player.call("can_open_seal", ai)
-		if bool(lock["ok"]):
-			open_seal(ai)
-			return
-		if missing == "" and str(lock["reason"]) == "no_construct":
-			missing = "%s: %s" % [str(GameData.ability(str(abilities[ai]["id"])).get("name", "?")), str(lock["text"])]
-	player.call("note", missing if missing != "" else "No skill is ready for its level lock: a skill's bar fills as you use it.")
 
 
 func _exit_tree() -> void:
@@ -851,30 +587,6 @@ func _build_player() -> void:
 	player.connect("rune_discovered", _on_rune_discovered)
 	player.connect("ascended", _on_ascended)
 	nether.player = player
-
-
-## A star ascended (Brent 2026-10-24): the ascension screen offers its affinities and boosts.
-func _on_ascended(_star: int) -> void:
-	open_ascension()
-
-
-## Show the pending ascension's screen (an affinity to choose, then each skill's boost). It pauses
-## and holds the keys until it is settled; a save made meanwhile keeps it, and loading reopens it.
-func open_ascension() -> void:
-	if (player.get("ascension_pending") as Dictionary).is_empty() or state == "select" or state == "dead":
-		return
-	_show_screen(AscensionScreen.new(self), true)
-
-
-## Settle the pending ascension with the screen's choices (Player.resolve_ascension), then save and
-## close. Returns "" or why not.
-func resolve_ascension(affinity: String, aspects: Dictionary) -> String:
-	var why: String = str(player.call("resolve_ascension", affinity, aspects))
-	if why != "":
-		return why
-	save_now()
-	close_screen()
-	return ""
 
 
 ## A rune became known: the HUD shows it (design/14 section 8).
@@ -974,3 +686,33 @@ func _on_nether_entered() -> void: nether_part._on_nether_entered()
 func _on_nether_exited(reason: String) -> void: nether_part._on_nether_exited(reason)
 func _on_body_disturbed() -> void: nether_part._on_body_disturbed()
 func _on_projection_destroyed() -> void: nether_part._on_projection_destroyed()
+
+
+# --- screens_part (MainScreens)
+func _show_screen(new_screen: Control, pause: bool) -> void: screens_part._show_screen(new_screen, pause)
+func close_screen() -> void: screens_part.close_screen()
+func _on_settings_closed() -> void: screens_part._on_settings_closed()
+func open_settings() -> void: screens_part.open_settings()
+func open_shop() -> void: screens_part.open_shop()
+func open_tempering() -> void: screens_part.open_tempering()
+func open_inventory() -> void: screens_part.open_inventory()
+func open_ethercosm() -> void: screens_part.open_ethercosm()
+func open_saves() -> void: screens_part.open_saves()
+func open_skill_tree(at_trainer: bool = false) -> void: screens_part.open_skill_tree(at_trainer)
+func open_seal(ability_index: int, construct_index: int = -1) -> void: screens_part.open_seal(ability_index, construct_index)
+func open_seal_first_ready() -> void: screens_part.open_seal_first_ready()
+func _on_ascended(_star: int) -> void: screens_part._on_ascended(_star)
+func resolve_ascension(affinity: String, aspects: Dictionary) -> String: return screens_part.resolve_ascension(affinity, aspects)
+func menu_open_saves(mode: String) -> void: screens_part.menu_open_saves(mode)
+func slot_save_block_reason() -> String: return screens_part.slot_save_block_reason()
+func leave_warning() -> String: return screens_part.leave_warning()
+func character_label() -> String: return screens_part.character_label()
+func menu_where() -> String: return screens_part.menu_where()
+func has_saves() -> bool: return screens_part.has_saves()
+func load_from_menu(slot: int) -> void: screens_part.load_from_menu(slot)
+func menu_test_character(aff: String) -> void: screens_part.menu_test_character(aff)
+func quit_to_title() -> void: screens_part.quit_to_title()
+func quit_game() -> void: screens_part.quit_game()
+func set_fullscreen(on: bool) -> void: screens_part.set_fullscreen(on)
+func zoom_start() -> float: return screens_part.zoom_start()
+func set_zoom_start(z: float) -> void: screens_part.set_zoom_start(z)

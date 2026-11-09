@@ -51,7 +51,7 @@ func start(args: PackedStringArray) -> void:
 		_frames = 1000
 		main._select_talent(0)
 		main._enter_town()
-		main._open_settings()
+		main.screens_part._open_settings()
 		main.get_tree().paused = false
 		_shot_countdown = 25
 	elif args.has("--bot-dungeon") or args.has("--bot-full") or args.has("--bot-die") or args.has("--shot-dungeon"):

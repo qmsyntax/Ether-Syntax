@@ -564,17 +564,17 @@ func _setup_menu_shot(which: String) -> void:
 		main._enter_town()
 	match which:
 		"menu-new":
-			main.open_game_menu("new")
+			main.screens_part.open_game_menu("new")
 		"menu-settings":
-			main.open_game_menu("settings")
+			main.screens_part.open_game_menu("settings")
 		"menu-load", "menu-save":
-			main.open_game_menu()
+			main.screens_part.open_game_menu()
 			main.menu_open_saves(which.trim_prefix("menu-"))
 		"menu-confirm":
-			main.open_game_menu()
+			main.screens_part.open_game_menu()
 			(main.screen as UiScreen).confirm_leave("Quit to title", main.quit_to_title)
 		_:
-			main.open_game_menu()
+			main.screens_part.open_game_menu()
 	main.get_tree().paused = false               # the menu pauses; the shot countdown has to tick
 
 
