@@ -42,14 +42,14 @@ func start(args: PackedStringArray) -> void:
 		shots._setup_ui_shot(ui_shot)
 	elif args.has("--shot"):
 		main._shot_mode = true
-		main._select_talent(0)
+		main.session_part._select_talent(0)
 		main.enter_arena()
 		main.rest_timer = 0.5
 	elif args.has("--shot-settings"):
 		# Screenshot the controls menu over the town. Not paused, so the countdown can tick.
 		main._shot_mode = true
 		_frames = 1000
-		main._select_talent(0)
+		main.session_part._select_talent(0)
 		main._enter_town()
 		main.screens_part._open_settings()
 		main.get_tree().paused = false
@@ -60,7 +60,7 @@ func start(args: PackedStringArray) -> void:
 		main._bot_mode = true
 		_bot_started_ms = Time.get_ticks_msec()
 		Engine.time_scale = 5.0
-		main._select_talent(0)
+		main.session_part._select_talent(0)
 		main.player.set("money", main.ticket_price)
 		main._show_screen(null, false)
 		main._enter_dungeon()

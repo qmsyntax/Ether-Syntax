@@ -119,6 +119,7 @@ var field_part: MainField               # state "field": an overland zone
 var town_part: MainTown                 # state "town": the town, its people, crafting and services
 var nether_part: MainNether             # the Netherecho over a level: leaving the body, its look, its signals
 var screens_part: MainScreens           # the screens, the game menu, the controls menu, the seal and ascension
+var session_part: MainSession           # the character: starting one, saving and loading, dying
 
 
 func _init() -> void:
@@ -129,6 +130,7 @@ func _init() -> void:
 	town_part = MainTown.new(self)
 	nether_part = MainNether.new(self)
 	screens_part = MainScreens.new(self)
+	session_part = MainSession.new(self)
 
 
 func _ready() -> void:
@@ -148,7 +150,7 @@ func _ready() -> void:
 		GameSettings.apply_window()
 	if _go_on(_then):
 		return                          # a restart from the game menu: no title, no test arguments
-	_show_select()
+	session_part._show_select()
 
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	if not args.is_empty():
@@ -371,144 +373,14 @@ func _go_on(then: Dictionary) -> bool:
 	return false
 
 
-# --- select / town --------------------------------------------------------------
-
-func _show_select() -> void:
-	state = "select"
-	_show_screen(CreationScreen.new(self), false)
-
-
-func _select_talent(index: int) -> void:
-	player.call("set_talent", TALENT_CHOICES[index])
-
-
 func _flat_dist(a: Vector3, b: Vector3) -> float:
 	return Vector2(a.x - b.x, a.z - b.z).length()
-
-
-## Quick start with a default look (tests and bots); the creation screen uses begin_character.
-## The two starting skills are the first two roots - a test convenience; a player always picks.
-func start_new_character(index: int) -> void:
-	player.call("set_affinities", GameData.default_affinities())
-	begin_character({"talent_id": TALENT_CHOICES[index], "skills": player.call("default_start_skills")})
-
-
-## Start the character described by the creation screen: {name, identity, look, talent_id,
-## affinities, skills}. The talent and the affinities are the prime that was picked from the
-## rolled offers; `skills` are the two starting skills the player picked (design/08) - nothing is
-## given that was not picked. Returns "" or why the character could not begin.
-func begin_character(spec: Dictionary) -> String:
-	var talent: String = str(spec.get("talent_id", TALENT_CHOICES[0]))
-	player.call("set_talent", talent if TALENT_CHOICES.has(talent) else TALENT_CHOICES[0])
-	player.call("set_affinities", spec.get("affinities", []))
-	var why: String = player.call("start_with_skills", spec.get("skills", []))
-	if why != "":
-		player.call("note", why)
-		return why
-	player.set("char_name", str(spec.get("name", "")).strip_edges().left(int(GameData.creation["name_max_length"])))
-	player.set("identity", str(spec.get("identity", "")))
-	player.call("set_look", spec.get("look", {}))
-	player.set("money", GameData.inum("town", "starting_money"))
-	_enter_town()
-	return ""
-
-
-func toggle_hardcore() -> void:
-	hardcore = not hardcore
-
-
-func new_character() -> void:
-	restart_game()
-
-
-## Drop one item from the bag. In the field it lands at your feet; in town it is simply gone.
-func drop_item(item_id: String) -> void:
-	var inv: Inventory = player.get("inventory")
-	if not inv.remove(item_id):
-		return
-	var item_name: String = str(GameData.item(item_id).get("name", item_id))
-	if state == "town":
-		player.call("note", "You leave the %s behind." % item_name)
-		save_now()
-	else:
-		PlayerScript.spawn_pickup(level, item_id, player.global_position + Vector3(0.9, 0.0, 0.4))
-		player.call("note", "Dropped %s." % item_name)
-
-
-# --- saving ------------------------------------------------------------------------
-
-## The autosave.
-func save_now() -> void:
-	if _bot_mode or _shot_mode or _test_mode or bool(player.get("test_character")):
-		return                            # a test character never writes over the real autosave
-	save_to_slot(0)
 
 
 ## The level's own light (Light.base reads it): balance.json "light", by game state.
 func light_base() -> String:
 	var cfg: Dictionary = GameData.balance.get("light", {})
 	return str((cfg.get("by_state", {}) as Dictionary).get(state, cfg.get("default", "dim")))
-
-
-## The title screen's "Test characters" (Brent 2026-10-22): one character with this one affinity
-## and every skill of it learned, at a stage high enough for big rune words, a full tank and the
-## test rune palette, starting in town (the arena gate is a short walk). Marked as a test
-## character: never autosaved over the real save, and only it can turn the bar to the next page.
-func start_test_character(aff: String) -> void:
-	player.call("set_talent", TALENT_CHOICES[0])
-	player.call("make_test_character", aff)
-	player.set("char_name", "Test: %s" % str(GameData.affinity(aff).get("label", aff)))
-	player.set("identity", str((GameData.creation.get("identities", [{}]) as Array)[0].get("id", "")) if not (GameData.creation.get("identities", []) as Array).is_empty() else "")
-	player.call("set_look", {})
-	player.set("money", GameData.inum("town", "starting_money"))
-	_enter_town()
-
-
-## Write the character as it stands to a slot (0 = autosave). Only meaningful in town.
-func save_to_slot(slot: int) -> bool:
-	if str(player.get("talent_id")) == "":
-		return false
-	if str(player.get("char_id")) == "":
-		player.set("char_id", SaveGame.new_char_id())   # one id for every save of this character
-	var data: Dictionary = player.call("to_save")
-	data["day"] = day
-	data["delves"] = delves
-	data["hardcore"] = hardcore
-	data["place"] = _place_for_save()
-	var ok: bool = SaveGame.write(data, SaveGame.slot_path(slot))
-	var said: String = SaveGame.take_note()   # a displaced autosave kept, or a newer save not written over
-	if said != "":
-		player.call("note", said)
-	if slot > 0:
-		player.call("note", "Saved to slot %d." % slot if ok else "Could not write slot %d." % slot)
-	elif not ok and said == "":
-		player.call("note", "The autosave could not be written (see the log); your last save is unchanged.")
-	return ok
-
-
-## Load the autosave into town. Returns false if there is nothing usable to load.
-func continue_game() -> bool:
-	return load_slot(0)
-
-
-## Load a slot into town; the loaded character becomes the autosave too.
-func load_slot(slot: int) -> bool:
-	var data: Dictionary = SaveGame.read(SaveGame.slot_path(slot))
-	var said: String = SaveGame.take_note()       # recovered from a backup copy, or refused as newer
-	if data.is_empty() or str(data.get("talent_id", "")) == "":
-		if said != "":
-			player.call("note", said)
-		return false
-	player.call("from_save", data)
-	if said != "":
-		player.call("note", said)
-	day = int(data.get("day", 1))
-	delves = int(data.get("delves", 0))
-	hardcore = bool(data.get("hardcore", false))
-	if not _resume_place(data.get("place", {})):
-		_enter_town()
-	screens_part.open_ascension()                       # an ascension left unsettled when it was saved
-	return true
 
 
 # --- rune stones (design/14 section 8) ------------------------------------------------------
@@ -547,32 +419,6 @@ func _stone_prompt() -> void:
 
 func _exit_tree() -> void:
 	Models.free_prebuilt()                   # bodies never placed are in no tree: nothing else frees them
-
-
-func _on_player_died() -> void:
-	if hardcore:
-		state = "dead"
-		# permadeath: every save of this character goes - the autosave, any slot, every backup copy
-		# (a test or bot run is sandboxed, so this only ever reaches the player's files in play)
-		if _plays() or SaveGame.test_dir != "":
-			SaveGame.clear_character(str(player.get("char_id")))
-		_prompt = ""
-		_show_screen(MessageScreen.new(self, "YOU DIED", "Hardcore: that was the only life this character had.", "Begin again", new_character), false)
-		return
-	var lost: int = bank if state == "dungeon" else 0
-	_bot_died = true
-	_bot_finished = _bot_mode
-	# a corpse run (Brent 2026-10-18): the body stays where it fell with everything on it
-	var where: String = "passage" if state == "dungeon" else ("arena" if state.begins_with("arena") else (zone_id if state == "field" else ""))
-	_return_to = {}
-	if where != "" and level != null:
-		var at: Vector3 = level.to_local(player.global_position)
-		player.call("die_to_corpse", where, Route.chamber_of(at, ch_len) if where == "passage" else 0, at)
-	player.call("respawn_naked")
-	if lost > 0:
-		player.call("note", "The spoils of the walls you cleared stayed in the passage.")
-	_last_payout = 0
-	_enter_town()
 
 
 # --- construction ---------------------------------------------------------------
@@ -716,3 +562,17 @@ func quit_game() -> void: screens_part.quit_game()
 func set_fullscreen(on: bool) -> void: screens_part.set_fullscreen(on)
 func zoom_start() -> float: return screens_part.zoom_start()
 func set_zoom_start(z: float) -> void: screens_part.set_zoom_start(z)
+
+
+# --- session_part (MainSession)
+func start_new_character(index: int) -> void: session_part.start_new_character(index)
+func begin_character(spec: Dictionary) -> String: return session_part.begin_character(spec)
+func start_test_character(aff: String) -> void: session_part.start_test_character(aff)
+func toggle_hardcore() -> void: session_part.toggle_hardcore()
+func new_character() -> void: session_part.new_character()
+func save_now() -> void: session_part.save_now()
+func save_to_slot(slot: int) -> bool: return session_part.save_to_slot(slot)
+func continue_game() -> bool: return session_part.continue_game()
+func load_slot(slot: int) -> bool: return session_part.load_slot(slot)
+func drop_item(item_id: String) -> void: session_part.drop_item(item_id)
+func _on_player_died() -> void: session_part._on_player_died()

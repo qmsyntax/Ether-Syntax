@@ -22,7 +22,7 @@ func _setup_ui_shot(which: String) -> void:
 	if which == "enemies4":
 		# the step 4 kinds together: a shield pair, a censer, a drummer behind them, the commander mid-sweep
 		main.forced_biome = "scrubland"
-		main._select_talent(0)
+		main.session_part._select_talent(0)
 		main._show_screen(null, false)
 		main.enter_arena()
 		main.rest_timer = 9999.0
@@ -81,7 +81,7 @@ func _setup_ui_shot(which: String) -> void:
 		return
 	if which == "props":
 		# every real model in a row on bare ground, for looking at them up close
-		main._select_talent(0)
+		main.session_part._select_talent(0)
 		main.walk_out()
 		for n: Node in main.level.get_children():
 			if n is MeshInstance3D or (n is Node3D and n.get_child_count() > 0 and not (n is StaticBody3D)):
@@ -107,7 +107,7 @@ func _setup_ui_shot(which: String) -> void:
 		return
 	if which == "stubble" or which == "stubble-cut":
 		# out of the Dross Gate, a little way down the road: the tip, the wall behind, the field ahead
-		main._select_talent(0)
+		main.session_part._select_talent(0)
 		main.player.set("look", CharacterLook.default_look())
 		main.walk_out()
 		main.player.global_position = main.level.to_global(main._zone.to_local(56.0, 30.0) if which == "stubble" else main._zone.to_local(214.0, 108.0))
@@ -119,7 +119,7 @@ func _setup_ui_shot(which: String) -> void:
 	if which == "earth":
 		# an earth character set for a blow, two of their stones standing
 		main.forced_biome = "scrubland"
-		main._select_talent(0)
+		main.session_part._select_talent(0)
 		main.player.call("set_affinities", ["earth"])
 		main.player.call("grow_star", 70.0)
 		main.player.set("essence", 50.0)
@@ -146,7 +146,7 @@ func _setup_ui_shot(which: String) -> void:
 	if which == "wind":
 		# a wind character on the move: pips over the bar, an enemy thrown aloft
 		main.forced_biome = "scrubland"
-		main._select_talent(0)
+		main.session_part._select_talent(0)
 		main.player.call("set_affinities", ["wind"])
 		main.player.call("grow_star", 70.0)
 		main.player.set("essence", 50.0)
@@ -167,7 +167,7 @@ func _setup_ui_shot(which: String) -> void:
 	if which == "fire":
 		# a fire character running hot: burning enemies, a flame trail, the heat readout
 		main.forced_biome = "scrubland"
-		main._select_talent(0)
+		main.session_part._select_talent(0)
 		main.player.call("set_affinities", ["fire"])
 		main.player.call("grow_star", 70.0)
 		main.player.set("essence", 50.0)
@@ -200,7 +200,7 @@ func _setup_ui_shot(which: String) -> void:
 		# little essence (refusal), or with water locked by reflux (refusal-locked); the slot flashes and the
 		# reason shows beside the cursor, which is said to be on the grunt
 		main.forced_biome = "scrubland"
-		main._select_talent(0)
+		main.session_part._select_talent(0)
 		main.player.call("set_affinities", ["water"])
 		main._show_screen(null, false)
 		main.enter_arena()
@@ -224,7 +224,7 @@ func _setup_ui_shot(which: String) -> void:
 		# the endurance bar under the feet (Brent 2026-11-03, balance.json endurance): one step spent
 		# (endurance), or short of a step with the step refused at the cursor (endurance-refused)
 		main.forced_biome = "scrubland"
-		main._select_talent(0)
+		main.session_part._select_talent(0)
 		main.player.call("set_affinities", ["water"])
 		main._show_screen(null, false)
 		main.enter_arena()
@@ -245,7 +245,7 @@ func _setup_ui_shot(which: String) -> void:
 		# the combat rules on one screen: a brute mid-slam, an archer aiming, a staggered grunt,
 		# a crouched harrier, and a second rank waiting for a slot
 		main.forced_biome = "scrubland"
-		main._select_talent(0)
+		main.session_part._select_talent(0)
 		main.player.call("grow_star", 70.0)
 		main._show_screen(null, false)
 		main.enter_arena()
@@ -270,7 +270,7 @@ func _setup_ui_shot(which: String) -> void:
 	if which == "skills":
 		# a water + lightning character in the arena: marks, a Soaked enemy, a stunned one, a block
 		main.forced_biome = "scrubland"
-		main._select_talent(0)
+		main.session_part._select_talent(0)
 		main.player.call("set_affinities", ["water", "lightning"])
 		main.player.call("grow_star", 70.0)
 		main.player.set("essence", 60.0)
@@ -296,7 +296,7 @@ func _setup_ui_shot(which: String) -> void:
 	if which == "nav" or which.begins_with("nav-"):
 		# the common walker's navigation mesh drawn over the passage, at the first doorway: --shot-ui=nav-city
 		main.forced_biome = which.trim_prefix("nav-") if which.begins_with("nav-") else "mountain"
-		main._select_talent(0)
+		main.session_part._select_talent(0)
 		main._show_screen(null, false)
 		main._enter_dungeon()
 		main.player.global_position = main.level.to_global(Vector3(0.0, 0.0, -main.ch_len - 2.0))
@@ -306,7 +306,7 @@ func _setup_ui_shot(which: String) -> void:
 	if which.begins_with("biome-"):
 		# the passage in a given biome, two walls in: --shot-ui=biome-snow
 		main.forced_biome = which.trim_prefix("biome-")
-		main._select_talent(0)
+		main.session_part._select_talent(0)
 		main._show_screen(null, false)
 		main._enter_dungeon()
 		main.sealed = true
@@ -333,7 +333,7 @@ func _setup_ui_shot(which: String) -> void:
 			main.screen.call("set_zoom", true)
 			main._harness()._shot_countdown = 90                # let the camera ease in
 		return
-	main._select_talent(0)
+	main.session_part._select_talent(0)
 	var inv: Inventory = main.player.get("inventory")
 	main.player.set("money", 1840)
 	for id: String in ["dim_mote", "river_stone", "serrated_dagger", "invader_cleaver", "brute_tusk", "brute_tusk", "husk_plate", "sinew_cord", "sinew_cord", "commander_sigil", "delver_frame"]:
@@ -581,7 +581,7 @@ func _setup_menu_shot(which: String) -> void:
 ## The ascension shots: "ascend-offer" (step 1), "ascend-boost" (step 2, an affinity chosen, one
 ## skill set to Reach), "ascend-ethercosm" (settled; the boosted skill selected in the ethercosm).
 func _shot_ascension(which: String) -> void:
-	main._select_talent(0)
+	main.session_part._select_talent(0)
 	main.player.call("set_affinities", ["fire"])
 	var abilities: Array = main.player.get("abilities")
 	if abilities.size() < 4:
@@ -616,7 +616,7 @@ func _shot_ascension(which: String) -> void:
 func _setup_stubble_shot(which: String) -> bool:
 	var what: String = which.trim_prefix("stubble-")
 	main._harness()._shot_countdown = 0                              # the watch below takes the shot, at its moment
-	main._select_talent(0)
+	main.session_part._select_talent(0)
 	main.player.set("look", CharacterLook.default_look())
 	main.walk_out()
 	main.player.set("bot", true)                         # it is not the subject: nothing it takes counts

@@ -59,7 +59,7 @@ func _setup_test_shot(what: String) -> void:
 			return
 		"skilltree":
 			# a new water character a few skills in: its thirteen-skill tree, three tiers deep
-			main._select_talent(0)
+			main.session_part._select_talent(0)
 			main.player.call("set_affinities", ["water"])
 			for id: String in ["riptide_lash", "tsunami_strike", "drench", "seepage"]:
 				main.player.call("learn", id)
@@ -372,7 +372,7 @@ func _setup_seal_shot(which: String) -> void:
 		main.open_seal(0, 0)
 		main.screen.call("set_palette_tab", aff)
 		return
-	main._select_talent(0)
+	main.session_part._select_talent(0)
 	(main.player.get("constructs") as Array).clear()          # the other UI shots hand out two vestiges first
 	match which:
 		"seal-drag", "seal-refused", "seal-bond":
@@ -607,7 +607,7 @@ func _setup_lock_shot(what: String) -> void:
 		"missing":
 			# a new character's full skill and no vestige carried: the main page says what is missing,
 			# and there is no way into the lock
-			main._select_talent(0)
+			main.session_part._select_talent(0)
 			main.player.call("set_affinities", ["water"])
 			main.player.call("start_with_skills", main.player.call("default_start_skills"))
 			(main.player.get("abilities") as Array)[0]["progress"] = 100.0
