@@ -202,8 +202,8 @@ func _take_buff(ab: Dictionary) -> void:
 		player.hits_part._vent_hottest(float(ab["shed_per_blood"]) * float(spent))
 		player.poise = float(GameData.num("combat", "player_poise"))
 	if float(ab.get("reveal_radius", 0.0)) > 0.0:
-		for e: Node3D in _enemies_near(player.global_position, float(ab["reveal_radius"])):
-			e.call("add_status", "lit", 1, player)
+		for e: Enemy in _enemies_near(player.global_position, float(ab["reveal_radius"])):
+			e.add_status("lit", 1, player)
 	if ab.get("cleanse") is String or (ab.get("cleanse") is bool and bool(ab["cleanse"])):
 		# lift what the list names (balance.json cleanse: binds, afflictions), and pay per one lifted
 		var lifted: int = player.hits_part.cleanse(str(ab["cleanse"]) if ab["cleanse"] is String else "binds")
@@ -726,7 +726,7 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 			if ab.get("spall") is Dictionary and sp_metal > 0:
 				# Splitting Blow: the armour it splits flies off into whoever stands near, per class of metal it wore
 				var spl: Dictionary = ab["spall"]
-				for o: Node3D in _enemies_near(sp_at, float(spl.get("radius", 2.5))):
+				for o: Enemy in _enemies_near(sp_at, float(spl.get("radius", 2.5))):
 					if o != strike_target:
 						player.combat_part.deal_damage(o, float(spl.get("damage_per_class", 30.0)) * float(sp_metal) * stage_mult, tags + ["spall"])
 			if int(ab.get("swallow_per_hit", 0)) > 0:
@@ -876,7 +876,7 @@ func _take_state(id: String, seconds: float) -> void:
 ## The living enemy nearest `point`, within `reach` of it; null if none.
 func _nearest_enemy_to(point: Vector3, reach: float) -> Node3D:
 	var best: Node3D = null
-	for e: Node3D in _enemies_near(point, reach):
+	for e: Enemy in _enemies_near(point, reach):
 		if best == null or Vector2(e.global_position.x - point.x, e.global_position.z - point.z).length() < Vector2(best.global_position.x - point.x, best.global_position.z - point.z).length():
 			best = e
 	return best

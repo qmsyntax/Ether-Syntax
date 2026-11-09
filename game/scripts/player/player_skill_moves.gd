@@ -47,15 +47,15 @@ func _displace(point: Vector3, target: Node3D, ab: Dictionary, stage_mult: float
 	player.casting_part._line_visual(chest, point + Vector3.UP * 0.3, color)
 	var burned: int = player.motion_part.spend_pips(int(ab["spend_pips"])) if ab.has("spend_pips") else 0
 	var from_point: bool = str((ab.get("on_hit", {}) as Dictionary).get("shove_dir", "")) == "from_point"
-	for e: Node3D in player.casting_part._enemies_near(point, float(ab.get("radius", 3.0))):
+	for e: Enemy in player.casting_part._enemies_near(point, float(ab.get("radius", 3.0))):
 		player.hits_part.apply_hit(e, player.hits_part._payload(ab, "on_hit"), tags, stage_mult, (e.global_position - point) if from_point else Vector3.ZERO)
-		if not is_instance_valid(e) or bool(e.call("is_dead")):
+		if not is_instance_valid(e) or bool(e.is_dead()):
 			continue
 		if str(ab.get("mode", "")) == "pull_area":
-			e.set("shover", player)
-			e.call("pull_toward", point, float(ab.get("pull", 4.0)))
-		elif burned > 0 and bool(e.call("has_status", "aloft")):
-			var up: Dictionary = (e.get("statuses") as Dictionary)["aloft"]
+			e.shover = player
+			e.pull_toward(point, float(ab.get("pull", 4.0)))
+		elif burned > 0 and bool(e.has_status("aloft")):
+			var up: Dictionary = (e.statuses as Dictionary)["aloft"]
 			up["t"] = float(up["t"]) + float(ab.get("pip_seconds", 0.2)) * float(burned)
 
 
@@ -88,8 +88,8 @@ func _throw(target: Node3D, point: Vector3, ab: Dictionary, stage_mult: float, t
 ## lengthened), and what its on_expire pays is x bill_mult this once (status data, read by the status engine).
 func _spur(ab: Dictionary) -> void:
 	var sid: String = str(ab.get("needs_status", "dosed"))
-	for e: Node3D in player.casting_part._enemies_near(player.global_position, float(ab.get("range", 8.0))):
-		var entry: Dictionary = (e.get("statuses") as Dictionary).get(sid, {})
+	for e: Enemy in player.casting_part._enemies_near(player.global_position, float(ab.get("range", 8.0))):
+		var entry: Dictionary = (e.statuses as Dictionary).get(sid, {})
 		if entry.is_empty():
 			continue
 		entry["t"] = minf(float(entry["t"]), float(ab["clock_to"]))
@@ -118,7 +118,7 @@ func _chain(target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> v
 				if not is_instance_valid(w):
 					continue
 				var from_dying: bool = int(ab.get("dying_stacks", 0)) > 0 and bool((w as Node).call("has_status", "dying"))
-				for e: Node3D in player.casting_part._enemies_near((w as Node3D).global_position, float(ab.get("jump_radius", 3.0))):
+				for e: Enemy in player.casting_part._enemies_near((w as Node3D).global_position, float(ab.get("jump_radius", 3.0))):
 					if struck.has(e) or struck.size() > int(ab.get("jumps", 7)):
 						continue
 					struck.append(e)
@@ -151,7 +151,7 @@ func _chain(target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> v
 		from = at + Vector3.UP
 		player.hits_part.apply_hit(cur, player.hits_part._payload(ab, "on_hit"), hit_tags, stage_mult)
 		var next: Node3D = null
-		for e: Node3D in player.casting_part._enemies_near(at, float(ab.get("jump_radius", 5.0))):
+		for e: Enemy in player.casting_part._enemies_near(at, float(ab.get("jump_radius", 5.0))):
 			if not struck.has(e) and (next == null or e.global_position.distance_to(at) < next.global_position.distance_to(at)):
 				next = e
 		if next == null:
@@ -223,9 +223,9 @@ func _burst(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 			player.combat_part.heal_over(float(ab["per_patch_heal"]) * float(cut), 2.0)                # Reaping Sweep regrows you
 	# drawn in first (Backdraft)
 	if bool(ab.get("pull_before_blast", false)) and float(ab.get("pull", 0.0)) > 0.0:
-		for e: Node3D in player.casting_part._enemies_near(player.global_position, reach + 2.0):
-			e.set("shover", player)
-			e.call("pull_toward", player.global_position, float(ab["pull"]), float(e.get("radius")) + 0.6)
+		for e: Enemy in player.casting_part._enemies_near(player.global_position, reach + 2.0):
+			e.shover = player
+			e.pull_toward(player.global_position, float(ab["pull"]), float(e.radius) + 0.6)
 	var hits := 0
 	var gained := 0
 	for t: Node3D in player.combat_part._in_arc(reach, half):
@@ -250,7 +250,7 @@ func _burst(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 			hits += 1
 		if ab.has("spall") and metal > 0:
 			var sp: Dictionary = ab["spall"]
-			for o: Node3D in player.casting_part._enemies_near(where, float(sp.get("radius", 2.5))):
+			for o: Enemy in player.casting_part._enemies_near(where, float(sp.get("radius", 2.5))):
 				if o != t:
 					player.combat_part.deal_damage(o, float(sp.get("damage_per_class", 30.0)) * float(metal) * stage_mult, tags + ["spall"])
 	if hits > 0:
@@ -315,7 +315,7 @@ func _end_dash() -> void:
 	if not player.is_inside_tree():
 		return
 	if not player._dash_on_arrive.is_empty():
-		for e: Node3D in player.casting_part._enemies_near(player.global_position, player._dash_arrive_radius):
+		for e: Enemy in player.casting_part._enemies_near(player.global_position, player._dash_arrive_radius):
 			player.hits_part.apply_hit(e, player._dash_on_arrive, player._dash_tags, player._dash_stage_mult)
 		if bool(player._dash_ab.get("shatters_stone", false)):
 			for s: Variant in player.stones.duplicate():
@@ -587,11 +587,11 @@ func _smite(target: Node3D, point: Vector3, ab: Dictionary, stage_mult: float, t
 		var sid: String = str(ab["spread_stacks"])
 		var n: int = int(target.call("status_stacks", sid)) if bool(target.call("has_status", sid)) else 0
 		if n > 0:
-			for e: Node3D in player.casting_part._enemies_near(target.global_position, float(ab.get("spread_radius", 4.0))):
+			for e: Enemy in player.casting_part._enemies_near(target.global_position, float(ab.get("spread_radius", 4.0))):
 				if e != target:
 					player.casting_part._line_visual(target.global_position + Vector3.UP, e.global_position + Vector3.UP, color)
 					var sopts: Dictionary = {"lasts": float(ab["status_s"])} if ab.has("status_s") else {}
-					e.call("add_status", sid, mini(n, int(ab.get("spread_max", n))), player, sopts)
+					e.add_status(sid, mini(n, int(ab.get("spread_max", n))), player, sopts)
 	if float(ab.get("command_radius", 0.0)) > 0.0:
 		# Unleash the Pack: every summon of yours within command_radius leaps to the target, lands summon_hit, and is Unleashed
 		for s: Node3D in player.world_part.summons_near(player.global_position, float(ab["command_radius"])):
@@ -655,16 +655,16 @@ func _streak(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 		reach = maxf(0.0, (from + Vector3.UP).distance_to(wall["position"]) - 0.6)
 	var a := Vector2(from.x, from.z)
 	var passed: Array = []
-	for e: Node3D in player.casting_part._enemies_near(from, reach + 1.0):
+	for e: Enemy in player.casting_part._enemies_near(from, reach + 1.0):
 		var to: Vector3 = e.global_position - from
 		to.y = 0.0
 		var along: float = to.dot(dir)
 		if along < 0.0 or along > reach:
 			continue
-		if (to - dir * along).length() > float(ab.get("pass_radius", 1.1)) + float(e.get("radius")):
+		if (to - dir * along).length() > float(ab.get("pass_radius", 1.1)) + float(e.radius):
 			continue
-		if e.has_method("blocks_shot") and bool(e.call("blocks_shot", from)):
-			reach = minf(reach, maxf(0.0, along - float(e.get("radius")) - 0.6))      # a raised shield stops you short
+		if e.has_method("blocks_shot") and bool(e.blocks_shot(from)):
+			reach = minf(reach, maxf(0.0, along - float(e.radius) - 0.6))      # a raised shield stops you short
 			continue
 		passed.append([along, e])
 	var b: Vector2 = a + Vector2(dir.x, dir.z) * reach
@@ -744,11 +744,11 @@ func _channel_pulse() -> void:
 			if not wall.is_empty():
 				reach = origin.distance_to(wall["position"])
 			var best: Node3D = null
-			for e: Node3D in player.casting_part._enemies_near(player.global_position, reach + 1.0):
+			for e: Enemy in player.casting_part._enemies_near(player.global_position, reach + 1.0):
 				var to: Vector3 = e.global_position - player.global_position
 				to.y = 0.0
 				var along: float = to.dot(player._facing)
-				if along >= 0.0 and along <= reach and (to - player._facing * along).length() <= float(ab.get("width", 1.0)) * 0.5 + float(e.get("radius")):
+				if along >= 0.0 and along <= reach and (to - player._facing * along).length() <= float(ab.get("width", 1.0)) * 0.5 + float(e.radius):
 					if best == null or along < (best.global_position - player.global_position).dot(player._facing):
 						best = e
 			player.casting_part._line_visual(origin, (best.global_position + Vector3.UP * 0.9) if best != null else origin + player._facing * reach, color)
@@ -787,19 +787,19 @@ func _channel_pulse() -> void:
 					player.combat_part._wounds_closed(arm_fill["closed"])
 				return
 			var taken := 0
-			for e: Node3D in player.casting_part._enemies_near(player.global_position, float(ab.get("radius", 5.0))):
+			for e: Enemy in player.casting_part._enemies_near(player.global_position, float(ab.get("radius", 5.0))):
 				var take: Dictionary = payload.get("consume_stacks", {})
 				var had := true
 				for st: String in take:
-					had = had and bool(e.call("has_status", st))
+					had = had and bool(e.has_status(st))
 				if not had:
 					continue
 				player.casting_part._line_visual(e.global_position + Vector3.UP, player.global_position + Vector3.UP, color)
 				for st2: String in take:
-					var left: int = int(e.call("status_stacks", st2)) - int(take[st2])
-					var entry: Dictionary = (e.get("statuses") as Dictionary).get(st2, {})
+					var left: int = int(e.status_stacks(st2)) - int(take[st2])
+					var entry: Dictionary = (e.statuses as Dictionary).get(st2, {})
 					if left <= 0:
-						e.call("clear_status", st2)
+						e.clear_status(st2)
 					elif not entry.is_empty():
 						entry["stacks"] = left
 					taken += int(take[st2])

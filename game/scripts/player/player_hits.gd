@@ -270,8 +270,8 @@ func _against_something(t: Node3D) -> bool:
 	if t == null or not player.is_inside_tree():
 		return false
 	var r: float = float(t.get("radius")) + 0.5
-	for e: Node3D in player.casting_part._enemies_near(t.global_position, r + 0.6):
-		if e != t and e.global_position.distance_to(t.global_position) <= r + float(e.get("radius")):
+	for e: Enemy in player.casting_part._enemies_near(t.global_position, r + 0.6):
+		if e != t and e.global_position.distance_to(t.global_position) <= r + float(e.radius):
 			return true
 	for i: int in 8:
 		var d := Vector3(cos(TAU * float(i) / 8.0), 0.0, sin(TAU * float(i) / 8.0))
@@ -522,7 +522,7 @@ func _arc_on(from: Node3D, payload: Dictionary, tags: Array, stage_mult: float, 
 			return
 		var at: Vector3 = cur.global_position
 		var next: Node3D = null
-		for e: Node3D in player.casting_part._enemies_near(at, reach):
+		for e: Enemy in player.casting_part._enemies_near(at, reach):
 			if not struck.has(e) and (next == null or e.global_position.distance_to(at) < next.global_position.distance_to(at)):
 				next = e
 		if next == null:
@@ -549,7 +549,7 @@ func _try_shatter(target: Node, poise_hit: float, radius_override: float = -1.0)
 	FloatText.spawn(player.get_parent(), at + Vector3.UP * 0.8, "SHATTER", Color(0.85, 0.97, 1.0))
 	player.combat_part.deal_damage(target, float(cfg.get("damage", 100.0)), ["ice", "shatter", "ability"])
 	var r: float = radius_override if radius_override > 0.0 else float(cfg.get("radius", 2.5))
-	for e: Node3D in player.casting_part._enemies_near(at, r):
+	for e: Enemy in player.casting_part._enemies_near(at, r):
 		if e != target:
 			apply_hit(e, cfg.get("shard", {}), ["ice", "shatter", "ability", "shard"])
 
@@ -562,7 +562,7 @@ func _burst_at(at: Vector3, payload: Dictionary, tags: Array, stage_mult: float 
 	var r: float = float(p.get("burst_radius", p.get("radius", 2.0)))
 	p.erase("burst_radius")
 	p.erase("radius")
-	for e: Node3D in player.casting_part._enemies_near(at, r):
+	for e: Enemy in player.casting_part._enemies_near(at, r):
 		if e != skip:
 			apply_hit(e, p, tags, stage_mult)
 
@@ -675,7 +675,7 @@ func _after_landing(ctx: HitContext, target: Node) -> void:
 			if float(b.get("spread_radius", 0.0)) > 0.0:
 				# Festering Hands: and to the nearest other enemy within spread_radius of it
 				var other: Node3D = null
-				for e: Node3D in player.casting_part._enemies_near((target as Node3D).global_position, float(b["spread_radius"])):
+				for e: Enemy in player.casting_part._enemies_near((target as Node3D).global_position, float(b["spread_radius"])):
 					if e != target and (other == null or e.global_position.distance_to((target as Node3D).global_position) < other.global_position.distance_to((target as Node3D).global_position)):
 						other = e
 				if other != null:
@@ -862,7 +862,7 @@ func on_shove_ended(e: Node) -> void:
 			if str(p.get("shove_dir", "")) == "from_point":
 				p.erase("shove_dir")
 				var at: Vector3 = (e as Node3D).global_position
-				for o: Node3D in player.casting_part._enemies_near(at, float(p.get("burst_radius", 1.5))):
+				for o: Enemy in player.casting_part._enemies_near(at, float(p.get("burst_radius", 1.5))):
 					if o != e:
 						var q: Dictionary = p.duplicate()
 						q.erase("burst_radius")
@@ -897,8 +897,8 @@ func _inured_mult() -> float:
 		if float(b.get("dr_per_infected", 0.0)) <= 0.0:
 			continue
 		var n := 0
-		for e: Node3D in player.casting_part._enemies_near(player.global_position, float(b.get("radius", 8.0))):
-			if bool(e.call("has_status", "infected")):
+		for e: Enemy in player.casting_part._enemies_near(player.global_position, float(b.get("radius", 8.0))):
+			if bool(e.has_status("infected")):
 				n += 1
 		out *= 1.0 - minf(float(b.get("dr_max", 0.3)), float(b["dr_per_infected"]) * float(n))
 	return out
