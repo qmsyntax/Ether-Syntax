@@ -53,6 +53,11 @@ they unblock work in (`production/finish-plan.md`).
 - [ ] Six of the old talents' wording.
 - [ ] Clicks above the horizon (today: "that way").
 - [ ] Test characters in save slots; the innkeeper's confirm; saving in the field (town only today).
+- [ ] **Data that does nothing** (found 2026-11-09 by the new data check): these keys are in the skill and enemy
+      data but no code reads them, so they have no effect in play. Rust Bloom's per-class damage, Heavy Heart's
+      "stills pools", Dusk Well's "lit shows", Floe Drive's crushes, Plague Barrow's vents; on skills
+      `passes_bodies`, `bounce_off`, `lobbed`, `pass_through`, `blocks_movement`, `leap_speed`, `elite_ok`; on
+      affinities Blood's held blood per bleeding kill and "drain living only". Build them later, or drop them?
 - [ ] **Saves (v0.56)**: starting a new character or loading another slot used to overwrite the autosave silently.
       Now the old character is kept in the first empty slot (or a `displaced` folder if all are full), with a note.
       Keep that, or go back to overwriting?
