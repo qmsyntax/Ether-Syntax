@@ -3,7 +3,7 @@
 
 A discovered rune is permanent knowledge, usable in any seal. Runes are found through exploration and
 combat. This script makes the data for each source; the rules that use it are Player.discover_rune and
-friends (game/scripts/player.gd, "rune discovery").
+friends (game/scripts/player/player_runes.gd, "rune discovery").
 
 - start: what a new character knows besides the base runes of its starting skills - per affinity, a
   couple of its runes (STARTING below: the affinity's first Cap and first Link in workbook order that
