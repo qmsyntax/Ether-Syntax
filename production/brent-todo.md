@@ -1,6 +1,6 @@
 # Brent's to-do
 
-Kept by Claude; last updated 2026-11-08 (build v0.56.0-groundwork). Tick a box by telling Claude the answer, and
+Kept by Claude; last updated 2026-11-09 (build v0.57.0-untangle). Tick a box by telling Claude the answer, and
 Claude records the ruling in the design doc it belongs to and moves it to "Done" at the bottom. The order is the order
 they unblock work in (`production/finish-plan.md`).
 

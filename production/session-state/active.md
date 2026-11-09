@@ -1,59 +1,48 @@
-# Session state — handoff written 2026-09-18
+# Session state - rewritten 2026-11-09 (at v0.57.0-untangle, cdac5a9)
+
+The old handoff (2026-09-18) is in git history. This file is the checkpoint to read first after a break. The plan is
+`production/finish-plan.md`. Brent's questions and play tests are in `production/brent-todo.md`.
+
+<!-- STATUS -->
+Epic: Finish plan
+Feature: Phase 2 done; Phase 3 next
+Task: Waiting on Brent's play (the fun gate) and rulings
+<!-- /STATUS -->
 
 ## Where things stand
-- **Design (pre-template format, in `design/`)**: 00 concept draft, 01 systems bible (canon/fan/Brent-ruling tagged), 02 open questions (Q1–28 answered by Brent; Q14, 15, 17, 21, 26, 29–36 open), 03 core mechanics spec v0.1, 04 talent design framework.
-- **Research (`research/`)**: paraphrased mechanics notes for RR ch 1–6 and Book 5 ch 203–225; secondary-source + rights research. No book text stored anywhere.
-- **Prototype (`game/`, Godot 4.7.2, GDScript)**: walled arena, living scenery, wave spawner, three-layer wound model, essence tank + satellite, per-affinity reflux with lockout, meditate, paid healer between waves, hidden latent aura + ascension to 2-star, notebook HUD, 40-talent JSON roster with 6 wired in (1% Lifesteal, Tenth Strike, Grudge, Glass Hour, Debt of Pain, Furnace Gut).
-- **Verified**: project imports and runs headless with no script errors; enemies spawn, chase and hit; spawn-time "player carried off on an enemy's head" bug found by position trace and fixed (build + place enemies before `add_child`; separate collision layers). Brent ran it and said it "looked fine".
-- **NOT verified (needs Brent's hands)**: melee, overcharge, water bolt, reflux thresholds, meditate, healer pricing, ascension, talent select screen, death/restart, and five of the six talents in actual play. No balance pass has happened. Only Lifesteal's 2-star evolution is implemented.
+- **Phase 0 (safe to build on): done**, v0.56.0-groundwork (2026-11-08). Crash-safe saves (`UserFiles`, schema 2,
+  displacement), the one-command suite (`bash tools/test/run_all.sh`), the pinned physics engine, the build stamp,
+  the Windows .exe (`tools/release/export_windows.sh`), and the performance budget and probe.
+- **Phase 1 (the fun gate): in progress.** Brent has been playing the S:\Passage build since 2026-11-08. No verdict yet.
+- **Phase 2 (untangle): done**, v0.57.0-untangle (2026-11-09):
+  - Player, main and enemy are each split by concern (`docs/architecture/player-split.md`, `main-split.md`,
+    `enemy-split.md`).
+  - Typed calls (`typed-calls.md`).
+  - The data is checked against `game/data/schema.json` on every load; silent numeric fallbacks are gone
+    (`data-schema.md`).
+  - No gameplay script is over 1,018 lines. Three UI scripts are just over 1,500.
+  - The suite has 24 tests and all pass, including the new `loadall`.
+- **Phase 3 (systems), 4 (Region 1) and 5 (sound and look): not started.** Most of their streams wait on Brent: the
+  combat rulings, design/10 section 16, the design/07 answers, a creature source and an audio source.
 
-## Template adoption (Claude Code Game Studios v1.0.0)
-- Installed: `.claude/` (39 agents — Unity/Unreal ones removed —, 73 skills, 12 hooks, 11 rules, settings), `docs/`, `production/`, `src/`, `design/registry`. Hooks were read before install: no network, no file writes, no destructive commands.
-- `production/review-mode.txt` = lean. `production/stage.txt` = Concept (a guess — let `/adopt` or `/gate-check` correct it).
-- The template currently sees a "fresh project" because our artifacts are not where it looks.
+## Release routine
+1. Look at the screenshots, merge with `--no-ff`, and run the full suite plus the perf probe.
+2. Stamp (`tools/release/stamp_version.sh <tag> <sha>`), commit, tag, then push main and the tags.
+3. Export, mirror to S:\Passage (`tools/release/mirror_passage.ps1`), relaunch.
+4. Update brent-todo's build line, this file and the memory.
+5. Don't export while Brent's game is running from `build/windows/`: the export writes over that exe.
 
-## Next steps, in order
-1. `/setup-engine` — **DONE 2026-09-18.** `.claude/docs/technical-preferences.md` filled (PC only, KB/M primary, partial gamepad, 60fps defaults, GUT chosen but not installed); `docs/engine-reference/godot/` re-pinned 4.6 → 4.7.2 with the 4.6→4.7 delta added to `VERSION.md`, `breaking-changes.md`, `deprecated-apis.md`, `current-best-practices.md` (sourced from the official migration guide + release page; snippets not run). All five godot-* agents already had Version Awareness. Grep of `game/` found no use of any API changed in 4.7. Open items: (a) 3D physics engine is not set in `game/project.godot` — pin Jolt or GodotPhysics explicitly; (b) three third-party-reported 4.7 breaks (particle angular velocity, shader preprocessor, Android OBB) not confirmed in the guide; (c) GUT not installed — `/test-setup`.
-2. `/adopt` — **audit DONE 2026-09-18**: plan at `docs/adoption-plan-2026-09-18.md` (0 blocking, 5 high). Decision recorded there: Godot root stays `game/`. **Concept port IN PROGRESS**: `design/gdd/game-concept.md` is fully drafted from `design/00`, `design/03`, and web research saved to `research/audience-and-comparables.md`. Everything marked PROPOSED/DRAFT in it awaits Brent: the four pillars, aesthetics ranking, motivation profile, target player, MVP scope drift (build has outgrown v0 MVP), permadeath, session length. Brent found the abstract framework questions confusing — bring him concrete choices, not MDA jargon. Original step text: audit our existing docs against the template's formats and produce the migration plan (`docs/adoption-plan-*.md`). Expect: concept → `design/gdd/game-concept.md`, systems index, GDDs with the 8 required sections, and a decision on whether the Godot root stays `game/` or moves.
-3. The arena build is, in template terms, a **concept prototype**: write its `REPORT.md` with a PROCEED / PIVOT / KILL verdict after Brent's hands-on playtest (`/playtest-report`).
-4. `/sprint-plan` for sprint 1 once the adoption plan is agreed.
+## Known noise in the evidence
+- bot_full money: $272 or $273 (rent is charged per real frame).
+- `--shot-ui` prop scatter is not seeded.
+- perf skills scene: +/-10%.
+- Duels are deterministic only at `--fixed-fps 60`, which the suite now uses.
 
-## Decided by Brent 2026-09-19 (recorded in `design/gdd/game-concept.md`, `design/03`, `design/04`)
-- **Version control**: commit each approved changeset without being asked again; Conventional Commits; tag playable builds and gates; still ask before any remote/push/history rewrite (policy in root `CLAUDE.md`). Baseline is committed and tagged `v0.1.0-concept-prototype`.
-- **Top priority**: living in that world (fantasy) beats discovery and challenge when they conflict.
-- **Death**: two modes — standard wakes you up in debt (bill / bad contract / indenture), hardcore is opt-in permadeath.
-- **Session**: 20–30 minutes — one delve plus a quick town stop.
-- **Healing**: natural healing is free over time but never regrows limbs/organs; fast or catastrophic healing costs money or a talent. "Free" costs town-clock time.
-- **Town**: hard but not crooked — the game never cheats the player.
-- **Talents**: core rule and most fine print visible at creation; only one or two flags per talent stay hidden.
-- Pillars rewritten to five (direction confirmed; wording is Claude's and editable).
-
-## Done autonomously 2026-09-20 (Brent: "keep going, get this as far as you can") — all awaiting his review
-- `/map-systems` run in lean mode: `design/gdd/systems-index.md` — 41 systems (25 explicit, 16 inferred), 17 MVP. Of the MVP set, 8 run in the prototype, 8 are rough, and **one is not built: Dungeon Structure & Rule Cards** (the build is a wave arena). Director gates skipped (lean). Design order starts with Damage & Hook Pipeline → Data Definitions → Wound & Body Model.
-- `game-concept.md`: stale text reconciled with the 2026-09-19 rulings (session length, unique hook, resolved open questions); a **PROPOSED** MVP redefinition added beneath the unchanged v0 text.
-- Top technical risk recorded: talent effects are a `match` inside `player.gd`; needs a hook pipeline before more talents are wired.
-
-- **Assault passage built (`v0.3.0-assault-passage`)** — the one MVP system that did not exist. Flow is now talent select → town → passage or practice arena → town. Passage: entrance seals behind you, 10 walls behind barriers, exit pads from wall 5, walls past 5 are 1.3x stronger, commanders at 5 and 10, payout banked per wall (200 x n) and paid only at an exit, x1.5 for a full clear, repeats pay x0.8 each (floor 0.4), rent $3/s while out of combat inside, no healer inside. Town: $300 ticket (on credit to the -$2000 limit), rest the night ($150), healer, new character. Death: standard mode revives in town for a $600 fee with no credit check and the banked payout lost; hardcore ([X] on the select screen) ends the character. Corridor is rotated 45 degrees so W alone walks it.
-- Verified by: self-test 26/26; smoke check; three headless bot runs (`--bot-dungeon`, `--bot-full`, `--bot-die`) all PASS; one windowed screenshot of wall 2 looked right. **The bot is invulnerable and hits 25x too hard, so nothing about difficulty, pacing, payout balance or feel is known.** Every number is a first guess.
-
-- **HUD and controls (`v0.4.0-hud-and-keybinds`, 2026-09-23)** at Brent's request: bars for the three wound layers, striking arm, essence and reflux (reflux recolours at the 50/80 thresholds and says LOCKED); the notebook shrinks to money, location, aura read, proven discoveries and the last four log lines. All controls are now InputMap actions with a rebinding menu on Escape (pauses the game, click an action, press a key or mouse button, saved to `user://keybinds.cfg`, reset button, displaced bindings reported). Prompts everywhere read the live binding. Verified: self-test 32/32 incl. six keybind checks, smoke, three bots, screenshots of the HUD and the menu. **Not verified: actually rebinding through the menu with a mouse and keyboard** — the capture path is untested by hand.
-
-- **Sprint 01 done (`v0.5.0-foundations`, 2026-09-23)** — `production/sprints/sprint-01.md`. Hook pipeline: `HitContext` + `TalentEffect`, six talents moved to `game/scripts/talents/*.gd`, player has no `match talent_id` left. Data: `GameData` autoload over `balance.json` / `enemies.json` / `abilities.json`; main/player/enemy/scenery read from it. Self-test 48/48 (16 new pipeline checks), smoke, bots PASS with identical payouts. Gotcha found: the autoload singleton name resolves before it enters the tree, so data loads in `_init` and lazily.
-- Brent's 2026-09-23 rulings: meditation gathers wisps (refills essence); runes = the incantations that define a skill (ch 230 read; bible LAW 4c; `research/book5-ch226-230-notes.md`); a 1★ can use a 2★ satellite at full rate; starting inventory is a backpack in the back slot, no storage ring.
-- **Sprint 02 done (`v0.6.0-abilities-hotbar`)** — `production/sprints/sprint-02.md`. Three data-defined water abilities, four rebindable hotbar slots (Q/C/V/G), progress by essence × use, stubbed stage-ups, meditation refills essence. Self-test 58/58.
-- **Sprint 03 done (`v0.7.0-playtest-fixes`)** — Brent's playtest notes: Diablo-style click-to-attack, single-target base melee; stages gated by construct tier (vestige, remnant, ...) with concepts shaping the upgrade; baby star with capacity 5%→99%, new stars at 1%. Placeholder construct drops from brutes/commanders, bind key B. Self-test 75/75. `production/sprints/sprint-03.md`.
-- **Sprint 04 done (`v0.8.0-inventory-and-interface`, 2026-10-11)** — `production/sprints/sprint-04.md`. Part A: items, Inventory (weight-limited bag; back / satellite / trinket slots), satellites as items (free one removed), ground loot with click-to-pick-up, exit rewards, town sell / buy / rest logic, SaveGame + Continue. Part B: full interface overhaul - UiTheme / UiDraw / UiWidgets / UiScreen, orb HUD with rings, action bar, target frame, enemy bars, tooltips, passage tracker, and clickable title / town / merchant / inventory screens. Self-test 102/102. UI verified by screenshots only; nothing clicked by hand yet.
-- **Sprint 05 done (`v0.10.0-ethercosm-and-models`, 2026-10-11)** — `production/sprints/sprint-05.md`. Ethercosm screen (stars, satellite orbit, rune rings, bound gems, per-ability bind and skill-slot assignment; key K). Inventory equip UX fixed after Brent could not tell how to equip (click / right-click / drag onto slot) with a windowed UI click test. Procedural low-poly models for player, three enemies, scenery and loot (`game/scripts/art/`, written by a sub-agent, integrated here); camera zoom 24 -> 19. Self-test 109/109, bots, click test all pass. Animation unseen in motion.
-- **Next:** Brent plays v0.10.0 (interface, models in motion, economy without a free satellite). Candidates after that: a weapon slot (loot like the dagger is sell-only today), the Netherecho throwaway prototype, tuning from playtest notes.
-- (Done) **Next:** Brent plays v0.8.0 and reports on the interface and the new economy (no free satellite, 20-essence start). Then roadmap sprint 3b: the ethercosm screen (stars, rune rings, slot assignment), then the Netherecho prototype.
-- (Done) **Next: Sprint 3a** — inventory (backpack in the back slot, no ring), equipment slots incl. satellite, remove the free satellite, loot drops + exit rewards, sell in town, save/load. Then 3b ethercosm screen with rune rings and slot assignment.
-- (Superseded) **Next: Sprint 2b** — abilities as data with stage/progress (progress = essence spent through the ability × use), hotbar slots as InputMap actions, meditation refilling essence. Then 3a inventory (backpack, back slot, satellite slot, loot at exit) and 3b ethercosm screen with rune rings.
-
-## Still waiting on Brent
-- **Play `v0.3.0`.** Things worth judging: does the halfway gate create a real "leave or push on" decision; is rent inside the passage pressure or a nag; does it feel like living in that world (top priority); are walls 6-10 survivable at all without the bot's cheats.
-- Review the systems index (missing / merge / split / cut, priorities) and confirm or overrule the proposed MVP.
-- **Hands-on playtest of the arena build `v0.2.0`** — the real fun gate. Nothing about feel is verified. The build now has the NEW rules (2026-09-19): free natural healing at rest (superficial fast, structural slow, catastrophic never), rent ticking during rest with Space = go now / E = rest longer, a striking arm that overcharging wears out and can destroy (off-hand blows at 60%, no overcharge, until a healer or the Lifesteal talent regrows it), and healer credit down to -$2000 debt. Rules proven by `game/tests/selftest.tscn` (19 checks); tuning numbers are first guesses.
-- Motivation profile and target-player sections in `game-concept.md` are still marked PROPOSED; ranks 2–4 of the aesthetics table are proposed.
-- MVP scope: the build has outgrown the v0 MVP definition — settle at sprint planning.
-- How strict the approval protocol should be (template default: ask before every file write; root `CLAUDE.md` relaxes this to per-changeset).
-- Review mode: `lean` runs four director agents at each phase gate (costly); `solo` is artifact checks only.
+## Open items found by the work (not fixed, reported)
+- `_on_reinforcements` clamps reinforcements to the arena square outside the passage.
+- Passage rent is charged per frame delta.
+- Dead enemy state: `_base_color`, `_burn_t`, `_spread_t`, `_tick_alight`.
+- Status text shows some missing keys as 0 where gameplay uses another default (`docs/architecture/data-schema.md`
+  table).
+- The lone drummer stands still: a ruling for Brent, in the to-do.
+- `.claude/docs/technical-preferences.md` says the renderer is D3D12; it is actually Vulkan.
