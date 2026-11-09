@@ -109,7 +109,13 @@ phases below run to A, then B.
   not a state: it keeps its own `Netherecho` node and got a small part for main's side of it (`MainNether`). No
   outside caller changed; the suite, the timeline and cast-every-skill output and the self-test count are the same
   before and after.
-- [ ] Split `enemy.gd` into one brain per behaviour.
+- [x] Split `enemy.gd` into one brain per behaviour. Done 2026-11-08 (`docs/architecture/enemy-split.md`): `enemy.gd`
+  is `class_name Enemy` (signals, lifecycle, shared state, the hooks Beast overrides, forwarders; 543 lines) plus ten
+  scripts in `scripts/enemy/`, none over 551 lines: the status engine (`EnemyStatuses`), hits and poise (`EnemyHits`),
+  movement, routing and sight (`EnemyMotion`), telegraphs and the rig (`EnemyLooks`), and one `EnemyBrain` per
+  behaviour (melee, ranged, pouncer, support, commander) picked by `Enemy._brain_for`. `Beast` is unchanged: its
+  behaviours stay overrides of the node's hooks. No outside caller changed; the suite, the timeline and
+  cast-every-skill output, the self-test count and the duels table at a fixed 60 fps are the same before and after.
 - Give the big objects class names and typed calls. Validate data once on load and remove the silent numeric fallbacks.
 - No behaviour change: the full suite and the combat-review probe must give the same numbers before and after.
 - Done when no gameplay file is over ~1,500 lines and the suite is green.
