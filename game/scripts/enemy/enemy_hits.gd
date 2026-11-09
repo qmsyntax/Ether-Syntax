@@ -65,7 +65,7 @@ func take_hit(amount: float, _heavy: bool, source: Node, tags: Array = []) -> fl
 	enemy._flash = 0.12
 	if enemy._rig != null:
 		enemy._rig.flash(0.12)
-	enemy._refresh_label()
+	enemy.looks_part._refresh_label()
 	var hushed: bool = enemy.body.is_dead() and source != null and is_instance_valid(source) and source.has_method("hush_radius") and float(source.call("hush_radius")) > 0.0
 	if applied > 0.0 and not hushed:
 		enemy.hurt.emit(enemy, source)                 # its camp wakes; a herd answers (FieldCamps)
@@ -155,7 +155,7 @@ func _answer_block() -> void:
 	var cfg: Dictionary = enemy._def["counter"]
 	enemy._windup = float(cfg.get("windup", 0.25))
 	enemy._special_cd["counter"] = float(cfg.get("cooldown", 2.5))
-	enemy._update_melee_telegraph()
+	enemy.looks_part._update_melee_telegraph()
 
 
 ## Cannot act for `seconds` and takes more damage; a bare strike on it is an Opening.
@@ -284,7 +284,7 @@ func turn_away_from(point: Vector3, seconds: float) -> void:
 		return
 	enemy.facing = away.normalized()
 	enemy._turned_t = seconds
-	enemy._apply_facing()
+	enemy.looks_part._apply_facing()
 
 
 func is_shoved() -> bool:

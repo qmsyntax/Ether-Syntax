@@ -93,12 +93,8 @@ var _player: Node3D
 var quelled := false
 var _held_t := 0.0                   # Sick: standing still after a retch
 var _base_color := Color(0.75, 0.2, 0.2)
-var _label: Label3D
 var _rig: ModelRig
 var _strike_t := 0.0
-var _shown_highlight := 0
-var _shown_windup := false
-var _shown_down := false
 ## The spawn's strength factor (hp and damage were scaled by it); a beast's other blows use it too.
 var _strength := 1.0
 
@@ -107,12 +103,14 @@ var _strength := 1.0
 var status_part: EnemyStatuses
 var hits_part: EnemyHits
 var motion_part: EnemyMotion
+var looks_part: EnemyLooks
 
 
 func _init() -> void:
 	status_part = EnemyStatuses.new(self)
 	hits_part = EnemyHits.new(self)
 	motion_part = EnemyMotion.new(self)
+	looks_part = EnemyLooks.new(self)
 
 
 ## `strength` scales health and damage - dungeon stages past the midpoint hit harder.
@@ -148,49 +146,7 @@ func setup(enemy_kind: String, player: Node3D, strength: float = 1.0) -> void:
 	_base_color = Color(float(c[0]), float(c[1]), float(c[2]))
 	body = Body.new(float(d.get("hp", 240.0)) * strength)
 
-	# The look: a real body when real bodies are on (Models.enemy), else a procedural model.
-	# Gameplay size still comes from data.
-	_rig = Models.enemy(enemy_kind)
-	add_child(_rig)
-
-	var col := CollisionShape3D.new()
-	var shape := CapsuleShape3D.new()
-	shape.radius = radius
-	shape.height = height
-	col.shape = shape
-	col.position.y = height * 0.5
-	add_child(col)
-
-	if d.has("aura_ring"):
-		# a ring on the ground at the distance that matters for this one (design/05 6.1)
-		var ring_def: Dictionary = d["aura_ring"]
-		var rc: Array = ring_def.get("color", [1.0, 1.0, 1.0])
-		var ring := MeshInstance3D.new()
-		var torus := TorusMesh.new()
-		torus.outer_radius = float(ring_def["radius"])
-		torus.inner_radius = float(ring_def["radius"]) - 0.07
-		torus.rings = 48
-		torus.ring_segments = 6
-		ring.mesh = torus
-		var ring_mat := StandardMaterial3D.new()
-		ring_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		ring_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		ring_mat.albedo_color = Color(float(rc[0]), float(rc[1]), float(rc[2]), 0.4)
-		ring.material_override = ring_mat
-		ring.position.y = 0.06
-		ring.scale.y = 0.2
-		add_child(ring)
-
-	_label = Label3D.new()
-	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_label.no_depth_test = true
-	_label.font_size = 36
-	_label.outline_size = 10
-	_label.pixel_size = 0.01
-	_label.position.y = height + 0.5
-	_label.visible = false          # health is shown by the HUD's floating bars and target frame
-	add_child(_label)
-	_refresh_label()
+	looks_part.build(d)
 
 	# Layer 1 = world, 2 = player, 3 = enemies. Enemies block each other and the
 	# world, but never physically touch the player (hits are distance checks).
@@ -571,16 +527,6 @@ func _tick_charge(delta: float) -> void:
 		_attack_cd = _cooldown
 
 
-func _update_melee_telegraph() -> void:
-	if _windup < 0.0:
-		telegraph = {}
-	elif str(_def.get("attack_shape", "single")) == "circle":
-		telegraph = {"kind": "circle", "radius": float(_def.get("attack_radius", 3.0)), "frac": 1.0 - _windup / maxf(0.001, _windup_time),
-			"interruptible": bool(_def.get("interruptible", false))}
-	else:
-		telegraph = {"kind": "swing", "interruptible": bool(_def.get("interruptible", false))}
-
-
 ## The wind-up is over: does the blow find anyone?
 func _land_melee(dist: float) -> void:
 	telegraph = {}
@@ -846,37 +792,6 @@ func _tick_leap(delta: float) -> void:
 			_stuck_t = float(_def.get("stuck_after_miss", 1.0))
 
 
-# --- looks ------------------------------------------------------------------------------------
-
-func _apply_facing() -> void:
-	if _rig != null and is_instance_valid(_rig):
-		_rig.rotation.y = atan2(-facing.x, -facing.z)
-
-
-func _look(delta: float) -> void:
-	if _rig == null:
-		return                                      # the body has been handed to the world to lie
-	_strike_t -= delta
-	_apply_facing()
-	var winding: bool = _windup >= 0.0
-	if winding != _shown_windup:
-		_shown_windup = winding
-		_rig.set_windup(winding)
-	var down: bool = _st_any("cannot_act") or _kneeling()
-	if down != _shown_down:
-		_shown_down = down
-		if _rig.has_method("set_staggered"):
-			_rig.set_staggered(down)                # slumped, head down: the moment for a bare strike
-	if highlight != _shown_highlight:
-		_shown_highlight = highlight
-		_rig.set_highlight(highlight)
-	_rig.animate(delta, velocity.length(), _strike_t > 0.0)
-
-
-func _refresh_label() -> void:
-	_label.text = "%d" % int(ceil(body.total()))
-
-
 # --- the field: camps, sleep, leash, walk home (design/07 3.5) --------------------------------------
 
 ## The camp it belongs to out in a zone (FieldCamps), or "".
@@ -1054,3 +969,9 @@ func sees_point(point: Vector3) -> bool: return motion_part.sees_point(point)
 func _clear(from: Vector3, to: Vector3) -> bool: return motion_part._clear(from, to)
 func _has_floor(spot: Vector3) -> bool: return motion_part._has_floor(spot)
 func _sees_target() -> bool: return motion_part._sees_target()
+
+# EnemyLooks (looks_part): telegraphs and the rig
+func _update_melee_telegraph() -> void: looks_part._update_melee_telegraph()
+func _apply_facing() -> void: looks_part._apply_facing()
+func _look(delta: float) -> void: looks_part._look(delta)
+func _refresh_label() -> void: looks_part._refresh_label()
