@@ -7,7 +7,7 @@ var stock: Array = []
 var title := "Merchant"
 
 
-func _init(game_node: Node, sells: Array = [], shop_name: String = "") -> void:
+func _init(game_node: Main, sells: Array = [], shop_name: String = "") -> void:
 	super(game_node)
 	stock = sells
 	if shop_name != "":
@@ -51,7 +51,7 @@ func build(root: Control) -> void:
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
 	box.add_child(foot)
-	foot.add_child(UiWidgets.small_button("Done", func() -> void: game.call("close_screen")))
+	foot.add_child(UiWidgets.small_button("Done", func() -> void: game.close_screen()))
 
 
 func _row(id: String, inv: Inventory) -> Control:
@@ -87,6 +87,6 @@ func _row(id: String, inv: Inventory) -> Control:
 	buy_col.add_child(price_label)
 	var why: String = "Buy" if afford and carry else ("No credit" if not afford else "Too heavy")
 	buy_col.add_child(UiWidgets.small_button(why, func() -> void:
-		game.call("town_buy", id)
+		game.town_buy(id)
 		rebuild(), afford and carry))
 	return panel

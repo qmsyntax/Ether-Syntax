@@ -49,7 +49,7 @@ var night_rent: int = GameData.inum("night", "rent")
 
 var player: Player
 var camera: Camera3D
-var hud: Control
+var hud: Hud
 var hud_layer: CanvasLayer
 var ui_root: Control                # themed parent of the HUD and every screen
 var screen: Control                 # the menu screen currently shown, if any
@@ -174,15 +174,15 @@ func _process(delta: float) -> void:
 	if running != null:
 		running.tick(delta)                 # the level the state names (MainStates)
 
-	hud.call("refresh", player, _where())
-	hud.set("show_world", state == "dungeon" or state == "arena_rest" or state == "arena_fight" or state == "field" or state == "town")
-	hud.call("set_nether", nether.hud_info())
-	hud.set("minimap", minimap_info())
+	hud.refresh(player, _where())
+	hud.show_world = state == "dungeon" or state == "arena_rest" or state == "arena_fight" or state == "field" or state == "town"
+	hud.set_nether(nether.hud_info())
+	hud.minimap = minimap_info()
 	if nether.active and screen == null:
 		_prompt = "Your body sits behind you, defenceless.   %s or walk back onto it to return.\nTouch wisps to gather them. Beat a construct down to subdue it." % _k("project")
-	hud.call("set_prompt", _prompt if screen == null else "")
-	hud.call("set_passage", {"walls": chambers, "cleared": cleared, "current": current, "gate": gate_at, "bank": bank} if state == "dungeon" else {})
-	player.ui_blocked = screen != null or settings_menu != null or bool(hud.call("mouse_over_ui"))
+	hud.set_prompt(_prompt if screen == null else "")
+	hud.set_passage({"walls": chambers, "cleared": cleared, "current": current, "gate": gate_at, "bank": bank} if state == "dungeon" else {})
+	player.ui_blocked = screen != null or settings_menu != null or bool(hud.mouse_over_ui())
 
 	if _harness_part != null:
 		_harness().tick()
@@ -336,9 +336,9 @@ func _swap_for_fresh(then: Dictionary) -> void:
 		return
 	var tree: SceneTree = get_tree()
 	var was_current: bool = tree.current_scene == self
-	var fresh: Node = (load(scene_file_path if scene_file_path != "" else "res://scenes/main.tscn") as PackedScene).instantiate()
-	fresh.set("_test_mode", _test_mode)
-	fresh.set("_then", then)
+	var fresh: Main = (load(scene_file_path if scene_file_path != "" else "res://scenes/main.tscn") as PackedScene).instantiate()
+	fresh._test_mode = _test_mode
+	fresh._then = then
 	fresh.process_mode = process_mode
 	var at: int = get_index()
 	parent.remove_child(self)             # out of the world first: two players never share it
@@ -425,7 +425,7 @@ func _build_player() -> void:
 ## A rune became known: the HUD shows it (design/14 section 8).
 func _on_rune_discovered(rune_id: String, source: String) -> void:
 	if hud != null:
-		hud.call("show_rune", rune_id, source)
+		hud.show_rune(rune_id, source)
 
 
 func _build_hud() -> void:

@@ -6,7 +6,7 @@ extends RefCounted
 ## like any other (the same movement, camera, colliders and navigation mesh).
 ## Coordinates in the data are the level's frame: origin at the middle, x east, z south.
 
-var main: Node
+var main: Main
 var def: Dictionary = {}
 var size := Vector2.ZERO
 ## The people, in data order.
@@ -15,7 +15,7 @@ var folk: Array[Townsperson] = []
 var exits: Array[Dictionary] = []
 
 
-func _init(owner_main: Node, town_def: Dictionary) -> void:
+func _init(owner_main: Main, town_def: Dictionary) -> void:
 	main = owner_main
 	def = town_def
 	var s: Array = def.get("size", [36.0, 30.0])
@@ -23,7 +23,7 @@ func _init(owner_main: Node, town_def: Dictionary) -> void:
 
 
 func build() -> void:
-	var level: Node3D = main.get("level")
+	var level: Node3D = main.level
 	var margin: float = float(def.get("floor_margin", 6.0))
 	main.call("_biome_floor", Vector3.ZERO, size + Vector2(margin, margin) * 2.0)
 	for edge: String in ["north", "south", "east", "west"]:
@@ -182,7 +182,7 @@ func person(role: String) -> Townsperson:
 
 ## The exit whose gateway `world_pos` is at (within exit_reach of its middle), or {}.
 func exit_at(world_pos: Vector3) -> Dictionary:
-	var level: Node3D = main.get("level")
+	var level: Node3D = main.level
 	var here: Vector3 = level.to_local(world_pos)
 	for ex: Dictionary in exits:
 		var c: Vector3 = ex["centre"]

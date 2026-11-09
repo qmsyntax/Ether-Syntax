@@ -104,7 +104,7 @@ func _enter_arena() -> void:
 func _start_wave() -> void:
 	main.wave += 1
 	main.state = "arena_fight"
-	main.hud.call("announce", "WAVE %d" % main.wave)
+	main.hud.announce("WAVE %d" % main.wave)
 	main.player.start_fight()
 	var kinds: Array[String] = _wave_kinds(main.wave)
 	for kind: String in kinds:

@@ -235,7 +235,7 @@ func _door_dir(straight: Vector3) -> Vector3:
 		enemy._router = enemy.get_tree().get_first_node_in_group("router")
 	if enemy._router == null:
 		return straight
-	var next: Vector3 = enemy._router.call("route", enemy.global_position, enemy.target.global_position, enemy.radius)
+	var next: Vector3 = enemy._router.route(enemy.global_position, enemy.target.global_position, enemy.radius)
 	var way: Vector3 = next - enemy.global_position
 	way.y = 0.0
 	return way.normalized() if way.length() > 0.05 else straight

@@ -471,7 +471,7 @@ func bind_and_seal(roll: float = -1.0) -> void:
 		_say("The bind fails. The construct is gone and no seal forms: the word stays as it was.", true)
 	else:
 		_say(result, true)
-	game.call("save_now")
+	game.save_now()
 	var msg: String = _rune_msg
 	var bad: bool = _rune_msg_bad
 	if bool((player.can_open_seal(selected) as Dictionary)["ok"]):
@@ -543,7 +543,7 @@ func _build_runes(root: Control) -> void:
 	var back: Button = UiWidgets.small_button("Back to the ethercosm", close_runes)
 	back.name = "RunesBackButton"
 	head.add_child(back)
-	head.add_child(UiWidgets.small_button("Close  (%s)" % Keybinds.binding_text("ethercosm"), func() -> void: game.call("close_screen")))
+	head.add_child(UiWidgets.small_button("Close  (%s)" % Keybinds.binding_text("ethercosm"), func() -> void: game.close_screen()))
 
 	var name_row := HBoxContainer.new()
 	name_row.add_theme_constant_override("separation", 12)
@@ -1102,8 +1102,8 @@ func _build_detail() -> void:
 	var gb: Button = UiWidgets.small_button("Back" if glossary else "Statuses", show_glossary.bind(not glossary))
 	gb.name = "GlossaryButton"
 	head.add_child(gb)
-	head.add_child(UiWidgets.small_button("Skill tree  (%s)" % Keybinds.binding_text("skills"), func() -> void: game.call("open_skill_tree", false)))
-	head.add_child(UiWidgets.small_button("Close  (%s)" % Keybinds.binding_text("ethercosm"), func() -> void: game.call("close_screen")))
+	head.add_child(UiWidgets.small_button("Skill tree  (%s)" % Keybinds.binding_text("skills"), func() -> void: game.open_skill_tree(false)))
+	head.add_child(UiWidgets.small_button("Close  (%s)" % Keybinds.binding_text("ethercosm"), func() -> void: game.close_screen()))
 	box.add_child(UiTheme.body("Every status a skill can leave on an enemy. Click a name to fold it." if glossary else "The inner space of your soul.", 14, UiTheme.TEXT_DIM))
 	box.add_child(UiTheme.rule())
 	# everything between the heading and the skill slots scrolls, so the slots stay in reach
@@ -1342,7 +1342,7 @@ func _build_slots(box: VBoxContainer, held: Array) -> void:
 			var here: bool = int(hotbar[i]) == selected
 			var b: Button = UiWidgets.small_button(Keybinds.binding_text("ability_%d" % (i + 1)), func() -> void:
 				player.assign_slot(i, selected)
-				game.call("save_now")
+				game.save_now()
 				rebuild())
 			b.name = "SlotButton_%d" % i
 			b.custom_minimum_size = Vector2(44, 40)
@@ -1352,7 +1352,7 @@ func _build_slots(box: VBoxContainer, held: Array) -> void:
 			slots.add_child(b)
 		slots.add_child(UiWidgets.small_button("clear", func() -> void:
 			player.unassign_ability(selected)
-			game.call("save_now")
+			game.save_now()
 			rebuild()))
 	if not held.is_empty():
 		var names: Array[String] = []

@@ -12,7 +12,7 @@ var _last := ""                 # what the last combine did, in words
 var _last_good := true
 
 
-func _init(game_node: Node, context: Dictionary) -> void:
+func _init(game_node: Main, context: Dictionary) -> void:
 	super(game_node)
 	ctx = context
 
@@ -53,7 +53,7 @@ func build(root: Control) -> void:
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
 	left.add_child(foot)
-	foot.add_child(UiWidgets.small_button("Done  (%s)" % Keybinds.binding_text("interact"), func() -> void: game.call("close_screen")))
+	foot.add_child(UiWidgets.small_button("Done  (%s)" % Keybinds.binding_text("interact"), func() -> void: game.close_screen()))
 
 	var right: VBoxContainer = framed(root, 0.41, 0.04, 0.985, 0.775)
 	right.add_theme_constant_override("separation", 6)
@@ -160,7 +160,7 @@ func _detail(box: VBoxContainer, rid: String) -> void:
 
 ## Try the recipe once, through main.gd, and say what happened.
 func combine(rid: String) -> void:
-	var res: Dictionary = game.call("craft", rid, ctx)
+	var res: Dictionary = game.craft(rid, ctx)
 	if not bool(res.get("ok", false)):
 		_last = str(res.get("why", ""))
 		_last_good = false

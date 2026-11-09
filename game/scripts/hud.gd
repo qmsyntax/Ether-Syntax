@@ -1,3 +1,4 @@
+class_name Hud
 extends Control
 ## In-game HUD, drawn procedurally over nine-patch frames (layout: design/09-ui-review-v0.md):
 ##   bottom centre  - the dock: health orb | six skill slots, strike and shoot | essence orb.

@@ -106,17 +106,17 @@ func _process(delta: float) -> void:
 	_rig.animate(delta, 0.0, false)
 	_turn(delta, false)
 	# the town is built behind character creation; its name plates would show through the screen
-	var game: Node = get_tree().get_first_node_in_group("router")
-	_plate.visible = game == null or str(game.get("state")) != "select"
+	var game := get_tree().get_first_node_in_group("router") as Main
+	_plate.visible = game == null or str(game.state) != "select"
 
 
 ## Face whoever comes near (within town.json "face_player_within"), else the way they stand.
 func _turn(delta: float, instant: bool) -> void:
 	var want: Vector3 = _rest_facing
 	var p: Node3D = null
-	var main: Node = get_tree().get_first_node_in_group("router") if is_inside_tree() else null
+	var main: Main = get_tree().get_first_node_in_group("router") as Main if is_inside_tree() else null
 	if main != null:
-		p = main.get("player") as Node3D
+		p = main.player
 	if p != null:
 		var to: Vector3 = p.global_position - global_position
 		to.y = 0.0

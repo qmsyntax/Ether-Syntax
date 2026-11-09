@@ -79,7 +79,7 @@ var _leap_hit := false
 var _retreat_t := 0.0                # pouncer: how long the player has been running from the pack
 var _circle_sign := 1.0
 var _walk_dir := Vector3.ZERO        # the way to walk to reach the player: along its path
-var _router: Node
+var _router: Main
 var _errand := NavPath.new()         # its path somewhere else: an archer's vantage, a drummer's spot
 var _flash := 0.0
 ## Who it fights when nothing lures it away (the player); `target` may be a lure for a while.

@@ -185,7 +185,7 @@ func _activate(c: int) -> void:
 	main._prebuild_bodies(main.factory_part._calls_of(kinds))         # a commander's call for help lands mid-fight: its bodies wait ready
 	main.player.start_fight()
 	main.player.note("Wall %d of %d." % [c, main.chambers])
-	main.hud.call("announce", "WALL %d" % c if c != main.chambers else "THE LAST WALL")
+	main.hud.announce("WALL %d" % c if c != main.chambers else "THE LAST WALL")
 	if main._harness_part != null:
 		main._harness().shot_dungeon_wall(c)
 
@@ -216,7 +216,7 @@ func _on_wall_cleared() -> void:
 		_spawn_pad(main.cleared)
 	main.player.note("Wall %d cleared. Spoils worth $%d waiting - yours only if you walk out with them." % [main.cleared, main.bank])
 	if main.cleared == main.gate_at:
-		main.hud.call("announce", "AN EXIT OPENS")
+		main.hud.announce("AN EXIT OPENS")
 
 
 func _spawn_pad(c: int) -> void:

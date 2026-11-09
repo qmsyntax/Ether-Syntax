@@ -99,8 +99,8 @@ func _bot_way(goal: Vector3, delta: float) -> Vector3:
 		if way != Vector3.ZERO or _bot_path.blocked:
 			return way
 	var next: Vector3 = goal
-	var router: Node = player.get_tree().get_first_node_in_group("router")
+	var router := player.get_tree().get_first_node_in_group("router") as Main
 	if router != null:
-		next = router.call("route", player.global_position, goal, 0.4)
+		next = router.route(player.global_position, goal, 0.4)
 	var flat := Vector3(next.x - player.global_position.x, 0.0, next.z - player.global_position.z)
 	return flat.normalized() if flat.length() > 0.05 else Vector3.ZERO

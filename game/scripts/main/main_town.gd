@@ -126,7 +126,7 @@ func _town_interact() -> void:
 
 ## A click in town at a screen point: on a person, walk up to them and talk.
 func _town_click(at: Vector2) -> void:
-	if main.screen != null or main._town == null or bool(main.hud.call("ui_at", at)):
+	if main.screen != null or main._town == null or bool(main.hud.ui_at(at)):
 		return
 	var who: Townsperson = main._town.pick_screen(at, main.camera)
 	if who == null:

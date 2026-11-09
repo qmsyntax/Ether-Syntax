@@ -323,7 +323,7 @@ func _on_reinforcements(who: Node, kinds: Array) -> void:
 			spot.x = clampf(spot.x, -main.arena_half + 2.0, main.arena_half - 2.0)
 			spot.z = clampf(spot.z, -main.arena_half + 2.0, main.arena_half - 2.0)
 		_spawn_enemy(str(kinds[i]), spot, strength)
-	main.hud.call("announce", "REINFORCEMENTS")
+	main.hud.announce("REINFORCEMENTS")
 
 
 # --- bodies built ahead (perf, 2026-11-08; docs/perf/baseline-2026-11-08.md) ----------------------

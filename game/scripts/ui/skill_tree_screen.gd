@@ -13,7 +13,7 @@ var selected := ""
 var _view: TreeView
 
 
-func _init(game_node: Node, trainer: bool = false) -> void:
+func _init(game_node: Main, trainer: bool = false) -> void:
 	super(game_node)
 	at_trainer = trainer
 
@@ -128,7 +128,7 @@ func _detail(box: VBoxContainer) -> void:
 		var why_d: String = str(player.cannot_drill_reason(selected))
 		var d := UiWidgets.service_button("Drill it", "+%d%% toward its next stage. The stage itself still needs a bound construct." % int(float(drill.get("progress", 0.0))),
 			"%d pt  $%d" % [int(drill.get("points", 1)), int(drill.get("price", 0))], func() -> void:
-				var why: String = game.call("drill_skill", selected)
+				var why: String = game.drill_skill(selected)
 				if why != "":
 					player.note(why)
 				rebuild(), at_trainer and why_d == "")
@@ -141,7 +141,7 @@ func _detail(box: VBoxContainer) -> void:
 		var why_l: String = str(player.cannot_train_reason(selected))
 		var l := UiWidgets.service_button("Learn it", "From %s." % str(GameData.town_folk("trainer").get("name", "the trainer")) if at_trainer else "Only at a trainer in town.",
 			"", func() -> void:
-				var why: String = game.call("train_skill", selected)
+				var why: String = game.train_skill(selected)
 				if why != "":
 					player.note(why)
 				rebuild(), at_trainer and why_l == "")
@@ -156,7 +156,7 @@ func _detail(box: VBoxContainer) -> void:
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
 	box.add_child(foot)
-	foot.add_child(UiWidgets.small_button("Done  (%s)" % Keybinds.binding_text("skills"), func() -> void: game.call("close_screen")))
+	foot.add_child(UiWidgets.small_button("Done  (%s)" % Keybinds.binding_text("skills"), func() -> void: game.close_screen()))
 
 
 ## The drawn tree: node buttons on tiers, lines from each node to what it needs.

@@ -214,7 +214,7 @@ var _rig: ModelRig
 var _strike_t := 0.0
 var _shown_arm_lost := false
 var _shown_glow := 0
-var _router: Node                          # main, read for where the body stands (_stance_place)
+var _router: Main                          # main, read for where the body stands (_stance_place)
 var _shown_windup := false
 ## Blood's held blood (2026-10-22): measures carried outside your own veins, 0..held_blood_max.
 ## Filled by drinking, spent by blood skills. It is never health and never heals.
@@ -360,7 +360,7 @@ func _update_model(delta: float) -> void:
 func _stance_place() -> String:
 	if _router == null or not is_instance_valid(_router):
 		_router = get_tree().get_first_node_in_group("router")
-	return str(_router.get("state")) if _router != null else ""
+	return str(_router.state) if _router != null else ""
 
 
 ## The affinities the character's prime came with. They decide which skills can be learned; a

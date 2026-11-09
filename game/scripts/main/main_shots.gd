@@ -217,7 +217,7 @@ func _setup_ui_shot(which: String) -> void:
 		main.player.call("_refresh_highlights")
 		main._harness()._shot_countdown = 60
 		main._harness()._shot_late = func() -> void:
-			main.hud.set("debug_cursor", main.camera.unproject_position(foe.global_position + Vector3.UP * 1.0))
+			main.hud.debug_cursor = main.camera.unproject_position(foe.global_position + Vector3.UP * 1.0)
 			main.player.press_slot(1)
 		return
 	if which == "endurance" or which == "endurance-refused":
@@ -237,7 +237,7 @@ func _setup_ui_shot(which: String) -> void:
 		main.player.set_physics_process(false)
 		main._harness()._shot_countdown = 60
 		main._harness()._shot_late = func() -> void:
-			main.hud.set("debug_cursor", main.camera.unproject_position(main.player.global_position + Vector3(1.6, 0, 0.4)))
+			main.hud.debug_cursor = main.camera.unproject_position(main.player.global_position + Vector3(1.6, 0, 0.4))
 			if which == "endurance-refused":
 				main.player.sidestep()
 		return
@@ -287,7 +287,7 @@ func _setup_ui_shot(which: String) -> void:
 		foes[2].call("add_status", "soaked")
 		(foes[1].get("body") as Body).apply_damage(90.0)
 		main.player.hovered = foes[0]
-		main.hud.set("debug_tip", "slot:3")
+		main.hud.debug_tip = "slot:3"
 		for e: Node in foes:
 			e.set_physics_process(false)
 		main.player.set_physics_process(false)
@@ -539,7 +539,7 @@ func _setup_ui_shot(which: String) -> void:
 				main.player.essence = 6.0
 			if which == "hud":
 				main._harness().seal_shots._shot_lock_word()                          # the slot tooltip names what the locked word does
-			main.hud.set("debug_tip", "slot:0" if which == "hud" else "health")
+			main.hud.debug_tip = "slot:0" if which == "hud" else "health"
 			# freeze the fight so the picture is stable
 			for e: Node in main.get_tree().get_nodes_in_group("enemies"):
 				e.set_physics_process(false)

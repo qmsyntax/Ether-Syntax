@@ -179,7 +179,7 @@ func _use_entrance() -> bool:
 	if e == null:
 		return false
 	main.player.note(e.use_text())
-	main.hud.call("announce", e.entrance_name.to_upper())
+	main.hud.announce(e.entrance_name.to_upper())
 	return true
 
 

@@ -41,7 +41,7 @@ func build(root: Control) -> void:
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
 	box.add_child(foot)
-	foot.add_child(UiWidgets.small_button("Done", func() -> void: game.call("close_screen")))
+	foot.add_child(UiWidgets.small_button("Done", func() -> void: game.close_screen()))
 
 
 func _row(id: String) -> Control:
@@ -85,7 +85,7 @@ func _row(id: String) -> Control:
 	row.add_child(side)
 	var train := UiWidgets.small_button("Train", func() -> void:
 		player.temper_session(id)
-		game.call("save_now")
+		game.save_now()
 		rebuild(), why == "")
 	train.set_meta("technique", id)
 	train.custom_minimum_size = Vector2(120, 44)

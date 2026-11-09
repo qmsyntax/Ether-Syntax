@@ -13,7 +13,7 @@ var aspects: Dictionary = {}           # skill index -> aspect id
 var _said := ""
 
 
-func _init(game_node: Node) -> void:
+func _init(game_node: Main) -> void:
 	super(game_node)
 	var pending: Dictionary = player.ascension_pending
 	if (pending.get("offer", []) as Array).is_empty():
@@ -64,7 +64,7 @@ func set_aspect(index: int, aspect: String) -> void:
 
 
 func confirm() -> void:
-	var why: String = str(game.call("resolve_ascension", chosen, aspects.duplicate()))
+	var why: String = str(game.resolve_ascension(chosen, aspects.duplicate()))
 	if why != "":
 		_said = why
 		rebuild()
@@ -72,7 +72,7 @@ func confirm() -> void:
 
 ## Settle with every skill on its main aspect.
 func skip() -> void:
-	var why: String = str(game.call("resolve_ascension", chosen, {}))
+	var why: String = str(game.resolve_ascension(chosen, {}))
 	if why != "":
 		_said = why
 		rebuild()

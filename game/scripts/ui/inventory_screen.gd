@@ -133,7 +133,7 @@ func _build_sheet(box: VBoxContainer, inv: Inventory) -> void:
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(spacer)
-	box.add_child(UiWidgets.small_button("Close  (%s)" % Keybinds.binding_text("inventory"), func() -> void: game.call("close_screen")))
+	box.add_child(UiWidgets.small_button("Close  (%s)" % Keybinds.binding_text("inventory"), func() -> void: game.close_screen()))
 
 
 # --- the doll: the figure and a slot for every piece ------------------------------------------
@@ -207,7 +207,7 @@ func _figure_drop(_at: Vector2, data: Variant) -> void:
 func equip_item(id: String, into: String = "") -> void:
 	var kind: String = str(GameData.item(id).get("kind", ""))
 	if kind == "kit":
-		game.call("open_field_kit", id)
+		game.open_field_kit(id)
 		return
 	if kind == "tool" or kind == "material":
 		player.note("%s is for crafting: a tool goes back to your hand after each combine, a material goes into one." % str(GameData.item(id).get("name", id)))
@@ -217,7 +217,7 @@ func equip_item(id: String, into: String = "") -> void:
 		var said: String = player.use_consumable(id)
 		if said != "":
 			player.note(said)
-		game.call("save_now")
+		game.save_now()
 		rebuild()
 		return
 	if str(GameData.item(id).get("kind", "")) == "scroll":
@@ -225,7 +225,7 @@ func equip_item(id: String, into: String = "") -> void:
 		var why: String = player.read_scroll(id)
 		if why != "":
 			player.note(why)
-		game.call("save_now")
+		game.save_now()
 		rebuild()
 		return
 	var inv: Inventory = player.inventory
@@ -235,7 +235,7 @@ func equip_item(id: String, into: String = "") -> void:
 	else:
 		player.note("Cannot equip that: %s." % result)
 	player.refresh_gear()
-	game.call("save_now")
+	game.save_now()
 	rebuild()
 
 
@@ -245,7 +245,7 @@ func unequip_slot(slot: String) -> void:
 	if result != "unequipped":
 		player.note("Cannot take that off: %s." % result)
 	player.refresh_gear()
-	game.call("save_now")
+	game.save_now()
 	rebuild()
 
 
@@ -515,13 +515,13 @@ func _fill_inspect() -> void:
 	if worn:
 		var from: String = _inspect_slot
 		act = UiWidgets.small_button("Take off", func() -> void: unequip_slot(from))
-	elif str(game.get("state")) == "town":
+	elif str(game.state) == "town":
 		act = UiWidgets.small_button("Sell $%d" % inv.sale_price(id), func() -> void:
-			game.call("town_sell_item", id)
+			game.town_sell_item(id)
 			rebuild())
 	else:
 		act = UiWidgets.small_button("Drop", func() -> void:
-			game.call("drop_item", id)
+			game.drop_item(id)
 			rebuild())
 	act.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(act)
@@ -627,7 +627,7 @@ func _build_soul(box: VBoxContainer) -> void:
 			# no binding here (Brent 2026-10-23: "only with the runes"): the level lock is formed on the
 			# skill's seal screen, where the ring is filled and the keystone set
 			var open_b: Button = UiWidgets.small_button("Open the seal  -  level %d lock" % (int(st["stage"]) + 1), func() -> void:
-				game.call("open_seal", ai))
+				game.open_seal(ai))
 			open_b.name = "OpenSealButton_%d" % ai
 			open_b.add_theme_font_size_override("font_size", UiTheme.FS_SMALL + 1)
 			col.add_child(open_b)

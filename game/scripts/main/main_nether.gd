@@ -31,7 +31,7 @@ func toggle_projection() -> void:
 
 func _on_nether_entered() -> void:
 	_set_nether_look(true)
-	main.hud.call("announce", "THE NETHERECHO")
+	main.hud.announce("THE NETHERECHO")
 	main.player.note("You step out of yourself.")
 
 
