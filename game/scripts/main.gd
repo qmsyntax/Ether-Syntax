@@ -114,10 +114,12 @@ var _harness_part: MainHarness = null
 ## The parts (docs/architecture/main-split.md), one per concern, made in _init. Each reaches the node through
 ## its `main`; outside code keeps calling the node, which forwards (the blocks at the end of this file).
 var factory_part: LevelFactory          # the world, levels, biomes, props, navigation, enemies placed
+var arena_part: MainArena               # state "arena_rest" / "arena_fight": the practice arena
 
 
 func _init() -> void:
 	factory_part = LevelFactory.new(self)
+	arena_part = MainArena.new(self)
 
 
 func _ready() -> void:
@@ -160,21 +162,8 @@ func _process(delta: float) -> void:
 	match state:
 		"town":
 			_tick_town(delta)
-		"arena_rest":
-			rest_timer -= delta
-			_prompt = "Wave %d in %d   -   pick up what the last one left before it starts\n%s go now     %s rest longer     %s healer     hold %s to meditate     %s back to town" % [
-				wave + 1, int(ceil(rest_timer)),
-				_k("go_now"), _k("rest"), _k("healer"), _k("meditate"), _k("interact")]
-			if rest_timer <= 0.0:
-				_start_wave()
-		"arena_fight":
-			_prompt = ""
-			if get_tree().get_nodes_in_group("enemies").is_empty():
-				player.call("end_fight")
-				state = "arena_rest"
-				rest_timer = GameData.num("arena", "rest_between_waves")
-				_prebuild_bodies(_wave_kinds(wave + 1))     # built during the rest
-				player.call("note", "Wave %d cleared." % wave)
+		"arena_rest", "arena_fight":
+			arena_part.tick(delta)
 		"dungeon":
 			_tick_dungeon(delta)
 		"field":
@@ -287,27 +276,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif event.is_action_pressed("strike"):
 				_town_click((event as InputEventMouseButton).position if event is InputEventMouseButton else get_viewport().get_mouse_position())
 		"arena_rest", "arena_fight":
-			if _cast_from_hotbar(event):
-				pass
-			elif event.is_action_pressed("ascend"):
-				player.call("try_ascend")
-			elif event.is_action_pressed("bind"):
-				open_seal_first_ready()
-			elif event.is_action_pressed("go_now"):
-				if state == "arena_rest":
-					rest_timer = 0.0
-			elif event.is_action_pressed("rest"):
-				if state == "arena_rest":
-					rest_timer += GameData.num("arena", "rest_extend")
-					player.call("note", "You rest a while longer. The landlord notices.")
-			elif event.is_action_pressed("healer"):
-				if state == "arena_rest":
-					player.call("buy_healing")
-				else:
-					player.call("note", "The healer won't come in here mid-fight.")
-			elif event.is_action_pressed("interact"):
-				if state == "arena_rest":
-					_enter_town("arena")
+			arena_part.handle_input(event)
 		"field":
 			if _cast_from_hotbar(event):
 				pass
@@ -1163,11 +1132,6 @@ func enter_passage() -> void:
 	_enter_dungeon()
 
 
-func enter_arena() -> void:
-	_show_screen(null, false)
-	_enter_arena()
-
-
 func repeat_mult() -> float:
 	return _repeat_mult()
 
@@ -1347,89 +1311,6 @@ func open_saves() -> void:
 
 func _repeat_mult() -> float:
 	return maxf(repeat_floor, pow(repeat_factor, float(delves)))
-
-
-# --- practice arena -------------------------------------------------------------
-
-func _enter_arena() -> void:
-	factory_part._new_level(0.0)
-	var bcfg: Dictionary = GameData.balance["biomes"]
-	factory_part._use_biome(bcfg["arena"])
-	var span: float = arena_half * 2.0 + 2.0
-	_biome_floor(Vector3.ZERO, Vector2(span, span))
-	# tall on the far sides, low on the camera's side so the floor is not hidden
-	_biome_wall(Vector3(0, 0, -arena_half - 0.5), span, 0.0, float(bcfg["wall_height_far"]))
-	_biome_wall(Vector3(-arena_half - 0.5, 0, 0), span, 90.0, float(bcfg["wall_height_far"]))
-	_biome_wall(Vector3(0, 0, arena_half + 0.5), span, 180.0, float(bcfg["wall_height_near"]))
-	_biome_wall(Vector3(arena_half + 0.5, 0, 0), span, -90.0, float(bcfg["wall_height_near"]))
-	factory_part._scatter_props(Vector3.ZERO, Vector2(arena_half - 0.5, arena_half - 1.5), int(bcfg["arena_props"]))
-	# standing blocks: something for a shove to end against, and for a beam to stop on (design/05 6.2)
-	var block: Array = GameData.balance["arena"]["block_size"]
-	for at: Array in GameData.balance["arena"]["blocks"]:
-		_static_box(Vector3(float(at[0]), float(block[1]) * 0.5, float(at[1])), Vector3(float(block[0]), float(block[1]), float(block[2])),
-			(_biome.get("wall_color", Color(0.3, 0.3, 0.33)) as Color).lightened(0.12))
-	for i: int in GameData.inum("arena", "scenery_count"):
-		var pos := Vector3.ZERO
-		for attempt: int in 8:
-			pos = Vector3(rng.randf_range(-arena_half + 1.5, arena_half - 1.5), 0.0, rng.randf_range(-arena_half + 1.5, arena_half - 1.5))
-			if pos.length() > 3.0:
-				break
-		_spawn_cuttable(0 if i % GameData.inum("arena", "bush_every_n") == 0 else i * 2 + 2, pos)
-	for q: Vector3 in [Vector3(-8, 0, -8), Vector3(8, 0, -8), Vector3(-8, 0, 8), Vector3(8, 0, 8)]:
-		nether.populate_site(q, Vector2(6.0, 6.0))
-	player.global_position = Vector3.ZERO
-	player.set("active", true)
-	factory_part._place_corpses("arena")
-	# every kind the waves bring, loaded with the level: by the wave after the last threshold all have come
-	var last: int = 1
-	for key: String in GameData.balance["arena"]:
-		if key.ends_with("_every_n_waves") or key.ends_with("_from_wave"):
-			last = maxi(last, GameData.inum("arena", key) + 1)
-	var roster: Array[String] = []
-	for w: int in range(1, last + 1):
-		roster.append_array(_wave_kinds(w))
-	factory_part._warm_bodies(roster + factory_part._calls_of(roster))
-	_prebuild_bodies(_wave_kinds(1))
-	wave = 0
-	rest_timer = GameData.num("arena", "first_rest")
-	state = "arena_rest"
-
-
-func _start_wave() -> void:
-	wave += 1
-	state = "arena_fight"
-	hud.call("announce", "WAVE %d" % wave)
-	player.call("start_fight")
-	var kinds: Array[String] = _wave_kinds(wave)
-	for kind: String in kinds:
-		_spawn_arena_enemy(kind)
-	_prebuild_bodies(factory_part._calls_of(kinds))
-
-
-## Who comes in arena wave `w`, in the order they are placed.
-func _wave_kinds(w: int) -> Array[String]:
-	var kinds: Array[String] = []
-	for i: int in GameData.inum("arena", "grunts_base") + w:
-		kinds.append("grunt")
-	for i: int in w / GameData.inum("arena", "brute_every_n_waves"):
-		kinds.append("brute")
-	for i: int in w / GameData.inum("arena", "archer_every_n_waves"):
-		kinds.append("archer")
-	for i: int in w / GameData.inum("arena", "harrier_every_n_waves"):
-		kinds.append("harrier")
-	for i: int in w / GameData.inum("arena", "pavise_every_n_waves"):
-		kinds.append("pavise")
-	# one problem per pack: never more than one of each
-	if w >= GameData.inum("arena", "censer_from_wave") and w % 2 == 1:
-		kinds.append("censer")
-	if w >= GameData.inum("arena", "drummer_from_wave"):
-		kinds.append("drummer")
-	return kinds
-
-
-func _spawn_arena_enemy(kind: String) -> void:
-	var angle: float = rng.randf() * TAU
-	factory_part._spawn_enemy(kind, Vector3(cos(angle), 0.0, sin(angle)) * (arena_half - 3.0), 1.0)
 
 
 # --- assault passage ------------------------------------------------------------
@@ -1870,7 +1751,7 @@ func _where() -> String:
 		"town":
 			return "Town  -  day %d" % day
 		"arena_rest", "arena_fight":
-			return "Practice arena  -  wave %d" % wave
+			return arena_part.where()
 		"dungeon":
 			return "The passage  -  wall %d of %d  -  spoils $%d" % [cleared, chambers, bank]
 		"field":
@@ -1889,3 +1770,7 @@ func _spawn_cuttable(index: int, local_pos: Vector3) -> void: factory_part._spaw
 func _static_box(pos: Vector3, size: Vector3, color: Color, show: bool = true) -> StaticBody3D: return factory_part._static_box(pos, size, color, show)
 func _on_reinforcements(who: Node, kinds: Array) -> void: factory_part._on_reinforcements(who, kinds)
 func _prebuild_bodies(kinds: Array[String]) -> void: factory_part._prebuild_bodies(kinds)
+
+
+# --- arena_part (MainArena)
+func enter_arena() -> void: arena_part.enter_arena()
