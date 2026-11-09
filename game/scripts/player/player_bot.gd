@@ -64,9 +64,9 @@ func make_test_character(aff: String) -> void:
 func _nearest_enemy() -> Node3D:
 	var best: Node3D = null
 	var best_d := INF
-	for node: Node in player.get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
-		if e == null or bool(e.call("is_dead")):
+	for node: Enemy in player.get_tree().get_nodes_in_group("enemies"):
+		var e: Enemy = node
+		if e == null or bool(e.is_dead()):
 			continue
 		var d: float = e.global_position.distance_to(player.global_position)
 		if d < best_d:

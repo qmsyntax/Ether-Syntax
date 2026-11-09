@@ -142,12 +142,12 @@ func _tick_bot_report() -> void:
 		print("BOT:   bot at local (%.1f, %.1f) chamber %d  vel %s  target %s  melee_cd %.2f recover %.2f stagger %.2f" % [
 			here.x, here.z, int(-here.z / main.ch_len), str((main.player as CharacterBody3D).velocity), str(main.player.attack_target),
 			float(main.player.get("_melee_cd")), float(main.player.get("_recover_t")), float(main.player.get("_stagger_t"))])
-		for n: Node in main.get_tree().get_nodes_in_group("enemies"):
-			var e := n as Node3D
+		for n: Enemy in main.get_tree().get_nodes_in_group("enemies"):
+			var e: Enemy = n
 			var at: Vector3 = main.level.to_local(e.global_position)
 			print("BOT:   left: %s at local (%.1f, %.1f) chamber %d  %.1f m away  hp %d  windup %.2f  stuck %.2f  leap %.2f  retreat_t %.2f  statuses %s" % [
-				str(e.get("kind")), at.x, at.z, int(-at.z / main.ch_len), e.global_position.distance_to(main.player.global_position), int((e.get("body") as Body).hp),
-				float(e.get("_windup")), float(e.get("_stuck_t")), float(e.get("_leap_left")), float(e.get("_retreat_t")), str((e.get("statuses") as Dictionary).keys())])
+				str(e.kind), at.x, at.z, int(-at.z / main.ch_len), e.global_position.distance_to(main.player.global_position), int((e.body as Body).hp),
+				float(e.get("_windup")), float(e.get("_stuck_t")), float(e.get("_leap_left")), float(e.get("_retreat_t")), str((e.statuses as Dictionary).keys())])
 		Engine.time_scale = 1.0
 		main.get_tree().quit(1)
 

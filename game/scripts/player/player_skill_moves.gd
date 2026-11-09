@@ -297,15 +297,15 @@ func _body_ahead(dir: Vector3, step: float) -> Node3D:
 		return null
 	var a := Vector2(player.global_position.x, player.global_position.z)
 	var b: Vector2 = a + Vector2(dir.x, dir.z) * step
-	for node: Node in player.get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
-		if e == null or bool(e.call("is_dead")):
+	for node: Enemy in player.get_tree().get_nodes_in_group("enemies"):
+		var e: Enemy = node
+		if e == null or bool(e.is_dead()):
 			continue
-		if player._dash_pass_armoured and e.has_method("metal_class") and int(e.call("metal_class")) >= 1:
+		if player._dash_pass_armoured and e.has_method("metal_class") and int(e.metal_class()) >= 1:
 			continue
 		var p := Vector2(e.global_position.x, e.global_position.z)
 		# only bodies in front count - one you are already past or beside does not stop you
-		if (p - a).dot(Vector2(dir.x, dir.z)) > 0.0 and Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= 0.4 + float(e.get("radius")):
+		if (p - a).dot(Vector2(dir.x, dir.z)) > 0.0 and Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= 0.4 + float(e.radius):
 			return e
 	return null
 
@@ -355,14 +355,14 @@ func _dash_touch() -> void:
 	var from := Vector2(player._dash_from.x, player._dash_from.z)
 	var to := Vector2(player.global_position.x, player.global_position.z)
 	player._dash_from = player.global_position
-	for node: Node in player.get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
+	for node: Enemy in player.get_tree().get_nodes_in_group("enemies"):
+		var e: Enemy = node
 		if e == null or player._dash_passed.has(e):
 			continue
 		var at := Vector2(e.global_position.x, e.global_position.z)
-		if Geometry2D.get_closest_point_to_segment(at, from, to).distance_to(at) <= player._dash_pass_radius + float(e.get("radius")):
+		if Geometry2D.get_closest_point_to_segment(at, from, to).distance_to(at) <= player._dash_pass_radius + float(e.radius):
 			player._dash_passed.append(e)
-			if player._dash_pass_armoured and int(e.call("metal_class")) < 1:
+			if player._dash_pass_armoured and int(e.metal_class()) < 1:
 				continue                          # a bare body stops it instead (on_stop)
 			# a shove "along" goes the way the dash goes, not away from you
 			var way: Vector3 = player._dash_vel.normalized() if str(player._dash_pass.get("shove_dir", "")) == "along" else Vector3.ZERO
@@ -486,13 +486,13 @@ func _blink(spot: Vector3, ab: Dictionary, stage_mult: float, color: Color, tags
 	var payload: Dictionary = ab.get("on_arrive", {})
 	if payload.is_empty():
 		return
-	for node: Node in player.get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
+	for node: Enemy in player.get_tree().get_nodes_in_group("enemies"):
+		var e: Enemy = node
 		if e == null:
 			continue
 		var to: Vector3 = e.global_position - player.global_position
 		to.y = 0.0
-		if to.length() <= float(ab.get("arrive_radius", 1.5)) + float(e.get("radius")):
+		if to.length() <= float(ab.get("arrive_radius", 1.5)) + float(e.radius):
 			player.hits_part.apply_hit(e, payload, tags, stage_mult)
 
 

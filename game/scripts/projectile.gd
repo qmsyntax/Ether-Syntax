@@ -78,12 +78,12 @@ func tick(delta: float) -> void:
 	var b := Vector2(to.x, to.z)
 	# nearest first, so a shot that stops at the first body stops at the right one
 	var in_path: Array = []
-	for e: Node in get_tree().get_nodes_in_group("enemies"):
-		var enemy := e as Node3D
-		if enemy == null or _struck.has(enemy) or bool(enemy.call("is_dead")):
+	for e: Enemy in get_tree().get_nodes_in_group("enemies"):
+		var enemy: Enemy = e
+		if enemy == null or _struck.has(enemy) or bool(enemy.is_dead()):
 			continue
 		var p := Vector2(enemy.global_position.x, enemy.global_position.z)
-		if Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= hit_radius + float(enemy.get("radius")):
+		if Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= hit_radius + float(enemy.radius):
 			in_path.append(enemy)
 	in_path.sort_custom(func(x: Node3D, y: Node3D) -> bool: return x.global_position.distance_squared_to(from) < y.global_position.distance_squared_to(from))
 	# a bolt that strikes corpses meets the first one in its path like a body (Rotting Bolt)

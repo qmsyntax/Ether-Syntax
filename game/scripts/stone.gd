@@ -100,12 +100,12 @@ func local_flat(point: Vector3) -> Vector2:
 func _rise_hit() -> void:
 	if on_rise.is_empty() or not is_instance_valid(caster) or not caster.has_method("apply_hit"):
 		return
-	for node: Node in get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
-		if e == null or bool(e.call("is_dead")):
+	for node: Enemy in get_tree().get_nodes_in_group("enemies"):
+		var e: Enemy = node
+		if e == null or bool(e.is_dead()):
 			continue
 		var l: Vector2 = local_flat(e.global_position)
-		var r: float = float(e.get("radius"))
+		var r: float = float(e.radius)
 		if absf(l.x) > size.x * 0.5 + r or absf(l.y) > size.z * 0.5 + r:
 			continue
 		# off the face it is nearer to; dead centre goes to the far side, away from the caster
@@ -164,9 +164,9 @@ func shatter(dir: Vector3, by: Node = null) -> int:
 	var payload: Dictionary = {"damage": float(cfg["damage"]), "poise": float(cfg["poise"])}
 	var hit := 0
 	if is_instance_valid(who) and who.has_method("apply_hit") and is_inside_tree():
-		for node: Node in get_tree().get_nodes_in_group("enemies"):
-			var e := node as Node3D
-			if e == null or bool(e.call("is_dead")):
+		for node: Enemy in get_tree().get_nodes_in_group("enemies"):
+			var e: Enemy = node
+			if e == null or bool(e.is_dead()):
 				continue
 			var p := Vector2(e.global_position.x, e.global_position.z)
 			# the point of the slab this enemy's shrapnel left from: straight back along dir
@@ -178,7 +178,7 @@ func shatter(dir: Vector3, by: Node = null) -> int:
 				s = clampf((p - c).dot(u), -half_w, half_w)       # struck end-on: from the nearer end
 			var to: Vector2 = p - (c + u * s)
 			var dist: float = to.length()
-			if dist > reach + float(e.get("radius")):
+			if dist > reach + float(e.radius):
 				continue
 			if dist > 0.05 and absf(f.angle_to(to / dist)) > half_cone:
 				continue

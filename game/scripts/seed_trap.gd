@@ -50,9 +50,9 @@ func tick(delta: float) -> void:
 		return
 	var due: bool = _t >= delay
 	if not due and is_inside_tree():
-		for node: Node in get_tree().get_nodes_in_group("enemies"):
-			var e := node as Node3D
-			if e != null and not bool(e.call("is_dead")) and Vector2(e.global_position.x - global_position.x, e.global_position.z - global_position.z).length() <= trigger_radius + float(e.get("radius")):
+		for node: Enemy in get_tree().get_nodes_in_group("enemies"):
+			var e: Enemy = node
+			if e != null and not bool(e.is_dead()) and Vector2(e.global_position.x - global_position.x, e.global_position.z - global_position.z).length() <= trigger_radius + float(e.radius):
 				due = true
 				break
 	if due:
@@ -62,9 +62,9 @@ func tick(delta: float) -> void:
 func _burst() -> void:
 	_done = true
 	if is_instance_valid(caster) and is_inside_tree():
-		for node: Node in get_tree().get_nodes_in_group("enemies"):
-			var e := node as Node3D
-			if e != null and not bool(e.call("is_dead")) and Vector2(e.global_position.x - global_position.x, e.global_position.z - global_position.z).length() <= burst_radius + float(e.get("radius")):
+		for node: Enemy in get_tree().get_nodes_in_group("enemies"):
+			var e: Enemy = node
+			if e != null and not bool(e.is_dead()) and Vector2(e.global_position.x - global_position.x, e.global_position.z - global_position.z).length() <= burst_radius + float(e.radius):
 				caster.call("apply_hit", e, payload, tags, stage_mult)
 		if not growth.is_empty():
 			caster.call("plant_growth", global_position, growth)

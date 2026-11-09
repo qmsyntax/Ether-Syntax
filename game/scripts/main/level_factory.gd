@@ -300,8 +300,8 @@ func _static_box(pos: Vector3, size: Vector3, color: Color, show: bool = true) -
 func _spawn_enemy(kind: String, local_pos: Vector3, strength: float) -> void:
 	# Build and place before it enters the tree: a body that exists at the origin for even one
 	# step can pick the player up as a "moving platform" passenger.
-	var e: CharacterBody3D = Main.EnemyScript.new()
-	e.call("setup", kind, main.player, strength)
+	var e: Enemy = Enemy.new()
+	e.setup(kind, main.player, strength)
 	e.position = local_pos
 	main.level.add_child(e)
 	e.connect("reinforcements", main._on_reinforcements)     # the node's handler, as before (FieldCamps connects it too)

@@ -20,10 +20,10 @@ static func level_at(tree: SceneTree, pos: Vector3) -> String:
 		if r > 0.0 and Vector2(src.global_position.x, src.global_position.z).distance_to(p) <= r:
 			return "lit"
 	# a burning or Lit body is a light of its own
-	for node: Node in tree.get_nodes_in_group("enemies"):
-		var e := node as Node3D
+	for node: Enemy in tree.get_nodes_in_group("enemies"):
+		var e: Enemy = node
 		if e != null and e.has_method("light_radius"):
-			var er: float = float(e.call("light_radius"))
+			var er: float = float(e.light_radius())
 			if er > 0.0 and Vector2(e.global_position.x, e.global_position.z).distance_to(p) <= er:
 				return "lit"
 	for node: Node in tree.get_nodes_in_group("ground_zones"):

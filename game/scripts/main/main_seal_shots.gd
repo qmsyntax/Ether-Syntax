@@ -95,7 +95,7 @@ func _setup_test_shot(what: String) -> void:
 					all[i].call("add_status", str(st[0]), int(st[1]), main.player)
 				(all[i].get("body") as Body).apply_damage(20.0 * float(i + 1))
 			main.state = "arena_fight"                          # no rest prompt over the picture
-			for e: Node in all:
+			for e: Enemy in all:
 				e.set_physics_process(false)
 			main.player.set_physics_process(false)
 			return

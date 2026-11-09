@@ -50,16 +50,16 @@ func tick(delta: float) -> void:
 	if _t < delay:
 		return
 	_done = true
-	for node: Node in get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
-		if e == null or bool(e.call("is_dead")):
+	for node: Enemy in get_tree().get_nodes_in_group("enemies"):
+		var e: Enemy = node
+		if e == null or bool(e.is_dead()):
 			continue
 		var to: Vector3 = e.global_position - global_position
 		to.y = 0.0
-		if to.length() > radius + float(e.get("radius")):
+		if to.length() > radius + float(e.radius):
 			continue
-		var b: Body = e.get("body")
-		if not (e.has_method("blocks_heal") and bool(e.call("blocks_heal"))):
+		var b: Body = e.body
+		if not (e.has_method("blocks_heal") and bool(e.blocks_heal())):
 			b.heal(b.total_max() * heal_frac)
-		e.call("add_status", status)
+		e.add_status(status)
 	queue_free()

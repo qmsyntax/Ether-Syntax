@@ -236,13 +236,13 @@ func _enemies_near(point: Vector3, radius: float) -> Array[Node3D]:
 	var out: Array[Node3D] = []
 	if not player.is_inside_tree():
 		return out
-	for node: Node in player.get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
-		if e == null or bool(e.call("is_dead")):
+	for node: Enemy in player.get_tree().get_nodes_in_group("enemies"):
+		var e: Enemy = node
+		if e == null or bool(e.is_dead()):
 			continue
 		var to: Vector3 = e.global_position - point
 		to.y = 0.0
-		if to.length() <= radius + float(e.get("radius")):
+		if to.length() <= radius + float(e.radius):
 			out.append(e)
 	return out
 
@@ -539,9 +539,9 @@ func cast_ability(index: int) -> void:
 		if to_spot.length() > 0.2:
 			player._facing = to_spot.normalized()
 	if bool(ab.get("breaks_aim", false)):
-		for node: Node in player.get_tree().get_nodes_in_group("enemies"):
-			if str(node.get("behaviour")) == "ranged" and float(node.get("_windup")) >= 0.0:
-				node.call("interrupt")           # everyone aiming at you loses the aim
+		for node: Enemy in player.get_tree().get_nodes_in_group("enemies"):
+			if str(node.behaviour) == "ranged" and float(node.get("_windup")) >= 0.0:
+				node.interrupt()           # everyone aiming at you loses the aim
 	if bool(ab.get("frees_caster", false)):
 		player._stagger_t = 0.0
 		player._shoved_left = 0.0
@@ -735,10 +735,10 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 				player.world_part._lay_ground(ab["zone"], 2.0, ab, tags)                            # and leaves dark ground at your feet
 			if (spent > 0 or bool(ab.get("burst_always", false))) and ab.has("burst"):
 				var centre: Vector3 = strike_target.global_position if is_instance_valid(strike_target) else player.global_position + player._facing * 1.5
-				for node: Node in player.get_tree().get_nodes_in_group("enemies"):
-					var near := node as Node3D
+				for node: Enemy in player.get_tree().get_nodes_in_group("enemies"):
+					var near: Enemy = node
 					var self_too: bool = bool(ab.get("burst_always", false))      # Thunderclap's crack takes the target too
-					if near != null and (near != strike_target or self_too) and near.global_position.distance_to(centre) <= float(ab.get("burst_radius", 2.0)) + float(near.get("radius")):
+					if near != null and (near != strike_target or self_too) and near.global_position.distance_to(centre) <= float(ab.get("burst_radius", 2.0)) + float(near.radius):
 						player.hits_part.apply_hit(near, ab["burst"], tags + ["burst"], stage_mult)
 			if spent > 0 and ab.has("burst_zone"):
 				var bz: Dictionary = (ab["burst_zone"] as Dictionary).duplicate()
@@ -759,9 +759,9 @@ func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float,
 			player.world_part._lay_zone(blink_to, ab, stage_mult, tags)
 			if bool(ab.get("drops_aggro", false)):
 				# Pall: everyone coming for you loses you (as when Unseen begins) and gives up its place at your side
-				for node: Node in player.get_tree().get_nodes_in_group("enemies"):
-					if node.get("target") == player:
-						node.call("interrupt")
+				for node: Enemy in player.get_tree().get_nodes_in_group("enemies"):
+					if node.target == player:
+						node.interrupt()
 						player.combat_part.release_slot(node)
 		"self_buff":
 			_take_buff(ab)
@@ -912,12 +912,12 @@ func lead_aim(ab: Dictionary, aim: Vector3) -> Vector3:
 	var cone: float = deg_to_rad(float(cfg["slow_shot_cone_deg"]))
 	var foe: Node3D = null
 	var best: float = cone
-	for node: Node in player.get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
-		if e == null or bool(e.call("is_dead")):
+	for node: Enemy in player.get_tree().get_nodes_in_group("enemies"):
+		var e: Enemy = node
+		if e == null or bool(e.is_dead()):
 			continue
 		var to := Vector3(e.global_position.x - player.global_position.x, 0.0, e.global_position.z - player.global_position.z)
-		if to.length() < 0.3 or to.length() > reach + float(e.get("radius")):
+		if to.length() < 0.3 or to.length() > reach + float(e.radius):
 			continue
 		var ang: float = flat_aim.angle_to(to.normalized())
 		if ang <= best:

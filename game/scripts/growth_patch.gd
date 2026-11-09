@@ -140,9 +140,9 @@ func inside() -> Array[Node3D]:
 	var out: Array[Node3D] = []
 	if not is_inside_tree():
 		return out
-	for node: Node in get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
-		if e != null and not bool(e.call("is_dead")) and has_point(e.global_position, float(e.get("radius"))):
+	for node: Enemy in get_tree().get_nodes_in_group("enemies"):
+		var e: Enemy = node
+		if e != null and not bool(e.is_dead()) and has_point(e.global_position, float(e.radius)):
 			out.append(e)
 	return out
 

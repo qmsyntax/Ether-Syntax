@@ -1,5 +1,5 @@
 class_name Beast
-extends "res://scripts/enemy.gd"
+extends Enemy
 ## An unstarred beast of the countryside (design/07 5.4; Brent 2026-10-19: the early levels are
 ## spent hunting monsters with no star). Everything an enemy is - poise, facing, statuses, slots,
 ## the field's sleep / leash / walk home - plus the beasts' own behaviours, each asking the player

@@ -29,14 +29,14 @@ func _setup_ui_shot(which: String) -> void:
 		for spec: Array in [[Vector3(-1.6, 0, -3.5), "pavise"], [Vector3(-0.2, 0, -3.9), "pavise"], [Vector3(2.4, 0, -5.5), "censer"],
 				[Vector3(-3.0, 0, -8.5), "drummer"], [Vector3(-4.0, 0, -4.5), "grunt"], [Vector3(4.5, 0, -1.5), "commander"]]:
 			main.factory_part._spawn_enemy(str(spec[1]), spec[0], 1.0)
-		for e: Node in main.get_tree().get_nodes_in_group("enemies"):
-			if str(e.get("kind")) == "grunt":
-				e.call("add_status", "roused")
-				e.call("add_status", "frenzied")
-			if str(e.get("kind")) == "commander":
+		for e: Enemy in main.get_tree().get_nodes_in_group("enemies"):
+			if str(e.kind) == "grunt":
+				e.add_status("roused")
+				e.add_status("frenzied")
+			if str(e.kind) == "commander":
 				var aim: Vector3 = ((main.player.global_position - (e as Node3D).global_position) * Vector3(1, 0, 1)).normalized()
-				e.set("facing", aim)
-				e.set("telegraph", {"kind": "cone", "radius": 6.0, "arc_deg": 90.0, "dir": aim, "frac": 0.6})
+				e.facing = aim
+				e.telegraph = {"kind": "cone", "radius": 6.0, "arc_deg": 90.0, "dir": aim, "frac": 0.6}
 				e.call("_apply_facing")
 			e.set_physics_process(false)
 		main.player.set_physics_process(false)
@@ -137,7 +137,7 @@ func _setup_ui_shot(which: String) -> void:
 		main.player.set("_windup", {"braced": true, "release": false, "facing": Vector3(0, 0, -1)})
 		main.player.set("_windup_t", 0.25)
 		main.player.set("_windup_total", 0.6)
-		for e: Node in main.get_tree().get_nodes_in_group("enemies"):
+		for e: Enemy in main.get_tree().get_nodes_in_group("enemies"):
 			e.set_physics_process(false)
 		main.player.rotation.y = 0.0
 		main.player.set_physics_process(false)
@@ -159,7 +159,7 @@ func _setup_ui_shot(which: String) -> void:
 		var foes: Array = main.get_tree().get_nodes_in_group("enemies")
 		foes[0].call("add_status", "aloft")
 		main.player.hovered = foes[1]
-		for e: Node in foes:
+		for e: Enemy in foes:
 			e.set_physics_process(false)
 		main.player.set_physics_process(false)
 		main.player.call("_refresh_highlights")
@@ -190,7 +190,7 @@ func _setup_ui_shot(which: String) -> void:
 		trail.set_physics_process(false)
 		main.player.hovered = foes[0]
 		# no tooltip here: it would sit on top of the heat readout this picture exists to show
-		for e: Node in foes:
+		for e: Enemy in foes:
 			e.set_physics_process(false)
 		main.player.set_physics_process(false)
 		main.player.call("_refresh_highlights")
@@ -262,7 +262,7 @@ func _setup_ui_shot(which: String) -> void:
 		(foes[2].get("body") as Body).apply_damage(120.0)
 		foes[3].set("telegraph", {"kind": "swing", "interruptible": true})
 		main.player.hovered = foes[2]
-		for e: Node in foes:
+		for e: Enemy in foes:
 			e.set_physics_process(false)
 		main.player.set_physics_process(false)
 		main.player.call("_refresh_highlights")
@@ -288,7 +288,7 @@ func _setup_ui_shot(which: String) -> void:
 		(foes[1].get("body") as Body).apply_damage(90.0)
 		main.player.hovered = foes[0]
 		main.hud.debug_tip = "slot:3"
-		for e: Node in foes:
+		for e: Enemy in foes:
 			e.set_physics_process(false)
 		main.player.set_physics_process(false)
 		main.player.call("_refresh_highlights")
@@ -317,7 +317,7 @@ func _setup_ui_shot(which: String) -> void:
 		(main.gates[2] as Node).call("set_open", true, true)
 		main.player.global_position = main.level.to_global(Vector3(1.0, 0.0, -2.35 * main.ch_len))
 		main._activate(2)
-		for e: Node in main.get_tree().get_nodes_in_group("enemies"):
+		for e: Enemy in main.get_tree().get_nodes_in_group("enemies"):
 			e.set_physics_process(false)
 		main.player.set_physics_process(false)
 		return
@@ -541,7 +541,7 @@ func _setup_ui_shot(which: String) -> void:
 				main._harness().seal_shots._shot_lock_word()                          # the slot tooltip names what the locked word does
 			main.hud.debug_tip = "slot:0" if which == "hud" else "health"
 			# freeze the fight so the picture is stable
-			for e: Node in main.get_tree().get_nodes_in_group("enemies"):
+			for e: Enemy in main.get_tree().get_nodes_in_group("enemies"):
 				e.set_physics_process(false)
 			main.player.set_physics_process(false)
 			main.player.call("_refresh_highlights")
@@ -625,8 +625,8 @@ func _setup_stubble_shot(which: String) -> bool:
 		main.player.global_position = main.level.to_global(main._zone.to_local(x, y))
 		main._reveal()
 	var near_kind := func(kind: String) -> Node:
-		for n: Node in main.get_tree().get_nodes_in_group("enemies"):
-			if str(n.get("kind")) == kind:
+		for n: Enemy in main.get_tree().get_nodes_in_group("enemies"):
+			if str(n.kind) == kind:
 				return n
 		return null
 	main._cam_zoom_target = 0.55
@@ -689,12 +689,12 @@ func _setup_stubble_shot(which: String) -> bool:
 			stand.call(140.0, 50.0)
 			var i: int = 0
 			for kind: String in ["chaff_wren", "kettle_beetle", "gleaner", "ditch_hound", "sod_lurker", "burr_hog", "wirehorn", "thornback"]:
-				var e: Node3D = _spawn_shot_beast(kind, Vector3(-7.0 + 2.1 * float(i), 0, -3.0 - 0.6 * float(i)))
-				e.set("target", null)
-				e.set("calm", false)
-				e.set("buried", false)
+				var e: Beast = _spawn_shot_beast(kind, Vector3(-7.0 + 2.1 * float(i), 0, -3.0 - 0.6 * float(i)))
+				e.target = null
+				e.calm = false
+				e.buried = false
 				if kind == "sod_lurker":
-					e.call("rise")
+					e.rise()
 					e.set("_rise_t", -1.0)
 					((e.get("_rig")) as Node3D).position.y = 0.0
 				i += 1
@@ -743,8 +743,8 @@ func _setup_stubble_shot(which: String) -> bool:
 			stand.call(140.0, 50.0)
 			var at: Array = [0]
 			go = func() -> void:
-				var b: Node3D = _spawn_shot_beast("kettle_beetle", Vector3(1.5, 0, -1.0))
-				b.call("take_hit", 99999.0, false, null)
+				var b: Beast = _spawn_shot_beast("kettle_beetle", Vector3(1.5, 0, -1.0))
+				b.take_hit(99999.0, false, null)
 			until = func() -> bool:
 				at[0] = int(at[0]) + 1
 				return int(at[0]) > 25
@@ -766,10 +766,10 @@ func _setup_stubble_shot(which: String) -> bool:
 			var made: Array = []
 			go = func() -> void:
 				for o: Vector3 in offs:
-					var e: Node3D = _spawn_shot_beast(kind, o)
+					var e: Beast = _spawn_shot_beast(kind, o)
 					made.append(e)
 					if e.has_method("provoke"):
-						e.call("provoke", main.player)
+						e.provoke(main.player)
 					if kind == "wirehorn":
 						e.set("facing", Vector3(0, 0, -1))   # its back to you: the kick
 			until = func() -> bool:
@@ -803,9 +803,9 @@ var cam_shot: Variant = null
 
 
 ## A beast for a screenshot, `offset` metres from the player (level frame), awake.
-func _spawn_shot_beast(kind: String, offset: Vector3) -> Node3D:
-	var e: CharacterBody3D = Beast.new()
-	e.call("setup", kind, main.player, 0.8)
+func _spawn_shot_beast(kind: String, offset: Vector3) -> Beast:
+	var e: Beast = Beast.new()
+	e.setup(kind, main.player, 0.8)
 	e.position = main.level.to_local(main.player.global_position) + offset
 	main.level.add_child(e)
 	return e

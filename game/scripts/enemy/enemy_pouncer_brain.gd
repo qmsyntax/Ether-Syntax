@@ -53,8 +53,8 @@ func think(delta: float, dir: Vector3, dist: float) -> void:
 func _pack_centre() -> Vector3:
 	var sum := Vector3.ZERO
 	var n := 0
-	for node: Node in enemy.get_tree().get_nodes_in_group("enemies"):
-		if node != enemy and str(node.get("behaviour")) != "pouncer":
+	for node: Enemy in enemy.get_tree().get_nodes_in_group("enemies"):
+		if node != enemy and str(node.behaviour) != "pouncer":
 			sum += (node as Node3D).global_position
 			n += 1
 	return sum / float(n) if n > 0 else Vector3.INF

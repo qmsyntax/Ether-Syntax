@@ -5,7 +5,6 @@ extends Node3D
 ## state and the forwarders; each concern is a part in scripts/main/ (docs/architecture/main-split.md).
 
 const PlayerScript := preload("res://scripts/player.gd")
-const EnemyScript := preload("res://scripts/enemy.gd")
 const SceneryScript := preload("res://scripts/scenery.gd")
 const HudScript := preload("res://scripts/hud.gd")
 const SettingsMenuScript := preload("res://scripts/settings_menu.gd")
