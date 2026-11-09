@@ -131,15 +131,19 @@ player's own files are touched.
 - Not checked: how it plays (needs Brent), the combat-review probe and the perf probe (both call the node by name
   and are untouched, but were not run).
 
-## Next (typed calls, not done in this step)
+## Next (typed calls) - done in step 4a, except item 3
 
-1. Step 4's typing: `var player: CharacterBody3D` on the node becomes `Player`, and the ~370 `player.call("x")` /
-   `get` / `set` strings - now spread over main.gd's parts, the same count - become `main.player.x(...)`. The parts
-   are already typed against `Main`, so that change is local to each line.
-2. The screens hold `var game: Node` (`ui_screen.gd`), the builders `var main: Node`; typing them `Main` would make
-   their calls static and let most forwarders go.
-3. The level controllers reach shared state through `main.` (passage progress, zone, town); moving each level's own
-   state into its controller needs the HUD, the tests and the shots to read it there first.
+Done 2026-11-09 (`docs/architecture/typed-calls.md`):
+
+1. ~~`var player: CharacterBody3D` becomes `Player`~~: done; the ~370 `main.player.call/get/set` strings in main.gd's
+   parts are direct calls (the private names through the player's new public readers).
+2. ~~The screens' `game` and the builders' `main` typed `Main`~~: done for `UiScreen.game` (every screen),
+   `TownBuilder.main`, the "router" lookups and the restart's fresh node; `hud.gd` is `class_name Hud` and
+   `Main.hud` is typed. `ZoneBuilder.main` and `FieldCamps.main` stay `Node`: the self-test hands them a stub
+   (`tests/field_stub.gd`). New public readers on Main: `last_payout`, `biome_floor`, `biome_wall`, `static_box`.
+   `main.screen` stays `Control` (it holds whichever screen is open), so the harness's screen calls stay strings.
+3. Still open: the level controllers reach shared state through `main.` (passage progress, zone, town); moving each
+   level's own state into its controller needs the HUD, the tests and the shots to read it there first.
 
 ## Adding to main
 
