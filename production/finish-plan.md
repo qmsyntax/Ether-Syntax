@@ -99,8 +99,16 @@ phases below run to A, then B.
   (`docs/architecture/player-split.md`): `player.gd` is `class_name Player` (signals, lifecycle, shared and saved
   state, forwarders) plus eleven `RefCounted` parts in `scripts/player/`, none over ~1,050 lines; no outside caller
   changed; the suite, the timeline and cast-every-skill output and the self-test count are the same before and after.
-- [ ] Split `main.gd` into a game state machine plus one controller per level type (town, field, passage, arena,
-  Netherecho) and a test harness loaded only by test flags.
+- [x] Split `main.gd` into a game state machine plus one controller per level type (town, field, passage, arena,
+  Netherecho) and a test harness loaded only by test flags. Done 2026-11-08 (`docs/architecture/main-split.md`):
+  `main.gd` is `class_name Main` (lifecycle, camera, shared keys and state, forwarders; 564 lines) plus thirteen
+  scripts in `scripts/main/`, none over ~860 lines: `MainStates` picks the level controller for
+  `main.state`, one `MainLevel` per level type (`MainTown`, `MainField`, `MainPassage`, `MainArena`), `LevelFactory`
+  (world, levels, biomes, nav, props, enemies), `MainScreens`, `MainSession`, and the harness (`MainHarness`,
+  `MainShots`, `MainSealShots`) built only when a run has test, shot or bot arguments. The Netherecho is an overlay,
+  not a state: it keeps its own `Netherecho` node and got a small part for main's side of it (`MainNether`). No
+  outside caller changed; the suite, the timeline and cast-every-skill output and the self-test count are the same
+  before and after.
 - [ ] Split `enemy.gd` into one brain per behaviour.
 - Give the big objects class names and typed calls. Validate data once on load and remove the silent numeric fallbacks.
 - No behaviour change: the full suite and the combat-review probe must give the same numbers before and after.
