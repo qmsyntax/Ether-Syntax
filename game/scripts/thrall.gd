@@ -141,7 +141,7 @@ func tick(delta: float) -> void:
 	for id: String in buffs.keys():
 		var b: Dictionary = buffs[id]
 		b["t"] = float(b.get("t", 0.0)) - delta
-		if float(b.get("heal_per_s", 0.0)) > 0.0 and is_living:
+		if float(GameData.opt(b, "ability", "heal_per_s")) > 0.0 and is_living:
 			hp = minf(hp_max, hp + float(b["heal_per_s"]) * delta)
 		if float(b["t"]) <= 0.0:
 			buffs.erase(id)
@@ -203,15 +203,15 @@ func _strike(foe: Node3D) -> void:
 		if not m.is_empty():
 			var def: Dictionary = GameData.status(str(m[0]))
 			var data: Dictionary = (m[1] as Dictionary).get("data", {})
-			dmg *= float(data.get("summon_damage_mult", def.get("summon_damage_mult", 1.0)))
-			rate *= float(data.get("summon_rate_mult", def.get("summon_rate_mult", 1.0)))
+			dmg *= float(data.get("summon_damage_mult", GameData.opt(def, "status", "summon_damage_mult")))
+			rate *= float(data.get("summon_rate_mult", GameData.opt(def, "status", "summon_rate_mult")))
 	_cd = attack_s / maxf(0.1, rate)
 	var hit: Dictionary = on_hit.duplicate()
 	hit["damage"] = dmg
 	caster.call("apply_hit", foe, hit, tags + ["thrall"])
 	var regrow: float = heal_per_hit
 	for id: String in buffs:
-		regrow += float((buffs[id] as Dictionary).get("heal_per_hit", 0.0))
+		regrow += float(GameData.opt((buffs[id] as Dictionary), "ability", "heal_per_hit"))
 	if regrow > 0.0 and is_living:
 		hp = minf(hp_max, hp + regrow)            # Overgrowth on a beast: its own bite regrows it
 

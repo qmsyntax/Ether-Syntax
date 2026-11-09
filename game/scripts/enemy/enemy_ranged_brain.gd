@@ -17,10 +17,10 @@ func think(delta: float, dir: Vector3, dist: float) -> void:
 		enemy.telegraph = {}
 	if enemy._windup >= 0.0:
 		enemy._windup -= delta
-		var lock_at: float = float(enemy._def.get("aim_lock", 0.3))
+		var lock_at: float = float(GameData.opt(enemy._def, "enemy", "aim_lock"))
 		if not _aim_locked:
 			# it leads you: where you will be if you keep going as you are
-			var shot_speed: float = float(enemy._def.get("shot_speed", 30.0))
+			var shot_speed: float = float(GameData.opt(enemy._def, "enemy", "shot_speed"))
 			var lead: float = lock_at + dist / shot_speed
 			var tv: Vector3 = (enemy.target as CharacterBody3D).velocity if enemy.target is CharacterBody3D else Vector3.ZERO
 			tv.y = 0.0
@@ -38,7 +38,7 @@ func think(delta: float, dir: Vector3, dist: float) -> void:
 	enemy.motion_part._turn_toward(dir, delta)
 	var sees: bool = enemy.motion_part._sees_target()
 	var cornered := false
-	if dist < float(enemy._def.get("back_off_within", 4.0)):
+	if dist < float(GameData.opt(enemy._def, "enemy", "back_off_within")):
 		# helpless up close: it only backs away - round the wall behind it if there is one
 		var back: Vector3 = _retreat_dir(dir)
 		if back != Vector3.ZERO:
@@ -49,15 +49,15 @@ func think(delta: float, dir: Vector3, dist: float) -> void:
 		pass
 	elif not sees:
 		enemy.velocity = _seek_line(delta) * enemy.speed    # something in the way: find somewhere to shoot from
-	elif dist > float(enemy._def.get("keep_range_max", 12.0)):
+	elif dist > float(GameData.opt(enemy._def, "enemy", "keep_range_max")):
 		_vantage = null
 		enemy.velocity = enemy._walk_dir * enemy.speed            # too far: come closer
-	elif dist < float(enemy._def.get("keep_range_min", 9.0)):
+	elif dist < float(GameData.opt(enemy._def, "enemy", "keep_range_min")):
 		_vantage = null
 		enemy.velocity = _retreat_dir(dir) * enemy.speed * 0.5
 	else:
 		_vantage = null
-	if enemy._attack_cd <= 0.0 and dist <= float(enemy._def.get("shot_range", 16.0)) and sees and not enemy._no_attack():
+	if enemy._attack_cd <= 0.0 and dist <= float(GameData.opt(enemy._def, "enemy", "shot_range")) and sees and not enemy._no_attack():
 		enemy._windup = enemy._windup_len()
 		_aim_locked = false
 		enemy._aim = enemy.target.global_position
@@ -73,11 +73,11 @@ func _loose() -> void:
 		return
 	var shot: Node3D = ShotScript.new()
 	shot.set("dir", shot_dir.normalized())
-	shot.set("speed", float(enemy._def.get("shot_speed", 30.0)))
-	shot.set("left", float(enemy._def.get("shot_range", 16.0)))
+	shot.set("speed", float(GameData.opt(enemy._def, "enemy", "shot_speed")))
+	shot.set("left", float(GameData.opt(enemy._def, "enemy", "shot_range")))
 	shot.set("damage", enemy._blow(enemy.damage))
 	shot.set("heavy", enemy.heavy and not enemy.status_part._st_any("no_poise_damage"))
-	shot.set("hit_radius", float(enemy._def.get("shot_radius", 0.7)))
+	shot.set("hit_radius", float(GameData.opt(enemy._def, "enemy", "shot_radius")))
 	shot.set("target", enemy.target)
 	shot.set("shooter", enemy)
 	shot.position = enemy.get_parent().to_local(enemy.global_position + Vector3.UP * 1.1 + shot_dir.normalized() * 0.6) if enemy.get_parent() is Node3D else enemy.global_position
@@ -133,8 +133,8 @@ func _seek_line(delta: float) -> Vector3:
 func _find_vantage() -> Variant:
 	var chest: Vector3 = enemy.global_position + Vector3.UP
 	var mark: Vector3 = enemy.target.global_position + Vector3.UP
-	var want: float = (float(enemy._def.get("keep_range_min", 9.0)) + float(enemy._def.get("keep_range_max", 12.0))) * 0.5
-	var too_close: float = float(enemy._def.get("back_off_within", 4.0)) + 1.0
+	var want: float = (float(GameData.opt(enemy._def, "enemy", "keep_range_min")) + float(GameData.opt(enemy._def, "enemy", "keep_range_max"))) * 0.5
+	var too_close: float = float(GameData.opt(enemy._def, "enemy", "back_off_within")) + 1.0
 	var nav: LevelNav = enemy.motion_part._level_nav()
 	var max_walk: float = GameData.num("navigation", "vantage_max_path")
 	var best: Variant = null

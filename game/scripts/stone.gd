@@ -144,7 +144,7 @@ func shatter(dir: Vector3, by: Node = null) -> int:
 	var who: Node = by if is_instance_valid(by) else caster
 	if not shatter_burst.is_empty() and is_instance_valid(who) and who.has_method("_burst_at"):
 		var sb: Dictionary = shatter_burst.duplicate()
-		sb["burst_radius"] = float(sb.get("radius", 2.5))
+		sb["burst_radius"] = float(GameData.opt(sb, "payload", "radius"))
 		FloatText.spawn(get_parent(), global_position + Vector3.UP * 1.6, "SHATTER", color.lightened(0.5))
 		who.call("_burst_at", global_position, sb, tags + ["shatter"])
 		crumble()

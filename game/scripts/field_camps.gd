@@ -48,14 +48,14 @@ func _level() -> Node3D:
 func build(force_all: bool = false) -> void:
 	var def: Dictionary = zone.def
 	for c: Dictionary in def.get("camps", []):
-		var chance: float = float(c.get("live_chance", 1.0))
+		var chance: float = float(GameData.opt(c, "zone.camp", "live_chance"))
 		if not force_all and chance < 1.0 and rng.randf() >= chance:
 			continue
 		_add_camp(c)
 	for p: Dictionary in def.get("lurker_patches", []):
 		var at: Array = p["at"]
 		var patch: Dictionary = {"def": p, "at": zone.to_local(float(at[0]), float(at[1])), "lurker": null, "timer": 0.0, "mark": null}
-		patch["mark"] = _patch_mark(patch["at"], float(p.get("radius", 2.2)))
+		patch["mark"] = _patch_mark(patch["at"], float(GameData.opt(p, "zone.lurker_patch", "radius")))
 		patches.append(patch)
 		_spawn_lurker(patch)
 
@@ -64,8 +64,8 @@ func _add_camp(c: Dictionary) -> void:
 	var at: Array = c["at"]
 	var centre: Vector3 = zone.to_local(float(at[0]), float(at[1]))
 	var state: Dictionary = {"def": c, "state": "calm" if bool(c.get("herd", false)) else "asleep", "members": [], "edge": [],
-		"centre": centre, "anchor": centre, "leash": float(c.get("leash", _cfg.get("leash", 24.0))),
-		"aggro": float(c.get("aggro", _cfg.get("aggro_radius", 12.0))), "strength": float(c.get("strength", 1.0)), "timer": 0.0,
+		"centre": centre, "anchor": centre, "leash": float(c.get("leash", GameData.opt(_cfg, "balance.camps", "leash"))),
+		"aggro": float(c.get("aggro", GameData.opt(_cfg, "balance.camps", "aggro_radius"))), "strength": float(GameData.opt(c, "zone.camp", "strength")), "timer": 0.0,
 		"path_i": 0}
 	camps[str(c["id"])] = state
 	_populate(str(c["id"]))
@@ -79,9 +79,9 @@ func _populate(id: String) -> void:
 	c["edge"] = []
 	var kinds: Array[String] = []
 	for m: Dictionary in def.get("members", []):
-		for i: int in int(m.get("n", 1)):
+		for i: int in int(GameData.opt(m, "zone.camp_member", "n")):
 			kinds.append(str(m["kind"]))
-	var spread: float = float(def.get("spread", _cfg.get("spread", 3.0)))
+	var spread: float = float(def.get("spread", GameData.opt(_cfg, "balance.camps", "spread")))
 	for i: int in kinds.size():
 		var a: float = TAU * float(i) / float(maxi(1, kinds.size())) + 0.4
 		var r: float = spread * (0.45 + 0.55 * float(i % 2))
@@ -124,7 +124,7 @@ func _spawn(kind: String, local: Vector3, strength: float, camp_id: String) -> E
 
 func _spawn_lurker(patch: Dictionary) -> void:
 	var p: Dictionary = patch["def"]
-	var e: Enemy = _spawn(str(p.get("kind", "sod_lurker")), patch["at"], float(p.get("strength", _cfg.get("lurker_strength", 0.7))), "")
+	var e: Enemy = _spawn(str(p.get("kind", "sod_lurker")), patch["at"], float(p.get("strength", GameData.opt(_cfg, "balance.camps", "lurker_strength"))), "")
 	patch["lurker"] = e
 	e.set_meta("patch", true)
 
@@ -160,7 +160,7 @@ func tick(delta: float) -> void:
 		var st: String = str(c["state"])
 		if (c["members"] as Array).is_empty() and st != "cleared":
 			c["state"] = "cleared"
-			c["timer"] = float((c["def"] as Dictionary).get("respawn_s", _cfg.get("respawn_s", 480.0)))
+			c["timer"] = float((c["def"] as Dictionary).get("respawn_s", GameData.opt(_cfg, "balance.camps", "respawn_s")))
 			for g: Enemy in c["edge"]:
 				g.go_home()
 			camp_cleared.emit(id)
@@ -174,7 +174,7 @@ func tick(delta: float) -> void:
 					_send_home(id)
 				else:
 					for e: Enemy in everyone:
-						if _flat(lvl.to_local(e.global_position), me) <= float(_cfg.get("fight_radius", 30.0)) and not bool(e.asleep):
+						if _flat(lvl.to_local(e.global_position), me) <= float(GameData.opt(_cfg, "balance.camps", "fight_radius")) and not bool(e.asleep):
 							close_fight = true
 			"returning":
 				var all_home := true
@@ -188,7 +188,7 @@ func tick(delta: float) -> void:
 				_roam(c, delta)
 			"cleared":
 				c["timer"] = float(c["timer"]) - delta
-				if float(c["timer"]) <= 0.0 and _flat(me, c["centre"]) > float(_cfg.get("respawn_clear_m", 60.0)):
+				if float(c["timer"]) <= 0.0 and _flat(me, c["centre"]) > float(GameData.opt(_cfg, "balance.camps", "respawn_clear_m")):
 					for g: Enemy in c["edge"]:
 						g.queue_free()
 					_populate(id)
@@ -196,10 +196,10 @@ func tick(delta: float) -> void:
 		var l: Enemy = patch["lurker"]
 		if l == null or not is_instance_valid(l):
 			patch["timer"] = float(patch["timer"]) - delta
-			if float(patch["timer"]) <= 0.0 and _flat(me, patch["at"]) > float(_cfg.get("respawn_clear_m", 60.0)):
+			if float(patch["timer"]) <= 0.0 and _flat(me, patch["at"]) > float(GameData.opt(_cfg, "balance.camps", "respawn_clear_m")):
 				_spawn_lurker(patch)
 			continue
-		if not bool(l.get("buried")) and not bool(l.is_going_home()) and _flat(lvl.to_local(l.global_position), me) <= float(_cfg.get("fight_radius", 30.0)):
+		if not bool(l.get("buried")) and not bool(l.is_going_home()) and _flat(lvl.to_local(l.global_position), me) <= float(GameData.opt(_cfg, "balance.camps", "fight_radius")):
 			close_fight = true
 	if close_fight and alive and not _fighting:
 		_fighting = true
@@ -266,7 +266,7 @@ func _roam(c: Dictionary, delta: float) -> void:
 	var centre: Vector3 = c["centre"]
 	var to: Vector3 = goal - centre
 	to.y = 0.0
-	var step: float = float((c["def"] as Dictionary).get("roam_speed", _cfg.get("roam_speed", 0.6))) * delta
+	var step: float = float((c["def"] as Dictionary).get("roam_speed", GameData.opt(_cfg, "balance.camps", "roam_speed"))) * delta
 	if to.length() <= step:
 		c["path_i"] = i + 1
 		c["centre"] = goal
@@ -294,7 +294,7 @@ func _on_killed(_e: Node) -> void:
 	for patch: Dictionary in patches:
 		if patch["lurker"] == _e:
 			patch["lurker"] = null
-			patch["timer"] = float((patch["def"] as Dictionary).get("respawn_s", _cfg.get("lurker_respawn_s", 300.0)))
+			patch["timer"] = float((patch["def"] as Dictionary).get("respawn_s", GameData.opt(_cfg, "balance.camps", "lurker_respawn_s")))
 
 
 ## A Gleaner got there: that camp comes, its leash measured from the fight it was called to.
@@ -304,7 +304,7 @@ func _on_fetched(g: Node, camp_id: String) -> void:
 	var from: String = str(g.get("camp"))
 	var anchor: Variant = camps[from]["anchor"] if camps.has(from) else null
 	var c: Dictionary = camps[camp_id]
-	c["leash"] = maxf(float(c["leash"]), float((c["def"] as Dictionary).get("leash", _cfg.get("leash", 24.0))))
+	c["leash"] = maxf(float(c["leash"]), float((c["def"] as Dictionary).get("leash", GameData.opt(_cfg, "balance.camps", "leash"))))
 	if anchor is Vector3:
 		c["leash"] = float(c["leash"]) + _flat(anchor, c["centre"])
 	wake_camp(camp_id, c["centre"])
@@ -356,7 +356,7 @@ func at_rest() -> bool:
 			return false
 		var full: int = (def.get("edge", []) as Array).size()
 		for m: Dictionary in def.get("members", []):
-			full += int(m.get("n", 1))
+			full += int(GameData.opt(m, "zone.camp_member", "n"))
 		if members_of(id).size() != full:
 			return false                         # one was killed
 		for e: Enemy in members_of(id):
@@ -382,7 +382,7 @@ func reset_all() -> void:
 		var def: Dictionary = c["def"]
 		var at: Array = def["at"]
 		c["centre"] = zone.to_local(float(at[0]), float(at[1]))
-		c["leash"] = float(def.get("leash", _cfg.get("leash", 24.0)))
+		c["leash"] = float(def.get("leash", GameData.opt(_cfg, "balance.camps", "leash")))
 		c["path_i"] = 0
 		c["timer"] = 0.0
 		_populate(id)

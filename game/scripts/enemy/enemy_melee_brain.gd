@@ -41,21 +41,21 @@ func _land_melee(dist: float) -> void:
 	enemy.telegraph = {}
 	var hit := false
 	if str(enemy._def.get("attack_shape", "single")) == "circle":
-		hit = dist <= float(enemy._def.get("attack_radius", 3.0))
+		hit = dist <= float(GameData.opt(enemy._def, "enemy", "attack_radius"))
 	else:
 		# a swing only reaches what is in front of it - get behind and it finds nothing; blinded, only close in front
 		var reach: float = enemy._reach * enemy.status_part._st_mult("reach_mult")
 		var blind: Dictionary = enemy.status_part._blinded()
 		if not blind.is_empty():
-			reach = minf(reach, float(blind.get("melee_reach", 1.5)))
+			reach = minf(reach, float(GameData.opt(blind, "status.blinded", "melee_reach")))
 		hit = dist <= reach + enemy.radius and enemy.hits_part.is_in_front(enemy.target.global_position) and enemy.motion_part._sees_target()      # not through a wall or stone
 	if hit:
 		# a drum roll made this one count: the blow is heavy, whoever throws it
 		enemy._strike(enemy.damage, enemy.heavy or enemy.status_part.has_status("roused"))
-		if float(enemy._def.get("attack_shove", 0.0)) > 0.0 and enemy.target.has_method("shove"):
+		if float(GameData.opt(enemy._def, "enemy", "attack_shove")) > 0.0 and enemy.target.has_method("shove"):
 			enemy.target.call("shove", enemy.facing, float(enemy._def["attack_shove"]))
 		enemy.status_part.clear_status("roused")
-	elif float(enemy._def.get("stuck_after_miss", 0.0)) > 0.0:
+	elif float(GameData.opt(enemy._def, "enemy", "stuck_after_miss")) > 0.0:
 		enemy._stuck_t = float(enemy._def["stuck_after_miss"])
 	enemy._attack_cd = enemy._cooldown
 	enemy._strike_t = 0.22

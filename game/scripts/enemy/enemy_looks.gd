@@ -68,7 +68,7 @@ func _update_melee_telegraph() -> void:
 	if enemy._windup < 0.0:
 		enemy.telegraph = {}
 	elif str(enemy._def.get("attack_shape", "single")) == "circle":
-		enemy.telegraph = {"kind": "circle", "radius": float(enemy._def.get("attack_radius", 3.0)), "frac": 1.0 - enemy._windup / maxf(0.001, enemy._windup_time),
+		enemy.telegraph = {"kind": "circle", "radius": float(GameData.opt(enemy._def, "enemy", "attack_radius")), "frac": 1.0 - enemy._windup / maxf(0.001, enemy._windup_time),
 			"interruptible": bool(enemy._def.get("interruptible", false))}
 	else:
 		enemy.telegraph = {"kind": "swing", "interruptible": bool(enemy._def.get("interruptible", false))}

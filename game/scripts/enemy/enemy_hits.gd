@@ -44,7 +44,7 @@ func take_hit(amount: float, _heavy: bool, source: Node, tags: Array = []) -> fl
 			if tags.has(t):
 				excepted = true
 		if not excepted:
-			mult *= float(def.get("damage_taken_mult", 1.0))
+			mult *= float(GameData.opt(def, "status", "damage_taken_mult"))
 		var from_aff: Dictionary = def.get("damage_taken_from", {})
 		for aff: String in from_aff:
 			if tags.has(aff):
@@ -57,7 +57,7 @@ func take_hit(amount: float, _heavy: bool, source: Node, tags: Array = []) -> fl
 	# Spared: nothing takes it below its floor
 	var floor_hp: float = 0.0
 	for id: String in enemy.statuses:
-		floor_hp = maxf(floor_hp, float(enemy.status_part._sdef(id).get("floor_health", 0.0)))
+		floor_hp = maxf(floor_hp, float(GameData.opt(enemy.status_part._sdef(id), "status", "floor_health")))
 	if floor_hp > 0.0:
 		want = minf(want, maxf(0.0, enemy.body.total() - floor_hp))
 	var winding: bool = enemy._windup >= 0.0
@@ -88,9 +88,9 @@ func take_hit(amount: float, _heavy: bool, source: Node, tags: Array = []) -> fl
 		elif enemy._def.has("death_burst") and enemy.is_inside_tree() and not enemy.quelled and not quiet and not enemy.status_part._in_zone_flag("no_heal"):
 			var cfg: Dictionary = enemy._def["death_burst"]
 			var burst := CenserBurst.new()
-			burst.radius = float(cfg.get("radius", 4.0))
-			burst.delay = float(cfg.get("delay", 0.8))
-			burst.heal_frac = float(cfg.get("heal_frac", 0.4))
+			burst.radius = float(GameData.opt(cfg, "enemy.death_burst", "radius", "take_hit"))
+			burst.delay = float(GameData.opt(cfg, "enemy.death_burst", "delay", "take_hit"))
+			burst.heal_frac = float(GameData.opt(cfg, "enemy.death_burst", "heal_frac"))
 			burst.status = str(cfg.get("status", "frenzied"))
 			enemy.get_parent().add_child(burst)
 			burst.global_position = enemy.global_position
@@ -122,11 +122,11 @@ func take_poise(amount: float) -> bool:
 		return false
 	enemy._poise_idle = 0.0
 	for id: String in enemy.statuses:
-		amount /= float(GameData.status(id).get("poise_mult", 1.0))      # a drum behind it steadies it
+		amount /= float(GameData.opt(GameData.status(id), "status", "poise_mult"))      # a drum behind it steadies it
 	enemy.poise = maxf(0.0, enemy.poise - amount)
 	if enemy.poise > 0.0:
 		return false
-	stagger(float(enemy._def.get("stagger_s", GameData.status("staggered").get("lasts", 1.5))))
+	stagger(float(enemy._def.get("stagger_s", GameData.opt(GameData.status("staggered"), "status", "lasts"))))
 	return true
 
 
@@ -134,7 +134,7 @@ func take_poise(amount: float) -> bool:
 ## its front arc, it is on its feet, and (for a commander) it is still in the phase where it blocks.
 ## A status with front_block_off (Exposed, Stripped, Seeped) takes the guard away.
 func guards_front(point: Vector3) -> bool:
-	if float(enemy._def.get("front_armour", 0.0)) <= 0.0 or enemy.status_part.has_status("staggered") or enemy.status_part.has_status("stunned") or enemy.status_part._st_any("front_block_off"):
+	if float(GameData.opt(enemy._def, "enemy", "front_armour")) <= 0.0 or enemy.status_part.has_status("staggered") or enemy.status_part.has_status("stunned") or enemy.status_part._st_any("front_block_off"):
 		return false
 	if enemy._def.has("front_armour_until_frac") and enemy.body.total() / enemy.body.total_max() <= float(enemy._def["front_armour_until_frac"]):
 		return false
@@ -153,8 +153,8 @@ func _answer_block() -> void:
 	if not is_instance_valid(enemy.target) or enemy.global_position.distance_to(enemy.target.global_position) > enemy._reach + enemy.radius + 0.5:
 		return
 	var cfg: Dictionary = enemy._def["counter"]
-	enemy._windup = float(cfg.get("windup", 0.25))
-	enemy._special_cd["counter"] = float(cfg.get("cooldown", 2.5))
+	enemy._windup = float(GameData.opt(cfg, "enemy.counter", "windup"))
+	enemy._special_cd["counter"] = float(GameData.opt(cfg, "enemy.counter", "cooldown"))
 	enemy.looks_part._update_melee_telegraph()
 
 
@@ -168,7 +168,7 @@ func stagger(seconds: float) -> void:
 
 
 func _knock_down() -> void:
-	stagger(float(enemy._def.get("knockdown_s", 2.0)))
+	stagger(float(GameData.opt(enemy._def, "enemy", "knockdown_s")))
 	enemy._attack_cd = enemy._cooldown
 
 
@@ -238,7 +238,7 @@ func shove(dir: Vector3, metres: float) -> void:
 		return                                  # nothing moves it once it has set itself to charge
 	var mult: float = enemy.status_part._shove_class()
 	if enemy.status_part.has_status("soaked"):
-		mult *= float(GameData.status("soaked").get("shove_mult", 1.0))
+		mult *= float(GameData.opt(GameData.status("soaked"), "status", "shove_mult"))
 	for id: String in enemy.statuses.keys():
 		var def: Dictionary = enemy.status_part._sdef(id)
 		if id != "soaked" and def.has("shove_mult"):

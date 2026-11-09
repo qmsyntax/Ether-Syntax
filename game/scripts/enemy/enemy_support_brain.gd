@@ -27,7 +27,7 @@ func _allies_within(reach: float) -> Array[Node3D]:
 ## raises its sticks (interruptible) and rouses one fighter, whose next blow is heavy. It keeps
 ## the line between itself and the player; with no line left it stands where it is.
 func think(delta: float, dir: Vector3, _dist: float) -> void:
-	var reach: float = float(enemy._def.get("aura_radius", 6.0))
+	var reach: float = float(GameData.opt(enemy._def, "enemy", "aura_radius"))
 	var near: Array[Node3D] = _allies_within(reach)
 	_pulse_t -= delta
 	if enemy.status_part._st_any("no_call"):
@@ -60,7 +60,7 @@ func think(delta: float, dir: Vector3, _dist: float) -> void:
 	centre /= float(fighters.size())
 	var back: Vector3 = centre - enemy.target.global_position
 	back.y = 0.0
-	var goal: Vector3 = centre + (back.normalized() if back.length() > 0.1 else -dir) * float(enemy._def.get("stand_behind", 6.0))
+	var goal: Vector3 = centre + (back.normalized() if back.length() > 0.1 else -dir) * float(GameData.opt(enemy._def, "enemy", "stand_behind"))
 	var to: Vector3 = goal - enemy.global_position
 	to.y = 0.0
 	if to.length() <= 1.0:

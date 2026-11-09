@@ -96,7 +96,7 @@ func tick(delta: float) -> void:
 		_resize()
 	var cfg: Dictionary = _cfg()
 	var rule: Dictionary = cfg.get(kind, {})
-	var every: float = float(rule.get("tick_s", 1.0))
+	var every: float = float(GameData.opt(rule, "affinity.growth_rule", "tick_s"))
 	for k: Variant in _last.keys():
 		_last[k] = float(_last[k]) + delta
 	_tick -= delta
@@ -118,7 +118,7 @@ func tick(delta: float) -> void:
 				caster.call("apply_hit", e, payload, ["nature", "growth", "dot"])
 	if age() >= 1:
 		_spread_t += delta
-		if _spread_t >= float(cfg.get("spread_every", 5.0)):
+		if _spread_t >= float(GameData.opt(cfg, "affinity.growth", "spread_every")):
 			_spread_t = 0.0
 			spread()
 

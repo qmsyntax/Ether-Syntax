@@ -20,7 +20,7 @@ func _init(of: Enemy) -> void:
 func _keep_leash() -> void:
 	for id: String in enemy.statuses:
 		var s: Dictionary = enemy.statuses[id]
-		var m: float = float((s.get("data", {}) as Dictionary).get("leash_m", enemy.status_part._sdef(id).get("leash_m", 0.0)))
+		var m: float = float((s.get("data", {}) as Dictionary).get("leash_m", GameData.opt(enemy.status_part._sdef(id), "status", "leash_m")))
 		var by: Variant = s.get("by")
 		if m <= 0.0 or not (by is Node3D) or not is_instance_valid(by):
 			continue
@@ -110,7 +110,7 @@ func _forced_target() -> Node3D:
 func _flee(_delta: float) -> bool:
 	for id: String in enemy.statuses:
 		# Exiled: it will not come within keeps_away of whoever cast it out (outside it, it fights - and shoots - as it will)
-		var keep: float = float(enemy.status_part._sdef(id).get("keeps_away", 0.0))
+		var keep: float = float(GameData.opt(enemy.status_part._sdef(id), "status", "keeps_away"))
 		var kby: Variant = (enemy.statuses[id] as Dictionary).get("by")
 		if keep > 0.0 and kby is Node3D and is_instance_valid(kby):
 			var off: Vector3 = enemy.global_position - (kby as Node3D).global_position
@@ -259,7 +259,7 @@ func sees_point(point: Vector3) -> bool:
 	if not enemy.hits_part.is_in_front(point):
 		return false
 	var blind: Dictionary = enemy.status_part._blinded()
-	if not blind.is_empty() and Vector2(point.x - enemy.global_position.x, point.z - enemy.global_position.z).length() > float(blind.get("sight", 2.0)):
+	if not blind.is_empty() and Vector2(point.x - enemy.global_position.x, point.z - enemy.global_position.z).length() > float(GameData.opt(blind, "status.blinded", "sight")):
 		return false
 	if not enemy.is_inside_tree():
 		return true
@@ -289,7 +289,7 @@ func _sees_target() -> bool:
 	if not enemy.is_inside_tree():
 		return true
 	var blind: Dictionary = enemy.status_part._blinded()
-	if not blind.is_empty() and enemy.global_position.distance_to(enemy.target.global_position) > float(blind.get("sight", 2.0)):
+	if not blind.is_empty() and enemy.global_position.distance_to(enemy.target.global_position) > float(GameData.opt(blind, "status.blinded", "sight")):
 		return false
 	if enemy.target == enemy._player and enemy._player.has_method("unseen_from") and bool(enemy._player.call("unseen_from", enemy.global_position)):
 		return false
