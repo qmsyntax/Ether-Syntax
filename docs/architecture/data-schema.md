@@ -20,7 +20,7 @@ data.
 | What | Where |
 |---|---|
 | The schema | `game/data/schema.json` (hand-maintained) |
-| Loading, checking, defaults | `scripts/data_schema.gd` (`DataSchema`: `load_file`, `check`, `fallback`) |
+| Loading, checking, defaults | `scripts/data_schema.gd` (`DataSchema`: `load_file`, `check`, `defaults`, `variants`) |
 | The check at load, the reader | `scripts/game_data.gd`: `_check` (in `_ensure`, every run), `data_errors`, `check_ms`, `opt()` |
 | Checks | `tests/data_checks.gd` (the self-test's "data schema" block, `-- --only=data`), `tests/load_all.tscn` |
 
