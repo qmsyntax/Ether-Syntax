@@ -120,6 +120,7 @@ var arena_part: MainArena               # state "arena_rest" / "arena_fight": th
 var passage_part: MainPassage           # state "dungeon": the assault passage
 var field_part: MainField               # state "field": an overland zone
 var town_part: MainTown                 # state "town": the town, its people, crafting and services
+var nether_part: MainNether             # the Netherecho over a level: leaving the body, its look, its signals
 
 
 func _init() -> void:
@@ -128,6 +129,7 @@ func _init() -> void:
 	passage_part = MainPassage.new(self)
 	field_part = MainField.new(self)
 	town_part = MainTown.new(self)
+	nether_part = MainNether.new(self)
 
 
 func _ready() -> void:
@@ -550,67 +552,6 @@ func open_skill_tree(at_trainer: bool = false) -> void:
 	_show_screen(SkillTreeScreen.new(self, teaching), state != "town")
 
 
-# --- the Netherecho ------------------------------------------------------------------------
-
-## Leave the body, or return to it. Only possible out of combat, in the field.
-func toggle_projection() -> void:
-	if nether.active:
-		nether.exit("You return to your body.")
-		return
-	if state != "dungeon" and state != "arena_rest" and state != "field":
-		player.call("note", "There is nothing to find in the echo of this place." if state == "town" else "Not now.")
-		return
-	var why: String = nether.cannot_enter_reason()
-	if why != "":
-		player.call("note", why)
-		return
-	nether.enter()
-
-
-func _on_nether_entered() -> void:
-	_set_nether_look(true)
-	hud.call("announce", "THE NETHERECHO")
-	player.call("note", "You step out of yourself.")
-
-
-func _on_nether_exited(reason: String) -> void:
-	_set_nether_look(false)
-	_prompt = ""
-	if reason != "":
-		player.call("note", reason)
-
-
-## Something hit the body while the soul was away.
-func _on_body_disturbed() -> void:
-	if nether.active:
-		nether.exit("Pain drags you back into your body.")
-
-
-## Canon: a destroyed projection is death. Standard mode turns that into debt like any other death.
-func _on_projection_destroyed() -> void:
-	player.call("note", "Your soul is torn apart in the echo.")
-	(player.get("body") as Body).apply_damage(99999.0)
-	player.call("_check_death")
-
-
-## The echo of a place: dark, violet, lit from nowhere. Living enemies and loose loot do not show.
-func _set_nether_look(on: bool) -> void:
-	# the waking world looks like its biome; the echo of any place is the same dark violet
-	_env.background_color = Color(0.03, 0.015, 0.07) if on else _biome.get("sky", Color(0.045, 0.05, 0.065))
-	_env.ambient_light_color = Color(0.5, 0.42, 0.95) if on else _biome.get("ambient", Color(0.5, 0.56, 0.7))
-	var boost: float = float((GameData.balance["biomes"]["ambient_boost"] as Dictionary).get(biome, 1.0))
-	_env.ambient_light_energy = 0.75 if on else float(_biome.get("ambient_energy", 0.6)) * boost
-	_env.fog_light_color = Color(0.1, 0.05, 0.2) if on else _biome.get("fog_color", Color(0.1, 0.11, 0.14))
-	_env.fog_density = 0.006 if on else float(_biome.get("fog_density", 0.006))
-	_sun.light_energy = 0.18 if on else float(_biome.get("sun_energy", 1.35))
-	_sun.light_color = Color(0.7, 0.6, 1.0) if on else _biome.get("sun_color", Color(1.0, 0.87, 0.72))
-	_sun.rotation_degrees = _biome.get("sun_rotation", Vector3(-44.0, 38.0, 0.0))
-	for group: String in ["enemies", "pickups"]:
-		for n: Node in get_tree().get_nodes_in_group(group):
-			if n is Node3D:
-				(n as Node3D).visible = not on
-
-
 # --- screens ---------------------------------------------------------------------------
 
 func _show_screen(new_screen: Control, pause: bool) -> void:
@@ -1025,3 +966,11 @@ func town_sell_loot() -> int: return town_part.town_sell_loot()
 func town_sell_item(item_id: String) -> int: return town_part.town_sell_item(item_id)
 func town_buy(item_id: String) -> String: return town_part.town_buy(item_id)
 func town_rest_night() -> void: town_part.town_rest_night()
+
+
+# --- nether_part (MainNether)
+func toggle_projection() -> void: nether_part.toggle_projection()
+func _on_nether_entered() -> void: nether_part._on_nether_entered()
+func _on_nether_exited(reason: String) -> void: nether_part._on_nether_exited(reason)
+func _on_body_disturbed() -> void: nether_part._on_body_disturbed()
+func _on_projection_destroyed() -> void: nether_part._on_projection_destroyed()

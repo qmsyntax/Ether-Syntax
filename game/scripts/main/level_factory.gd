@@ -50,7 +50,7 @@ func _build_world() -> void:
 	main._sun.rotation_degrees = Vector3(-44.0, 38.0, 0.0)
 	main._sun.shadow_enabled = true
 	main.add_child(main._sun)
-	main._set_nether_look(false)
+	main.nether_part._set_nether_look(false)
 
 	main.nether = Netherecho.new()
 	main.add_child(main.nether)
@@ -156,7 +156,7 @@ func _use_biome(choices: Variant, allow_force: bool = true) -> void:
 	if not Biomes.ids().has(main.biome):
 		main.biome = "scrubland"
 	main._biome = Biomes.info(main.biome)
-	main._set_nether_look(main.nether.active)
+	main.nether_part._set_nether_look(main.nether.active)
 
 
 ## Ground: something to stand on, and the biome's floor drawn over it.
