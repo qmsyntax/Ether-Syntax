@@ -5,7 +5,7 @@ extends Node3D
 ## it is sealed for now. STUBBED, on purpose and all the same way: each entry carries the id of
 ## the dungeon it will one day open ("dungeon"), so making it real is a matter of data and of
 ## main.enter_dungeon_at(id) learning that id. Group "field_entrances"; main finds the nearest
-## one in reach (main._entrance_in_reach).
+## one in reach (MainField._entrance_in_reach).
 
 var entrance_id := ""
 var entrance_name := "A way down"
