@@ -45,7 +45,7 @@ func temper_stat(stat: String) -> float:
 ## "+16 health", "reflux sheds 32% faster" ... what a technique gives at `stage`.
 func temper_effect_text(id: String, stage: int) -> String:
 	var eff: Dictionary = GameData.technique(id).get("effect", {})
-	var per: float = float(eff.get("per_stage", 0.0))
+	var per: float = float(GameData.opt(eff, "technique.effect", "per_stage"))
 	var amount: float
 	if str(eff.get("stat", "")).begins_with("max_"):
 		amount = per * float(stage)
@@ -174,7 +174,7 @@ func scroll_for_me() -> String:
 ## Start the character over with exactly these skills, on the bar in order. They must be
 ## `start_picks` different root skills of affinities the character holds. Returns "" or why not.
 func start_with_skills(ids: Array) -> String:
-	var want: int = int(GameData.skill_tree.get("start_picks", 2))
+	var want: int = int(GameData.opt(GameData.skill_tree, "skill_tree", "start_picks"))
 	var roots: Array[String] = GameData.skill_roots(player.affinities)
 	var picked: Array[String] = []
 	for id: Variant in ids:
@@ -200,14 +200,14 @@ func start_with_skills(ids: Array) -> String:
 ## The first `start_picks` root skills - only for quick starts in tests (start_new_character).
 func default_start_skills() -> Array[String]:
 	var roots: Array[String] = GameData.skill_roots(player.affinities)
-	return roots.slice(0, int(GameData.skill_tree.get("start_picks", 2)))
+	return roots.slice(0, int(GameData.opt(GameData.skill_tree, "skill_tree", "start_picks")))
 
 
 ## What learning a node costs at a trainer: {points, price}.
 func skill_cost(ability_id: String) -> Dictionary:
 	var node: Dictionary = GameData.skill_node(ability_id)
-	var tier: Dictionary = (GameData.skill_tree.get("tiers", {}) as Dictionary).get(str(int(node.get("tier", 1))), {})
-	return {"points": int(tier.get("points", 1)), "price": int(tier.get("price", 0))}
+	var tier: Dictionary = (GameData.skill_tree.get("tiers", {}) as Dictionary).get(str(int(GameData.opt(node, "tree_node", "tier"))), {})
+	return {"points": int(GameData.opt(tier, "skill_tree.tier", "points")), "price": int(GameData.opt(tier, "skill_tree.tier", "price"))}
 
 
 ## A node's prerequisites are met: it has none, or the character knows any one of them.
@@ -271,9 +271,9 @@ func cannot_drill_reason(ability_id: String) -> String:
 	if float(st["progress"]) >= 100.0:
 		return "Its bar is full. Only a bound construct takes it further."
 	var cfg: Dictionary = GameData.skill_tree.get("drill", {})
-	if player.skill_points < int(cfg.get("points", 1)):
-		return _points_short(int(cfg.get("points", 1)))
-	if not player.economy_part.can_afford(int(cfg.get("price", 0))):
+	if player.skill_points < int(GameData.opt(cfg, "skill_tree.drill", "points")):
+		return _points_short(int(GameData.opt(cfg, "skill_tree.drill", "points")))
+	if not player.economy_part.can_afford(int(GameData.opt(cfg, "skill_tree.drill", "price"))):
 		return "Nobody trains on that much debt."
 	return ""
 
@@ -285,18 +285,18 @@ func drill_skill(ability_id: String) -> String:
 	if why != "":
 		return why
 	var cfg: Dictionary = GameData.skill_tree.get("drill", {})
-	player.skill_points -= int(cfg.get("points", 1))
-	player.economy_part.charge(int(cfg.get("price", 0)))
+	player.skill_points -= int(GameData.opt(cfg, "skill_tree.drill", "points"))
+	player.economy_part.charge(int(GameData.opt(cfg, "skill_tree.drill", "price")))
 	for a: Dictionary in player.abilities:
 		if str(a["id"]) == ability_id:
-			a["progress"] = minf(100.0, float(a["progress"]) + float(cfg.get("progress", 0.0)))
+			a["progress"] = minf(100.0, float(a["progress"]) + float(GameData.opt(cfg, "skill_tree.drill", "progress")))
 	player.note("You drill %s until your hands know it better." % str(GameData.ability(ability_id).get("name", ability_id)))
 	return ""
 
 
 ## Star growth banks toward skill points: one per `points.per_star_pct` percentage points grown.
 func _earn_skill_points(grown: float) -> void:
-	var per: float = float((GameData.skill_tree.get("points", {}) as Dictionary).get("per_star_pct", 10.0))
+	var per: float = float(GameData.opt((GameData.skill_tree.get("points", {}) as Dictionary), "skill_tree.points", "per_star_pct"))
 	if grown <= 0.0 or per <= 0.0:
 		return
 	player.skill_growth += grown
@@ -313,7 +313,7 @@ func add_aura(amount: float) -> void:
 
 func _on_kill(target: Node) -> void:
 	for bid: String in player.buffs:
-		if int((player.buffs[bid] as Dictionary).get("kill_blood", 0)) > 0:
+		if int(GameData.opt((player.buffs[bid] as Dictionary), "ability", "kill_blood")) > 0:
 			player.hits_part.gain_blood(int(player.buffs[bid]["kill_blood"]))                      # Red Frenzy: every kill feeds it
 	var hurt: float = 1.0 - player.body.total() / player.body.total_max()
 	var risk: float = 1.0 + hurt * float(player._p["aura_hurt_risk_bonus"])
@@ -381,7 +381,7 @@ func try_ascend() -> void:
 	player.essence = player.essence_max
 	player.body.scale_max(float(asc["body_scale"]))
 	player.casting_part.clear_reflux()
-	player.skill_points += int((GameData.skill_tree.get("points", {}) as Dictionary).get("on_ascend", 0))
+	player.skill_points += int(GameData.opt((GameData.skill_tree.get("points", {}) as Dictionary), "skill_tree.points", "on_ascend"))
 	for e: TalentEffect in player.effects:
 		e.on_ascend(player.stars)
 	_begin_ascension()
@@ -483,7 +483,7 @@ func ascension_preview(index: int, aspect: String, amount: float) -> Array[Dicti
 			if mp != "" and not fields.any(func(f: Dictionary) -> bool: return str(f["path"]) == mp):
 				fields.append({"path": mp, "group": "power", "label": "Strength (%s)" % mp.get_slice(".", mp.get_slice_count(".") - 1).replace("_", " "),
 					"unit": "", "lower_is_better": str((mag as Dictionary).get("dir", "up")) == "down", "scaled_by_stage": false})
-	var stage_mult: float = player.casting_part.ability_damage_mult(int(st["stage"])) * float(before.get("damage_all", 1.0))
+	var stage_mult: float = player.casting_part.ability_damage_mult(int(st["stage"])) * float(GameData.opt(before, "ability", "damage_all"))
 	return player.runes_part._stat_rows(before, after, fields, stage_mult).filter(func(r: Dictionary) -> bool: return bool(r["changed"]))
 
 
@@ -502,10 +502,10 @@ func ascension_summary(index: int) -> String:
 ## star fills (balance.json "unstarred").
 func kill_aura_mult(target: Node) -> float:
 	var kind_v: Variant = target.get("kind")
-	if kind_v == null or int(GameData.enemy(str(kind_v)).get("stars", 1)) > 0:
+	if kind_v == null or int(GameData.opt(GameData.enemy(str(kind_v)), "enemy", "stars")) > 0:
 		return 1.0
 	var cfg: Dictionary = GameData.balance.get("unstarred", {})
 	var fill: float = 0.0
 	if not player.star_pct.is_empty():
 		fill = clampf(player.star_pct[player.star_pct.size() - 1] / GameData.num("stars", "max_pct"), 0.0, 1.0)
-	return pow(float(cfg.get("star_falloff", 0.35)), float(maxi(0, player.stars - 1))) * lerpf(1.0, float(cfg.get("at_full_star", 0.25)), fill)
+	return pow(float(GameData.opt(cfg, "balance.unstarred", "star_falloff")), float(maxi(0, player.stars - 1))) * lerpf(1.0, float(GameData.opt(cfg, "balance.unstarred", "at_full_star")), fill)

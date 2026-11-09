@@ -150,7 +150,7 @@ func _tick_move(delta: float) -> void:
 func walk_speed() -> float:
 	var speed: float = float(player._p["move_speed"]) * player.progress_part.temper_stat("move_speed_mult") * (float(player._p["charge_move_factor"]) if player._charging else 1.0) * player.casting_part.buff_num("move_speed_mult") * player.world_part._zone_num("caster_speed_mult")
 	if not player._held.is_empty():
-		speed *= float((player._held["ab"] as Dictionary).get("move_factor", 1.0))     # holding a skill: you walk slowly, or not at all
+		speed *= float(GameData.opt((player._held["ab"] as Dictionary), "ability", "move_factor"))     # holding a skill: you walk slowly, or not at all
 	speed *= player.casting_part.buff_num("move_factor")          # a counter window roots you (Abiding Guard, Turning Palm, Turn the Edge)
 	if player.ranged_stance:
 		speed *= GameData.num("ranged", "stance_move_factor")
@@ -485,7 +485,7 @@ func _play_cast_motion(ab: Dictionary, kind: String, lands_in: float) -> bool:
 	if player._rig == null or not player._rig.has_method("play_action"):
 		return false
 	var motion: String = {"dash": "dodge", "blink": "dodge", "detonate": "cast_area", "self_buff": "cast_area"}.get(kind, "cast")
-	if kind == "melee_burst" and float(ab.get("arc_deg", 0.0)) >= 360.0:
+	if kind == "melee_burst" and float(GameData.opt(ab, "ability", "arc_deg")) >= 360.0:
 		motion = "cast_area"
 	var wound_up: bool = lands_in > GameData.num("feel", "anim_action_lead_s") + 0.001
 	if kind == "targeted_strike" or (kind == "melee_burst" and motion == "cast"):
@@ -620,9 +620,9 @@ func sidestep() -> String:
 	var time: float = maxf(0.05, float(cfg["time_s"]))
 	var dist: float = float(cfg["distance_m"])
 	# the curve: v(u) = ve + (v0 - ve)(1 - u)^k over u = 0..1, with v0 chosen so it covers dist exactly
-	var k: float = maxf(0.0, float(cfg.get("ease_power", 2.0)))
+	var k: float = maxf(0.0, float(GameData.opt(cfg, "balance.sidestep", "ease_power")))
 	var moving_on: bool = _moves_on()
-	var ve: float = walk_speed() * float(cfg.get("end_speed_frac", 1.0) if moving_on else cfg.get("end_speed_frac_still", 0.0))
+	var ve: float = walk_speed() * float(GameData.opt(cfg, "balance.sidestep", "end_speed_frac") if moving_on else GameData.opt(cfg, "balance.sidestep", "end_speed_frac_still"))
 	ve = clampf(ve, 0.0, dist / time)           # never ends faster than it averages: it is a burst, then the run
 	_step_k = k
 	_step_ve = ve
@@ -636,7 +636,7 @@ func sidestep() -> String:
 	player._strike_credit = 0
 	player._face_hold_t = 0.0                          # ... but not where your feet were going (has_move_goal, pickup_target)
 	if player._rig != null and player._rig.has_method("play_for"):
-		player._rig.call("play_for", "dodge", time, float(cfg.get("anim_blend_out_s", 0.12)))
+		player._rig.call("play_for", "dodge", time, float(GameData.opt(cfg, "balance.sidestep", "anim_blend_out_s")))
 	elif player._rig != null and player._rig.has_method("play_action"):
 		player._rig.call("play_action", "dodge", -1.0)
 	player.sidesteps += 1
@@ -689,7 +689,7 @@ func _end_step() -> void:
 	if was and player._rig != null and player._rig.has_method("end_timed"):
 		player._rig.call("end_timed")
 	if was:
-		var lock: float = float((GameData.balance["sidestep"] as Dictionary).get("cast_lockout_s", 0.0))
+		var lock: float = float(GameData.opt((GameData.balance["sidestep"] as Dictionary), "balance.sidestep", "cast_lockout_s"))
 		player._recover_t = maxf(player._recover_t, lock)       # a hair of lockout after, if the data asks (none for moving)
 		player._melee_cd = maxf(player._melee_cd, lock)
 

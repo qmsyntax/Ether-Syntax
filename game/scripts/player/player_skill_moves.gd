@@ -41,22 +41,22 @@ func _displace(point: Vector3, target: Node3D, ab: Dictionary, stage_mult: float
 		player.hits_part.apply_hit(target, player.hits_part._payload(ab, "on_hit"), tags, stage_mult)
 		if is_instance_valid(target) and not bool(target.call("is_dead")):
 			target.set("shover", player)
-			target.call("pull_toward", player.global_position, float(ab.get("pull", 10.0)), float(ab.get("keep", 1.5)) + float(target.get("radius")))
-			target.call("turn_away_from", player.global_position, float(ab.get("turn_s", 1.0)))
+			target.call("pull_toward", player.global_position, float(GameData.opt(ab, "ability", "pull")), float(GameData.opt(ab, "ability", "keep")) + float(target.get("radius")))
+			target.call("turn_away_from", player.global_position, float(GameData.opt(ab, "ability", "turn_s")))
 		return
 	player.casting_part._line_visual(chest, point + Vector3.UP * 0.3, color)
 	var burned: int = player.motion_part.spend_pips(int(ab["spend_pips"])) if ab.has("spend_pips") else 0
 	var from_point: bool = str((ab.get("on_hit", {}) as Dictionary).get("shove_dir", "")) == "from_point"
-	for e: Enemy in player.casting_part._enemies_near(point, float(ab.get("radius", 3.0))):
+	for e: Enemy in player.casting_part._enemies_near(point, float(GameData.opt(ab, "ability", "radius", "displace"))):
 		player.hits_part.apply_hit(e, player.hits_part._payload(ab, "on_hit"), tags, stage_mult, (e.global_position - point) if from_point else Vector3.ZERO)
 		if not is_instance_valid(e) or bool(e.is_dead()):
 			continue
 		if str(ab.get("mode", "")) == "pull_area":
 			e.shover = player
-			e.pull_toward(point, float(ab.get("pull", 4.0)))
+			e.pull_toward(point, float(GameData.opt(ab, "ability", "pull", "displace")))
 		elif burned > 0 and bool(e.has_status("aloft")):
 			var up: Dictionary = (e.statuses as Dictionary)["aloft"]
-			up["t"] = float(up["t"]) + float(ab.get("pip_seconds", 0.2)) * float(burned)
+			up["t"] = float(up["t"]) + float(GameData.opt(ab, "ability", "pip_seconds")) * float(burned)
 
 
 
@@ -68,7 +68,7 @@ func _throw(target: Node3D, point: Vector3, ab: Dictionary, stage_mult: float, t
 	if not is_instance_valid(target) or bool(target.call("is_dead")):
 		return
 	if target.has_method("is_elite") and bool(target.call("is_elite")):
-		target.call("stagger", float(GameData.status("staggered").get("lasts", 1.5)))
+		target.call("stagger", float(GameData.opt(GameData.status("staggered"), "status", "lasts")))
 		return
 	if point == Vector3.ZERO:
 		point = player.motion_part._cursor_ground()                 # a targeted cast has no aimed point of its own: where you point
@@ -78,23 +78,23 @@ func _throw(target: Node3D, point: Vector3, ab: Dictionary, stage_mult: float, t
 		way = player._facing
 	var land: Dictionary = (ab.get("on_land", {}) as Dictionary).duplicate()
 	if not land.is_empty():
-		land["burst_radius"] = float(land.get("radius", 1.5))
+		land["burst_radius"] = float(GameData.opt(land, "payload", "radius", "throw"))
 		player._landings[target.get_instance_id()] = {"payload": land, "tags": tags, "stage_mult": stage_mult}
 	target.set("shover", player)
-	target.call("shove", way, minf(float(ab.get("throw", 6.0)), way.length()))
+	target.call("shove", way, minf(float(GameData.opt(ab, "ability", "throw")), way.length()))
 
 
 ## Venom Spur (clock_to): every enemy in range carrying needs_status has that status's time cut to clock_to (never
 ## lengthened), and what its on_expire pays is x bill_mult this once (status data, read by the status engine).
 func _spur(ab: Dictionary) -> void:
 	var sid: String = str(ab.get("needs_status", "dosed"))
-	for e: Enemy in player.casting_part._enemies_near(player.global_position, float(ab.get("range", 8.0))):
+	for e: Enemy in player.casting_part._enemies_near(player.global_position, float(GameData.opt(ab, "ability", "range", "cast_ability_8"))):
 		var entry: Dictionary = (e.statuses as Dictionary).get(sid, {})
 		if entry.is_empty():
 			continue
 		entry["t"] = minf(float(entry["t"]), float(ab["clock_to"]))
 		var data: Dictionary = entry.get("data", {})
-		data["bill_mult"] = float(ab.get("bill_mult", 1.0))
+		data["bill_mult"] = float(GameData.opt(ab, "ability", "bill_mult"))
 		entry["data"] = data
 		player.casting_part._line_visual(player.global_position + Vector3.UP, e.global_position + Vector3.UP, GameData.affinity_color(str(ab.get("affinity", ""))))
 
@@ -112,14 +112,14 @@ func _chain(target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> v
 		struck.append(target)
 		player.casting_part._line_visual(from, target.global_position + Vector3.UP, color)
 		player.hits_part.apply_hit(target, ab.get("first_hit", player.hits_part._payload(ab, "on_hit")), tags, stage_mult)
-		for gen: int in int(ab.get("depth", 2)):
+		for gen: int in int(GameData.opt(ab, "ability", "depth")):
 			var next_wave: Array = []
 			for w: Variant in wave:
 				if not is_instance_valid(w):
 					continue
-				var from_dying: bool = int(ab.get("dying_stacks", 0)) > 0 and bool((w as Node).call("has_status", "dying"))
-				for e: Enemy in player.casting_part._enemies_near((w as Node3D).global_position, float(ab.get("jump_radius", 3.0))):
-					if struck.has(e) or struck.size() > int(ab.get("jumps", 7)):
+				var from_dying: bool = int(GameData.opt(ab, "ability", "dying_stacks")) > 0 and bool((w as Node).call("has_status", "dying"))
+				for e: Enemy in player.casting_part._enemies_near((w as Node3D).global_position, float(GameData.opt(ab, "ability", "jump_radius"))):
+					if struck.has(e) or struck.size() > int(GameData.opt(ab, "ability", "jumps")):
 						continue
 					struck.append(e)
 					next_wave.append(e)
@@ -131,7 +131,7 @@ func _chain(target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> v
 			wave = next_wave
 		return
 	var hit_tags: Array = tags + (["rear"] if bool(ab.get("force_rear", false)) else [])
-	for jump: int in int(ab.get("jumps", 3)) + 1:
+	for jump: int in int(GameData.opt(ab, "ability", "jumps", "chain")) + 1:
 		var at: Vector3 = cur.global_position
 		if bool(ab.get("carries_caster", false)):
 			# Forked Path takes you with it: you appear behind each one as it is struck; a wall or stone between ends it
@@ -151,7 +151,7 @@ func _chain(target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> v
 		from = at + Vector3.UP
 		player.hits_part.apply_hit(cur, player.hits_part._payload(ab, "on_hit"), hit_tags, stage_mult)
 		var next: Node3D = null
-		for e: Enemy in player.casting_part._enemies_near(at, float(ab.get("jump_radius", 5.0))):
+		for e: Enemy in player.casting_part._enemies_near(at, float(GameData.opt(ab, "ability", "jump_radius", "chain"))):
 			if not struck.has(e) and (next == null or e.global_position.distance_to(at) < next.global_position.distance_to(at)):
 				next = e
 		if next == null:
@@ -166,7 +166,7 @@ func _chain(target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> v
 ## light, pips) for more, spend a status on each target (consume_status), throw spall off armour,
 ## cut your growth back for more, put fires out, blow clouds and shots away, and leave ground behind.
 func _burst(ab: Dictionary, stage_mult: float, tags: Array) -> void:
-	var reach: float = player.melee_range + float(ab.get("reach_bonus", 0.0))
+	var reach: float = player.melee_range + float(GameData.opt(ab, "ability", "reach_bonus"))
 	var half: float = deg_to_rad(float(ab["arc_deg"]) * 0.5) if ab.has("arc_deg") else player.melee_arc
 	player._strike_t = 0.25
 	player.combat_part._swing_visual(reach, true, false)
@@ -175,16 +175,16 @@ func _burst(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 		# the heat is the damage, and it is spent: what you carry above the floor goes into the blow
 		var own: String = str(ab["affinity"])
 		var carried: float = player.casting_part.reflux_of(own)
-		var floor_at: float = float(ab.get("heat_floor", 0.0))
+		var floor_at: float = float(GameData.opt(ab, "ability", "heat_floor"))
 		payload["damage"] = float(ab["damage_from_heat"]) * maxf(0.0, carried - floor_at)
 		player.reflux_by[own] = minf(carried, floor_at)
 		tags = tags + ["cold"]
 	# a store spent for more: held blood (Outpour), swallowed light (Night Spill)
 	var store: String = str(ab.get("consume", ""))
 	if store != "":
-		var n: int = player.hits_part.spend_blood(-1 if str(ab.get("spend_blood", "all")) == "all" else int(ab.get("spend_blood", 0))) if store == "held_blood" else player.hits_part.store_take(store)
-		payload["damage"] = float(payload.get("damage", ab.get("damage", 0.0))) + float(ab.get("per_stack_damage", 0.0)) * float(n)
-		if float(ab.get("per_stack_poise", 0.0)) > 0.0:
+		var n: int = player.hits_part.spend_blood(-1 if str(ab.get("spend_blood", "all")) == "all" else int(GameData.opt(ab, "ability", "spend_blood"))) if store == "held_blood" else player.hits_part.store_take(store)
+		payload["damage"] = float(payload.get("damage", GameData.opt(ab, "ability", "damage"))) + float(GameData.opt(ab, "ability", "per_stack_damage")) * float(n)
+		if float(GameData.opt(ab, "ability", "per_stack_poise")) > 0.0:
 			var extra: float = float(ab["per_stack_poise"]) * float(n)
 			if ab.has("poise_max"):
 				extra = minf(extra, float(ab["poise_max"]))          # Black Reckoning: that much poise too, up to 60
@@ -193,16 +193,16 @@ func _burst(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 			var dazes: Array = (payload.get("statuses", []) as Array).duplicate()
 			dazes.append({"id": "dazed", "stacks": 1})
 			payload["statuses"] = dazes
-		if int(ab.get("pools_per_two_spent", 0)) > 0:
+		if int(GameData.opt(ab, "ability", "pools_per_two_spent")) > 0:
 			for i: int in int(n / 2) * int(ab["pools_per_two_spent"]):
 				player.hits_part.spill_blood(player.global_position + player._facing.rotated(Vector3.UP, randf_range(-half, half)) * randf_range(1.0, reach), 1)
 	# pips spent for more (Blowout)
 	if ab.has("spend_pips") and player.motion_part.has_slipstream():
 		var burned: int = player.motion_part.spend_pips(int(ab["spend_pips"]))
-		payload["damage"] = float(payload.get("damage", 0.0)) + float(ab.get("pip_damage", 0.0)) * float(burned)
-		payload["shove"] = float(payload.get("shove", 0.0)) + float(ab.get("pip_shove", 0.0)) * float(burned)
+		payload["damage"] = float(GameData.opt(payload, "payload", "damage")) + float(GameData.opt(ab, "ability", "pip_damage")) * float(burned)
+		payload["shove"] = float(GameData.opt(payload, "payload", "shove")) + float(GameData.opt(ab, "ability", "pip_shove")) * float(burned)
 	# your growth in the arc is cut back to a sprout, each patch adding to the blow (Reaping Sweep)
-	if float(ab.get("patch_bonus", 0.0)) > 0.0:
+	if float(GameData.opt(ab, "ability", "patch_bonus")) > 0.0:
 		var cut := 0
 		for g: Node in player.get_tree().get_nodes_in_group("growth"):
 			var patch := g as GrowthPatch
@@ -213,16 +213,16 @@ func _burst(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 			if to_g.length() <= reach + patch.radius and (to_g.length() < 0.3 or player._facing.angle_to(to_g.normalized()) <= half):
 				patch.cut_back()
 				cut += 1
-		var more: float = minf(float(ab.get("patch_bonus_max", 0.6)), float(ab["patch_bonus"]) * float(cut))
+		var more: float = minf(float(GameData.opt(ab, "ability", "patch_bonus_max")), float(ab["patch_bonus"]) * float(cut))
 		if payload.has("damage_mult"):
 			payload["damage_mult"] = float(payload["damage_mult"]) * (1.0 + more)
 		elif payload.has("damage"):
 			payload["damage"] = float(payload["damage"]) * (1.0 + more)
-		player.essence = minf(player.essence_max, player.essence + float(ab.get("per_patch_essence", 0.0)) * float(cut))
-		if float(ab.get("per_patch_heal", 0.0)) > 0.0 and cut > 0:
+		player.essence = minf(player.essence_max, player.essence + float(GameData.opt(ab, "ability", "per_patch_essence")) * float(cut))
+		if float(GameData.opt(ab, "ability", "per_patch_heal")) > 0.0 and cut > 0:
 			player.combat_part.heal_over(float(ab["per_patch_heal"]) * float(cut), 2.0)                # Reaping Sweep regrows you
 	# drawn in first (Backdraft)
-	if bool(ab.get("pull_before_blast", false)) and float(ab.get("pull", 0.0)) > 0.0:
+	if bool(ab.get("pull_before_blast", false)) and float(GameData.opt(ab, "ability", "pull", "burst")) > 0.0:
 		for e: Enemy in player.casting_part._enemies_near(player.global_position, reach + 2.0):
 			e.shover = player
 			e.pull_toward(player.global_position, float(ab["pull"]), float(e.radius) + 0.6)
@@ -242,27 +242,27 @@ func _burst(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 			if n2 > 0:
 				t.call("clear_status", c_id)
 				p = payload.duplicate()
-				p["damage"] = float(p.get("damage", 0.0)) + float(ab.get("per_stack_damage", 0.0)) * float(n2)
-				p["poise"] = float(p.get("poise", GameData.num("combat", "skill_poise"))) + float(ab.get("per_stack_poise", 0.0)) * float(n2)
+				p["damage"] = float(GameData.opt(p, "payload", "damage")) + float(GameData.opt(ab, "ability", "per_stack_damage")) * float(n2)
+				p["poise"] = float(p.get("poise", GameData.num("combat", "skill_poise"))) + float(GameData.opt(ab, "ability", "per_stack_poise")) * float(n2)
 		var metal: int = int(t.call("metal_class")) if t.has_method("metal_class") else 0
 		var where: Vector3 = t.global_position
 		if player.hits_part.apply_hit(t, p, tags, stage_mult) != null or p.has("status") or p.has("statuses"):
 			hits += 1
 		if ab.has("spall") and metal > 0:
 			var sp: Dictionary = ab["spall"]
-			for o: Enemy in player.casting_part._enemies_near(where, float(sp.get("radius", 2.5))):
+			for o: Enemy in player.casting_part._enemies_near(where, float(GameData.opt(sp, "payload", "radius"))):
 				if o != t:
-					player.combat_part.deal_damage(o, float(sp.get("damage_per_class", 30.0)) * float(metal) * stage_mult, tags + ["spall"])
+					player.combat_part.deal_damage(o, float(GameData.opt(sp, "payload", "damage_per_class")) * float(metal) * stage_mult, tags + ["spall"])
 	if hits > 0:
-		if float(ab.get("heal_per_target", 0.0)) > 0.0:
+		if float(GameData.opt(ab, "ability", "heal_per_target")) > 0.0:
 			# Wearying Sweep: you regrow for every living one it wearies
-			player.combat_part.heal_over(float(ab["heal_per_target"]) * float(mini(hits, int(ab.get("heal_targets_max", 99)))), float(ab.get("heal_over_s", 3.0)))
-		if float(ab.get("essence_per_hit", 0.0)) > 0.0:
-			player.essence = minf(player.essence_max, player.essence + float(ab["essence_per_hit"]) * float(mini(hits, int(ab.get("essence_max_hits", 99)))))
-		if int(ab.get("swallow_per_hit", 0)) > 0:
+			player.combat_part.heal_over(float(ab["heal_per_target"]) * float(mini(hits, int(GameData.opt(ab, "ability", "heal_targets_max")))), float(GameData.opt(ab, "ability", "heal_over_s", "burst")))
+		if float(GameData.opt(ab, "ability", "essence_per_hit")) > 0.0:
+			player.essence = minf(player.essence_max, player.essence + float(ab["essence_per_hit"]) * float(mini(hits, int(GameData.opt(ab, "ability", "essence_max_hits")))))
+		if int(GameData.opt(ab, "ability", "swallow_per_hit")) > 0:
 			player.hits_part.store_add("swallowed", int(ab["swallow_per_hit"]) * hits + gained, 5, 12.0)
-		if int(ab.get("gain_pips_per_hit", 0)) > 0 and player.motion_part.has_slipstream():
-			player.pips = mini(GameData.inum("slipstream", "max"), player.pips + mini(int(ab.get("gain_pips_max", 99)), int(ab["gain_pips_per_hit"]) * hits))
+		if int(GameData.opt(ab, "ability", "gain_pips_per_hit")) > 0 and player.motion_part.has_slipstream():
+			player.pips = mini(GameData.inum("slipstream", "max"), player.pips + mini(int(GameData.opt(ab, "ability", "gain_pips_max")), int(ab["gain_pips_per_hit"]) * hits))
 	if bool(ab.get("douses", false)):
 		for z: Node in player.get_tree().get_nodes_in_group("ground_zones"):
 			if bool(z.get("bright")) and z.get("caster") == player and bool(z.call("has_point", player.global_position, reach)):
@@ -324,7 +324,7 @@ func _end_dash() -> void:
 		player._dash_on_arrive = {}
 	if player._dash_ab.has("leave_growth"):
 		player.hits_part.plant_growth(player.global_position, player._dash_ab["leave_growth"])
-	if float(player._dash_ab.get("arrive_ward", 0.0)) > 0.0:
+	if float(GameData.opt(player._dash_ab, "ability", "arrive_ward")) > 0.0:
 		player.combat_part.add_ward(float(player._dash_ab["arrive_ward"]), -1.0, {"from": str(player._dash_ab.get("name", "dash"))})     # Zealous Charge
 	player._dash_ab = {}
 	player._dash_pass_armoured = false
@@ -333,9 +333,9 @@ func _end_dash() -> void:
 	var zone := GroundZone.new()
 	zone.from = player._dash_start
 	zone.to = player.global_position
-	zone.width = float(player._dash_trail.get("width", 1.0))
-	zone.life = float(player._dash_trail.get("life", 3.0))
-	zone.tick_s = float(player._dash_trail.get("tick_s", 1.0))
+	zone.width = float(GameData.opt(player._dash_trail, "zone", "width"))
+	zone.life = float(GameData.opt(player._dash_trail, "zone", "life", "end_dash"))
+	zone.tick_s = float(GameData.opt(player._dash_trail, "zone", "tick_s"))
 	zone.payload = player._dash_trail.get("payload", {})
 	zone.dark = bool(player._dash_trail.get("dark", false))      # Night Charge: the ground you crossed stays Dark
 	if zone.dark:
@@ -375,8 +375,8 @@ func _dash_touch() -> void:
 func _fire_beam(ab: Dictionary, stage_mult: float, color: Color, tags: Array) -> void:
 	var origin: Vector3 = player.global_position + Vector3.UP * 0.9
 	var dir: Vector3 = player._facing
-	var left: float = float(ab.get("range", 9.0))
-	var legs: int = int(ab.get("bounces", 0)) + 1
+	var left: float = float(GameData.opt(ab, "ability", "range", "fire_beam"))
+	var legs: int = int(GameData.opt(ab, "ability", "bounces")) + 1
 	var first: Node3D = null
 	for leg: int in legs:
 		var hit: Dictionary = _beam_leg(origin, dir, left, ab, stage_mult, color, tags)
@@ -393,8 +393,8 @@ func _fire_beam(ab: Dictionary, stage_mult: float, color: Color, tags: Array) ->
 		dir = dir.bounce(n.normalized())
 		dir.y = 0.0
 		dir = dir.normalized()
-	if first != null and int(ab.get("jumps", 0)) > 0:
-		player.hits_part._arc_on(first, player.hits_part._payload(ab, "on_hit"), tags + ["arc"], stage_mult, int(ab["jumps"]), float(ab.get("jump_radius", 4.0)))
+	if first != null and int(GameData.opt(ab, "ability", "jumps", "fire_beam")) > 0:
+		player.hits_part._arc_on(first, player.hits_part._payload(ab, "on_hit"), tags + ["arc"], stage_mult, int(ab["jumps"]), float(GameData.opt(ab, "ability", "jump_radius", "fire_beam")))
 
 
 ## One straight stretch of a beam: {length, end, normal (where it met a wall, or null), first}.
@@ -403,7 +403,7 @@ func _beam_leg(origin: Vector3, dir: Vector3, reach_in: float, ab: Dictionary, s
 	var normal: Variant = null
 	# your own standing stone lets your beam through (combat review R4c) unless the skill asks to stop at it, or
 	# glances off stone (bounces)
-	var own_through: bool = not bool(ab.get("stops_at_own_stone", false)) and int(ab.get("bounces", 0)) <= 0
+	var own_through: bool = not bool(ab.get("stops_at_own_stone", false)) and int(GameData.opt(ab, "ability", "bounces")) <= 0
 	var wall: Dictionary = player.casting_part._ray(origin, origin + dir * reach, own_through)
 	if not wall.is_empty():
 		reach = origin.distance_to(wall["position"])
@@ -419,7 +419,7 @@ func _beam_leg(origin: Vector3, dir: Vector3, reach_in: float, ab: Dictionary, s
 		var r: float = float(t.get("radius"))
 		if along < 0.0 or along > reach + r:
 			continue
-		if (to - dir * along).length() <= float(ab.get("width", ab.get("line_width", 0.6))) * 0.5 + r:
+		if (to - dir * along).length() <= float(ab.get("width", GameData.opt(ab, "ability", "line_width"))) * 0.5 + r:
 			on_line.append([along, t])
 	on_line.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) < float(y[0]))
 	var first: Node3D = null
@@ -464,15 +464,15 @@ func _blink(spot: Vector3, ab: Dictionary, stage_mult: float, color: Color, tags
 	var from: Vector3 = player.global_position
 	if _swap_with != null and is_instance_valid(_swap_with):
 		_swap_with.global_position = Vector3(from.x, _swap_with.global_position.y, from.z)
-		_swap_with.call("heal", float(ab.get("swap_heal", 0.0)))
-		_swap_with.set("hp", minf(float(_swap_with.get("hp_max")), float(_swap_with.get("hp")) + float(ab.get("swap_heal", 0.0))))
+		_swap_with.call("heal", float(GameData.opt(ab, "ability", "swap_heal")))
+		_swap_with.set("hp", minf(float(_swap_with.get("hp_max")), float(_swap_with.get("hp")) + float(GameData.opt(ab, "ability", "swap_heal"))))
 	_swap_with = null
 	player.casting_part._line_visual(from + Vector3.UP, spot + Vector3.UP, color)
 	var step: Vector3 = spot - from
 	step.y = 0.0
 	if step.length() > 0.2:
 		player._facing = step.normalized()
-	if float(ab.get("rear_window", 0.0)) > 0.0:
+	if float(GameData.opt(ab, "ability", "rear_window")) > 0.0:
 		player._rear_window_t = float(ab["rear_window"])
 	var foe: Node3D = player.casting_part._nearest_enemy_to(spot, 2.0)
 	if bool(ab.get("arrive_behind", false)) and foe != null:
@@ -492,7 +492,7 @@ func _blink(spot: Vector3, ab: Dictionary, stage_mult: float, color: Color, tags
 			continue
 		var to: Vector3 = e.global_position - player.global_position
 		to.y = 0.0
-		if to.length() <= float(ab.get("arrive_radius", 1.5)) + float(e.radius):
+		if to.length() <= float(GameData.opt(ab, "ability", "arrive_radius")) + float(e.radius):
 			player.hits_part.apply_hit(e, payload, tags, stage_mult)
 
 
@@ -502,14 +502,14 @@ func _fire_projectile(ab: Dictionary, stage_mult: float, color: Color, tags: Arr
 	bolt.set("tags", tags)
 	var payload: Dictionary = player.hits_part._payload(ab, "on_hit")
 	if ab.has("spend_pips") and payload.has("damage"):
-		payload["damage"] = float(payload["damage"]) + float(ab.get("pip_damage", 0.0)) * float(player.motion_part.spend_pips(int(ab["spend_pips"])))
+		payload["damage"] = float(payload["damage"]) + float(GameData.opt(ab, "ability", "pip_damage")) * float(player.motion_part.spend_pips(int(ab["spend_pips"])))
 	if payload.has("damage"):
 		payload["damage"] = float(payload["damage"]) * stage_mult        # carried on the bolt, already scaled
 	if ab.has("on_hit"):
 		bolt.set("payload", payload)
 	bolt.set("pierce", bool(ab.get("pierce", false)))
 	bolt.set("shatters_stone", bool(ab.get("shatters_stone", false)))
-	bolt.set("hit_radius", maxf(0.35, float(ab.get("width", 0.0)) * 0.5))
+	bolt.set("hit_radius", maxf(0.35, float(GameData.opt(ab, "ability", "width", "fire_projectile")) * 0.5))
 	bolt.set("ab", ab)
 	bolt.set("stage_mult", stage_mult)
 	bolt.set("dir", player.casting_part.lead_aim(ab, player._facing))          # a slow shot leads its foe a little (combat review R4b)
@@ -539,18 +539,18 @@ func _special_landing(ab: Dictionary) -> Variant:
 	if bool(ab.get("swap_thrall", false)):
 		# Gravestep: a point on one of your thralls swaps the two of you (it lands where you stood)
 		for s: Node3D in player.world_part.summons_near(cursor, 1.5):
-			if s.global_position.distance_to(player.global_position) <= float(ab.get("thrall_range", 14.0)):
+			if s.global_position.distance_to(player.global_position) <= float(GameData.opt(ab, "ability", "thrall_range")):
 				_swap_with = s
 				return Vector3(s.global_position.x, player.global_position.y, s.global_position.z)
-	if float(ab.get("corpse_range", 0.0)) > 0.0:
+	if float(GameData.opt(ab, "ability", "corpse_range")) > 0.0:
 		var f: Fallen = Fallen.nearest(player.get_tree(), cursor, 1.5)
 		if f != null and f.global_position.distance_to(player.global_position) <= float(ab["corpse_range"]):
 			return Vector3(f.global_position.x, player.global_position.y, f.global_position.z)
 	if bool(ab.get("arrive_behind", false)):
 		var foe: Node3D = player.casting_part._nearest_enemy_to(cursor, 1.5)
 		if foe == null:
-			foe = player.casting_part._skill_target(float(ab.get("range", 10.0)))
-		if foe != null and foe.global_position.distance_to(player.global_position) <= float(ab.get("range", 10.0)) + 1.0:
+			foe = player.casting_part._skill_target(float(GameData.opt(ab, "ability", "range")))
+		if foe != null and foe.global_position.distance_to(player.global_position) <= float(GameData.opt(ab, "ability", "range")) + 1.0:
 			var back: Vector3 = -(foe.get("facing") as Vector3) if foe.get("facing") is Vector3 else (foe.global_position - player.global_position).normalized()
 			var spot: Vector3 = foe.global_position + back.normalized() * (float(foe.get("radius")) + 1.0)
 			spot.y = player.global_position.y
@@ -573,7 +573,7 @@ func _smite(target: Node3D, point: Vector3, ab: Dictionary, stage_mult: float, t
 		payload["status_data"] = data
 		# Errand: long enough to walk there, then stand stand_s
 		var walk: float = Vector2(point.x - target.global_position.x, point.z - target.global_position.z).length() / maxf(0.5, float(target.get("speed")))
-		payload["status_s"] = walk + float(data.get("stand_s", 2.0))
+		payload["status_s"] = walk + float(GameData.opt(data, "status_data", "stand_s"))
 	player._strike_t = 0.2
 	var from_sky: bool = bool(payload.get("through", false))
 	player.casting_part._line_visual((target.global_position + Vector3.UP * 7.0) if from_sky else (player.global_position + Vector3.UP), target.global_position + Vector3.UP, color)
@@ -587,12 +587,12 @@ func _smite(target: Node3D, point: Vector3, ab: Dictionary, stage_mult: float, t
 		var sid: String = str(ab["spread_stacks"])
 		var n: int = int(target.call("status_stacks", sid)) if bool(target.call("has_status", sid)) else 0
 		if n > 0:
-			for e: Enemy in player.casting_part._enemies_near(target.global_position, float(ab.get("spread_radius", 4.0))):
+			for e: Enemy in player.casting_part._enemies_near(target.global_position, float(GameData.opt(ab, "ability", "spread_radius", "smite"))):
 				if e != target:
 					player.casting_part._line_visual(target.global_position + Vector3.UP, e.global_position + Vector3.UP, color)
 					var sopts: Dictionary = {"lasts": float(ab["status_s"])} if ab.has("status_s") else {}
 					e.add_status(sid, mini(n, int(ab.get("spread_max", n))), player, sopts)
-	if float(ab.get("command_radius", 0.0)) > 0.0:
+	if float(GameData.opt(ab, "ability", "command_radius")) > 0.0:
 		# Unleash the Pack: every summon of yours within command_radius leaps to the target, lands summon_hit, and is Unleashed
 		for s: Node3D in player.world_part.summons_near(player.global_position, float(ab["command_radius"])):
 			var to_t: Vector3 = target.global_position - s.global_position
@@ -604,9 +604,9 @@ func _smite(target: Node3D, point: Vector3, ab: Dictionary, stage_mult: float, t
 				player.hits_part.apply_hit(target, ab["summon_hit"], tags + ["thrall"], stage_mult)
 			if ab.get("summon_buff") is Dictionary:
 				var sb: Dictionary = (ab["summon_buff"] as Dictionary).duplicate()
-				sb["t"] = float(sb.get("duration", 6.0))
+				sb["t"] = float(GameData.opt(sb, "summon_buff", "duration"))
 				(s.get("buffs") as Dictionary)[str(sb.get("buff", "unleashed"))] = sb
-	var delay: float = float(ab.get("delay", 0.0))
+	var delay: float = float(GameData.opt(ab, "ability", "delay"))
 	if delay > 0.0:
 		var mark := target
 		SkillTimer.after(player.get_parent(), delay, func(_i: int) -> void:
@@ -625,7 +625,7 @@ func _grapple(to: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -> vo
 		return
 	player.casting_part._line_visual(player.global_position + Vector3.UP, to + Vector3.UP, GameData.affinity_color(str(ab.get("affinity", ""))))
 	player._facing = way.normalized()
-	var speed: float = float(ab.get("dash_speed", 24.0))
+	var speed: float = float(GameData.opt(ab, "ability", "dash_speed"))
 	player._dash_vel = way.normalized() * speed
 	player._dash_time = way.length() / speed
 	player._dash_pass = {}
@@ -638,7 +638,7 @@ func _grapple(to: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -> vo
 	player._dash_braced = false
 	player._dash_on_stop = {}
 	player._dash_on_arrive = ab.get("on_arrive", {})
-	player._dash_arrive_radius = float(ab.get("arrive_radius", 1.5))
+	player._dash_arrive_radius = float(GameData.opt(ab, "ability", "arrive_radius"))
 	player._dash_ab = ab
 	player._dash_stage_mult = stage_mult
 	player._dash_color = GameData.affinity_color(str(ab.get("affinity", "")))
@@ -649,7 +649,7 @@ func _grapple(to: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -> vo
 func _streak(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	var from: Vector3 = player.global_position
 	var dir: Vector3 = player._facing
-	var reach: float = float(ab.get("range", 7.0))
+	var reach: float = float(GameData.opt(ab, "ability", "range", "streak"))
 	var wall: Dictionary = player.casting_part._ray(from + Vector3.UP, from + Vector3.UP + dir * (reach + 0.5))
 	if not wall.is_empty():
 		reach = maxf(0.0, (from + Vector3.UP).distance_to(wall["position"]) - 0.6)
@@ -661,7 +661,7 @@ func _streak(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 		var along: float = to.dot(dir)
 		if along < 0.0 or along > reach:
 			continue
-		if (to - dir * along).length() > float(ab.get("pass_radius", 1.1)) + float(e.radius):
+		if (to - dir * along).length() > float(GameData.opt(ab, "ability", "pass_radius", "streak")) + float(e.radius):
 			continue
 		if e.has_method("blocks_shot") and bool(e.blocks_shot(from)):
 			reach = minf(reach, maxf(0.0, along - float(e.radius) - 0.6))      # a raised shield stops you short
@@ -699,19 +699,19 @@ func _tick_held(delta: float) -> void:
 		player._held = {}
 		return
 	if str(h["kind"]) == "charge_release":
-		if let_go or float(h["t"]) >= float(ab.get("charge_max", 1.0)):
+		if let_go or float(h["t"]) >= float(GameData.opt(ab, "ability", "charge_max")):
 			_release_charge()
 		return
 	var max_t: float = float(ab.get("duration", GameData.num("skills", "channel_max_s")))
-	var pay: float = float(ab.get("cost", 0.0)) * delta
+	var pay: float = float(GameData.opt(ab, "ability", "cost")) * delta
 	if let_go or float(h["t"]) >= max_t or player.essence < pay:
 		_end_held()
 		return
 	player.essence -= pay
 	var aff: String = str(h["aff"])
-	player.reflux_by[aff] = player.casting_part.reflux_of(aff) + pay * float(ab.get("reflux_per_cost", 1.0))
+	player.reflux_by[aff] = player.casting_part.reflux_of(aff) + pay * float(GameData.opt(ab, "ability", "reflux_per_cost"))
 	player.casting_part._advance(h["state"], pay)
-	if float(ab.get("pip_cost_per_s", 0.0)) > 0.0:
+	if float(GameData.opt(ab, "ability", "pip_cost_per_s")) > 0.0:
 		h["pip_t"] = float(h["pip_t"]) + delta * float(ab["pip_cost_per_s"])
 		while float(h["pip_t"]) >= 1.0:
 			h["pip_t"] = float(h["pip_t"]) - 1.0
@@ -721,7 +721,7 @@ func _tick_held(delta: float) -> void:
 	h["tick"] = float(h["tick"]) - delta
 	h["paused"] = float(h.get("paused", 0.0)) - delta
 	if float(h["tick"]) <= 0.0:
-		h["tick"] = float(ab.get("tick", 0.5))
+		h["tick"] = float(GameData.opt(ab, "ability", "tick"))
 		if float(h["paused"]) <= 0.0:
 			_channel_pulse()
 
@@ -739,7 +739,7 @@ func _channel_pulse() -> void:
 	match str(ab.get("shape", "self")):
 		"line":
 			var origin: Vector3 = player.global_position + Vector3.UP * 0.9
-			var reach: float = float(ab.get("range", 8.0))
+			var reach: float = float(GameData.opt(ab, "ability", "range", "cast_ability_8"))
 			var wall: Dictionary = player.casting_part._ray(origin, origin + player._facing * reach)
 			if not wall.is_empty():
 				reach = origin.distance_to(wall["position"])
@@ -748,26 +748,26 @@ func _channel_pulse() -> void:
 				var to: Vector3 = e.global_position - player.global_position
 				to.y = 0.0
 				var along: float = to.dot(player._facing)
-				if along >= 0.0 and along <= reach and (to - player._facing * along).length() <= float(ab.get("width", 1.0)) * 0.5 + float(e.radius):
+				if along >= 0.0 and along <= reach and (to - player._facing * along).length() <= float(GameData.opt(ab, "ability", "width", "channel_pulse")) * 0.5 + float(e.radius):
 					if best == null or along < (best.global_position - player.global_position).dot(player._facing):
 						best = e
 			player.casting_part._line_visual(origin, (best.global_position + Vector3.UP * 0.9) if best != null else origin + player._facing * reach, color)
 			if best != null:
 				player.hits_part.apply_hit(best, payload, tags, stage_mult, player._facing, memo)
 		"cone":
-			var half: float = deg_to_rad(float(ab.get("arc_deg", 60.0)) * 0.5)
-			player.combat_part._swing_visual(float(ab.get("range", 5.0)), false, false)
-			for e: Node3D in player.combat_part._in_arc(float(ab.get("range", 5.0)), half):
+			var half: float = deg_to_rad(float(GameData.opt(ab, "ability", "arc_deg", "channel_pulse")) * 0.5)
+			player.combat_part._swing_visual(float(GameData.opt(ab, "ability", "range", "channel_pulse")), false, false)
+			for e: Node3D in player.combat_part._in_arc(float(GameData.opt(ab, "ability", "range", "channel_pulse")), half):
 				player.hits_part.apply_hit(e, payload, tags, stage_mult, Vector3.ZERO, memo)
 		"nearest":
-			var near: Node3D = player.casting_part._nearest_enemy_to(player.global_position, float(ab.get("radius", 3.0)))
+			var near: Node3D = player.casting_part._nearest_enemy_to(player.global_position, float(GameData.opt(ab, "ability", "radius", "displace")))
 			if near != null:
 				player.casting_part._line_visual(player.global_position + Vector3.UP, near.global_position + Vector3.UP, color)
 				player.hits_part.apply_hit(near, payload, tags, stage_mult, Vector3.ZERO, memo)
 		"tether":
 			var t: Variant = h["target"]
 			if t == null or not is_instance_valid(t) or bool((t as Node).call("is_dead")) \
-					or (t as Node3D).global_position.distance_to(player.global_position) > float(ab.get("break_range", 9.0)) \
+					or (t as Node3D).global_position.distance_to(player.global_position) > float(GameData.opt(ab, "ability", "break_range")) \
 					or not player.casting_part._ray(player.global_position + Vector3.UP, (t as Node3D).global_position + Vector3.UP).is_empty():
 				player._held = {}
 				return
@@ -775,19 +775,19 @@ func _channel_pulse() -> void:
 			player.hits_part.apply_hit(t, payload, tags, stage_mult, Vector3.ZERO, memo)
 		_:
 			# self: everything round you (Deep Draught draws blood out; Regrowth mends you)
-			if float(ab.get("summon_heal_per_s", 0.0)) > 0.0:
-				for s: Node3D in player.world_part.summons_near(player.global_position, float(ab.get("radius", 6.0))):
-					s.call("heal", float(ab["summon_heal_per_s"]) * float(ab.get("tick", 0.5)))      # Regrowth mends your living summons
-			if float(ab.get("sink_per_s", 0.0)) > 0.0:
-				var pts: float = float(ab["sink_per_s"]) * float(ab.get("tick", 0.5))
+			if float(GameData.opt(ab, "ability", "summon_heal_per_s")) > 0.0:
+				for s: Node3D in player.world_part.summons_near(player.global_position, float(GameData.opt(ab, "ability", "radius"))):
+					s.call("heal", float(ab["summon_heal_per_s"]) * float(GameData.opt(ab, "ability", "tick")))      # Regrowth mends your living summons
+			if float(GameData.opt(ab, "ability", "sink_per_s")) > 0.0:
+				var pts: float = float(ab["sink_per_s"]) * float(GameData.opt(ab, "ability", "tick"))
 				var filled: Dictionary = player.body.fill_sinks(pts, true)
 				player.combat_part._wounds_closed(filled["closed"])
-				if player.body.has_wound("lost_arm") and float(ab.get("arm_rate", 0.0)) > 0.0:
+				if player.body.has_wound("lost_arm") and float(GameData.opt(ab, "ability", "arm_rate")) > 0.0:
 					var arm_fill: Dictionary = player.body.fill_one("lost_arm", pts * float(ab["arm_rate"]))     # a lost arm mends too, slower
 					player.combat_part._wounds_closed(arm_fill["closed"])
 				return
 			var taken := 0
-			for e: Enemy in player.casting_part._enemies_near(player.global_position, float(ab.get("radius", 5.0))):
+			for e: Enemy in player.casting_part._enemies_near(player.global_position, float(GameData.opt(ab, "ability", "radius", "channel_pulse"))):
 				var take: Dictionary = payload.get("consume_stacks", {})
 				var had := true
 				for st: String in take:
@@ -806,16 +806,16 @@ func _channel_pulse() -> void:
 				var p2: Dictionary = payload.duplicate()
 				p2.erase("consume_stacks")
 				player.hits_part.apply_hit(e, p2, tags, stage_mult, Vector3.ZERO, memo)
-			for i: int in int(ab.get("pools_per_tick", 0)):
+			for i: int in int(GameData.opt(ab, "ability", "pools_per_tick")):
 				var pool: BloodPool = null
 				for node: Node in player.get_tree().get_nodes_in_group("blood_pools"):
-					if (node as Node3D).global_position.distance_to(player.global_position) <= float(ab.get("radius", 5.0)):
+					if (node as Node3D).global_position.distance_to(player.global_position) <= float(GameData.opt(ab, "ability", "radius", "channel_pulse")):
 						pool = node as BloodPool
 						break
 				if pool == null:
 					break
 				taken += pool.drink()
-			player.hits_part.gain_blood(taken * int(ab.get("blood_per_take", 1)))
+			player.hits_part.gain_blood(taken * int(GameData.opt(ab, "ability", "blood_per_take")))
 
 
 ## Let go of a held skill: a charge goes off; a channel simply stops.
@@ -835,11 +835,11 @@ func _release_charge() -> void:
 	var h: Dictionary = player._held
 	player._held = {}
 	var ab: Dictionary = (h["ab"] as Dictionary).duplicate(true)
-	var frac: float = clampf(float(h["t"]) / maxf(0.01, float(ab.get("charge_max", 1.0))), 0.0, 1.0)
+	var frac: float = clampf(float(h["t"]) / maxf(0.01, float(GameData.opt(ab, "ability", "charge_max"))), 0.0, 1.0)
 	if bool(ab.get("focus_spend", false)) and player.focus > 0:
 		# Whetted Cut: every stack of Edge Heat spent adds per_focus_mult to its damage_mult
-		var add: float = float(ab.get("per_focus_mult", 0.0)) * float(player.focus)
-		ab["damage_mult"] = float(ab.get("damage_mult", 1.0)) + add
+		var add: float = float(GameData.opt(ab, "ability", "per_focus_mult")) * float(player.focus)
+		ab["damage_mult"] = float(GameData.opt(ab, "ability", "damage_mult")) + add
 		if ab.has("damage_mult_min"):
 			ab["damage_mult_min"] = float(ab["damage_mult_min"]) + add
 		player._float("edge spent x%d" % player.focus, Color(1.0, 0.7, 0.4))
@@ -864,13 +864,13 @@ func _release_charge() -> void:
 				var hit2: Dictionary = (ab["on_hit"] as Dictionary).duplicate()
 				hit2["damage"] = float(ab["damage"])
 				ab["on_hit"] = hit2
-			player.world_part._start_blast(player.casting_part._aim_point(float(ab.get("range", 12.0))), ab, stage_mult, tags)
+			player.world_part._start_blast(player.casting_part._aim_point(float(GameData.opt(ab, "ability", "range", "release_charge"))), ab, stage_mult, tags)
 		"beam":
-			ab["width"] = float(ab.get("line_width", ab.get("width", 1.0)))
+			ab["width"] = float(ab.get("line_width", GameData.opt(ab, "ability", "width", "channel_pulse")))
 			_fire_beam(ab, stage_mult, GameData.affinity_color(str(h["aff"])), tags)
 		"streak":
 			# Stored Bolt: you cross range_min at a tap to range at a full hold, in an instant, through bodies
-			ab["range"] = lerpf(float(ab.get("range_min", ab.get("range", 6.0))), float(ab.get("range", 8.0)), frac)
+			ab["range"] = lerpf(float(ab.get("range_min", GameData.opt(ab, "ability", "range", "cast_ability"))), float(GameData.opt(ab, "ability", "range", "cast_ability_8")), frac)
 			var pass_hit: Dictionary = (ab.get("on_pass", {}) as Dictionary).duplicate()
 			if not pass_hit.has("damage") and ab.has("damage"):
 				pass_hit["damage"] = float(ab["damage"])
@@ -894,22 +894,22 @@ func projectile_landed(from: Vector3, at: Vector3, ab: Dictionary, tags: Array) 
 		var fly: Vector3 = at - from
 		fly.y = 0.0
 		fly = fly.normalized() if fly.length() > 0.05 else player._facing
-		var n: int = int(sp.get("count", 3))
-		var arc: float = deg_to_rad(float(sp.get("arc_deg", 60.0)))
-		var line: Dictionary = {"width": float(sp.get("width", 0.4)), "on_hit": (sp.get("on_hit", {}) as Dictionary).duplicate(), "affinity": ab.get("affinity", "")}
-		(line["on_hit"] as Dictionary)["damage"] = float(sp.get("damage", 20.0))
+		var n: int = int(GameData.opt(sp, "split", "count"))
+		var arc: float = deg_to_rad(float(GameData.opt(sp, "split", "arc_deg")))
+		var line: Dictionary = {"width": float(GameData.opt(sp, "split", "width")), "on_hit": (sp.get("on_hit", {}) as Dictionary).duplicate(), "affinity": ab.get("affinity", "")}
+		(line["on_hit"] as Dictionary)["damage"] = float(GameData.opt(sp, "split", "damage"))
 		var origin: Vector3 = Vector3(at.x, player.global_position.y + 0.9, at.z) + fly * 0.9
 		for i: int in n:
 			var ang: float = -arc * 0.5 + arc * (float(i) / maxf(1.0, float(n - 1)))
-			_beam_leg(origin, fly.rotated(Vector3.UP, ang), float(sp.get("range", 7.0)), line, 1.0, GameData.affinity_color(str(ab.get("affinity", ""))), tags + ["split"])
+			_beam_leg(origin, fly.rotated(Vector3.UP, ang), float(GameData.opt(sp, "split", "range")), line, 1.0, GameData.affinity_color(str(ab.get("affinity", ""))), tags + ["split"])
 	if ab.has("trail"):
 		var cfg: Dictionary = ab["trail"]
 		var zone := GroundZone.new()
 		zone.from = Vector3(from.x, player.global_position.y, from.z)
 		zone.to = Vector3(at.x, player.global_position.y, at.z)
-		zone.width = float(cfg.get("width", 1.0))
-		zone.life = float(cfg.get("life", 3.0))
-		zone.tick_s = float(cfg.get("tick_s", 1.0))
+		zone.width = float(GameData.opt(cfg, "zone", "width"))
+		zone.life = float(GameData.opt(cfg, "zone", "life", "end_dash"))
+		zone.tick_s = float(GameData.opt(cfg, "zone", "tick_s"))
 		zone.payload = cfg.get("payload", {})
 		zone.tags = tags + ["zone"]
 		zone.caster = player
@@ -923,8 +923,8 @@ func projectile_landed(from: Vector3, at: Vector3, ab: Dictionary, tags: Array) 
 		dz.caster = player
 		dz.dark = bool(cfg2.get("dark", false))
 		dz.kind = "dark_ground" if dz.dark else ""
-		dz.radius = float(cfg2.get("radius", 2.5))
-		dz.life = float(cfg2.get("life", 6.0))
+		dz.radius = float(GameData.opt(cfg2, "zone", "radius", "projectile_landed"))
+		dz.life = float(GameData.opt(cfg2, "zone", "life", "projectile_landed"))
 		dz.bright = false
 		dz.tags = tags + ["zone"]
 		dz.color = GameData.affinity_color(str(ab.get("affinity", "")))
@@ -941,5 +941,5 @@ func projectile_hit_corpse(f: Fallen, ab: Dictionary, tags: Array, stage_mult: f
 	f.spend()
 	FloatText.spawn(player.get_parent(), at + Vector3.UP * 0.5, "BURST", GameData.affinity_color(str(ab.get("affinity", ""))))
 	var burst: Dictionary = (ab.get("corpse_burst", {}) as Dictionary).duplicate()
-	burst["burst_radius"] = float(burst.get("radius", 2.5))
+	burst["burst_radius"] = float(GameData.opt(burst, "payload", "radius"))
 	player.hits_part._burst_at(at, burst, tags + ["corpse"], stage_mult)

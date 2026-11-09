@@ -34,7 +34,7 @@ func reach_now() -> float:
 	if c.has("melee_range"):
 		r = float(c["melee_range"])                     # a conjured weapon's own reach (Thirsting Glaive)
 	for bid: String in player.buffs:
-		r += float((player.buffs[bid] as Dictionary).get("strike_reach_bonus", 0.0))       # Red Frenzy
+		r += float(GameData.opt((player.buffs[bid] as Dictionary), "ability", "strike_reach_bonus"))       # Red Frenzy
 	return r
 
 
@@ -306,7 +306,7 @@ func use_consumable(item_id: String) -> String:
 		"heal":
 			if player.body.total() >= player.body.total_max():
 				return "You are not hurt."
-			player.body.heal(float(use.get("amount", 0.0)))
+			player.body.heal(float(GameData.opt(use, "item.use", "amount")))
 		_:
 			return "Nothing comes of it."
 	player.inventory.remove(item_id)

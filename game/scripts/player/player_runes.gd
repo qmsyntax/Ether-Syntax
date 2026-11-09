@@ -135,8 +135,8 @@ func preview_bind(state: Dictionary, concept: String) -> Array[Dictionary]:
 		return out
 	var strike: float = float(player._p["melee_damage"]) * player.economy_part.weapon_stat("melee_damage_mult", true)
 	# the stage step comes with every keystone: the damage rows carry it too
-	var mult_now: float = player.casting_part.ability_damage_mult(stage) * float(now.get("damage_all", 1.0))
-	var mult_then: float = player.casting_part.ability_damage_mult(stage + 1) * float(then.get("damage_all", 1.0))
+	var mult_now: float = player.casting_part.ability_damage_mult(stage) * float(GameData.opt(now, "ability", "damage_all"))
+	var mult_then: float = player.casting_part.ability_damage_mult(stage + 1) * float(GameData.opt(then, "ability", "damage_all"))
 	out.append({"label": "Stage", "before": str(stage), "after": str(stage + 1), "better": true})
 	if now.has("damage"):
 		_preview_row(out, "Damage", float(now["damage"]) * mult_now, float(then["damage"]) * mult_then, "%d", true)
@@ -684,7 +684,7 @@ func rune_preview(index: int) -> Dictionary:
 	_apply_ascension(before, state)
 	_apply_ascension(after, state)
 	# the rule set names the fields worth showing: [{path, group, label, lower_is_better, unit}]
-	var stage_mult: float = player.casting_part.ability_damage_mult(int(state["stage"])) * float(before.get("damage_all", 1.0))
+	var stage_mult: float = player.casting_part.ability_damage_mult(int(state["stage"])) * float(GameData.opt(before, "ability", "damage_all"))
 	var rows: Array[Dictionary] = _stat_rows(before, after, fx.get("fields", []), stage_mult)
 	if after.has("rune_repeat"):
 		var rep: Dictionary = after["rune_repeat"]
@@ -760,8 +760,8 @@ func skill_details(index: int) -> Dictionary:
 	if before.is_empty():
 		return {}
 	var fx: Dictionary = Runes.active().effects(_sealed_word(index), rune_context(index))
-	var stage_mult: float = player.casting_part.ability_damage_mult(int(state["stage"])) * float(before.get("damage_all", 1.0))
-	var stage_after: float = player.casting_part.ability_damage_mult(int(state["stage"])) * float(after.get("damage_all", 1.0))
+	var stage_mult: float = player.casting_part.ability_damage_mult(int(state["stage"])) * float(GameData.opt(before, "ability", "damage_all"))
+	var stage_after: float = player.casting_part.ability_damage_mult(int(state["stage"])) * float(GameData.opt(after, "ability", "damage_all"))
 	var fields: Array = (fx.get("fields", []) as Array).duplicate(true)
 	if str(before.get("kind", "")) == "channel":
 		for f: Dictionary in fields:
@@ -791,8 +791,8 @@ func skill_details(index: int) -> Dictionary:
 			derived.append({"label": "Damage, each jump", "b": hit_b * cut * stage_mult if jumps_b > 0 else 0.0, "a": hit_a * cut * stage_after if jumps_a > 0 else 0.0, "f": {}})
 		if not before.has("jump_radius"):
 			derived.append({"label": "Jumps reach", "b": GameData.num("skills", "jump_radius"), "a": GameData.num("skills", "jump_radius"), "f": {"unit": " m"}})
-	derived.append({"label": "Reflux left behind", "b": float(before["cost"]) * float(before.get("reflux_per_cost", 1.0)),
-		"a": float(after["cost"]) * float(after.get("reflux_per_cost", 1.0)), "f": {}, "lower": true})
+	derived.append({"label": "Reflux left behind", "b": float(before["cost"]) * float(GameData.opt(before, "ability", "reflux_per_cost")),
+		"a": float(after["cost"]) * float(GameData.opt(after, "ability", "reflux_per_cost")), "f": {}, "lower": true})
 	for d: Dictionary in derived:
 		var fd: Dictionary = d["f"]
 		rows.append({"label": str(d["label"]), "group": "derived", "path": "", "before": _stat_text(float(d["b"]), fd), "after": _stat_text(float(d["a"]), fd),
@@ -927,14 +927,14 @@ func on_construct_subdued(tier: String, concept: String) -> Array[String]:
 	var source: String = "from the %s you subdued" % ConstructWords.phrase(tier, concept)
 	var own: Array[String] = _unknown_usable(ConstructWords.runes(tier, concept))
 	var out: Array[String] = []
-	for n: int in int(by_tier.get("reveals", 0)):
+	for n: int in int(GameData.opt(by_tier, "discovery.construct_tier", "reveals")):
 		var rid: String = ""
 		if not own.is_empty():
 			rid = own[player.rng.randi() % own.size()]
 			own.erase(rid)
 			discover_rune(rid, source)
 		else:
-			rid = reveal_rune(base, entry.get("universal", []), float(by_tier.get("universal_chance", 0.0)), source)
+			rid = reveal_rune(base, entry.get("universal", []), float(GameData.opt(by_tier, "discovery.construct_tier", "universal_chance")), source)
 		if rid != "":
 			out.append(rid)
 	return out
@@ -946,7 +946,7 @@ func _roll_kill_rune(target: Node) -> void:
 	if kind_v == null or str(kind_v) == "":
 		return
 	var cfg: Dictionary = GameData.rune_discovery.get("kills", {})
-	var chance: float = float((cfg.get("chance_by_kind", {}) as Dictionary).get(str(kind_v), cfg.get("chance", 0.0)))
+	var chance: float = float((cfg.get("chance_by_kind", {}) as Dictionary).get(str(kind_v), GameData.opt(cfg, "discovery.kills", "chance")))
 	if player.rng.randf() >= chance:
 		return
 	kill_reveals(str(kind_v))
@@ -959,7 +959,7 @@ func kill_reveals(kind: String) -> String:
 	var base: Array = []
 	for a: String in player.affinities:
 		base.append_array((entry.get("base", {}) as Dictionary).get(a, []))
-	return reveal_rune(base, entry.get("universal", []), float(cfg.get("universal_chance", 0.0)), "from the %s you killed" % kind)
+	return reveal_rune(base, entry.get("universal", []), float(GameData.opt(cfg, "discovery.kills", "universal_chance")), "from the %s you killed" % kind)
 
 
 ## Read a rune stone: once per stone, a rune of one of your affinities ("base") or a universal one.

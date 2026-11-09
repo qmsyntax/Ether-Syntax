@@ -45,7 +45,7 @@ func deal_damage(target: Node, base: float, tags: Array = [], opts: Dictionary =
 	# Heat (design/05 2.2): for an affinity with damage_per_reflux, its own reflux multiplies its damage
 	for aff: String in player.affinities:
 		if ctx.has_tag(aff):
-			var per: float = float(GameData.affinity(aff).get("damage_per_reflux", 0.0))
+			var per: float = float(GameData.opt(GameData.affinity(aff), "affinity", "damage_per_reflux"))
 			if per > 0.0 and not ctx.has_tag("cold"):       # a skill that spends the heat does not also ride it
 				# White Heat (heat_scale): the Heat bonus on this hit counts heat_scale times
 				ctx.mult *= 1.0 + (player.hits_part.heat_mult(aff) - 1.0) * float(opts.get("heat_scale", 1.0))
@@ -60,12 +60,12 @@ func deal_damage(target: Node, base: float, tags: Array = [], opts: Dictionary =
 		# Lee (wind): a hit from this affinity on a back does more again
 		for aff: String in player.affinities:
 			if ctx.has_tag(aff):
-				ctx.mult *= 1.0 + float(GameData.affinity(aff).get("rear_bonus", 0.0))
+				ctx.mult *= 1.0 + float(GameData.opt(GameData.affinity(aff), "affinity", "rear_bonus"))
 	# Ambush (Dark's rule, ambush_mult): your first hit out of Unseen counts as from behind and past the guard, and more
 	if not ctx.has_tag("dot") and not ctx.is_scenery and (player.hits_part._hidden() or player._cast_hidden_t > 0.0):
 		var amb := 1.0
 		for aff2: String in player.affinities:
-			amb = maxf(amb, float(GameData.affinity(aff2).get("ambush_mult", 1.0)))
+			amb = maxf(amb, float(GameData.opt(GameData.affinity(aff2), "affinity", "ambush_mult")))
 		if amb > 1.0:
 			ctx.mult *= amb
 			from_behind = true
@@ -98,7 +98,7 @@ func deal_damage(target: Node, base: float, tags: Array = [], opts: Dictionary =
 	if not ctx.has_tag("dot"):
 		var regrow: float = 0.0
 		for bid: String in player.buffs:
-			regrow += float((player.buffs[bid] as Dictionary).get("heal_per_hit", 0.0))       # Overgrowth
+			regrow += float(GameData.opt((player.buffs[bid] as Dictionary), "ability", "heal_per_hit"))       # Overgrowth
 		for s: Node3D in player.world_part.summons_near(player.global_position, 999.0):
 			regrow += float(s.get("heal_per_hit"))                                    # a Heartseed at your side
 		if regrow > 0.0:
@@ -135,7 +135,7 @@ func deal_damage(target: Node, base: float, tags: Array = [], opts: Dictionary =
 		# gathering (combat review R1): raw essence manipulation - a landed strike draws a little in, never past the tank
 		player.essence = minf(player.essence_max, player.essence + float(combat["strike_gathers_essence"]))
 		if not ctx.killed and target.has_method("take_poise"):
-			target.call("take_poise", float(combat["strike_poise"]) * (2.0 if ctx.has_tag("overcharge") else 1.0) * player.casting_part.buff_num("strike_poise_mult") * float(conjured().get("melee_poise_mult", 1.0)))
+			target.call("take_poise", float(combat["strike_poise"]) * (2.0 if ctx.has_tag("overcharge") else 1.0) * player.casting_part.buff_num("strike_poise_mult") * float(GameData.opt(conjured(), "conjure", "melee_poise_mult")))
 		if not ctx.killed and conjured().get("on_strike") is Dictionary:
 			_conjured_strike(target, conjured()["on_strike"])
 		if not ctx.killed and target.has_method("add_status"):
@@ -176,21 +176,21 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 	var unsoftened: float = amount * player.progress_part.temper_stat("incoming_mult") * (1.0 - armour() / 100.0) * player.hits_part._inured_mult()
 	for sid: String in player.buffs:
 		var sb: Dictionary = player.buffs[sid]
-		if float(sb.get("softened_return", 0.0)) > 0.0:
-			sb["softened"] = float(sb.get("softened", 0.0)) + unsoftened * maxf(0.0, 1.0 - float(sb.get("incoming_mult", 1.0)))
+		if float(GameData.opt(sb, "ability", "softened_return")) > 0.0:
+			sb["softened"] = float(sb.get("softened", 0.0)) + unsoftened * maxf(0.0, 1.0 - float(GameData.opt(sb, "ability", "incoming_mult")))
 	# a blow thrown from arm's length, as against a shot that left its owner far behind
 	var melee_from: Node3D = source as Node3D if (source is Node3D and (source as Node).is_in_group("enemies") and (source as Node3D).global_position.distance_to(player.global_position) <= 4.5) else null
 	if melee_from != null and player.buffs.has("backwash"):
 		var wash: Dictionary = player.buffs["backwash"]
-		ctx.base *= float(wash.get("melee_taken_mult", 0.5))
+		ctx.base *= float(GameData.opt(wash, "ability", "melee_taken_mult"))
 		# the splash: whoever threw the blow, and everyone close to you, takes the payload
-		var splash: Dictionary = wash.get("on_hit", {"shove": float(wash.get("shove", 3.0)), "status": "soaked"})
-		var wet: Array[Node3D] = player.casting_part._enemies_near(player.global_position, float(wash.get("radius", 0.0)))
+		var splash: Dictionary = wash.get("on_hit", {"shove": float(GameData.opt(wash, "ability", "shove")), "status": "soaked"})
+		var wet: Array[Node3D] = player.casting_part._enemies_near(player.global_position, float(GameData.opt(wash, "ability", "radius", "take_hit")))
 		if not wet.has(melee_from):
 			wet.append(melee_from)
 		for e: Node3D in wet:
 			player.hits_part.apply_hit(e, splash, ["ability", "water", "backwash"], 1.0, e.global_position - player.global_position)
-		wash["hits"] = int(wash.get("hits", 1)) - 1
+		wash["hits"] = int(GameData.opt(wash, "ability", "hits")) - 1
 		if int(wash["hits"]) <= 0:
 			player.buffs.erase("backwash")
 	if melee_from != null:
@@ -198,12 +198,12 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 			var b: Dictionary = player.buffs[bid]
 			if str(b.get("attacker_status", "")) != "" and is_instance_valid(melee_from) \
 					and melee_from.global_position.distance_to(player.global_position) <= float(b.get("attacker_reach", INF)) + float(melee_from.get("radius")):
-				melee_from.call("add_status", str(b["attacker_status"]), 1, player, {"lasts": float(b.get("attacker_status_s", 3.0))})
+				melee_from.call("add_status", str(b["attacker_status"]), 1, player, {"lasts": float(GameData.opt(b, "ability", "attacker_status_s"))})
 	if melee_from != null:
 		# a buff that answers a blow (Static Coat's retaliate): damage, and its coat's payload on whoever threw it
 		for rid: String in player.buffs.keys():
 			var rb: Dictionary = player.buffs.get(rid, {})
-			if float(rb.get("retaliate", 0.0)) > 0.0 and is_instance_valid(melee_from) and not bool(melee_from.call("is_dead")):
+			if float(GameData.opt(rb, "ability", "retaliate")) > 0.0 and is_instance_valid(melee_from) and not bool(melee_from.call("is_dead")):
 				deal_damage(melee_from, float(rb["retaliate"]), ["ability", str(rb.get("affinity", "")), "retaliate"])
 				var rcoat: Variant = rb.get("coat")
 				if rcoat is Dictionary and is_instance_valid(melee_from) and not bool(melee_from.call("is_dead")):
@@ -223,7 +223,7 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 	player.meditating = false
 	if not player._held.is_empty() and bool((player._held["ab"] as Dictionary).get("breaks_on_hit", false)):
 		player.moves_part._end_held()
-	elif not player._held.is_empty() and float((player._held["ab"] as Dictionary).get("pause_on_hit_s", 0.0)) > 0.0:
+	elif not player._held.is_empty() and float(GameData.opt((player._held["ab"] as Dictionary), "ability", "pause_on_hit_s")) > 0.0:
 		player._held["paused"] = float((player._held["ab"] as Dictionary)["pause_on_hit_s"])        # Regrowth: a blow stops it a moment
 	for e: TalentEffect in player.effects:
 		e.on_incoming(ctx)
@@ -233,7 +233,7 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 		player.motion_part._kick(Vector3.ZERO, GameData.num("feel", "camera_kick_hurt_m"), source)
 	if heavy and not braced and not shrouded and not player.casting_part._buff_flag("immovable"):   # set, shrouded or a millstone: nothing knocks you off it
 		var combat: Dictionary = GameData.balance["combat"]
-		var green_poise: float = float(player.hits_part.green_rule().get("poise_loss_mult", 1.0)) if player.hits_part.in_the_green() else 1.0
+		var green_poise: float = float(GameData.opt(player.hits_part.green_rule(), "affinity.in_the_green", "poise_loss_mult")) if player.hits_part.in_the_green() else 1.0
 		player.poise -= float(combat["heavy_poise_damage"]) * player.casting_part.buff_num("poise_loss_mult") * green_poise / maxf(0.01, player.casting_part.buff_num("poise_mult"))
 		if player.poise <= 0.0 and _turn_away():
 			player.poise = float(combat["player_poise"])     # Absolution: the stagger is turned away
@@ -259,7 +259,7 @@ func _conjured_strike(target: Node, on_strike: Dictionary) -> void:
 	var p: Dictionary = on_strike.duplicate()
 	var take: Dictionary = p.get("consume_stacks", {})
 	p.erase("consume_stacks")
-	var per: int = int(p.get("blood_per_take", 0))
+	var per: int = int(GameData.opt(p, "payload", "blood_per_take"))
 	p.erase("blood_per_take")
 	for st: String in take:
 		if bool(target.call("has_status", st)):
@@ -279,14 +279,14 @@ func _conjured_strike(target: Node, on_strike: Dictionary) -> void:
 func _focus_max() -> int:
 	var m := 0
 	for aff: String in player.affinities:
-		m = maxi(m, int(GameData.affinity(aff).get("focus_max", 0)))
+		m = maxi(m, int(GameData.opt(GameData.affinity(aff), "affinity", "focus_max")))
 	return m
 
 
 func _focus_cools() -> float:
 	var s := 0.0
 	for aff: String in player.affinities:
-		s = maxf(s, float(GameData.affinity(aff).get("focus_cools_s", 0.0)))
+		s = maxf(s, float(GameData.opt(GameData.affinity(aff), "affinity", "focus_cools_s")))
 	return s
 
 
@@ -403,7 +403,7 @@ func life_heal(points: float) -> float:
 		_wounds_closed(filled["closed"])
 	var to_poise := 0.0
 	for bid: String in player.buffs:
-		to_poise = maxf(to_poise, float((player.buffs[bid] as Dictionary).get("heal_to_poise", 0.0)))
+		to_poise = maxf(to_poise, float(GameData.opt((player.buffs[bid] as Dictionary), "ability", "heal_to_poise")))
 	if to_poise > 0.0:
 		player.poise = minf(float(GameData.num("combat", "player_poise")), player.poise + used * to_poise)       # Corded Muscle
 	return used
@@ -421,14 +421,14 @@ func heal_rate_mult() -> float:
 		return 1.0
 	var m := 1.0
 	for aff: String in player.affinities:
-		m = maxf(m, float(GameData.affinity(aff).get("heal_mult_after_hit", 1.0)))
+		m = maxf(m, float(GameData.opt(GameData.affinity(aff), "affinity", "heal_mult_after_hit")))
 	return m
 
 
 func _after_hit_s() -> float:
 	var s := 0.0
 	for aff: String in player.affinities:
-		s = maxf(s, float(GameData.affinity(aff).get("after_hit_s", 0.0)))
+		s = maxf(s, float(GameData.opt(GameData.affinity(aff), "affinity", "after_hit_s")))
 	return s
 
 
@@ -451,7 +451,7 @@ func drain_heal(amount: float, _from: Node = null, _capped: bool = true) -> floa
 	for aff: String in player.affinities:
 		var st: Dictionary = GameData.affinity(aff).get("stolen", {})
 		if not st.is_empty():
-			player.hits_part.store_add("stolen", int(round(amount)), int(st.get("max", 100)), float(st.get("fade_s", 12.0)))
+			player.hits_part.store_add("stolen", int(round(amount)), int(GameData.opt(st, "affinity.stolen", "max")), float(GameData.opt(st, "affinity.stolen", "fade_s")))
 	return healed
 
 
@@ -478,12 +478,12 @@ func _put_coat(ab: Dictionary, holder: String = "") -> void:
 			else:
 				b.erase("coat")
 	var c: Dictionary = (coat as Dictionary).duplicate(true)
-	if int(c.get("charges", 0)) > 0:
+	if int(GameData.opt(c, "coat", "charges")) > 0:
 		c["charges_left"] = int(c["charges"])
 	if holder != "" and player.buffs.has(holder):
 		(player.buffs[holder] as Dictionary)["coat"] = c
 		return
-	player.buffs["coat_" + aff] = {"t": float(c.get("duration", ab.get("duration", 6.0))), "coat": c, "affinity": aff, "coat_only": true,
+	player.buffs["coat_" + aff] = {"t": float(c.get("duration", GameData.opt(ab, "ability", "duration", "put_coat"))), "coat": c, "affinity": aff, "coat_only": true,
 		"name": str(ab.get("name", ""))}
 
 
@@ -519,7 +519,7 @@ func deflects_shots() -> bool:
 func deflect_radius() -> float:
 	var r := 0.0
 	for id: String in player.buffs:
-		r = maxf(r, float((player.buffs[id] as Dictionary).get("deflect_radius", 0.0)))
+		r = maxf(r, float(GameData.opt((player.buffs[id] as Dictionary), "ability", "deflect_radius")))
 	return r
 
 
@@ -527,7 +527,7 @@ func deflect_radius() -> float:
 func shot_deflected() -> void:
 	var n := 0
 	for id: String in player.buffs:
-		n += int((player.buffs[id] as Dictionary).get("gain_pips_per_deflect", 0))
+		n += int(GameData.opt((player.buffs[id] as Dictionary), "ability", "gain_pips_per_deflect"))
 	if n > 0 and player.motion_part.has_slipstream():
 		player.pips = mini(GameData.inum("slipstream", "max"), player.pips + n)
 
@@ -545,7 +545,7 @@ func _try_counter(source: Node) -> bool:
 		if not b.has("window_s") or not (b.get("counter") is Dictionary):
 			continue
 		var foe := source as Node3D
-		var close: bool = foe.global_position.distance_to(player.global_position) <= float(b.get("counter_reach", 3.0)) + float(foe.get("radius"))
+		var close: bool = foe.global_position.distance_to(player.global_position) <= float(GameData.opt(b, "ability", "counter_reach")) + float(foe.get("radius"))
 		if not close and not bool(b.get("refuses_shots", false)):
 			continue
 		b["countered"] = true
@@ -555,7 +555,7 @@ func _try_counter(source: Node) -> bool:
 			return true
 		var aff: String = str(b.get("affinity", ""))
 		var tags: Array = ["ability", aff, id, "counter"]
-		if float(b.get("behind_dist", 0.0)) > 0.0:
+		if float(GameData.opt(b, "ability", "behind_dist")) > 0.0:
 			var back: Vector3 = -(foe.get("facing") as Vector3) if foe.get("facing") is Vector3 else (foe.global_position - player.global_position).normalized()
 			back.y = 0.0
 			var spot: Vector3 = foe.global_position + back.normalized() * (float(foe.get("radius")) + float(b["behind_dist"]))
@@ -571,17 +571,17 @@ func _try_counter(source: Node) -> bool:
 		player.hits_part.apply_hit(foe, b["counter"], tags, 1.0)
 		if b.get("burst") is Dictionary:
 			var bb: Dictionary = (b["burst"] as Dictionary).duplicate()
-			bb["burst_radius"] = float(b.get("burst_radius", 2.0))
+			bb["burst_radius"] = float(GameData.opt(b, "ability", "burst_radius"))
 			player.hits_part._burst_at(player.global_position, bb, tags, 1.0, foe)
-		if int(b.get("focus_gain", 0)) > 0 and is_instance_valid(foe):
+		if int(GameData.opt(b, "ability", "focus_gain")) > 0 and is_instance_valid(foe):
 			if player._focus_target != foe:
 				player._focus_target = foe
 				player.focus = 0
 			player.focus = mini(_focus_max(), player.focus + int(b["focus_gain"]))
 			player._focus_t = _focus_cools()
-		if int(b.get("gain_pips", 0)) > 0 and player.motion_part.has_slipstream():
+		if int(GameData.opt(b, "ability", "gain_pips")) > 0 and player.motion_part.has_slipstream():
 			player.pips = mini(GameData.inum("slipstream", "max"), player.pips + int(b["gain_pips"]))
-		if float(b.get("counter_ward", 0.0)) > 0.0:
+		if float(GameData.opt(b, "ability", "counter_ward")) > 0.0:
 			add_ward(float(b["counter_ward"]), -1.0, {"from": id})
 		return true
 	return false
@@ -597,7 +597,7 @@ func shove(dir: Vector3, metres: float) -> void:
 	if _turn_away():
 		return                                  # Absolution turns a hold away
 	if player.hits_part.in_the_green():
-		metres *= float(player.hits_part.green_rule().get("shove_mult", 1.0))
+		metres *= float(GameData.opt(player.hits_part.green_rule(), "affinity.in_the_green", "shove_mult"))
 	player._shoved_dir = flat.normalized()
 	player._shoved_left = metres
 	player._dash_time = 0.0
@@ -609,7 +609,7 @@ func shove(dir: Vector3, metres: float) -> void:
 func _turn_away() -> bool:
 	for bid: String in player.buffs:
 		var b: Dictionary = player.buffs[bid]
-		if int(b.get("turns_away", 0)) > 0:
+		if int(GameData.opt(b, "ability", "turns_away")) > 0:
 			b["turns_away"] = int(b["turns_away"]) - 1
 			player._float("turned away", Color(1.0, 0.95, 0.8))
 			return true
@@ -732,7 +732,7 @@ func _show_range_ring(on: bool) -> void:
 func _apply_damage(amount: float, heavy: bool) -> float:
 	var floor_hp: float = 0.0
 	for bid: String in player.buffs:
-		floor_hp = maxf(floor_hp, float((player.buffs[bid] as Dictionary).get("floor_health", 0.0)))
+		floor_hp = maxf(floor_hp, float(GameData.opt((player.buffs[bid] as Dictionary), "ability", "floor_health")))
 	if floor_hp > 0.0:
 		amount = minf(amount, maxf(0.0, player.body.hp - floor_hp))    # Embalm: you cannot die while it lasts
 	var applied: float = player.body.apply_damage(amount, heavy)
@@ -757,9 +757,9 @@ func _maybe_wound(applied: float) -> void:
 		return
 	# Tourniquet: held blood closes the wound before it opens
 	for bid: String in player.buffs:
-		var need: int = int((player.buffs[bid] as Dictionary).get("blood_per_wound", 0))
-		if need > 0 and player.held_blood + player.hits_part._pools_within(float((player.buffs[bid] as Dictionary).get("pool_radius", 0.0))) >= need:
-			player.hits_part._spend_blood_first_pools(need, float((player.buffs[bid] as Dictionary).get("pool_radius", 0.0)))
+		var need: int = int(GameData.opt((player.buffs[bid] as Dictionary), "ability", "blood_per_wound"))
+		if need > 0 and player.held_blood + player.hits_part._pools_within(float(GameData.opt((player.buffs[bid] as Dictionary), "ability", "pool_radius"))) >= need:
+			player.hits_part._spend_blood_first_pools(need, float(GameData.opt((player.buffs[bid] as Dictionary), "ability", "pool_radius")))
 			player._float("staunched", GameData.affinity_color("blood").lightened(0.3))
 			return
 	var names: Array = w["names_big_hit"] if big else w["names_low"]
@@ -845,7 +845,7 @@ func _swing(multiplier: float, reach: float, tags: Array) -> void:
 
 ## What one bare strike does, before any skill or stage multiplies it.
 func strike_damage() -> float:
-	return float(player._p["melee_damage"]) * player.economy_part.weapon_stat("melee_damage_mult", true) * float(conjured().get("melee_damage_mult", 1.0))
+	return float(player._p["melee_damage"]) * player.economy_part.weapon_stat("melee_damage_mult", true) * float(GameData.opt(conjured(), "conjure", "melee_damage_mult"))
 
 
 ## The weapon conjured in your hand, or {} (Blood's conjure_weapon: Clotblade, Thirsting Glaive). One at a time.
@@ -869,14 +869,14 @@ func strike_rate_mult() -> float:
 ## weapon is hidden until it ends. A new one replaces the old.
 func _conjure(ab: Dictionary) -> void:
 	var cw: Dictionary = (ab["conjure_weapon"] as Dictionary).duplicate(true)
-	var lasts: float = float(cw.get("lasts", 8.0))
-	if int(cw.get("spend_blood_max", 0)) > 0:
-		lasts += float(cw.get("extend_per_blood", 0.0)) * float(player.hits_part.spend_blood(int(cw["spend_blood_max"])))
+	var lasts: float = float(GameData.opt(cw, "conjure", "lasts"))
+	if int(GameData.opt(cw, "conjure", "spend_blood_max")) > 0:
+		lasts += float(GameData.opt(cw, "conjure", "extend_per_blood")) * float(player.hits_part.spend_blood(int(cw["spend_blood_max"])))
 	cw["t"] = lasts
 	cw["affinity"] = ab.get("affinity", "")
 	player.buffs["conjured"] = cw
 	if player._rig != null:
-		var model: Node3D = Models.weapon("invader_cleaver" if float(cw.get("melee_range", 0.0)) > 3.0 else "serrated_dagger")
+		var model: Node3D = Models.weapon("invader_cleaver" if float(GameData.opt(cw, "conjure", "melee_range")) > 3.0 else "serrated_dagger")
 		model = model.duplicate() if model.get_parent() != null else model
 		var red := StandardMaterial3D.new()
 		red.albedo_color = GameData.affinity_color(str(ab.get("affinity", ""))).darkened(0.3)
