@@ -43,8 +43,8 @@ func from_save(d: Dictionary) -> void:
 	player.affinities.clear()
 	for a: Variant in d.get("affinities", ["water"]):
 		player.affinities.append(str(a))
-	player.clear_reflux()
-	player._reset_loadout()                  # the kit for those affinities, unless the save lists abilities below
+	player.casting_part.clear_reflux()
+	player.casting_part._reset_loadout()                  # the kit for those affinities, unless the save lists abilities below
 	# tempering: what the save has, on top of what such a character starts knowing. The health it
 	# added is already in the saved body_max, so stages are set here without applying it again.
 	player.tempering.clear()

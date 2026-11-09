@@ -148,10 +148,10 @@ func _tick_move(delta: float) -> void:
 ## window or the shooting stance, quickened by buffs and Slipstream. Wind-ups and staggers stop you
 ## separately. The sidestep eases out into this.
 func walk_speed() -> float:
-	var speed: float = float(player._p["move_speed"]) * player.progress_part.temper_stat("move_speed_mult") * (float(player._p["charge_move_factor"]) if player._charging else 1.0) * player.buff_num("move_speed_mult") * player._zone_num("caster_speed_mult")
+	var speed: float = float(player._p["move_speed"]) * player.progress_part.temper_stat("move_speed_mult") * (float(player._p["charge_move_factor"]) if player._charging else 1.0) * player.casting_part.buff_num("move_speed_mult") * player._zone_num("caster_speed_mult")
 	if not player._held.is_empty():
 		speed *= float((player._held["ab"] as Dictionary).get("move_factor", 1.0))     # holding a skill: you walk slowly, or not at all
-	speed *= player.buff_num("move_factor")          # a counter window roots you (Abiding Guard, Turning Palm, Turn the Edge)
+	speed *= player.casting_part.buff_num("move_factor")          # a counter window roots you (Abiding Guard, Turning Palm, Turn the Edge)
 	if player.ranged_stance:
 		speed *= GameData.num("ranged", "stance_move_factor")
 	if player.pips >= GameData.inum("slipstream", "speed_pips"):
@@ -372,7 +372,7 @@ func press_slot(slot: int) -> void:
 ## A cast from a key press (press_slot, or its kept press): a close skill out of reach may walk you in.
 func _pressed_cast(slot: int) -> void:
 	_from_press = true
-	player.cast_slot(slot)
+	player.casting_part.cast_slot(slot)
 	_from_press = false
 
 
@@ -614,7 +614,7 @@ func sidestep() -> String:
 		return "busy"
 	var cfg: Dictionary = GameData.balance["sidestep"]
 	if not spend_endurance(GameData.num("endurance", "step_cost")):
-		player._refuse("endurance", "Not enough endurance to step")
+		player.casting_part._refuse("endurance", "Not enough endurance to step")
 		return "endurance"
 	var dir: Vector3 = _sidestep_dir()
 	var time: float = maxf(0.05, float(cfg["time_s"]))
@@ -769,7 +769,7 @@ var _from_press := false             # the cast comes from a key press: it may w
 func _walk_in(index: int, reach: float) -> bool:
 	if not _from_press or player.bot or player._forced_target != null:
 		return false
-	var foe: Node3D = player._skill_candidate()
+	var foe: Node3D = player.casting_part._skill_candidate()
 	if foe == null:
 		return false
 	var feel: Dictionary = GameData.balance["feel"]
@@ -807,7 +807,7 @@ func _walk_cast_step(delta: float, input: Vector2) -> Variant:
 	if float(_walk_cast["left"]) <= 0.0:
 		var slot_was: int = player._casting_slot
 		player._casting_slot = int(_walk_cast["slot"])
-		player._refuse("out_of_reach", "Out of reach")
+		player.casting_part._refuse("out_of_reach", "Out of reach")
 		player._casting_slot = slot_was
 		cancel_walk_cast()
 		return null
@@ -820,7 +820,7 @@ func _walk_cast_step(delta: float, input: Vector2) -> Variant:
 		_walk_cast = {}
 		player._forced_target = foe
 		player._casting_slot = int(w["slot"])
-		player.cast_ability(int(w["index"]))
+		player.casting_part.cast_ability(int(w["index"]))
 		player._casting_slot = -1
 		player._forced_target = null
 		return Vector3.ZERO

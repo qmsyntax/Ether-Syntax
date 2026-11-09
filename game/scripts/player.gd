@@ -31,6 +31,7 @@ var runes_part: PlayerRunes
 var motion_part: PlayerMotion
 var combat_part: PlayerCombat
 var hits_part: PlayerHits
+var casting_part: PlayerCasting
 
 var body: Body
 var talent_id := ""
@@ -59,14 +60,14 @@ var reflux_by: Dictionary = {}       # affinity -> 0..
 var locked_by: Dictionary = {}       # affinity -> true while locked
 var reflux: float:
 	get:
-		return reflux_of(primary_affinity())
+		return casting_part.reflux_of(casting_part.primary_affinity())
 	set(value):
-		reflux_by[primary_affinity()] = value
+		reflux_by[casting_part.primary_affinity()] = value
 var reflux_locked: bool:
 	get:
-		return is_locked(primary_affinity())
+		return casting_part.is_locked(casting_part.primary_affinity())
 	set(value):
-		locked_by[primary_affinity()] = value
+		locked_by[casting_part.primary_affinity()] = value
 var money := 0
 var in_combat := false
 var fight_time := 0.0
@@ -268,6 +269,7 @@ func _init() -> void:
 	motion_part = PlayerMotion.new(self)
 	combat_part = PlayerCombat.new(self)
 	hits_part = PlayerHits.new(self)
+	casting_part = PlayerCasting.new(self)
 	_p = GameData.balance["player"]
 	_arm = GameData.balance["arm"]
 	_reflux_cfg = GameData.balance["reflux"]
@@ -289,7 +291,7 @@ func _init() -> void:
 	for i: int in slots:
 		hotbar.append(-1)
 	affinities = GameData.default_affinities()
-	_reset_loadout()
+	casting_part._reset_loadout()
 	progress_part._reset_tempering()
 	skill_points = int((GameData.skill_tree.get("points", {}) as Dictionary).get("start", 0))
 
@@ -368,72 +370,13 @@ func set_affinities(list: Array) -> void:
 		next = GameData.default_affinities()
 	affinities = next
 	ascension_pending = {}
-	_reset_loadout()
-	clear_reflux()
+	casting_part._reset_loadout()
+	casting_part.clear_reflux()
 	progress_part._reset_tempering()
 	known_runes.clear()
 	read_inscriptions.clear()
 	seal_draft = {}
 	runes_part._grant_start_runes()
-
-
-## Start over with the kits of the current affinities, on the bar in order.
-func _reset_loadout() -> void:
-	drop_stones()
-	buffs.clear()
-	_windup = {}
-	_windup_t = 0.0
-	abilities.clear()
-	for i: int in hotbar.size():
-		hotbar[i] = -1
-	var loadout: Array = GameData.ability_loadout(affinities)
-	for i: int in loadout.size():
-		abilities.append({"id": str(loadout[i]), "stage": 0, "progress": 0.0})
-		if i < hotbar.size():
-			hotbar[i] = i
-
-
-func primary_affinity() -> String:
-	return affinities[0] if not affinities.is_empty() else "water"
-
-
-func reflux_of(aff: String) -> float:
-	return float(reflux_by.get(aff, 0.0))
-
-
-func is_locked(aff: String) -> bool:
-	return bool(locked_by.get(aff, false))
-
-
-## The affinity whose reflux just hit the cap (valid inside TalentEffect.on_reflux_cap).
-var capping_affinity := ""
-
-
-## Drop the capping affinity's reflux to `value` (a talent venting it).
-func vent_reflux(value: float) -> void:
-	reflux_by[capping_affinity if capping_affinity != "" else primary_affinity()] = value
-
-
-func clear_reflux() -> void:
-	reflux_by.clear()
-	locked_by.clear()
-
-
-## Every affinity cools at once; one that drops far enough unlocks.
-func _shed_reflux(amount: float) -> void:
-	var shed: float = amount * inventory.stat("reflux_shed_mult", true) * progress_part.temper_stat("reflux_shed_mult")
-	for aff: String in reflux_by:
-		var a_def: Dictionary = GameData.affinity(aff)
-		var rate: float = float(a_def.get("reflux_shed_mult_combat", 1.0)) if in_combat else 1.0
-		if in_combat and a_def.has("reflux_shed_mult_moving"):
-			# wind: its heat blows off while you run and sits while you stand (unless you stand in Dead Air)
-			rate = float(a_def["reflux_shed_mult_moving"]) if (_moving or hits_part._zone_flag("shed_standing")) else float(a_def.get("reflux_shed_mult_standing", 1.0))
-		rate *= float(a_def.get("reflux_shed_mult", 1.0))       # earth keeps what little it makes
-		rate *= buff_num("shed_mult")                            # Long Breath
-		reflux_by[aff] = maxf(0.0, float(reflux_by[aff]) - shed * rate)
-		if is_locked(aff) and float(reflux_by[aff]) < float(_reflux_cfg["unlock_below"]):
-			locked_by[aff] = false
-			note("%s affinity unlocks." % str(GameData.affinity(aff).get("label", aff)))
 
 
 ## Change what the character looks like and rebuild the model to match.
@@ -471,7 +414,7 @@ func _physics_process(delta: float) -> void:
 	_brace_t -= delta
 	_rear_window_t -= delta
 	_unseen_reveal_t -= delta
-	_tick_buffs(delta)
+	casting_part._tick_buffs(delta)
 	combat_part._tick_ward(delta)
 	combat_part._tick_regen(delta)
 	_focus_t -= delta
@@ -495,7 +438,7 @@ func _physics_process(delta: float) -> void:
 		attack_target = null
 		pickup_target = null
 		has_move_goal = false
-		_shed_reflux(float(_reflux_cfg["shed_meditating"]) * delta)
+		casting_part._shed_reflux(float(_reflux_cfg["shed_meditating"]) * delta)
 		progress_part._meditate_gather(delta)
 		progress_part.grow_star(GameData.num("stars", "growth_pct_per_s_meditating") * delta)
 		velocity = Vector3.ZERO
@@ -506,7 +449,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		motion_part._update_aim()
 	if _windup_t > 0.0:
-		_tick_windup(delta)
+		casting_part._tick_windup(delta)
 	if not _held.is_empty():
 		_tick_held(delta)
 	motion_part._tick_buffer(delta)
@@ -524,7 +467,7 @@ func _physics_process(delta: float) -> void:
 	# The body sheds reflux on its own; meditation purges it much faster.
 	var shed: float = float(_reflux_cfg["shed_meditating"]) if meditating else (
 		float(_reflux_cfg["shed_in_combat"]) if in_combat else float(_reflux_cfg["shed_resting"]))
-	_shed_reflux(shed * delta)
+	casting_part._shed_reflux(shed * delta)
 	progress_part._meditate_gather(delta)
 	if meditating:
 		progress_part.grow_star(GameData.num("stars", "growth_pct_per_s_meditating") * delta)
@@ -543,151 +486,6 @@ func _physics_process(delta: float) -> void:
 		combat_part._release_overcharge()
 
 	motion_part._tick_move(delta)
-
-
-# --- zones, buffs, the rod (design/05 step 5b) -------------------------------------------------
-
-## A number from whichever buffs are on you, multiplied together (1 if none carries it).
-func buff_num(key: String) -> float:
-	var out := 1.0
-	for id: String in buffs:
-		out *= float((buffs[id] as Dictionary).get(key, 1.0))
-	return out
-
-
-func _tick_buffs(delta: float) -> void:
-	for id: String in buffs.keys():
-		var b: Dictionary = buffs[id]
-		b["t"] = float(b["t"]) - delta
-		# Knit: health a second, up to the ceiling your wounds allow; then a trickle into the oldest wound
-		if float(b.get("heal_per_s", 0.0)) > 0.0 and not hits_part._heal_blocked():
-			var pts: float = float(b["heal_per_s"]) * delta * combat_part.heal_rate_mult()       # Life: faster just after you land a hit
-			var used: float = body.heal(pts)
-			if pts - used > 0.0:
-				var filled: Dictionary = body.fill_sinks((pts - used) * float(b.get("overflow_to_sink", 0.0)))
-				combat_part._wounds_closed(filled["closed"])
-		if b.get("aura") is Dictionary:
-			_tick_aura(b, delta)
-		if float(b["t"]) <= 0.0:
-			buffs.erase(id)
-			_buff_ended(id, b)
-			if id == "conjured":
-				_shown_weapon = ""                        # the worn weapon comes back
-				economy_part._show_weapon()
-
-
-## An aura (Stonehide's mud, Millstone's pull and taunt, Gloom Mantle's dark): every tick_s its payload lands on
-## each enemy within radius of you (a hold once per target per cast, as zones do), and they are drawn toward you at
-## pull_per_s. It moves with you; with dark it is Dark ground (a zone that follows you, laid when the buff starts).
-func _tick_aura(b: Dictionary, delta: float) -> void:
-	var aura: Dictionary = b["aura"]
-	var r: float = float(aura.get("radius", 3.0))
-	var near: Array[Node3D] = _enemies_near(global_position, r)
-	if float(aura.get("pull_per_s", 0.0)) > 0.0:
-		for e: Node3D in near:
-			var inward: Vector3 = global_position - e.global_position
-			inward.y = 0.0
-			if inward.length() > float(e.get("radius")) + 0.9:
-				e.call("nudge", inward.normalized() * minf(float(aura["pull_per_s"]) * delta, inward.length()))
-	b["aura_t"] = float(b.get("aura_t", 0.0)) - delta
-	if float(b["aura_t"]) > 0.0:
-		return
-	b["aura_t"] = float(aura.get("tick_s", 0.5))
-	if not b.has("aura_memo"):
-		b["aura_memo"] = {}
-	var payload: Dictionary = aura.get("payload", {})
-	if payload.is_empty():
-		return
-	for e2: Node3D in near:
-		hits_part.apply_hit(e2, payload, ["ability", str(b.get("affinity", "")), "aura"], 1.0, Vector3.ZERO, b["aura_memo"])
-
-
-## A buff has run out: its end payload (Millstone's on_end), a counter that was never used (patience_ward, or a
-## share of the essence back: refund_unused), its following dark.
-func _buff_ended(id: String, b: Dictionary) -> void:
-	if float(b.get("softened", 0.0)) > 0.0 and float(b.get("softened_return", 0.0)) > 0.0:
-		combat_part.life_heal(float(b["softened"]) * float(b["softened_return"]))         # Kind Light: what it softened comes back
-	if b.get("on_end") is Dictionary:
-		var oe: Dictionary = (b["on_end"] as Dictionary).duplicate()
-		oe["burst_radius"] = float(oe.get("radius", 3.0))
-		hits_part._burst_at(global_position, oe, ["ability", str(b.get("affinity", "")), id, "burst"])
-	if b.has("window_s") and not bool(b.get("countered", false)):
-		if float(b.get("patience_ward", 0.0)) > 0.0:
-			combat_part.add_ward(float(b["patience_ward"]), -1.0, {"from": id})
-		if float(b.get("refund_unused", 0.0)) > 0.0:
-			essence = minf(essence_max, essence + float(b.get("cost", 0.0)) * float(b["refund_unused"]))
-
-
-## self_buff: the skill's own numbers ride on you for its duration. Some do something at once too:
-## breathe out held blood (Long Breath), light every enemy near you (Clear Eye), shake off what
-## holds you (Fever Break).
-func _take_buff(ab: Dictionary) -> void:
-	var b: Dictionary = ab.duplicate(true)
-	b["t"] = float(ab.get("duration", ab.get("window_s", 5.0)))      # a counter lasts its window
-	var bid: String = str(ab.get("buff", ab.get("name", "buff")))
-	b.erase("coat")
-	buffs[bid] = b
-	combat_part._put_coat(ab, bid)
-	# an aura that is Dark ground goes with you as a zone of dark (Gloom Mantle)
-	if b.get("aura") is Dictionary and bool((b["aura"] as Dictionary).get("dark", false)):
-		var dz := GroundZone.new()
-		dz.shape = "circle"
-		dz.caster = self
-		dz.dark = true
-		dz.kind = "dark_ground"
-		dz.bright = false
-		dz.radius = float((b["aura"] as Dictionary).get("radius", 3.0))
-		dz.life = float(b["t"])
-		dz.tags = ["ability", str(ab.get("affinity", "")), "aura", "zone"]
-		dz.color = GameData.affinity_color(str(ab.get("affinity", "")))
-		dz.follow = self
-		dz.from = global_position
-		dz.to = global_position
-		get_parent().add_child(dz)
-	if str(ab.get("set_focus", "")) == "max":
-		_focus_fill_next = true                  # Red Iron: your next metal hit starts the edge white-hot
-	_share_buff(ab, bid, float(b["t"]))
-	# what the buff does round you as it starts (Stoke's flare, Red Iron's heat): on_cast within its radius
-	if ab.get("on_cast") is Dictionary:
-		var oc: Dictionary = (ab["on_cast"] as Dictionary).duplicate()
-		oc["burst_radius"] = float(oc.get("radius", ab.get("radius", 2.5)))
-		hits_part._burst_at(global_position, oc, ["ability", str(ab.get("affinity", "")), str(bid), "burst"])
-	# a buff's ward (Dawnward, Ice Shell, Black Shroud): into the one pool; ward_from spends a store of yours into it
-	if float(ab.get("ward", 0.0)) > 0.0 or str(ab.get("ward_from", "")) != "":
-		var amount: float = float(ab.get("ward", 0.0))
-		if str(ab.get("ward_from", "")) != "":
-			amount += float(hits_part.store_take(str(ab["ward_from"])))
-		if ab.has("ward_max"):
-			amount = minf(amount, float(ab["ward_max"]))
-		var opts: Dictionary = {"from": bid}
-		for k: String in ["on_break", "expire_heal_frac", "no_stagger"]:
-			if ab.has(k):
-				opts[k] = ab[k]
-		if opts.has("on_break"):
-			opts["on_break_tags"] = ["ability", str(ab.get("affinity", "")), "ward"]
-		combat_part.add_ward(amount, float(ab.get("duration", -1.0)), opts)
-	if float(ab.get("add_reflux", 0.0)) > 0.0:
-		var aff: String = str(ab.get("affinity", ""))
-		reflux_by[aff] = reflux_of(aff) + float(ab["add_reflux"])
-	if ab.has("spend_blood") and float(ab.get("shed_per_blood", 0.0)) > 0.0:
-		var spent: int = hits_part._spend_blood_first_pools(int(ab["spend_blood"]), float(ab.get("pool_radius", 0.0)))
-		hits_part._vent_hottest(float(ab["shed_per_blood"]) * float(spent))
-		poise = float(GameData.num("combat", "player_poise"))
-	if float(ab.get("reveal_radius", 0.0)) > 0.0:
-		for e: Node3D in _enemies_near(global_position, float(ab["reveal_radius"])):
-			e.call("add_status", "lit", 1, self)
-	if ab.get("cleanse") is String or (ab.get("cleanse") is bool and bool(ab["cleanse"])):
-		# lift what the list names (balance.json cleanse: binds, afflictions), and pay per one lifted
-		var lifted: int = hits_part.cleanse(str(ab["cleanse"]) if ab["cleanse"] is String else "binds")
-		if float(ab.get("ward_per_cleansed", 0.0)) > 0.0 and lifted > 0:
-			var w: float = float(ab["ward_per_cleansed"]) * float(lifted)
-			if ab.has("ward_cleansed_max"):
-				w = minf(w, float(ab["ward_cleansed_max"]))           # Absolution: up to 40 ward
-			combat_part.add_ward(w, float(ab.get("duration", -1.0)), {"from": bid + "_cleansed"})
-		if float(ab.get("heal_per_cleansed", 0.0)) > 0.0 and lifted > 0:
-			var counted: int = mini(lifted, int(ab.get("heal_cleansed_max", lifted)))       # Fever Break: up to 4 of them
-			combat_part.heal_over(float(ab["heal_per_cleansed"]) * float(counted), float(ab.get("heal_over_s", 2.0)))
-	_float(str(ab.get("name", "")).to_lower(), GameData.affinity_color(str(ab.get("affinity", ""))).lightened(0.3))
 
 
 ## A number from the zones of your own you are standing in (1 if none).
@@ -712,7 +510,7 @@ func _lay_zone(point: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -
 	zone.life = float(cfg.get("life", 6.0))
 	zone.tick_s = float(cfg.get("tick_s", 1.0))
 	if cfg.has("life_per_heat"):
-		zone.life = minf(float(cfg.get("life_max", 99.0)), zone.life + float(cfg["life_per_heat"]) * reflux_of(str(ab.get("affinity", ""))))
+		zone.life = minf(float(cfg.get("life_max", 99.0)), zone.life + float(cfg["life_per_heat"]) * casting_part.reflux_of(str(ab.get("affinity", ""))))
 	if float(ab.get("pip_seconds", 0.0)) > 0.0 and motion_part.has_slipstream():
 		var burned: int = motion_part.spend_pips(-1 if bool(ab.get("spend_all_pips", false)) else int(ab.get("spend_pips", 0)))
 		zone.life += float(ab["pip_seconds"]) * float(burned)
@@ -794,12 +592,12 @@ func _rod_relay(aff: String, stage_mult: float) -> void:
 	if rod.global_position.distance_to(global_position) > float(ab.get("relay_radius", 8.0)):
 		return
 	var pick: Node3D = null
-	for e: Node3D in _enemies_near(rod.global_position, float(ab.get("relay_range", 5.0))):
+	for e: Node3D in casting_part._enemies_near(rod.global_position, float(ab.get("relay_range", 5.0))):
 		if pick == null or e.global_position.distance_to(rod.global_position) < pick.global_position.distance_to(rod.global_position):
 			pick = e
 	if pick == null:
 		return
-	_line_visual(rod.global_position + Vector3.UP * 2.0, pick.global_position + Vector3.UP, GameData.affinity_color("lightning"))
+	casting_part._line_visual(rod.global_position + Vector3.UP * 2.0, pick.global_position + Vector3.UP, GameData.affinity_color("lightning"))
 	hits_part.apply_hit(pick, ab.get("relay_hit", {}), ["ability", "lightning", "ground_rod"], stage_mult)
 
 
@@ -814,35 +612,6 @@ func _dash_met(e: Node3D) -> void:
 	hits_part.apply_hit(e, _dash_on_stop, _dash_tags, 1.0, _dash_vel.normalized())
 
 
-# --- more skill behaviours (design/05 Appendix A) -------------------------------------------------
-
-## The spot a point-aimed skill lands on: toward the cursor, at most `reach` away.
-func _aim_point(reach: float) -> Vector3:
-	var want: Vector3 = motion_part._cursor_ground() - global_position
-	want.y = 0.0
-	if want.length() < 0.5:
-		want = _facing * reach                    # no cursor to speak of (bot, headless): straight ahead
-	if want.length() > reach:
-		want = want.normalized() * reach
-	return global_position + want
-
-
-## Living enemies whose bodies reach within `radius` of `point`.
-func _enemies_near(point: Vector3, radius: float) -> Array[Node3D]:
-	var out: Array[Node3D] = []
-	if not is_inside_tree():
-		return out
-	for node: Node in get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
-		if e == null or bool(e.call("is_dead")):
-			continue
-		var to: Vector3 = e.global_position - point
-		to.y = 0.0
-		if to.length() <= radius + float(e.get("radius")):
-			out.append(e)
-	return out
-
-
 ## displace: move enemies instead of hurting them. See abilities.json for the three modes.
 func _displace(point: Vector3, target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	var color: Color = GameData.affinity_color(str(ab.get("affinity", "")))
@@ -854,17 +623,17 @@ func _displace(point: Vector3, target: Node3D, ab: Dictionary, stage_mult: float
 	if str(ab.get("mode", "")) == "pull_target":
 		if target == null:
 			return
-		_line_visual(chest, target.global_position + Vector3.UP, color)
+		casting_part._line_visual(chest, target.global_position + Vector3.UP, color)
 		hits_part.apply_hit(target, hits_part._payload(ab, "on_hit"), tags, stage_mult)
 		if is_instance_valid(target) and not bool(target.call("is_dead")):
 			target.set("shover", self)
 			target.call("pull_toward", global_position, float(ab.get("pull", 10.0)), float(ab.get("keep", 1.5)) + float(target.get("radius")))
 			target.call("turn_away_from", global_position, float(ab.get("turn_s", 1.0)))
 		return
-	_line_visual(chest, point + Vector3.UP * 0.3, color)
+	casting_part._line_visual(chest, point + Vector3.UP * 0.3, color)
 	var burned: int = motion_part.spend_pips(int(ab["spend_pips"])) if ab.has("spend_pips") else 0
 	var from_point: bool = str((ab.get("on_hit", {}) as Dictionary).get("shove_dir", "")) == "from_point"
-	for e: Node3D in _enemies_near(point, float(ab.get("radius", 3.0))):
+	for e: Node3D in casting_part._enemies_near(point, float(ab.get("radius", 3.0))):
 		hits_part.apply_hit(e, hits_part._payload(ab, "on_hit"), tags, stage_mult, (e.global_position - point) if from_point else Vector3.ZERO)
 		if not is_instance_valid(e) or bool(e.call("is_dead")):
 			continue
@@ -884,7 +653,7 @@ var _landings: Dictionary = {}
 func _throw(target: Node3D, point: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	if target == null or not is_instance_valid(target):
 		return
-	_line_visual(global_position + Vector3.UP, target.global_position + Vector3.UP * 1.5, GameData.affinity_color(str(ab.get("affinity", ""))))
+	casting_part._line_visual(global_position + Vector3.UP, target.global_position + Vector3.UP * 1.5, GameData.affinity_color(str(ab.get("affinity", ""))))
 	hits_part.apply_hit(target, hits_part._payload(ab, "on_hit"), tags, stage_mult)
 	if not is_instance_valid(target) or bool(target.call("is_dead")):
 		return
@@ -919,7 +688,7 @@ func _start_blast(point: Vector3, ab: Dictionary, stage_mult: float, tags: Array
 	blast.global_position = Vector3(point.x, global_position.y, point.z)
 	if bool(ab.get("follows_lit", false)):
 		# Burning Glass: cast on a Lit enemy it tracks it, landing where that enemy is when the delay ends
-		var lit_t: Node3D = _nearest_enemy_to(point, 1.5)
+		var lit_t: Node3D = casting_part._nearest_enemy_to(point, 1.5)
 		if lit_t != null and bool(lit_t.call("has_status", "lit")):
 			blast.follow = lit_t
 	_strike_t = 0.2
@@ -928,7 +697,7 @@ func _start_blast(point: Vector3, ab: Dictionary, stage_mult: float, tags: Array
 ## A delayed blast goes off at `at` (called by the DelayedBlast). It may leave a cloud or a patch.
 func land_blast(at: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	var radius: float = float(ab.get("radius", 2.0))
-	for e: Node3D in _enemies_near(at, radius):
+	for e: Node3D in casting_part._enemies_near(at, radius):
 		var marked: bool = ab.has("bonus_vs_status") and bool(e.call("has_status", str(ab["bonus_vs_status"])))
 		hits_part.apply_hit(e, hits_part._payload(ab, "on_hit"), tags, stage_mult)
 		if marked and is_instance_valid(e) and not bool(e.call("is_dead")):
@@ -975,7 +744,7 @@ func _detonate(ab: Dictionary, stage_mult: float, tags: Array, strike_target: No
 			var burst: Dictionary = hits_part._payload(ab, "on_hit")
 			burst["damage"] = (float(ab.get("damage", 70.0)) + float(ab.get("hp_frac", 0.0)) * float(s.get("hp"))) * stage_mult
 			burst["burst_radius"] = float(ab.get("burst_radius", 2.5))
-			_line_visual(global_position + Vector3.UP, s.global_position + Vector3.UP, color)
+			casting_part._line_visual(global_position + Vector3.UP, s.global_position + Vector3.UP, color)
 			hits_part._burst_at(s.global_position, burst, tags + ["burst"])
 			s.call("_fall")
 		return
@@ -985,7 +754,7 @@ func _detonate(ab: Dictionary, stage_mult: float, tags: Array, strike_target: No
 	var ids: Array = ab["consume_status"] if ab.get("consume_status") is Array else [str(ab.get("consume_status", ""))]
 	var status: String = str(ids[0])
 	var carrying: Array = []
-	for e: Node3D in _enemies_near(global_position, float(ab.get("range", 10.0))):
+	for e: Node3D in casting_part._enemies_near(global_position, float(ab.get("range", 10.0))):
 		var n := 0
 		var asleep: bool = bool(e.call("has_status", "asleep"))
 		for id: Variant in ids:
@@ -1000,9 +769,9 @@ func _detonate(ab: Dictionary, stage_mult: float, tags: Array, strike_target: No
 		var stacks: int = row[1]
 		var where: Vector3 = row[2]
 		var carrier: Node3D = row[0]
-		if bool(ab.get("needs_clear_line", false)) and not _ray(global_position + Vector3.UP, where + Vector3.UP).is_empty():
+		if bool(ab.get("needs_clear_line", false)) and not casting_part._ray(global_position + Vector3.UP, where + Vector3.UP).is_empty():
 			continue                             # no clear line home: its light stays where it is
-		_line_visual(global_position + Vector3.UP, where + Vector3.UP, color)
+		casting_part._line_visual(global_position + Vector3.UP, where + Vector3.UP, color)
 		refund += float(ab.get("refund_per_stack", 0.0)) * float(stacks)
 		if ab.has("per_stack_damage") and is_instance_valid(carrier):
 			combat_part.deal_damage(carrier, float(ab["per_stack_damage"]) * float(stacks) * stage_mult, tags + ["burst"])
@@ -1020,7 +789,7 @@ func _detonate(ab: Dictionary, stage_mult: float, tags: Array, strike_target: No
 		if float(ab.get("ray_damage", 0.0)) > 0.0:
 			_home_ray(where, carrier, float(ab["ray_damage"]) * stage_mult, tags)
 		if ab.has("per_stack_burst"):
-			for near: Node3D in _enemies_near(where, float(ab.get("burst_radius", 2.0))):
+			for near: Node3D in casting_part._enemies_near(where, float(ab.get("burst_radius", 2.0))):
 				combat_part.deal_damage(near, float(ab["per_stack_burst"]) * float(stacks) * stage_mult, tags + ["burst"])
 		if ab.has("overload_fracs"):
 			var fracs: Array = ab["overload_fracs"]
@@ -1083,7 +852,7 @@ func _exhume(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 ## lengthened), and what its on_expire pays is x bill_mult this once (status data, read by the status engine).
 func _spur(ab: Dictionary) -> void:
 	var sid: String = str(ab.get("needs_status", "dosed"))
-	for e: Node3D in _enemies_near(global_position, float(ab.get("range", 8.0))):
+	for e: Node3D in casting_part._enemies_near(global_position, float(ab.get("range", 8.0))):
 		var entry: Dictionary = (e.get("statuses") as Dictionary).get(sid, {})
 		if entry.is_empty():
 			continue
@@ -1091,7 +860,7 @@ func _spur(ab: Dictionary) -> void:
 		var data: Dictionary = entry.get("data", {})
 		data["bill_mult"] = float(ab.get("bill_mult", 1.0))
 		entry["data"] = data
-		_line_visual(global_position + Vector3.UP, e.global_position + Vector3.UP, GameData.affinity_color(str(ab.get("affinity", ""))))
+		casting_part._line_visual(global_position + Vector3.UP, e.global_position + Vector3.UP, GameData.affinity_color(str(ab.get("affinity", ""))))
 
 
 ## chain: the target, then the nearest enemy to it not yet struck, and on, `jumps` times. A chain
@@ -1105,7 +874,7 @@ func _chain(target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> v
 	if bool(ab.get("fan", false)):
 		var wave: Array = [target]
 		struck.append(target)
-		_line_visual(from, target.global_position + Vector3.UP, color)
+		casting_part._line_visual(from, target.global_position + Vector3.UP, color)
 		hits_part.apply_hit(target, ab.get("first_hit", hits_part._payload(ab, "on_hit")), tags, stage_mult)
 		for gen: int in int(ab.get("depth", 2)):
 			var next_wave: Array = []
@@ -1113,12 +882,12 @@ func _chain(target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> v
 				if not is_instance_valid(w):
 					continue
 				var from_dying: bool = int(ab.get("dying_stacks", 0)) > 0 and bool((w as Node).call("has_status", "dying"))
-				for e: Node3D in _enemies_near((w as Node3D).global_position, float(ab.get("jump_radius", 3.0))):
+				for e: Node3D in casting_part._enemies_near((w as Node3D).global_position, float(ab.get("jump_radius", 3.0))):
 					if struck.has(e) or struck.size() > int(ab.get("jumps", 7)):
 						continue
 					struck.append(e)
 					next_wave.append(e)
-					_line_visual((w as Node3D).global_position + Vector3.UP, e.global_position + Vector3.UP, color)
+					casting_part._line_visual((w as Node3D).global_position + Vector3.UP, e.global_position + Vector3.UP, color)
 					var jp: Dictionary = hits_part._payload(ab, "on_hit")
 					if from_dying:
 						jp["stacks"] = int(ab["dying_stacks"])      # Contagion: the Dying pass on more
@@ -1130,7 +899,7 @@ func _chain(target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> v
 		var at: Vector3 = cur.global_position
 		if bool(ab.get("carries_caster", false)):
 			# Forked Path takes you with it: you appear behind each one as it is struck; a wall or stone between ends it
-			if jump > 0 and not _ray(global_position + Vector3.UP, at + Vector3.UP).is_empty():
+			if jump > 0 and not casting_part._ray(global_position + Vector3.UP, at + Vector3.UP).is_empty():
 				return
 			var back: Vector3 = -(cur.get("facing") as Vector3) if cur.get("facing") is Vector3 else (at - global_position).normalized()
 			back.y = 0.0
@@ -1142,61 +911,16 @@ func _chain(target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> v
 				_facing = face.normalized()
 			has_move_goal = false
 		struck.append(cur)
-		_line_visual(from, at + Vector3.UP, color)
+		casting_part._line_visual(from, at + Vector3.UP, color)
 		from = at + Vector3.UP
 		hits_part.apply_hit(cur, hits_part._payload(ab, "on_hit"), hit_tags, stage_mult)
 		var next: Node3D = null
-		for e: Node3D in _enemies_near(at, float(ab.get("jump_radius", 5.0))):
+		for e: Node3D in casting_part._enemies_near(at, float(ab.get("jump_radius", 5.0))):
 			if not struck.has(e) and (next == null or e.global_position.distance_to(at) < next.global_position.distance_to(at)):
 				next = e
 		if next == null:
 			return
 		cur = next
-
-
-## True while you are set for a braced skill: you take less and cannot be staggered.
-func is_braced() -> bool:
-	return (_windup_t > 0.0 and bool(_windup.get("braced", false))) or (_dash_time > 0.0 and _dash_braced) \
-		or _brace_t > 0.0 or (not _held.is_empty() and bool((_held["ab"] as Dictionary).get("braced", false)))
-
-
-## True if any buff on you carries flag `key` (a braced buff, an immovable one...).
-func _buff_flag(key: String) -> bool:
-	for id: String in buffs:
-		if bool((buffs[id] as Dictionary).get(key, false)):
-			return true
-	return false
-
-
-## How far through a held skill you are (a channel's hold, a charge), 0 to 1; -1 when holding nothing.
-func held_frac() -> float:
-	if _held.is_empty():
-		return -1.0
-	var ab: Dictionary = _held["ab"]
-	var full: float = float(ab.get("charge_max", ab.get("duration", GameData.num("skills", "channel_max_s"))))
-	return clampf(float(_held["t"]) / maxf(0.01, full), 0.0, 1.0)
-
-
-## How far through a wind-up you are, 0 to 1; -1 when you are not winding anything up.
-func windup_frac() -> float:
-	if _windup_t <= 0.0 or _windup_total <= 0.0:
-		return -1.0
-	return clampf(1.0 - _windup_t / _windup_total, 0.0, 1.0)
-
-
-## A wind-up holds you where you stood and where you aimed; when it ends, the skill goes off.
-func _tick_windup(delta: float) -> void:
-	_facing = _windup.get("facing", _facing)     # a click made meanwhile is kept for when it goes off
-	_windup_t -= delta
-	if _windup_t > 0.0:
-		return
-	var w: Dictionary = _windup
-	_windup = {}
-	_windup_t = 0.0
-	if not bool(w.get("release", false)):
-		return
-	var target: Node3D = w["target"] if is_instance_valid(w["target"]) else null
-	_perform_cast(w["ab"], str(w["kind"]), str(w["aff"]), float(w["stage_mult"]), w["tags"], target, w["point"])
 
 
 ## True if the character holds an affinity that raises standing stone.
@@ -1273,7 +997,7 @@ func _prop_point(ab: Dictionary) -> Variant:
 	var dist: float = clampf(want.length(), near, reach)
 	var dir: Vector3 = want.normalized()
 	var chest: Vector3 = global_position + Vector3.UP
-	var wall: Dictionary = _ray(chest, chest + dir * (dist + 0.6))
+	var wall: Dictionary = casting_part._ray(chest, chest + dir * (dist + 0.6))
 	if not wall.is_empty():
 		dist = chest.distance_to(wall["position"]) - 0.6
 		if dist < near:
@@ -1291,13 +1015,6 @@ func _stone_in_arc(s: Stone, reach: float, half_angle: float) -> bool:
 		if dist <= reach + s.size.z * 0.5 and (dist < 0.3 or _facing.angle_to(to / dist) <= half_angle):
 			return true
 	return false
-
-
-## Where a shot leaves you: a little ahead, unless something solid is closer than that.
-func _muzzle() -> Vector3:
-	var chest: Vector3 = global_position + Vector3.UP * 1.0
-	var out: Vector3 = chest + _facing * 0.8
-	return chest if not _ray(chest, out).is_empty() else out
 ## One drain (drain_frac): you are healed that share of the harm the hit dealt, the most one cast heals drain_cap.
 ## The healing order is the hit's affinity's: drain_heals "bar" (Unholy: the bar only, banked as stolen life), else
 ## Life's order (Lifeline). Unliving targets give nothing.
@@ -1319,7 +1036,7 @@ func _burst(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	if ab.has("damage_from_heat"):
 		# the heat is the damage, and it is spent: what you carry above the floor goes into the blow
 		var own: String = str(ab["affinity"])
-		var carried: float = reflux_of(own)
+		var carried: float = casting_part.reflux_of(own)
 		var floor_at: float = float(ab.get("heat_floor", 0.0))
 		payload["damage"] = float(ab["damage_from_heat"]) * maxf(0.0, carried - floor_at)
 		reflux_by[own] = minf(carried, floor_at)
@@ -1368,13 +1085,13 @@ func _burst(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 			combat_part.heal_over(float(ab["per_patch_heal"]) * float(cut), 2.0)                # Reaping Sweep regrows you
 	# drawn in first (Backdraft)
 	if bool(ab.get("pull_before_blast", false)) and float(ab.get("pull", 0.0)) > 0.0:
-		for e: Node3D in _enemies_near(global_position, reach + 2.0):
+		for e: Node3D in casting_part._enemies_near(global_position, reach + 2.0):
 			e.set("shover", self)
 			e.call("pull_toward", global_position, float(ab["pull"]), float(e.get("radius")) + 0.6)
 	var hits := 0
 	var gained := 0
 	for t: Node3D in combat_part._in_arc(reach, half):
-		if bool(ab.get("needs_clear_line", false)) and not _ray(global_position + Vector3.UP, t.global_position + Vector3.UP).is_empty():
+		if bool(ab.get("needs_clear_line", false)) and not casting_part._ray(global_position + Vector3.UP, t.global_position + Vector3.UP).is_empty():
 			continue
 		if bool(ab.get("douses", false)) and bool(t.call("has_status", "alight")):
 			t.call("clear_status", "alight")
@@ -1395,7 +1112,7 @@ func _burst(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 			hits += 1
 		if ab.has("spall") and metal > 0:
 			var sp: Dictionary = ab["spall"]
-			for o: Node3D in _enemies_near(where, float(sp.get("radius", 2.5))):
+			for o: Node3D in casting_part._enemies_near(where, float(sp.get("radius", 2.5))):
 				if o != t:
 					combat_part.deal_damage(o, float(sp.get("damage_per_class", 30.0)) * float(metal) * stage_mult, tags + ["spall"])
 	if hits > 0:
@@ -1460,7 +1177,7 @@ func _end_dash() -> void:
 	if not is_inside_tree():
 		return
 	if not _dash_on_arrive.is_empty():
-		for e: Node3D in _enemies_near(global_position, _dash_arrive_radius):
+		for e: Node3D in casting_part._enemies_near(global_position, _dash_arrive_radius):
 			hits_part.apply_hit(e, _dash_on_arrive, _dash_tags, _dash_stage_mult)
 		if bool(_dash_ab.get("shatters_stone", false)):
 			for s: Variant in stones.duplicate():
@@ -1549,7 +1266,7 @@ func _beam_leg(origin: Vector3, dir: Vector3, reach_in: float, ab: Dictionary, s
 	# your own standing stone lets your beam through (combat review R4c) unless the skill asks to stop at it, or
 	# glances off stone (bounces)
 	var own_through: bool = not bool(ab.get("stops_at_own_stone", false)) and int(ab.get("bounces", 0)) <= 0
-	var wall: Dictionary = _ray(origin, origin + dir * reach, own_through)
+	var wall: Dictionary = casting_part._ray(origin, origin + dir * reach, own_through)
 	if not wall.is_empty():
 		reach = origin.distance_to(wall["position"])
 		normal = wall["normal"]
@@ -1579,31 +1296,8 @@ func _beam_leg(origin: Vector3, dir: Vector3, reach_in: float, ab: Dictionary, s
 			normal = null
 			break
 	_strike_t = 0.2
-	_line_visual(origin, origin + dir * stop, color)
+	casting_part._line_visual(origin, origin + dir * stop, color)
 	return {"length": stop, "end": origin + dir * stop, "normal": normal, "first": first}
-
-
-## The enemy a single-target skill would land on, if it is within `reach`: the one under the
-## cursor if you are pointing at one - and only that one, never a nearer bystander - else the one
-## you are fighting, else the nearest.
-func _skill_target(reach: float) -> Node3D:
-	var pick: Node3D = _skill_candidate()
-	if pick == null:
-		return null
-	var to: Vector3 = pick.global_position - global_position
-	to.y = 0.0
-	return pick if to.length() <= reach + float(pick.get("radius")) else null
-
-
-## The enemy a single-target skill would be aimed at, near or far: the one under the cursor, else the
-## one you are fighting, else the nearest (whether it is in reach is _skill_target's question).
-func _skill_candidate() -> Node3D:
-	if _forced_target != null and is_instance_valid(_forced_target) and not bool(_forced_target.call("is_dead")):
-		return _forced_target                    # a walked-in cast lands on the foe it walked to
-	for c: Variant in [hovered, attack_target, bot_part._nearest_enemy()]:
-		if c != null and is_instance_valid(c) and (c as Node).is_in_group("enemies") and not bool((c as Node).call("is_dead")):
-			return c
-	return null
 
 
 ## Where a blink would land: toward the cursor, at most `reach` away. Null if that spot is off
@@ -1616,10 +1310,10 @@ func _blink_point(reach: float) -> Variant:
 	if want.length() > reach:
 		want = want.normalized() * reach
 	var spot: Vector3 = global_position + want
-	var floor_hit: Dictionary = _ray(spot + Vector3.UP * 4.0, spot + Vector3.DOWN * 2.0)
+	var floor_hit: Dictionary = casting_part._ray(spot + Vector3.UP * 4.0, spot + Vector3.DOWN * 2.0)
 	if floor_hit.is_empty() or (floor_hit["position"] as Vector3).y > global_position.y + 0.5:
 		return null
-	if not _ray(global_position + Vector3.UP, spot + Vector3.UP).is_empty():
+	if not casting_part._ray(global_position + Vector3.UP, spot + Vector3.UP).is_empty():
 		return null
 	return spot
 
@@ -1635,14 +1329,14 @@ func _blink(spot: Vector3, ab: Dictionary, stage_mult: float, color: Color, tags
 		_swap_with.call("heal", float(ab.get("swap_heal", 0.0)))
 		_swap_with.set("hp", minf(float(_swap_with.get("hp_max")), float(_swap_with.get("hp")) + float(ab.get("swap_heal", 0.0))))
 	_swap_with = null
-	_line_visual(from + Vector3.UP, spot + Vector3.UP, color)
+	casting_part._line_visual(from + Vector3.UP, spot + Vector3.UP, color)
 	var step: Vector3 = spot - from
 	step.y = 0.0
 	if step.length() > 0.2:
 		_facing = step.normalized()
 	if float(ab.get("rear_window", 0.0)) > 0.0:
 		_rear_window_t = float(ab["rear_window"])
-	var foe: Node3D = _nearest_enemy_to(spot, 2.0)
+	var foe: Node3D = casting_part._nearest_enemy_to(spot, 2.0)
 	if bool(ab.get("arrive_behind", false)) and foe != null:
 		var to_foe: Vector3 = foe.global_position - spot
 		to_foe.y = 0.0
@@ -1664,537 +1358,6 @@ func _blink(spot: Vector3, ab: Dictionary, stage_mult: float, color: Color, tags
 			hits_part.apply_hit(e, payload, tags, stage_mult)
 
 
-## First thing in the world (walls, blocks, floor - not bodies) between two points, or {}. With
-## `past_own_stone` your own standing stone is not in the way (your shots pass it - combat review R4c).
-func _ray(from: Vector3, to: Vector3, past_own_stone: bool = false) -> Dictionary:
-	if not is_inside_tree():
-		return {}
-	var q := PhysicsRayQueryParameters3D.create(from, to, 1)
-	if past_own_stone:
-		var own: Array[RID] = []
-		for st: Variant in stones:
-			if is_instance_valid(st):
-				own.append((st as CollisionObject3D).get_rid())
-		q.exclude = own
-	return get_world_3d().direct_space_state.intersect_ray(q)
-
-
-## A bright line that fades: beams, arcs and the trail of a blink.
-func _line_visual(from: Vector3, to: Vector3, color: Color) -> void:
-	if not is_inside_tree() or from.distance_to(to) < 0.05:
-		return
-	var line := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(0.12, 0.12, from.distance_to(to))
-	line.mesh = box
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(color, 0.9)
-	mat.emission_enabled = true
-	mat.emission = color
-	mat.emission_energy_multiplier = 2.5
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	line.material_override = mat
-	get_parent().add_child(line)
-	line.global_position = (from + to) * 0.5
-	line.look_at(to, Vector3.UP if absf((to - from).normalized().dot(Vector3.UP)) < 0.99 else Vector3.RIGHT)
-	var tween: Tween = line.create_tween()
-	tween.tween_property(line, "scale", Vector3(0.1, 0.1, 1.0), 0.14)
-	tween.tween_callback(line.queue_free)
-
-
-# --- abilities --------------------------------------------------------------------
-
-## Cast whatever ability sits in hotbar slot `slot` (0-based).
-func cast_slot(slot: int) -> void:
-	if slot < 0 or slot >= hotbar.size() or hotbar[slot] < 0:
-		return
-	var action: String = "ability_%d" % (slot + 1)
-	_cast_action = action if InputMap.has_action(action) and Input.is_action_pressed(action) else ""
-	_casting_slot = slot
-	cast_ability(hotbar[slot])
-	_casting_slot = -1
-	_cast_action = ""
-
-
-## Test characters only: show the next six learned skills on the bar (a test-only "next page").
-func next_hotbar_page() -> void:
-	if not test_character or abilities.is_empty():
-		return
-	var per: int = hotbar.size()
-	var pages: int = int(ceil(float(abilities.size()) / float(per)))
-	hotbar_page = (hotbar_page + 1) % maxi(1, pages)
-	for i: int in per:
-		var idx: int = hotbar_page * per + i
-		hotbar[i] = idx if idx < abilities.size() else -1
-	note("Skill bar: page %d of %d." % [hotbar_page + 1, pages])
-
-
-func cast_ability(index: int) -> void:
-	if not active or dead or meditating or index < 0 or index >= abilities.size():
-		return
-	var state: Dictionary = abilities[index]
-	var ab: Dictionary = runes_part.ability_stats(state)
-	if ab.is_empty():
-		return
-	var aff: String = str(ab.get("affinity", ""))
-	var aff_name: String = str(GameData.affinity(aff).get("label", aff))
-	if not affinities.has(aff):
-		_refuse("no_affinity", "No %s affinity" % aff_name.to_lower())
-		note("You have no %s affinity." % aff_name.to_lower())
-		return
-	if is_locked(aff):
-		_refuse("locked", "%s locked by reflux - meditate [%s]" % [aff_name, Keybinds.binding_text("meditate")])
-		note("%s affinity is locked by reflux. Meditate (hold %s)." % [aff_name, Keybinds.binding_text("meditate")])
-		return
-	if _recover_t > 0.0 or (_stagger_t > 0.0 and not hits_part._lifts(ab, "staggered")):
-		return                                   # still finishing the last one, or off your feet (a cleanse that lifts it may)
-	if not _held.is_empty():
-		_end_held()                              # a new cast lets go of what you were holding
-		return
-	var heat: float = reflux_of(aff)
-	var cost: float = float(ab["cost"]) * (float(_reflux_cfg["pain_cost_mult"]) if heat >= float(_reflux_cfg["pain_at"]) else 1.0)
-	# Winded: the dash is not free. A second movement skill too soon costs double, in essence and heat.
-	var kind: String = str(ab["kind"])
-	var movement: bool = kind == "dash" or kind == "blink" or kind == "grapple" or kind == "streak"
-	var winded: bool = movement and _winded_t > 0.0 and not bool(ab.get("clears_winded", false))
-	if winded:
-		cost *= GameData.num("combat", "winded_cost_mult")
-	var per_second: bool = bool(ab.get("cost_per_s", false)) or kind == "channel"
-	if per_second:
-		cost = 0.0                               # a channel pays as it is held (see _tick_held)
-	if essence < cost or (per_second and essence < float(ab["cost"]) * 0.25):
-		_refuse("essence", "Not enough essence")
-		note("Not enough essence for %s." % str(ab["name"]))
-		return
-	if float(ab.get("heat_cost", 0.0)) > 0.0 and heat < float(ab["heat_cost"]):
-		_refuse("heat", "Needs %d heat" % int(ab["heat_cost"]))
-		note("%s needs %d heat." % [str(ab["name"]), int(ab["heat_cost"])])
-		return
-	# Some skills need something to point at; find out before anything is spent.
-	var strike_target: Node3D = null
-	var blink_to := Vector3.ZERO
-	var reach: float = float(ab["range"]) if ab.has("range") else economy_part.reach_now() + float(ab.get("range_bonus", 0.0))
-	if kind == "targeted_strike" or kind == "chain" or (kind == "displace" and ["pull_target", "throw_target"].has(str(ab.get("mode", "")))) \
-			or (kind == "smite" and not bool(ab.get("nearest_to_point", false))) or (kind == "channel" and str(ab.get("shape", "")) == "tether") \
-			or (kind == "detonate" and str(ab.get("gather_into", "")) == "target"):
-		strike_target = _skill_target(reach)
-		var no_line := false
-		if strike_target != null and kind == "smite" and GameData.balance["skills"].get("smite_needs_line", true) \
-				and not bool((ab.get("on_hit", {}) as Dictionary).get("through", false)) \
-				and not _ray(global_position + Vector3.UP, strike_target.global_position + Vector3.UP).is_empty():
-			strike_target = null                 # a wall or stone stands between
-			no_line = true
-		if strike_target == null and not no_line and kind == "targeted_strike" and motion_part._walk_in(index, reach):
-			return                               # out of reach: walk in, then cast (nothing is spent yet)
-		if strike_target == null:
-			if no_line:
-				_refuse("no_line", "No clear line")
-			elif _skill_candidate() != null:
-				_refuse("out_of_reach", "Out of reach")
-			else:
-				_refuse("no_target", "No target")
-			note("%s needs someone within reach." % str(ab["name"]))
-			return
-		if str(ab.get("needs_status", "")) != "" and kind != "detonate" and not bool(strike_target.call("has_status", str(ab["needs_status"]))):
-			_refuse("needs_status", "Needs a %s target" % StatusText.label(str(ab["needs_status"])))
-			note("%s needs a target that is %s." % [str(ab["name"]), StatusText.label(str(ab["needs_status"]))])
-			return
-	elif kind == "smite":
-		blink_to = _aim_point(reach)
-		strike_target = _nearest_enemy_to(blink_to, reach)
-		if strike_target == null:
-			_refuse("no_target", "No target there")
-			note("%s needs someone near where you point." % str(ab["name"]))
-			return
-	elif kind == "blink" or kind == "grapple":
-		var spot: Variant = _blink_point(float(ab.get("range", 6.0)))
-		var special: Variant = _special_landing(ab)
-		if special != null:
-			spot = special
-		elif bool(ab.get("needs_shadow", false)) and spot != null and not Light.is_dark(get_tree(), spot):
-			_refuse("no_landing", "No shadow there")
-			note("There is no shadow there to rise from.")
-			return
-		if spot == null:
-			_refuse("no_landing", "No way through")
-			note("There is no way through to there.")
-			return
-		blink_to = spot
-	elif kind == "prop" and str(ab.get("shape", "")) == "":
-		var where: Variant = _prop_point(ab)
-		if where == null:
-			_refuse("no_landing", "No room there")
-			note("There is no room to raise stone there.")
-			return
-		blink_to = where
-	elif kind == "displace" or kind == "delayed_blast" or kind == "ground_zone" or kind == "rod" or kind == "prop" or kind == "seed" \
-			or kind == "summon" or (kind == "field_pulse" and ab.has("range")) or (kind == "charge_release" and str(ab.get("release", "")) == "delayed_blast"):
-		blink_to = _aim_point(float(ab.get("range", 8.0)))
-	if str(ab.get("needs", "")).begins_with("corpse"):
-		var body_at: Fallen = _corpse_near(blink_to, float(GameData.num("skills", "jump_radius")))
-		if body_at == null and str(ab["needs"]) == "corpse":
-			_refuse("no_target", "Needs a body there")
-			note("%s needs a body where you point." % str(ab["name"]))
-			return
-		if body_at != null:
-			blink_to = body_at.global_position
-	elif kind == "summon" and str(ab.get("needs", "")) == "growth":
-		if _growth_at(blink_to, 1.5) == null:
-			_refuse("no_target", "Needs your growth there")
-			note("%s needs your growth where you point." % str(ab["name"]))
-			return
-	if kind == "melee_burst" and motion_part._walk_in(index, melee_range + float(ab.get("reach_bonus", 0.0))):
-		return                                   # its foe is out of the sweep: walk in, then cast
-	essence -= cost
-	if float(ab.get("heat_cost", 0.0)) > 0.0:
-		reflux_by[aff] = heat - float(ab["heat_cost"])          # paid in heat, not essence (Wickpinch)
-	else:
-		reflux_by[aff] = heat + cost * float(ab["reflux_per_cost"])
-	if float(ab.get("vent_reflux", 0.0)) > 0.0:
-		reflux_by[aff] = maxf(0.0, reflux_of(aff) - float(ab["vent_reflux"]))
-	_advance(state, maxf(cost, float(ab["cost"]) * 0.5))
-	if movement:
-		if winded:
-			_float("winded", Color(0.8, 0.8, 0.9))
-		if bool(ab.get("clears_winded", false)):
-			_winded_t = 0.0
-		if not bool(ab.get("never_winds", false)):
-			_winded_t = GameData.num("combat", "winded_s")
-	if hits_part._hidden():
-		_cast_hidden_t = GameData.num("skills", "ambush_cast_window_s")             # this cast's hits come out of Unseen
-	if not _cast_is_quiet():
-		_unseen_reveal_t = float(GameData.affinity("dark").get("reveal_s", 1.0))     # casting shows you for a moment
-
-	var stage_mult: float = ability_damage_mult(int(state["stage"])) * float(ab.get("damage_all", 1.0))
-	var tags: Array = ["ability", aff, str(state["id"])]
-	_drain_cast = 0.0                           # a drain's cap is per cast
-	if bool(ab.get("weapon", false)):
-		tags.append("weapon")                    # made with your weapon: it carries your coat (poison.json)
-	var windup: float = float(ab.get("windup", 0.0))
-	if _forced_target == null:
-		motion_part._face_cast_aim(kind)                     # a walked-in cast already faces the foe it walked to
-	if kind == "prop" or kind == "delayed_blast" or kind == "ground_zone" or kind == "rod" or kind == "seed" or kind == "summon" \
-			or (kind == "displace" and strike_target == null) or (kind == "smite" and strike_target != null):
-		var to_spot: Vector3 = (strike_target.global_position if (kind == "smite" and strike_target != null) else blink_to) - global_position
-		to_spot.y = 0.0
-		if to_spot.length() > 0.2:
-			_facing = to_spot.normalized()
-	if bool(ab.get("breaks_aim", false)):
-		for node: Node in get_tree().get_nodes_in_group("enemies"):
-			if str(node.get("behaviour")) == "ranged" and float(node.get("_windup")) >= 0.0:
-				node.call("interrupt")           # everyone aiming at you loses the aim
-	if bool(ab.get("frees_caster", false)):
-		_stagger_t = 0.0
-		_shoved_left = 0.0
-	# held skills start now and do their work while held
-	if kind == "channel" or kind == "charge_release":
-		_start_held(ab, kind, aff, stage_mult, tags, strike_target, blink_to, state)
-	# Stone starts rising at once; everything else with a wind-up goes off when it ends.
-	elif windup <= 0.0 or kind == "prop" or kind == "delayed_blast":
-		_perform_cast(ab, kind, aff, stage_mult, tags, strike_target, blink_to)
-	if kind != "rod":
-		_rod_relay(aff, stage_mult)
-	if windup > 0.0:
-		_windup_t = windup
-		_windup_total = windup
-		_windup = {"ab": ab, "kind": kind, "aff": aff, "stage_mult": stage_mult, "tags": tags, "target": strike_target, "point": blink_to,
-			"facing": _facing, "braced": bool(ab.get("braced", false)), "release": kind != "prop" and kind != "delayed_blast"}
-		has_move_goal = false
-		attack_target = null
-		pickup_target = null
-		if bool(_windup["release"]):
-			_motion_started = motion_part._play_cast_motion(ab, kind, windup)       # the motion lands as the wind-up ends
-		if bool(ab.get("braced", false)):
-			_float("braced", GameData.affinity_color(aff).lightened(0.3))
-
-	# A skill takes a moment to finish; running hot makes that moment longer (it no longer hurts).
-	var recovery: float = float(ab.get("recovery", GameData.num("abilities", "cast_recovery"))) * buff_num("recovery_mult")
-	if heat >= float(_reflux_cfg["burn_at"]):
-		recovery = recovery * float(_reflux_cfg["burn_recovery_mult"]) + float(_reflux_cfg["burn_recovery_add"])
-		_float("seizing", Color(1, 0.5, 0.2))
-	if movement:
-		# the recovery starts when the movement ends, so the dash itself is not eaten by it
-		recovery = maxf(recovery, float(ab.get("dash_time", 0.0)) + (0.0 if bool(ab.get("no_recovery", false)) else GameData.num("combat", "dash_recovery_s")))
-	_recover_t = windup + recovery
-	_melee_cd = maxf(_melee_cd, windup + recovery)
-	# Braced on any skill (a braced word, or a braced skill with no wind-up): for the cast and its recovery
-	if bool(ab.get("braced", false)) and windup <= 0.0 and kind != "dash":
-		_brace_t = recovery
-	if str(ab.get("self_status", "")) != "":
-		_take_state(str(ab["self_status"]), float(ab.get("self_status_s", 2.0)))
-	if not movement:
-		_face_dir = _facing                      # keep facing where it went for a moment, unless you click
-		_face_hold_t = GameData.num("feel", "cast_face_hold_s")
-
-	_lock_if_capped(aff)
-	combat_part._check_death()
-
-
-## At reflux lock_at an affinity locks, unless a talent answers the cap (on_reflux_cap).
-func _lock_if_capped(aff: String) -> void:
-	if reflux_of(aff) < float(_reflux_cfg["lock_at"]) or is_locked(aff):
-		return
-	capping_affinity = aff
-	for e: TalentEffect in effects:
-		if e.on_reflux_cap():
-			return
-	locked_by[aff] = true
-	note("Reflux at %d - %s affinity LOCKED." % [int(_reflux_cfg["lock_at"]), str(GameData.affinity(aff).get("label", aff)).to_lower()])
-
-
-## What a skill does when it goes off: at once, or when its wind-up ends (see _tick_windup).
-## `blink_to` is the point the skill was aimed at, for the kinds that have one.
-func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float, tags: Array, strike_target: Node3D, blink_to: Vector3) -> void:
-	if (kind == "targeted_strike" or kind == "chain") and strike_target == null:
-		return                                   # whoever it was meant for is gone
-	if _motion_started:
-		_motion_started = false                  # its wind-up started the motion, timed to land now
-	else:
-		motion_part._play_cast_motion(ab, kind, GameData.num("feel", "anim_action_lead_s"))
-	motion_part._snap_body_now()
-	match kind:
-		"projectile":
-			_fire_projectile(ab, stage_mult, GameData.affinity_color(aff), tags + ["projectile"])
-		"melee_burst":
-			if float(ab.get("self_harm", 0.0)) > 0.0:     # only a build that earns it; no ability has it by default
-				var hurt: float = body.apply_self_harm(float(ab["self_harm"]))
-				_float("-%d" % int(hurt), Color(1, 0.4, 0.3))
-			_burst(ab, stage_mult, tags if bool(ab.get("not_melee", false)) else tags + ["melee"])
-			_melee_cd = GameData.num("feel", "strike_after_skill_s")      # a melee skill counts as one swing
-		"dash":
-			var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-			var dir := Vector3(input.x, 0.0, input.y).normalized().rotated(Vector3.UP, ISO_YAW)
-			if dir == Vector3.ZERO:
-				dir = _facing
-			if bool(ab.get("leap", false)):
-				# Downdraft's leap: over bodies to the aimed point (walls and standing stone still stop it), no further
-				var aim_to: Vector3 = motion_part._cursor_ground() - global_position
-				aim_to.y = 0.0
-				var reach_l: float = minf(float(ab.get("range", 99.0)), float(ab["dash_speed"]) * float(ab["dash_time"]))
-				if aim_to.length() > 0.3:
-					dir = aim_to.normalized()
-					reach_l = minf(reach_l, aim_to.length())
-				_facing = dir
-				_dash_vel = dir * float(ab["dash_speed"])
-				_dash_time = reach_l / float(ab["dash_speed"])
-			else:
-				_dash_vel = dir * float(ab["dash_speed"])
-				_dash_time = float(ab["dash_time"])
-			if float(ab.get("after_heal_per_s", 0.0)) > 0.0:
-				combat_part.heal_over(float(ab["after_heal_per_s"]) * float(ab.get("duration", 2.0)), float(ab.get("duration", 2.0)))      # Fresh Stride
-			if str(ab.get("dir", "")) == "back":
-				_dash_vel = -_facing * float(ab["dash_speed"])                       # Forsaken Ground: away from where you aim
-			_dash_pass = ab.get("on_pass", {})
-			_dash_pass_radius = float(ab.get("pass_radius", 1.0))
-			_dash_tags = tags
-			_dash_passed.clear()
-			_dash_from = global_position
-			_dash_start = global_position
-			_dash_trail = ab.get("trail", {})
-			_dash_stops = bool(ab.get("stops_at_bodies", false))
-			_dash_braced = bool(ab.get("braced", false))
-			_dash_on_stop = ab.get("on_stop", {})
-			_dash_heavy_poise = float(ab.get("heavy_poise", 0.0))
-			_dash_color = GameData.affinity_color(aff)
-			_dash_on_arrive = ab.get("on_arrive", {})
-			_dash_arrive_radius = float(ab.get("arrive_radius", 1.5))
-			_dash_pass_armoured = bool(ab.get("pass_armoured", false))
-			_dash_ab = ab
-			_dash_stage_mult = stage_mult
-			if bool(ab.get("pass_armoured", false)):
-				_dash_stops = true                     # bare bodies stop it; armoured ones it punches through (_body_ahead)
-			# blood pools along the way carry you further (Thinblood Rush)
-			if float(ab.get("pool_bonus_m", 0.0)) > 0.0:
-				var crossed: int = _pools_along(global_position, global_position + dir * float(ab["dash_speed"]) * float(ab["dash_time"]))
-				crossed = mini(crossed, int(ab.get("pool_bonus_max", 2)))
-				_dash_time += float(ab["pool_bonus_m"]) * float(crossed) / float(ab["dash_speed"])
-			# what it leaves where it started: a phantom of you, a little cloud
-			if ab.has("leave_decoy"):
-				_leave_lure(global_position, ab["leave_decoy"], aff, tags)
-			if ab.has("leave_zone") and str((ab["leave_zone"] as Dictionary).get("at", "start")) == "start":
-				hits_part.lay_cloud(global_position, ab["leave_zone"], tags + ["cloud"])
-			if float(ab.get("after_speed_mult", 0.0)) > 0.0:
-				buffs["after_" + str(ab.get("name", "dash")).to_lower()] = {"t": float(ab.get("duration", 2.0)) + float(ab["dash_time"]), "move_speed_mult": float(ab["after_speed_mult"])}
-			if motion_part.has_slipstream():
-				pips = mini(GameData.inum("slipstream", "max"), pips + int(ab.get("gain_pips", 0)))
-		"beam":
-			_fire_beam(ab, stage_mult, GameData.affinity_color(aff), tags)
-		"targeted_strike":
-			var to_t: Vector3 = strike_target.global_position - global_position
-			to_t.y = 0.0
-			if to_t.length() > 0.2:
-				_facing = to_t.normalized()
-			_strike_t = 0.25
-			combat_part._swing_visual(to_t.length() + 0.4, true, true)
-			var strike_payload: Dictionary = hits_part._payload(ab, "on_hit")
-			var strike_tags: Array = tags + ["melee"]
-			if bool(ab.get("force_rear", false)):
-				strike_tags.append("rear")              # it lands on the back whichever way they were facing
-			if ab.has("pip_mult"):
-				var burned: int = motion_part.spend_pips(-1 if bool(ab.get("spend_all_pips", false)) else int(ab.get("spend_pips", 0)))
-				strike_payload["damage_mult"] = float(strike_payload.get("damage_mult", 1.0)) * (1.0 + float(ab["pip_mult"]) * float(burned))
-			if bool(ab.get("through", false)):
-				# cut through: you end up behind them, unless something solid is there
-				var beyond: Vector3 = strike_target.global_position + _facing * (float(ab.get("through_dist", 2.0)) + float(strike_target.get("radius")))
-				beyond.y = global_position.y
-				var blocked: Dictionary = _ray(global_position + Vector3.UP, beyond + Vector3.UP)
-				_line_visual(global_position + Vector3.UP, (blocked["position"] if not blocked.is_empty() else beyond + Vector3.UP), GameData.affinity_color(aff))
-				if blocked.is_empty():
-					global_position = beyond
-				has_move_goal = false
-				attack_target = null
-			var spent: int = 0
-			if str(strike_payload.get("execute_needs", "")) != "":
-				strike_payload["execute_had"] = bool(strike_target.call("has_status", str(strike_payload["execute_needs"])))
-			if ab.has("consume_status") and strike_target.has_method("status_stacks"):
-				# cash in what is already on the target: each stack spent adds to the blow, and it bursts
-				spent = int(strike_target.call("status_stacks", str(ab["consume_status"]))) if bool(strike_target.call("has_status", str(ab["consume_status"]))) else 0
-				for alt: String in (ab.get("consume_counts", {}) as Dictionary):
-					if bool(strike_target.call("has_status", alt)):
-						spent = maxi(spent, int(ab["consume_counts"][alt]))     # Waterlogged counts as two Soaks
-						strike_target.call("clear_status", alt)
-				if spent > 0:
-					strike_target.call("clear_status", str(ab["consume_status"]))
-					combat_part.deal_damage(strike_target, float(ab.get("per_stack_damage", 0.0)) * float(spent) * stage_mult, tags + ["melee", "burst"])
-			var sp_metal: int = int(strike_target.call("metal_class")) if strike_target.has_method("metal_class") else 0
-			var sp_at: Vector3 = strike_target.global_position
-			if spent > 0 and strike_payload.get("on_kill") is Dictionary and int((strike_payload["on_kill"] as Dictionary).get("blood_per_stack", 0)) > 0:
-				var ok2: Dictionary = (strike_payload["on_kill"] as Dictionary).duplicate()
-				ok2["blood"] = int(ok2.get("blood", 0)) + int(ok2["blood_per_stack"]) * spent     # Last Draught: more for every stack it drank
-				strike_payload["on_kill"] = ok2
-			if is_instance_valid(strike_target) and not bool(strike_target.call("is_dead")):
-				hits_part.apply_hit(strike_target, strike_payload, strike_tags, stage_mult)
-			if ab.get("spall") is Dictionary and sp_metal > 0:
-				# Splitting Blow: the armour it splits flies off into whoever stands near, per class of metal it wore
-				var spl: Dictionary = ab["spall"]
-				for o: Node3D in _enemies_near(sp_at, float(spl.get("radius", 2.5))):
-					if o != strike_target:
-						combat_part.deal_damage(o, float(spl.get("damage_per_class", 30.0)) * float(sp_metal) * stage_mult, tags + ["spall"])
-			if int(ab.get("swallow_per_hit", 0)) > 0:
-				hits_part.store_add("swallowed", int(ab["swallow_per_hit"]), 5, 12.0)       # Hungry Dark swallows the light it strikes
-			if ab.get("zone") is Dictionary:
-				_lay_ground(ab["zone"], 2.0, ab, tags)                            # and leaves dark ground at your feet
-			if (spent > 0 or bool(ab.get("burst_always", false))) and ab.has("burst"):
-				var centre: Vector3 = strike_target.global_position if is_instance_valid(strike_target) else global_position + _facing * 1.5
-				for node: Node in get_tree().get_nodes_in_group("enemies"):
-					var near := node as Node3D
-					var self_too: bool = bool(ab.get("burst_always", false))      # Thunderclap's crack takes the target too
-					if near != null and (near != strike_target or self_too) and near.global_position.distance_to(centre) <= float(ab.get("burst_radius", 2.0)) + float(near.get("radius")):
-						hits_part.apply_hit(near, ab["burst"], tags + ["burst"], stage_mult)
-			if spent > 0 and ab.has("burst_zone"):
-				var bz: Dictionary = (ab["burst_zone"] as Dictionary).duplicate()
-				bz["payload"] = bz.get("payload", {"status": "infected"})
-				hits_part.lay_cloud(strike_target.global_position if is_instance_valid(strike_target) else global_position, bz, tags + ["cloud"])
-			_melee_cd = float(_p["melee_cooldown"])
-		"blink":
-			_blink(blink_to, ab, stage_mult, GameData.affinity_color(aff), tags)
-		"prop":
-			_raise_prop(blink_to, ab, stage_mult, tags)
-		"displace":
-			_displace(blink_to, strike_target, ab, stage_mult, tags)
-		"delayed_blast":
-			_start_blast(blink_to, ab, stage_mult, tags)
-		"detonate":
-			_detonate(ab, stage_mult, tags, strike_target)
-		"ground_zone":
-			_lay_zone(blink_to, ab, stage_mult, tags)
-			if bool(ab.get("drops_aggro", false)):
-				# Pall: everyone coming for you loses you (as when Unseen begins) and gives up its place at your side
-				for node: Node in get_tree().get_nodes_in_group("enemies"):
-					if node.get("target") == self:
-						node.call("interrupt")
-						combat_part.release_slot(node)
-		"self_buff":
-			_take_buff(ab)
-		"rod":
-			_plant_rod(blink_to, ab)
-		"chain":
-			_chain(strike_target, ab, stage_mult, tags)
-		"smite":
-			_smite(strike_target, blink_to, ab, stage_mult, tags)
-		"summon":
-			_summon(blink_to, ab, stage_mult, tags)
-		"seed":
-			_sow(blink_to, ab, stage_mult, tags)
-		"grapple":
-			_grapple(blink_to, ab, stage_mult, tags)
-		"streak":
-			_streak(ab, stage_mult, tags)
-		"field_pulse":
-			_field_pulse(blink_to, ab, stage_mult, tags)
-	if kind != "self_buff" and ab.get("coat") is Dictionary:
-		combat_part._put_coat(ab)                            # the cast leaves its coat on your weapon (Venom Edge, Steeped Blade)
-	if ab.get("conjure_weapon") is Dictionary:
-		combat_part._conjure(ab)                             # Clotblade, Thirsting Glaive
-	_repeat_cast(ab, kind, aff, stage_mult, tags, strike_target, blink_to)
-
-
-## A sealed word's great ring (design/14 section 8) makes the skill come round again: the same cast,
-## at "mult" of its strength, "delay_s" later ("times" in all). Generic: it is the rune patch's
-## "rune_repeat" field, read here for any skill; which kinds may repeat is the rule set's data.
-func _repeat_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float, tags: Array, strike_target: Node3D, blink_to: Vector3) -> void:
-	var rep: Variant = ab.get("rune_repeat")
-	if typeof(rep) != TYPE_DICTIONARY or not is_inside_tree() or get_parent() == null:
-		return
-	var echo: Dictionary = ab.duplicate(true)
-	echo.erase("rune_repeat")                    # the echo itself does not repeat
-	var mult: float = float((rep as Dictionary).get("mult", 0.0))
-	var delay: float = float((rep as Dictionary).get("delay_s", 0.4))
-	var times: int = maxi(1, int((rep as Dictionary).get("times", 1)))
-	var target: Node3D = strike_target
-	SkillTimer.after(get_parent(), delay, func(n: int) -> void:
-		if dead or not is_inside_tree():
-			return
-		var t: Node3D = target if target != null and is_instance_valid(target) and not bool(target.call("is_dead")) else null
-		_perform_cast(echo, kind, aff, stage_mult * pow(mult, float(n + 1)), tags, t, blink_to), times - 1, delay)
-
-
-## Put an ability on a skill slot. An ability lives on one slot at a time; whatever was in the
-## target slot swaps to the slot the ability came from (or leaves the bar if it had none).
-func assign_slot(slot: int, ability_index: int) -> void:
-	if slot < 0 or slot >= hotbar.size() or ability_index < 0 or ability_index >= abilities.size():
-		return
-	var from: int = hotbar.find(ability_index)
-	var displaced: int = hotbar[slot]
-	hotbar[slot] = ability_index
-	if from >= 0 and from != slot:
-		hotbar[from] = displaced
-
-
-## Take an ability off the skill bar.
-func unassign_ability(ability_index: int) -> void:
-	var at: int = hotbar.find(ability_index)
-	if at >= 0:
-		hotbar[at] = -1
-
-
-## Damage multiplier an ability gets from its stage.
-func ability_damage_mult(stage: int) -> float:
-	return 1.0 + GameData.num("abilities", "stage_damage_bonus") * float(stage)
-
-
-## Progress is bought with essence spent through the ability, and counts for more when
-## something is actually trying to kill you (Brent 2026-09-23). The bar stops at 100: the stage
-## only advances when a construct of the matching tier is bound into it (Brent 2026-09-23).
-func _advance(state: Dictionary, essence_spent: float) -> void:
-	var was_full: bool = float(state["progress"]) >= 100.0
-	var use_mult: float = GameData.num("abilities", "use_mult_monster") if combat_part._enemy_nearby() else GameData.num("abilities", "use_mult_nothing")
-	var gain: float = essence_spent * GameData.num("abilities", "progress_per_essence") * use_mult
-	state["progress"] = minf(100.0, float(state["progress"]) + gain)
-	if not was_full and float(state["progress"]) >= 100.0:
-		note("%s is full. It needs a %s bound into it to advance." % [
-			str(GameData.ability(str(state["id"])).get("name", "?")), GameData.tier_for_stage(int(state["stage"]))])
-
-
-## What an ability needs next: "" if its bar is not full (or it is at the stage cap);
-## otherwise the construct tier that advances it.
-func pending_tier(state: Dictionary) -> String:
-	if float(state["progress"]) < 100.0 or int(state["stage"]) >= stars + 1:
-		return ""
-	return GameData.tier_for_stage(int(state["stage"]))
-
-
 func _fire_projectile(ab: Dictionary, stage_mult: float, color: Color, tags: Array = ["projectile"]) -> void:
 	var bolt: Node3D = Projectile.new()
 	bolt.set("color", color)
@@ -2211,7 +1374,7 @@ func _fire_projectile(ab: Dictionary, stage_mult: float, color: Color, tags: Arr
 	bolt.set("hit_radius", maxf(0.35, float(ab.get("width", 0.0)) * 0.5))
 	bolt.set("ab", ab)
 	bolt.set("stage_mult", stage_mult)
-	bolt.set("dir", lead_aim(ab, _facing))          # a slow shot leads its foe a little (combat review R4b)
+	bolt.set("dir", casting_part.lead_aim(ab, _facing))          # a slow shot leads its foe a little (combat review R4b)
 	bolt.set("damage", float(ab["damage"]) * stage_mult)
 	bolt.set("speed", float(ab["speed"]))
 	bolt.set("life", float(ab["life"]))
@@ -2219,7 +1382,7 @@ func _fire_projectile(ab: Dictionary, stage_mult: float, color: Color, tags: Arr
 		# a shot (poison.json): loosed from your ranged weapon when one is worn - its damage on the dart, a ranged
 		# shot for the coat - and it flies as far as your shots do (Bitter Tonic's shot_range_mult)
 		bolt.set("tags", tags + ["ranged"])
-		bolt.set("life", float(ab["life"]) * buff_num("shot_range_mult"))
+		bolt.set("life", float(ab["life"]) * casting_part.buff_num("shot_range_mult"))
 		if not combat_part.ranged_weapon().is_empty():
 			var rm: float = combat_part.ranged_stat("ranged_damage_mult", 1.0)
 			bolt.set("damage", float(bolt.get("damage")) * rm)
@@ -2228,36 +1391,7 @@ func _fire_projectile(ab: Dictionary, stage_mult: float, color: Color, tags: Arr
 				bolt.set("payload", payload)
 	bolt.set("shooter", self)
 	get_parent().add_child(bolt)
-	bolt.global_position = _muzzle()
-
-
-# --- the 2026-10-22 skill kinds (build brief: smite, channel, charge_release, summon, seed, grapple,
-# streak, field_pulse; clouds and lures). Every effect on an enemy still goes through apply_hit. ---
-
-## True while a buff keeps your casting and striking quiet (Muffle).
-func _cast_is_quiet() -> bool:
-	for bid: String in buffs:
-		if (buffs[bid] as Dictionary).has("unaware_mult"):
-			return true
-	return false
-
-
-## One of your own short states (statuses.json player_states: Quickened), as a buff.
-func _take_state(id: String, seconds: float) -> void:
-	var def: Dictionary = GameData.player_state(id)
-	var b: Dictionary = def.duplicate()
-	b["t"] = seconds
-	buffs[id] = b
-	_float(str(def.get("label", id)).to_lower(), Color(0.95, 0.95, 1.0))
-
-
-## The living enemy nearest `point`, within `reach` of it; null if none.
-func _nearest_enemy_to(point: Vector3, reach: float) -> Node3D:
-	var best: Node3D = null
-	for e: Node3D in _enemies_near(point, reach):
-		if best == null or Vector2(e.global_position.x - point.x, e.global_position.z - point.z).length() < Vector2(best.global_position.x - point.x, best.global_position.z - point.z).length():
-			best = e
-	return best
+	bolt.global_position = casting_part._muzzle()
 
 
 ## Where a movement skill lands when it has a special landing: onto a corpse further off
@@ -2275,14 +1409,14 @@ func _special_landing(ab: Dictionary) -> Variant:
 		if f != null and f.global_position.distance_to(global_position) <= float(ab["corpse_range"]):
 			return Vector3(f.global_position.x, global_position.y, f.global_position.z)
 	if bool(ab.get("arrive_behind", false)):
-		var foe: Node3D = _nearest_enemy_to(cursor, 1.5)
+		var foe: Node3D = casting_part._nearest_enemy_to(cursor, 1.5)
 		if foe == null:
-			foe = _skill_target(float(ab.get("range", 10.0)))
+			foe = casting_part._skill_target(float(ab.get("range", 10.0)))
 		if foe != null and foe.global_position.distance_to(global_position) <= float(ab.get("range", 10.0)) + 1.0:
 			var back: Vector3 = -(foe.get("facing") as Vector3) if foe.get("facing") is Vector3 else (foe.global_position - global_position).normalized()
 			var spot: Vector3 = foe.global_position + back.normalized() * (float(foe.get("radius")) + 1.0)
 			spot.y = global_position.y
-			if _ray(foe.global_position + Vector3.UP, spot + Vector3.UP).is_empty():
+			if casting_part._ray(foe.global_position + Vector3.UP, spot + Vector3.UP).is_empty():
 				return spot
 	return null
 
@@ -2339,7 +1473,7 @@ func _smite(target: Node3D, point: Vector3, ab: Dictionary, stage_mult: float, t
 		payload["status_s"] = walk + float(data.get("stand_s", 2.0))
 	_strike_t = 0.2
 	var from_sky: bool = bool(payload.get("through", false))
-	_line_visual((target.global_position + Vector3.UP * 7.0) if from_sky else (global_position + Vector3.UP), target.global_position + Vector3.UP, color)
+	casting_part._line_visual((target.global_position + Vector3.UP * 7.0) if from_sky else (global_position + Vector3.UP), target.global_position + Vector3.UP, color)
 	if str(ab.get("on_death_growth", "")) != "":
 		var kind_g: String = str(ab["on_death_growth"])
 		target.tree_exiting.connect(func() -> void:
@@ -2350,9 +1484,9 @@ func _smite(target: Node3D, point: Vector3, ab: Dictionary, stage_mult: float, t
 		var sid: String = str(ab["spread_stacks"])
 		var n: int = int(target.call("status_stacks", sid)) if bool(target.call("has_status", sid)) else 0
 		if n > 0:
-			for e: Node3D in _enemies_near(target.global_position, float(ab.get("spread_radius", 4.0))):
+			for e: Node3D in casting_part._enemies_near(target.global_position, float(ab.get("spread_radius", 4.0))):
 				if e != target:
-					_line_visual(target.global_position + Vector3.UP, e.global_position + Vector3.UP, color)
+					casting_part._line_visual(target.global_position + Vector3.UP, e.global_position + Vector3.UP, color)
 					var sopts: Dictionary = {"lasts": float(ab["status_s"])} if ab.has("status_s") else {}
 					e.call("add_status", sid, mini(n, int(ab.get("spread_max", n))), self, sopts)
 	if float(ab.get("command_radius", 0.0)) > 0.0:
@@ -2361,7 +1495,7 @@ func _smite(target: Node3D, point: Vector3, ab: Dictionary, stage_mult: float, t
 			var to_t: Vector3 = target.global_position - s.global_position
 			to_t.y = 0.0
 			var land: Vector3 = target.global_position - to_t.normalized() * (float(target.get("radius")) + 0.8)
-			_line_visual(s.global_position + Vector3.UP, land + Vector3.UP, color)
+			casting_part._line_visual(s.global_position + Vector3.UP, land + Vector3.UP, color)
 			s.global_position = Vector3(land.x, s.global_position.y, land.z)
 			if ab.get("summon_hit") is Dictionary:
 				hits_part.apply_hit(target, ab["summon_hit"], tags + ["thrall"], stage_mult)
@@ -2433,7 +1567,7 @@ func _summon(at: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -> voi
 		var off := Vector3(0.7 * float(i), 0.0, 0.0)
 		t.position = Vector3(at.x, global_position.y, at.z) + off
 		get_parent().add_child(t)
-	_line_visual(global_position + Vector3.UP, at + Vector3.UP, GameData.affinity_color(str(ab.get("affinity", ""))))
+	casting_part._line_visual(global_position + Vector3.UP, at + Vector3.UP, GameData.affinity_color(str(ab.get("affinity", ""))))
 
 
 ## A body for a Death skill near `point`: a corpse, or - Last Mercy's captures - a Spared enemy of yours that kneels
@@ -2442,7 +1576,7 @@ func _corpse_near(point: Vector3, reach: float) -> Fallen:
 	var f: Fallen = Fallen.nearest(get_tree(), point, reach)
 	if f != null:
 		return f
-	for e: Node3D in _enemies_near(point, reach):
+	for e: Node3D in casting_part._enemies_near(point, reach):
 		if e.has_method("is_elite") and bool(e.call("is_elite")):
 			continue
 		var st: Array = e.call("status_from", "kneels_below", self)
@@ -2537,7 +1671,7 @@ func _grapple(to: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -> vo
 	way.y = 0.0
 	if way.length() < 0.2:
 		return
-	_line_visual(global_position + Vector3.UP, to + Vector3.UP, GameData.affinity_color(str(ab.get("affinity", ""))))
+	casting_part._line_visual(global_position + Vector3.UP, to + Vector3.UP, GameData.affinity_color(str(ab.get("affinity", ""))))
 	_facing = way.normalized()
 	var speed: float = float(ab.get("dash_speed", 24.0))
 	_dash_vel = way.normalized() * speed
@@ -2564,12 +1698,12 @@ func _streak(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	var from: Vector3 = global_position
 	var dir: Vector3 = _facing
 	var reach: float = float(ab.get("range", 7.0))
-	var wall: Dictionary = _ray(from + Vector3.UP, from + Vector3.UP + dir * (reach + 0.5))
+	var wall: Dictionary = casting_part._ray(from + Vector3.UP, from + Vector3.UP + dir * (reach + 0.5))
 	if not wall.is_empty():
 		reach = maxf(0.0, (from + Vector3.UP).distance_to(wall["position"]) - 0.6)
 	var a := Vector2(from.x, from.z)
 	var passed: Array = []
-	for e: Node3D in _enemies_near(from, reach + 1.0):
+	for e: Node3D in casting_part._enemies_near(from, reach + 1.0):
 		var to: Vector3 = e.global_position - from
 		to.y = 0.0
 		var along: float = to.dot(dir)
@@ -2583,7 +1717,7 @@ func _streak(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 		passed.append([along, e])
 	var b: Vector2 = a + Vector2(dir.x, dir.z) * reach
 	var end := Vector3(b.x, from.y, b.y)
-	_line_visual(from + Vector3.UP, end + Vector3.UP, GameData.affinity_color(str(ab.get("affinity", ""))))
+	casting_part._line_visual(from + Vector3.UP, end + Vector3.UP, GameData.affinity_color(str(ab.get("affinity", ""))))
 	global_position = end
 	velocity = Vector3.ZERO
 	has_move_goal = false
@@ -2612,7 +1746,7 @@ func _field_pulse(at: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -
 		var hit: Dictionary = hits_part._payload(ab, "on_hit")
 		var take: Dictionary = hit.get("consume_stacks", {})
 		hit.erase("consume_stacks")
-		for e: Node3D in _enemies_near(global_position, radius):
+		for e: Node3D in casting_part._enemies_near(global_position, radius):
 			if took >= cap_t:
 				break
 			for st: String in take:
@@ -2624,7 +1758,7 @@ func _field_pulse(at: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -
 					elif not entry.is_empty():
 						entry["stacks"] = left
 					took += int(take[st])
-					_line_visual(e.global_position + Vector3.UP, global_position + Vector3.UP, color)
+					casting_part._line_visual(e.global_position + Vector3.UP, global_position + Vector3.UP, color)
 					hits_part.apply_hit(e, hit, tags, stage_mult)
 		hits_part.gain_blood(mini(took, cap_t) * int(ab.get("blood_per_take", 1)))
 		return
@@ -2635,11 +1769,11 @@ func _field_pulse(at: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -
 			if f == null or f.spent or f.global_position.distance_to(centre) > radius or n >= int(ab["max_corpses"]):
 				continue
 			n += 1
-			_line_visual(global_position + Vector3.UP, f.global_position + Vector3.UP * 0.3, color)
+			casting_part._line_visual(global_position + Vector3.UP, f.global_position + Vector3.UP * 0.3, color)
 			essence = minf(essence_max, essence + float(ab.get("per_corpse_essence", 0.0)))
 			var aff: String = str(ab.get("affinity", ""))
-			reflux_by[aff] = maxf(0.0, reflux_of(aff) - float(ab.get("per_corpse_reflux", 0.0)))
-			for e: Node3D in _enemies_near(f.global_position, float(ab.get("drag_radius", 2.0))):
+			reflux_by[aff] = maxf(0.0, casting_part.reflux_of(aff) - float(ab.get("per_corpse_reflux", 0.0)))
+			for e: Node3D in casting_part._enemies_near(f.global_position, float(ab.get("drag_radius", 2.0))):
 				hits_part.apply_hit(e, hits_part._payload(ab, "on_hit"), tags, stage_mult)
 			f.spend()
 		return
@@ -2695,8 +1829,8 @@ func _tick_held(delta: float) -> void:
 		return
 	essence -= pay
 	var aff: String = str(h["aff"])
-	reflux_by[aff] = reflux_of(aff) + pay * float(ab.get("reflux_per_cost", 1.0))
-	_advance(h["state"], pay)
+	reflux_by[aff] = casting_part.reflux_of(aff) + pay * float(ab.get("reflux_per_cost", 1.0))
+	casting_part._advance(h["state"], pay)
 	if float(ab.get("pip_cost_per_s", 0.0)) > 0.0:
 		h["pip_t"] = float(h["pip_t"]) + delta * float(ab["pip_cost_per_s"])
 		while float(h["pip_t"]) >= 1.0:
@@ -2726,18 +1860,18 @@ func _channel_pulse() -> void:
 		"line":
 			var origin: Vector3 = global_position + Vector3.UP * 0.9
 			var reach: float = float(ab.get("range", 8.0))
-			var wall: Dictionary = _ray(origin, origin + _facing * reach)
+			var wall: Dictionary = casting_part._ray(origin, origin + _facing * reach)
 			if not wall.is_empty():
 				reach = origin.distance_to(wall["position"])
 			var best: Node3D = null
-			for e: Node3D in _enemies_near(global_position, reach + 1.0):
+			for e: Node3D in casting_part._enemies_near(global_position, reach + 1.0):
 				var to: Vector3 = e.global_position - global_position
 				to.y = 0.0
 				var along: float = to.dot(_facing)
 				if along >= 0.0 and along <= reach and (to - _facing * along).length() <= float(ab.get("width", 1.0)) * 0.5 + float(e.get("radius")):
 					if best == null or along < (best.global_position - global_position).dot(_facing):
 						best = e
-			_line_visual(origin, (best.global_position + Vector3.UP * 0.9) if best != null else origin + _facing * reach, color)
+			casting_part._line_visual(origin, (best.global_position + Vector3.UP * 0.9) if best != null else origin + _facing * reach, color)
 			if best != null:
 				hits_part.apply_hit(best, payload, tags, stage_mult, _facing, memo)
 		"cone":
@@ -2746,18 +1880,18 @@ func _channel_pulse() -> void:
 			for e: Node3D in combat_part._in_arc(float(ab.get("range", 5.0)), half):
 				hits_part.apply_hit(e, payload, tags, stage_mult, Vector3.ZERO, memo)
 		"nearest":
-			var near: Node3D = _nearest_enemy_to(global_position, float(ab.get("radius", 3.0)))
+			var near: Node3D = casting_part._nearest_enemy_to(global_position, float(ab.get("radius", 3.0)))
 			if near != null:
-				_line_visual(global_position + Vector3.UP, near.global_position + Vector3.UP, color)
+				casting_part._line_visual(global_position + Vector3.UP, near.global_position + Vector3.UP, color)
 				hits_part.apply_hit(near, payload, tags, stage_mult, Vector3.ZERO, memo)
 		"tether":
 			var t: Variant = h["target"]
 			if t == null or not is_instance_valid(t) or bool((t as Node).call("is_dead")) \
 					or (t as Node3D).global_position.distance_to(global_position) > float(ab.get("break_range", 9.0)) \
-					or not _ray(global_position + Vector3.UP, (t as Node3D).global_position + Vector3.UP).is_empty():
+					or not casting_part._ray(global_position + Vector3.UP, (t as Node3D).global_position + Vector3.UP).is_empty():
 				_held = {}
 				return
-			_line_visual(global_position + Vector3.UP, (t as Node3D).global_position + Vector3.UP, color)
+			casting_part._line_visual(global_position + Vector3.UP, (t as Node3D).global_position + Vector3.UP, color)
 			hits_part.apply_hit(t, payload, tags, stage_mult, Vector3.ZERO, memo)
 		_:
 			# self: everything round you (Deep Draught draws blood out; Regrowth mends you)
@@ -2773,14 +1907,14 @@ func _channel_pulse() -> void:
 					combat_part._wounds_closed(arm_fill["closed"])
 				return
 			var taken := 0
-			for e: Node3D in _enemies_near(global_position, float(ab.get("radius", 5.0))):
+			for e: Node3D in casting_part._enemies_near(global_position, float(ab.get("radius", 5.0))):
 				var take: Dictionary = payload.get("consume_stacks", {})
 				var had := true
 				for st: String in take:
 					had = had and bool(e.call("has_status", st))
 				if not had:
 					continue
-				_line_visual(e.global_position + Vector3.UP, global_position + Vector3.UP, color)
+				casting_part._line_visual(e.global_position + Vector3.UP, global_position + Vector3.UP, color)
 				for st2: String in take:
 					var left: int = int(e.call("status_stacks", st2)) - int(take[st2])
 					var entry: Dictionary = (e.get("statuses") as Dictionary).get(st2, {})
@@ -2850,7 +1984,7 @@ func _release_charge() -> void:
 				var hit2: Dictionary = (ab["on_hit"] as Dictionary).duplicate()
 				hit2["damage"] = float(ab["damage"])
 				ab["on_hit"] = hit2
-			_start_blast(_aim_point(float(ab.get("range", 12.0))), ab, stage_mult, tags)
+			_start_blast(casting_part._aim_point(float(ab.get("range", 12.0))), ab, stage_mult, tags)
 		"beam":
 			ab["width"] = float(ab.get("line_width", ab.get("width", 1.0)))
 			_fire_beam(ab, stage_mult, GameData.affinity_color(str(h["aff"])), tags)
@@ -2885,12 +2019,12 @@ func _lift_zones(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 func _gather(target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	var id: String = str(ab.get("consume_status", "dosed"))
 	var total := 0
-	for e: Node3D in _enemies_near(target.global_position, float(ab.get("gather_radius", 6.0))):
+	for e: Node3D in casting_part._enemies_near(target.global_position, float(ab.get("gather_radius", 6.0))):
 		if e == target or not bool(e.call("has_status", id)):
 			continue
 		total += int(e.call("status_stacks", id))
 		e.call("clear_status", id)
-		_line_visual(e.global_position + Vector3.UP, target.global_position + Vector3.UP, GameData.affinity_color(str(ab.get("affinity", ""))))
+		casting_part._line_visual(e.global_position + Vector3.UP, target.global_position + Vector3.UP, GameData.affinity_color(str(ab.get("affinity", ""))))
 	var cap: int = int(ab.get("gather_cap", 20))
 	var have: int = int(target.call("status_stacks", id)) if bool(target.call("has_status", id)) else 0
 	var add: int = mini(total, cap - have)
@@ -2911,7 +2045,7 @@ func _beats(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	SkillTimer.after(get_parent(), 0.0, func(_i: int) -> void:
 		if not is_instance_valid(self):
 			return
-		for e: Node3D in _enemies_near(global_position, reach):
+		for e: Node3D in casting_part._enemies_near(global_position, reach):
 			var n: int = int(e.call("status_stacks", id)) if bool(e.call("has_status", id)) else 0
 			if n <= 0:
 				continue
@@ -2926,13 +2060,13 @@ func _beats(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 ## takes the ray; walls and stone end it.
 func _home_ray(from: Vector3, skip: Node3D, damage: float, tags: Array) -> void:
 	var to: Vector3 = global_position
-	var hit: Dictionary = _ray(from + Vector3.UP, to + Vector3.UP)
+	var hit: Dictionary = casting_part._ray(from + Vector3.UP, to + Vector3.UP)
 	if not hit.is_empty():
 		return
-	_line_visual(from + Vector3.UP, to + Vector3.UP, GameData.affinity_color("light"))
+	casting_part._line_visual(from + Vector3.UP, to + Vector3.UP, GameData.affinity_color("light"))
 	var a := Vector2(from.x, from.z)
 	var b := Vector2(to.x, to.z)
-	for e: Node3D in _enemies_near((from + to) * 0.5, from.distance_to(to) * 0.5 + 1.0):
+	for e: Node3D in casting_part._enemies_near((from + to) * 0.5, from.distance_to(to) * 0.5 + 1.0):
 		if e == skip:
 			continue
 		var p := Vector2(e.global_position.x, e.global_position.z)
@@ -2949,7 +2083,7 @@ func _raise_prop(at: Vector3, ab: Dictionary, stage_mult: float, tags: Array) ->
 			var echo: Lure = _leave_lure(at, {"life": float(ab.get("turn_s", ab.get("life", 3.0))), "hp": 9999.0,
 				"lure_radius": float(ab.get("lure_radius", 8.0)), "breaks_on_hits": 1}, str(ab.get("affinity", "")), tags)
 			echo.visible = false
-			for e: Node3D in _enemies_near(at, float(ab.get("crack_radius", 1.5))):
+			for e: Node3D in casting_part._enemies_near(at, float(ab.get("crack_radius", 1.5))):
 				hits_part.apply_hit(e, hits_part._payload(ab, "on_hit"), tags, stage_mult)
 			return
 		"lamp":
@@ -3133,73 +2267,13 @@ func _text(target: Node, txt: String, color: Color) -> void:
 var sidesteps := 0
 signal sidestepped(dir: Vector3)
 var endurance := -1.0                # -1 until first read: full
-
-
-# --- refusals the player can see (combat review R4d, approved by Brent 2026-11-03) -----------------
-# A refused cast used to be one line in the corner log. Now it is also recorded here for the HUD, which
-# flashes the slot it came from and shows the reason a moment at the cursor (balance.json "hud"
-# refusal_show_s / refusal_flash_s). The log line stays as it was.
-
 var _casting_slot := -1              # the hotbar slot cast_slot is casting from, -1 otherwise
 ## The last refusal: {serial, slot, reason, text} - reason is no_affinity | locked | essence | heat |
 ## no_target | out_of_reach | no_line | needs_status | no_landing | winded | endurance (the sidestep); slot is -1 when it was not a
 ## hotbar slot (the sidestep, a test's cast_ability). The HUD shows a new serial once.
 var last_refusal: Dictionary = {}
 signal cast_refused(slot: int, reason: String, text: String)
-
-
-func _refuse(reason: String, text: String) -> void:
-	last_refusal = {"serial": int(last_refusal.get("serial", 0)) + 1, "slot": _casting_slot, "reason": reason, "text": text}
-	cast_refused.emit(_casting_slot, reason, text)
 var _forced_target: Node3D = null    # the foe a walked-in cast walked to (_skill_candidate takes it first)
-
-
-# --- slow shots lead their foe (combat review R4b, approved by Brent 2026-11-03) --------------------
-# A slow projectile flew in a straight line to where the cursor was and missed anything walking (Slingstone
-# hit 32% of the time). Now a shot slower than skills.slow_shot_speed is aimed, as it leaves, at where the
-# foe nearest its line (within slow_shot_cone_deg of it) will be when it arrives - slow_shot_lead_frac of
-# the way - turned at most slow_shot_turn_max_deg from where you aimed. It still flies straight.
-
-## The direction a shot of skill `ab` leaves in, given the way it was aimed.
-func lead_aim(ab: Dictionary, aim: Vector3) -> Vector3:
-	var cfg: Dictionary = GameData.balance["skills"]
-	var speed: float = float(ab.get("speed", 999.0))
-	var flat_aim := Vector3(aim.x, 0.0, aim.z)
-	if speed <= 0.0 or speed >= float(cfg["slow_shot_speed"]) or flat_aim.length() < 0.01 or not is_inside_tree():
-		return aim
-	flat_aim = flat_aim.normalized()
-	var reach: float = speed * float(ab.get("life", 1.0))
-	var cone: float = deg_to_rad(float(cfg["slow_shot_cone_deg"]))
-	var foe: Node3D = null
-	var best: float = cone
-	for node: Node in get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
-		if e == null or bool(e.call("is_dead")):
-			continue
-		var to := Vector3(e.global_position.x - global_position.x, 0.0, e.global_position.z - global_position.z)
-		if to.length() < 0.3 or to.length() > reach + float(e.get("radius")):
-			continue
-		var ang: float = flat_aim.angle_to(to.normalized())
-		if ang <= best:
-			best = ang
-			foe = e
-	if foe == null:
-		return aim
-	var vel := Vector3.ZERO
-	if foe is CharacterBody3D:
-		vel = (foe as CharacterBody3D).velocity
-		vel.y = 0.0
-	var at := Vector3(foe.global_position.x, global_position.y, foe.global_position.z)
-	var ahead: Vector3 = at
-	for i: int in 2:                              # where it will be when the shot gets there (twice, to settle)
-		ahead = at + vel * (Vector3(ahead.x - global_position.x, 0.0, ahead.z - global_position.z).length() / speed) * float(cfg["slow_shot_lead_frac"])
-	var want := Vector3(ahead.x - global_position.x, 0.0, ahead.z - global_position.z)
-	if want.length() < 0.05:
-		return aim
-	want = want.normalized()
-	var turn: float = flat_aim.signed_angle_to(want, Vector3.UP)
-	var cap: float = deg_to_rad(float(cfg["slow_shot_turn_max_deg"]))
-	return flat_aim.rotated(Vector3.UP, clampf(turn, -cap, cap))
 
 
 # --- forwarded to PlayerSave (scripts/player/player_save.gd) ------------------------------------------
@@ -3413,3 +2487,30 @@ func store_add(id: String, n: int, cap: int, life: float) -> void: hits_part.sto
 func store_count(id: String) -> int: return hits_part.store_count(id)
 func on_crush(enemy: Node, metres_left: float, hit: Node) -> void: hits_part.on_crush(enemy, metres_left, hit)
 func _add_marks(target: Node, marks: int, conduct: bool) -> void: hits_part._add_marks(target, marks, conduct)
+
+
+# --- forwarded to PlayerCasting (scripts/player/player_casting.gd) ------------------------------------------
+# Outside callers (main.gd, the HUD, the screens, the tests, talents) still call these on the player.
+func reflux_of(aff: String) -> float: return casting_part.reflux_of(aff)
+func is_locked(aff: String) -> bool: return casting_part.is_locked(aff)
+func vent_reflux(value: float) -> void: casting_part.vent_reflux(value)
+func clear_reflux() -> void: casting_part.clear_reflux()
+func _shed_reflux(amount: float) -> void: casting_part._shed_reflux(amount)
+func buff_num(key: String) -> float: return casting_part.buff_num(key)
+func _tick_buffs(delta: float) -> void: casting_part._tick_buffs(delta)
+func is_braced() -> bool: return casting_part.is_braced()
+func _buff_flag(key: String) -> bool: return casting_part._buff_flag(key)
+func held_frac() -> float: return casting_part.held_frac()
+func windup_frac() -> float: return casting_part.windup_frac()
+func _tick_windup(delta: float) -> void: casting_part._tick_windup(delta)
+func _ray(from: Vector3, to: Vector3, past_own_stone: bool = false) -> Dictionary: return casting_part._ray(from, to, past_own_stone)
+func _line_visual(from: Vector3, to: Vector3, color: Color) -> void: casting_part._line_visual(from, to, color)
+func cast_slot(slot: int) -> void: casting_part.cast_slot(slot)
+func next_hotbar_page() -> void: casting_part.next_hotbar_page()
+func cast_ability(index: int) -> void: casting_part.cast_ability(index)
+func _perform_cast(ab: Dictionary, kind: String, aff: String, stage_mult: float, tags: Array, strike_target: Node3D, blink_to: Vector3) -> void: casting_part._perform_cast(ab, kind, aff, stage_mult, tags, strike_target, blink_to)
+func assign_slot(slot: int, ability_index: int) -> void: casting_part.assign_slot(slot, ability_index)
+func unassign_ability(ability_index: int) -> void: casting_part.unassign_ability(ability_index)
+func ability_damage_mult(stage: int) -> float: return casting_part.ability_damage_mult(stage)
+func pending_tier(state: Dictionary) -> String: return casting_part.pending_tier(state)
+func lead_aim(ab: Dictionary, aim: Vector3) -> Vector3: return casting_part.lead_aim(ab, aim)

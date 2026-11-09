@@ -202,7 +202,7 @@ func respawn_naked() -> void:
 	player.set_talent(player.talent_id)
 	player._charging = false
 	player._charge = 0.0
-	player.clear_reflux()
+	player.casting_part.clear_reflux()
 	player.buffs.clear()
 	player.motion_part._end_step()
 	player.motion_part.refill_endurance()
@@ -276,7 +276,7 @@ func rest_night() -> void:
 	player.body.heal(player.body.total_max())
 	if not player.arm_right_lost:
 		player.arm_right = minf(float(player._arm["max"]), player.arm_right + float(night["arm_restored"]))
-	player.clear_reflux()
+	player.casting_part.clear_reflux()
 	player.essence = player.essence_max
 	player.note("You sleep. The body refills; wounds knit a little. What is gone stays gone.")
 

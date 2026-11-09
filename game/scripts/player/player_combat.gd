@@ -135,7 +135,7 @@ func deal_damage(target: Node, base: float, tags: Array = [], opts: Dictionary =
 		# gathering (combat review R1): raw essence manipulation - a landed strike draws a little in, never past the tank
 		player.essence = minf(player.essence_max, player.essence + float(combat["strike_gathers_essence"]))
 		if not ctx.killed and target.has_method("take_poise"):
-			target.call("take_poise", float(combat["strike_poise"]) * (2.0 if ctx.has_tag("overcharge") else 1.0) * player.buff_num("strike_poise_mult") * float(conjured().get("melee_poise_mult", 1.0)))
+			target.call("take_poise", float(combat["strike_poise"]) * (2.0 if ctx.has_tag("overcharge") else 1.0) * player.casting_part.buff_num("strike_poise_mult") * float(conjured().get("melee_poise_mult", 1.0)))
 		if not ctx.killed and conjured().get("on_strike") is Dictionary:
 			_conjured_strike(target, conjured()["on_strike"])
 		if not ctx.killed and target.has_method("add_status"):
@@ -165,8 +165,8 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 	ctx.target = player
 	# What the body and what it wears take off the blow comes first, so every talent works on
 	# the same reduced number - including one that swallows the hit and delivers it later.
-	ctx.base = amount * player.progress_part.temper_stat("incoming_mult") * (1.0 - armour() / 100.0) * player.buff_num("incoming_mult") * player.hits_part._inured_mult()
-	var braced: bool = player.is_braced()
+	ctx.base = amount * player.progress_part.temper_stat("incoming_mult") * (1.0 - armour() / 100.0) * player.casting_part.buff_num("incoming_mult") * player.hits_part._inured_mult()
+	var braced: bool = player.casting_part.is_braced()
 	if braced:
 		ctx.base *= GameData.num("braced", "damage_taken_mult")
 	if _try_counter(source):
@@ -185,7 +185,7 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 		ctx.base *= float(wash.get("melee_taken_mult", 0.5))
 		# the splash: whoever threw the blow, and everyone close to you, takes the payload
 		var splash: Dictionary = wash.get("on_hit", {"shove": float(wash.get("shove", 3.0)), "status": "soaked"})
-		var wet: Array[Node3D] = player._enemies_near(player.global_position, float(wash.get("radius", 0.0)))
+		var wet: Array[Node3D] = player.casting_part._enemies_near(player.global_position, float(wash.get("radius", 0.0)))
 		if not wet.has(melee_from):
 			wet.append(melee_from)
 		for e: Node3D in wet:
@@ -231,10 +231,10 @@ func take_hit(amount: float, heavy: bool, source: Node, _tags: Array = []) -> fl
 		return 0.0
 	if heavy:
 		player.motion_part._kick(Vector3.ZERO, GameData.num("feel", "camera_kick_hurt_m"), source)
-	if heavy and not braced and not shrouded and not player._buff_flag("immovable"):   # set, shrouded or a millstone: nothing knocks you off it
+	if heavy and not braced and not shrouded and not player.casting_part._buff_flag("immovable"):   # set, shrouded or a millstone: nothing knocks you off it
 		var combat: Dictionary = GameData.balance["combat"]
 		var green_poise: float = float(player.hits_part.green_rule().get("poise_loss_mult", 1.0)) if player.hits_part.in_the_green() else 1.0
-		player.poise -= float(combat["heavy_poise_damage"]) * player.buff_num("poise_loss_mult") * green_poise / maxf(0.01, player.buff_num("poise_mult"))
+		player.poise -= float(combat["heavy_poise_damage"]) * player.casting_part.buff_num("poise_loss_mult") * green_poise / maxf(0.01, player.casting_part.buff_num("poise_mult"))
 		if player.poise <= 0.0 and _turn_away():
 			player.poise = float(combat["player_poise"])     # Absolution: the stagger is turned away
 		if player.poise <= 0.0:
@@ -501,7 +501,7 @@ func _apply_coats(target: Node) -> void:
 			return
 		player.hits_part.apply_hit(target, _coat_payload(coat as Dictionary), ["coat", str(b.get("affinity", ""))])
 		var c: Dictionary = coat
-		if c.has("charges_left") and not player._buff_flag("coat_free"):
+		if c.has("charges_left") and not player.casting_part._buff_flag("coat_free"):
 			c["charges_left"] = int(c["charges_left"]) - 1
 			if int(c["charges_left"]) <= 0:
 				if bool(b.get("coat_only", false)):
@@ -592,7 +592,7 @@ func _try_counter(source: Node) -> bool:
 ## An enemy's blow throws you `metres` along `dir`. Not if you are Braced.
 func shove(dir: Vector3, metres: float) -> void:
 	var flat := Vector3(dir.x, 0.0, dir.z)
-	if player.dead or player.bot or player.is_braced() or player._buff_flag("immovable") or flat.length() < 0.001 or metres <= 0.0:
+	if player.dead or player.bot or player.casting_part.is_braced() or player.casting_part._buff_flag("immovable") or flat.length() < 0.001 or metres <= 0.0:
 		return
 	if _turn_away():
 		return                                  # Absolution turns a hold away
@@ -687,10 +687,10 @@ func fire_ranged(toward: Vector3) -> bool:
 	shot.set("dir", player._facing)
 	shot.set("damage", ranged_damage())
 	shot.set("speed", speed)
-	shot.set("life", ranged_stat("ranged_range", float(cfg["default_range"])) / speed * player.buff_num("shot_range_mult"))
+	shot.set("life", ranged_stat("ranged_range", float(cfg["default_range"])) / speed * player.casting_part.buff_num("shot_range_mult"))
 	shot.set("shooter", player)
 	player.get_parent().add_child(shot)
-	shot.global_position = player._muzzle()
+	shot.global_position = player.casting_part._muzzle()
 	player._ranged_cd = ranged_interval()
 	player.motion_part._rig_action("throw")
 	player._strike_t = 0.18
@@ -857,7 +857,7 @@ func conjured() -> Dictionary:
 ## How fast your bare strikes come: Red Frenzy's attack_rate_mult, a conjured glaive's empty_rate_bonus (fullest
 ## with no held blood).
 func strike_rate_mult() -> float:
-	var m: float = player.buff_num("attack_rate_mult")
+	var m: float = player.casting_part.buff_num("attack_rate_mult")
 	var c: Dictionary = conjured()
 	if c.has("empty_rate_bonus") and player.hits_part.held_blood_max() > 0:
 		m *= 1.0 + float(c["empty_rate_bonus"]) * (1.0 - float(player.held_blood) / float(player.hits_part.held_blood_max()))

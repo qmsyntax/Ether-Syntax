@@ -135,8 +135,8 @@ func preview_bind(state: Dictionary, concept: String) -> Array[Dictionary]:
 		return out
 	var strike: float = float(player._p["melee_damage"]) * player.economy_part.weapon_stat("melee_damage_mult", true)
 	# the stage step comes with every keystone: the damage rows carry it too
-	var mult_now: float = player.ability_damage_mult(stage) * float(now.get("damage_all", 1.0))
-	var mult_then: float = player.ability_damage_mult(stage + 1) * float(then.get("damage_all", 1.0))
+	var mult_now: float = player.casting_part.ability_damage_mult(stage) * float(now.get("damage_all", 1.0))
+	var mult_then: float = player.casting_part.ability_damage_mult(stage + 1) * float(then.get("damage_all", 1.0))
 	out.append({"label": "Stage", "before": str(stage), "after": str(stage + 1), "better": true})
 	if now.has("damage"):
 		_preview_row(out, "Damage", float(now["damage"]) * mult_now, float(then["damage"]) * mult_then, "%d", true)
@@ -223,7 +223,7 @@ func _bind_construct(ability_index: int, construct_index: int, roll: float = -1.
 		return "nothing to bind"
 	var state: Dictionary = player.abilities[ability_index]
 	var con: Dictionary = player.constructs[construct_index]
-	var need: String = player.pending_tier(state)
+	var need: String = player.casting_part.pending_tier(state)
 	if need == "":
 		return "not ready"
 	if need != str(con["tier"]):
@@ -468,7 +468,7 @@ func draft_with_keystone() -> Dictionary:
 func choose_seal_construct(construct_index: int) -> Dictionary:
 	if seal_mode() != "bind":
 		return RuneRules.no("not_sealing", "No level lock is being formed.")
-	var need: String = player.pending_tier(player.abilities[sealing_index()])
+	var need: String = player.casting_part.pending_tier(player.abilities[sealing_index()])
 	if construct_index < 0 or construct_index >= player.constructs.size():
 		return RuneRules.no("no_construct", "You carry no such construct.")
 	if str(player.constructs[construct_index]["tier"]) != need:
@@ -513,7 +513,7 @@ func _can_bind(ctx: RuneContext) -> Dictionary:
 	var r: Dictionary = Runes.active().can_seal(player.seal_draft["word"], ctx)
 	if not bool(r["ok"]):
 		return r
-	var need: String = player.pending_tier(player.abilities[sealing_index()])
+	var need: String = player.casting_part.pending_tier(player.abilities[sealing_index()])
 	var c: int = seal_construct()
 	if c >= 0 and c < player.constructs.size() and need == str(player.constructs[c]["tier"]) and not bool(construct_fits(need, str(player.constructs[c]["concept"]))["ok"]):
 		return RuneRules.no("unfit", str(construct_fits(need, str(player.constructs[c]["concept"]))["text"]))
@@ -566,7 +566,7 @@ func _draft_for(index: int) -> Dictionary:
 
 func _not_sealing(index: int) -> Dictionary:
 	var st: Dictionary = player.abilities[index] if index >= 0 and index < player.abilities.size() else {}
-	var need: String = player.pending_tier(st) if not st.is_empty() else ""
+	var need: String = player.casting_part.pending_tier(st) if not st.is_empty() else ""
 	return RuneRules.no("not_sealing", ("Runes are set at a level lock: open the seal of this skill, build its ring and bind a %s there." % need) if need != ""
 		else "Runes are set at a level lock, when the skill's bar is full: fill it first.")
 
@@ -684,7 +684,7 @@ func rune_preview(index: int) -> Dictionary:
 	_apply_ascension(before, state)
 	_apply_ascension(after, state)
 	# the rule set names the fields worth showing: [{path, group, label, lower_is_better, unit}]
-	var stage_mult: float = player.ability_damage_mult(int(state["stage"])) * float(before.get("damage_all", 1.0))
+	var stage_mult: float = player.casting_part.ability_damage_mult(int(state["stage"])) * float(before.get("damage_all", 1.0))
 	var rows: Array[Dictionary] = _stat_rows(before, after, fx.get("fields", []), stage_mult)
 	if after.has("rune_repeat"):
 		var rep: Dictionary = after["rune_repeat"]
@@ -760,8 +760,8 @@ func skill_details(index: int) -> Dictionary:
 	if before.is_empty():
 		return {}
 	var fx: Dictionary = Runes.active().effects(_sealed_word(index), rune_context(index))
-	var stage_mult: float = player.ability_damage_mult(int(state["stage"])) * float(before.get("damage_all", 1.0))
-	var stage_after: float = player.ability_damage_mult(int(state["stage"])) * float(after.get("damage_all", 1.0))
+	var stage_mult: float = player.casting_part.ability_damage_mult(int(state["stage"])) * float(before.get("damage_all", 1.0))
+	var stage_after: float = player.casting_part.ability_damage_mult(int(state["stage"])) * float(after.get("damage_all", 1.0))
 	var fields: Array = (fx.get("fields", []) as Array).duplicate(true)
 	if str(before.get("kind", "")) == "channel":
 		for f: Dictionary in fields:

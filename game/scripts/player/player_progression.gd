@@ -380,7 +380,7 @@ func try_ascend() -> void:
 	_recompute_essence_max()
 	player.essence = player.essence_max
 	player.body.scale_max(float(asc["body_scale"]))
-	player.clear_reflux()
+	player.casting_part.clear_reflux()
 	player.skill_points += int((GameData.skill_tree.get("points", {}) as Dictionary).get("on_ascend", 0))
 	for e: TalentEffect in player.effects:
 		e.on_ascend(player.stars)
@@ -483,7 +483,7 @@ func ascension_preview(index: int, aspect: String, amount: float) -> Array[Dicti
 			if mp != "" and not fields.any(func(f: Dictionary) -> bool: return str(f["path"]) == mp):
 				fields.append({"path": mp, "group": "power", "label": "Strength (%s)" % mp.get_slice(".", mp.get_slice_count(".") - 1).replace("_", " "),
 					"unit": "", "lower_is_better": str((mag as Dictionary).get("dir", "up")) == "down", "scaled_by_stage": false})
-	var stage_mult: float = player.ability_damage_mult(int(st["stage"])) * float(before.get("damage_all", 1.0))
+	var stage_mult: float = player.casting_part.ability_damage_mult(int(st["stage"])) * float(before.get("damage_all", 1.0))
 	return player.runes_part._stat_rows(before, after, fields, stage_mult).filter(func(r: Dictionary) -> bool: return bool(r["changed"]))
 
 
