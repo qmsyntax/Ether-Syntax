@@ -51,6 +51,9 @@ var schema := DataSchema.new()
 var data_errors: Array[String] = []
 ## How long the check took, in milliseconds (docs/architecture/data-schema.md).
 var check_ms: float = 0.0
+## The schema's defaults (kind -> {key: default}) and variants, held here for opt().
+var _defaults: Dictionary = {}
+var _variants: Dictionary = {}
 
 
 ## Loaded in the constructor: the singleton name resolves before the node enters the tree,
@@ -132,6 +135,8 @@ func _check(raw: Dictionary) -> void:
 	if not schema.load_file(_load(DataSchema.SCHEMA_PATH)):
 		data_errors.append("schema.json: cannot be read")
 	else:
+		_defaults = schema.defaults
+		_variants = schema.variants
 		data_errors = schema.check(raw, _id_sets())
 		data_errors.append_array(_check_by_hand())
 	check_ms = float(Time.get_ticks_usec() - t0) / 1000.0
@@ -204,10 +209,9 @@ static func _unknown_runes(list: Variant, where: String, rune_ids: Dictionary) -
 ## site's own default where two sites read the same key differently). Read data this way, never with
 ## .get("key", <number>), so the default lives in one place and a misspelt key is an error.
 func opt(d: Dictionary, kind: String, key: String, variant: String = "") -> Variant:
-	var v: Variant = d.get(key)
-	if v == null and not d.has(key):
-		return schema.fallback(kind, key, variant)
-	return v
+	# one line on purpose: it runs about a thousand times a frame in a big fight. A kind, key or variant the schema
+	# does not name is a script error here (tests/load_all.tscn checks every call against the schema).
+	return d.get(key, _defaults[kind][key] if variant == "" else _variants[kind][key][variant])
 
 
 ## A tempering technique definition, or {} if the id is unknown.

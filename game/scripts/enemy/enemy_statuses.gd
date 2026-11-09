@@ -533,7 +533,9 @@ func _nearest_enemy_within(reach: float) -> Node3D:
 func lure_reach() -> float:
 	var r := 0.0
 	for id: String in enemy.statuses:
-		r = maxf(r, float(GameData.opt(_sdef(id), "status", "lure_radius")))
+		var def: Dictionary = _sdef(id)
+		if def.has("lure_radius"):        # a status without one draws nobody (the schema's 0, which adds nothing here)
+			r = maxf(r, float(def["lure_radius"]))
 	return r
 
 

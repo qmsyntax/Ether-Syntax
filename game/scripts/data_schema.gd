@@ -3,7 +3,7 @@ extends RefCounted
 ## The data schema (data/schema.json, docs/architecture/data-schema.md): which kind of entry each dictionary in
 ## game/data is, the keys each kind may hold (type, the default a missing optional key reads as, the keys every entry
 ## must have) and the keys that name ids elsewhere. GameData builds one when it loads, checks every data file against
-## it once (check) and reads optional keys through it (GameData.opt -> fallback).
+## it once (check), and GameData.opt reads optional keys with its defaults and variants.
 ##
 ## What check reports, each as "<file>.json <where>: <what>" through push_error by GameData:
 ## a key the kind does not list (a typo), a required key missing, a value of the wrong type, and an id that points
@@ -93,22 +93,6 @@ func load_file(parsed: Dictionary) -> bool:
 		files[f] = {"paths": paths, "idmaps": idm, "maps": maps, "kids": kids}
 	loaded = true
 	return true
-
-
-## The default of an optional key (a call site's own `variant` where the schema records one). Pushes an error and
-## gives null for a kind or key the schema does not name - a read the schema does not know about is a bug.
-func fallback(kind: String, key: String, variant: String = "") -> Variant:
-	if variant != "":
-		var vk: Dictionary = (variants.get(kind, {}) as Dictionary).get(key, {})
-		if vk.has(variant):
-			return vk[variant]
-		push_error("DataSchema: no default '%s' for %s.%s in data/schema.json" % [variant, kind, key])
-		return null
-	var dk: Dictionary = defaults.get(kind, {})
-	if dk.has(key):
-		return dk[key]
-	push_error("DataSchema: no default for %s.%s in data/schema.json" % [kind, key])
-	return null
 
 
 ## Every problem in the data: `data` is {file name without .json: parsed file}, `ids` {target: {id: true}} for the
