@@ -44,6 +44,9 @@ they unblock work in (`production/finish-plan.md`).
 - [ ] Q4 a bigger first tank (20% -> 40%); your 2026-10-11 ruling set 20%.
 - [ ] Movement starters' price (the review named none; unchanged).
 - [ ] Should enemies put statuses on the player (Absolution and Fever Break stay simplified until they do)?
+- [ ] **A lone drummer** (found 2026-11-09): a drummer with no fighter or commander within 14 m stands still and
+      never comes to you. If it is behind a block you can end up with a wave you can't finish without walking
+      round. Keep (it is a support, it hangs back), or should a lone drummer close in or move to where it can see you?
 
 **Smaller ones, still open**
 - [ ] Hybrid affinity midpoints; Holy / Unholy colours; talent pool weighting at creation.
