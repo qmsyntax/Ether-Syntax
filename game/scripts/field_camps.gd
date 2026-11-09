@@ -19,7 +19,7 @@ const EnemyScript := preload("res://scripts/enemy.gd")
 
 var main: Node
 var zone: ZoneBuilder
-var player: Node3D
+var player: Player
 ## id -> {def, state: asleep|awake|returning|cleared|calm, members: Array[Node3D], edge: Array[Node3D],
 ##        centre (level-local), anchor (level-local), leash, aggro, strength, timer}
 var camps: Dictionary = {}
@@ -152,7 +152,7 @@ func tick(delta: float) -> void:
 		return
 	var lvl: Node3D = _level()
 	var me: Vector3 = lvl.to_local(player.global_position)
-	var alive: bool = not bool(player.get("dead"))
+	var alive: bool = not bool(player.dead)
 	var close_fight := false
 	for id: String in camps:
 		var c: Dictionary = camps[id]
@@ -204,10 +204,10 @@ func tick(delta: float) -> void:
 			close_fight = true
 	if close_fight and alive and not _fighting:
 		_fighting = true
-		player.call("start_fight")
+		player.start_fight()
 	elif not close_fight and _fighting:
 		_fighting = false
-		player.call("end_fight")
+		player.end_fight()
 
 
 func _prune(c: Dictionary) -> void:
@@ -310,7 +310,7 @@ func _on_fetched(g: Node, camp_id: String) -> void:
 		c["leash"] = float(c["leash"]) + _flat(anchor, c["centre"])
 	wake_camp(camp_id, c["centre"])
 	if player != null and is_instance_valid(player) and player.has_method("note"):
-		player.call("note", "The Gleaner got there: %s is coming." % str((c["def"] as Dictionary).get("name", camp_id)).to_lower())
+		player.note("The Gleaner got there: %s is coming." % str((c["def"] as Dictionary).get("name", camp_id)).to_lower())
 
 
 # --- for the HUD and tests ----------------------------------------------------------------------
@@ -395,7 +395,7 @@ func reset_all() -> void:
 		_spawn_lurker(patch)
 	if _fighting:
 		_fighting = false
-		player.call("end_fight")
+		player.end_fight()
 
 
 ## Seconds until camp `id` refills (tests); set it with the same key.

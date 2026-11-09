@@ -24,7 +24,7 @@ const DOCK_PAD := 20.0
 const DOCK_TOP := 24.0             # the star line lives in this band
 const DOCK_BOTTOM := 18.0          # keycaps hang into this band
 
-var player: Node
+var player: Player
 var where := ""
 var prompt := ""
 var title := ""                    # big, brief announcement ("WALL 3")
@@ -81,7 +81,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
-func refresh(p: Node, where_text: String) -> void:
+func refresh(p: Player, where_text: String) -> void:
 	player = p
 	where = where_text
 
@@ -139,32 +139,32 @@ func _process(delta: float) -> void:
 			if c is UiScreen and (c as Control).visible:
 				for part: String in c.call("hud_hides"):
 					_hidden[part] = true
-	if player != null and str(player.get("talent_id")) != "":
-		var serial: int = int(player.get("log_serial"))
-		var lines: Array = player.get("log_lines")
+	if player != null and str(player.talent_id) != "":
+		var serial: int = int(player.log_serial)
+		var lines: Array = player.log_lines
 		var fresh: int = mini(serial - _log_seen, lines.size())
 		for i: int in range(lines.size() - fresh, lines.size()):
 			_log.append({"text": str(lines[i]), "age": 0.0})
 		_log_seen = serial
 		while _log.size() > GameData.inum("hud", "log_max"):
 			_log.remove_at(0)
-		var hp: float = (player.get("body") as Body).total()
+		var hp: float = (player.body as Body).total()
 		if _last_hp >= 0.0 and hp < _last_hp - 0.5:
 			_hurt_flash = 1.0
 		_last_hp = hp
 		_recover_max = _track_max(_recover_max, float(player.get("_recover_t")))
 		_melee_max = _track_max(_melee_max, float(player.get("_melee_cd")))
 		_ranged_max = _track_max(_ranged_max, float(player.get("_ranged_cd")))
-		var refused: Dictionary = player.get("last_refusal")
+		var refused: Dictionary = player.last_refusal
 		var refusal_n: int = int(refused.get("serial", 0))
 		if _refusal_serial >= 0 and refusal_n != _refusal_serial:
 			_refusal = refused.duplicate()
 			_refusal_age = 0.0
 		_refusal_serial = refusal_n
 		_refusal_age += delta
-		var full: bool = float(player.call("endurance_now")) >= float(player.call("endurance_max")) - 0.01
+		var full: bool = float(player.endurance_now()) >= float(player.endurance_max()) - 0.01
 		_endurance_a = move_toward(_endurance_a, 0.0 if full else 1.0, delta / maxf(0.01, GameData.num("hud", "endurance_fade_s")))
-		var fight: bool = bool(player.get("in_combat"))
+		var fight: bool = bool(player.in_combat)
 		var target_a: float = GameData.num("hud", "hints_alpha_in_combat") if fight else 1.0
 		_hint_alpha = move_toward(_hint_alpha, target_a, delta * 2.0)
 	queue_redraw()
@@ -178,7 +178,7 @@ static func _track_max(prev: float, now: float) -> float:
 
 
 func _draw() -> void:
-	if player == null or str(player.get("talent_id")) == "":
+	if player == null or str(player.talent_id) == "":
 		return
 	var vs: Vector2 = size
 	_panel_rects.clear()
@@ -213,7 +213,7 @@ func _draw() -> void:
 # --- bottom: the dock -------------------------------------------------------------------------
 
 func _draw_dock(vs: Vector2) -> void:
-	var hotbar: Array = player.get("hotbar")
+	var hotbar: Array = player.hotbar
 	var n: int = hotbar.size()
 	var skills_w: float = n * SLOT + (n - 1) * SLOT_GAP
 	var extra_w: float = 18.0 + MINI * 2.0 + SLOT_GAP
@@ -230,8 +230,8 @@ func _draw_dock(vs: Vector2) -> void:
 	_draw_star_line(Rect2(_dock.position.x + DOCK_PAD, _dock.position.y + 8.0, inner_w, 12.0))
 
 	# the six skill slots
-	var abilities: Array = player.get("abilities")
-	var essence: float = float(player.get("essence"))
+	var abilities: Array = player.abilities
+	var essence: float = float(player.essence)
 	var recovering: float = float(player.get("_recover_t")) / _recover_max if _recover_max > 0.0 else 0.0
 	_slot_rects.clear()
 	var y0: float = _dock.position.y + DOCK_TOP
@@ -256,9 +256,9 @@ func _draw_dock(vs: Vector2) -> void:
 
 ## The newest star's growth as a thin line along the top of the dock: label, line, then the read.
 func _draw_star_line(r: Rect2) -> void:
-	var pcts: Array = player.get("star_pct")
+	var pcts: Array = player.star_pct
 	var newest: float = float(pcts.back()) if not pcts.is_empty() else 0.0
-	var aura: String = str(player.call("aura_read"))
+	var aura: String = str(player.aura_read())
 	var ready: bool = aura.contains("ascend")
 	var px: int = UiTheme.FS_CAPTION
 	var label: String = "STAR %d  ·  %d%%" % [pcts.size(), int(newest)]
@@ -288,12 +288,12 @@ var _slot_cache: Dictionary = {}           # slot index -> [key, stats]
 
 
 func _slot_stats(i: int, st: Dictionary) -> Dictionary:
-	var inv: Variant = player.get("inventory")
-	var key: int = hash([st, player.get("affinities"), inv.call("stat", "cost_mult", true) if inv != null else 1.0])
+	var inv: Variant = player.inventory
+	var key: int = hash([st, player.affinities, inv.call("stat", "cost_mult", true) if inv != null else 1.0])
 	var hit: Variant = _slot_cache.get(i)
 	if hit is Array and int((hit as Array)[0]) == key:
 		return (hit as Array)[1]
-	var ab: Dictionary = player.call("ability_stats", st)
+	var ab: Dictionary = player.ability_stats(st)
 	_slot_cache[i] = [key, ab]
 	return ab
 
@@ -306,7 +306,7 @@ func _draw_slot(r: Rect2, i: int, idx: int, abilities: Array, essence: float, re
 		var ab: Dictionary = _slot_stats(i, st)
 		var cost: float = float(ab.get("cost", 0.0))
 		var aff: String = str(ab.get("affinity", ""))
-		var locked: bool = bool(player.call("is_locked", aff))
+		var locked: bool = bool(player.is_locked(aff))
 		var afford: bool = essence >= cost
 		var usable: bool = not locked and afford
 		var tint: Color = GameData.affinity_color(aff).lightened(0.3) if usable else Color(0.42, 0.43, 0.48)
@@ -327,7 +327,7 @@ func _draw_slot(r: Rect2, i: int, idx: int, abilities: Array, essence: float, re
 		var pr := Rect2(r.position.x + 4.0, r.end.y - 6.0, r.size.x - 8.0, 3.0)
 		draw_rect(pr, Color(0, 0, 0, 0.8))
 		draw_rect(Rect2(pr.position, Vector2(pr.size.x * prog, pr.size.y)), UiTheme.GOLD if prog >= 1.0 else UiTheme.ESSENCE.lightened(0.15))
-		var need: String = str(player.call("pending_tier", st))
+		var need: String = str(player.pending_tier(st))
 		if need != "":
 			# full and waiting for a construct: pulsing gold frame and a gem
 			var pulse: float = 0.55 + 0.45 * sin(_time * 4.0)
@@ -380,9 +380,9 @@ func _slot_key(r: Rect2, key: String) -> void:
 
 func _draw_strike_slot(r: Rect2) -> void:
 	UiDraw.frame(self, r, "slot")
-	var inv: Inventory = player.get("inventory")
+	var inv: Inventory = player.inventory
 	var weapon: String = str(inv.equipped.get("weapon", ""))
-	var arm_lost: bool = bool(player.get("arm_right_lost"))
+	var arm_lost: bool = bool(player.arm_right_lost)
 	var col: Color = UiTheme.TEXT if not arm_lost else UiTheme.TEXT_FAINT
 	UiDraw.icon(self, UiDraw.item_icon(GameData.item(weapon)) if weapon != "" else "fist", r.get_center(), MINI * 0.46, col)
 	UiDraw.sweep(self, r.grow(-3.0), float(player.get("_melee_cd")) / _melee_max if _melee_max > 0.0 else 0.0)
@@ -393,9 +393,9 @@ func _draw_strike_slot(r: Rect2) -> void:
 
 func _draw_shoot_slot(r: Rect2) -> void:
 	UiDraw.frame(self, r, "slot")
-	var ranged: Dictionary = player.call("ranged_weapon")
+	var ranged: Dictionary = player.ranged_weapon()
 	var has: bool = not ranged.is_empty()
-	var aiming: bool = bool(player.get("ranged_stance"))
+	var aiming: bool = bool(player.ranged_stance)
 	UiDraw.icon(self, UiDraw.item_icon(ranged) if has else "sling", r.get_center(), MINI * 0.46,
 		(UiTheme.GOLD if aiming else UiTheme.TEXT) if has else Color(0.3, 0.28, 0.25))
 	if has:
@@ -410,10 +410,10 @@ func _draw_above_dock(cx: float) -> void:
 	var base_y: float = _dock.position.y - 10.0
 	# middle: Slipstream pips, standing stone, a wind-up
 	var strip_y: float = base_y
-	if bool(player.call("has_slipstream")):
+	if bool(player.has_slipstream()):
 		var cfg: Dictionary = GameData.balance["slipstream"]
 		var total: int = int(cfg["max"])
-		var have: int = int(player.get("pips"))
+		var have: int = int(player.pips)
 		var wind_col: Color = GameData.affinity_color("wind").lightened(0.2)
 		var fast: bool = have >= int(cfg["speed_pips"])
 		var label: String = "SLIPSTREAM" + ("  ·  SWIFT" if fast else "")
@@ -428,11 +428,11 @@ func _draw_above_dock(cx: float) -> void:
 				draw_arc(c, 4.0, 0.0, TAU, 14, Color(wind_col, 0.45), 1.5, true)
 		UiDraw.outlined(self, Vector2(x0 + float(total) * 14.0 + 6.0, strip_y), label, UiTheme.FS_CAPTION, Color(wind_col, 1.0 if fast else 0.75))
 		strip_y -= 26.0
-	if bool(player.call("has_stone")):
+	if bool(player.has_stone()):
 		var s_total: int = GameData.inum("stone", "max_count")
-		var s_have: int = int(player.call("stone_count"))
+		var s_have: int = int(player.stone_count())
 		var earth_col: Color = GameData.affinity_color("earth").lightened(0.2)
-		var set_now: bool = bool(player.call("is_braced"))
+		var set_now: bool = bool(player.is_braced())
 		var label2: String = "STONE  %d / %d" % [s_have, s_total] + ("  ·  BRACED" if set_now else "")
 		var w2: float = float(s_total) * 18.0 + 8.0 + UiDraw.text_width(label2, UiTheme.FS_CAPTION)
 		var x1: float = cx - w2 * 0.5
@@ -446,9 +446,9 @@ func _draw_above_dock(cx: float) -> void:
 		UiDraw.outlined(self, Vector2(x1 + float(s_total) * 18.0 + 4.0, strip_y), label2, UiTheme.FS_CAPTION, Color(earth_col, 1.0 if set_now else 0.8))
 		strip_y -= 26.0
 	# Blood's held blood: a row of beads (it is never health)
-	var blood_max: int = int(player.call("held_blood_max"))
+	var blood_max: int = int(player.held_blood_max())
 	if blood_max > 0:
-		var b_have: int = int(player.get("held_blood"))
+		var b_have: int = int(player.held_blood)
 		var red: Color = GameData.affinity_color("blood").lightened(0.1)
 		var label3: String = "HELD BLOOD  %d" % b_have
 		var w3: float = float(blood_max) * 13.0 + 8.0 + UiDraw.text_width(label3, UiTheme.FS_CAPTION)
@@ -463,7 +463,7 @@ func _draw_above_dock(cx: float) -> void:
 		UiDraw.outlined(self, Vector2(x3 + float(blood_max) * 13.0 + 4.0, strip_y), label3, UiTheme.FS_CAPTION, red)
 		strip_y -= 26.0
 	# the ward pool (Holy, Water's Crush ward, Ice Shell, Black Shroud), while there is any: a band against the one cap
-	var ward_now: float = float(player.call("ward"))
+	var ward_now: float = float(player.ward())
 	if ward_now > 0.0:
 		var ward_col := Color("f3e6b0")
 		var cap: float = GameData.num("ward", "cap")
@@ -478,7 +478,7 @@ func _draw_above_dock(cx: float) -> void:
 		UiDraw.outlined(self, Vector2(xw + band + 8.0, strip_y), label_w, UiTheme.FS_CAPTION, ward_col)
 		strip_y -= 26.0
 	# Metal's Edge Heat on the enemy you are working, while it is hot
-	var heat_now: int = int(player.get("focus"))
+	var heat_now: int = int(player.focus)
 	if heat_now > 0:
 		var edge_col: Color = GameData.affinity_color("metal").lightened(0.3)
 		var label_e: String = "EDGE HEAT  %d / %d" % [heat_now, int(player.call("_focus_max"))]
@@ -487,7 +487,7 @@ func _draw_above_dock(cx: float) -> void:
 		UiDraw.outlined(self, Vector2(cx - we * 0.5, strip_y), label_e, UiTheme.FS_CAPTION, edge_col)
 		strip_y -= 26.0
 	# Unholy's stolen life, while there is any
-	var stolen: int = int(player.call("store_count", "stolen"))
+	var stolen: int = int(player.store_count("stolen"))
 	if stolen > 0:
 		var unholy_col: Color = GameData.affinity_color("unholy").lightened(0.3)
 		var label_s: String = "STOLEN LIFE  %d" % stolen
@@ -496,7 +496,7 @@ func _draw_above_dock(cx: float) -> void:
 		UiDraw.outlined(self, Vector2(cx - ws * 0.5, strip_y), label_s, UiTheme.FS_CAPTION, unholy_col)
 		strip_y -= 26.0
 	# Dark's swallowed light, while there is any
-	var stores: Dictionary = player.get("stores")
+	var stores: Dictionary = player.stores
 	if stores.has("swallowed") and int((stores["swallowed"] as Dictionary).get("n", 0)) > 0:
 		var dark_col: Color = GameData.affinity_color("dark").lightened(0.2)
 		var label4: String = "SWALLOWED LIGHT  %d" % int(stores["swallowed"]["n"])
@@ -505,18 +505,18 @@ func _draw_above_dock(cx: float) -> void:
 		UiDraw.outlined(self, Vector2(cx - w4 * 0.5, strip_y), label4, UiTheme.FS_CAPTION, dark_col)
 		strip_y -= 26.0
 	# a test character's bar can turn to the next six skills
-	if bool(player.get("test_character")):
-		var per: int = (player.get("hotbar") as Array).size()
-		var pages: int = int(ceil(float((player.get("abilities") as Array).size()) / float(maxi(1, per))))
+	if bool(player.test_character):
+		var per: int = (player.hotbar as Array).size()
+		var pages: int = int(ceil(float((player.abilities as Array).size()) / float(maxi(1, per))))
 		if pages > 1:
-			var label5: String = "TEST CHARACTER  ·  SKILL PAGE %d / %d  ·  %s NEXT" % [int(player.get("hotbar_page")) + 1, pages, Keybinds.binding_text("hotbar_page").to_upper()]
+			var label5: String = "TEST CHARACTER  ·  SKILL PAGE %d / %d  ·  %s NEXT" % [int(player.hotbar_page) + 1, pages, Keybinds.binding_text("hotbar_page").to_upper()]
 			var w5: float = UiDraw.text_width(label5, UiTheme.FS_CAPTION)
 			_chip_back(Rect2(cx - w5 * 0.5 - 10.0, strip_y - 16.0, w5 + 20.0, 22.0))
 			UiDraw.outlined(self, Vector2(cx - w5 * 0.5, strip_y), label5, UiTheme.FS_CAPTION, UiTheme.STAR)
 			strip_y -= 26.0
-	var wind_up: float = float(player.call("windup_frac"))
+	var wind_up: float = float(player.windup_frac())
 	if wind_up < 0.0:
-		wind_up = float(player.call("held_frac"))         # a held skill: how far through its hold (or charge)
+		wind_up = float(player.held_frac())         # a held skill: how far through its hold (or charge)
 	if wind_up >= 0.0:
 		var wr := Rect2(cx - 90.0, strip_y - 8.0, 180.0, 6.0)
 		draw_rect(wr.grow(2.0), Color(0, 0, 0, 0.7))
@@ -527,11 +527,11 @@ func _draw_above_dock(cx: float) -> void:
 	if _hidden.has("buffs"):
 		return
 	var chips: Array = []          # [text, color]
-	var on_me: Dictionary = player.get("buffs")
+	var on_me: Dictionary = player.buffs
 	for id: String in on_me:
 		var b: Dictionary = on_me[id]
 		chips.append(["%s  %ds" % [str(b.get("name", id)), int(ceil(float(b["t"])))], GameData.affinity_color(str(b.get("affinity", ""))).lightened(0.35)])
-	for line: String in player.call("status_lines"):
+	for line: String in player.status_lines():
 		chips.append([line, Color(0.78, 0.78, 1.0)])
 	var x: float = _dock.position.x + 4.0
 	for chip: Array in chips:
@@ -552,7 +552,7 @@ func _chip_back(r: Rect2, edge: Color = UiTheme.BRONZE_DIM) -> void:
 
 
 func _draw_health_orb(c: Vector2) -> void:
-	var b: Body = player.get("body")
+	var b: Body = player.body
 	var total_max: float = b.total_max()
 	# the orb is the whole body: what wounds have taken stays empty at the top
 	var frac: float = b.total() / b.max_hp
@@ -560,8 +560,8 @@ func _draw_health_orb(c: Vector2) -> void:
 	# what wounds have taken: a dark band where the bar can no longer reach
 	var cut: float = clampf(1.0 - total_max / b.max_hp, 0.0, 1.0)
 	# ring = striking arm
-	var arm_lost: bool = bool(player.get("arm_right_lost"))
-	var arm: float = 0.0 if arm_lost else float(player.get("arm_right")) / 100.0
+	var arm_lost: bool = bool(player.arm_right_lost)
+	var arm: float = 0.0 if arm_lost else float(player.arm_right) / 100.0
 	UiDraw.ring(self, c, ORB_R + 11.0, arm, Color(0.74, 0.76, 0.84) if arm > 0.3 else UiTheme.BAD)
 	UiDraw.orb(self, c, ORB_R, bands, _time, UiTheme.BRONZE)
 	if cut > 0.01:
@@ -604,22 +604,22 @@ func _orb_tag(c: Vector2, lift: float, text: String, color: Color, row: int = 0)
 
 
 func _draw_essence_orb(c: Vector2) -> void:
-	var ess: float = float(player.get("essence"))
-	var ess_max: float = maxf(1.0, float(player.get("essence_max")))
+	var ess: float = float(player.essence)
+	var ess_max: float = maxf(1.0, float(player.essence_max))
 	var frac: float = clampf(ess / ess_max, 0.0, 1.0)
 	var bands: Array = [[frac * 0.45, UiTheme.ESSENCE_DEEP], [frac * 0.55, UiTheme.ESSENCE]]
 	var pain: float = GameData.num("reflux", "pain_at")
 	var burn: float = GameData.num("reflux", "burn_at")
 	var lock: float = maxf(1.0, GameData.num("reflux", "lock_at"))
 	# one reflux ring per affinity, the first innermost; the tag speaks for the hottest
-	var affs: Array = player.get("affinities")
+	var affs: Array = player.affinities
 	var reflux := 0.0
 	var locked := false
 	var hottest := ""
 	for i: int in affs.size():
 		var a: String = str(affs[i])
-		var heat: float = float(player.call("reflux_of", a))
-		var a_locked: bool = bool(player.call("is_locked", a))
+		var heat: float = float(player.reflux_of(a))
+		var a_locked: bool = bool(player.is_locked(a))
 		var a_hot: bool = a_locked or heat >= burn
 		var ring_col: Color = UiTheme.REFLUX_HOT if a_hot else (UiTheme.REFLUX if heat >= pain else UiTheme.REFLUX.darkened(0.25))
 		if float(GameData.affinity(a).get("damage_per_reflux", 0.0)) > 0.0 and not a_locked:
@@ -656,23 +656,23 @@ func _draw_essence_orb(c: Vector2) -> void:
 	# heat as a damage bonus, for an affinity that has one (shown for the hottest such affinity)
 	var bonus_aff := ""
 	for a2: Variant in affs:
-		if float(GameData.affinity(str(a2)).get("damage_per_reflux", 0.0)) > 0.0 and (bonus_aff == "" or float(player.call("reflux_of", str(a2))) > float(player.call("reflux_of", bonus_aff))):
+		if float(GameData.affinity(str(a2)).get("damage_per_reflux", 0.0)) > 0.0 and (bonus_aff == "" or float(player.reflux_of(str(a2))) > float(player.reflux_of(bonus_aff))):
 			bonus_aff = str(a2)
 	if bonus_aff != "" and not locked:
-		var bonus: int = int(round((float(player.call("heat_mult", bonus_aff)) - 1.0) * 100.0))
+		var bonus: int = int(round((float(player.heat_mult(bonus_aff)) - 1.0) * 100.0))
 		if bonus > 0:
 			_orb_tag(c, lift, "%s  +%d%% damage" % [str(GameData.affinity(bonus_aff).get("label", bonus_aff)).to_upper(), bonus], GameData.affinity_color(bonus_aff).lightened(0.3), row)
 			row += 1
-	if bool(player.get("meditating")):
+	if bool(player.meditating):
 		_orb_tag(c, lift, "GATHERING", UiTheme.ESSENCE.lightened(0.45), row)
 
 
 # --- top left: character plate ----------------------------------------------------------
 
 func _draw_plate() -> void:
-	var t: Dictionary = player.get("talent")
-	var held: Array = player.get("constructs")
-	var who: String = str(player.get("char_name"))
+	var t: Dictionary = player.talent
+	var held: Array = player.constructs
+	var who: String = str(player.char_name)
 	var named: float = 20.0 if who != "" else 0.0          # a named character gets a line for the talent
 	var h: float = 92.0 + named + (28.0 if not held.is_empty() else 0.0)
 	var r := Rect2(12.0, 12.0, 300.0, h)
@@ -683,13 +683,13 @@ func _draw_plate() -> void:
 	if who != "":
 		UiDraw.text(self, Vector2(x, r.position.y + 52.0), str(t.get("name", "?")), UiTheme.FS_SMALL, UiTheme.STAR)
 	# star pips, right-aligned on the name line
-	var stars: int = int(player.get("stars"))
+	var stars: int = int(player.stars)
 	for i: int in stars:
 		var c := Vector2(r.end.x - 24.0 - i * 18.0, r.position.y + 27.0)
 		draw_circle(c, 7.0, UiTheme.STAR.darkened(0.55))
 		draw_circle(c, 4.8, UiTheme.STAR)
 	var y: float = r.position.y + 58.0 + named
-	var cash: int = int(player.get("money"))
+	var cash: int = int(player.money)
 	UiDraw.icon(self, "coin", Vector2(x + 7.0, y - 5.0), 15.0, UiTheme.BAD if cash < 0 else UiTheme.GOLD)
 	UiDraw.text(self, Vector2(x + 20.0, y), UiTheme.money_text(cash), UiTheme.FS_BODY, UiTheme.BAD if cash < 0 else UiTheme.TEXT)
 	UiDraw.text(self, Vector2(x, y + 19.0), where, UiTheme.FS_CAPTION + 1, UiTheme.TEXT_DIM)
@@ -705,7 +705,7 @@ func _draw_plate() -> void:
 # --- top centre: target frame, prompt, title ---------------------------------------------
 
 func _draw_target_frame(vs: Vector2) -> void:
-	var target: Variant = player.get("hovered")
+	var target: Variant = player.hovered
 	if not nether.is_empty():
 		# out of the body, the projection's target is what matters
 		target = nether.get("hovered")
@@ -714,7 +714,7 @@ func _draw_target_frame(vs: Vector2) -> void:
 		if target == null or not is_instance_valid(target) or (target as Node).get("body") == null:
 			return
 	if target == null or not is_instance_valid(target) or (target as Node).get("is_scenery") == true or (target as Node).get("is_pickup") != null:
-		target = player.get("attack_target")
+		target = player.attack_target
 	if target == null or not is_instance_valid(target) or (target as Node).get("is_scenery") == true or (target as Node).get("body") == null:
 		return
 	var node := target as Node
@@ -880,7 +880,7 @@ func _soft_shade(r: Rect2, alpha: float) -> void:
 # --- bottom right: key reminders --------------------------------------------------------------
 
 func _draw_hints(vs: Vector2) -> void:
-	var inv: Inventory = player.get("inventory")
+	var inv: Inventory = player.inventory
 	var heavy: bool = inv.weight() > inv.capacity() * 0.9
 	var rows: Array = [
 		["Sidestep", "sidestep", false],
@@ -948,8 +948,8 @@ func _draw_endurance() -> void:
 	var at: Vector2 = cam.unproject_position((player as Node3D).global_position)
 	var w: float = GameData.num("hud", "endurance_bar_w")
 	var r := Rect2(at.x - w * 0.5, at.y + 22.0, w, 4.0)
-	var now: float = float(player.call("endurance_now"))
-	var most: float = maxf(1.0, float(player.call("endurance_max")))
+	var now: float = float(player.endurance_now())
+	var most: float = maxf(1.0, float(player.endurance_max()))
 	var cost: float = GameData.num("endurance", "step_cost")
 	var col: Color = UiTheme.ENDURANCE if now + 0.0001 >= cost else UiTheme.ENDURANCE.lerp(UiTheme.BAD, 0.55)
 	var a: float = _endurance_a
@@ -1138,7 +1138,7 @@ func _draw_wisp_labels() -> void:
 	var at: Variant = nether.get("position")
 	if cam == null or at == null:
 		return
-	var mine: Array = player.get("affinities")
+	var mine: Array = player.affinities
 	var reach: float = GameData.num("hud", "wisp_label_range")
 	for node: Node in get_tree().get_nodes_in_group("nether_wisps"):
 		var w := node as Node3D
@@ -1156,7 +1156,7 @@ func _draw_wisp_labels() -> void:
 
 
 func _draw_vignette(vs: Vector2) -> void:
-	var b: Body = player.get("body")
+	var b: Body = player.body
 	var frac: float = b.total() / b.total_max()
 	var danger: float = clampf((0.4 - frac) / 0.4, 0.0, 1.0)
 	var a: float = danger * (0.22 + 0.1 * sin(_time * 4.5)) + _hurt_flash * 0.12
@@ -1451,15 +1451,15 @@ func _draw_tooltip(vs: Vector2) -> void:
 	var lines: Array = []           # [[text, size, color]]
 	if what.begins_with("slot:"):
 		var i: int = int(what.get_slice(":", 1))
-		var hotbar: Array = player.get("hotbar")
-		var abilities: Array = player.get("abilities")
+		var hotbar: Array = player.hotbar
+		var abilities: Array = player.abilities
 		var idx: int = int(hotbar[i]) if i < hotbar.size() else -1
 		if idx < 0 or idx >= abilities.size():
 			lines.append(["Empty slot", 17, UiTheme.TEXT_DIM])
 			lines.append(["Learn an ability, then set it here in the ethercosm (%s)." % Keybinds.binding_text("ethercosm"), body_px, UiTheme.TEXT_FAINT])
 		else:
 			var st: Dictionary = abilities[idx]
-			var ab: Dictionary = player.call("ability_stats", st)
+			var ab: Dictionary = player.ability_stats(st)
 			lines.append([str(ab.get("name", "?")), 19, UiTheme.GOLD])
 			lines.append([UiTheme.verse_of(ab), body_px - 1, UiTheme.STAR])
 			if str(ab.get("summary", "")) != "":
@@ -1468,7 +1468,7 @@ func _draw_tooltip(vs: Vector2) -> void:
 			lines.append(["Costs %d essence and leaves %d reflux" % [int(round(float(ab.get("cost", 0.0)))), int(round(float(ab.get("cost", 0.0)) * float(ab.get("reflux_per_cost", 1.0))))], body_px, UiTheme.TEXT])
 			match str(ab.get("kind", "")):
 				"projectile":
-					lines.append(["%d damage at range" % int(float(ab.get("damage", 0.0)) * float(player.call("ability_damage_mult", int(st["stage"]))) * float(ab.get("damage_all", 1.0))), body_px, UiTheme.TEXT])
+					lines.append(["%d damage at range" % int(float(ab.get("damage", 0.0)) * float(player.ability_damage_mult(int(st["stage"]))) * float(ab.get("damage_all", 1.0))), body_px, UiTheme.TEXT])
 				"melee_burst":
 					lines.append(["Hits everything in front of you for x%.1f a normal blow" % float(ab.get("damage_mult", 1.0)), body_px, UiTheme.TEXT])
 				"dash":
@@ -1481,15 +1481,15 @@ func _draw_tooltip(vs: Vector2) -> void:
 					set_text = "   -   Braced: %d%% less damage, and nothing staggers you" % int(round((1.0 - GameData.num("braced", "damage_taken_mult")) * 100.0))
 				lines.append(["%.2f s wind-up, rooted%s" % [float(ab["windup"]), set_text], body_px, UiTheme.TEXT_DIM])
 			lines.append(["Stage %d   -   %d%% toward the next" % [int(st["stage"]), int(float(st["progress"]))], body_px, UiTheme.TEXT_DIM])
-			var rune_fx: Array = player.call("rune_summary", idx)
+			var rune_fx: Array = player.rune_summary(idx)
 			if not rune_fx.is_empty():
 				lines.append(["Sealed word: " + ", ".join(PackedStringArray(rune_fx.map(func(v: Variant) -> String: return str(v)))), body_px, UiTheme.GOLD])
-			var asc: String = str(player.call("ascension_summary", idx))
+			var asc: String = str(player.ascension_summary(idx))
 			if asc != "":
 				lines.append([asc, body_px, UiTheme.STAR])
-			var need: String = str(player.call("pending_tier", st))
+			var need: String = str(player.pending_tier(st))
 			if need != "":
-				var lock: Dictionary = player.call("can_open_seal", idx)
+				var lock: Dictionary = player.can_open_seal(idx)
 				if bool(lock["ok"]):
 					lines.append(["Full. Ready for its level %d lock: a %s carried, set as the keystone on its seal (%s)." % [int(st["stage"]) + 1, need, Keybinds.binding_text("bind")], body_px, UiTheme.GOLD])
 				else:
@@ -1497,23 +1497,23 @@ func _draw_tooltip(vs: Vector2) -> void:
 			for ks: Dictionary in RuneWord.keystones(st.get("word", {})):
 				lines.append(["Keystone, ring %d: %s (%s)" % [int(ks["ring"]), ConstructWords.phrase(str(ks["tier"]), str(ks["concept"])), ConstructWords.spelling(str(ks["tier"]), str(ks["concept"]))], body_px, UiTheme.STAR])
 	elif what == "strike":
-		var arm_lost: bool = bool(player.get("arm_right_lost"))
-		var strike: float = float(player.call("strike_damage")) * (GameData.num("player", "off_hand_factor") if arm_lost else 1.0)
+		var arm_lost: bool = bool(player.arm_right_lost)
+		var strike: float = float(player.strike_damage()) * (GameData.num("player", "off_hand_factor") if arm_lost else 1.0)
 		lines.append(["Strike", 19, UiTheme.GOLD])
-		lines.append(["%d damage, %.1f m reach" % [int(round(strike)), float(player.call("reach_now"))], body_px, UiTheme.TEXT])
+		lines.append(["%d damage, %.1f m reach" % [int(round(strike)), float(player.reach_now())], body_px, UiTheme.TEXT])
 		lines.append(["Hold %s to overcharge: harder, slower, and it wears on the arm." % Keybinds.binding_text("overcharge"), body_px, UiTheme.TEXT_DIM])
 		if arm_lost:
 			lines.append(["Your striking arm is gone: you fight with the other one.", body_px, UiTheme.BAD])
 	elif what == "shoot":
-		var ranged: Dictionary = player.call("ranged_weapon")
+		var ranged: Dictionary = player.ranged_weapon()
 		lines.append(["Shoot", 19, UiTheme.GOLD])
 		if ranged.is_empty():
 			lines.append(["Nothing to shoot with. A sling or bow goes in the ranged slot.", body_px, UiTheme.TEXT_DIM])
 		else:
-			lines.append(["%s:  %d damage every %.1f s" % [str(ranged.get("name", "?")), int(round(float(player.call("ranged_damage")))), float(player.call("ranged_interval"))], body_px, UiTheme.TEXT])
+			lines.append(["%s:  %d damage every %.1f s" % [str(ranged.get("name", "?")), int(round(float(player.ranged_damage()))), float(player.ranged_interval())], body_px, UiTheme.TEXT])
 			lines.append(["Hold %s, then %s to loose. No essence." % [Keybinds.binding_text("ranged_stance"), Keybinds.binding_text("strike")], body_px, UiTheme.TEXT_DIM])
 	elif what == "health":
-		var b: Body = player.get("body")
+		var b: Body = player.body
 		lines.append(["Your body", 19, UiTheme.GOLD])
 		lines.append(["Health   %d / %d     refills on its own when nothing is trying to kill you" % [int(ceil(b.total())), int(b.total_max())], body_px, UiTheme.HEALTH_SUPERFICIAL.lightened(0.35)])
 		if b.wounds.is_empty():
@@ -1526,14 +1526,14 @@ func _draw_tooltip(vs: Vector2) -> void:
 		lines.append(["The ring is your striking arm. Overcharging wears it out;", body_px, UiTheme.TEXT_DIM])
 		lines.append(["lose it and only a healer or a talent brings it back.", body_px, UiTheme.TEXT_DIM])
 	elif what == "essence":
-		var pcts: Array = player.get("star_pct")
+		var pcts: Array = player.star_pct
 		lines.append(["Essence", 19, UiTheme.GOLD])
-		lines.append(["%d of %d   -   your star holds %d%% of what it could" % [int(float(player.get("essence"))), int(float(player.get("essence_max"))), int(float(pcts.back()))], body_px, UiTheme.ESSENCE.lightened(0.45)])
-		var rate: float = float(player.get("satellite_rate"))
+		lines.append(["%d of %d   -   your star holds %d%% of what it could" % [int(float(player.essence)), int(float(player.essence_max)), int(float(pcts.back()))], body_px, UiTheme.ESSENCE.lightened(0.45)])
+		var rate: float = float(player.satellite_rate)
 		lines.append([("A satellite feeds you +%s a second." % String.num(rate, 1)) if rate > 0.0 else "No satellite: essence returns only when you meditate (%s)." % Keybinds.binding_text("meditate"), body_px, UiTheme.TEXT])
 		var parts: Array[String] = []
-		for a: Variant in player.get("affinities"):
-			parts.append("%s %d" % [str(GameData.affinity(str(a)).get("label", a)).to_lower(), int(float(player.call("reflux_of", str(a))))])
+		for a: Variant in player.affinities:
+			parts.append("%s %d" % [str(GameData.affinity(str(a)).get("label", a)).to_lower(), int(float(player.reflux_of(str(a))))])
 		lines.append(["Reflux:  " + "   ".join(parts), body_px, UiTheme.REFLUX])
 		lines.append(["The ring is reflux - heat left by every cast.", body_px, UiTheme.TEXT_DIM])
 		lines.append(["Past %d casts cost more, past %d they recover slowly, at %d you are locked out." % [int(GameData.num("reflux", "pain_at")), int(GameData.num("reflux", "burn_at")), int(GameData.num("reflux", "lock_at"))], body_px, UiTheme.TEXT_DIM])

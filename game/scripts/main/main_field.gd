@@ -19,7 +19,7 @@ func tick(_delta: float) -> void:
 		var d: float = Vector2(here.x - c.x, here.z - c.z).length()
 		if bool(line.get("open", false)) and d < 2.0:
 			if str(line["to"]) == "town":
-				main.player.call("note", "You come back in through %s." % str(line.get("name", "the gate")))
+				main.player.note("You come back in through %s." % str(line.get("name", "the gate")))
 				main._enter_town("dross_gate")
 				return
 		elif not bool(line.get("open", false)) and d < 7.0:
@@ -35,11 +35,11 @@ func handle_input(event: InputEvent) -> void:
 	if main._cast_from_hotbar(event):
 		pass
 	elif event.is_action_pressed("ascend"):
-		main.player.call("try_ascend")
+		main.player.try_ascend()
 	elif event.is_action_pressed("bind"):
 		main.open_seal_first_ready()
 	elif event.is_action_pressed("healer"):
-		main.player.call("note", "No healer out here. The town is back through the gate.")
+		main.player.note("No healer out here. The town is back through the gate.")
 	elif event.is_action_pressed("interact"):
 		_field_interact()
 
@@ -69,15 +69,15 @@ func enter_zone(id: String, arrive: String) -> void:
 	_build_field_life()
 	var spot: Array = (def.get("arrive", {}) as Dictionary).get(arrive, [main._zone.size.x * 0.5, main._zone.size.y * 0.5])
 	main.player.global_position = main.level.to_global(main._zone.to_local(float(spot[0]), float(spot[1])))
-	main.player.set("active", true)
-	main.player.set("has_move_goal", false)
-	main.player.call("end_fight")
+	main.player.active = true
+	main.player.has_move_goal = false
+	main.player.end_fight()
 	main.factory_part._place_corpses(id)
 	main.fog = FogMap.new(main._zone.size, GameData.num("minimap", "fog_cell_m"))
-	main.fog.from_text(str((main.player.get("explored") as Dictionary).get(id, "")))
+	main.fog.from_text(str((main.player.explored as Dictionary).get(id, "")))
 	main.state = "field"
 	_reveal()
-	main.player.call("note", "You walk out into %s." % str(def.get("name", id)))
+	main.player.note("You walk out into %s." % str(def.get("name", id)))
 	main.save_now()
 
 
@@ -87,7 +87,7 @@ func _reveal() -> void:
 		return
 	var at: Vector2 = zone_point(main.player.global_position)
 	if main.fog.reveal(at.x, at.y, GameData.num("minimap", "sight_m")):
-		(main.player.get("explored") as Dictionary)[main.zone_id] = main.fog.to_text()
+		(main.player.explored as Dictionary)[main.zone_id] = main.fog.to_text()
 	main.fog.refresh_texture()
 
 
@@ -103,7 +103,7 @@ func minimap_info() -> Dictionary:
 		return {}
 	var facing: Vector3 = main.level.global_transform.basis.inverse() * (main.player.get("_facing") as Vector3)
 	var lying: Array = []
-	for c: Dictionary in main.player.get("corpses"):
+	for c: Dictionary in main.player.corpses:
 		if str(c.get("where", "")) == main.zone_id:
 			var pos: Array = c.get("pos", [0.0, 0.0, 0.0])
 			lying.append(Vector2(float(pos[0]) + main._zone.size.x * 0.5, float(pos[2]) + main._zone.size.y * 0.5))
@@ -135,7 +135,7 @@ func _field_interact() -> void:
 		return
 	if _use_entrance():
 		return
-	main.player.call("note", "Nothing here to use.")
+	main.player.note("Nothing here to use.")
 
 
 ## Put the zone's living things in it (zones.json "camps", "lurker_patches").
@@ -178,7 +178,7 @@ func _use_entrance() -> bool:
 	var e: FieldEntrance = _entrance_in_reach()
 	if e == null:
 		return false
-	main.player.call("note", e.use_text())
+	main.player.note(e.use_text())
 	main.hud.call("announce", e.entrance_name.to_upper())
 	return true
 

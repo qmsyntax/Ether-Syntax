@@ -13,8 +13,8 @@ func on_reflux_cap() -> bool:
 	for node: Node in owner.get_tree().get_nodes_in_group("enemies"):
 		var e := node as Node3D
 		if e != null and e.global_position.distance_to((owner as Node3D).global_position) <= VENT_RADIUS:
-			owner.call("deal_damage", e, VENT_DAMAGE, ["vent"])
-	owner.call("vent_reflux", VENT_TO)
-	(owner.get("body") as Body).apply_self_harm(VENT_SELF_HARM)
-	owner.call("discover", "Vent counts as your own damage: YES")
+			owner.deal_damage(e, VENT_DAMAGE, ["vent"])
+	owner.vent_reflux(VENT_TO)
+	(owner.body as Body).apply_self_harm(VENT_SELF_HARM)
+	owner.discover("Vent counts as your own damage: YES")
 	return true

@@ -235,8 +235,8 @@ func _landmarks(level: Node3D) -> Array:
 ## Rune stones (design/14 section 8): each reveals one rune when read. Dim if already read.
 func _inscriptions(level: Node3D) -> Array:
 	var clear: Array = []
-	var player: Node = main.get("player")
-	var read: Array = player.get("read_inscriptions") if player != null else []
+	var player: Player = main.get("player")
+	var read: Array = player.read_inscriptions if player != null else []
 	for ins: Dictionary in def.get("inscriptions", []):
 		var at: Array = ins["at"]
 		var stone := RuneStone.new()

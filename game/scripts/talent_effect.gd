@@ -4,11 +4,11 @@ extends RefCounted
 ## tempering techniques later. Override only the hooks you need. `owner` is the player.
 ## Effects are loaded by id from res://scripts/talents/<id>.gd (see Player.set_talent).
 
-var owner: Node
+var owner: Player
 var id := ""
 
 
-func setup(player: Node, talent_id: String) -> void:
+func setup(player: Player, talent_id: String) -> void:
 	owner = player
 	id = talent_id
 

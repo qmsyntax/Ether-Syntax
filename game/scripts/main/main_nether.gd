@@ -20,11 +20,11 @@ func toggle_projection() -> void:
 		main.nether.exit("You return to your body.")
 		return
 	if main.state != "dungeon" and main.state != "arena_rest" and main.state != "field":
-		main.player.call("note", "There is nothing to find in the echo of this place." if main.state == "town" else "Not now.")
+		main.player.note("There is nothing to find in the echo of this place." if main.state == "town" else "Not now.")
 		return
 	var why: String = main.nether.cannot_enter_reason()
 	if why != "":
-		main.player.call("note", why)
+		main.player.note(why)
 		return
 	main.nether.enter()
 
@@ -32,14 +32,14 @@ func toggle_projection() -> void:
 func _on_nether_entered() -> void:
 	_set_nether_look(true)
 	main.hud.call("announce", "THE NETHERECHO")
-	main.player.call("note", "You step out of yourself.")
+	main.player.note("You step out of yourself.")
 
 
 func _on_nether_exited(reason: String) -> void:
 	_set_nether_look(false)
 	main._prompt = ""
 	if reason != "":
-		main.player.call("note", reason)
+		main.player.note(reason)
 
 
 ## Something hit the body while the soul was away.
@@ -50,8 +50,8 @@ func _on_body_disturbed() -> void:
 
 ## Canon: a destroyed projection is death. Standard mode turns that into debt like any other death.
 func _on_projection_destroyed() -> void:
-	main.player.call("note", "Your soul is torn apart in the echo.")
-	(main.player.get("body") as Body).apply_damage(99999.0)
+	main.player.note("Your soul is torn apart in the echo.")
+	(main.player.body as Body).apply_damage(99999.0)
 	main.player.call("_check_death")
 
 

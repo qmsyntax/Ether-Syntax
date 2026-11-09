@@ -109,7 +109,7 @@ func _hold_effect_shaders() -> void:
 
 func _new_level(yaw_degrees: float) -> void:
 	if main.player != null:
-		main.player.call("drop_stones")           # stone does not follow you to a new place
+		main.player.drop_stones()           # stone does not follow you to a new place
 		for group: String in ["ground_zones", "ground_rods", "blasts", "censer_bursts"]:
 			for left: Node in main.get_tree().get_nodes_in_group(group):
 				left.queue_free()
@@ -375,11 +375,11 @@ func _tick_prebuild() -> void:
 ## Your corpses that lie in this kind of level, laid back where they fell.
 func _place_corpses(where: String) -> void:
 	var CorpseScript: GDScript = load("res://scripts/corpse.gd")
-	for c: Dictionary in main.player.get("corpses"):
+	for c: Dictionary in main.player.corpses:
 		if str(c.get("where", "")) != where:
 			continue
 		var pos: Array = c.get("pos", [0.0, 0.0, 0.0])
 		var body_node: Node3D = CorpseScript.new()
-		body_node.call("setup", str(c["id"]), main.player.get("look"))
+		body_node.call("setup", str(c["id"]), main.player.look)
 		body_node.position = Vector3(float(pos[0]), 0.0, float(pos[2]))
 		main.level.add_child(body_node)

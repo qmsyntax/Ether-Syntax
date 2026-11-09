@@ -16,11 +16,11 @@ func tick(delta: float) -> void:
 		"arena_fight":
 			main._prompt = ""
 			if main.get_tree().get_nodes_in_group("enemies").is_empty():
-				main.player.call("end_fight")
+				main.player.end_fight()
 				main.state = "arena_rest"
 				main.rest_timer = GameData.num("arena", "rest_between_waves")
 				main._prebuild_bodies(_wave_kinds(main.wave + 1))     # built during the rest
-				main.player.call("note", "Wave %d cleared." % main.wave)
+				main.player.note("Wave %d cleared." % main.wave)
 
 
 ## The keys in the arena: skills, ascend, the seal, and (resting) go now, rest longer, the healer, back to town.
@@ -28,7 +28,7 @@ func handle_input(event: InputEvent) -> void:
 	if main._cast_from_hotbar(event):
 		pass
 	elif event.is_action_pressed("ascend"):
-		main.player.call("try_ascend")
+		main.player.try_ascend()
 	elif event.is_action_pressed("bind"):
 		main.open_seal_first_ready()
 	elif event.is_action_pressed("go_now"):
@@ -37,12 +37,12 @@ func handle_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("rest"):
 		if main.state == "arena_rest":
 			main.rest_timer += GameData.num("arena", "rest_extend")
-			main.player.call("note", "You rest a while longer. The landlord notices.")
+			main.player.note("You rest a while longer. The landlord notices.")
 	elif event.is_action_pressed("healer"):
 		if main.state == "arena_rest":
-			main.player.call("buy_healing")
+			main.player.buy_healing()
 		else:
-			main.player.call("note", "The healer won't come in here mid-fight.")
+			main.player.note("The healer won't come in here mid-fight.")
 	elif event.is_action_pressed("interact"):
 		if main.state == "arena_rest":
 			main._enter_town("arena")
@@ -84,7 +84,7 @@ func _enter_arena() -> void:
 	for q: Vector3 in [Vector3(-8, 0, -8), Vector3(8, 0, -8), Vector3(-8, 0, 8), Vector3(8, 0, 8)]:
 		main.nether.populate_site(q, Vector2(6.0, 6.0))
 	main.player.global_position = Vector3.ZERO
-	main.player.set("active", true)
+	main.player.active = true
 	main.factory_part._place_corpses("arena")
 	# every kind the waves bring, loaded with the level: by the wave after the last threshold all have come
 	var last: int = 1
@@ -105,7 +105,7 @@ func _start_wave() -> void:
 	main.wave += 1
 	main.state = "arena_fight"
 	main.hud.call("announce", "WAVE %d" % main.wave)
-	main.player.call("start_fight")
+	main.player.start_fight()
 	var kinds: Array[String] = _wave_kinds(main.wave)
 	for kind: String in kinds:
 		_spawn_arena_enemy(kind)

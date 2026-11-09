@@ -47,7 +47,7 @@ var exit_reach: float = GameData.num("passage", "exit_reach")
 # Town.
 var night_rent: int = GameData.inum("night", "rent")
 
-var player: CharacterBody3D
+var player: Player
 var camera: Camera3D
 var hud: Control
 var hud_layer: CanvasLayer
@@ -182,7 +182,7 @@ func _process(delta: float) -> void:
 		_prompt = "Your body sits behind you, defenceless.   %s or walk back onto it to return.\nTouch wisps to gather them. Beat a construct down to subdue it." % _k("project")
 	hud.call("set_prompt", _prompt if screen == null else "")
 	hud.call("set_passage", {"walls": chambers, "cleared": cleared, "current": current, "gate": gate_at, "bank": bank} if state == "dungeon" else {})
-	player.set("ui_blocked", screen != null or settings_menu != null or bool(hud.call("mouse_over_ui")))
+	player.ui_blocked = screen != null or settings_menu != null or bool(hud.call("mouse_over_ui"))
 
 	if _harness_part != null:
 		_harness().tick()
@@ -210,7 +210,7 @@ func _place_camera(focus: Vector3, delta: float) -> void:
 	var yaw: float = deg_to_rad(float(c["yaw_deg"]))
 	var look: Vector3 = focus + Vector3.UP * lerpf(float(c["look_height_far"]), float(c["look_height_near"]), t)
 	if player != null and player.has_method("camera_kick"):
-		look += player.call("camera_kick")      # a landed blow nudges the view (balance.json feel)
+		look += player.camera_kick()      # a landed blow nudges the view (balance.json feel)
 	var back := Vector3(sin(yaw), 0.0, cos(yaw))
 	camera.fov = lerpf(float(c["fov_far_deg"]), float(c["fov_near_deg"]), t)
 	camera.global_position = look + back * cos(pitch) * dist + Vector3.UP * sin(pitch) * dist
@@ -280,15 +280,15 @@ func _unhandled_input(event: InputEvent) -> void:
 ## character also turns the bar to its next six skills (hotbar_page). The sidestep key (combat review
 ## R3) is taken here too: wherever you can cast, you can step.
 func _cast_from_hotbar(event: InputEvent) -> bool:
-	if event.is_action_pressed("hotbar_page") and bool(player.get("test_character")):
-		player.call("next_hotbar_page")
+	if event.is_action_pressed("hotbar_page") and bool(player.test_character):
+		player.next_hotbar_page()
 		return true
 	if event.is_action_pressed("sidestep"):
-		player.call("press_sidestep")             # now, or as soon as you are free (balance.json sidestep)
+		player.press_sidestep()             # now, or as soon as you are free (balance.json sidestep)
 		return true
-	for i: int in (player.get("hotbar") as Array).size():
+	for i: int in (player.hotbar as Array).size():
 		if event.is_action_pressed("ability_%d" % (i + 1)):
-			player.call("press_slot", i)            # cast now, or as soon as you are free (balance.json feel)
+			player.press_slot(i)            # cast now, or as soon as you are free (balance.json feel)
 			return true
 	return false
 
@@ -392,7 +392,7 @@ func _rune_stone_in_reach() -> RuneStone:
 
 
 func _read_stone(stone: RuneStone) -> void:
-	player.call("read_inscription", stone.stone_id, stone.pool, stone.stone_name)
+	player.read_inscription(stone.stone_id, stone.pool, stone.stone_name)
 	stone.set_read(true)
 	save_now()
 
@@ -401,7 +401,7 @@ func _stone_prompt() -> void:
 	var stone: RuneStone = _rune_stone_in_reach()
 	if stone == null:
 		return
-	var read: bool = (player.get("read_inscriptions") as Array).has(stone.stone_id)
+	var read: bool = (player.read_inscriptions as Array).has(stone.stone_id)
 	_prompt = ("%s.   Already read." % stone.stone_name) if read else ("%s read %s - runes are cut into it." % [_k("interact"), stone.stone_name.to_lower()])
 
 

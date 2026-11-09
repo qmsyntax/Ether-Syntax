@@ -23,8 +23,8 @@ func hud_hides() -> Array[String]:
 
 
 func build(root: Control) -> void:
-	var inv: Inventory = player.get("inventory")
-	var money: int = int(player.get("money"))
+	var inv: Inventory = player.inventory
+	var money: int = int(player.money)
 	var box: VBoxContainer = framed(root, 0.2, 0.05, 0.8, 0.775)
 
 	var head := HBoxContainer.new()
@@ -44,7 +44,7 @@ func build(root: Control) -> void:
 		list.add_child(_row(str(id), inv))
 	# scrolls: only the ones this character could read, and does not already own
 	for id: Variant in ([] if not stock.is_empty() else GameData.items_file.get("shop_scrolls", [])):
-		if str(player.call("can_learn", str(GameData.item(str(id)).get("teaches", "")))) == "" and not inv.bag.has(str(id)):
+		if str(player.can_learn(str(GameData.item(str(id)).get("teaches", "")))) == "" and not inv.bag.has(str(id)):
 			list.add_child(_row(str(id), inv))
 
 	box.add_child(UiTheme.rule())
@@ -57,7 +57,7 @@ func build(root: Control) -> void:
 func _row(id: String, inv: Inventory) -> Control:
 	var def: Dictionary = GameData.item(id)
 	var price: int = int(def.get("value", 0))
-	var afford: bool = bool(player.call("can_afford", price))
+	var afford: bool = bool(player.can_afford(price))
 	var carry: bool = inv.can_add(id)
 
 	var panel := PanelContainer.new()

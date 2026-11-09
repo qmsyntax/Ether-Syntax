@@ -40,7 +40,7 @@ func build(root: Control) -> void:
 		if can_save else (block if mode == "save" else "Pick a character to carry on with."), 15, UiTheme.TEXT_DIM)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(sub)
-	if can_save and bool(player.get("test_character")):
+	if can_save and bool(player.test_character):
 		var note := UiTheme.body("A test character: its slot keeps it marked as one, and it is still never autosaved.", UiTheme.FS_SMALL, UiTheme.TEXT_FAINT)
 		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(note)

@@ -8,7 +8,7 @@ extends Control
 const HUD_MENU: Array[String] = ["plate", "hints", "log", "tags", "buffs", "tracker"]
 
 var game: Node
-var player: Node
+var player: Player
 var _content: Control
 
 

@@ -147,7 +147,7 @@ func _detail(box: VBoxContainer, rid: String) -> void:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_END
 	box.add_child(row)
-	var purse := UiTheme.body("Purse  %s" % UiTheme.money_text(int(player.get("money"))), 15, UiTheme.GOLD)
+	var purse := UiTheme.body("Purse  %s" % UiTheme.money_text(int(player.money)), 15, UiTheme.GOLD)
 	purse.autowrap_mode = TextServer.AUTOWRAP_OFF          # a wrapping label in a row collapses to one letter wide
 	purse.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	purse.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
