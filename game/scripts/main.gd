@@ -115,11 +115,13 @@ var _harness_part: MainHarness = null
 ## its `main`; outside code keeps calling the node, which forwards (the blocks at the end of this file).
 var factory_part: LevelFactory          # the world, levels, biomes, props, navigation, enemies placed
 var arena_part: MainArena               # state "arena_rest" / "arena_fight": the practice arena
+var passage_part: MainPassage           # state "dungeon": the assault passage
 
 
 func _init() -> void:
 	factory_part = LevelFactory.new(self)
 	arena_part = MainArena.new(self)
+	passage_part = MainPassage.new(self)
 
 
 func _ready() -> void:
@@ -165,7 +167,7 @@ func _process(delta: float) -> void:
 		"arena_rest", "arena_fight":
 			arena_part.tick(delta)
 		"dungeon":
-			_tick_dungeon(delta)
+			passage_part.tick(delta)
 		"field":
 			_tick_field(delta)
 
@@ -289,23 +291,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif event.is_action_pressed("interact"):
 				_field_interact()
 		"dungeon":
-			if _cast_from_hotbar(event):
-				pass
-			elif event.is_action_pressed("ascend"):
-				player.call("try_ascend")
-			elif event.is_action_pressed("bind"):
-				open_seal_first_ready()
-			elif event.is_action_pressed("healer"):
-				player.call("note", "No healer in here. The entrance is sealed.")
-			elif event.is_action_pressed("interact"):
-				if _rune_stone_in_reach() != null:
-					_read_stone(_rune_stone_in_reach())
-				elif _pad_in_reach():
-					_extract()
-				elif pads.is_empty():
-					player.call("note", "No exit yet. %d more walls." % maxi(0, gate_at - cleared))
-				else:
-					player.call("note", "Stand on a glowing exit to leave.")
+			passage_part.handle_input(event)
 
 
 ## Hotbar slots are the actions ability_1..N. Returns true if the event cast something. A test
@@ -1122,20 +1108,6 @@ func new_character() -> void:
 	restart_game()
 
 
-func enter_passage() -> void:
-	_return_to = {}
-	if not bool(player.call("can_afford", ticket_price)):
-		player.call("note", "No one will sell you a ticket on that much debt.")
-		return
-	player.call("charge", ticket_price)
-	_show_screen(null, false)
-	_enter_dungeon()
-
-
-func repeat_mult() -> float:
-	return _repeat_mult()
-
-
 ## Drop one item from the bag. In the field it lands at your feet; in town it is simply gone.
 func drop_item(item_id: String) -> void:
 	var inv: Inventory = player.get("inventory")
@@ -1200,32 +1172,6 @@ func town_rest_night() -> void:
 	player.call("charge", night_rent)
 	day += 1
 	save_now()
-
-
-## Per-person reward at the exit, scaled to how far you got (canon: contribution-scaled loot).
-## Whatever you cannot carry is left behind.
-func grant_exit_rewards(walls_cleared: int, full_clear: bool) -> Array[String]:
-	var cfg: Dictionary = GameData.items_file.get("exit_rewards", {})
-	var rolls: int = int(float(walls_cleared) / float(cfg.get("walls_per_roll", 2.5)))
-	if full_clear:
-		rolls += int(cfg.get("bonus_rolls_full_clear", 0))
-	var table: Array = GameData.items_file.get("exit_reward_table", [])
-	var total := 0.0
-	for entry: Dictionary in table:
-		total += float(entry["weight"])
-	var got: Array[String] = []
-	var inv: Inventory = player.get("inventory")
-	for i: int in rolls:
-		var pick: float = rng.randf() * total
-		for entry: Dictionary in table:
-			pick -= float(entry["weight"])
-			if pick <= 0.0:
-				var id: String = str(entry["item"])
-				if inv.add(id):
-					got.append(str(GameData.item(id).get("name", id)))
-				break
-	player.call("refresh_gear")
-	return got
 
 
 # --- saving ------------------------------------------------------------------------
@@ -1309,270 +1255,6 @@ func open_saves() -> void:
 		_show_screen(SavesScreen.new(self), false)
 
 
-func _repeat_mult() -> float:
-	return maxf(repeat_floor, pow(repeat_factor, float(delves)))
-
-
-# --- assault passage ------------------------------------------------------------
-
-func _enter_dungeon() -> void:
-	# Rotated so the corridor runs straight "up" the isometric screen: W alone walks it.
-	factory_part._new_level(45.0)
-	var total: float = float(chambers + 1) * ch_len
-	var mid_z: float = -total * 0.5
-	var bcfg: Dictionary = GameData.balance["biomes"]
-	factory_part._use_biome(bcfg["passage"])
-	_biome_floor(Vector3(0, 0, mid_z), Vector2(ch_half_w * 2.0 + 2.0, total + 2.0))
-	# side walls in chamber-length runs (the kit reuses a run of the same length)
-	for c: int in range(0, chambers + 1):
-		var cz: float = -(float(c) + 0.5) * ch_len
-		_biome_wall(Vector3(-ch_half_w - 0.5, 0, cz), ch_len, 90.0, float(bcfg["wall_height_side"]))
-		_biome_wall(Vector3(ch_half_w + 0.5, 0, cz), ch_len, -90.0, float(bcfg["wall_height_side"]))
-	_biome_wall(Vector3(0, 0, 0.5), ch_half_w * 2.0, 180.0, float(bcfg["wall_height_near"]))
-	_biome_wall(Vector3(0, 0, -total - 0.5), ch_half_w * 2.0, 0.0, float(bcfg["wall_height_far"]))
-
-	var side_w: float = ch_half_w - gap_half
-	var side_x: float = gap_half + side_w * 0.5
-	for c: int in range(1, chambers + 1):
-		var z: float = -float(c) * ch_len
-		_biome_wall(Vector3(-side_x, 0, z), side_w, 0.0, float(bcfg["wall_height_divider"]))
-		_biome_wall(Vector3(side_x, 0, z), side_w, 0.0, float(bcfg["wall_height_divider"]))
-		# every doorway has its gate; only the sealed ones are shut
-		var gate: Node3D = Biomes.gate(biome, gap_half * 2.0)
-		gate.position = Vector3(0, 0, z)
-		level.add_child(gate)
-		gate.call("set_open", true, true)
-		gates[c] = gate
-		if c >= 2:
-			_add_barrier(c)
-
-	for c: int in range(0, chambers + 1):
-		var near_z: float = -float(c) * ch_len
-		factory_part._scatter_props(Vector3(0, 0, near_z - ch_len * 0.5), Vector2(ch_half_w - 0.3, ch_len * 0.5 - 1.2), int(bcfg["props_per_chamber"]), [near_z, near_z - ch_len])
-		var tufts: int = GameData.inum("passage", "antechamber_tufts") if c == 0 else GameData.inum("passage", "chamber_tufts")
-		for i: int in tufts:
-			var pos := Vector3(rng.randf_range(-ch_half_w + 1.0, ch_half_w - 1.0), 0.0,
-				-float(c) * ch_len - rng.randf_range(1.5, ch_len - 1.5))
-			_spawn_cuttable(i, pos)
-
-	# rune stones (design/14 section 8): one cut into the wall of each chamber the data names
-	for ins: Dictionary in (GameData.rune_discovery.get("inscriptions", {}) as Dictionary).get("passage", []):
-		var c2: int = int(ins.get("chamber", 1))
-		if c2 < 0 or c2 > chambers:
-			continue
-		var stone := RuneStone.new()
-		stone.setup(str(ins["id"]), str(ins.get("name", "A rune stone")), str(ins.get("pool", "base")))
-		stone.position = Vector3(ch_half_w - 0.9, 0.0, -(float(c2) + 0.5) * ch_len)
-		stone.rotation.y = -PI / 2.0
-		level.add_child(stone)
-		stone.set_read((player.get("read_inscriptions") as Array).has(str(ins["id"])))
-	# the spirit layer: one site per chamber, antechamber included
-	for c: int in range(0, chambers + 1):
-		nether.populate_site(Vector3(0.0, 0.0, -(float(c) + 0.5) * ch_len), Vector2(ch_half_w - 1.5, ch_len * 0.5 - 1.5))
-	player.global_position = level.to_global(Vector3(0.0, 0.0, -4.0))
-	player.set("active", true)
-	factory_part._place_corpses("passage")
-	# everyone the passage can put up is loaded now, with the level, not the first time each kind wakes;
-	# the first wall's bodies are built ahead (the rest after each wall falls - _on_wall_cleared)
-	var roster: Array[String] = []
-	for c3: int in range(1, chambers + 1):
-		roster.append_array(_wall_kinds(c3))
-	factory_part._warm_bodies(roster + factory_part._calls_of(roster))
-	_prebuild_bodies(_wall_kinds(1))
-	state = "dungeon"
-	player.call("note", "You step through into %s. Walk up the corridor (%s)." % [str(_biome.get("label", biome)).to_lower(), Keybinds.binding_text("move_up")])
-
-
-## Seal the doorway into chamber `c`: an unseen collider, and its gate shut.
-func _add_barrier(c: int) -> void:
-	var b: StaticBody3D = _static_box(Vector3(0, 1.0, -float(c) * ch_len), Vector3(gap_half * 2.0, 2.0, 0.6), Color.BLACK, false)
-	barriers[c] = b
-	if gates.has(c):
-		(gates[c] as Node).call("set_open", false, c >= 2 and not sealed)
-
-
-func _tick_dungeon(delta: float) -> void:
-	var local: Vector3 = level.to_local(player.global_position)
-	var depth: float = -local.z
-	var fighting: bool = current > cleared
-
-	if not fighting:
-		var next_c: int = cleared + 1
-		if next_c <= chambers and depth > float(next_c) * ch_len + 1.5:
-			if not sealed:
-				sealed = true
-				_add_barrier(1)
-				player.call("note", "Stone grinds shut behind you. The entrance is sealed.")
-			_activate(next_c)
-			_set_dungeon_banner()
-			return
-		if sealed:
-			# The town clock does not stop because you are underground.
-			_charge_rent(dungeon_rent_per_second, delta)
-	elif get_tree().get_nodes_in_group("enemies").is_empty():
-		_on_wall_cleared()
-
-	_set_dungeon_banner()
-
-	if _bot_mode:
-		_harness().bot_dungeon_tick()
-
-
-## Who stands in wall `c`, in the order they are placed: the front line of grunts, the brutes, a
-## commander at the gate and at the last wall, then the wall's recipe (design/05 6.2).
-func _wall_kinds(c: int) -> Array[String]:
-	var kinds: Array[String] = []
-	for i: int in GameData.inum("passage", "grunts_base") + c / 2:
-		kinds.append("grunt")
-	for i: int in maxi(0, (c - GameData.inum("passage", "brute_offset")) / GameData.inum("passage", "brute_every")):
-		kinds.append("brute")
-	if c == gate_at or c == chambers:
-		kinds.append("commander")
-	# the wall's recipe: what stands behind the front line, and its one problem (design/05 6.2)
-	var recipe: Dictionary = _wall_recipe(c)
-	for kind: String in recipe:
-		for i: int in int(recipe[kind]):
-			kinds.append(kind)
-	return kinds
-
-
-func _activate(c: int) -> void:
-	current = c
-	var strength: float = late_strength if c > gate_at else 1.0
-	var kinds: Array[String] = _wall_kinds(c)
-	for kind: String in kinds:
-		# archers start at the back of the chamber, where a back line belongs
-		var back: bool = str(GameData.enemy(kind).get("behaviour", "melee")) == "ranged"
-		var local := Vector3(rng.randf_range(-ch_half_w + 2.0, ch_half_w - 2.0), 0.0,
-			rng.randf_range(-float(c + 1) * ch_len + 2.0, -float(c + 1) * ch_len + 4.0) if back
-			else rng.randf_range(-float(c + 1) * ch_len + 2.0, -float(c) * ch_len - 7.0))
-		factory_part._spawn_enemy(kind, local, strength)
-	_prebuild_bodies(factory_part._calls_of(kinds))         # a commander's call for help lands mid-fight: its bodies wait ready
-	player.call("start_fight")
-	player.call("note", "Wall %d of %d." % [c, chambers])
-	hud.call("announce", "WALL %d" % c if c != chambers else "THE LAST WALL")
-	if _harness_part != null:
-		_harness().shot_dungeon_wall(c)
-
-
-## Where something at `from` should walk next to reach `to` (both in world space). In the passage
-## that may be a doorway first; anywhere else it is `to` itself. See Route. Only used until the
-## level's navigation mesh is baked (LevelNav); after that everything follows paths.
-func route(from: Vector3, to: Vector3, walker_radius: float) -> Vector3:
-	if state != "dungeon" or level == null:
-		return to
-	var step: Vector3 = Route.step_toward(level.to_local(from), level.to_local(to), ch_len, gap_half, walker_radius)
-	return level.to_global(step)
-
-
-## Extra enemies for wall `c`: its own recipe, or the nearest lower one that has one.
-func _wall_recipe(c: int) -> Dictionary:
-	var recipes: Dictionary = GameData.balance["passage"]["wall_recipes"]
-	for n: int in range(c, 0, -1):
-		if recipes.has(str(n)):
-			return recipes[str(n)]
-	return {}
-
-
-func _on_wall_cleared() -> void:
-	cleared = current
-	bank += stage_value * cleared
-	player.call("end_fight")
-	var next_c: int = cleared + 1
-	if barriers.has(next_c):
-		(barriers[next_c] as Node).queue_free()
-		barriers.erase(next_c)
-		if gates.has(next_c):
-			(gates[next_c] as Node).call("set_open", true)
-	if cleared < chambers:
-		_prebuild_bodies(_wall_kinds(cleared + 1))   # built while you walk to the next doorway
-	if cleared >= gate_at:
-		_spawn_pad(cleared)
-	player.call("note", "Wall %d cleared. Spoils worth $%d waiting - yours only if you walk out with them." % [cleared, bank])
-	if cleared == gate_at:
-		hud.call("announce", "AN EXIT OPENS")
-
-
-func _spawn_pad(c: int) -> void:
-	var pad := MeshInstance3D.new()
-	var disc := CylinderMesh.new()
-	disc.top_radius = 1.4
-	disc.bottom_radius = 1.4
-	disc.height = 0.1
-	pad.mesh = disc
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.3, 1.0, 0.5)
-	mat.emission_enabled = true
-	mat.emission = Color(0.2, 0.9, 0.4)
-	pad.material_override = mat
-	pad.position = Vector3(0.0, 0.06, -(float(c) + 0.5) * ch_len)
-	level.add_child(pad)
-	pads.append(pad)
-
-
-func _pad_in_reach() -> bool:
-	for pad: Node3D in pads:
-		var d: Vector3 = pad.global_position - player.global_position
-		d.y = 0.0
-		if d.length() <= exit_reach:
-			return true
-	return false
-
-
-func _payout_now() -> int:
-	var bonus: float = full_clear_bonus if cleared == chambers else 1.0
-	return int(float(bank) * _repeat_mult() * bonus)
-
-
-func _extract() -> void:
-	var owed: int = _payout_now()
-	var carried: Array = grant_spoils(owed)
-	_last_payout = int(carried[0])
-	_last_cleared = cleared
-	_last_sealed = sealed
-	_bot_finished = _bot_mode
-	delves += 1
-	player.call("note", "You walk out after %d walls carrying spoils worth $%d." % [cleared, int(carried[0])])
-	if int(carried[1]) > 0:
-		player.call("note", "You could not carry the rest - $%d of it stays at the exit." % int(carried[1]))
-	var rewards: Array[String] = grant_exit_rewards(cleared, cleared == chambers)
-	if _return_to.is_empty():
-		_enter_town("passage")
-	else:
-		var back: Dictionary = _return_to
-		_return_to = {}
-		enter_zone(str(back["zone"]), str(back["at"]))
-	if not rewards.is_empty():
-		player.call("note", "At the exit: %s." % ", ".join(rewards))
-
-
-## A delve's spoils as things to carry home and sell (nothing pays cash - Brent 2026-10-18): the
-## most valuable kind first, as many as the pack will take. Returns [value carried, value left].
-func grant_spoils(value: int) -> Array:
-	var inv: Inventory = player.get("inventory")
-	var left: int = value
-	for id: Variant in GameData.items_file.get("spoils", []):
-		var each: int = int(GameData.item(str(id)).get("value", 0))
-		while each > 0 and left >= each and inv.add(str(id)):
-			left -= each
-	player.call("refresh_gear")
-	return [value - left, left]
-
-
-func _set_dungeon_banner() -> void:
-	if not sealed:
-		_prompt = "The antechamber. Walk up the corridor (%s) to begin - the entrance seals behind you.\nLast chance to cut grass in peace." % Keybinds.binding_text("move_up")
-	elif current > cleared:
-		_prompt = ""
-	elif cleared >= chambers:
-		_prompt = "All %d walls down.   %s on a glowing exit to leave with spoils worth $%d, full-clear bonus included - as much as you can carry." % [chambers, _k("interact"), _payout_now()]
-	elif cleared >= gate_at:
-		_prompt = "%s on a glowing exit to leave with spoils worth $%d   -   or push on: wall %d adds $%d more.\nRent is $%d a second while you stand here." % [_k("interact"), _payout_now(), cleared + 1, stage_value * (cleared + 1), int(dungeon_rent_per_second)]
-	else:
-		_prompt = "Spoils worth $%d waiting, but no exit until wall %d.   Rest if you need it - rent is $%d a second." % [bank, gate_at, int(dungeon_rent_per_second)]
-	_stone_prompt()
-
-
 # --- rune stones (design/14 section 8) ------------------------------------------------------
 
 ## The nearest rune stone within reading reach, or null.
@@ -1634,16 +1316,6 @@ func open_seal_first_ready() -> void:
 		if missing == "" and str(lock["reason"]) == "no_construct":
 			missing = "%s: %s" % [str(GameData.ability(str(abilities[ai]["id"])).get("name", "?")), str(lock["text"])]
 	player.call("note", missing if missing != "" else "No skill is ready for its level lock: a skill's bar fills as you use it.")
-
-
-# --- shared ---------------------------------------------------------------------
-
-func _charge_rent(rate: float, delta: float) -> void:
-	_rent_accum += rate * delta
-	if _rent_accum >= 1.0:
-		var due: int = int(_rent_accum)
-		_rent_accum -= float(due)
-		player.call("charge", due)
 
 
 func _exit_tree() -> void:
@@ -1753,7 +1425,7 @@ func _where() -> String:
 		"arena_rest", "arena_fight":
 			return arena_part.where()
 		"dungeon":
-			return "The passage  -  wall %d of %d  -  spoils $%d" % [cleared, chambers, bank]
+			return passage_part.where()
 		"field":
 			return str(GameData.zone(zone_id).get("name", zone_id))
 	return ""
@@ -1774,3 +1446,13 @@ func _prebuild_bodies(kinds: Array[String]) -> void: factory_part._prebuild_bodi
 
 # --- arena_part (MainArena)
 func enter_arena() -> void: arena_part.enter_arena()
+
+
+# --- passage_part (MainPassage)
+func enter_passage() -> void: passage_part.enter_passage()
+func _enter_dungeon() -> void: passage_part._enter_dungeon()
+func _wall_kinds(c: int) -> Array[String]: return passage_part._wall_kinds(c)
+func _activate(c: int) -> void: passage_part._activate(c)
+func route(from: Vector3, to: Vector3, walker_radius: float) -> Vector3: return passage_part.route(from, to, walker_radius)
+func _extract() -> void: passage_part._extract()
+func repeat_mult() -> float: return passage_part.repeat_mult()

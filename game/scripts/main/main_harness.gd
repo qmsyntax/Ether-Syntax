@@ -92,7 +92,7 @@ func bot_dungeon_tick() -> void:
 		main.player.call("_check_death")
 		return
 	var leave_now: bool = _bot_scenario == "gate" or main.cleared >= main.chambers
-	if leave_now and main._pad_in_reach():
+	if leave_now and main.passage_part._pad_in_reach():
 		main._extract()
 		return
 	# the bot paths there itself (player._bot_way): no lining up with the doorway first
