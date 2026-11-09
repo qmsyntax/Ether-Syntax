@@ -111,6 +111,13 @@ var _then: Dictionary = {}
 var _menu_return := false
 ## The test and screenshot harness (MainHarness): built only when a run has test, shot or bot arguments.
 var _harness_part: MainHarness = null
+## The parts (docs/architecture/main-split.md), one per concern, made in _init. Each reaches the node through
+## its `main`; outside code keeps calling the node, which forwards (the blocks at the end of this file).
+var factory_part: LevelFactory          # the world, levels, biomes, props, navigation, enemies placed
+
+
+func _init() -> void:
+	factory_part = LevelFactory.new(self)
 
 
 func _ready() -> void:
@@ -121,8 +128,8 @@ func _ready() -> void:
 	if _under_test():
 		UserFiles.sandbox(TEST_SANDBOX)  # tests, shots and bots never read or write the player's own files
 	add_to_group("router")              # where there is no navigation mesh yet: the way through a doorway
-	_hold_effect_shaders()
-	_build_world()
+	factory_part._hold_effect_shaders()
+	factory_part._build_world()
 	_build_player()
 	_build_hud()
 	_build_town()
@@ -185,7 +192,7 @@ func _process(delta: float) -> void:
 
 	if _harness_part != null:
 		_harness().tick()
-	_tick_prebuild()
+	factory_part._tick_prebuild()
 
 
 ## Zoom (0 far .. 1 near) and where it is easing to; the wheel sets the target.
@@ -814,8 +821,8 @@ func enter_zone(id: String, arrive: String) -> void:
 	_show_screen(null, false)
 	if nether.active:
 		nether.exit("")
-	_new_level(float(def.get("yaw", 0.0)))
-	_use_biome(def.get("biome", "scrubland"), false)
+	factory_part._new_level(float(def.get("yaw", 0.0)))
+	factory_part._use_biome(def.get("biome", "scrubland"), false)
 	zone_id = id
 	_zone = ZoneBuilder.new(self, def)
 	_zone.build()
@@ -825,7 +832,7 @@ func enter_zone(id: String, arrive: String) -> void:
 	player.set("active", true)
 	player.set("has_move_goal", false)
 	player.call("end_fight")
-	_place_corpses(id)
+	factory_part._place_corpses(id)
 	fog = FogMap.new(_zone.size, GameData.num("minimap", "fog_cell_m"))
 	fog.from_text(str((player.get("explored") as Dictionary).get(id, "")))
 	state = "field"
@@ -1345,9 +1352,9 @@ func _repeat_mult() -> float:
 # --- practice arena -------------------------------------------------------------
 
 func _enter_arena() -> void:
-	_new_level(0.0)
+	factory_part._new_level(0.0)
 	var bcfg: Dictionary = GameData.balance["biomes"]
-	_use_biome(bcfg["arena"])
+	factory_part._use_biome(bcfg["arena"])
 	var span: float = arena_half * 2.0 + 2.0
 	_biome_floor(Vector3.ZERO, Vector2(span, span))
 	# tall on the far sides, low on the camera's side so the floor is not hidden
@@ -1355,7 +1362,7 @@ func _enter_arena() -> void:
 	_biome_wall(Vector3(-arena_half - 0.5, 0, 0), span, 90.0, float(bcfg["wall_height_far"]))
 	_biome_wall(Vector3(0, 0, arena_half + 0.5), span, 180.0, float(bcfg["wall_height_near"]))
 	_biome_wall(Vector3(arena_half + 0.5, 0, 0), span, -90.0, float(bcfg["wall_height_near"]))
-	_scatter_props(Vector3.ZERO, Vector2(arena_half - 0.5, arena_half - 1.5), int(bcfg["arena_props"]))
+	factory_part._scatter_props(Vector3.ZERO, Vector2(arena_half - 0.5, arena_half - 1.5), int(bcfg["arena_props"]))
 	# standing blocks: something for a shove to end against, and for a beam to stop on (design/05 6.2)
 	var block: Array = GameData.balance["arena"]["block_size"]
 	for at: Array in GameData.balance["arena"]["blocks"]:
@@ -1372,7 +1379,7 @@ func _enter_arena() -> void:
 		nether.populate_site(q, Vector2(6.0, 6.0))
 	player.global_position = Vector3.ZERO
 	player.set("active", true)
-	_place_corpses("arena")
+	factory_part._place_corpses("arena")
 	# every kind the waves bring, loaded with the level: by the wave after the last threshold all have come
 	var last: int = 1
 	for key: String in GameData.balance["arena"]:
@@ -1381,7 +1388,7 @@ func _enter_arena() -> void:
 	var roster: Array[String] = []
 	for w: int in range(1, last + 1):
 		roster.append_array(_wave_kinds(w))
-	_warm_bodies(roster + _calls_of(roster))
+	factory_part._warm_bodies(roster + factory_part._calls_of(roster))
 	_prebuild_bodies(_wave_kinds(1))
 	wave = 0
 	rest_timer = GameData.num("arena", "first_rest")
@@ -1396,7 +1403,7 @@ func _start_wave() -> void:
 	var kinds: Array[String] = _wave_kinds(wave)
 	for kind: String in kinds:
 		_spawn_arena_enemy(kind)
-	_prebuild_bodies(_calls_of(kinds))
+	_prebuild_bodies(factory_part._calls_of(kinds))
 
 
 ## Who comes in arena wave `w`, in the order they are placed.
@@ -1422,18 +1429,18 @@ func _wave_kinds(w: int) -> Array[String]:
 
 func _spawn_arena_enemy(kind: String) -> void:
 	var angle: float = rng.randf() * TAU
-	_spawn_enemy(kind, Vector3(cos(angle), 0.0, sin(angle)) * (arena_half - 3.0), 1.0)
+	factory_part._spawn_enemy(kind, Vector3(cos(angle), 0.0, sin(angle)) * (arena_half - 3.0), 1.0)
 
 
 # --- assault passage ------------------------------------------------------------
 
 func _enter_dungeon() -> void:
 	# Rotated so the corridor runs straight "up" the isometric screen: W alone walks it.
-	_new_level(45.0)
+	factory_part._new_level(45.0)
 	var total: float = float(chambers + 1) * ch_len
 	var mid_z: float = -total * 0.5
 	var bcfg: Dictionary = GameData.balance["biomes"]
-	_use_biome(bcfg["passage"])
+	factory_part._use_biome(bcfg["passage"])
 	_biome_floor(Vector3(0, 0, mid_z), Vector2(ch_half_w * 2.0 + 2.0, total + 2.0))
 	# side walls in chamber-length runs (the kit reuses a run of the same length)
 	for c: int in range(0, chambers + 1):
@@ -1460,7 +1467,7 @@ func _enter_dungeon() -> void:
 
 	for c: int in range(0, chambers + 1):
 		var near_z: float = -float(c) * ch_len
-		_scatter_props(Vector3(0, 0, near_z - ch_len * 0.5), Vector2(ch_half_w - 0.3, ch_len * 0.5 - 1.2), int(bcfg["props_per_chamber"]), [near_z, near_z - ch_len])
+		factory_part._scatter_props(Vector3(0, 0, near_z - ch_len * 0.5), Vector2(ch_half_w - 0.3, ch_len * 0.5 - 1.2), int(bcfg["props_per_chamber"]), [near_z, near_z - ch_len])
 		var tufts: int = GameData.inum("passage", "antechamber_tufts") if c == 0 else GameData.inum("passage", "chamber_tufts")
 		for i: int in tufts:
 			var pos := Vector3(rng.randf_range(-ch_half_w + 1.0, ch_half_w - 1.0), 0.0,
@@ -1483,13 +1490,13 @@ func _enter_dungeon() -> void:
 		nether.populate_site(Vector3(0.0, 0.0, -(float(c) + 0.5) * ch_len), Vector2(ch_half_w - 1.5, ch_len * 0.5 - 1.5))
 	player.global_position = level.to_global(Vector3(0.0, 0.0, -4.0))
 	player.set("active", true)
-	_place_corpses("passage")
+	factory_part._place_corpses("passage")
 	# everyone the passage can put up is loaded now, with the level, not the first time each kind wakes;
 	# the first wall's bodies are built ahead (the rest after each wall falls - _on_wall_cleared)
 	var roster: Array[String] = []
 	for c3: int in range(1, chambers + 1):
 		roster.append_array(_wall_kinds(c3))
-	_warm_bodies(roster + _calls_of(roster))
+	factory_part._warm_bodies(roster + factory_part._calls_of(roster))
 	_prebuild_bodies(_wall_kinds(1))
 	state = "dungeon"
 	player.call("note", "You step through into %s. Walk up the corridor (%s)." % [str(_biome.get("label", biome)).to_lower(), Keybinds.binding_text("move_up")])
@@ -1558,8 +1565,8 @@ func _activate(c: int) -> void:
 		var local := Vector3(rng.randf_range(-ch_half_w + 2.0, ch_half_w - 2.0), 0.0,
 			rng.randf_range(-float(c + 1) * ch_len + 2.0, -float(c + 1) * ch_len + 4.0) if back
 			else rng.randf_range(-float(c + 1) * ch_len + 2.0, -float(c) * ch_len - 7.0))
-		_spawn_enemy(kind, local, strength)
-	_prebuild_bodies(_calls_of(kinds))         # a commander's call for help lands mid-fight: its bodies wait ready
+		factory_part._spawn_enemy(kind, local, strength)
+	_prebuild_bodies(factory_part._calls_of(kinds))         # a commander's call for help lands mid-fight: its bodies wait ready
 	player.call("start_fight")
 	player.call("note", "Wall %d of %d." % [c, chambers])
 	hud.call("announce", "WALL %d" % c if c != chambers else "THE LAST WALL")
@@ -1758,131 +1765,8 @@ func _charge_rent(rate: float, delta: float) -> void:
 		player.call("charge", due)
 
 
-# --- the effects' shaders, held for the whole game (perf, 2026-11-08) -----------------------------
-# Skill and status effects (blast rings, zones, clouds, arcs, shots, lures, auras) each make their own
-# StandardMaterial3D. Godot shares one shader among the materials with the same features and FREES it
-# when the last of them goes - so with no blast on the ground, the next Cave-In compiled its ring's
-# shader again, a ~20 ms frame every time (docs/perf/baseline-2026-11-08.md). One material of each
-# feature set the effects use is kept here from the start, so those shaders are made once, at boot,
-# and never thrown away. A new effect with a new combination of these switches belongs in the list.
-
-var _held_materials: Array[Material] = []
-
-
-func _hold_effect_shaders() -> void:
-	# [unshaded, alpha, emission, additive, both faces]
-	var sets: Array = [
-		[true, true, false, false, false],     # rings, zones, bursts, auras, patches
-		[true, true, true, false, false],      # glowing zones, lures, arcs, the risen wash
-		[false, true, false, false, false],    # blood pools, seed traps
-		[false, true, true, false, false],     # the Netherecho's glowing pieces
-		[false, false, true, false, false],    # shots, rods, lamps, stone glow
-		[true, false, false, false, false],    # flat marks
-		[true, true, false, true, false],      # a real body's glow (RealCharacter)
-		[true, true, false, false, true],      # the navigation debug mesh
-	]
-	for s: Array in sets:
-		var m := StandardMaterial3D.new()
-		if bool(s[0]):
-			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		if bool(s[1]):
-			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		m.emission_enabled = bool(s[2])
-		if bool(s[3]):
-			m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-		if bool(s[4]):
-			m.cull_mode = BaseMaterial3D.CULL_DISABLED
-		m.get_rid()                          # a material makes its shader when first asked for it: ask now
-		_held_materials.append(m)
-
-
-# --- bodies built ahead (perf, 2026-11-08; docs/perf/baseline-2026-11-08.md) ----------------------
-# A real body costs ~2 ms to build once its kind's model and textures are loaded, and far more the first
-# time a kind appears (the female body's model, the kind's garments and props): a whole wall built in the
-# frame it woke stalled that frame for ~0.4 s. So a level loads every kind it can put up as it is built
-# (_warm_bodies), and the bodies of the next wall or wave are built ahead, one a frame, while you walk or
-# rest (_prebuild_bodies); Models.enemy hands out a ready one. Nothing about the enemies changes.
-
-var _prebuild_queue: Array[String] = []
-
-
-## The kinds these enemies may call for help (enemies.json "calls"), so their bodies can wait ready.
-func _calls_of(kinds: Array[String]) -> Array[String]:
-	var out: Array[String] = []
-	for kind: String in kinds:
-		for k2: Variant in GameData.enemy(kind).get("calls", []):
-			out.append(str(k2))
-	return out
-
-
-## Load every kind in `kinds` now (in a level's own loading frame): one body of each is built and kept
-## ready, which brings in its model and textures.
-func _warm_bodies(kinds: Array[String]) -> void:
-	var seen: Dictionary = {}
-	for kind: String in kinds:
-		if seen.has(kind):
-			continue
-		seen[kind] = true
-		if Models.prebuilt_count(kind) == 0:
-			Models.prebuild(kind)
-
-
-## Have bodies for `kinds` (one entry per body) ready before they are needed: what is not already
-## built or queued is queued, and built one a frame (_tick_prebuild).
-func _prebuild_bodies(kinds: Array[String]) -> void:
-	var want: Dictionary = {}
-	for kind: String in kinds:
-		if Models.is_real_enemy(kind):
-			want[kind] = int(want.get(kind, 0)) + 1
-	for kind: String in want:
-		var short: int = int(want[kind]) - Models.prebuilt_count(kind) - _prebuild_queue.count(kind)
-		for i: int in short:
-			_prebuild_queue.append(kind)
-
-
-func _tick_prebuild() -> void:
-	if not _prebuild_queue.is_empty():
-		Models.prebuild(_prebuild_queue.pop_front())
-
-
 func _exit_tree() -> void:
 	Models.free_prebuilt()                   # bodies never placed are in no tree: nothing else frees them
-
-
-func _spawn_enemy(kind: String, local_pos: Vector3, strength: float) -> void:
-	# Build and place before it enters the tree: a body that exists at the origin for even one
-	# step can pick the player up as a "moving platform" passenger.
-	var e: CharacterBody3D = EnemyScript.new()
-	e.call("setup", kind, player, strength)
-	e.position = local_pos
-	level.add_child(e)
-	e.connect("reinforcements", _on_reinforcements)
-
-
-## An enemy called for help: the kinds it named arrive in a ring round it, inside the room.
-func _on_reinforcements(who: Node, kinds: Array) -> void:
-	if level == null or not is_instance_valid(who):
-		return
-	var centre: Vector3 = level.to_local((who as Node3D).global_position)
-	var strength: float = late_strength if (state == "dungeon" and current > gate_at) else 1.0
-	for i: int in kinds.size():
-		var angle: float = TAU * float(i) / float(maxi(1, kinds.size())) + 0.6
-		var spot: Vector3 = centre + Vector3(cos(angle), 0.0, sin(angle)) * 3.5
-		if state == "dungeon":
-			spot.x = clampf(spot.x, -ch_half_w + 1.5, ch_half_w - 1.5)
-			spot.z = clampf(spot.z, -float(current + 1) * ch_len + 1.5, -float(current) * ch_len - 1.5)
-		else:
-			spot.x = clampf(spot.x, -arena_half + 2.0, arena_half - 2.0)
-			spot.z = clampf(spot.z, -arena_half + 2.0, arena_half - 2.0)
-		_spawn_enemy(str(kinds[i]), spot, strength)
-	hud.call("announce", "REINFORCEMENTS")
-
-
-func _spawn_scenery(kind: String, local_pos: Vector3) -> void:
-	var s: Node3D = SceneryScript.new()
-	s.call("setup", kind)
-	s.position = local_pos
-	level.add_child(s)
 
 
 func _on_player_died() -> void:
@@ -1911,265 +1795,17 @@ func _on_player_died() -> void:
 	_enter_town()
 
 
-## Your corpses that lie in this kind of level, laid back where they fell.
-func _place_corpses(where: String) -> void:
-	var CorpseScript: GDScript = load("res://scripts/corpse.gd")
-	for c: Dictionary in player.get("corpses"):
-		if str(c.get("where", "")) != where:
-			continue
-		var pos: Array = c.get("pos", [0.0, 0.0, 0.0])
-		var body_node: Node3D = CorpseScript.new()
-		body_node.call("setup", str(c["id"]), player.get("look"))
-		body_node.position = Vector3(float(pos[0]), 0.0, float(pos[2]))
-		level.add_child(body_node)
-
-
-func _new_level(yaw_degrees: float) -> void:
-	if player != null:
-		player.call("drop_stones")           # stone does not follow you to a new place
-		for group: String in ["ground_zones", "ground_rods", "blasts", "censer_bursts"]:
-			for left: Node in get_tree().get_nodes_in_group(group):
-				left.queue_free()
-	if level != null:
-		for group: String in ["enemies", "hittable"]:
-			for n: Node in get_tree().get_nodes_in_group(group):
-				if level.is_ancestor_of(n):
-					n.remove_from_group(group)
-		level.queue_free()
-	level = Node3D.new()
-	level.rotation_degrees = Vector3(0.0, yaw_degrees, 0.0)
-	add_child(level)
-	# the spirit layer shares the level's frame, so its sites line up with the chambers
-	nether.clear()
-	nether.rotation_degrees = Vector3(0.0, yaw_degrees, 0.0)
-	sealed = false
-	current = 0
-	cleared = 0
-	bank = 0
-	barriers.clear()
-	gates.clear()
-	pads.clear()
-	_rent_accum = 0.0
-	_add_level_nav()
-
-
-## Pathfinding for the level about to be built: a LevelNav at the level's origin bakes its
-## navigation meshes from the colliders once the building is done (the frame after), and again
-## whenever a collider is added or taken away (a doorway sealed or opened). See LevelNav.
-func _add_level_nav() -> void:
-	var nav := LevelNav.new()
-	nav.name = "Nav"
-	level.add_child(nav)
-
-
 ## The town is a level (design/08): data/town.json built by TownBuilder - streets, gateways and
 ## the people who do what the old town menu did.
 func _build_town() -> void:
-	_new_level(0.0)
+	factory_part._new_level(0.0)
 	var cfg: Dictionary = GameData.balance["biomes"]
-	_use_biome(cfg["town"], false)            # the town is always the town
+	factory_part._use_biome(cfg["town"], false)            # the town is always the town
 	_town = TownBuilder.new(self, GameData.town)
 	_town.build()
 
 
-# --- biomes -------------------------------------------------------------------------------
-
-## Set the level's biome: one of `choices` at random, unless one is forced.
-func _use_biome(choices: Variant, allow_force: bool = true) -> void:
-	var pool: Array = choices if choices is Array else [choices]
-	biome = str(pool[rng.randi() % pool.size()])
-	if allow_force and forced_biome != "" and Biomes.ids().has(forced_biome):
-		biome = forced_biome
-	if not Biomes.ids().has(biome):
-		biome = "scrubland"
-	_biome = Biomes.info(biome)
-	_set_nether_look(nether.active)
-
-
-## Ground: something to stand on, and the biome's floor drawn over it.
-func _biome_floor(centre: Vector3, size: Vector2) -> void:
-	_static_box(Vector3(centre.x, -0.5, centre.z), Vector3(size.x, 1.0, size.y), Color.BLACK, false)
-	var ground: Node3D = Biomes.floor(biome, size)
-	ground.position = Vector3(centre.x, 0.0, centre.z)
-	level.add_child(ground)
-
-
-## A wall run `length` long centred on `centre`, facing into the level along +Z turned by `yaw`
-## degrees. Returns its collider.
-func _biome_wall(centre: Vector3, length: float, yaw: float, height: float) -> StaticBody3D:
-	var sb: StaticBody3D = _static_box(Vector3(centre.x, 1.0, centre.z), Vector3(length, 2.0, 1.0), Color.BLACK, false)
-	sb.rotation_degrees.y = yaw
-	var wall: Node3D = Biomes.wall(biome, length, height)
-	wall.position = Vector3(centre.x, 0.0, centre.z)
-	wall.rotation_degrees.y = yaw
-	level.add_child(wall)
-	return sb
-
-
-## Scatter `count` decorative props over a patch `half` metres each way from `centre`. Props
-## that block are kept to the strips along x = +-half.x; `keep_clear` (local z values) are lines
-## nothing may stand near, such as a doorway.
-func _scatter_props(centre: Vector3, half: Vector2, count: int, keep_clear: Array = []) -> void:
-	var cfg: Dictionary = GameData.balance["biomes"]
-	var table: Array = _biome.get("scatter", [])
-	if table.is_empty():
-		return
-	var total := 0.0
-	for e: Dictionary in table:
-		total += float(e["weight"])
-	var lights_left: int = int(cfg["lights_per_chamber"])
-	var placed_blockers: Array = []        # [side, z, radius] - kept apart so they never form a pocket
-	for i: int in count:
-		var roll: float = rng.randf() * total
-		var kind: String = str((table[0] as Dictionary)["kind"])
-		for e: Dictionary in table:
-			roll -= float(e["weight"])
-			if roll < 0.0:
-				kind = str(e["kind"])
-				break
-		var meta: Dictionary = Biomes.prop_meta(biome, kind)
-		if bool(meta.get("cuttable", false)):
-			continue                                # those are placed as hittable scenery instead
-		if bool(meta.get("light", false)):
-			if lights_left <= 0:
-				continue
-			lights_left -= 1
-		var r: float = float(meta.get("radius", 0.5))
-		var blocks: bool = bool(meta.get("blocks", false))
-		var pos := Vector3.ZERO
-		var ok := false
-		var solid: float = minf(r, float(cfg["blocker_collider_max"]))    # how much of it actually stops you
-		var side := 1.0
-		for attempt: int in 6:
-			var x: float
-			if blocks:
-				# hard against a side wall, like a feature of the wall: nothing can get behind it
-				side = 1.0 if rng.randf() < 0.5 else -1.0
-				x = side * (half.x - solid * 0.5)
-			else:
-				x = rng.randf_range(-half.x + r, half.x - r)
-			pos = centre + Vector3(x, 0.0, rng.randf_range(-half.y + r, half.y - r))
-			ok = true
-			for line: Variant in keep_clear:
-				if absf(pos.z - float(line)) < r + 1.6:
-					ok = false
-			if blocks:
-				for other: Array in placed_blockers:
-					if float(other[0]) == side and absf(pos.z - float(other[1])) < solid + float(other[2]) + float(cfg["blocker_gap"]):
-						ok = false
-			if ok:
-				break
-		if not ok:
-			continue
-		if blocks:
-			placed_blockers.append([side, pos.z, solid])
-		var prop: Node3D = Biomes.prop(biome, kind)
-		prop.position = pos
-		prop.rotation.y = rng.randf() * TAU
-		level.add_child(prop)
-		if blocks:
-			var sb := StaticBody3D.new()
-			var col := CollisionShape3D.new()
-			var shape := CylinderShape3D.new()
-			shape.radius = solid
-			shape.height = 2.0
-			col.shape = shape
-			sb.add_child(col)
-			sb.position = pos + Vector3.UP
-			level.add_child(sb)
-
-
-## Things you can cut down: the old grass and bushes in scrubland, the kit's own cuttables elsewhere.
-func _spawn_cuttable(index: int, local_pos: Vector3) -> void:
-	if biome == "scrubland":
-		_spawn_scenery("bush" if index == 0 else "grass", local_pos)
-		return
-	var kinds: Array = []
-	for kind: Variant in _biome.get("props", []):
-		if bool(Biomes.prop_meta(biome, str(kind)).get("cuttable", false)):
-			kinds.append(str(kind))
-	if kinds.is_empty() or index % 2 == 1:           # fewer than grass: these are bigger things
-		return
-	var s: Node3D = SceneryScript.new()
-	s.call("setup_prop", biome, str(kinds[rng.randi() % kinds.size()]))
-	s.position = local_pos
-	level.add_child(s)
-
-
-func _static_box(pos: Vector3, size: Vector3, color: Color, show: bool = true) -> StaticBody3D:
-	var sb := StaticBody3D.new()
-	if show:
-		var mesh := MeshInstance3D.new()
-		var box := BoxMesh.new()
-		box.size = size
-		mesh.mesh = box
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = color
-		mesh.material_override = mat
-		sb.add_child(mesh)
-	var col := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = size
-	col.shape = shape
-	sb.add_child(col)
-	sb.position = pos
-	level.add_child(sb)
-	return sb
-
-
 # --- construction ---------------------------------------------------------------
-
-func _build_world() -> void:
-	_env = Environment.new()
-	_env.background_mode = Environment.BG_COLOR
-	_env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	# Grim, low-key look (art pass 3): filmic, a little haze, contact shadows, restrained bloom.
-	_env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	_env.tonemap_exposure = 1.15
-	# light bounced off the ground and walls into the shade, so shadows are not flat black
-	_env.ssil_enabled = true
-	_env.ssil_radius = 4.0
-	_env.ssil_intensity = 0.8
-	_env.ssao_enabled = true
-	_env.ssao_radius = 0.8
-	_env.ssao_intensity = 1.5
-	_env.glow_enabled = true
-	_env.glow_intensity = 0.6
-	_env.glow_bloom = 0.03
-	_env.glow_hdr_threshold = 1.0
-	_env.fog_enabled = true
-	_env.fog_density = 0.006
-	_env.adjustment_enabled = true
-	_env.adjustment_contrast = 1.08
-	_env.adjustment_saturation = 0.92
-	var world_env := WorldEnvironment.new()
-	world_env.environment = _env
-	add_child(world_env)
-
-	_sun = DirectionalLight3D.new()
-	_sun.rotation_degrees = Vector3(-44.0, 38.0, 0.0)
-	_sun.shadow_enabled = true
-	add_child(_sun)
-	_set_nether_look(false)
-
-	nether = Netherecho.new()
-	add_child(nether)
-	nether.connect("entered", _on_nether_entered)
-	nether.connect("exited", _on_nether_exited)
-	nether.connect("projection_destroyed", _on_projection_destroyed)
-
-	camera = Camera3D.new()
-	camera.projection = Camera3D.PROJECTION_PERSPECTIVE
-	camera.size = GameData.num("camera", "ortho_size")
-	camera.far = 300.0
-	camera.near = 0.1
-	_cam_zoom_target = GameSettings.zoom_start() if _plays() else GameData.num("camera", "zoom_default")
-	for arg: String in OS.get_cmdline_user_args():
-		if arg.begins_with("--zoom="):              # screenshots at a chosen zoom
-			_cam_zoom_target = clampf(float(arg.get_slice("=", 1)), 0.0, 1.0)
-	cam_zoom = _cam_zoom_target
-	add_child(camera)
-	camera.current = true
 
 
 func _build_player() -> void:
@@ -2244,3 +1880,12 @@ func _where() -> String:
 
 # --- the test harness (MainHarness): a shot's watcher (MainShots.ShotWatch) calls this by name
 func _save_shot() -> void: _harness()._save_shot()
+
+
+# --- factory_part (LevelFactory)
+func _biome_floor(centre: Vector3, size: Vector2) -> void: factory_part._biome_floor(centre, size)
+func _biome_wall(centre: Vector3, length: float, yaw: float, height: float) -> StaticBody3D: return factory_part._biome_wall(centre, length, yaw, height)
+func _spawn_cuttable(index: int, local_pos: Vector3) -> void: factory_part._spawn_cuttable(index, local_pos)
+func _static_box(pos: Vector3, size: Vector3, color: Color, show: bool = true) -> StaticBody3D: return factory_part._static_box(pos, size, color, show)
+func _on_reinforcements(who: Node, kinds: Array) -> void: factory_part._on_reinforcements(who, kinds)
+func _prebuild_bodies(kinds: Array[String]) -> void: factory_part._prebuild_bodies(kinds)

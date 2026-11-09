@@ -88,7 +88,7 @@ func _setup_test_shot(what: String) -> void:
 				[Vector3(-4.4, 0, -0.6), "archer", [["blinded", 1], ["shackled", 1]]],
 				[Vector3(-0.6, 0, -5.6), "pavise", [["frozen", 1], ["corroded", 2]]]]
 			for row: Array in put:
-				main._spawn_enemy(str(row[1]), row[0], 1.0)
+				main.factory_part._spawn_enemy(str(row[1]), row[0], 1.0)
 			var all: Array = main.get_tree().get_nodes_in_group("enemies")
 			for i: int in mini(all.size(), put.size()):
 				for st: Array in put[i][2]:
@@ -105,8 +105,8 @@ func _setup_test_shot(what: String) -> void:
 	main.enter_arena()
 	main.rest_timer = 9999.0
 	for at: Vector3 in [Vector3(-1.5, 0, -4.0), Vector3(1.2, 0, -4.8), Vector3(3.0, 0, -2.5), Vector3(-3.5, 0, -6.0)]:
-		main._spawn_enemy("grunt", at, 1.0)
-	main._spawn_enemy("brute", Vector3(0.5, 0, -7.0), 1.0)
+		main.factory_part._spawn_enemy("grunt", at, 1.0)
+	main.factory_part._spawn_enemy("brute", Vector3(0.5, 0, -7.0), 1.0)
 	main.player.call("start_fight")
 	main.state = "arena_fight"
 	var first: Node3D = main.get_tree().get_nodes_in_group("enemies")[0]
@@ -146,8 +146,8 @@ func _setup_role_shot(aff: String) -> void:
 	main.enter_arena()
 	main.rest_timer = 9999.0
 	for at: Vector3 in [Vector3(-1.2, 0, -2.6), Vector3(1.4, 0, -3.0), Vector3(3.0, 0, -1.6), Vector3(-3.2, 0, -4.4)]:
-		main._spawn_enemy("grunt", at, 1.0)
-	main._spawn_enemy("brute", Vector3(0.4, 0, -5.4), 1.0)
+		main.factory_part._spawn_enemy("grunt", at, 1.0)
+	main.factory_part._spawn_enemy("brute", Vector3(0.4, 0, -5.4), 1.0)
 	main.player.call("start_fight")
 	main.state = "arena_fight"
 	var foes: Array = main.get_tree().get_nodes_in_group("enemies")

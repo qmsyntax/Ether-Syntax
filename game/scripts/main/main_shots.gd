@@ -28,7 +28,7 @@ func _setup_ui_shot(which: String) -> void:
 		main.rest_timer = 9999.0
 		for spec: Array in [[Vector3(-1.6, 0, -3.5), "pavise"], [Vector3(-0.2, 0, -3.9), "pavise"], [Vector3(2.4, 0, -5.5), "censer"],
 				[Vector3(-3.0, 0, -8.5), "drummer"], [Vector3(-4.0, 0, -4.5), "grunt"], [Vector3(4.5, 0, -1.5), "commander"]]:
-			main._spawn_enemy(str(spec[1]), spec[0], 1.0)
+			main.factory_part._spawn_enemy(str(spec[1]), spec[0], 1.0)
 		for e: Node in main.get_tree().get_nodes_in_group("enemies"):
 			if str(e.get("kind")) == "grunt":
 				e.call("add_status", "roused")
@@ -127,7 +127,7 @@ func _setup_ui_shot(which: String) -> void:
 		main.enter_arena()
 		main.rest_timer = 9999.0
 		for spec: Array in [[Vector3(-1.5, 0, -5.5), "grunt"], [Vector3(1.2, 0, -6.0), "grunt"], [Vector3(5.5, 0, -3.5), "archer"]]:
-			main._spawn_enemy(str(spec[1]), spec[0], 1.0)
+			main.factory_part._spawn_enemy(str(spec[1]), spec[0], 1.0)
 		var slab_def: Dictionary = GameData.ability("raise_slab")
 		for spot: Array in [[Vector3(0, 0, -3.0), Vector3(0, 0, -1)], [Vector3(3.4, 0, -1.6), Vector3(1, 0, -0.5)]]:
 			var stone: Node = main.player.call("raise_stone", main.player.global_position + (spot[0] as Vector3), spot[1], slab_def)
@@ -155,7 +155,7 @@ func _setup_ui_shot(which: String) -> void:
 		main.rest_timer = 9999.0
 		main.player.set("pips", 7)
 		for spec: Array in [[Vector3(-2.5, 0, -3.0), "grunt"], [Vector3(1.0, 0, -4.0), "grunt"], [Vector3(3.5, 0, -1.5), "archer"]]:
-			main._spawn_enemy(str(spec[1]), spec[0], 1.0)
+			main.factory_part._spawn_enemy(str(spec[1]), spec[0], 1.0)
 		var foes: Array = main.get_tree().get_nodes_in_group("enemies")
 		foes[0].call("add_status", "aloft")
 		main.player.set("hovered", foes[1])
@@ -176,7 +176,7 @@ func _setup_ui_shot(which: String) -> void:
 		main.rest_timer = 9999.0
 		(main.player.get("reflux_by") as Dictionary)["fire"] = 72.0
 		for spec: Array in [[Vector3(-2.0, 0, -3.0), "grunt"], [Vector3(-0.6, 0, -3.4), "grunt"], [Vector3(3.0, 0, -2.0), "brute"]]:
-			main._spawn_enemy(str(spec[1]), spec[0], 1.0)
+			main.factory_part._spawn_enemy(str(spec[1]), spec[0], 1.0)
 		var foes: Array = main.get_tree().get_nodes_in_group("enemies")
 		foes[0].call("add_status", "alight", 4, main.player)
 		foes[1].call("add_status", "alight", 1, main.player)
@@ -205,7 +205,7 @@ func _setup_ui_shot(which: String) -> void:
 		main._show_screen(null, false)
 		main.enter_arena()
 		main.rest_timer = 9999.0
-		main._spawn_enemy("grunt", Vector3(0.8, 0, -2.4), 1.0)
+		main.factory_part._spawn_enemy("grunt", Vector3(0.8, 0, -2.4), 1.0)
 		var foe: Node3D = main.get_tree().get_nodes_in_group("enemies")[0]
 		main.player.set("hovered", foe)
 		main.player.set("essence", 2.0 if which == "refusal" else 18.0)
@@ -229,7 +229,7 @@ func _setup_ui_shot(which: String) -> void:
 		main._show_screen(null, false)
 		main.enter_arena()
 		main.rest_timer = 9999.0
-		main._spawn_enemy("grunt", Vector3(0.8, 0, -3.4), 1.0)
+		main.factory_part._spawn_enemy("grunt", Vector3(0.8, 0, -3.4), 1.0)
 		var grunt: Node3D = main.get_tree().get_nodes_in_group("enemies")[0]
 		grunt.set_physics_process(false)
 		var most: float = float(main.player.call("endurance_max"))
@@ -252,7 +252,7 @@ func _setup_ui_shot(which: String) -> void:
 		main.rest_timer = 9999.0
 		for spec: Array in [[Vector3(2.6, 0, -1.2), "brute"], [Vector3(-7.0, 0, -8.0), "archer"], [Vector3(-2.2, 0, -1.6), "grunt"],
 				[Vector3(5.0, 0, 4.5), "harrier"], [Vector3(-4.6, 0, 2.6), "grunt"], [Vector3(0.5, 0, -5.0), "grunt"]]:
-			main._spawn_enemy(str(spec[1]), spec[0], 1.0)
+			main.factory_part._spawn_enemy(str(spec[1]), spec[0], 1.0)
 		var foes: Array = main.get_tree().get_nodes_in_group("enemies")
 		foes[0].set("_windup", 0.45)                       # the slam, most of the way through
 		foes[0].call("_update_melee_telegraph")
@@ -278,7 +278,7 @@ func _setup_ui_shot(which: String) -> void:
 		main.enter_arena()
 		main.rest_timer = 9999.0
 		for spec: Array in [[Vector3(-3.0, 0, -3.5), "grunt"], [Vector3(0.5, 0, -4.5), "grunt"], [Vector3(3.5, 0, -2.5), "brute"], [Vector3(-1.0, 0, -7.0), "grunt"]]:
-			main._spawn_enemy(str(spec[1]), spec[0], 1.0)
+			main.factory_part._spawn_enemy(str(spec[1]), spec[0], 1.0)
 		var foes: Array = main.get_tree().get_nodes_in_group("enemies")
 		foes[0].call("add_status", "live", 2)
 		foes[0].call("add_status", "soaked")
