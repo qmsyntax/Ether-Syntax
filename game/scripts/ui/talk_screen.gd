@@ -153,7 +153,7 @@ func _craft(box: VBoxContainer, station_id: String) -> void:
 	box.add_child(work)
 	box.add_child(UiWidgets.service_button("Tools and supplies", "What the trade needs and nobody here makes yet.", "",
 		func() -> void: game.open_station_shop(station_id)))
-	var price: int = int(((GameData.crafting.get("skills", {}) as Dictionary).get(skill, {}) as Dictionary).get("teach_price", 0))
+	var price: int = int(GameData.opt(((GameData.crafting.get("skills", {}) as Dictionary).get(skill, {}) as Dictionary), "craft_skill", "teach_price"))
 	var teach := UiWidgets.service_button("Learn the trade",
 		("Every %s recipe taught here: %d of %d known." % [Crafting.skill_name(skill).to_lower(), known, all.size()]) if known < all.size() else "You know everything taught here.",
 		("$%d" % price) if known < all.size() else "", func() -> void:

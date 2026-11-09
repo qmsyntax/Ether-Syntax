@@ -23,10 +23,10 @@ func setup(def: Dictionary) -> void:
 	flavour = str(def.get("flavour", ""))
 	sealed_line = str(def.get("sealed", "It is sealed for now."))
 	dungeon = str(def.get("dungeon", ""))
-	reach = float(def.get("reach", 3.0))
+	reach = float(GameData.opt(def, "zone.entrance", "reach"))
 	name = "Entrance_%s" % entrance_id
 	add_to_group("field_entrances")
-	var prop: Node3D = FieldProps.prop(str(def.get("kind", "sinkhole")), float(def.get("size", 0.0)))
+	var prop: Node3D = FieldProps.prop(str(def.get("kind", "sinkhole")), float(GameData.opt(def, "zone.entrance", "size")))
 	add_child(prop)
 	if bool(prop.get_meta("blocks", false)):
 		var sb := StaticBody3D.new()

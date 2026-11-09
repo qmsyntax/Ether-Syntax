@@ -21,13 +21,13 @@ func tick(_delta: float) -> void:
 		var who: Townsperson = main._town.person(main._talking_to)
 		if main.screen == null:
 			main._talking_to = ""
-		elif who != null and main._flat_dist(who.global_position, main.player.global_position) > float(GameData.town.get("leave_reach", 4.5)):
+		elif who != null and main._flat_dist(who.global_position, main.player.global_position) > float(GameData.opt(GameData.town, "town", "leave_reach")):
 			main._talking_to = ""
 			main._show_screen(null, false)
 	if main._walk_to != null:
 		if not is_instance_valid(main._walk_to) or main.screen != null or not bool(main.player.has_move_goal):
 			main._walk_to = null
-		elif main._flat_dist(main._walk_to.global_position, main.player.global_position) <= float(GameData.town.get("talk_reach", 2.7)):
+		elif main._flat_dist(main._walk_to.global_position, main.player.global_position) <= float(GameData.opt(GameData.town, "town", "talk_reach")):
 			var role: String = main._walk_to.role
 			main._walk_to = null
 			main.player.has_move_goal = false
@@ -103,7 +103,7 @@ func _town_door_in_reach() -> Dictionary:
 	if main._town == null:
 		return {}
 	for ex: Dictionary in main._town.exits:
-		if not bool(ex.get("walk_through", false)) and main._flat_dist(main.level.to_global(ex["centre"]), main.player.global_position) <= float(GameData.town.get("exit_reach", 1.5)) * 2.0:
+		if not bool(ex.get("walk_through", false)) and main._flat_dist(main.level.to_global(ex["centre"]), main.player.global_position) <= float(GameData.opt(GameData.town, "town", "exit_reach", "town_door_in_reach")) * 2.0:
 			return ex
 	return {}
 
@@ -132,7 +132,7 @@ func _town_click(at: Vector2) -> void:
 	if who == null:
 		main._walk_to = null                 # a click elsewhere is a new walk: _tick_town would steer back to them
 		return
-	if main._flat_dist(who.global_position, main.player.global_position) <= float(GameData.town.get("talk_reach", 2.7)):
+	if main._flat_dist(who.global_position, main.player.global_position) <= float(GameData.opt(GameData.town, "town", "talk_reach")):
 		talk_to(who.role)
 		return
 	main._walk_to = who
@@ -179,7 +179,7 @@ func _talking_station() -> String:
 func open_crafting(station_id: String) -> void:
 	if _talking_station() != station_id or Crafting.station(station_id).is_empty():
 		return
-	main._show_screen(CraftScreen.new(main, {"station": station_id, "grade": int(Crafting.station(station_id).get("grade", 1)), "kit": ""}), false)
+	main._show_screen(CraftScreen.new(main, {"station": station_id, "grade": int(GameData.opt(Crafting.station(station_id), "craft_station", "grade")), "kit": ""}), false)
 
 
 ## The craftsperson's tools and supplies (data/crafting.json stations.<id>.sells).
@@ -207,7 +207,7 @@ func open_field_kit(kit_id: String) -> void:
 	if kit.is_empty() or not (main.player.inventory as Inventory).bag.has(kit_id) or main.state == "select" or main.state == "dead":
 		return
 	main._talking_to = ""
-	main._show_screen(CraftScreen.new(main, {"station": str(kit["station"]), "grade": int(kit.get("grade", 1)), "kit": kit_id}), main.state != "town")
+	main._show_screen(CraftScreen.new(main, {"station": str(kit["station"]), "grade": int(GameData.opt(kit, "item.kit", "grade")), "kit": kit_id}), main.state != "town")
 
 
 ## One combine, if this is a place you may make it: the station of the person you are talking to,
@@ -219,12 +219,12 @@ func craft(recipe_id: String, ctx: Dictionary) -> Dictionary:
 		var k: Dictionary = GameData.item(kit).get("kit", {})
 		if k.is_empty() or not (main.player.inventory as Inventory).bag.has(kit):
 			return {"ok": false, "why": "You do not have that kit."}
-		here = {"station": str(k["station"]), "grade": int(k.get("grade", 1)), "kit": kit}
+		here = {"station": str(k["station"]), "grade": int(GameData.opt(k, "item.kit", "grade")), "kit": kit}
 	else:
 		var station_id: String = _talking_station()
 		if station_id == "" or station_id != str(ctx.get("station", "")):
 			return {"ok": false, "why": "You can only work at a station whose keeper you are talking to."}
-		here = {"station": station_id, "grade": int(Crafting.station(station_id).get("grade", 1)), "kit": ""}
+		here = {"station": station_id, "grade": int(GameData.opt(Crafting.station(station_id), "craft_station", "grade")), "kit": ""}
 	var res: Dictionary = Crafting.combine(main.player, recipe_id, here, main.player.rng)
 	main.player.refresh_gear()
 	if bool(res.get("ok", false)):
@@ -263,7 +263,7 @@ func town_buy(item_id: String) -> String:
 	var def: Dictionary = GameData.item(item_id)
 	if def.is_empty():
 		return "no such item"
-	var price: int = int(def.get("value", 0))
+	var price: int = int(GameData.opt(def, "item", "value"))
 	if not bool(main.player.can_afford(price)):
 		return "Nobody will lend you that much."
 	var inv: Inventory = main.player.inventory

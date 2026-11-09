@@ -208,7 +208,7 @@ func slot_save_block_reason() -> String:
 			if test:
 				return "Saving to a slot is done in town, as at the inn's register. A test character is never autosaved."
 			return "Saving to a slot is done in town, as at the inn's register. Out here the autosave keeps your place every %d s." % int(
-				float((GameData.balance.get("camps", {}) as Dictionary).get("field_autosave_s", 30.0)))
+				float(GameData.opt((GameData.balance.get("camps", {}) as Dictionary), "balance.camps", "field_autosave_s")))
 		"dungeon":
 			return "Saving to a slot is done in town. Nothing is saved inside a passage; the last autosave is from before you went in."
 	return "Saving to a slot is done in town. Nothing is saved in the arena; the last autosave is from town."
@@ -226,7 +226,7 @@ func leave_warning() -> String:
 			lines.append("Anything since the last autosave is lost. In town the autosave is written each time something changes; the game does not track what has changed since, so it asks every time.")
 		"field":
 			lines.append("Out here the autosave runs every %d s; whatever happened since the last one is lost." % int(
-				float((GameData.balance.get("camps", {}) as Dictionary).get("field_autosave_s", 30.0))))
+				float(GameData.opt((GameData.balance.get("camps", {}) as Dictionary), "balance.camps", "field_autosave_s"))))
 		"dungeon":
 			lines.append("Nothing is saved inside a passage: this run, its spoils and anything picked up since you went in are lost.")
 		_:

@@ -269,7 +269,7 @@ func skill_roots(for_affinities: Array) -> Array[String]:
 	for a: Variant in for_affinities:
 		var tree: Dictionary = skill_tree_of(str(a))
 		for id: String in tree:
-			if int((tree[id] as Dictionary).get("tier", 1)) == 1 and ((tree[id] as Dictionary).get("requires", []) as Array).is_empty():
+			if int(opt((tree[id] as Dictionary), "tree_node", "tier")) == 1 and ((tree[id] as Dictionary).get("requires", []) as Array).is_empty():
 				out.append(id)
 	return out
 

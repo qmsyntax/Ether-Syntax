@@ -37,9 +37,9 @@ static func make(kind: String) -> CreatureRig:
 		return CreatureRig.stamp(_snaps[key])
 	var rig := CreatureRig.new()
 	rig.name = "Creature_" + kind
-	rig.radius = float(def.get("radius", 0.5))
-	rig.height = float(def.get("height", 1.0))
-	rig.stride_speed = float(def.get("speed", 3.0))
+	rig.radius = float(GameData.opt(def, "enemy", "radius"))
+	rig.height = float(GameData.opt(def, "enemy", "height", "make"))
+	rig.stride_speed = float(GameData.opt(def, "enemy", "speed"))
 	var rgb: Array = def.get("color", [0.5, 0.45, 0.4])
 	# the field's light is strong and the solid shader lifts flat colour: start a quarter darker,
 	# so a beast reads as hide against the straw rather than as a pale toy

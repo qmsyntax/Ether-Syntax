@@ -58,7 +58,7 @@ static func knows(p: Player, rid: String) -> bool:
 ## Inside the attempt window: skill at least trivial - attempt_window (the recipe's min_skill).
 static func in_window(p: Player, rid: String) -> bool:
 	var r: Dictionary = recipe(rid)
-	return skill_of(p, str(r.get("skill", ""))) >= int(r.get("min_skill", 0))
+	return skill_of(p, str(r.get("skill", ""))) >= int(GameData.opt(r, "recipe", "min_skill"))
 
 
 ## How many of an item are in the pack.
@@ -72,14 +72,14 @@ static func best_tool(p: Player, kind: String) -> String:
 	var best_tier := -1
 	for id: String in (p.inventory as Inventory).bag:
 		var t: Dictionary = GameData.item(id).get("tool", {})
-		if str(t.get("kind", "")) == kind and int(t.get("tier", 0)) > best_tier:
+		if str(t.get("kind", "")) == kind and int(GameData.opt(t, "item.tool", "tier")) > best_tier:
 			best = id
-			best_tier = int(t.get("tier", 0))
+			best_tier = int(GameData.opt(t, "item.tool", "tier"))
 	return best
 
 
 static func tool_tier(item_id: String) -> int:
-	return int((GameData.item(item_id).get("tool", {}) as Dictionary).get("tier", 0))
+	return int(GameData.opt((GameData.item(item_id).get("tool", {}) as Dictionary), "item.tool", "tier"))
 
 
 ## Uses a fresh tool of this item has: rules.tool_uses_per_tier x its tier.
@@ -94,7 +94,7 @@ static func tool_uses_left(p: Player, item_id: String) -> int:
 
 ## The station fee for one combine: the recipe's fee, none on a kit.
 static func fee(rid: String, ctx: Dictionary) -> int:
-	return 0 if str(ctx.get("kit", "")) != "" else int(recipe(rid).get("fee", 0))
+	return 0 if str(ctx.get("kit", "")) != "" else int(GameData.opt(recipe(rid), "recipe", "fee"))
 
 
 ## Chance of success: clamp(floor, cap, at_trivial + (skill - trivial) x per_point + tool tiers
@@ -103,14 +103,14 @@ static func fee(rid: String, ctx: Dictionary) -> int:
 static func chance(p: Player, rid: String, ctx: Dictionary) -> float:
 	var r: Dictionary = recipe(rid)
 	var skill: int = skill_of(p, str(r.get("skill", "")))
-	var trivial: int = int(r.get("trivial", 0))
+	var trivial: int = int(GameData.opt(r, "recipe", "trivial"))
 	if skill >= trivial + int(rule("certain_past_trivial")):
 		return 1.0
 	var c: float = rule("success_at_trivial") + float(skill - trivial) * rule("success_per_point")
 	var tool_id: String = best_tool(p, str((r.get("tool", {}) as Dictionary).get("kind", "")))
 	if tool_id != "":
-		c += float(maxi(0, tool_tier(tool_id) - int((r.get("tool", {}) as Dictionary).get("tier", 1)))) * rule("tool_tier_bonus")
-	c += float(maxi(0, int(ctx.get("grade", 1)) - int(r.get("grade", 1)))) * rule("station_grade_success")
+		c += float(maxi(0, tool_tier(tool_id) - int(GameData.opt((r.get("tool", {}) as Dictionary), "recipe.tool", "tier")))) * rule("tool_tier_bonus")
+	c += float(maxi(0, int(ctx.get("grade", 1)) - int(GameData.opt(r, "recipe", "grade")))) * rule("station_grade_success")
 	return clampf(c, rule("success_floor"), rule("success_cap"))
 
 
@@ -119,14 +119,14 @@ static func chance(p: Player, rid: String, ctx: Dictionary) -> float:
 static func salvage_chance(rid: String, ctx: Dictionary) -> float:
 	var kit: String = str(ctx.get("kit", ""))
 	if kit != "":
-		return float((GameData.item(kit).get("kit", {}) as Dictionary).get("salvage", 0.0))
-	return clampf(rule("salvage") + float(maxi(0, int(ctx.get("grade", 1)) - int(recipe(rid).get("grade", 1)))) * rule("salvage_per_grade"), 0.0, 1.0)
+		return float(GameData.opt((GameData.item(kit).get("kit", {}) as Dictionary), "item.kit", "salvage"))
+	return clampf(rule("salvage") + float(maxi(0, int(ctx.get("grade", 1)) - int(GameData.opt(recipe(rid), "recipe", "grade")))) * rule("salvage_per_grade"), 0.0, 1.0)
 
 
 ## Chance of a skill-up on a combine that is not the recipe's first success: only below trivial.
 static func skillup_chance(p: Player, rid: String, succeeded: bool) -> float:
 	var r: Dictionary = recipe(rid)
-	var gap: float = float(int(r.get("trivial", 0)) - skill_of(p, str(r.get("skill", ""))))
+	var gap: float = float(int(GameData.opt(r, "recipe", "trivial")) - skill_of(p, str(r.get("skill", ""))))
 	if gap <= 0.0:
 		return 0.0
 	var c: float = minf(rule("skillup_cap"), rule("skillup_k") * sqrt(gap / rule("skillup_scale")))
@@ -136,7 +136,7 @@ static func skillup_chance(p: Player, rid: String, succeeded: bool) -> float:
 ## What a success adds to the pack: {item id: n}, outputs and byproducts.
 static func outputs(rid: String) -> Dictionary:
 	var r: Dictionary = recipe(rid)
-	var out: Dictionary = {str(r["output"]): int(r.get("makes", 1))}
+	var out: Dictionary = {str(r["output"]): int(GameData.opt(r, "recipe", "makes"))}
 	var by: Dictionary = r.get("byproducts", {}) if r.get("byproducts") != null else {}
 	for id: String in by:
 		out[id] = int(out.get(id, 0)) + int(by[id])
@@ -156,11 +156,11 @@ static func why_not(p: Player, rid: String, ctx: Dictionary) -> String:
 	if not knows(p, rid):
 		return "You have not learned it. The %s teaches the trade." % str(station(str(r["station"])).get("name", "station")).to_lower()
 	if not in_window(p, rid):
-		return "Beyond you yet: %s %d needed to try it." % [skill_name(str(r["skill"])), int(r.get("min_skill", 0))]
+		return "Beyond you yet: %s %d needed to try it." % [skill_name(str(r["skill"])), int(GameData.opt(r, "recipe", "min_skill"))]
 	var t: Dictionary = r.get("tool", {})
 	var tool_id: String = best_tool(p, str(t.get("kind", "")))
-	if tool_id == "" or tool_tier(tool_id) < int(t.get("tier", 1)):
-		return "You need a %s (tier %d)." % [str(((GameData.crafting.get("tools", {}) as Dictionary).get(str(t.get("kind", "")), {}) as Dictionary).get("name", t.get("kind", "tool"))), int(t.get("tier", 1))]
+	if tool_id == "" or tool_tier(tool_id) < int(GameData.opt(t, "recipe.tool", "tier")):
+		return "You need a %s (tier %d)." % [str(((GameData.crafting.get("tools", {}) as Dictionary).get(str(t.get("kind", "")), {}) as Dictionary).get("name", t.get("kind", "tool"))), int(GameData.opt(t, "recipe.tool", "tier"))]
 	var ins: Dictionary = r.get("inputs", {})
 	for id: String in ins:
 		if count(p, id) < int(ins[id]):
@@ -171,10 +171,10 @@ static func why_not(p: Player, rid: String, ctx: Dictionary) -> String:
 	var inv: Inventory = p.inventory
 	var w: float = inv.weight()
 	for id: String in ins:
-		w -= float(GameData.item(id).get("weight", 0.0)) * float(ins[id])
+		w -= float(GameData.opt(GameData.item(id), "item", "weight")) * float(ins[id])
 	var outs: Dictionary = outputs(rid)
 	for id: String in outs:
-		w += float(GameData.item(id).get("weight", 0.0)) * float(outs[id])
+		w += float(GameData.opt(GameData.item(id), "item", "weight")) * float(outs[id])
 	if w > inv.capacity() + 0.001:
 		return "Your pack could not take what comes out."
 	return ""
@@ -235,7 +235,7 @@ static func combine(p: Player, rid: String, ctx: Dictionary, rng: RandomNumberGe
 	up = int(levels[skill]) - before
 	var item_name: String = str(GameData.item(str(r["output"])).get("name", r["output"]))
 	if success:
-		p.note("Made %s%s." % [item_name, "" if int(r.get("makes", 1)) == 1 else " x%d" % int(r.get("makes", 1))])
+		p.note("Made %s%s." % [item_name, "" if int(GameData.opt(r, "recipe", "makes")) == 1 else " x%d" % int(GameData.opt(r, "recipe", "makes"))])
 	else:
 		p.note("The %s is spoiled. %s" % [item_name.to_lower(), "Some of it can be used again." if not returned.is_empty() else "Nothing is worth keeping."])
 	if up > 0:
@@ -247,7 +247,7 @@ static func combine(p: Player, rid: String, ctx: Dictionary, rng: RandomNumberGe
 
 ## Learn every recipe of a skill from its craftsperson, for its teach_price. Returns "" or why not.
 static func teach(p: Player, skill: String) -> String:
-	var price: int = int(((GameData.crafting.get("skills", {}) as Dictionary).get(skill, {}) as Dictionary).get("teach_price", 0))
+	var price: int = int(GameData.opt(((GameData.crafting.get("skills", {}) as Dictionary).get(skill, {}) as Dictionary), "craft_skill", "teach_price"))
 	var known: Array = p.craft_known
 	var new: Array[String] = []
 	for rid: String in recipes_of(skill):

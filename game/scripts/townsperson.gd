@@ -120,7 +120,7 @@ func _turn(delta: float, instant: bool) -> void:
 	if p != null:
 		var to: Vector3 = p.global_position - global_position
 		to.y = 0.0
-		if to.length() > 0.3 and to.length() < float(GameData.town.get("face_player_within", 6.0)):
+		if to.length() > 0.3 and to.length() < float(GameData.opt(GameData.town, "town", "face_player_within")):
 			want = to.normalized()
 	if instant:
 		_facing = want

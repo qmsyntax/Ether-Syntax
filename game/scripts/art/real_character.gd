@@ -120,7 +120,7 @@ func _build(packed: PackedScene) -> void:
 	_run_speed = float(body_cfg.get("run_speed", _run_speed))
 	_run_armed_speed = float(body_cfg.get("run_armed_speed", _run_armed_speed))
 	_sprint_speed = float(body_cfg.get("sprint_speed", _sprint_speed))
-	height = float(body_cfg.get("height", 1.72))
+	height = float(GameData.opt(body_cfg, "wardrobe.body", "height"))
 	radius = 0.35
 
 	var sex: String = _body_id.trim_prefix("body_")
@@ -228,19 +228,19 @@ func apply_look(look: Dictionary) -> void:
 	var w: Dictionary = _wardrobe()
 	var build: Dictionary = (w.get("builds", {}) as Dictionary).get(str(_look.get("body", "a")), {})
 	var face: Dictionary = (w.get("faces", {}) as Dictionary).get(str(_look.get("face", "plain")), {})
-	_model.scale = Vector3.ONE * float(build.get("scale", 1.0))
+	_model.scale = Vector3.ONE * float(GameData.opt(build, "wardrobe.build", "scale"))
 	for mi: MeshInstance3D in _mesh.values():
-		_set_shape(mi, "heavy", float(build.get("heavy", 0.0)))
-		_set_shape(mi, "slight", float(build.get("slight", 0.0)))
-		_set_shape(mi, "gaunt", float(face.get("gaunt", 0.0)))
-		_set_shape(mi, "brow", float(face.get("brow", 0.0)))
+		_set_shape(mi, "heavy", float(GameData.opt(build, "wardrobe.build", "heavy")))
+		_set_shape(mi, "slight", float(GameData.opt(build, "wardrobe.build", "slight")))
+		_set_shape(mi, "gaunt", float(GameData.opt(face, "wardrobe.face", "gaunt")))
+		_set_shape(mi, "brow", float(GameData.opt(face, "wardrobe.face", "brow")))
 	var hair_col: Color = _option_color("hair_color", Color(0.17, 0.11, 0.07))
 	_skin.set_shader_parameter("skin_color", _option_color("skin", Color(0.68, 0.52, 0.41)))
 	_anatomy.set_shader_parameter("skin_color", _option_color("skin", Color(0.68, 0.52, 0.41)))
 	_skin.set_shader_parameter("hair_color", hair_col)
-	_skin.set_shader_parameter("stubble", float(face.get("stubble", 0.0)))
-	_skin.set_shader_parameter("scar", float(face.get("scar", 0.0)))
-	_skin.set_shader_parameter("brow_weight", float(face.get("brow_weight", 1.0)))
+	_skin.set_shader_parameter("stubble", float(GameData.opt(face, "wardrobe.face", "stubble")))
+	_skin.set_shader_parameter("scar", float(GameData.opt(face, "wardrobe.face", "scar")))
+	_skin.set_shader_parameter("brow_weight", float(GameData.opt(face, "wardrobe.face", "brow_weight")))
 	var style: String = str(_look.get("hair", "messy"))
 	# the scalp under the hair cards takes the hair's colour, so no skin shows between them
 	_skin.set_shader_parameter("scalp_shade", {"shaved": 0.55, "undercut": 0.6}.get(style, 0.9))
@@ -300,7 +300,7 @@ func worn_pieces() -> Array[String]:
 			if pieces.has(p):
 				on.append(p)
 		on.sort_custom(func(a: String, b: String) -> bool:
-			return int((pieces[a] as Dictionary).get("layer", 0)) < int((pieces[b] as Dictionary).get("layer", 0)))
+			return int(GameData.opt((pieces[a] as Dictionary), "wardrobe.piece", "layer")) < int(GameData.opt((pieces[b] as Dictionary), "wardrobe.piece", "layer")))
 		var gone: Array[String] = []
 		for p: String in on:
 			for r: Variant in (pieces[p] as Dictionary).get("replaces", []):
@@ -329,7 +329,7 @@ func worn_pieces() -> Array[String]:
 		if not replaced.has(p):
 			out.append(p)
 	out.sort_custom(func(a: String, b: String) -> bool:
-		return int((pieces[a] as Dictionary).get("layer", 0)) < int((pieces[b] as Dictionary).get("layer", 0)))
+		return int(GameData.opt((pieces[a] as Dictionary), "wardrobe.piece", "layer")) < int(GameData.opt((pieces[b] as Dictionary), "wardrobe.piece", "layer")))
 	return out
 
 
@@ -350,7 +350,7 @@ func _refresh_outfit() -> void:
 		var above := arm
 		for j: int in range(i + 1, worn.size()):
 			var upper: Dictionary = pieces[worn[j]]
-			if int(upper.get("layer", 0)) > int(cfg.get("layer", 0)):
+			if int(GameData.opt(upper, "wardrobe.piece", "layer")) > int(GameData.opt(cfg, "wardrobe.piece", "layer")):
 				for r: Variant in upper.get("covers", []):
 					above |= 1 << int(r)
 		for r: Variant in cfg.get("covers", []):
@@ -602,17 +602,17 @@ func make_enemy(look_cfg: Dictionary, def: Dictionary) -> void:
 	apply_look(look)
 	for c: Variant in look_cfg.get("attack", []):
 		_attack_clips.append(str(c))
-	_impact = float(look_cfg.get("impact", 0.45))
-	_windup_s = float(def.get("windup", 0.45))
+	_impact = float(GameData.opt(look_cfg, "enemy_look", "impact"))
+	_windup_s = float(GameData.opt(def, "enemy", "windup"))
 	_idle_clip = str(look_cfg.get("idle", "idle"))
 	if _player != null and _player.has_animation(_idle_clip):
 		_player.get_animation(_idle_clip).loop_mode = Animation.LOOP_LINEAR
 		_player.play(_idle_clip)
 	var body_cfg: Dictionary = (_wardrobe().get("bodies", {}) as Dictionary).get(_body_id, {})
-	var stature: float = float(body_cfg.get("stature", 1.68)) * _model.scale.x
-	scale = Vector3.ONE * (float(def.get("height", 1.7)) / maxf(stature, 0.1))
-	height = float(def.get("height", 1.7))
-	radius = float(def.get("radius", 0.5))
+	var stature: float = float(GameData.opt(body_cfg, "wardrobe.body", "stature")) * _model.scale.x
+	scale = Vector3.ONE * (float(GameData.opt(def, "enemy", "height")) / maxf(stature, 0.1))
+	height = float(GameData.opt(def, "enemy", "height"))
+	radius = float(GameData.opt(def, "enemy", "radius"))
 	if look_cfg.has("weapon"):
 		set_weapon(Models.weapon(str(look_cfg["weapon"])))
 	for p: Variant in look_cfg.get("props", []):

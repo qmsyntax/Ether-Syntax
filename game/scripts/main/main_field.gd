@@ -61,7 +61,7 @@ func enter_zone(id: String, arrive: String) -> void:
 	main._show_screen(null, false)
 	if main.nether.active:
 		main.nether.exit("")
-	main.factory_part._new_level(float(def.get("yaw", 0.0)))
+	main.factory_part._new_level(float(GameData.opt(def, "zone", "yaw")))
 	main.factory_part._use_biome(def.get("biome", "scrubland"), false)
 	main.zone_id = id
 	main._zone = ZoneBuilder.new(main, def)
@@ -168,7 +168,7 @@ func _entrance_prompt() -> void:
 	if e != null:
 		main._prompt = "%s %s" % [main._k("interact"), e.entrance_name]
 	_field_save_t += main.get_process_delta_time()
-	if _field_save_t >= float((GameData.balance.get("camps", {}) as Dictionary).get("field_autosave_s", 30.0)):
+	if _field_save_t >= float(GameData.opt((GameData.balance.get("camps", {}) as Dictionary), "balance.camps", "field_autosave_s")):
 		_field_save_t = 0.0
 		main.save_now()                              # the save keeps your place out here
 

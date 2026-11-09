@@ -26,10 +26,10 @@ const FINGERS: Array[String] = ["Index", "Middle", "Ring", "Pinky"]
 static func build(skeleton: Skeleton3D, track_prefix: String, cfg: Dictionary, extra: Array[Dictionary]) -> Animation:
 	var pose: Dictionary = _merged(cfg.get("pose", {}), extra)
 	var breath: Dictionary = cfg.get("breath", {})
-	var length: float = float(cfg.get("length", 4.0))
-	var keys: int = maxi(2, int(cfg.get("keys", 25)))
+	var length: float = float(GameData.opt(cfg, "wardrobe.stand", "length"))
+	var keys: int = maxi(2, int(GameData.opt(cfg, "wardrobe.stand", "keys")))
 	var curl: Array = cfg.get("finger_curl", [0.0, 0.0, 0.0])
-	var pinky_more: float = float(cfg.get("pinky_extra", 0.0))
+	var pinky_more: float = float(GameData.opt(cfg, "wardrobe.stand", "pinky_extra"))
 	var close_by: Dictionary = cfg.get("finger_close", {})
 	var frame: Basis = _body_frame(skeleton)
 	var anim := Animation.new()
@@ -90,7 +90,7 @@ static func _solve(sk: Skeleton3D, frame: Basis, pose: Dictionary, breath: Dicti
 			rot = _vec(entry)
 		elif entry is Dictionary:
 			rot = _vec((entry as Dictionary).get("rot", [0, 0, 0]))
-			twist = float((entry as Dictionary).get("twist", 0.0))
+			twist = float(GameData.opt((entry as Dictionary), "wardrobe.pose", "twist"))
 			flat = bool((entry as Dictionary).get("flat", false))
 		var br: Variant = breath.get(name, breath.get(bare, null))
 		if br is Array:

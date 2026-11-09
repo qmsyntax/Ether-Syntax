@@ -37,18 +37,18 @@ func stat(stat_name: String, multiplicative: bool = false) -> float:
 
 
 func capacity() -> float:
-	return float(GameData.items_file.get("base_carry_capacity", 0.0)) + stat("carry_capacity")
+	return float(GameData.opt(GameData.items_file, "items", "base_carry_capacity")) + stat("carry_capacity")
 
 
 func weight() -> float:
 	var w := 0.0
 	for id: String in bag:
-		w += float(GameData.item(id).get("weight", 0.0))
+		w += float(GameData.opt(GameData.item(id), "item", "weight"))
 	return w
 
 
 func can_add(id: String) -> bool:
-	return not GameData.item(id).is_empty() and weight() + float(GameData.item(id).get("weight", 0.0)) <= capacity() + 0.001
+	return not GameData.item(id).is_empty() and weight() + float(GameData.opt(GameData.item(id), "item", "weight")) <= capacity() + 0.001
 
 
 func add(id: String) -> bool:
@@ -146,18 +146,18 @@ func loot_value() -> int:
 	var v := 0
 	for id: String in bag:
 		if is_loot(id):
-			v += int(GameData.item(id).get("value", 0))
+			v += int(GameData.opt(GameData.item(id), "item", "value"))
 	return v
 
 
 ## What the merchant pays for one of these: loot at full value, gear at a fraction.
 func sale_price(id: String) -> int:
 	var def: Dictionary = GameData.item(id)
-	var value: float = float(def.get("value", 0))
+	var value: float = float(GameData.opt(def, "item", "value"))
 	# gear and scrolls at a fraction, everything else in full (Brent 2026-10-18: full sale price,
 	# the live rule unchanged - made goods are not marked down)
 	if str(def.get("slot", "")) != "" or str(def.get("kind", "")) == "scroll":
-		value *= float(GameData.items_file.get("gear_sell_factor", 0.5))
+		value *= float(GameData.opt(GameData.items_file, "items", "gear_sell_factor"))
 	return int(value)
 
 

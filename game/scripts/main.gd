@@ -376,7 +376,7 @@ func light_base() -> String:
 func _rune_stone_in_reach() -> RuneStone:
 	if player == null:
 		return null
-	var reach: float = float((GameData.rune_discovery.get("inscriptions", {}) as Dictionary).get("reach", 2.5))
+	var reach: float = float(GameData.opt((GameData.rune_discovery.get("inscriptions", {}) as Dictionary), "discovery.inscriptions", "reach"))
 	var best: RuneStone = null
 	var best_d := INF
 	for n: Node in get_tree().get_nodes_in_group("rune_stones"):

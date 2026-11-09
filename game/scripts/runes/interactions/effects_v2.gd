@@ -169,7 +169,7 @@ func hand_to(word: Dictionary) -> Array[int]:
 		var best_en := -INF
 		for k: int in RuneWord.neighbours(word, i):
 			if _kind(word, i, k) == "ionic" and _side(word, i, k) == "less":
-				var en: float = float(GameData.rune(RuneWord.node_id(word, k)).get("electronegativity", 0.0))
+				var en: float = float(GameData.opt(GameData.rune(RuneWord.node_id(word, k)), "rune", "electronegativity"))
 				if en > best_en:
 					best_en = en
 					best = k
@@ -186,7 +186,7 @@ func hand_to(word: Dictionary) -> Array[int]:
 ##   takes (its factor's shortfall from 1, split over its bonds by what each takes) x rate.
 func conversions(word: Dictionary, ab: Dictionary, sres: Dictionary, carry: Array[int], af: float) -> Array:
 	var conv: Dictionary = params.get("ionic_conversion", {})
-	var rate: float = float(conv.get("rate", 0.0))
+	var rate: float = float(GameData.opt(conv, "effects.ionic_conversion", "rate"))
 	var out: Array = []
 	if rate <= 0.0:
 		return out
@@ -292,7 +292,7 @@ static func _and_list(words: Array[String]) -> String:
 ## How much longer a status lasts at strength s (a multiple of its base), and whether the cap held it.
 func status_time(s: float) -> Array:
 	var oo: Dictionary = params.get("on_off", {})
-	var m: float = 1.0 + (s - 1.0) * float(oo.get("status_time_per_strength", 0.0))
+	var m: float = 1.0 + (s - 1.0) * float(GameData.opt(oo, "effects.on_off", "status_time_per_strength"))
 	var cap: float = float(oo.get("status_time_cap", INF))
 	return [clampf(m, 0.0, cap), m > cap + 0.0001]
 
@@ -302,9 +302,9 @@ func extra_stacks(id: String, s: float) -> int:
 	var def: Dictionary = GameData.status(id)
 	if def.has("alias_of"):
 		def = GameData.status(str(def["alias_of"]))
-	if int(def.get("stacks", 1)) <= 1 or s <= 1.0:
+	if int(GameData.opt(def, "status", "stacks")) <= 1 or s <= 1.0:
 		return 0
-	return int(floor(s - 1.0 + 0.000001)) * int((params.get("on_off", {}) as Dictionary).get("stack_per_strength", 0))
+	return int(floor(s - 1.0 + 0.000001)) * int(GameData.opt((params.get("on_off", {}) as Dictionary), "effects.on_off", "stack_per_strength"))
 
 
 ## Seconds of silence an interrupt carries at strength s (0 at or below the line).
@@ -313,7 +313,7 @@ func silence_s(s: float) -> float:
 	var line: float = float(oo.get("silence_above", INF))
 	if s <= line + 0.000001:
 		return 0.0
-	return (s - line) * float(oo.get("silence_s_per_strength", 0.0))
+	return (s - line) * float(GameData.opt(oo, "effects.on_off", "silence_s_per_strength"))
 
 
 func _apply_op(ab: Dictionary, op: Dictionary, s: float, threshold: float, groups: Dictionary, patch: Array) -> Dictionary:
@@ -340,7 +340,7 @@ func _apply_op(ab: Dictionary, op: Dictionary, s: float, threshold: float, group
 ## A status op at strength s: as effects_v1 (it applies, or adds stacks to what the skill already
 ## applies), plus its duration and stacks by strength.
 func _grow_status(ab: Dictionary, op: Dictionary, s: float, threshold: float, patch: Array) -> Dictionary:
-	var grant_change: float = float(params.get("grant_as_change", 0.2)) * s
+	var grant_change: float = float(GameData.opt(params, "effects", "grant_as_change")) * s
 	var part: String = _payload_part(ab)
 	var id: String = str(op["id"])
 	if part == "":
@@ -349,7 +349,7 @@ func _grow_status(ab: Dictionary, op: Dictionary, s: float, threshold: float, pa
 		return {"used": false, "change": grant_change, "why": "too faint to take hold"}
 	var label: String = _status_label(id)
 	var extra: int = extra_stacks(id, s)
-	var stacks: int = int(op.get("stacks", 1)) + extra
+	var stacks: int = int(GameData.opt(op, "rune_op", "stacks")) + extra
 	var tm: Array = status_time(s)
 	var mult: float = float(tm[0])
 	var had: bool = _has_status(ab, part, id)
@@ -365,7 +365,7 @@ func _grow_status(ab: Dictionary, op: Dictionary, s: float, threshold: float, pa
 	if had:
 		var p: Dictionary = get_path_value(ab, part)
 		if str(p.get("status", "")) == id:
-			patch.append({"op": "set", "path": part + ".stacks", "value": int(p.get("stacks", 1)) + stacks})
+			patch.append({"op": "set", "path": part + ".stacks", "value": int(GameData.opt(p, "payload", "stacks")) + stacks})
 		else:
 			patch.append({"op": "append", "path": part + ".statuses", "value": {"id": id, "stacks": stacks}})
 		return {"used": true, "text": "+%d %s%s" % [stacks, label, tail], "line": "+%d stack%s of %s%s" % [stacks, "" if stacks == 1 else "s", label, tail]}
@@ -386,7 +386,7 @@ func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
 	var fallback_mult := 1.0
 	var patch: Array = []
 	var lines: Array = []
-	var threshold: float = float(params.get("status_threshold", 0.5))
+	var threshold: float = float(GameData.opt(params, "effects", "status_threshold"))
 	var traits: Array[Dictionary] = []
 	if rules != null and rules.has_method("shape_traits"):
 		traits = rules.call("shape_traits", word)
@@ -397,7 +397,7 @@ func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
 	for t: Dictionary in traits:
 		if str(t["id"]) == "balanced":
 			balanced = true
-	var af: float = float((trait_defs.get("balanced", {}) as Dictionary).get("anchor_factor", 1.0)) if balanced else _anchor_factor(word)
+	var af: float = float(GameData.opt((trait_defs.get("balanced", {}) as Dictionary), "shape_trait", "anchor_factor")) if balanced else _anchor_factor(word)
 	var anchor_lines: Array = []
 	if RuneWord.degree(word, 0) > 0:
 		for op: Dictionary in GameData.rune(RuneWord.node_id(word, 0)).get("ops", []):
@@ -480,7 +480,7 @@ func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
 					if str(res.get("line", "")) != "" and h != 0:
 						lines.append(str(res["line"]) + tag)
 				else:
-					fallback_mult *= 1.0 + float(res["change"]) * float(params.get("fallback_fraction", 0.25))
+					fallback_mult *= 1.0 + float(res["change"]) * float(GameData.opt(params, "effects", "fallback_fraction"))
 					var fb: String = "%s -> %s%s" % [op_words(op, s), str(res["why"]), tag]
 					if h == 0:
 						anchor_lines.append(fb)
@@ -503,12 +503,12 @@ func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
 			if bool(res2["used"]):
 				said.append(str(res2["text"]))
 			else:
-				fallback_mult *= 1.0 + float(res2["change"]) * float(params.get("fallback_fraction", 0.25))
+				fallback_mult *= 1.0 + float(res2["change"]) * float(GameData.opt(params, "effects", "fallback_fraction"))
 				said.append("%s -> %s" % [op_words(whole, 1.0), str(res2["why"])])
 		if str(t["id"]) == "great_ring":
 			said.append(_great_ring(ab, def, patch))
 			if str(said.back()).begins_with("cannot"):
-				fallback_mult *= 1.0 + float(def.get("mult", 0.0)) * float(params.get("fallback_fraction", 0.25))
+				fallback_mult *= 1.0 + float(GameData.opt(def, "shape_trait", "mult")) * float(GameData.opt(params, "effects", "fallback_fraction"))
 		if str(t["id"]) == "balanced":
 			said.append("its own rune keeps all of its nature")
 		var tt: Dictionary = t.duplicate()
@@ -527,8 +527,8 @@ func _compute(word: Dictionary, ctx: RuneContext) -> Dictionary:
 func _great_ring(ab: Dictionary, def: Dictionary, patch: Array) -> String:
 	var rep: Dictionary = params.get("repeat", {})
 	var kind: String = str(ab.get("kind", ""))
-	var mult: float = float(def.get("mult", 0.0))
+	var mult: float = float(GameData.opt(def, "shape_trait", "mult"))
 	if (rep.get("no_repeat_kinds", []) as Array).has(kind):
-		return "cannot repeat a %s: +%d%% as damage instead" % [kind.replace("_", " "), int(round(mult * float(params.get("fallback_fraction", 0.25)) * 100.0))]
-	patch.append({"op": "set", "path": "rune_repeat", "value": {"times": int(def.get("repeats", 1)), "mult": mult, "delay_s": float(rep.get("delay_s", 0.4))}})
-	return "repeats %s at %d%%" % ["once" if int(def.get("repeats", 1)) == 1 else "%d times" % int(def.get("repeats", 1)), int(round(mult * 100.0))]
+		return "cannot repeat a %s: +%d%% as damage instead" % [kind.replace("_", " "), int(round(mult * float(GameData.opt(params, "effects", "fallback_fraction")) * 100.0))]
+	patch.append({"op": "set", "path": "rune_repeat", "value": {"times": int(GameData.opt(def, "shape_trait", "repeats")), "mult": mult, "delay_s": float(GameData.opt(rep, "effects.repeat", "delay_s"))}})
+	return "repeats %s at %d%%" % ["once" if int(GameData.opt(def, "shape_trait", "repeats")) == 1 else "%d times" % int(GameData.opt(def, "shape_trait", "repeats")), int(round(mult * 100.0))]

@@ -229,7 +229,7 @@ func _build_boost(box: VBoxContainer) -> void:
 	var skills: Array = _pending().get("skills", [])
 	var star: int = int(_pending().get("star", 2))
 	box.add_child(UiTheme.body("The star's pool, %s, is shared by the %d skill%s you hold; a skill at a higher stage takes a larger share (x(1 + %s x stage)). It is not a level: no stage or lock moves." % [
-		_pct(Ascension.pool(star)).trim_prefix("+"), skills.size(), "" if skills.size() == 1 else "s", str(Ascension.cfg().get("stage_weight", 0.0))], 13, UiTheme.TEXT_FAINT))
+		_pct(Ascension.pool(star)).trim_prefix("+"), skills.size(), "" if skills.size() == 1 else "s", str(GameData.opt(Ascension.cfg(), "balance.ascension", "stage_weight"))], 13, UiTheme.TEXT_FAINT))
 	var list: VBoxContainer = scroller(box)
 	list.name = "BoostList"
 	list.add_theme_constant_override("separation", 6)

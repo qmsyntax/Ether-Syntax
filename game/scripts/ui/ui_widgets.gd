@@ -361,7 +361,7 @@ static func item_stats_text(def: Dictionary) -> String:
 		parts.append("takes %d%% off every hit" % int(float(stats["armour"])))
 	if stats.has("ranged_damage_mult") or stats.has("ranged_interval") or stats.has("ranged_range"):
 		parts.append("shoots for %d every %.1f s, out to %d m" % [
-			int(round(GameData.num("ranged", "ranged_damage") * float(stats.get("ranged_damage_mult", 1.0)))),
+			int(round(GameData.num("ranged", "ranged_damage") * float(GameData.opt(stats, "item.stats", "ranged_damage_mult")))),
 			float(stats.get("ranged_interval", GameData.num("ranged", "default_interval"))),
 			int(float(stats.get("ranged_range", GameData.num("ranged", "default_range"))))])
 	if stats.has("ranged_interval_mult"):

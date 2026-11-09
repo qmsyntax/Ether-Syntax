@@ -23,7 +23,7 @@ static func cfg() -> Dictionary:
 ## such exists; the rest are drawn from the BASES not held (Brent 2026-10-24: a hybrid only ever
 ## comes through a base you hold). Order: the hybrid first.
 static func offer(held: Array, rng: RandomNumberGenerator) -> Array[String]:
-	var count: int = int(cfg().get("offer_count", 2))
+	var count: int = int(GameData.opt(cfg(), "balance.ascension", "offer_count"))
 	var pool: Array[String] = []
 	for id: Variant in GameData.affinity_ids():
 		if not held.has(str(id)) and GameData.affinity_playable(str(id)):
@@ -78,7 +78,7 @@ static func boosts(abilities: Array, star: int) -> Array[Dictionary]:
 	if n == 0:
 		return out
 	var p: float = pool(star)
-	var a: float = float(cfg().get("stage_weight", 0.0))
+	var a: float = float(GameData.opt(cfg(), "balance.ascension", "stage_weight"))
 	for i: int in n:
 		var st: Dictionary = abilities[i]
 		var stage: int = int(st.get("stage", 0))
