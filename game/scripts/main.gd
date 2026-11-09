@@ -170,15 +170,9 @@ func _process(delta: float) -> void:
 	if nether.active:
 		nether.tick(delta, camera)
 
-	match state:
-		"town":
-			town_part.tick(delta)
-		"arena_rest", "arena_fight":
-			arena_part.tick(delta)
-		"dungeon":
-			passage_part.tick(delta)
-		"field":
-			field_part.tick(delta)
+	var running: MainLevel = MainStates.controller(self, state)
+	if running != null:
+		running.tick(delta)                 # the level the state names (MainStates)
 
 	hud.call("refresh", player, _where())
 	hud.set("show_world", state == "dungeon" or state == "arena_rest" or state == "arena_fight" or state == "field" or state == "town")
@@ -277,15 +271,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if nether.active:
 		return                          # a soul has no hands for anything else
 
-	match state:
-		"town":
-			town_part.handle_input(event)
-		"arena_rest", "arena_fight":
-			arena_part.handle_input(event)
-		"field":
-			field_part.handle_input(event)
-		"dungeon":
-			passage_part.handle_input(event)
+	var running: MainLevel = MainStates.controller(self, state)
+	if running != null:
+		running.handle_input(event)         # the level the state names (MainStates)
 
 
 ## Hotbar slots are the actions ability_1..N. Returns true if the event cast something. A test
@@ -423,7 +411,6 @@ func _exit_tree() -> void:
 
 # --- construction ---------------------------------------------------------------
 
-
 func _build_player() -> void:
 	player = PlayerScript.new()
 	add_child(player)
@@ -458,17 +445,16 @@ func _build_hud() -> void:
 
 
 func _where() -> String:
-	match state:
-		"town":
-			return town_part.where()
-		"arena_rest", "arena_fight":
-			return arena_part.where()
-		"dungeon":
-			return passage_part.where()
-		"field":
-			return field_part.where()
-	return ""
+	var running: MainLevel = MainStates.controller(self, state)
+	return running.where() if running != null else ""
 
+
+# ================================================================================================
+# Forwarders, one block per part. Outside code - the UI screens, the HUD, the builders, Light, the Netherecho,
+# FieldCamps, data (town.json's gate actions) and the tests - calls these on the node by name (call / get /
+# has_method strings included), and the node's signal handlers are connected here as before; a part never is.
+# A new function outside code needs gets a forwarder in its part's block (docs/architecture/main-split.md).
+# ================================================================================================
 
 # --- the test harness (MainHarness): a shot's watcher (MainShots.ShotWatch) calls this by name
 func _save_shot() -> void: _harness()._save_shot()
