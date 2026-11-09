@@ -117,6 +117,11 @@ phases below run to A, then B.
   behaviours stay overrides of the node's hooks. No outside caller changed; the suite, the timeline and
   cast-every-skill output, the self-test count and the duels table at a fixed 60 fps are the same before and after.
 - Give the big objects class names and typed calls. Validate data once on load and remove the silent numeric fallbacks.
+  *(Typed calls done 2026-11-09, step 4a (`docs/architecture/typed-calls.md`): the player's, main's and the enemies'
+  holders are typed and their string calls direct where the receiver's type is certain - 1,767 object-shaped string
+  calls in `game/scripts` down to 744, the rest duck-typed targets, other classes, the harness and the open screen;
+  public readers for the private names outside code reached; 22 dead enemy forwarders gone. Data validation and the
+  numeric fallbacks are step 4b.)*
 - No behaviour change: the full suite and the combat-review probe must give the same numbers before and after.
 - Done when no gameplay file is over ~1,500 lines and the suite is green.
 

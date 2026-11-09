@@ -107,7 +107,7 @@ func _seek_line(delta: float) -> Vector3:
 	_vantage_t -= delta
 	var nav: LevelNav = enemy.motion_part._level_nav()
 	if nav == null and enemy._router != null and is_instance_valid(enemy._router):
-		var next: Vector3 = enemy._router.call("route", enemy.global_position, enemy.target.global_position, enemy.radius)
+		var next: Vector3 = enemy._router.route(enemy.global_position, enemy.target.global_position, enemy.radius)
 		if Vector2(next.x - enemy.target.global_position.x, next.z - enemy.target.global_position.z).length() > 0.5:
 			_vantage = null
 			return enemy._walk_dir                     # a dividing wall: the doorway comes first

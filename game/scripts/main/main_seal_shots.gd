@@ -36,7 +36,7 @@ func _setup_test_shot(what: String) -> void:
 			if what == "detail-sealed":
 				_shot_lock_word()                      # Breaker sealed through two rings: base beside sealed
 			main.open_ethercosm()
-			var at: int = (main.player.get("abilities") as Array).map(func(s: Dictionary) -> String: return str(s["id"])).find(str(spec[1]))
+			var at: int = (main.player.abilities as Array).map(func(s: Dictionary) -> String: return str(s["id"])).find(str(spec[1]))
 			main.screen.call("select", maxi(0, at))
 			if what == "status-glossary":
 				main.screen.call("show_glossary", true)
@@ -60,10 +60,10 @@ func _setup_test_shot(what: String) -> void:
 		"skilltree":
 			# a new water character a few skills in: its thirteen-skill tree, three tiers deep
 			main.session_part._select_talent(0)
-			main.player.call("set_affinities", ["water"])
+			main.player.set_affinities(["water"])
 			for id: String in ["riptide_lash", "tsunami_strike", "drench", "seepage"]:
-				main.player.call("learn", id)
-			main.player.set("skill_points", 2)
+				main.player.learn(id)
+			main.player.skill_points = 2
 			main._enter_town()
 			main.open_skill_tree(false)
 			return
@@ -73,8 +73,8 @@ func _setup_test_shot(what: String) -> void:
 			main.start_test_character("ice")
 			main.open_ethercosm()
 			main.screen.call("open_runes")
-			main.player.call("word_add", 0, "ICE-5a", 0)       # Brittle on Frost (Hoarline)
-			main.player.call("word_add", 0, "UNI-11a", 0)      # Persist
+			main.player.word_add(0, "ICE-5a", 0)       # Brittle on Frost (Hoarline)
+			main.player.word_add(0, "UNI-11a", 0)      # Persist
 			main.screen.call("pick_node", 1)
 			return
 		"statuses":
@@ -95,7 +95,7 @@ func _setup_test_shot(what: String) -> void:
 					all[i].call("add_status", str(st[0]), int(st[1]), main.player)
 				(all[i].get("body") as Body).apply_damage(20.0 * float(i + 1))
 			main.state = "arena_fight"                          # no rest prompt over the picture
-			for e: Node in all:
+			for e: Enemy in all:
 				e.set_physics_process(false)
 			main.player.set_physics_process(false)
 			return
@@ -107,24 +107,24 @@ func _setup_test_shot(what: String) -> void:
 	for at: Vector3 in [Vector3(-1.5, 0, -4.0), Vector3(1.2, 0, -4.8), Vector3(3.0, 0, -2.5), Vector3(-3.5, 0, -6.0)]:
 		main.factory_part._spawn_enemy("grunt", at, 1.0)
 	main.factory_part._spawn_enemy("brute", Vector3(0.5, 0, -7.0), 1.0)
-	main.player.call("start_fight")
+	main.player.start_fight()
 	main.state = "arena_fight"
 	var first: Node3D = main.get_tree().get_nodes_in_group("enemies")[0]
-	main.player.set("cursor_fixed", first.global_position)
-	main.player.set("hovered", first)
-	main.player.set("_facing", (first.global_position - main.player.global_position).normalized())
+	main.player.cursor_fixed = first.global_position
+	main.player.hovered = first
+	main.player.facing_dir = (first.global_position - main.player.global_position).normalized()
 	main._harness()._shot_countdown = 75
 	var order: Array = [0, 1, 3, 4, 2]
 	for k: int in order.size():
 		var slot: int = int(order[k])
 		SkillTimer.after(main.level, 0.05 + 0.32 * float(k), func(_i: int) -> void:
-			main.player.set("_recover_t", 0.0)
-			main.player.set("_held", {})
+			main.player.recover_left = 0.0
+			main.player.held_cast = {}
 			var live: Array = main.get_tree().get_nodes_in_group("enemies")
 			if not live.is_empty():
-				main.player.set("cursor_fixed", (live[k % live.size()] as Node3D).global_position)
-				main.player.set("hovered", live[k % live.size()])
-			main.player.call("cast_slot", slot))
+				main.player.cursor_fixed = (live[k % live.size()] as Node3D).global_position
+				main.player.hovered = live[k % live.size()]
+			main.player.cast_slot(slot))
 
 
 ## The v2 role shots (`--shot-ui=role-<affinity>`): a test character in the arena using the skill its role turns on -
@@ -148,11 +148,11 @@ func _setup_role_shot(aff: String) -> void:
 	for at: Vector3 in [Vector3(-1.2, 0, -2.6), Vector3(1.4, 0, -3.0), Vector3(3.0, 0, -1.6), Vector3(-3.2, 0, -4.4)]:
 		main.factory_part._spawn_enemy("grunt", at, 1.0)
 	main.factory_part._spawn_enemy("brute", Vector3(0.4, 0, -5.4), 1.0)
-	main.player.call("start_fight")
+	main.player.start_fight()
 	main.state = "arena_fight"
 	var foes: Array = main.get_tree().get_nodes_in_group("enemies")
 	var first: Node3D = foes[0]
-	main.player.set("_facing", ((first.global_position - main.player.global_position) * Vector3(1, 0, 1)).normalized())
+	main.player.facing_dir = ((first.global_position - main.player.global_position) * Vector3(1, 0, 1)).normalized()
 	if aff == "death":
 		# three of them fall where they stood, for the thralls to rise from
 		for i: int in 3:
@@ -174,20 +174,20 @@ func _setup_role_shot(aff: String) -> void:
 	for step: Array in ROLE_SHOTS.get(aff, []):
 		var id: String = str(step[0])
 		SkillTimer.after(main.level, float(step[1]), func(_i: int) -> void:
-			main.player.set("_recover_t", 0.0)
-			main.player.set("_held", {})
+			main.player.recover_left = 0.0
+			main.player.held_cast = {}
 			var dead_spots: Array = main.get_tree().get_nodes_in_group("fallen").filter(func(f: Node) -> bool: return not bool(f.get("spent")))
 			var live: Array = main.get_tree().get_nodes_in_group("enemies").filter(func(e: Node) -> bool: return not bool(e.call("is_dead")))
 			if id == "rise_again" and not dead_spots.is_empty():
-				main.player.set("cursor_fixed", (dead_spots[0] as Node3D).global_position)
+				main.player.cursor_fixed = (dead_spots[0] as Node3D).global_position
 			elif not live.is_empty():
-				main.player.set("cursor_fixed", (live[0] as Node3D).global_position)
-				main.player.set("hovered", live[0])
-			var list: Array = main.player.get("abilities")
+				main.player.cursor_fixed = (live[0] as Node3D).global_position
+				main.player.hovered = live[0]
+			var list: Array = main.player.abilities
 			for i: int in list.size():
 				if str(list[i]["id"]) == id:
-					main.player.set("essence", float(main.player.get("essence_max")))
-					main.player.call("cast_ability", i)
+					main.player.essence = float(main.player.essence_max)
+					main.player.cast_ability(i)
 					break)
 
 
@@ -200,16 +200,16 @@ func _shot_lock_word() -> void:
 ## For the water seal shots: the skill built on Surge (Breaker; Water Bolt before v2) is put first, so a
 ## shot's rows (given against Surge) mean what they say. The hotbar follows the swap.
 func _shot_surge_first() -> void:
-	if not bool(main.player.call("knows", "tsunami_strike")) and str(main.player.call("can_learn", "tsunami_strike")) == "":
-		main.player.call("learn", "tsunami_strike")
-	var list: Array = main.player.get("abilities")
+	if not bool(main.player.knows("tsunami_strike")) and str(main.player.can_learn("tsunami_strike")) == "":
+		main.player.learn("tsunami_strike")
+	var list: Array = main.player.abilities
 	var k: int = list.map(func(st: Dictionary) -> String: return str(st["id"])).find("tsunami_strike")
 	if k <= 0:
 		return
 	var first: Dictionary = list[0]
 	list[0] = list[k]
 	list[k] = first
-	var bar: Array = main.player.get("hotbar")
+	var bar: Array = main.player.hotbar
 	for i: int in bar.size():
 		if int(bar[i]) == 0:
 			bar[i] = k
@@ -228,12 +228,12 @@ const SHOT_FILLER := "UNI-19a"
 
 
 func _shot_seal(index: int, stage: int, rows: Array, links: Array = [], concepts: Array = []) -> void:
-	var st: Dictionary = (main.player.get("abilities") as Array)[index]
+	var st: Dictionary = (main.player.abilities as Array)[index]
 	st["stage"] = maxi(stage, int(st["stage"]))
 	var w: Dictionary = RuneWord.make(GameData.skill_anchor(str(st["id"])), Runes.active().id)
 	var rules: RuneRules = Runes.active()
 	var rr: RingRules = rules as RingRules
-	var ctx: RuneContext = main.player.call("rune_context", index)
+	var ctx: RuneContext = main.player.rune_context(index)
 	var at: Dictionary = {0: 0}               # row -> node
 	for ri: int in rows.size():
 		var row: Array = rows[ri]
@@ -261,7 +261,7 @@ func _shot_seal(index: int, stage: int, rows: Array, links: Array = [], concepts
 	else:
 		print("shot seal: refused: %s" % str(sealed["text"]))
 	for rid: Variant in RuneWord.nodes(w):
-		main.player.call("_know", str(rid))
+		main.player.know_rune(str(rid))
 
 
 ## The ring a shot row joined to node `to` goes on: one further out where the skill has it and there is
@@ -301,7 +301,7 @@ func _shot_board_state(which: String) -> void:
 		board = n as RuneBoard
 	if board == null:
 		return
-	var word: Dictionary = main.player.call("ability_word", 0)
+	var word: Dictionary = main.player.ability_word(0)
 	var idx := {}
 	for i: int in RuneWord.size(word):
 		idx[RuneWord.node_id(word, i)] = i
@@ -316,9 +316,9 @@ func _shot_board_state(which: String) -> void:
 
 ## The index of ability `id` on the player, learning it first if need be.
 func _shot_skill(id: String) -> int:
-	if not bool(main.player.call("knows", id)):
-		main.player.call("learn", id)
-	var list: Array = main.player.get("abilities")
+	if not bool(main.player.knows(id)):
+		main.player.learn(id)
+	var list: Array = main.player.abilities
 	for i: int in list.size():
 		if str(list[i]["id"]) == id:
 			return i
@@ -373,17 +373,17 @@ func _setup_seal_shot(which: String) -> void:
 		main.screen.call("set_palette_tab", aff)
 		return
 	main.session_part._select_talent(0)
-	(main.player.get("constructs") as Array).clear()          # the other UI shots hand out two vestiges first
+	(main.player.constructs as Array).clear()          # the other UI shots hand out two vestiges first
 	match which:
 		"seal-drag", "seal-refused", "seal-bond":
 			# ring 1 sealed: Flood and Heave on Surge, Dry on Heave; forming ring 2: Drown and Settle set, not bonded
-			main.player.call("set_affinities", ["water"])
+			main.player.set_affinities(["water"])
 			_shot_surge_first()
 			_shot_seal(0, 1, [["WAT-1a", 0], ["WAT-4a", 0], ["WAT-3b", 2]])
 			for rid2: String in ["WAT-6b", "WAT-4b", "WAT-7b", "UNI-05a"]:
-				main.player.call("_know", rid2)
-			(main.player.get("abilities") as Array)[0]["progress"] = 100.0
-			(main.player.get("constructs") as Array).append({"tier": "remnant", "concept": "tension"})
+				main.player.know_rune(rid2)
+			(main.player.abilities as Array)[0]["progress"] = 100.0
+			(main.player.constructs as Array).append({"tier": "remnant", "concept": "tension"})
 			main._enter_town()
 			main.open_seal(0, 0)
 			main.screen.call("place_rune", "WAT-4b", 2, 1)          # Drown, ring 2
@@ -392,30 +392,30 @@ func _setup_seal_shot(which: String) -> void:
 			main._harness()._shot_countdown = 60
 			main.get_tree().create_timer(0.4, true).timeout.connect(_shot_board_state.bind(which))
 		"seal-forming", "runes", "runes-locking":
-			main.player.call("set_affinities", ["water", "fire"])
+			main.player.set_affinities(["water", "fire"])
 			_shot_surge_first()
 			_shot_seal(0, 1, [["WAT-1a", 0], ["WAT-4a", 0], ["WAT-3b", 1]], [[1, 2]])     # Flood, Heave (joined), Dry
 			for rid: String in ["WAT-6b", "WAT-4b", "WAT-7b", "UNI-05a", "UNI-11a", "FIR-1b", "WAT-2b"]:
-				main.player.call("_know", rid)
-			var own: Array = main.player.get("abilities")
+				main.player.know_rune(rid)
+			var own: Array = main.player.abilities
 			own[0]["progress"] = 100.0
-			(main.player.get("constructs") as Array).append({"tier": "remnant", "concept": "tension"})
+			(main.player.constructs as Array).append({"tier": "remnant", "concept": "tension"})
 			main._enter_town()
 			main.open_seal(0, 0)
 			# rework ring 1: part Flood and Heave, so each has a bond for the new ring
-			main.player.call("word_toggle_link", 0, 1, 2)
-			main.player.call("word_add", 0, "WAT-6b", 2)        # Settle off Heave, out on ring 2
-			main.player.call("word_add", 0, "WAT-4b", 4)        # Drown off Settle, ring 2
-			main.player.call("word_add", 0, "WAT-3b", 4)        # a second Dry off Settle, ring 2 (Slack before v2)
-			main.player.call("word_add", 0, "UNI-05a", 1)       # Expand off Flood, ring 2
+			main.player.word_toggle_link(0, 1, 2)
+			main.player.word_add(0, "WAT-6b", 2)        # Settle off Heave, out on ring 2
+			main.player.word_add(0, "WAT-4b", 4)        # Drown off Settle, ring 2
+			main.player.word_add(0, "WAT-3b", 4)        # a second Dry off Settle, ring 2 (Slack before v2)
+			main.player.word_add(0, "UNI-05a", 1)       # Expand off Flood, ring 2
 			if which == "runes-locking":
-				main.player.call("word_toggle_link", 0, 4, 7)   # Expand joins Settle: the word closes
+				main.player.word_toggle_link(0, 4, 7)   # Expand joins Settle: the word closes
 				main.screen.call("bind_and_seal", 0.0)
 				main._harness()._shot_countdown = 38
 			else:
 				main.screen.call("pick_node", 7)                # Expand picked: one bond still open
 		"seal-convert":
-			main.player.call("set_affinities", ["water"])
+			main.player.set_affinities(["water"])
 			var tb: int = _shot_skill("hydraulic_flex")
 			_shot_seal(tb, 1, [["WAT-4b", 0]])                # Drown on Wave: ionic, Drown takes it
 			main._enter_town()
@@ -424,14 +424,14 @@ func _setup_seal_shot(which: String) -> void:
 			main.screen.call("open_runes")
 			main.screen.call("pick_node", 1)
 		"runes-locked":
-			main.player.call("set_affinities", ["water", "fire"])
+			main.player.set_affinities(["water", "fire"])
 			_shot_surge_first()
 			_shot_seal(0, 2, [["WAT-6b", 0], ["WAT-4b", 0], ["WAT-3b", 1], ["WAT-4a", 1, 2], ["WAT-3b", 1, 2], ["FIR-1b", 4, 2]])
 			main._enter_town()
 			main.open_ethercosm()
 			main.screen.call("open_runes")
 		"seal-traits":
-			main.player.call("set_affinities", ["water"])
+			main.player.set_affinities(["water"])
 			_shot_surge_first()
 			# ring 1: Flood, Settle, Soak round a triangle; Settle -> Heave (ring 2) -> Drown (ring 3)
 			_shot_seal(0, 3, [["WAT-1a", 0], ["WAT-6b", 0], ["WAT-3a", 1, 1], ["WAT-4a", 2, 2], ["WAT-4b", 4, 3]], [[1, 2], [2, 3]])
@@ -439,7 +439,7 @@ func _setup_seal_shot(which: String) -> void:
 			main.open_ethercosm()
 			main.screen.call("open_runes")
 		"seal-drown-self", "seal-drown-flood", "seal-drown-surge":
-			main.player.call("set_affinities", ["water"])
+			main.player.set_affinities(["water"])
 			var pj: int = _shot_skill("overboard")
 			match which:
 				"seal-drown-self":
@@ -453,8 +453,8 @@ func _setup_seal_shot(which: String) -> void:
 			main.screen.call("select", pj)
 			main.screen.call("open_runes")
 		"seal-discovered":
-			main.player.call("set_affinities", ["water"])
-			main.player.call("start_with_skills", main.player.call("default_start_skills"))
+			main.player.set_affinities(["water"])
+			main.player.start_with_skills(main.player.default_start_skills())
 			main._show_screen(null, false)
 			main.enter_zone("the_stubble", "dross_gate")
 			var stone: RuneStone = null
@@ -464,16 +464,16 @@ func _setup_seal_shot(which: String) -> void:
 					break
 			if stone != null:
 				main.player.global_position = stone.global_position + Vector3(2.2, 0.0, 0.0)
-				main.player.set("rng", RandomNumberGenerator.new())
+				main.player.rng = RandomNumberGenerator.new()
 				main._read_stone(stone)
 			main._harness()._shot_countdown = 40
 		"seal-palette":
-			main.player.call("set_affinities", ["water"])
-			main.player.call("start_with_skills", main.player.call("default_start_skills"))
-			var mine: Array = main.player.get("abilities")
+			main.player.set_affinities(["water"])
+			main.player.start_with_skills(main.player.default_start_skills())
+			var mine: Array = main.player.abilities
 			mine[0]["progress"] = 100.0
-			(main.player.get("constructs") as Array).append({"tier": "vestige", "concept": "reach"})
-			main.player.call("discover_rune", "UNI-05a", "")
+			(main.player.constructs as Array).append({"tier": "vestige", "concept": "reach"})
+			main.player.discover_rune("UNI-05a", "")
 			main._enter_town()
 			main.open_seal(0, 0)
 			main.screen.call("set_palette_tab", "universal")
@@ -482,9 +482,9 @@ func _setup_seal_shot(which: String) -> void:
 ## For a shot: set the carried construct of the open lock's tier and `concept` as its keystone (a word
 ## id, or one of the six old concept ids - the word it now is at that tier).
 func _shot_keystone(concept: String) -> void:
-	var need: String = str(main.player.call("pending_tier", (main.player.get("abilities") as Array)[int(main.player.call("sealing_index"))]))
+	var need: String = str(main.player.pending_tier((main.player.abilities as Array)[int(main.player.sealing_index())]))
 	var wid: String = GameData.construct_word_id(need, concept)
-	for g: Dictionary in main.player.call("construct_groups", need):
+	for g: Dictionary in main.player.construct_groups(need):
 		if str(g["concept"]) == wid:
 			main.screen.call("choose_construct", int(g["index"]))
 			return
@@ -500,7 +500,7 @@ func _setup_lock_shot(what: String) -> void:
 			main.start_test_character("water")
 			_shot_surge_first()
 			for cid: String in ["FIR-1a", "FIR-6b", "ICE-1a"]:
-				(main.player.get("constructs") as Array).append({"tier": "vestige", "concept": cid})
+				(main.player.constructs as Array).append({"tier": "vestige", "concept": cid})
 			main.open_seal(0)
 			main.screen.call("place_rune", "WAT-1a", 1, 0)        # Flood, ring 1
 			main.screen.call("finish_bond", 0, 1)
@@ -527,12 +527,12 @@ func _setup_lock_shot(what: String) -> void:
 					main.get_viewport().push_input(mv)
 					Input.warp_mouse(p))
 		"nofit":
-			main.player.call("set_affinities", ["fire"])
-			main.player.call("start_with_skills", main.player.call("default_start_skills"))
-			((main.player.get("abilities") as Array)[0] as Dictionary)["progress"] = 100.0
-			(main.player.get("constructs") as Array).clear()
+			main.player.set_affinities(["fire"])
+			main.player.start_with_skills(main.player.default_start_skills())
+			((main.player.abilities as Array)[0] as Dictionary)["progress"] = 100.0
+			(main.player.constructs as Array).clear()
 			for cid2: String in ["WAT-1a", "WAT-4b"]:
-				(main.player.get("constructs") as Array).append({"tier": "vestige", "concept": cid2})
+				(main.player.constructs as Array).append({"tier": "vestige", "concept": cid2})
 			main._enter_town()
 			main.open_ethercosm()
 			main.screen.call("select", 0)
@@ -547,12 +547,12 @@ func _setup_lock_shot(what: String) -> void:
 			main.start_test_character("water")
 			_shot_surge_first()
 			main.open_seal(0)
-			main.player.call("word_add", 0, "WAT-1a", 0, 1)       # Flood on ring 1, joined to the skill
-			main.player.call("word_add", 0, "WAT-4a", 0, 1)       # Heave on ring 1, joined to the skill
+			main.player.word_add(0, "WAT-1a", 0, 1)       # Flood on ring 1, joined to the skill
+			main.player.word_add(0, "WAT-4a", 0, 1)       # Heave on ring 1, joined to the skill
 			_shot_keystone("acceleration")
 			main.screen.call("bind_and_seal", 0.0)                # ring 1 binds 2 of 3, Flood's bonds open
-			main.player.call("word_add", 0, "WAT-4b", 0, 2)       # Drown on ring 2, bonded straight to the skill
-			main.player.call("word_add", 0, "WAT-6b", 2, 2)       # Settle on ring 2, off Heave
+			main.player.word_add(0, "WAT-4b", 0, 2)       # Drown on ring 2, bonded straight to the skill
+			main.player.word_add(0, "WAT-6b", 2, 2)       # Settle on ring 2, off Heave
 			_shot_keystone("reach")
 			main.screen.call("deselect")
 			main._harness()._shot_countdown = 70
@@ -586,21 +586,21 @@ func _setup_lock_shot(what: String) -> void:
 			main.start_test_character("water")
 			_shot_surge_first()
 			main.open_seal(0)
-			main.player.call("word_add", 0, "WAT-1a", 0)          # Flood
-			main.player.call("word_add", 0, "WAT-4a", 0)          # Heave
-			main.player.call("word_add", 0, "WAT-3b", 1)          # Dry on Flood
-			main.player.call("word_toggle_link", 0, 1, 2)         # Flood - Heave: closed, ring 1 full
+			main.player.word_add(0, "WAT-1a", 0)          # Flood
+			main.player.word_add(0, "WAT-4a", 0)          # Heave
+			main.player.word_add(0, "WAT-3b", 1)          # Dry on Flood
+			main.player.word_toggle_link(0, 1, 2)         # Flood - Heave: closed, ring 1 full
 			_shot_keystone("acceleration")
 			main.screen.call("bind_and_seal", 0.0)                # the vestige binds; the bar refills (test override)
-			main.player.call("word_toggle_link", 0, 1, 2)         # rework ring 1: part Flood and Heave
-			main.player.call("word_remove", 0, 3)                 # Dry out
-			main.player.call("word_add", 0, "WAT-4b", 1, 1)       # Drown in its place, on ring 1, off Flood (Slack before v2)
-			main.player.call("word_add", 0, "WAT-6b", 2)          # Settle off Heave, ring 2
-			main.player.call("word_add", 0, "WAT-4b", 4)          # Drown off Settle, ring 2
-			main.player.call("word_add", 0, "WAT-3b", 4)          # Dry off Settle, ring 2
-			main.player.call("word_add", 0, "UNI-05a", 1)         # Expand off Flood, ring 2
-			main.player.call("word_add", 0, "UNI-05a", 7)         # a second Expand off the first: ring 2 full
-			main.player.call("word_toggle_link", 0, 4, 8)         # it and Settle: the word closes
+			main.player.word_toggle_link(0, 1, 2)         # rework ring 1: part Flood and Heave
+			main.player.word_remove(0, 3)                 # Dry out
+			main.player.word_add(0, "WAT-4b", 1, 1)       # Drown in its place, on ring 1, off Flood (Slack before v2)
+			main.player.word_add(0, "WAT-6b", 2)          # Settle off Heave, ring 2
+			main.player.word_add(0, "WAT-4b", 4)          # Drown off Settle, ring 2
+			main.player.word_add(0, "WAT-3b", 4)          # Dry off Settle, ring 2
+			main.player.word_add(0, "UNI-05a", 1)         # Expand off Flood, ring 2
+			main.player.word_add(0, "UNI-05a", 7)         # a second Expand off the first: ring 2 full
+			main.player.word_toggle_link(0, 4, 8)         # it and Settle: the word closes
 			_shot_keystone("reach")
 			main.screen.call("deselect")
 			main._harness()._shot_countdown = 70
@@ -608,10 +608,10 @@ func _setup_lock_shot(what: String) -> void:
 			# a new character's full skill and no vestige carried: the main page says what is missing,
 			# and there is no way into the lock
 			main.session_part._select_talent(0)
-			main.player.call("set_affinities", ["water"])
-			main.player.call("start_with_skills", main.player.call("default_start_skills"))
-			(main.player.get("abilities") as Array)[0]["progress"] = 100.0
-			(main.player.get("constructs") as Array).clear()
+			main.player.set_affinities(["water"])
+			main.player.start_with_skills(main.player.default_start_skills())
+			(main.player.abilities as Array)[0]["progress"] = 100.0
+			(main.player.constructs as Array).clear()
 			main._enter_town()
 			main.open_ethercosm()
 			main.screen.call("select", 0)

@@ -29,7 +29,7 @@ func backdrop() -> float:
 	return 0.9
 
 
-func _init(game_node: Node) -> void:
+func _init(game_node: Main) -> void:
 	super(game_node)
 	RngSeed.apply(_rng, "creation")
 	var cfg: Dictionary = GameData.creation
@@ -40,7 +40,7 @@ func _init(game_node: Node) -> void:
 
 ## Put three new primes on the table and take the first.
 func roll_offers() -> void:
-	offers = PrimeRoll.roll_offers(_rng, game.get("TALENT_CHOICES"))
+	offers = PrimeRoll.roll_offers(_rng, Main.TALENT_CHOICES)
 	_take(0)
 
 
@@ -324,7 +324,7 @@ func _build_left() -> void:
 	_left.add_child(UiTheme.rule())
 	var save: Dictionary = SaveGame.read()
 	if not save.is_empty() and str(save.get("talent_id", "")) != "":
-		_left.add_child(UiWidgets.small_button("Continue  -  %s" % SaveGame.who(save), func() -> void: game.call("continue_game")))
+		_left.add_child(UiWidgets.small_button("Continue  -  %s" % SaveGame.who(save), func() -> void: game.continue_game()))
 	SaveGame.take_note()
 	var save_note: String = str(SaveGame.inspect().get("note", ""))   # read from a backup copy, damaged, or from a newer build
 	if save_note != "":
@@ -334,9 +334,9 @@ func _build_left() -> void:
 		_left.add_child(warn)
 	for slot: int in range(1, SaveGame.SLOTS + 1):
 		if SaveGame.exists(SaveGame.slot_path(slot)):
-			_left.add_child(UiWidgets.small_button("Load a saved character", func() -> void: game.call("open_saves")))
+			_left.add_child(UiWidgets.small_button("Load a saved character", func() -> void: game.open_saves()))
 			break
-	_left.add_child(UiWidgets.small_button("Controls", func() -> void: game.call("open_settings")))
+	_left.add_child(UiWidgets.small_button("Controls", func() -> void: game.open_settings()))
 
 
 ## Test characters (Brent 2026-10-22): one button per affinity; each starts a character with that
@@ -347,7 +347,7 @@ func _build_test_characters() -> void:
 	var head := UiTheme.heading("Test characters", 17)
 	_left.add_child(head)
 	_left.add_child(UiTheme.body("Every skill of one affinity, ready to try. Not saved over your character.", 12, UiTheme.TEXT_FAINT))
-	_left.add_child(UiWidgets.test_character_grid(func(aff: String) -> void: game.call("start_test_character", aff)))
+	_left.add_child(UiWidgets.test_character_grid(func(aff: String) -> void: game.start_test_character(aff)))
 
 
 func _build_nav() -> void:
@@ -687,9 +687,9 @@ func _build_embark() -> void:
 	_right.add_child(UiWidgets.stat_row("Purse", UiTheme.money_text(GameData.inum("town", "starting_money")), UiTheme.GOLD))
 	_right.add_child(UiWidgets.stat_row("Soul", "one star, barely lit"))
 	_right.add_child(UiTheme.rule())
-	var hardcore: bool = bool(game.get("hardcore"))
+	var hardcore: bool = bool(game.hardcore)
 	_right.add_child(UiWidgets.service_button("Hardcore", "Death is permanent. Otherwise you wake in town, in debt.", "ON" if hardcore else "off", func() -> void:
-		game.call("toggle_hardcore")
+		game.toggle_hardcore()
 		_refresh()))
 
 
@@ -700,4 +700,4 @@ func _begin() -> void:
 		return
 	if str(spec["name"]) == "":
 		spec["name"] = random_name()
-	game.call("begin_character", spec.duplicate(true))
+	game.begin_character(spec.duplicate(true))

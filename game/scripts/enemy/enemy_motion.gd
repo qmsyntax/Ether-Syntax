@@ -50,9 +50,9 @@ func _pick_target() -> void:
 	# Charmed: it fights for whoever charmed it - the nearest of its old friends
 	if enemy.status_part._st_any("fights_for_source"):
 		var foe: Node3D = null
-		for node2: Node in enemy.get_tree().get_nodes_in_group("enemies"):
-			var o := node2 as Node3D
-			if o == null or o == enemy or bool(o.call("is_dead")) or bool(o.call("_charmed")):
+		for node2: Enemy in enemy.get_tree().get_nodes_in_group("enemies"):
+			var o: Enemy = node2
+			if o == null or o == enemy or bool(o.is_dead()) or bool(o._charmed()):
 				continue
 			if foe == null or o.global_position.distance_to(enemy.global_position) < foe.global_position.distance_to(enemy.global_position):
 				foe = o
@@ -74,11 +74,11 @@ func _pick_target() -> void:
 			best_d = d
 	if best == null:
 		# a friend that draws it (Masked wears your face; a Charmed one has turned on them): any status with lure_radius
-		for node: Node in enemy.get_tree().get_nodes_in_group("enemies"):
-			var m := node as Node3D
+		for node: Enemy in enemy.get_tree().get_nodes_in_group("enemies"):
+			var m: Enemy = node
 			if m == null or m == enemy:
 				continue
-			var draw: float = float(m.call("lure_reach"))
+			var draw: float = float(m.lure_reach())
 			var d2: float = m.global_position.distance_to(enemy.global_position)
 			if draw > 0.0 and d2 <= draw and d2 < best_d:
 				best = m
@@ -235,7 +235,7 @@ func _door_dir(straight: Vector3) -> Vector3:
 		enemy._router = enemy.get_tree().get_first_node_in_group("router")
 	if enemy._router == null:
 		return straight
-	var next: Vector3 = enemy._router.call("route", enemy.global_position, enemy.target.global_position, enemy.radius)
+	var next: Vector3 = enemy._router.route(enemy.global_position, enemy.target.global_position, enemy.radius)
 	var way: Vector3 = next - enemy.global_position
 	way.y = 0.0
 	return way.normalized() if way.length() > 0.05 else straight

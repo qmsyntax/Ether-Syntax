@@ -19,7 +19,7 @@ const ProjectionScript := preload("res://scripts/nether/projection.gd")
 const ConstructScript := preload("res://scripts/nether/nether_construct.gd")
 const WispScript := preload("res://scripts/nether/wisp.gd")
 
-var player: Node3D
+var player: Player
 var projection: Node3D
 var active := false
 var rng := RandomNumberGenerator.new()
@@ -55,7 +55,7 @@ func populate_site(centre: Vector3, half: Vector2) -> void:
 		var at2 := centre + Vector3(rng.randf_range(-half.x, half.x) * 0.6, 0.0, rng.randf_range(-half.y, half.y) * 0.6)
 		# a word of the tier, leaning toward the traveller's affinities (Brent 2026-11-04: "wild spawns lean
 		# toward the player's affinities so drops stay useful"; balance.json nether word_weights)
-		var held: Array = player.get("affinities") if player != null else []
+		var held: Array = player.affinities if player != null else []
 		var wid: String = ConstructWords.pick_wild(tier, held, rng)
 		if wid != "":
 			spawn_construct(at2, tier, wid, rng.randf() < float(_cfg["docile_chance"]))
@@ -86,7 +86,7 @@ func populate_zone(def: Dictionary, to_local: Callable) -> void:
 				var spot := centre + Vector3(rng.randf_range(-float(half[0]), float(half[0])), 0.0, rng.randf_range(-float(half[1]), float(half[1])))
 				var aff: String = str(w.get("affinity", "plain"))
 				if aff == "own":
-					var mine: Array = player.get("affinities") if player != null else []
+					var mine: Array = player.affinities if player != null else []
 					aff = str(mine[rng.randi() % mine.size()]) if not mine.is_empty() else "plain"
 				spawn_wisp(spot, aff).set_meta("site", str(site.get("id", "")))
 		var k: int = 0
@@ -103,7 +103,7 @@ func populate_zone(def: Dictionary, to_local: Callable) -> void:
 
 ## What a new wisp is: one of the traveller's own affinities, someone else's, or plain ether.
 func _roll_wisp_affinity() -> String:
-	var mine: Array = player.get("affinities") if player != null else []
+	var mine: Array = player.affinities if player != null else []
 	var roll: float = rng.randf()
 	if not mine.is_empty() and roll < float(_cfg["attuned_wisp_chance"]):
 		return str(mine[rng.randi() % mine.size()])
@@ -138,9 +138,9 @@ func spawn_construct(local_pos: Vector3, tier: String, concept: String, docile: 
 func cannot_enter_reason() -> String:
 	if active:
 		return "You are already out."
-	if player == null or bool(player.get("dead")):
+	if player == null or bool(player.dead):
 		return "No."
-	if bool(player.get("in_combat")):
+	if bool(player.in_combat):
 		return "You cannot still your mind while something is trying to kill you."
 	return ""
 
@@ -154,11 +154,11 @@ func enter() -> bool:
 	subdued_this_trip = 0
 	_armed_return = false
 	_foreign_note_cd = 0.0
-	player.set("projecting", true)
+	player.projecting = true
 	projection = ProjectionScript.new()
 	add_child(projection)
 	projection.global_position = player.global_position
-	projection.call("setup", player.global_position, int(player.get("stars")))
+	projection.call("setup", player.global_position, int(player.stars))
 	projection.connect("destroyed", _on_projection_destroyed)
 	for c: Node in get_tree().get_nodes_in_group("nether_enemies"):
 		c.set("target", projection)
@@ -178,7 +178,7 @@ func exit(reason: String = "") -> void:
 		projection.queue_free()
 		projection = null
 	if player != null and is_instance_valid(player):
-		player.set("projecting", false)
+		player.projecting = false
 	exited.emit(reason)
 
 
@@ -216,29 +216,29 @@ func _gather_wisps() -> void:
 		if d.length() > float(_cfg["wisp_reach"]):
 			continue
 		var kind: String = str(w.get("affinity"))
-		var attuned: bool = (player.get("affinities") as Array).has(kind)
+		var attuned: bool = (player.affinities as Array).has(kind)
 		if kind != "plain" and not attuned:
 			# a wisp of an affinity you do not hold slides away from the touch
 			if _foreign_note_cd <= 0.0:
 				_foreign_note_cd = 4.0          # say it again if they keep trying, but not every frame
-				player.call("note", "A %s wisp. It will not come to you - you have no such affinity." % str(GameData.affinity(kind).get("label", kind)).to_lower())
+				player.note("A %s wisp. It will not come to you - you have no such affinity." % str(GameData.affinity(kind).get("label", kind)).to_lower())
 			continue
 		var essence: float = float(_cfg["wisp_attuned_essence"]) if attuned else float(_cfg["wisp_plain_essence"])
 		if attuned:
-			player.call("grow_star", float(_cfg["wisp_attuned_star_pct"]))
-		player.set("essence", minf(float(player.get("essence_max")), float(player.get("essence")) + essence))
+			player.grow_star(float(_cfg["wisp_attuned_star_pct"]))
+		player.essence = minf(float(player.essence_max), float(player.essence) + essence)
 		gathered_this_trip += 1
 		w.call("gather")
 
 
 func _on_subdued(construct: Node) -> void:
 	subdued_this_trip += 1
-	(player.get("constructs") as Array).append({"tier": str(construct.get("tier")), "concept": str(construct.get("concept"))})
-	player.call("note", "The %s is subdued. It is yours to bind." % str(construct.get("display_name")))
-	player.call("add_aura", 6.0 if str(construct.get("tier")) == "vestige" else 18.0)
+	(player.constructs as Array).append({"tier": str(construct.get("tier")), "concept": str(construct.get("concept"))})
+	player.note("The %s is subdued. It is yours to bind." % str(construct.get("display_name")))
+	player.add_aura(6.0 if str(construct.get("tier")) == "vestige" else 18.0)
 	# subduing a construct reveals runes of its word, its own first (Brent 2026-10-23 and 2026-11-04,
 	# design/14 sections 8 and 14)
-	player.call("on_construct_subdued", str(construct.get("tier")), str(construct.get("concept")))
+	player.on_construct_subdued(str(construct.get("tier")), str(construct.get("concept")))
 
 
 func _on_projection_destroyed() -> void:

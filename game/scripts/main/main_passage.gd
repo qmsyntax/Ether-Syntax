@@ -17,7 +17,7 @@ func tick(delta: float) -> void:
 			if not main.sealed:
 				main.sealed = true
 				_add_barrier(1)
-				main.player.call("note", "Stone grinds shut behind you. The entrance is sealed.")
+				main.player.note("Stone grinds shut behind you. The entrance is sealed.")
 			_activate(next_c)
 			_set_dungeon_banner()
 			return
@@ -38,20 +38,20 @@ func handle_input(event: InputEvent) -> void:
 	if main._cast_from_hotbar(event):
 		pass
 	elif event.is_action_pressed("ascend"):
-		main.player.call("try_ascend")
+		main.player.try_ascend()
 	elif event.is_action_pressed("bind"):
 		main.open_seal_first_ready()
 	elif event.is_action_pressed("healer"):
-		main.player.call("note", "No healer in here. The entrance is sealed.")
+		main.player.note("No healer in here. The entrance is sealed.")
 	elif event.is_action_pressed("interact"):
 		if main._rune_stone_in_reach() != null:
 			main._read_stone(main._rune_stone_in_reach())
 		elif _pad_in_reach():
 			_extract()
 		elif main.pads.is_empty():
-			main.player.call("note", "No exit yet. %d more walls." % maxi(0, main.gate_at - main.cleared))
+			main.player.note("No exit yet. %d more walls." % maxi(0, main.gate_at - main.cleared))
 		else:
-			main.player.call("note", "Stand on a glowing exit to leave.")
+			main.player.note("Stand on a glowing exit to leave.")
 
 
 func where() -> String:
@@ -60,10 +60,10 @@ func where() -> String:
 
 func enter_passage() -> void:
 	main._return_to = {}
-	if not bool(main.player.call("can_afford", main.ticket_price)):
-		main.player.call("note", "No one will sell you a ticket on that much debt.")
+	if not bool(main.player.can_afford(main.ticket_price)):
+		main.player.note("No one will sell you a ticket on that much debt.")
 		return
-	main.player.call("charge", main.ticket_price)
+	main.player.charge(main.ticket_price)
 	main._show_screen(null, false)
 	_enter_dungeon()
 
@@ -118,12 +118,12 @@ func _enter_dungeon() -> void:
 		stone.position = Vector3(main.ch_half_w - 0.9, 0.0, -(float(c2) + 0.5) * main.ch_len)
 		stone.rotation.y = -PI / 2.0
 		main.level.add_child(stone)
-		stone.set_read((main.player.get("read_inscriptions") as Array).has(str(ins["id"])))
+		stone.set_read((main.player.read_inscriptions as Array).has(str(ins["id"])))
 	# the spirit layer: one site per chamber, antechamber included
 	for c: int in range(0, main.chambers + 1):
 		main.nether.populate_site(Vector3(0.0, 0.0, -(float(c) + 0.5) * main.ch_len), Vector2(main.ch_half_w - 1.5, main.ch_len * 0.5 - 1.5))
 	main.player.global_position = main.level.to_global(Vector3(0.0, 0.0, -4.0))
-	main.player.set("active", true)
+	main.player.active = true
 	main.factory_part._place_corpses("passage")
 	# everyone the passage can put up is loaded now, with the level, not the first time each kind wakes;
 	# the first wall's bodies are built ahead (the rest after each wall falls - _on_wall_cleared)
@@ -133,7 +133,7 @@ func _enter_dungeon() -> void:
 	main.factory_part._warm_bodies(roster + main.factory_part._calls_of(roster))
 	main._prebuild_bodies(_wall_kinds(1))
 	main.state = "dungeon"
-	main.player.call("note", "You step through into %s. Walk up the corridor (%s)." % [str(main._biome.get("label", main.biome)).to_lower(), Keybinds.binding_text("move_up")])
+	main.player.note("You step through into %s. Walk up the corridor (%s)." % [str(main._biome.get("label", main.biome)).to_lower(), Keybinds.binding_text("move_up")])
 
 
 ## Seal the doorway into chamber `c`: an unseen collider, and its gate shut.
@@ -183,9 +183,9 @@ func _activate(c: int) -> void:
 			else main.rng.randf_range(-float(c + 1) * main.ch_len + 2.0, -float(c) * main.ch_len - 7.0))
 		main.factory_part._spawn_enemy(kind, local, strength)
 	main._prebuild_bodies(main.factory_part._calls_of(kinds))         # a commander's call for help lands mid-fight: its bodies wait ready
-	main.player.call("start_fight")
-	main.player.call("note", "Wall %d of %d." % [c, main.chambers])
-	main.hud.call("announce", "WALL %d" % c if c != main.chambers else "THE LAST WALL")
+	main.player.start_fight()
+	main.player.note("Wall %d of %d." % [c, main.chambers])
+	main.hud.announce("WALL %d" % c if c != main.chambers else "THE LAST WALL")
 	if main._harness_part != null:
 		main._harness().shot_dungeon_wall(c)
 
@@ -203,7 +203,7 @@ func route(from: Vector3, to: Vector3, walker_radius: float) -> Vector3:
 func _on_wall_cleared() -> void:
 	main.cleared = main.current
 	main.bank += main.stage_value * main.cleared
-	main.player.call("end_fight")
+	main.player.end_fight()
 	var next_c: int = main.cleared + 1
 	if main.barriers.has(next_c):
 		(main.barriers[next_c] as Node).queue_free()
@@ -214,9 +214,9 @@ func _on_wall_cleared() -> void:
 		main._prebuild_bodies(_wall_kinds(main.cleared + 1))   # built while you walk to the next doorway
 	if main.cleared >= main.gate_at:
 		_spawn_pad(main.cleared)
-	main.player.call("note", "Wall %d cleared. Spoils worth $%d waiting - yours only if you walk out with them." % [main.cleared, main.bank])
+	main.player.note("Wall %d cleared. Spoils worth $%d waiting - yours only if you walk out with them." % [main.cleared, main.bank])
 	if main.cleared == main.gate_at:
-		main.hud.call("announce", "AN EXIT OPENS")
+		main.hud.announce("AN EXIT OPENS")
 
 
 func _spawn_pad(c: int) -> void:
@@ -258,9 +258,9 @@ func _extract() -> void:
 	main._last_sealed = main.sealed
 	main._bot_finished = main._bot_mode
 	main.delves += 1
-	main.player.call("note", "You walk out after %d walls carrying spoils worth $%d." % [main.cleared, int(carried[0])])
+	main.player.note("You walk out after %d walls carrying spoils worth $%d." % [main.cleared, int(carried[0])])
 	if int(carried[1]) > 0:
-		main.player.call("note", "You could not carry the rest - $%d of it stays at the exit." % int(carried[1]))
+		main.player.note("You could not carry the rest - $%d of it stays at the exit." % int(carried[1]))
 	var rewards: Array[String] = grant_exit_rewards(main.cleared, main.cleared == main.chambers)
 	if main._return_to.is_empty():
 		main._enter_town("passage")
@@ -269,19 +269,19 @@ func _extract() -> void:
 		main._return_to = {}
 		main.enter_zone(str(back["zone"]), str(back["at"]))
 	if not rewards.is_empty():
-		main.player.call("note", "At the exit: %s." % ", ".join(rewards))
+		main.player.note("At the exit: %s." % ", ".join(rewards))
 
 
 ## A delve's spoils as things to carry home and sell (nothing pays cash - Brent 2026-10-18): the
 ## most valuable kind first, as many as the pack will take. Returns [value carried, value left].
 func grant_spoils(value: int) -> Array:
-	var inv: Inventory = main.player.get("inventory")
+	var inv: Inventory = main.player.inventory
 	var left: int = value
 	for id: Variant in GameData.items_file.get("spoils", []):
 		var each: int = int(GameData.item(str(id)).get("value", 0))
 		while each > 0 and left >= each and inv.add(str(id)):
 			left -= each
-	main.player.call("refresh_gear")
+	main.player.refresh_gear()
 	return [value - left, left]
 
 
@@ -297,7 +297,7 @@ func grant_exit_rewards(walls_cleared: int, full_clear: bool) -> Array[String]:
 	for entry: Dictionary in table:
 		total += float(entry["weight"])
 	var got: Array[String] = []
-	var inv: Inventory = main.player.get("inventory")
+	var inv: Inventory = main.player.inventory
 	for i: int in rolls:
 		var pick: float = main.rng.randf() * total
 		for entry: Dictionary in table:
@@ -307,7 +307,7 @@ func grant_exit_rewards(walls_cleared: int, full_clear: bool) -> Array[String]:
 				if inv.add(id):
 					got.append(str(GameData.item(id).get("name", id)))
 				break
-	main.player.call("refresh_gear")
+	main.player.refresh_gear()
 	return got
 
 
@@ -338,4 +338,4 @@ func _charge_rent(rate: float, delta: float) -> void:
 	if main._rent_accum >= 1.0:
 		var due: int = int(main._rent_accum)
 		main._rent_accum -= float(due)
-		main.player.call("charge", due)
+		main.player.charge(due)

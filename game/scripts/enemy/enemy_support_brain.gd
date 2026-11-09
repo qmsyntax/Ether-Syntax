@@ -14,9 +14,9 @@ func _allies_within(reach: float) -> Array[Node3D]:
 	var out: Array[Node3D] = []
 	if not enemy.is_inside_tree():
 		return out
-	for node: Node in enemy.get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
-		if e == null or e == enemy or bool(e.call("is_dead")):
+	for node: Enemy in enemy.get_tree().get_nodes_in_group("enemies"):
+		var e: Enemy = node
+		if e == null or e == enemy or bool(e.is_dead()):
 			continue
 		if e.global_position.distance_to(enemy.global_position) <= reach:
 			out.append(e)

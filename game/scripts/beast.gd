@@ -1,5 +1,5 @@
 class_name Beast
-extends "res://scripts/enemy.gd"
+extends Enemy
 ## An unstarred beast of the countryside (design/07 5.4; Brent 2026-10-19: the early levels are
 ## spent hunting monsters with no star). Everything an enemy is - poise, facing, statuses, slots,
 ## the field's sleep / leash / walk home - plus the beasts' own behaviours, each asking the player
@@ -59,6 +59,17 @@ func _ready() -> void:
 	_graze_goal = home
 	if behaviour == "lurker" and not buried:
 		bury()
+
+
+# --- public readers (docs/architecture/typed-calls.md): aliases of private fields the harness's shots reach ----------
+
+## A Sod-Lurker's rise: seconds left, below 0 when not rising (`_rise_t`).
+var rise_left: float:
+	get: return _rise_t
+	set(value): _rise_t = value
+## A Wirehorn's kick is readied (`_kick`).
+var kick_ready: bool:
+	get: return _kick
 
 
 # --- being hit ------------------------------------------------------------------------------

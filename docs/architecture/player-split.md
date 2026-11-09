@@ -60,17 +60,21 @@ suite, the timeline and cast-every-skill output and the self-test count are the 
   each, inventory_screen.gd 46, talk_screen.gd 23, netherecho.gd 18, then the tempering, skill tree and ascension
   screens), and the tests do the same in 27 files.
 
-## Next (typed calls, not done in this step)
+## Next (typed calls) - done in step 4a, except item 3
 
-1. Type the holders: `main.gd`'s `var player: CharacterBody3D`, `hud.gd` / `ui_screen.gd`'s `var player: Node`,
-   `netherecho.gd` / `field_camps.gd`'s `Node3D` become `Player`, then turn their `player.call("x")` /
-   `get("x")` / `set("x")` into `player.x(...)` / `player.x` (main.gd first: it is most of them, and main.gd's own
-   split is next).
-2. Give the private names that outside code reaches a public reader first: `_facing` (9 uses), `_refresh_highlights`
-   (7), `_recover_t` (5), `_melee_cd`, `_know` (3), `_ranged_cd`, `_latent_aura`, `_held`, `_check_death` (2),
-   `_windup`, `_windup_t`, `_windup_total`, `_stagger_t`, `_focus_max` (1).
-3. The dash's `_dash_*` state is split between `PlayerSkillMoves` (set by the dash) and `PlayerMotion` (moved each
-   frame); one owner for the dash's travel would let it leave the node.
+Done 2026-11-09 (`docs/architecture/typed-calls.md`):
+
+1. ~~Type the holders~~: `main.gd`'s `player`, the HUD's and `UiScreen`'s, `Netherecho`'s and `FieldCamps`' are
+   `Player`, as are the talents' `owner` and `Crafting`'s `p`; their string calls on public names are direct.
+2. ~~Public readers~~: `facing_dir`, `recover_left`, `melee_cd_left`, `ranged_cd_left`, `latent_aura`, `held_cast`,
+   `windup_cast` / `windup_left` / `windup_total`, `stagger_left`, `edge_focus_max()`, `know_rune()`,
+   `refresh_highlights()`, `check_death()`, `float_note()`, `float_note_at()`, `apply_blow()`,
+   `spend_heal_points()` - aliases; the private names stay for the parts and the tests.
+3. Still open: the dash's `_dash_*` state is split between `PlayerSkillMoves` (set by the dash) and `PlayerMotion`
+   (moved each frame); one owner for the dash's travel would let it leave the node.
+
+The forwarders stay: they are how typed outside code reaches the parts (`main.player.deal_damage()` is the
+forwarder), and the tests still call most of them by string.
 
 ## Adding to the player
 

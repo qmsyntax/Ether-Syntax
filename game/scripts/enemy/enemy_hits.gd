@@ -71,9 +71,9 @@ func take_hit(amount: float, _heavy: bool, source: Node, tags: Array = []) -> fl
 		enemy.hurt.emit(enemy, source)                 # its camp wakes; a herd answers (FieldCamps)
 	if hushed:
 		# Muffle: a kill raises no alarm - those near it cannot call for help a while
-		for node: Node in enemy.get_tree().get_nodes_in_group("enemies"):
+		for node: Enemy in enemy.get_tree().get_nodes_in_group("enemies"):
 			if node != enemy and (node as Node3D).global_position.distance_to(enemy.global_position) <= float(source.call("hush_radius")):
-				node.call("add_status", "muted", 1, source)
+				node.add_status("muted", 1, source)
 	if applied > 0.0 and not enemy.body.is_dead():
 		enemy.status_part._after_hurt(applied, winding)
 		for id: String in enemy.statuses.keys():

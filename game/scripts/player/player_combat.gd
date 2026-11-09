@@ -940,8 +940,8 @@ func _release_overcharge() -> void:
 
 
 func _enemy_nearby() -> bool:
-	for node: Node in player.get_tree().get_nodes_in_group("enemies"):
-		if not bool(node.call("is_dead")):
+	for node: Enemy in player.get_tree().get_nodes_in_group("enemies"):
+		if not bool(node.is_dead()):
 			return true
 	return false
 

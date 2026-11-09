@@ -183,11 +183,11 @@ func tick(delta: float) -> void:
 func _pick_foe() -> Node3D:
 	var best: Node3D = null
 	var marked := false
-	for node: Node in get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
-		if e == null or bool(e.call("is_dead")):
+	for node: Enemy in get_tree().get_nodes_in_group("enemies"):
+		var e: Enemy = node
+		if e == null or bool(e.is_dead()):
 			continue
-		var is_marked: bool = e.has_method("status_from") and not (e.call("status_from", "summons_target", caster) as Array).is_empty()
+		var is_marked: bool = e.has_method("status_from") and not (e.status_from("summons_target", caster) as Array).is_empty()
 		if best == null or (is_marked and not marked) or (is_marked == marked and e.global_position.distance_to(global_position) < best.global_position.distance_to(global_position)):
 			best = e
 			marked = is_marked

@@ -147,20 +147,22 @@ override of `_brain_for`, and the shared fields moved to Beast's node block.
   a drummer left alone should also do something (close in as a Taunted one does, or seek a line like the archer) is
   a design question for Brent.
 
-## Next (typed calls, not done in this step)
+## Next (typed calls) - done in step 4a, except item 4
 
-1. Type the holders. Enemies are held as `Node`, `Node3D` or `CharacterBody3D` almost everywhere (the player's parts'
-   targets, `apply_hit`'s `target`, projectiles, zones, `FieldCamps`, `LevelFactory`, the HUD) and reached through
-   strings: `call("has_status")` (~144 uses in scripts and tests), `call("add_status")` (~96), `call("is_dead")`
-   (~90), `call("status_stacks")` (~67), `call("clear_status")` (~40), `call("shove")`, `take_poise`, `metal_class`,
-   `is_behind`, `blocks_shot` ... (some of these also reach the player, a thrall or a lure). Typing them `Enemy`
-   where only an enemy can arrive would make those calls static and let most forwarders go.
-2. `main.gd` and `field_camps.gd` keep `const EnemyScript := preload("res://scripts/enemy.gd")`; with the class
-   name they can say `Enemy` (and `Beast` can say `extends Enemy`), a one-line change each.
-3. Give the private names that outside code reaches a public reader first: `_windup` (the HUD, the bot report, ~90
-   test uses), `_attack_cd`, `_stuck_t`, `_leap_left`, `_retreat_t`, `_shove_left`, `_special`, `_special_cd`,
-   `_charge_left`, `_poise_idle`, `_flash`, `_rig`, `_land_melee`, `_find_vantage`, `_tick_statuses`.
-4. Beast's behaviours as brains (see Beast above), if a second creature source makes Beast grow.
+Done 2026-11-09 (`docs/architecture/typed-calls.md`):
+
+1. ~~Type the holders~~: every loop over the "enemies" group, FieldCamps' members, LevelFactory's and the shots'
+   spawns, the lists from `_enemies_near` / `inside()`, and `apply_hit`'s target once it passes the `add_status`
+   guard hold `Enemy`. Targets that can be the player, a thrall, a lure, a stone or scenery stay duck-typed (most
+   of the remaining `has_status` / `add_status` / `is_dead` strings), and so does `Enemy._player` (a beast woken
+   by something else holds that instead).
+2. ~~`EnemyScript` preloads~~: gone from `main.gd` and `field_camps.gd`; `Beast` says `extends Enemy`.
+3. ~~Public readers~~ for what the game's own scripts reach: `windup_left`, `stuck_left`, `leap_left`,
+   `retreat_time`, `special_move`, `model_rig`, `apply_facing()`, `update_melee_telegraph()`; Beast's `rise_left`,
+   `kick_ready`. The rest of the list (`_attack_cd`, `_shove_left`, `_special_cd`, `_charge_left`, `_poise_idle`,
+   `_flash`, `_land_melee`, `_find_vantage`, `_tick_statuses`) is reached only by the tests, by string, and is
+   left as it is.
+4. Still open: Beast's behaviours as brains (see Beast above), if a second creature source makes Beast grow.
 
 ## Adding to the enemy
 

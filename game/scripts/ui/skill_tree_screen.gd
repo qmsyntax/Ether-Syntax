@@ -13,7 +13,7 @@ var selected := ""
 var _view: TreeView
 
 
-func _init(game_node: Node, trainer: bool = false) -> void:
+func _init(game_node: Main, trainer: bool = false) -> void:
 	super(game_node)
 	at_trainer = trainer
 
@@ -31,7 +31,7 @@ func hud_hides() -> Array[String]:
 
 
 func build(root: Control) -> void:
-	var affs: Array = player.get("affinities")
+	var affs: Array = player.affinities
 	if affinity == "" or not affs.has(affinity):
 		affinity = str(affs[0]) if not affs.is_empty() else ""
 	var tree: Dictionary = GameData.skill_tree_of(affinity)
@@ -45,7 +45,7 @@ func build(root: Control) -> void:
 	var title := UiTheme.heading("Skill tree", 30)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
-	var pts := UiTheme.body("Skill points  %d" % int(player.get("skill_points")), 18, UiTheme.STAR)
+	var pts := UiTheme.body("Skill points  %d" % int(player.skill_points), 18, UiTheme.STAR)
 	pts.name = "PointsLabel"
 	pts.autowrap_mode = TextServer.AUTOWRAP_OFF
 	pts.size_flags_vertical = Control.SIZE_SHRINK_END
@@ -81,11 +81,11 @@ func build(root: Control) -> void:
 
 ## learned | ready | open | locked
 func node_state(id: String) -> String:
-	if bool(player.call("knows", id)):
+	if bool(player.knows(id)):
 		return "learned"
-	if not bool(player.call("skill_unlocked", id)):
+	if not bool(player.skill_unlocked(id)):
 		return "locked"
-	return "ready" if str(player.call("cannot_train_reason", id)) == "" else "open"
+	return "ready" if str(player.cannot_train_reason(id)) == "" else "open"
 
 
 func select(id: String) -> void:
@@ -112,7 +112,7 @@ func _detail(box: VBoxContainer) -> void:
 		box.add_child(UiTheme.body(str(ab["summary"]), 14))
 	box.add_child(UiTheme.rule())
 	var node: Dictionary = GameData.skill_node(selected)
-	var cost: Dictionary = player.call("skill_cost", selected)
+	var cost: Dictionary = player.skill_cost(selected)
 	box.add_child(UiWidgets.stat_row("Tier", str(int(node.get("tier", 1)))))
 	box.add_child(UiWidgets.stat_row("Essence cost", "%d" % int(round(float(ab.get("cost", 0.0))))))
 	var needs: Array = node.get("requires", [])
@@ -125,12 +125,12 @@ func _detail(box: VBoxContainer) -> void:
 	if state == "learned":
 		box.add_child(UiTheme.body("You know this skill.", 15, UiTheme.GOOD))
 		var drill: Dictionary = GameData.skill_tree.get("drill", {})
-		var why_d: String = str(player.call("cannot_drill_reason", selected))
+		var why_d: String = str(player.cannot_drill_reason(selected))
 		var d := UiWidgets.service_button("Drill it", "+%d%% toward its next stage. The stage itself still needs a bound construct." % int(float(drill.get("progress", 0.0))),
 			"%d pt  $%d" % [int(drill.get("points", 1)), int(drill.get("price", 0))], func() -> void:
-				var why: String = game.call("drill_skill", selected)
+				var why: String = game.drill_skill(selected)
 				if why != "":
-					player.call("note", why)
+					player.note(why)
 				rebuild(), at_trainer and why_d == "")
 		d.name = "DrillButton"
 		box.add_child(d)
@@ -138,12 +138,12 @@ func _detail(box: VBoxContainer) -> void:
 			box.add_child(UiTheme.body(why_d, 13, UiTheme.BAD))
 	else:
 		box.add_child(UiWidgets.stat_row("To learn", "%d point%s and $%d" % [int(cost["points"]), "" if int(cost["points"]) == 1 else "s", int(cost["price"])], UiTheme.GOLD))
-		var why_l: String = str(player.call("cannot_train_reason", selected))
+		var why_l: String = str(player.cannot_train_reason(selected))
 		var l := UiWidgets.service_button("Learn it", "From %s." % str(GameData.town_folk("trainer").get("name", "the trainer")) if at_trainer else "Only at a trainer in town.",
 			"", func() -> void:
-				var why: String = game.call("train_skill", selected)
+				var why: String = game.train_skill(selected)
 				if why != "":
-					player.call("note", why)
+					player.note(why)
 				rebuild(), at_trainer and why_l == "")
 		l.name = "LearnButton"
 		box.add_child(l)
@@ -152,11 +152,11 @@ func _detail(box: VBoxContainer) -> void:
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(spacer)
-	box.add_child(UiWidgets.stat_row("Purse", UiTheme.money_text(int(player.get("money"))), UiTheme.GOLD))
+	box.add_child(UiWidgets.stat_row("Purse", UiTheme.money_text(int(player.money)), UiTheme.GOLD))
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
 	box.add_child(foot)
-	foot.add_child(UiWidgets.small_button("Done  (%s)" % Keybinds.binding_text("skills"), func() -> void: game.call("close_screen")))
+	foot.add_child(UiWidgets.small_button("Done  (%s)" % Keybinds.binding_text("skills"), func() -> void: game.close_screen()))
 
 
 ## The drawn tree: node buttons on tiers, lines from each node to what it needs.
@@ -245,12 +245,12 @@ class TreeView extends Control:
 			b.add_theme_font_size_override("font_size", 15 if _span().x <= 3.0 and _span().y <= 3.0 else 12)
 
 	func _draw() -> void:
-		var player: Node = screen.get("player")
+		var player: Player = screen.get("player")
 		for id: String in tree:
 			for need: Variant in (tree[id] as Dictionary).get("requires", []):
 				if not tree.has(str(need)):
 					continue
 				var from: Vector2 = _centre_of(str(need)) + Vector2(0, node_size().y * 0.5)
 				var to: Vector2 = _centre_of(id) - Vector2(0, node_size().y * 0.5)
-				var lit: bool = bool(player.call("knows", str(need)))
+				var lit: bool = bool(player.knows(str(need)))
 				draw_line(from, to, UiTheme.GOLD if lit else UiTheme.BRONZE_DIM, 3.0 if lit else 2.0, true)

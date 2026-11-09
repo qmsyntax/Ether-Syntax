@@ -63,7 +63,7 @@ func hud_hides() -> Array[String]:
 
 
 func build(root: Control) -> void:
-	var inv: Inventory = player.get("inventory")
+	var inv: Inventory = player.inventory
 	_inspect_box = null
 	_settle_inspect(inv)
 	_build_sheet(framed(root, 0.03, 0.05, 0.235, 0.775), inv)
@@ -81,42 +81,42 @@ func build(root: Control) -> void:
 
 func _build_sheet(box: VBoxContainer, inv: Inventory) -> void:
 	box.add_theme_constant_override("separation", 6)
-	var who: String = str(player.get("char_name"))
+	var who: String = str(player.char_name)
 	box.add_child(UiTheme.heading(who if who != "" else "Nameless", 26))
-	var talent: Dictionary = player.get("talent")
+	var talent: Dictionary = player.talent
 	if not talent.is_empty():
 		box.add_child(UiTheme.body(str(talent.get("name", "")), 14, UiTheme.STAR))
 	var held: Array[String] = []
-	for aff: String in player.get("affinities"):
+	for aff: String in player.affinities:
 		held.append(str(GameData.affinity(aff).get("label", aff)))
 	if not held.is_empty():
 		box.add_child(UiTheme.body(", ".join(held), 13, UiTheme.TEXT_DIM))
 
 	box.add_child(UiTheme.section("Body"))
-	var star_pct: Array = player.get("star_pct")
-	box.add_child(UiWidgets.stat_row("Stars", str(int(player.get("stars"))), UiTheme.STAR))
+	var star_pct: Array = player.star_pct
+	box.add_child(UiWidgets.stat_row("Stars", str(int(player.stars)), UiTheme.STAR))
 	if not star_pct.is_empty():
 		box.add_child(UiWidgets.stat_row("Newest star", "%d%% grown" % int(float(star_pct.back()))))
-	var body: Body = player.get("body")
+	var body: Body = player.body
 	box.add_child(UiWidgets.stat_row("Health", "%d / %d" % [int(ceil(body.total())), int(ceil(body.total_max()))],
 		UiTheme.BAD if body.total() < body.total_max() * 0.35 else UiTheme.TEXT))
 	if not body.wounds.is_empty():
 		box.add_child(UiWidgets.stat_row("Wounds", str(body.wounds.size()), UiTheme.BAD))
-	box.add_child(UiWidgets.stat_row("Armour", "%d%% off every hit" % int(float(player.call("armour")))))
+	box.add_child(UiWidgets.stat_row("Armour", "%d%% off every hit" % int(float(player.armour()))))
 	box.add_child(UiTheme.section("Combat"))
 
-	var arm_lost: bool = bool(player.get("arm_right_lost"))
-	var strike: float = float(player.call("strike_damage")) * (GameData.num("player", "off_hand_factor") if arm_lost else 1.0)
+	var arm_lost: bool = bool(player.arm_right_lost)
+	var strike: float = float(player.strike_damage()) * (GameData.num("player", "off_hand_factor") if arm_lost else 1.0)
 	box.add_child(UiWidgets.stat_row("Strike damage", str(int(round(strike))), UiTheme.BAD if arm_lost else UiTheme.TEXT))
-	box.add_child(UiWidgets.stat_row("Reach", "%.1f m" % float(player.call("reach_now"))))
-	if (player.call("ranged_weapon") as Dictionary).is_empty():
+	box.add_child(UiWidgets.stat_row("Reach", "%.1f m" % float(player.reach_now())))
+	if (player.ranged_weapon() as Dictionary).is_empty():
 		box.add_child(UiWidgets.stat_row("Ranged damage", "none", UiTheme.TEXT_FAINT))
 	else:
-		box.add_child(UiWidgets.stat_row("Ranged damage", str(int(round(float(player.call("ranged_damage"))))), UiTheme.BAD if arm_lost else UiTheme.TEXT))
-		box.add_child(UiWidgets.stat_row("Time between shots", "%.2f s" % float(player.call("ranged_interval"))))
+		box.add_child(UiWidgets.stat_row("Ranged damage", str(int(round(float(player.ranged_damage())))), UiTheme.BAD if arm_lost else UiTheme.TEXT))
+		box.add_child(UiWidgets.stat_row("Time between shots", "%.2f s" % float(player.ranged_interval())))
 	box.add_child(UiTheme.section("Soul"))
 
-	var rate: float = float(player.get("satellite_rate"))
+	var rate: float = float(player.satellite_rate)
 	box.add_child(UiWidgets.stat_row("Essence regeneration", ("+%s / s" % String.num(rate, 1)) if rate > 0.0 else "none"))
 	var cost: float = inv.stat("cost_mult", true)
 	if not is_equal_approx(cost, 1.0):
@@ -129,11 +129,11 @@ func _build_sheet(box: VBoxContainer, inv: Inventory) -> void:
 	var w: float = inv.weight()
 	var cap: float = maxf(1.0, inv.capacity())
 	box.add_child(UiWidgets.stat_row("Carried", "%d / %d kg" % [int(w), int(cap)], UiTheme.BAD if w > cap * 0.9 else UiTheme.TEXT))
-	box.add_child(UiWidgets.stat_row("Purse", UiTheme.money_text(int(player.get("money"))), UiTheme.BAD if int(player.get("money")) < 0 else UiTheme.GOLD))
+	box.add_child(UiWidgets.stat_row("Purse", UiTheme.money_text(int(player.money)), UiTheme.BAD if int(player.money) < 0 else UiTheme.GOLD))
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(spacer)
-	box.add_child(UiWidgets.small_button("Close  (%s)" % Keybinds.binding_text("inventory"), func() -> void: game.call("close_screen")))
+	box.add_child(UiWidgets.small_button("Close  (%s)" % Keybinds.binding_text("inventory"), func() -> void: game.close_screen()))
 
 
 # --- the doll: the figure and a slot for every piece ------------------------------------------
@@ -159,7 +159,7 @@ func _build_doll(box: VBoxContainer, inv: Inventory) -> void:
 	# The figure outlives a rebuild, so equipping something does not blink it or lose its turn.
 	if _figure == null:
 		_figure = FigureView.new()
-		_figure.show_look(player.get("look"))
+		_figure.show_look(player.look)
 		_figure.set_drag_forwarding(Callable(), _figure_can_drop, _figure_drop)
 	elif _figure.get_parent() != null:
 		_figure.get_parent().remove_child(_figure)
@@ -191,7 +191,7 @@ func _dress_figure(inv: Inventory) -> void:
 	if id != _figure_weapon:
 		_figure_weapon = id
 		rig.set_weapon(Models.weapon(id) if id != "" else null)
-	rig.set_part_visible("arm_right", not bool(player.get("arm_right_lost")))
+	rig.set_part_visible("arm_right", not bool(player.arm_right_lost))
 
 
 func _figure_can_drop(_at: Vector2, data: Variant) -> bool:
@@ -207,45 +207,45 @@ func _figure_drop(_at: Vector2, data: Variant) -> void:
 func equip_item(id: String, into: String = "") -> void:
 	var kind: String = str(GameData.item(id).get("kind", ""))
 	if kind == "kit":
-		game.call("open_field_kit", id)
+		game.open_field_kit(id)
 		return
 	if kind == "tool" or kind == "material":
-		player.call("note", "%s is for crafting: a tool goes back to your hand after each combine, a material goes into one." % str(GameData.item(id).get("name", id)))
+		player.note("%s is for crafting: a tool goes back to your hand after each combine, a material goes into one." % str(GameData.item(id).get("name", id)))
 		return
 	if kind == "consumable":
 		# using it: a field dressing binds a cut, out of a fight
-		var said: String = player.call("use_consumable", id)
+		var said: String = player.use_consumable(id)
 		if said != "":
-			player.call("note", said)
-		game.call("save_now")
+			player.note(said)
+		game.save_now()
 		rebuild()
 		return
 	if str(GameData.item(id).get("kind", "")) == "scroll":
 		# reading it: the skill is yours and the scroll is gone
-		var why: String = player.call("read_scroll", id)
+		var why: String = player.read_scroll(id)
 		if why != "":
-			player.call("note", why)
-		game.call("save_now")
+			player.note(why)
+		game.save_now()
 		rebuild()
 		return
-	var inv: Inventory = player.get("inventory")
+	var inv: Inventory = player.inventory
 	var result: String = inv.equip(id, into)
 	if result == "equipped":
-		player.call("note", "Equipped %s." % str(GameData.item(id).get("name", id)))
+		player.note("Equipped %s." % str(GameData.item(id).get("name", id)))
 	else:
-		player.call("note", "Cannot equip that: %s." % result)
-	player.call("refresh_gear")
-	game.call("save_now")
+		player.note("Cannot equip that: %s." % result)
+	player.refresh_gear()
+	game.save_now()
 	rebuild()
 
 
 func unequip_slot(slot: String) -> void:
-	var inv: Inventory = player.get("inventory")
+	var inv: Inventory = player.inventory
 	var result: String = inv.unequip(slot)
 	if result != "unequipped":
-		player.call("note", "Cannot take that off: %s." % result)
-	player.call("refresh_gear")
-	game.call("save_now")
+		player.note("Cannot take that off: %s." % result)
+	player.refresh_gear()
+	game.save_now()
 	rebuild()
 
 
@@ -339,11 +339,11 @@ func _build_tabs(box: VBoxContainer) -> void:
 ## How many abilities are full and have a construct of the right tier waiting.
 func _bindable_count() -> int:
 	var n := 0
-	for st: Dictionary in player.get("abilities"):
-		var need: String = str(player.call("pending_tier", st))
+	for st: Dictionary in player.abilities:
+		var need: String = str(player.pending_tier(st))
 		if need == "":
 			continue
-		for c: Dictionary in player.get("constructs"):
+		for c: Dictionary in player.constructs:
 			if str(c["tier"]) == need:
 				n += 1
 				break
@@ -486,7 +486,7 @@ func _fill_inspect() -> void:
 	for c: Node in _inspect_box.get_children():
 		_inspect_box.remove_child(c)
 		c.queue_free()
-	var inv: Inventory = player.get("inventory")
+	var inv: Inventory = player.inventory
 	if _inspect_id == "":
 		if _inspect_slot != "":
 			_inspect_box.add_child(UiTheme.heading(str(SLOT_LABELS[_inspect_slot]), 18, UiTheme.TEXT_DIM))
@@ -515,13 +515,13 @@ func _fill_inspect() -> void:
 	if worn:
 		var from: String = _inspect_slot
 		act = UiWidgets.small_button("Take off", func() -> void: unequip_slot(from))
-	elif str(game.get("state")) == "town":
+	elif str(game.state) == "town":
 		act = UiWidgets.small_button("Sell $%d" % inv.sale_price(id), func() -> void:
-			game.call("town_sell_item", id)
+			game.town_sell_item(id)
 			rebuild())
 	else:
 		act = UiWidgets.small_button("Drop", func() -> void:
-			game.call("drop_item", id)
+			game.drop_item(id)
 			rebuild())
 	act.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(act)
@@ -534,7 +534,7 @@ func _fill_inspect() -> void:
 		_inspect_box.add_child(UiTheme.body("A crafting material. It sells for what it is worth, one at a time.", 14, UiTheme.TEXT_DIM))
 	elif item_slot == "":
 		_inspect_box.add_child(UiTheme.body("Loot. Only good for selling.", 14, UiTheme.TEXT_DIM))
-	elif worn and _inspect_slot == "weapon" and bool(player.get("arm_right_lost")):
+	elif worn and _inspect_slot == "weapon" and bool(player.arm_right_lost):
 		_inspect_box.add_child(UiTheme.body("No arm to hold it - it does nothing.", 14, UiTheme.BAD))
 	else:
 		var stats: String = UiWidgets.item_stats_text(def)
@@ -592,12 +592,12 @@ static func _stat_text(v: float, kind: String) -> String:
 # --- soul: abilities and constructs ------------------------------------------------------
 
 func _build_soul(box: VBoxContainer) -> void:
-	var abilities: Array = player.get("abilities")
-	var held: Array = player.get("constructs")
+	var abilities: Array = player.abilities
+	var held: Array = player.constructs
 	var list: VBoxContainer = scroller(box)
 	for ai: int in abilities.size():
 		var st: Dictionary = abilities[ai]
-		var ab: Dictionary = player.call("ability_stats", st)
+		var ab: Dictionary = player.ability_stats(st)
 		var head := HBoxContainer.new()
 		head.add_theme_constant_override("separation", 10)
 		list.add_child(head)
@@ -607,7 +607,7 @@ func _build_soul(box: VBoxContainer) -> void:
 		col.add_theme_constant_override("separation", 2)
 		head.add_child(col)
 		col.add_child(UiTheme.body("%s   -   stage %d" % [str(ab.get("name", "?")), int(st["stage"])], UiTheme.FS_BODY + 1, UiTheme.TEXT))
-		var need: String = str(player.call("pending_tier", st))
+		var need: String = str(player.pending_tier(st))
 		col.add_child(UiWidgets.Bar.new(float(st["progress"]) / 100.0, UiTheme.GOLD if need != "" else UiTheme.ESSENCE,
 			("FULL - needs a %s" % need) if need != "" else "%d%%   costs %d essence" % [int(float(st["progress"])), int(round(float(ab.get("cost", 0.0))))], 22.0))
 		var keys: Array[Dictionary] = RuneWord.keystones(st.get("word", {}))
@@ -616,18 +616,18 @@ func _build_soul(box: VBoxContainer) -> void:
 			for ks: Dictionary in keys:
 				names.append("ring %d: %s" % [int(ks["ring"]), ConstructWords.phrase(str(ks["tier"]), str(ks["concept"]))])
 			col.add_child(UiTheme.body("Keystones: " + ", ".join(names), 12, UiTheme.STAR))
-		var rune_fx: Array = player.call("rune_summary", ai)
+		var rune_fx: Array = player.rune_summary(ai)
 		if not rune_fx.is_empty():
 			col.add_child(UiTheme.body("Sealed word: " + ", ".join(PackedStringArray(rune_fx.map(func(v: Variant) -> String: return str(v)))), 12, UiTheme.GOLD))
-		var asc: String = str(player.call("ascension_summary", ai))
+		var asc: String = str(player.ascension_summary(ai))
 		if asc != "":
 			col.add_child(UiTheme.body(asc, 12, UiTheme.STAR))
-		var lock: Dictionary = player.call("can_open_seal", ai)
+		var lock: Dictionary = player.can_open_seal(ai)
 		if bool(lock["ok"]):
 			# no binding here (Brent 2026-10-23: "only with the runes"): the level lock is formed on the
 			# skill's seal screen, where the ring is filled and the keystone set
 			var open_b: Button = UiWidgets.small_button("Open the seal  -  level %d lock" % (int(st["stage"]) + 1), func() -> void:
-				game.call("open_seal", ai))
+				game.open_seal(ai))
 			open_b.name = "OpenSealButton_%d" % ai
 			open_b.add_theme_font_size_override("font_size", UiTheme.FS_SMALL + 1)
 			col.add_child(open_b)
@@ -645,7 +645,7 @@ func _build_soul(box: VBoxContainer) -> void:
 		var scroll := ScrollContainer.new()
 		scroll.name = "ConstructsCarried"
 		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-		var groups: Array = player.call("construct_groups")
+		var groups: Array = player.construct_groups()
 		scroll.custom_minimum_size = Vector2(0, minf(150.0, 30.0 * ceilf(float(groups.size()) / 4.0) + 26.0 * float(GameData.construct_tiers.size())))
 		box.add_child(scroll)
 		var col := VBoxContainer.new()
@@ -670,9 +670,9 @@ func _build_soul(box: VBoxContainer) -> void:
 				chip.add_theme_color_override("font_color", ConstructWords.color(t, cid).lightened(0.3) if bool(g["fits"]) else UiTheme.TEXT_FAINT)
 				chip.name = "Carried_%s_%s" % [t, cid]
 				chip.mouse_filter = Control.MOUSE_FILTER_PASS
-				chip.tooltip_text = ConstructWords.tooltip(t, cid, player.get("affinities"), true)
+				chip.tooltip_text = ConstructWords.tooltip(t, cid, player.affinities, true)
 				flow.add_child(chip)
-	var proven: Array = player.get("discoveries")
+	var proven: Array = player.discoveries
 	if not proven.is_empty():
 		box.add_child(UiTheme.heading("Proven about your talent", 18))
 		for line: String in proven:

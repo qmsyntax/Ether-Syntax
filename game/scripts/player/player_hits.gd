@@ -152,23 +152,24 @@ func apply_hit(target: Node, payload: Dictionary, tags: Array = [], stage_mult: 
 		_kill_reward(payload["on_kill"], target, ctx)
 	if not is_instance_valid(target) or bool(target.call("is_dead")) or not target.has_method("add_status"):
 		return ctx
+	var foe: Enemy = target as Enemy         # only an enemy takes statuses (enemy.gd): from here the target is one
 	if bool(payload.get("purge", false)) and target.has_method("purge_boons"):
-		target.call("purge_boons")          # Guardbreaker: every boon on it is stripped (balance.json enemy_boons)
-	if payload.has("execute_below") and target.get("body") is Body:
-		var b: Body = target.get("body")
-		var excluded: bool = (payload.get("execute_excludes", []) as Array).has("elite") and target.has_method("is_elite") and bool(target.call("is_elite"))
+		foe.purge_boons()          # Guardbreaker: every boon on it is stripped (balance.json enemy_boons)
+	if payload.has("execute_below") and foe.body is Body:
+		var b: Body = foe.body
+		var excluded: bool = (payload.get("execute_excludes", []) as Array).has("elite") and target.has_method("is_elite") and bool(foe.is_elite())
 		# Last Draught (execute_needs): the execute only if it carried that status when the blow landed (before the
 		# strike drank it: execute_had)
-		if str(payload.get("execute_needs", "")) != "" and not bool(payload.get("execute_had", false)) and not bool(target.call("has_status", str(payload["execute_needs"]))):
+		if str(payload.get("execute_needs", "")) != "" and not bool(payload.get("execute_had", false)) and not bool(foe.has_status(str(payload["execute_needs"]))):
 			excluded = true
 		if not excluded and b.total() < b.total_max() * float(payload["execute_below"]):
 			FloatText.spawn(player.get_parent(), (target as Node3D).global_position + Vector3.UP * 0.7, "ENDED", Color(0.9, 0.86, 0.72))
 			player.combat_part.deal_damage(target, b.total() * 10.0 + 1.0, tags + ["execute"])
-			if not is_instance_valid(target) or bool(target.call("is_dead")):
+			if not is_instance_valid(target) or bool(foe.is_dead()):
 				return ctx
-	var stun_marks: int = int(target.call("status_stacks", "live")) if payload.has("stun_per_mark") else 0
+	var stun_marks: int = int(foe.status_stacks("live")) if payload.has("stun_per_mark") else 0
 	var opts: Dictionary = _status_opts(target, payload, tags)
-	if not bool(payload.get("needs_facing", false)) or bool(target.call("is_in_front", player.global_position)):
+	if not bool(payload.get("needs_facing", false)) or bool(foe.is_in_front(player.global_position)):
 		var time_of: Dictionary = payload.get("status_time_of", {})
 		if payload.has("status"):
 			_give_status(target, str(payload["status"]), int(payload.get("stacks", 1)), _status_time(opts, time_of, str(payload["status"]), {}), memo, held_before)
@@ -179,41 +180,41 @@ func apply_hit(target: Node, payload: Dictionary, tags: Array = [], stage_mult: 
 		if bool(payload.get("blind_if_dark", false)) and Light.is_dark(player.get_tree(), (target as Node3D).global_position):
 			_give_status(target, "blinded", 1, opts, memo, held_before)
 		_bonus_stacks(target, payload, tags)
-	if not is_instance_valid(target) or bool(target.call("is_dead")):
+	if not is_instance_valid(target) or bool(foe.is_dead()):
 		return ctx
 	if payload.has("stun_per_mark") and not held_before:
 		var secs: float = float(payload["stun_per_mark"]) * float(stun_marks) if stun_marks > 0 else float(payload.get("stun_min", 0.2))
-		if target.has_method("is_elite") and bool(target.call("is_elite")):
+		if target.has_method("is_elite") and bool(foe.is_elite()):
 			secs *= float(payload.get("elite_stun_mult", 0.5))
-		target.call("stun", secs)
+		foe.stun(secs)
 	var poise_hit: float = 0.0
 	if target.has_method("take_poise") and (payload.has("damage") or payload.has("damage_mult") or payload.has("poise") or flat > 0.0):
 		poise_hit = float(payload.get("poise", GameData.num("combat", "skill_poise")))
 		for st3: String in (payload.get("poise_vs", {}) as Dictionary):
-			if bool(target.call("has_status", st3)):
+			if bool(foe.has_status(st3)):
 				poise_hit = maxf(poise_hit, float((payload["poise_vs"] as Dictionary)[st3]))
-		target.call("take_poise", poise_hit)
+		foe.take_poise(poise_hit)
 	_try_shatter(target, poise_hit, float(payload.get("shatter_radius", -1.0)))
-	if not is_instance_valid(target) or bool(target.call("is_dead")):
+	if not is_instance_valid(target) or bool(foe.is_dead()):
 		return ctx
 	if not held_before:
 		if bool(payload.get("hard_interrupt", false)):
-			target.call("interrupt")
+			foe.interrupt()
 			FloatText.spawn(player.get_parent(), (target as Node3D).global_position + Vector3.UP * 0.5, "SNUFFED", Color(1, 1, 1))
 		elif bool(payload.get("interrupts_moving", false)):
-			if target.has_method("is_lunging") and bool(target.call("is_lunging")):
-				target.call("interrupt")
+			if target.has_method("is_lunging") and bool(foe.is_lunging()):
+				foe.interrupt()
 				FloatText.spawn(player.get_parent(), (target as Node3D).global_position + Vector3.UP * 0.5, "STALLED", Color(1, 1, 1))
 		elif bool(payload.get("interrupts", false)):
-			if bool(target.call("interrupt_attack")):
+			if bool(foe.interrupt_attack()):
 				FloatText.spawn(player.get_parent(), (target as Node3D).global_position + Vector3.UP * 0.5, "INTERRUPTED", Color(1, 1, 1))
 		if memo != null:
 			if bool(payload.get("interrupts", false)) or bool(payload.get("hard_interrupt", false)) or payload.has("stun_per_mark"):
 				(memo as Dictionary)[key] = true
 	if float(payload.get("turn_s", 0.0)) > 0.0 and target.has_method("turn_away_from"):
-		target.call("turn_away_from", player.global_position, float(payload["turn_s"]))
+		foe.turn_away_from(player.global_position, float(payload["turn_s"]))
 	if bool(payload.get("quells_censer", false)):
-		target.set("quelled", true)
+		foe.quelled = true
 	# a shove pushes away; a pull is a shove toward you. Both on one hit: the difference wins.
 	var push: float = float(payload.get("shove", 0.0)) - float(payload.get("pull", 0.0))
 	if push > 0.0:
@@ -223,10 +224,10 @@ func apply_hit(target: Node, payload: Dictionary, tags: Array = [], stage_mult: 
 		away.y = 0.0
 		if away.length() < 0.001:
 			away = player._facing
-		target.set("shover", player)
-		target.call("shove", away, push)
+		foe.shover = player
+		foe.shove(away, push)
 	elif push < 0.0 and target.has_method("pull_toward"):
-		target.call("pull_toward", player.global_position, -push)
+		foe.pull_toward(player.global_position, -push)
 	if int(payload.get("marks", 0)) > 0:
 		_add_marks(target, int(payload["marks"]), true)
 	# jumps (2026-10-22): the hit arcs on to that many more enemies, for less
@@ -269,8 +270,8 @@ func _against_something(t: Node3D) -> bool:
 	if t == null or not player.is_inside_tree():
 		return false
 	var r: float = float(t.get("radius")) + 0.5
-	for e: Node3D in player.casting_part._enemies_near(t.global_position, r + 0.6):
-		if e != t and e.global_position.distance_to(t.global_position) <= r + float(e.get("radius")):
+	for e: Enemy in player.casting_part._enemies_near(t.global_position, r + 0.6):
+		if e != t and e.global_position.distance_to(t.global_position) <= r + float(e.radius):
 			return true
 	for i: int in 8:
 		var d := Vector3(cos(TAU * float(i) / 8.0), 0.0, sin(TAU * float(i) / 8.0))
@@ -521,7 +522,7 @@ func _arc_on(from: Node3D, payload: Dictionary, tags: Array, stage_mult: float, 
 			return
 		var at: Vector3 = cur.global_position
 		var next: Node3D = null
-		for e: Node3D in player.casting_part._enemies_near(at, reach):
+		for e: Enemy in player.casting_part._enemies_near(at, reach):
 			if not struck.has(e) and (next == null or e.global_position.distance_to(at) < next.global_position.distance_to(at)):
 				next = e
 		if next == null:
@@ -548,7 +549,7 @@ func _try_shatter(target: Node, poise_hit: float, radius_override: float = -1.0)
 	FloatText.spawn(player.get_parent(), at + Vector3.UP * 0.8, "SHATTER", Color(0.85, 0.97, 1.0))
 	player.combat_part.deal_damage(target, float(cfg.get("damage", 100.0)), ["ice", "shatter", "ability"])
 	var r: float = radius_override if radius_override > 0.0 else float(cfg.get("radius", 2.5))
-	for e: Node3D in player.casting_part._enemies_near(at, r):
+	for e: Enemy in player.casting_part._enemies_near(at, r):
 		if e != target:
 			apply_hit(e, cfg.get("shard", {}), ["ice", "shatter", "ability", "shard"])
 
@@ -561,7 +562,7 @@ func _burst_at(at: Vector3, payload: Dictionary, tags: Array, stage_mult: float 
 	var r: float = float(p.get("burst_radius", p.get("radius", 2.0)))
 	p.erase("burst_radius")
 	p.erase("radius")
-	for e: Node3D in player.casting_part._enemies_near(at, r):
+	for e: Enemy in player.casting_part._enemies_near(at, r):
 		if e != skip:
 			apply_hit(e, p, tags, stage_mult)
 
@@ -674,7 +675,7 @@ func _after_landing(ctx: HitContext, target: Node) -> void:
 			if float(b.get("spread_radius", 0.0)) > 0.0:
 				# Festering Hands: and to the nearest other enemy within spread_radius of it
 				var other: Node3D = null
-				for e: Node3D in player.casting_part._enemies_near((target as Node3D).global_position, float(b["spread_radius"])):
+				for e: Enemy in player.casting_part._enemies_near((target as Node3D).global_position, float(b["spread_radius"])):
 					if e != target and (other == null or e.global_position.distance_to((target as Node3D).global_position) < other.global_position.distance_to((target as Node3D).global_position)):
 						other = e
 				if other != null:
@@ -861,7 +862,7 @@ func on_shove_ended(e: Node) -> void:
 			if str(p.get("shove_dir", "")) == "from_point":
 				p.erase("shove_dir")
 				var at: Vector3 = (e as Node3D).global_position
-				for o: Node3D in player.casting_part._enemies_near(at, float(p.get("burst_radius", 1.5))):
+				for o: Enemy in player.casting_part._enemies_near(at, float(p.get("burst_radius", 1.5))):
 					if o != e:
 						var q: Dictionary = p.duplicate()
 						q.erase("burst_radius")
@@ -896,8 +897,8 @@ func _inured_mult() -> float:
 		if float(b.get("dr_per_infected", 0.0)) <= 0.0:
 			continue
 		var n := 0
-		for e: Node3D in player.casting_part._enemies_near(player.global_position, float(b.get("radius", 8.0))):
-			if bool(e.call("has_status", "infected")):
+		for e: Enemy in player.casting_part._enemies_near(player.global_position, float(b.get("radius", 8.0))):
+			if bool(e.has_status("infected")):
 				n += 1
 		out *= 1.0 - minf(float(b.get("dr_max", 0.3)), float(b["dr_per_infected"]) * float(n))
 	return out
@@ -979,8 +980,8 @@ func _add_marks(target: Node, marks: int, conduct: bool) -> void:
 	var soaked: Dictionary = GameData.status("soaked")
 	var others: Array[Node] = []
 	if conduct and bool(target.call("has_status", "soaked")) and not (target.has_method("no_conduct") and bool(target.call("no_conduct"))):
-		for node: Node in player.get_tree().get_nodes_in_group("enemies"):
-			if node != target and bool(node.call("has_status", "soaked")) and not (node.has_method("no_conduct") and bool(node.call("no_conduct"))) \
+		for node: Enemy in player.get_tree().get_nodes_in_group("enemies"):
+			if node != target and bool(node.has_status("soaked")) and not (node.has_method("no_conduct") and bool(node.no_conduct())) \
 					and (node as Node3D).global_position.distance_to((target as Node3D).global_position) <= float(soaked.get("conduct_radius", 4.0)):
 				others.append(node)
 	if int(target.call("add_status", "live", marks)) >= int(live.get("stacks", 3)):
@@ -996,8 +997,8 @@ func _overload(target: Node) -> void:
 	var live: Dictionary = GameData.status("live")
 	var at: Vector3 = (target as Node3D).global_position
 	var arc_to: Array[Node] = []
-	for node: Node in player.get_tree().get_nodes_in_group("enemies"):
-		if node != target and int(node.call("status_stacks", "live")) > 0 \
+	for node: Enemy in player.get_tree().get_nodes_in_group("enemies"):
+		if node != target and int(node.status_stacks("live")) > 0 \
 				and (node as Node3D).global_position.distance_to(at) <= float(live.get("arc_radius", 12.0)):
 			arc_to.append(node)
 	target.call("clear_status", "live")

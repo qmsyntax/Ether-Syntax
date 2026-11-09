@@ -64,9 +64,9 @@ func make_test_character(aff: String) -> void:
 func _nearest_enemy() -> Node3D:
 	var best: Node3D = null
 	var best_d := INF
-	for node: Node in player.get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
-		if e == null or bool(e.call("is_dead")):
+	for node: Enemy in player.get_tree().get_nodes_in_group("enemies"):
+		var e: Enemy = node
+		if e == null or bool(e.is_dead()):
 			continue
 		var d: float = e.global_position.distance_to(player.global_position)
 		if d < best_d:
@@ -99,8 +99,8 @@ func _bot_way(goal: Vector3, delta: float) -> Vector3:
 		if way != Vector3.ZERO or _bot_path.blocked:
 			return way
 	var next: Vector3 = goal
-	var router: Node = player.get_tree().get_first_node_in_group("router")
+	var router := player.get_tree().get_first_node_in_group("router") as Main
 	if router != null:
-		next = router.call("route", player.global_position, goal, 0.4)
+		next = router.route(player.global_position, goal, 0.4)
 	var flat := Vector3(next.x - player.global_position.x, 0.0, next.z - player.global_position.z)
 	return flat.normalized() if flat.length() > 0.05 else Vector3.ZERO

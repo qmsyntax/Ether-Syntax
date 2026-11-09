@@ -214,7 +214,7 @@ var _rig: ModelRig
 var _strike_t := 0.0
 var _shown_arm_lost := false
 var _shown_glow := 0
-var _router: Node                          # main, read for where the body stands (_stance_place)
+var _router: Main                          # main, read for where the body stands (_stance_place)
 var _shown_windup := false
 ## Blood's held blood (2026-10-22): measures carried outside your own veins, 0..held_blood_max.
 ## Filled by drinking, spent by blood skills. It is never health and never heals.
@@ -360,7 +360,7 @@ func _update_model(delta: float) -> void:
 func _stance_place() -> String:
 	if _router == null or not is_instance_valid(_router):
 		_router = get_tree().get_first_node_in_group("router")
-	return str(_router.get("state")) if _router != null else ""
+	return str(_router.state) if _router != null else ""
 
 
 ## The affinities the character's prime came with. They decide which skills can be learned; a
@@ -499,6 +499,69 @@ var _clock := 0.0                         # game time, for how recent a death is
 ## The healing order is the hit's affinity's: drain_heals "bar" (Unholy: the bar only, banked as stolen life), else
 ## Life's order (Lifeline). Unliving targets give nothing.
 var _drain_cast := 0.0
+
+
+# --- public readers (docs/architecture/typed-calls.md) ---------------------------------------------------
+# Outside code (main.gd's parts, the HUD, the harness, the talents) reaches these private fields and helpers through
+# a public name, so its calls stay typed. Each is a plain alias: the private name is untouched, so the parts, the
+# save and the tests that name it by string read and write the same thing.
+
+## Which way the character faces (`_facing`).
+var facing_dir: Vector3:
+	get: return _facing
+	set(value): _facing = value
+## Seconds of a skill's recovery left (`_recover_t`): no striking or casting until it runs out.
+var recover_left: float:
+	get: return _recover_t
+	set(value): _recover_t = value
+## Seconds until the next bare strike (`_melee_cd`).
+var melee_cd_left: float:
+	get: return _melee_cd
+	set(value): _melee_cd = value
+## Seconds until the ranged weapon can loose again (`_ranged_cd`).
+var ranged_cd_left: float:
+	get: return _ranged_cd
+	set(value): _ranged_cd = value
+## The hidden latent aura (`_latent_aura`).
+var latent_aura: float:
+	get: return _latent_aura
+	set(value): _latent_aura = value
+## The held skill, while one is held (`_held`).
+var held_cast: Dictionary:
+	get: return _held
+	set(value): _held = value
+## The skill paid for and waiting on its wind-up (`_windup`), its seconds left and its whole length.
+var windup_cast: Dictionary:
+	get: return _windup
+	set(value): _windup = value
+var windup_left: float:
+	get: return _windup_t
+	set(value): _windup_t = value
+var windup_total: float:
+	get: return _windup_total
+	set(value): _windup_total = value
+## Seconds of a stagger left (`_stagger_t`).
+var stagger_left: float:
+	get: return _stagger_t
+	set(value): _stagger_t = value
+
+
+## Edge Heat's cap for the affinities held (`_focus_max`).
+func edge_focus_max() -> int: return combat_part._focus_max()
+## Mark a rune known without the discovery card (`_know`).
+func know_rune(rune_id: String) -> void: runes_part._know(rune_id)
+## Redraw the hover and target highlights (`_refresh_highlights`).
+func refresh_highlights() -> void: motion_part._refresh_highlights()
+## Die now if the body is spent (`_check_death`).
+func check_death() -> void: combat_part._check_death()
+## A line of floating text over the character (`_float`).
+func float_note(txt: String, color: Color) -> void: _float(txt, color)
+## A line of floating text over `target` (`_text`).
+func float_note_at(target: Node, txt: String, color: Color) -> void: _text(target, txt, color)
+## Damage that has been through the pipeline, applied to the body (`_apply_damage`).
+func apply_blow(amount: float, heavy: bool) -> float: return combat_part._apply_damage(amount, heavy)
+## Talent healing: spends `points` the one- or two-star way (`_spend_heal_points`).
+func spend_heal_points(points: float) -> float: return combat_part._spend_heal_points(points)
 
 
 # --- helpers ------------------------------------------------------------------

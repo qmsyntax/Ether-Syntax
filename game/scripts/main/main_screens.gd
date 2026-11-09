@@ -132,16 +132,16 @@ func open_seal(ability_index: int, construct_index: int = -1) -> void:
 ## full and a construct of its tier carried (Brent 2026-10-24). With none, it says what the first full
 ## skill is missing. It binds nothing itself.
 func open_seal_first_ready() -> void:
-	var abilities: Array = main.player.get("abilities")
+	var abilities: Array = main.player.abilities
 	var missing := ""
 	for ai: int in abilities.size():
-		var lock: Dictionary = main.player.call("can_open_seal", ai)
+		var lock: Dictionary = main.player.can_open_seal(ai)
 		if bool(lock["ok"]):
 			open_seal(ai)
 			return
 		if missing == "" and str(lock["reason"]) == "no_construct":
 			missing = "%s: %s" % [str(GameData.ability(str(abilities[ai]["id"])).get("name", "?")), str(lock["text"])]
-	main.player.call("note", missing if missing != "" else "No skill is ready for its level lock: a skill's bar fills as you use it.")
+	main.player.note(missing if missing != "" else "No skill is ready for its level lock: a skill's bar fills as you use it.")
 
 
 ## A star ascended (Brent 2026-10-24): the ascension screen offers its affinities and boosts.
@@ -152,7 +152,7 @@ func _on_ascended(_star: int) -> void:
 ## Show the pending ascension's screen (an affinity to choose, then each skill's boost). It pauses
 ## and holds the keys until it is settled; a save made meanwhile keeps it, and loading reopens it.
 func open_ascension() -> void:
-	if (main.player.get("ascension_pending") as Dictionary).is_empty() or main.state == "select" or main.state == "dead":
+	if (main.player.ascension_pending as Dictionary).is_empty() or main.state == "select" or main.state == "dead":
 		return
 	_show_screen(Main.AscensionScreen.new(main), true)
 
@@ -160,7 +160,7 @@ func open_ascension() -> void:
 ## Settle the pending ascension with the screen's choices (Player.resolve_ascension), then save and
 ## close. Returns "" or why not.
 func resolve_ascension(affinity: String, aspects: Dictionary) -> String:
-	var why: String = str(main.player.call("resolve_ascension", affinity, aspects))
+	var why: String = str(main.player.resolve_ascension(affinity, aspects))
 	if why != "":
 		return why
 	main.save_now()
@@ -196,13 +196,13 @@ func menu_open_saves(mode: String) -> void:
 ## slot keeps it marked as one (Player.to_save), so loading it is still never autosaved. Nothing
 ## writes a test character to the autosave (save_now).
 func slot_save_block_reason() -> String:
-	if main.state == "select" or str(main.player.get("talent_id")) == "":
+	if main.state == "select" or str(main.player.talent_id) == "":
 		return "There is no character to save."
 	if main.state == "dead":
 		return "This character is dead."
 	if main.state == "town":
 		return ""
-	var test: bool = bool(main.player.get("test_character"))
+	var test: bool = bool(main.player.test_character)
 	match main.state:
 		"field":
 			if test:
@@ -218,7 +218,7 @@ func slot_save_block_reason() -> String:
 ## nothing to lose (no character, or a test character: never saved anyway). The game keeps no
 ## record of what has changed since the last save, so a real character is always asked about.
 func leave_warning() -> String:
-	if main.state == "select" or main.state == "dead" or str(main.player.get("talent_id")) == "" or bool(main.player.get("test_character")):
+	if main.state == "select" or main.state == "dead" or str(main.player.talent_id) == "" or bool(main.player.test_character):
 		return ""
 	var lines: Array[String] = []
 	match main.state:
@@ -238,10 +238,10 @@ func leave_warning() -> String:
 
 ## The character's name for the menu ("Test: Fire", "Maren"), or its talent if it has none.
 func character_label() -> String:
-	var n: String = str(main.player.get("char_name"))
+	var n: String = str(main.player.char_name)
 	if n != "":
 		return n
-	var t: String = str(main.player.get("talent_id"))
+	var t: String = str(main.player.talent_id)
 	return str(TalentDB.get_talent(t).get("name", "no character")) if t != "" else "no character"
 
 

@@ -518,11 +518,11 @@ func _nearest_enemy_within(reach: float) -> Node3D:
 		return null
 	var best: Node3D = null
 	var best_d: float = reach
-	for node: Node in enemy.get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
-		if e == null or e == enemy or bool(e.call("is_dead")):
+	for node: Enemy in enemy.get_tree().get_nodes_in_group("enemies"):
+		var e: Enemy = node
+		if e == null or e == enemy or bool(e.is_dead()):
 			continue
-		var d: float = e.global_position.distance_to(enemy.global_position) - float(e.get("radius")) - enemy.radius
+		var d: float = e.global_position.distance_to(enemy.global_position) - float(e.radius) - enemy.radius
 		if d <= best_d:
 			best_d = d
 			best = e

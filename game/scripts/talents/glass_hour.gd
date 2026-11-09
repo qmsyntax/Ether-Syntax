@@ -6,7 +6,7 @@ const FACTOR := 3.0
 
 
 func _in_window() -> bool:
-	return bool(owner.get("in_combat")) and float(owner.get("fight_time")) < WINDOW
+	return bool(owner.in_combat) and float(owner.fight_time) < WINDOW
 
 
 func on_outgoing(ctx: HitContext) -> void:

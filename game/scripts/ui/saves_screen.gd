@@ -11,7 +11,7 @@ extends UiScreen
 var mode := ""
 
 
-func _init(game_node: Node, which: String = "") -> void:
+func _init(game_node: Main, which: String = "") -> void:
 	super(game_node)
 	mode = which
 
@@ -29,7 +29,7 @@ func hud_hides() -> Array[String]:
 
 
 func build(root: Control) -> void:
-	var block: String = str(game.call("slot_save_block_reason"))
+	var block: String = str(game.slot_save_block_reason())
 	var can_save: bool = block == "" and mode != "load"
 	var box: VBoxContainer = framed(root, 0.27, 0.1, 0.73, 0.86)
 	box.add_theme_constant_override("separation", 10)
@@ -40,7 +40,7 @@ func build(root: Control) -> void:
 		if can_save else (block if mode == "save" else "Pick a character to carry on with."), 15, UiTheme.TEXT_DIM)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(sub)
-	if can_save and bool(player.get("test_character")):
+	if can_save and bool(player.test_character):
 		var note := UiTheme.body("A test character: its slot keeps it marked as one, and it is still never autosaved.", UiTheme.FS_SMALL, UiTheme.TEXT_FAINT)
 		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(note)
@@ -55,7 +55,7 @@ func build(root: Control) -> void:
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
 	box.add_child(foot)
-	foot.add_child(UiWidgets.small_button("Back", func() -> void: game.call("close_screen")))
+	foot.add_child(UiWidgets.small_button("Back", func() -> void: game.close_screen()))
 
 
 func _row(slot: int, can_save: bool) -> Control:
@@ -82,7 +82,7 @@ func _row(slot: int, can_save: bool) -> Control:
 	text.add_child(line_label)
 	if can_save and slot > 0 and st != "newer":           # a save from a newer build is never written over
 		var save: Button = UiWidgets.small_button("Save here" if data.is_empty() else "Overwrite", func() -> void:
-			game.call("save_to_slot", slot)
+			game.save_to_slot(slot)
 			rebuild())
 		save.name = "Save_%d" % slot
 		save.custom_minimum_size = Vector2(128, 40)
@@ -91,9 +91,9 @@ func _row(slot: int, can_save: bool) -> Control:
 	if not data.is_empty() and mode != "save":
 		var load_b: Button = UiWidgets.small_button("Load", func() -> void:
 			if mode == "load":
-				confirm_leave("Load slot %d" % slot if slot > 0 else "Load the autosave", func() -> void: game.call("load_from_menu", slot))
+				confirm_leave("Load slot %d" % slot if slot > 0 else "Load the autosave", func() -> void: game.load_from_menu(slot))
 			else:
-				game.call("load_slot", slot))
+				game.load_slot(slot))
 		load_b.name = "Load_%d" % slot
 		load_b.custom_minimum_size = Vector2(96, 40)
 		load_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER

@@ -16,20 +16,20 @@ func on_dealt(ctx: HitContext) -> void:
 	if ctx.applied <= 0.0 or not ctx.is_living:
 		return
 	var points: float = ctx.applied * RATE
-	owner.set("heal_points_total", float(owner.get("heal_points_total")) + points)
-	var before: float = (owner.get("body") as Body).total()
-	var used: float = owner.call("_spend_heal_points", points)
-	var to_bar: float = (owner.get("body") as Body).total() - before
+	owner.heal_points_total = float(owner.heal_points_total) + points
+	var before: float = (owner.body as Body).total()
+	var used: float = owner.spend_heal_points(points)
+	var to_bar: float = (owner.body as Body).total() - before
 	_shown_pending += to_bar
 	_mend_pending += maxf(0.0, used - to_bar)
 	if used > 0.0:
-		owner.call("discover", "Pays on plants: YES" if ctx.is_scenery else "Pays on monsters: YES")
+		owner.discover("Pays on plants: YES" if ctx.is_scenery else "Pays on monsters: YES")
 
 
 func on_tick(_delta: float) -> void:
 	if _shown_pending >= 0.05:
-		owner.call("_float", "+%.1f" % _shown_pending, Color(0.45, 1.0, 0.55))
+		owner.float_note("+%.1f" % _shown_pending, Color(0.45, 1.0, 0.55))
 	_shown_pending = 0.0
 	if _mend_pending >= 0.05:
-		owner.call("_float", "+%.1f wound" % _mend_pending, Color(1.0, 0.72, 0.36))
+		owner.float_note("+%.1f wound" % _mend_pending, Color(1.0, 0.72, 0.36))
 	_mend_pending = 0.0

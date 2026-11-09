@@ -13,16 +13,16 @@ var aspects: Dictionary = {}           # skill index -> aspect id
 var _said := ""
 
 
-func _init(game_node: Node) -> void:
+func _init(game_node: Main) -> void:
 	super(game_node)
-	var pending: Dictionary = player.get("ascension_pending")
+	var pending: Dictionary = player.ascension_pending
 	if (pending.get("offer", []) as Array).is_empty():
 		step = "boost"
-	var held: int = (player.get("abilities") as Array).size()
+	var held: int = (player.abilities as Array).size()
 	for b: Dictionary in pending.get("skills", []):
 		var i: int = int(b["index"])
 		if i >= 0 and i < held:
-			aspects[i] = str(player.call("ascension_aspect", i, ""))
+			aspects[i] = str(player.ascension_aspect(i, ""))
 
 
 func backdrop() -> float:
@@ -34,7 +34,7 @@ func hud_hides() -> Array[String]:
 
 
 func _pending() -> Dictionary:
-	return player.get("ascension_pending")
+	return player.ascension_pending
 
 
 ## Pick an offered affinity and go on to the boosts.
@@ -64,7 +64,7 @@ func set_aspect(index: int, aspect: String) -> void:
 
 
 func confirm() -> void:
-	var why: String = str(game.call("resolve_ascension", chosen, aspects.duplicate()))
+	var why: String = str(game.resolve_ascension(chosen, aspects.duplicate()))
 	if why != "":
 		_said = why
 		rebuild()
@@ -72,7 +72,7 @@ func confirm() -> void:
 
 ## Settle with every skill on its main aspect.
 func skip() -> void:
-	var why: String = str(game.call("resolve_ascension", chosen, {}))
+	var why: String = str(game.resolve_ascension(chosen, {}))
 	if why != "":
 		_said = why
 		rebuild()
@@ -92,7 +92,7 @@ func build(root: Control) -> void:
 	var box: VBoxContainer = framed(root, 0.12, 0.1, 0.88, 0.84) if step == "offer" else framed(root, 0.04, 0.04, 0.96, 0.96)
 	box.name = "AscensionPanel"
 	box.add_theme_constant_override("separation", 10)
-	var star: int = int(_pending().get("star", player.get("stars")))
+	var star: int = int(_pending().get("star", player.stars))
 	var t := UiTheme.heading("ASCENSION", UiTheme.FS_DISPLAY, UiTheme.STAR)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(t)
@@ -113,7 +113,7 @@ func build(root: Control) -> void:
 
 func _build_offer(box: VBoxContainer) -> void:
 	box.add_child(UiTheme.section("An affinity to add"))
-	var held: Array = player.get("affinities")
+	var held: Array = player.affinities
 	box.add_child(UiTheme.body("You hold %s. A new affinity opens its skill tree and its runes; its skills are still trained." % " and ".join(PackedStringArray(
 		held.map(func(a: Variant) -> String: return str(GameData.affinity(str(a)).get("label", a))))), 14, UiTheme.TEXT_FAINT))
 	var row := HBoxContainer.new()
@@ -233,7 +233,7 @@ func _build_boost(box: VBoxContainer) -> void:
 	var list: VBoxContainer = scroller(box)
 	list.name = "BoostList"
 	list.add_theme_constant_override("separation", 6)
-	var abilities: Array = player.get("abilities")
+	var abilities: Array = player.abilities
 	for b: Dictionary in skills:
 		var i: int = int(b["index"])
 		if i < 0 or i >= abilities.size():
@@ -257,7 +257,7 @@ func _build_boost(box: VBoxContainer) -> void:
 
 
 func _skill_row(i: int, st: Dictionary, amount: float) -> Control:
-	var ab: Dictionary = player.call("ability_stats", st)
+	var ab: Dictionary = player.ability_stats(st)
 	var row := HBoxContainer.new()
 	row.name = "BoostRow_%d" % i
 	row.add_theme_constant_override("separation", 10)
@@ -307,7 +307,7 @@ func _aspect_button(i: int, asp: String, amount: float, ab: Dictionary, is_main:
 	v.add_child(_label(title, 15, (UiTheme.GOLD if here else UiTheme.TEXT) if acts else UiTheme.TEXT_FAINT))
 	var lines: Array[String] = []
 	if acts:
-		for r: Dictionary in (player.call("ascension_preview", i, asp, amount) as Array).slice(0, 2):
+		for r: Dictionary in (player.ascension_preview(i, asp, amount) as Array).slice(0, 2):
 			lines.append("%s %s -> %s" % [str(r["label"]), str(r["before"]), str(r["after"])])
 	var shown := _label("\n".join(PackedStringArray(lines)) if not lines.is_empty() else ("nothing to change" if not acts else "no number moves"), 12,
 		UiTheme.TEXT_DIM if acts else UiTheme.TEXT_FAINT)

@@ -7,7 +7,7 @@ var _button := ""
 var _action: Callable
 
 
-func _init(game_node: Node, title: String, text: String, button: String, action: Callable) -> void:
+func _init(game_node: Main, title: String, text: String, button: String, action: Callable) -> void:
 	super(game_node)
 	_title = title
 	_text = text

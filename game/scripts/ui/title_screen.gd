@@ -26,7 +26,7 @@ func build(root: Control) -> void:
 	grid.add_theme_constant_override("h_separation", 12)
 	grid.add_theme_constant_override("v_separation", 12)
 	box.add_child(grid)
-	var choices: Array = game.get("TALENT_CHOICES")
+	var choices: Array = Main.TALENT_CHOICES
 	for i: int in choices.size():
 		grid.add_child(_card(i, TalentDB.get_talent(str(choices[i]))))
 
@@ -38,17 +38,17 @@ func build(root: Control) -> void:
 	var save: Dictionary = SaveGame.read()
 	if not save.is_empty() and str(save.get("talent_id", "")) != "":
 		var who: String = str(TalentDB.get_talent(str(save["talent_id"])).get("name", "?"))
-		foot.add_child(UiWidgets.small_button("Continue  -  %s, day %d" % [who, int(save.get("day", 1))], func() -> void: game.call("continue_game")))
+		foot.add_child(UiWidgets.small_button("Continue  -  %s, day %d" % [who, int(save.get("day", 1))], func() -> void: game.continue_game()))
 	for slot: int in range(1, SaveGame.SLOTS + 1):
 		if SaveGame.exists(SaveGame.slot_path(slot)):
-			foot.add_child(UiWidgets.small_button("Load a saved character", func() -> void: game.call("open_saves")))
+			foot.add_child(UiWidgets.small_button("Load a saved character", func() -> void: game.open_saves()))
 			break
-	var hardcore: bool = bool(game.get("hardcore"))
+	var hardcore: bool = bool(game.hardcore)
 	foot.add_child(UiWidgets.small_button("Hardcore: %s" % ("ON - death is permanent" if hardcore else "off - death leaves you in debt"),
 		func() -> void:
-			game.call("toggle_hardcore")
+			game.toggle_hardcore()
 			rebuild()))
-	foot.add_child(UiWidgets.small_button("Controls", func() -> void: game.call("open_settings")))
+	foot.add_child(UiWidgets.small_button("Controls", func() -> void: game.open_settings()))
 
 
 func _card(index: int, t: Dictionary) -> Button:
@@ -57,7 +57,7 @@ func _card(index: int, t: Dictionary) -> Button:
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	b.focus_mode = Control.FOCUS_NONE
-	b.pressed.connect(func() -> void: game.call("start_new_character", index))
+	b.pressed.connect(func() -> void: game.start_new_character(index))
 	var col := VBoxContainer.new()
 	col.set_anchors_preset(Control.PRESET_FULL_RECT)
 	col.offset_left = 16

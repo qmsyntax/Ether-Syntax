@@ -91,8 +91,8 @@ func _break() -> void:
 	dead = true
 	remove_from_group("lures")
 	if collapse_radius > 0.0 and not collapse.is_empty() and is_instance_valid(caster) and is_inside_tree():
-		for node: Node in get_tree().get_nodes_in_group("enemies"):
-			var e := node as Node3D
-			if e != null and not bool(e.call("is_dead")) and Vector2(e.global_position.x - global_position.x, e.global_position.z - global_position.z).length() <= collapse_radius + float(e.get("radius")):
+		for node: Enemy in get_tree().get_nodes_in_group("enemies"):
+			var e: Enemy = node
+			if e != null and not bool(e.is_dead()) and Vector2(e.global_position.x - global_position.x, e.global_position.z - global_position.z).length() <= collapse_radius + float(e.radius):
 				caster.call("apply_hit", e, collapse, tags + ["collapse"])
 	queue_free()

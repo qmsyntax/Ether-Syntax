@@ -61,10 +61,10 @@ func start(args: PackedStringArray) -> void:
 		_bot_started_ms = Time.get_ticks_msec()
 		Engine.time_scale = 5.0
 		main.session_part._select_talent(0)
-		main.player.set("money", main.ticket_price)
+		main.player.money = main.ticket_price
 		main._show_screen(null, false)
 		main._enter_dungeon()
-		main.player.set("bot", true)
+		main.player.bot = true
 
 
 ## Each frame of a test run: the screenshot countdowns, then the passage bot's report.
@@ -87,9 +87,9 @@ func tick() -> void:
 func bot_dungeon_tick() -> void:
 	if _bot_scenario == "die" and main.cleared >= 2 and not main._bot_died:
 		# Kill the character outright to exercise the live death -> debt -> town path.
-		_bot_money_before = int(main.player.get("money"))
-		(main.player.get("body") as Body).apply_damage(99999.0)
-		main.player.call("_check_death")
+		_bot_money_before = int(main.player.money)
+		(main.player.body as Body).apply_damage(99999.0)
+		main.player.check_death()
 		return
 	var leave_now: bool = _bot_scenario == "gate" or main.cleared >= main.chambers
 	if leave_now and main.passage_part._pad_in_reach():
@@ -101,14 +101,14 @@ func bot_dungeon_tick() -> void:
 		goal_local = main.level.to_local(main.pads.back().global_position)
 	else:
 		goal_local = Vector3(0.0, 0.0, -(float(main.cleared + 1) * main.ch_len + 4.0))
-	main.player.set("bot_goal", main.level.to_global(goal_local))
+	main.player.bot_goal = main.level.to_global(goal_local)
 
 
 ## --shot-dungeon: wall 2 woke; slow to real time and take the shot.
 func shot_dungeon_wall(c: int) -> void:
 	if _shot_dungeon and c == 2:
 		Engine.time_scale = 1.0
-		main.player.set("bot", false)
+		main.player.bot = false
 		_shot_countdown = 25
 
 
@@ -117,13 +117,13 @@ func _tick_bot_report() -> void:
 	if main._bot_finished and main.state == "town":
 		var ok := false
 		if _bot_scenario == "die":
-			var money_now: int = int(main.player.get("money"))
-			var inv: Inventory = main.player.get("inventory")
-			var left_behind: Array = main.player.get("corpses")
-			ok = not bool(main.player.get("dead")) and money_now == _bot_money_before and main._last_payout == 0 \
+			var money_now: int = int(main.player.money)
+			var inv: Inventory = main.player.inventory
+			var left_behind: Array = main.player.corpses
+			ok = not bool(main.player.dead) and money_now == _bot_money_before and main._last_payout == 0 \
 				and inv.equipped.is_empty() and left_behind.size() == 1 and str((left_behind[0] as Dictionary)["where"]) == "passage"
 			print("BOT[die]: alive=%s money %d -> %d payout=%d naked=%s corpses=%d state=%s -> %s" % [
-				str(not bool(main.player.get("dead"))), _bot_money_before, money_now, main._last_payout, str(inv.equipped.is_empty()), left_behind.size(), main.state, "PASS" if ok else "FAIL"])
+				str(not bool(main.player.dead)), _bot_money_before, money_now, main._last_payout, str(inv.equipped.is_empty()), left_behind.size(), main.state, "PASS" if ok else "FAIL"])
 		else:
 			var walls: int = main.chambers if _bot_scenario == "full" else main.gate_at
 			var banked: int = 0
@@ -132,7 +132,7 @@ func _tick_bot_report() -> void:
 			var expected: int = int(float(banked) * (main.full_clear_bonus if walls == main.chambers else 1.0))
 			ok = main._last_sealed and main._last_cleared == walls and main._last_payout == expected
 			print("BOT[%s]: sealed=%s walls=%d payout=%d expected=%d money=%d -> %s" % [
-				_bot_scenario, str(main._last_sealed), main._last_cleared, main._last_payout, expected, int(main.player.get("money")), "PASS" if ok else "FAIL"])
+				_bot_scenario, str(main._last_sealed), main._last_cleared, main._last_payout, expected, int(main.player.money), "PASS" if ok else "FAIL"])
 		Engine.time_scale = 1.0
 		main.get_tree().quit(0 if ok else 1)
 	elif elapsed > 120000:
@@ -140,14 +140,14 @@ func _tick_bot_report() -> void:
 		# what was still standing, and what it was doing - a stall is an enemy that could not be killed
 		var here: Vector3 = main.level.to_local(main.player.global_position)
 		print("BOT:   bot at local (%.1f, %.1f) chamber %d  vel %s  target %s  melee_cd %.2f recover %.2f stagger %.2f" % [
-			here.x, here.z, int(-here.z / main.ch_len), str((main.player as CharacterBody3D).velocity), str(main.player.get("attack_target")),
-			float(main.player.get("_melee_cd")), float(main.player.get("_recover_t")), float(main.player.get("_stagger_t"))])
-		for n: Node in main.get_tree().get_nodes_in_group("enemies"):
-			var e := n as Node3D
+			here.x, here.z, int(-here.z / main.ch_len), str((main.player as CharacterBody3D).velocity), str(main.player.attack_target),
+			float(main.player.melee_cd_left), float(main.player.recover_left), float(main.player.stagger_left)])
+		for n: Enemy in main.get_tree().get_nodes_in_group("enemies"):
+			var e: Enemy = n
 			var at: Vector3 = main.level.to_local(e.global_position)
 			print("BOT:   left: %s at local (%.1f, %.1f) chamber %d  %.1f m away  hp %d  windup %.2f  stuck %.2f  leap %.2f  retreat_t %.2f  statuses %s" % [
-				str(e.get("kind")), at.x, at.z, int(-at.z / main.ch_len), e.global_position.distance_to(main.player.global_position), int((e.get("body") as Body).hp),
-				float(e.get("_windup")), float(e.get("_stuck_t")), float(e.get("_leap_left")), float(e.get("_retreat_t")), str((e.get("statuses") as Dictionary).keys())])
+				str(e.kind), at.x, at.z, int(-at.z / main.ch_len), e.global_position.distance_to(main.player.global_position), int((e.body as Body).hp),
+				float(e.windup_left), float(e.stuck_left), float(e.leap_left), float(e.retreat_time), str((e.statuses as Dictionary).keys())])
 		Engine.time_scale = 1.0
 		main.get_tree().quit(1)
 

@@ -57,11 +57,11 @@ func tick(delta: float) -> void:
 	if not is_instance_valid(caster) or not is_inside_tree():
 		return
 	var from: Vector3 = global_position + Vector3.UP * 2.2
-	for node: Node in get_tree().get_nodes_in_group("enemies"):
-		var e := node as Node3D
-		if e == null or bool(e.call("is_dead")):
+	for node: Enemy in get_tree().get_nodes_in_group("enemies"):
+		var e: Enemy = node
+		if e == null or bool(e.is_dead()):
 			continue
-		if Vector2(e.global_position.x - global_position.x, e.global_position.z - global_position.z).length() > light_radius + float(e.get("radius")):
+		if Vector2(e.global_position.x - global_position.x, e.global_position.z - global_position.z).length() > light_radius + float(e.radius):
 			continue
 		var q := PhysicsRayQueryParameters3D.create(from, e.global_position + Vector3.UP, 1)
 		if not get_world_3d().direct_space_state.intersect_ray(q).is_empty():

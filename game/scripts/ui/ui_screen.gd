@@ -7,14 +7,14 @@ extends Control
 ## What a menu screen hides of the HUD: everything but the dock (see hud_hides).
 const HUD_MENU: Array[String] = ["plate", "hints", "log", "tags", "buffs", "tracker"]
 
-var game: Node
-var player: Node
+var game: Main
+var player: Player
 var _content: Control
 
 
-func _init(game_node: Node) -> void:
+func _init(game_node: Main) -> void:
 	game = game_node
-	player = game_node.get("player")
+	player = game_node.player
 
 
 func _ready() -> void:
@@ -36,7 +36,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	for action: String in close_actions():
 		if event.is_action_pressed(action):
 			get_viewport().set_input_as_handled()
-			game.call("close_screen")
+			game.close_screen()
 			return
 
 
@@ -99,11 +99,11 @@ func framed(root: Control, left: float, top: float, right: float, bottom: float)
 ## character in play (main.gd `leave_warning`: a real character; a test character is never saved,
 ## so it is left without asking).
 func confirm_leave(yes_label: String, action: Callable) -> void:
-	var warning: String = str(game.call("leave_warning"))
+	var warning: String = str(game.leave_warning())
 	if warning == "":
 		action.call()
 		return
-	add_child(UiWidgets.ConfirmDialog.new("Leave %s?" % str(game.call("character_label")), warning, yes_label, action))
+	add_child(UiWidgets.ConfirmDialog.new("Leave %s?" % str(game.character_label()), warning, yes_label, action))
 
 
 ## A scrolling vertical list that fills the remaining height of its parent.

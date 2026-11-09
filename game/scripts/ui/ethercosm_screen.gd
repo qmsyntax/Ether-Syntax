@@ -78,7 +78,7 @@ func hud_hides() -> Array[String]:
 
 
 func build(root: Control) -> void:
-	var abilities: Array = player.get("abilities")
+	var abilities: Array = player.abilities
 	selected = clampi(selected, 0, maxi(0, abilities.size() - 1))
 	if rune_mode and not abilities.is_empty():
 		_build_runes(root)
@@ -123,12 +123,12 @@ func select(index: int) -> void:
 ## carried (Brent 2026-10-24); otherwise the screen stays on (or goes back to) the main page, which
 ## says what is missing.
 func open_seal(construct_index: int = -1) -> void:
-	var r: Dictionary = player.call("open_seal", selected, construct_index)
+	var r: Dictionary = player.open_seal(selected, construct_index)
 	_clear_selection()
 	_palette_tab = ""
 	if not bool(r["ok"]):
 		rune_mode = false
-		player.call("note", str(r["text"]))
+		player.note(str(r["text"]))
 		rebuild()
 		return
 	rune_mode = true
@@ -139,23 +139,23 @@ func open_seal(construct_index: int = -1) -> void:
 ## Open the seal screen of the selected skill: at its level lock when it can be opened, else its
 ## sealed word to look at.
 func open_runes() -> void:
-	if bool((player.call("can_open_seal", selected) as Dictionary)["ok"]):
+	if bool((player.can_open_seal(selected) as Dictionary)["ok"]):
 		open_seal()
 		return
 	rune_mode = true
 	_clear_selection()
 	_rune_msg = ""
 	_palette_tab = ""
-	player.call("close_seal")
+	player.close_seal()
 	rebuild()
 
 
 ## Choose which carried construct the level lock binds - the keystone set over the forming ring (the
 ## panel's KEYSTONE buttons).
 func choose_construct(construct_index: int) -> void:
-	var r: Dictionary = player.call("choose_seal_construct", construct_index)
+	var r: Dictionary = player.choose_seal_construct(construct_index)
 	if bool(r["ok"]):
-		var ks: Dictionary = player.call("seal_keystone")
+		var ks: Dictionary = player.seal_keystone()
 		_say(("The %s is set over ring %d as its keystone." if bool(ks.get("set", false)) else
 			"The %s will be set over ring %d as its keystone once every place of the ring is filled.") % [str(ks.get("label", "")), int(ks.get("ring", 0))], false)
 	else:
@@ -167,7 +167,7 @@ func choose_construct(construct_index: int) -> void:
 func close_runes() -> void:
 	rune_mode = false
 	_clear_selection()
-	player.call("close_seal")
+	player.close_seal()
 	rebuild()
 
 
@@ -178,29 +178,29 @@ func _clear_selection() -> void:
 
 
 func _exit_tree() -> void:
-	if player != null and is_instance_valid(player) and int(player.call("sealing_index")) >= 0:
-		player.call("close_seal")        # a draft lives only while its screen is open
+	if player != null and is_instance_valid(player) and int(player.sealing_index()) >= 0:
+		player.close_seal()        # a draft lives only while its screen is open
 
 
 ## "bind" (forming the skill's next level lock) or "view".
 func seal_view() -> String:
-	if int(player.call("sealing_index")) == selected:
-		return str(player.call("seal_mode"))
+	if int(player.sealing_index()) == selected:
+		return str(player.seal_mode())
 	return "view"
 
 
 ## The word being set, and what the rules may know about its skill (read by the board).
 func current_word() -> Dictionary:
-	return player.call("ability_word", selected)
+	return player.ability_word(selected)
 
 
 func current_context() -> RuneContext:
-	return player.call("rune_context", selected)
+	return player.rune_context(selected)
 
 
 ## How many rings of the skill's word are sealed (the draft's are not, until the bind takes).
 func sealed_rings() -> int:
-	var st: Dictionary = (player.get("abilities") as Array)[selected]
+	var st: Dictionary = (player.abilities as Array)[selected]
 	return RuneWord.sealed(st.get("word", {}))
 
 
@@ -258,7 +258,7 @@ func cancel_action() -> bool:
 ## A click on a palette rune: pick it up (or put it down again); a click on an empty place then sets
 ## it there. An undiscovered rune says why it cannot be set.
 func arm_rune(rune_id: String) -> void:
-	var known: bool = bool(player.call("knows_rune", rune_id))
+	var known: bool = bool(player.knows_rune(rune_id))
 	var nm: String = str(GameData.rune(rune_id).get("name", rune_id)) if known else "That rune"
 	if seal_view() == "view":
 		_say("Runes are set at a level lock: when the skill's bar is full its seal opens for the next ring.", true)
@@ -310,9 +310,9 @@ func click_slot(k: int, place: int) -> void:
 ## May rune `rune_id` be set on ring k now? {ok, reason, text} - the character's knowledge first,
 ## then the rules.
 func place_check(rune_id: String, k: int) -> Dictionary:
-	if not bool(player.call("knows_rune", rune_id)):
+	if not bool(player.knows_rune(rune_id)):
 		return RuneRules.no("unknown", "Not discovered yet: runes are found in the Netherecho, in fights and on old stones.")
-	if not bool(player.call("can_use_rune", rune_id)):
+	if not bool(player.can_use_rune(rune_id)):
 		return RuneRules.no("not_yours", "%s belongs to an affinity you do not hold." % str(GameData.rune(rune_id).get("name", rune_id)))
 	return Runes.active().can_add(current_word(), rune_id, current_context(), -1, k)
 
@@ -321,7 +321,7 @@ func place_check(rune_id: String, k: int) -> Dictionary:
 ## It is set alone: bonds are made by dragging from one rune to another.
 func place_rune(rune_id: String, k: int, place: int) -> void:
 	var nm: String = str(GameData.rune(rune_id).get("name", rune_id))
-	var r: Dictionary = player.call("word_add", selected, rune_id, -1, k, place)
+	var r: Dictionary = player.word_add(selected, rune_id, -1, k, place)
 	if bool(r["ok"]):
 		armed_rune = ""
 		picked = int(r.get("node", -1))
@@ -346,7 +346,7 @@ func finish_bond(a: int, b: int) -> void:
 		return
 	var before: Dictionary = current_word()
 	var names: Array = [RuneRules.rune_name(before, a), RuneRules.rune_name(before, b)]
-	var r: Dictionary = player.call("word_link", selected, a, b)
+	var r: Dictionary = player.word_link(selected, a, b)
 	if bool(r["ok"]):
 		picked_bond = Vector2i(mini(a, b), maxi(a, b))
 		picked = -1
@@ -360,7 +360,7 @@ func finish_bond(a: int, b: int) -> void:
 func delete_bond(a: int, b: int) -> void:
 	var word: Dictionary = current_word()
 	var names: Array = [RuneRules.rune_name(word, a), RuneRules.rune_name(word, b)]
-	var r: Dictionary = player.call("word_unlink", selected, a, b)
+	var r: Dictionary = player.word_unlink(selected, a, b)
 	if bool(r["ok"]):
 		picked_bond = Vector2i(-1, -1)
 		_say("Parted %s and %s. %s brings the bond back." % [names[0], names[1], Keybinds.binding_text("seal_undo")], false)
@@ -379,7 +379,7 @@ func delete_selected() -> void:
 
 ## Ctrl+Z: the draft one step back.
 func undo() -> void:
-	if bool(player.call("draft_undo")):
+	if bool(player.draft_undo()):
 		_say("Undone.", false)
 	else:
 		_say("Nothing to undo.", false)
@@ -390,7 +390,7 @@ func undo() -> void:
 
 ## Ctrl+Y: the step undone, again.
 func redo() -> void:
-	if bool(player.call("draft_redo")):
+	if bool(player.draft_redo()):
 		_say("Redone.", false)
 	else:
 		_say("Nothing to redo.", false)
@@ -423,7 +423,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func remove_node(i: int) -> void:
 	var word: Dictionary = current_word()
 	var nm: String = RuneRules.rune_name(word, i)
-	var r: Dictionary = player.call("word_remove", selected, i)
+	var r: Dictionary = player.word_remove(selected, i)
 	if bool(r["ok"]):
 		picked = -1 if picked == i else (picked - 1 if picked > i else picked)
 		picked_bond = Vector2i(-1, -1)
@@ -434,7 +434,7 @@ func remove_node(i: int) -> void:
 
 
 func clear_word() -> void:
-	player.call("word_clear", selected)
+	player.word_clear(selected)
 	picked = -1
 	picked_bond = Vector2i(-1, -1)
 	_say("The draft is cleared back to the skill's own rune. %s brings it back." % Keybinds.binding_text("seal_undo"), false)
@@ -443,7 +443,7 @@ func clear_word() -> void:
 
 ## Put the draft back as the sealed word was.
 func reset_draft() -> void:
-	player.call("draft_reset")
+	player.draft_reset()
 	picked = -1
 	picked_bond = Vector2i(-1, -1)
 	_say("The draft is back as the seal was.", false)
@@ -454,14 +454,14 @@ func reset_draft() -> void:
 ## construct lock together. A test character's next lock opens straight after (its bar is refilled,
 ## a test override), so the screen stays on the lock.
 func bind_and_seal(roll: float = -1.0) -> void:
-	var st: Dictionary = (player.get("abilities") as Array)[selected]
+	var st: Dictionary = (player.abilities as Array)[selected]
 	var skill: String = str(GameData.ability(str(st["id"])).get("name", "?"))
-	var check: Dictionary = player.call("can_bind_seal")
+	var check: Dictionary = player.can_bind_seal()
 	if not bool(check["ok"]):
 		_say(str(check["text"]), true)
 		_refresh_runes()
 		return
-	var result: String = str(player.call("bind_seal", roll))
+	var result: String = str(player.bind_seal(roll))
 	picked = -1
 	picked_bond = Vector2i(-1, -1)
 	armed_rune = ""
@@ -471,10 +471,10 @@ func bind_and_seal(roll: float = -1.0) -> void:
 		_say("The bind fails. The construct is gone and no seal forms: the word stays as it was.", true)
 	else:
 		_say(result, true)
-	game.call("save_now")
+	game.save_now()
 	var msg: String = _rune_msg
 	var bad: bool = _rune_msg_bad
-	if bool((player.call("can_open_seal", selected) as Dictionary)["ok"]):
+	if bool((player.can_open_seal(selected) as Dictionary)["ok"]):
 		open_seal()                  # the next lock is open at once (a test character), or the failed one again
 		_say(msg, bad)
 		_refresh_runes()
@@ -482,7 +482,7 @@ func bind_and_seal(roll: float = -1.0) -> void:
 		rebuild()                    # the new seal, looked at
 	else:
 		rune_mode = false            # no construct of the tier left: back to the main page, which says so
-		player.call("note", msg)
+		player.note(msg)
 		rebuild()
 	if result == "bound" and _board != null and is_instance_valid(_board):
 		_board.play_lock()
@@ -490,7 +490,7 @@ func bind_and_seal(roll: float = -1.0) -> void:
 
 ## For a palette chip: whether some ring would take that rune now, its sockets, and whether it is known.
 func chip_state(rune_id: String) -> Dictionary:
-	var known: bool = bool(player.call("knows_rune", rune_id))
+	var known: bool = bool(player.knows_rune(rune_id))
 	if not known:
 		return {"ok": false, "known": false, "text": "Not discovered yet.", "sockets": -1}
 	var ctx: RuneContext = current_context()
@@ -521,7 +521,7 @@ func _say(text: String, bad: bool) -> void:
 func _build_runes(root: Control) -> void:
 	var rules: RuneRules = Runes.active()
 	var ctx: RuneContext = current_context()
-	var st: Dictionary = (player.get("abilities") as Array)[selected]
+	var st: Dictionary = (player.abilities as Array)[selected]
 	var ab: Dictionary = GameData.ability(str(st["id"]))
 	var mode: String = seal_view()
 
@@ -543,7 +543,7 @@ func _build_runes(root: Control) -> void:
 	var back: Button = UiWidgets.small_button("Back to the ethercosm", close_runes)
 	back.name = "RunesBackButton"
 	head.add_child(back)
-	head.add_child(UiWidgets.small_button("Close  (%s)" % Keybinds.binding_text("ethercosm"), func() -> void: game.call("close_screen")))
+	head.add_child(UiWidgets.small_button("Close  (%s)" % Keybinds.binding_text("ethercosm"), func() -> void: game.close_screen()))
 
 	var name_row := HBoxContainer.new()
 	name_row.add_theme_constant_override("separation", 12)
@@ -652,7 +652,7 @@ func _build_runes(root: Control) -> void:
 ## The line under the skill's name saying what this screen is doing.
 func _mode_banner(mode: String, ctx: RuneContext, st: Dictionary) -> String:
 	if mode == "bind":
-		var need: String = str(player.call("pending_tier", st))
+		var need: String = str(player.pending_tier(st))
 		var n_sealed: int = sealed_rings()
 		var cap: int = (Runes.active() as RingRules).ring_capacity(ctx.forming) if Runes.active() is RingRules else 0
 		# Brent 2026-11-03: "let them bind and close no matter what" - nothing has to be full or closed
@@ -664,8 +664,8 @@ func _mode_banner(mode: String, ctx: RuneContext, st: Dictionary) -> String:
 		return "FORMING RING %d  -  %s" % [ctx.forming, how]
 	var n: int = sealed_rings()
 	if n <= 0:
-		return ("No word yet. Runes are sealed when a construct is bound into the skill: %s." % ("its bar is full - bind a %s" % str(player.call("pending_tier", st))
-			if str(player.call("pending_tier", st)) != "" else "fill its bar first"))
+		return ("No word yet. Runes are sealed when a construct is bound into the skill: %s." % ("its bar is full - bind a %s" % str(player.pending_tier(st))
+			if str(player.pending_tier(st)) != "" else "fill its bar first"))
 	return "Sealed through %d ring%s. It can be reworked when the next construct is bound." % [n, "" if n == 1 else "s"]
 
 
@@ -682,11 +682,11 @@ func _fill_constructs() -> void:
 	for c: Node in _constructs_box.get_children():
 		_constructs_box.remove_child(c)
 		c.queue_free()
-	var st: Dictionary = (player.get("abilities") as Array)[selected]
-	var need: String = str(player.call("pending_tier", st))
-	var groups: Array = player.call("construct_groups", need)
-	var chosen: int = int(player.call("seal_construct"))
-	var cons: Array = player.get("constructs")
+	var st: Dictionary = (player.abilities as Array)[selected]
+	var need: String = str(player.pending_tier(st))
+	var groups: Array = player.construct_groups(need)
+	var chosen: int = int(player.seal_construct())
+	var cons: Array = player.constructs
 	var chosen_id: String = str((cons[chosen] as Dictionary)["concept"]) if chosen >= 0 and chosen < cons.size() else ""
 	var ctx: RuneContext = current_context()
 	var rr: RingRules = Runes.active() as RingRules
@@ -710,7 +710,7 @@ func _fill_constructs() -> void:
 	scroll.add_child(col)
 	var ab: Dictionary = GameData.ability(str(st["id"]))
 	var own_aff: String = str(ab.get("affinity", ""))
-	var held: Array = player.get("affinities")
+	var held: Array = player.affinities
 	# fitting words: the skill's own affinity, then the character's others, then universal
 	var order: Array[String] = [own_aff]
 	for a: Variant in held:
@@ -777,7 +777,7 @@ func _keystone_button(g: Dictionary, need: String, ctx: RuneContext, ab: Diction
 ## The palette's tabs and the chips of the tab shown.
 func _palette_groups() -> Array[String]:
 	var out: Array[String] = []
-	for rid: String in (player.call("rune_palette") as Array):
+	for rid: String in (player.rune_palette() as Array):
 		var aff: String = str(GameData.rune(rid).get("affinity", ""))
 		var g: String = aff if aff != "" else "universal"
 		if not out.has(g):
@@ -794,10 +794,10 @@ func _fill_palette() -> void:
 	for c: Node in _palette_tabs.get_children():
 		_palette_tabs.remove_child(c)
 		c.queue_free()
-	var all: Array = player.call("rune_palette")
-	var known_n: int = all.filter(func(id: String) -> bool: return bool(player.call("knows_rune", id))).size()
+	var all: Array = player.rune_palette()
+	var known_n: int = all.filter(func(id: String) -> bool: return bool(player.knows_rune(id))).size()
 	if _palette_title != null:
-		_palette_title.text = "RUNES  -  every rune known (test character)" if bool(player.get("test_character")) \
+		_palette_title.text = "RUNES  -  every rune known (test character)" if bool(player.test_character) \
 			else "RUNES YOU KNOW  -  %d of %d found" % [known_n, all.size()]
 	for g: String in groups:
 		var b: Button = UiWidgets.small_button(g.capitalize(), func() -> void: set_palette_tab.call_deferred(g))
@@ -821,7 +821,7 @@ func _fill_palette() -> void:
 		if (aff if aff != "" else "universal") != _palette_tab:
 			continue
 		var chip := RuneBoard.Chip.new(self, rid)
-		if bool(player.call("knows_rune", rid)):
+		if bool(player.knows_rune(rid)):
 			var rune: Dictionary = GameData.rune(rid)
 			var lines: Array = rules.describe_rune(rid, ctx).get("lines", [])
 			chip.tooltip_text = "%s  %s\n%s%s" % [str(rune.get("name", rid)), str(rune.get("character", "")),
@@ -874,15 +874,15 @@ func _refresh_runes() -> void:
 	var picked_box := VBoxContainer.new()
 	picked_box.add_theme_constant_override("separation", 2)
 	_rune_info.add_child(picked_box)
-	var pv: Dictionary = player.call("rune_preview", selected)
+	var pv: Dictionary = player.rune_preview(selected)
 	# at a level lock: the keystone chosen - set over the ring once it is full - and what it alone does
 	if mode == "bind":
-		var ks: Dictionary = player.call("seal_keystone")
+		var ks: Dictionary = player.seal_keystone()
 		if not ks.is_empty():
 			var csec := UiTheme.section("Keystone: the %s, %s ring %d" % [str(ks["label"]), "set over" if bool(ks["set"]) else "waiting above", int(ks["ring"])])
 			csec.name = "ChosenConstruct"
 			_rune_info.add_child(csec)
-			var kfx: Dictionary = (Runes.active() as RingRules).keystone_effect(GameData.ability(str((player.get("abilities") as Array)[selected]["id"])), ks) \
+			var kfx: Dictionary = (Runes.active() as RingRules).keystone_effect(GameData.ability(str((player.abilities as Array)[selected]["id"])), ks) \
 				if Runes.active() is RingRules else {}
 			var kl := UiTheme.body("      %s  -  x%s (a rune works at most x1):  %s" % [str(kfx.get("runes", "")), RingRules._x(float(kfx.get("weight", 1.0))), ", ".join(PackedStringArray(kfx.get("lines", [])))],
 				13, UiTheme.STAR.lightened(0.2))
@@ -891,7 +891,7 @@ func _refresh_runes() -> void:
 			_rune_info.add_child(kl)
 			if not bool(ks["set"]):
 				_rune_info.add_child(UiTheme.body("      It is set over ring %d when every place of the ring is filled." % int(ks["ring"]), 12, UiTheme.TEXT_FAINT))
-			_rune_info.add_child(_bind_preview((player.get("abilities") as Array)[selected], str(ks["concept"])))
+			_rune_info.add_child(_bind_preview((player.abilities as Array)[selected], str(ks["concept"])))
 	var head_text: String = "WHAT THE SEAL DOES" if sealed else ("WHAT THE WORD WOULD DO, SEALED" if mode != "view" else "NO WORD YET")
 	_rune_info.add_child(UiTheme.section(head_text))
 	var grid := GridContainer.new()
@@ -1060,9 +1060,9 @@ func _refresh_runes() -> void:
 	# the action row
 	if _lock_button != null and is_instance_valid(_lock_button):
 		if mode == "bind":
-			var can: Dictionary = player.call("can_bind_seal")
-			var ks2: Dictionary = player.call("seal_keystone")
-			var need2: String = str(player.call("pending_tier", (player.get("abilities") as Array)[selected]))
+			var can: Dictionary = player.can_bind_seal()
+			var ks2: Dictionary = player.seal_keystone()
+			var need2: String = str(player.pending_tier((player.abilities as Array)[selected]))
 			_lock_button.text = "Bind the %s and lock" % need2
 			_lock_button.disabled = not bool(can["ok"])
 			_lock_button.tooltip_text = "" if bool(can["ok"]) else str(can["text"])
@@ -1081,11 +1081,11 @@ func _refresh_runes() -> void:
 	if _clear_button != null and is_instance_valid(_clear_button):
 		_clear_button.disabled = RuneWord.size(word) <= 1
 	if _reset_button != null and is_instance_valid(_reset_button):
-		_reset_button.disabled = not bool(player.call("draft_changed"))
+		_reset_button.disabled = not bool(player.draft_changed())
 	if _undo_button != null and is_instance_valid(_undo_button):
-		_undo_button.disabled = not bool(player.call("can_undo"))
+		_undo_button.disabled = not bool(player.can_undo())
 	if _redo_button != null and is_instance_valid(_redo_button):
-		_redo_button.disabled = not bool(player.call("can_redo"))
+		_redo_button.disabled = not bool(player.can_redo())
 	for chip: Control in _chips:
 		chip.queue_redraw()
 
@@ -1102,8 +1102,8 @@ func _build_detail() -> void:
 	var gb: Button = UiWidgets.small_button("Back" if glossary else "Statuses", show_glossary.bind(not glossary))
 	gb.name = "GlossaryButton"
 	head.add_child(gb)
-	head.add_child(UiWidgets.small_button("Skill tree  (%s)" % Keybinds.binding_text("skills"), func() -> void: game.call("open_skill_tree", false)))
-	head.add_child(UiWidgets.small_button("Close  (%s)" % Keybinds.binding_text("ethercosm"), func() -> void: game.call("close_screen")))
+	head.add_child(UiWidgets.small_button("Skill tree  (%s)" % Keybinds.binding_text("skills"), func() -> void: game.open_skill_tree(false)))
+	head.add_child(UiWidgets.small_button("Close  (%s)" % Keybinds.binding_text("ethercosm"), func() -> void: game.close_screen()))
 	box.add_child(UiTheme.body("Every status a skill can leave on an enemy. Click a name to fold it." if glossary else "The inner space of your soul.", 14, UiTheme.TEXT_DIM))
 	box.add_child(UiTheme.rule())
 	# everything between the heading and the skill slots scrolls, so the slots stay in reach
@@ -1119,7 +1119,7 @@ func _build_detail() -> void:
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 7)
 	pad.add_child(list)
-	var held: Array = player.get("constructs")
+	var held: Array = player.constructs
 	if glossary:
 		for id: String in StatusText.all_ids():
 			list.add_child(UiWidgets.StatusEntry.new(id, "", -1.0, true))
@@ -1141,24 +1141,24 @@ func show_glossary(on: bool) -> void:
 
 func _build_skill_detail(box: VBoxContainer, held: Array) -> void:
 	# the soul at a glance
-	var t: Dictionary = player.get("talent")
+	var t: Dictionary = player.talent
 	box.add_child(UiWidgets.stat_row("Talent", str(t.get("name", "?")), UiTheme.GOLD))
-	var pcts: Array = player.get("star_pct")
+	var pcts: Array = player.star_pct
 	for i: int in pcts.size():
 		box.add_child(UiWidgets.Bar.new(float(pcts[i]) / 99.0, UiTheme.STAR.darkened(0.25),
 			"star %d   %d%% capacity   %d essence" % [i + 1, int(float(pcts[i])), int(GameData.num("stars", "full_tank") * float(pcts[i]) / 100.0)], 22.0))
-	box.add_child(UiTheme.body(str(player.call("aura_read")), 14, UiTheme.STAR))
-	var rate: float = float(player.get("satellite_rate"))
+	box.add_child(UiTheme.body(str(player.aura_read()), 14, UiTheme.STAR))
+	var rate: float = float(player.satellite_rate)
 	box.add_child(UiTheme.body(("A satellite orbits your star: +%d essence a second." % int(rate)) if rate > 0.0
 		else "Nothing orbits your star. Essence returns only when you meditate.", 13, UiTheme.TEXT_DIM))
 	box.add_child(UiTheme.rule())
 
-	var abilities: Array = player.get("abilities")
+	var abilities: Array = player.abilities
 	if abilities.is_empty():
 		box.add_child(UiTheme.body("You know no abilities.", 15, UiTheme.TEXT_FAINT))
 		return
 	var st: Dictionary = abilities[selected]
-	var ab: Dictionary = player.call("ability_stats", st)
+	var ab: Dictionary = player.ability_stats(st)
 	var name_row := HBoxContainer.new()
 	name_row.add_theme_constant_override("separation", 12)
 	box.add_child(name_row)
@@ -1173,29 +1173,29 @@ func _build_skill_detail(box: VBoxContainer, held: Array) -> void:
 	name_col.add_child(UiTheme.body(UiTheme.verse_of(ab), 14, UiTheme.STAR))
 	if str(ab.get("summary", "")) != "":
 		box.add_child(UiTheme.body(str(ab["summary"]), 14, UiTheme.TEXT))
-	var asc: String = str(player.call("ascension_summary", selected))
+	var asc: String = str(player.ascension_summary(selected))
 	if asc != "":
 		var asc_l := UiTheme.body(asc, 14, UiTheme.STAR)
 		asc_l.name = "AscensionBoosts"
 		box.add_child(asc_l)
 
-	var need: String = str(player.call("pending_tier", st))
+	var need: String = str(player.pending_tier(st))
 	box.add_child(UiWidgets.Bar.new(float(st["progress"]) / 100.0, UiTheme.GOLD if need != "" else UiTheme.ESSENCE,
 		("stage %d   -   bar full: %s" % [int(st["stage"]), ("ready for its level %d lock" % (int(st["stage"]) + 1))
-			if bool((player.call("can_open_seal", selected) as Dictionary)["ok"]) else "its level %d lock needs a %s" % [int(st["stage"]) + 1, need]]) if need != ""
+			if bool((player.can_open_seal(selected) as Dictionary)["ok"]) else "its level %d lock needs a %s" % [int(st["stage"]) + 1, need]]) if need != ""
 		else "stage %d   -   %d of %d runes lit" % [int(st["stage"]), int(float(st["progress"]) / 100.0 * RUNES_PER_STAGE), RUNES_PER_STAGE], 22.0))
 	box.add_child(UiTheme.body("It grows by essence spent through it - fastest when something is trying to kill you.", 13, UiTheme.TEXT_FAINT))
 
 	# the level lock: its state only, and the one way to it - the seal screen (Brent 2026-10-23: "No
 	# binding the constructs on the main page, only with the runes"), open only with the bar full and a
 	# construct of the tier carried (Brent 2026-10-24); otherwise what is missing, and no way in
-	var lock: Dictionary = player.call("can_open_seal", selected)
+	var lock: Dictionary = player.can_open_seal(selected)
 	if bool(lock["ok"]):
 		var lock_box := HBoxContainer.new()
 		lock_box.name = "LockState"
 		lock_box.add_theme_constant_override("separation", 8)
 		box.add_child(lock_box)
-		var counts: Dictionary = player.call("construct_fit_counts", need)
+		var counts: Dictionary = player.construct_fit_counts(need)
 		var ready_l := UiTheme.body("Ready for its level %d lock: needs a %s (%d carried that fit%s)." % [int(st["stage"]) + 1, need, int(counts["fit"]),
 			(", %d that do not" % int(counts["unfit"])) if int(counts["unfit"]) > 0 else ""], 14, UiTheme.GOLD)
 		ready_l.name = "LockReady"
@@ -1214,7 +1214,7 @@ func _build_skill_detail(box: VBoxContainer, held: Array) -> void:
 		box.add_child(miss)
 
 	# what it does: the skill's real numbers, and the statuses it leaves
-	var det: Dictionary = player.call("skill_details", selected)
+	var det: Dictionary = player.skill_details(selected)
 	var sealed: bool = bool(det.get("sealed", false))
 	box.add_child(UiTheme.section("What it does"))
 	if sealed or bool(det.get("boosted", false)):
@@ -1285,8 +1285,8 @@ func _build_skill_detail(box: VBoxContainer, held: Array) -> void:
 
 	# the word built in it
 	box.add_child(UiTheme.rule())
-	var word: Dictionary = player.call("ability_word", selected)
-	var ctx: RuneContext = player.call("rune_context", selected)
+	var word: Dictionary = player.ability_word(selected)
+	var ctx: RuneContext = player.rune_context(selected)
 	var rules: RuneRules = Runes.active()
 	var runes_row := HBoxContainer.new()
 	box.add_child(runes_row)
@@ -1295,17 +1295,17 @@ func _build_skill_detail(box: VBoxContainer, held: Array) -> void:
 		else "No word yet - runes are sealed at a binding", 14, UiTheme.GOLD if n_sealed > 0 else UiTheme.TEXT_DIM)
 	runes_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	runes_row.add_child(runes_line)
-	var test: bool = bool(player.get("test_character"))
+	var test: bool = bool(player.test_character)
 	if not bool(lock["ok"]):               # a skill whose lock can open has its one button, "Open the seal", above
 		var rb: Button = UiWidgets.small_button("The seal", open_runes)
 		rb.name = "RunesButton"
 		runes_row.add_child(rb)
-	var fx_lines: Array = player.call("rune_summary", selected)
+	var fx_lines: Array = player.rune_summary(selected)
 	if not fx_lines.is_empty():
 		box.add_child(UiWidgets.status_line("Sealed word:  " + ",  ".join(PackedStringArray(fx_lines.map(func(v: Variant) -> String: return str(v)))), 13, UiTheme.GOLD))
-	var known: Array = player.get("known_runes")
+	var known: Array = player.known_runes
 	box.add_child(UiTheme.body("Every rune known (test character)." if test else "Runes known: %d of %d. Found in the Netherecho, in fights and on old stones." % [
-		(player.call("rune_palette") as Array).filter(func(id: String) -> bool: return known.has(id)).size(), (player.call("rune_palette") as Array).size()], 12, UiTheme.TEXT_FAINT))
+		(player.rune_palette() as Array).filter(func(id: String) -> bool: return known.has(id)).size(), (player.rune_palette() as Array).size()], 12, UiTheme.TEXT_FAINT))
 
 
 ## How a skill applies one status, beside its name: how long, how many, its conditions, and what the
@@ -1322,18 +1322,18 @@ func _status_note(s: Dictionary) -> String:
 		parts.append("%d stack%s a hit%s" % [n, "" if n == 1 else "s", (" (%d)" % nb) if nb >= 0 and nb != n else ""])
 	for t: Variant in s.get("notes", []):
 		parts.append(str(t))
-	if bool(s.get("added", false)) and bool(player.call("word_locked", selected)):
+	if bool(s.get("added", false)) and bool(player.word_locked(selected)):
 		parts.append("from the sealed word")
 	return ";  ".join(PackedStringArray(parts))
 
 
 ## The skill slots (and the constructs carried), under the scrolling part so they are always in reach.
 func _build_slots(box: VBoxContainer, held: Array) -> void:
-	var abilities: Array = player.get("abilities")
+	var abilities: Array = player.abilities
 	if not abilities.is_empty() and not glossary:
 		box.add_child(UiTheme.rule())
 		box.add_child(UiTheme.body("Skill slot", 13, UiTheme.TEXT_DIM))
-		var hotbar: Array = player.get("hotbar")
+		var hotbar: Array = player.hotbar
 		var slots := HBoxContainer.new()
 		slots.name = "SkillSlots"
 		slots.add_theme_constant_override("separation", 6)
@@ -1341,8 +1341,8 @@ func _build_slots(box: VBoxContainer, held: Array) -> void:
 		for i: int in hotbar.size():
 			var here: bool = int(hotbar[i]) == selected
 			var b: Button = UiWidgets.small_button(Keybinds.binding_text("ability_%d" % (i + 1)), func() -> void:
-				player.call("assign_slot", i, selected)
-				game.call("save_now")
+				player.assign_slot(i, selected)
+				game.save_now()
 				rebuild())
 			b.name = "SlotButton_%d" % i
 			b.custom_minimum_size = Vector2(44, 40)
@@ -1351,12 +1351,12 @@ func _build_slots(box: VBoxContainer, held: Array) -> void:
 				b.add_theme_color_override("font_color", UiTheme.GOLD)
 			slots.add_child(b)
 		slots.add_child(UiWidgets.small_button("clear", func() -> void:
-			player.call("unassign_ability", selected)
-			game.call("save_now")
+			player.unassign_ability(selected)
+			game.save_now()
 			rebuild()))
 	if not held.is_empty():
 		var names: Array[String] = []
-		var groups: Array = player.call("construct_groups")
+		var groups: Array = player.construct_groups()
 		if groups.size() > 6:          # a long list (a test character's): count by tier
 			for tier: Variant in GameData.construct_tiers:
 				var n: int = held.filter(func(c2: Dictionary) -> bool: return str(c2["tier"]) == str(tier)).size()
@@ -1375,7 +1375,7 @@ func _bind_preview(st: Dictionary, concept: String) -> Control:
 	var col := VBoxContainer.new()
 	col.name = "BindPreview"
 	col.add_theme_constant_override("separation", 4)
-	var rows: Array[Dictionary] = player.call("preview_bind", st, concept)
+	var rows: Array[Dictionary] = player.preview_bind(st, concept)
 	for r: Dictionary in rows:
 		var line := HBoxContainer.new()
 		col.add_child(line)
@@ -1424,11 +1424,11 @@ class Cosmos extends Control:
 				accept_event()
 
 	func _draw() -> void:
-		var player: Node = screen.get("player")
+		var player: Player = screen.get("player")
 		var c: Vector2 = size * 0.5 + Vector2(0, -20.0)
 		_draw_void(c)
 
-		var abilities: Array = player.get("abilities")
+		var abilities: Array = player.abilities
 		var orbit: float = minf(size.x, size.y) * 0.34
 		# many abilities (a test character knows a whole affinity): a wider oval and smaller nodes
 		var rx: float = orbit
@@ -1485,8 +1485,8 @@ class Cosmos extends Control:
 	func _draw_void(c: Vector2) -> void:
 		UiDraw.void_field(self, size, c, _time)
 
-	func _draw_stars(player: Node, c: Vector2) -> void:
-		var pcts: Array = player.get("star_pct")
+	func _draw_stars(player: Player, c: Vector2) -> void:
+		var pcts: Array = player.star_pct
 		var n: int = pcts.size()
 		for i: int in n:
 			var off := Vector2((float(i) - float(n - 1) * 0.5) * 124.0, 0.0)
@@ -1500,14 +1500,14 @@ class Cosmos extends Control:
 			draw_circle(p, r * pulse * 0.72, Color(1, 1, 1))
 			UiDraw.ring(self, p, r + 12.0, frac, UiTheme.STAR)
 			UiDraw.text(self, Vector2(p.x - 60.0, p.y + r + 34.0), "star %d   %d%%" % [i + 1, int(float(pcts[i]))], 13, UiTheme.STAR, HORIZONTAL_ALIGNMENT_CENTER, 120.0)
-		var t: Dictionary = player.get("talent")
+		var t: Dictionary = player.talent
 		UiDraw.text(self, Vector2(c.x - 200.0, c.y - 78.0), str(t.get("name", "")), 16, UiTheme.GOLD, HORIZONTAL_ALIGNMENT_CENTER, 400.0)
 
-	func _draw_satellite(player: Node, c: Vector2) -> void:
-		var rate: float = float(player.get("satellite_rate"))
+	func _draw_satellite(player: Player, c: Vector2) -> void:
+		var rate: float = float(player.satellite_rate)
 		if rate <= 0.0:
 			return
-		var rx := 118.0 + 62.0 * float((player.get("star_pct") as Array).size() - 1)
+		var rx := 118.0 + 62.0 * float((player.star_pct as Array).size() - 1)
 		var ry := 46.0
 		var prev := c + Vector2(rx, 0.0)
 		for i: int in range(1, 49):
@@ -1521,10 +1521,10 @@ class Cosmos extends Control:
 		draw_circle(s, 5.0, UiTheme.GOLD.lightened(0.3))
 		UiDraw.text(self, s + Vector2(10.0, -8.0), "+%d/s" % int(rate), 12, UiTheme.GOLD)
 
-	func _draw_ability(player: Node, st: Dictionary, index: int, p: Vector2) -> void:
-		var ab: Dictionary = player.call("ability_stats", st)
+	func _draw_ability(player: Player, st: Dictionary, index: int, p: Vector2) -> void:
+		var ab: Dictionary = player.ability_stats(st)
 		var is_selected: bool = index == int(screen.get("selected"))
-		var need: String = str(player.call("pending_tier", st))
+		var need: String = str(player.pending_tier(st))
 		var stage: int = int(st["stage"])
 		var lit: int = int(float(st["progress"]) / 100.0 * RUNES_PER_STAGE)
 		var k: float = _k
@@ -1542,7 +1542,7 @@ class Cosmos extends Control:
 
 		# the current runechain - or, with a locked rune word, that word repeated round the ring
 		draw_arc(p, ring_r, 0, TAU, 64, Color(1, 1, 1, 0.06), 12.0 * k, true)
-		var word: Dictionary = player.call("ability_word", index)
+		var word: Dictionary = player.ability_word(index)
 		if RuneWord.is_locked(word) and RuneWord.size(word) > 1:
 			_draw_word_chain(p, ring_r, word, GameData.affinity_color(str(ab.get("affinity", ""))))
 		var rng := RandomNumberGenerator.new()
@@ -1569,7 +1569,7 @@ class Cosmos extends Control:
 		if k >= 0.8 or need != "":
 			UiDraw.text(self, Vector2(p.x - 110.0, p.y + below + 17.0), sub, 12, UiTheme.GOLD if need != "" else UiTheme.TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER, 220.0)
 		# which skill slot it sits in
-		var hotbar: Array = player.get("hotbar")
+		var hotbar: Array = player.hotbar
 		var slot: int = hotbar.find(index)
 		if slot >= 0:
 			var kp := p + Vector2(26.0, -26.0) * k

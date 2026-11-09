@@ -10,7 +10,7 @@ var _pending: Array[Dictionary] = []
 func on_incoming(ctx: HitContext) -> void:
 	_pending.append({"t": DELAY, "amount": ctx.amount() * ARRIVES_AT, "heavy": ctx.heavy})
 	ctx.cancelled = true
-	owner.call("_float", "later...", Color(0.7, 0.7, 1))
+	owner.float_note("later...", Color(0.7, 0.7, 1))
 
 
 func on_tick(delta: float) -> void:
@@ -20,7 +20,7 @@ func on_tick(delta: float) -> void:
 	for p: Dictionary in _pending:
 		p["t"] = float(p["t"]) - delta
 		if float(p["t"]) <= 0.0:
-			owner.call("_apply_damage", float(p["amount"]), bool(p["heavy"]))
+			owner.apply_blow(float(p["amount"]), bool(p["heavy"]))
 		else:
 			still.append(p)
 	_pending = still

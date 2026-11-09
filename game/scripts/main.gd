@@ -5,7 +5,6 @@ extends Node3D
 ## state and the forwarders; each concern is a part in scripts/main/ (docs/architecture/main-split.md).
 
 const PlayerScript := preload("res://scripts/player.gd")
-const EnemyScript := preload("res://scripts/enemy.gd")
 const SceneryScript := preload("res://scripts/scenery.gd")
 const HudScript := preload("res://scripts/hud.gd")
 const SettingsMenuScript := preload("res://scripts/settings_menu.gd")
@@ -47,9 +46,9 @@ var exit_reach: float = GameData.num("passage", "exit_reach")
 # Town.
 var night_rent: int = GameData.inum("night", "rent")
 
-var player: CharacterBody3D
+var player: Player
 var camera: Camera3D
-var hud: Control
+var hud: Hud
 var hud_layer: CanvasLayer
 var ui_root: Control                # themed parent of the HUD and every screen
 var screen: Control                 # the menu screen currently shown, if any
@@ -174,15 +173,15 @@ func _process(delta: float) -> void:
 	if running != null:
 		running.tick(delta)                 # the level the state names (MainStates)
 
-	hud.call("refresh", player, _where())
-	hud.set("show_world", state == "dungeon" or state == "arena_rest" or state == "arena_fight" or state == "field" or state == "town")
-	hud.call("set_nether", nether.hud_info())
-	hud.set("minimap", minimap_info())
+	hud.refresh(player, _where())
+	hud.show_world = state == "dungeon" or state == "arena_rest" or state == "arena_fight" or state == "field" or state == "town"
+	hud.set_nether(nether.hud_info())
+	hud.minimap = minimap_info()
 	if nether.active and screen == null:
 		_prompt = "Your body sits behind you, defenceless.   %s or walk back onto it to return.\nTouch wisps to gather them. Beat a construct down to subdue it." % _k("project")
-	hud.call("set_prompt", _prompt if screen == null else "")
-	hud.call("set_passage", {"walls": chambers, "cleared": cleared, "current": current, "gate": gate_at, "bank": bank} if state == "dungeon" else {})
-	player.set("ui_blocked", screen != null or settings_menu != null or bool(hud.call("mouse_over_ui")))
+	hud.set_prompt(_prompt if screen == null else "")
+	hud.set_passage({"walls": chambers, "cleared": cleared, "current": current, "gate": gate_at, "bank": bank} if state == "dungeon" else {})
+	player.ui_blocked = screen != null or settings_menu != null or bool(hud.mouse_over_ui())
 
 	if _harness_part != null:
 		_harness().tick()
@@ -210,7 +209,7 @@ func _place_camera(focus: Vector3, delta: float) -> void:
 	var yaw: float = deg_to_rad(float(c["yaw_deg"]))
 	var look: Vector3 = focus + Vector3.UP * lerpf(float(c["look_height_far"]), float(c["look_height_near"]), t)
 	if player != null and player.has_method("camera_kick"):
-		look += player.call("camera_kick")      # a landed blow nudges the view (balance.json feel)
+		look += player.camera_kick()      # a landed blow nudges the view (balance.json feel)
 	var back := Vector3(sin(yaw), 0.0, cos(yaw))
 	camera.fov = lerpf(float(c["fov_far_deg"]), float(c["fov_near_deg"]), t)
 	camera.global_position = look + back * cos(pitch) * dist + Vector3.UP * sin(pitch) * dist
@@ -280,15 +279,15 @@ func _unhandled_input(event: InputEvent) -> void:
 ## character also turns the bar to its next six skills (hotbar_page). The sidestep key (combat review
 ## R3) is taken here too: wherever you can cast, you can step.
 func _cast_from_hotbar(event: InputEvent) -> bool:
-	if event.is_action_pressed("hotbar_page") and bool(player.get("test_character")):
-		player.call("next_hotbar_page")
+	if event.is_action_pressed("hotbar_page") and bool(player.test_character):
+		player.next_hotbar_page()
 		return true
 	if event.is_action_pressed("sidestep"):
-		player.call("press_sidestep")             # now, or as soon as you are free (balance.json sidestep)
+		player.press_sidestep()             # now, or as soon as you are free (balance.json sidestep)
 		return true
-	for i: int in (player.get("hotbar") as Array).size():
+	for i: int in (player.hotbar as Array).size():
 		if event.is_action_pressed("ability_%d" % (i + 1)):
-			player.call("press_slot", i)            # cast now, or as soon as you are free (balance.json feel)
+			player.press_slot(i)            # cast now, or as soon as you are free (balance.json feel)
 			return true
 	return false
 
@@ -336,9 +335,9 @@ func _swap_for_fresh(then: Dictionary) -> void:
 		return
 	var tree: SceneTree = get_tree()
 	var was_current: bool = tree.current_scene == self
-	var fresh: Node = (load(scene_file_path if scene_file_path != "" else "res://scenes/main.tscn") as PackedScene).instantiate()
-	fresh.set("_test_mode", _test_mode)
-	fresh.set("_then", then)
+	var fresh: Main = (load(scene_file_path if scene_file_path != "" else "res://scenes/main.tscn") as PackedScene).instantiate()
+	fresh._test_mode = _test_mode
+	fresh._then = then
 	fresh.process_mode = process_mode
 	var at: int = get_index()
 	parent.remove_child(self)             # out of the world first: two players never share it
@@ -392,7 +391,7 @@ func _rune_stone_in_reach() -> RuneStone:
 
 
 func _read_stone(stone: RuneStone) -> void:
-	player.call("read_inscription", stone.stone_id, stone.pool, stone.stone_name)
+	player.read_inscription(stone.stone_id, stone.pool, stone.stone_name)
 	stone.set_read(true)
 	save_now()
 
@@ -401,7 +400,7 @@ func _stone_prompt() -> void:
 	var stone: RuneStone = _rune_stone_in_reach()
 	if stone == null:
 		return
-	var read: bool = (player.get("read_inscriptions") as Array).has(stone.stone_id)
+	var read: bool = (player.read_inscriptions as Array).has(stone.stone_id)
 	_prompt = ("%s.   Already read." % stone.stone_name) if read else ("%s read %s - runes are cut into it." % [_k("interact"), stone.stone_name.to_lower()])
 
 
@@ -425,7 +424,7 @@ func _build_player() -> void:
 ## A rune became known: the HUD shows it (design/14 section 8).
 func _on_rune_discovered(rune_id: String, source: String) -> void:
 	if hud != null:
-		hud.call("show_rune", rune_id, source)
+		hud.show_rune(rune_id, source)
 
 
 func _build_hud() -> void:
@@ -455,6 +454,18 @@ func _where() -> String:
 # has_method strings included), and the node's signal handlers are connected here as before; a part never is.
 # A new function outside code needs gets a forwarder in its part's block (docs/architecture/main-split.md).
 # ================================================================================================
+
+# --- public readers (docs/architecture/typed-calls.md): the level helpers the builders reach, and the payout the
+# innkeeper's ledger reads. Aliases: the private names stay (ZoneBuilder, which may hold the self-test's stub, calls
+# them by string).
+
+## What the last passage exit paid (`_last_payout`).
+var last_payout: int:
+	get: return _last_payout
+func biome_floor(centre: Vector3, size: Vector2) -> void: factory_part._biome_floor(centre, size)
+func biome_wall(centre: Vector3, length: float, yaw: float, height: float) -> StaticBody3D: return factory_part._biome_wall(centre, length, yaw, height)
+func static_box(pos: Vector3, size: Vector3, color: Color, show: bool = true) -> StaticBody3D: return factory_part._static_box(pos, size, color, show)
+
 
 # --- the test harness (MainHarness): a shot's watcher (MainShots.ShotWatch) calls this by name
 func _save_shot() -> void: _harness()._save_shot()

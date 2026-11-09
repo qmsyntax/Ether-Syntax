@@ -118,7 +118,7 @@ func _rod_relay(aff: String, stage_mult: float) -> void:
 	if player.rod.global_position.distance_to(player.global_position) > float(ab.get("relay_radius", 8.0)):
 		return
 	var pick: Node3D = null
-	for e: Node3D in player.casting_part._enemies_near(player.rod.global_position, float(ab.get("relay_range", 5.0))):
+	for e: Enemy in player.casting_part._enemies_near(player.rod.global_position, float(ab.get("relay_range", 5.0))):
 		if pick == null or e.global_position.distance_to(player.rod.global_position) < pick.global_position.distance_to(player.rod.global_position):
 			pick = e
 	if pick == null:
@@ -150,10 +150,10 @@ func _start_blast(point: Vector3, ab: Dictionary, stage_mult: float, tags: Array
 ## A delayed blast goes off at `at` (called by the DelayedBlast). It may leave a cloud or a patch.
 func land_blast(at: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	var radius: float = float(ab.get("radius", 2.0))
-	for e: Node3D in player.casting_part._enemies_near(at, radius):
-		var marked: bool = ab.has("bonus_vs_status") and bool(e.call("has_status", str(ab["bonus_vs_status"])))
+	for e: Enemy in player.casting_part._enemies_near(at, radius):
+		var marked: bool = ab.has("bonus_vs_status") and bool(e.has_status(str(ab["bonus_vs_status"])))
 		player.hits_part.apply_hit(e, player.hits_part._payload(ab, "on_hit"), tags, stage_mult)
-		if marked and is_instance_valid(e) and not bool(e.call("is_dead")):
+		if marked and is_instance_valid(e) and not bool(e.is_dead()):
 			player.combat_part.deal_damage(e, float(ab.get("bonus_damage", 0.0)) * stage_mult, tags + ["bonus"])
 	if ab.has("leave_zone"):
 		player.hits_part.lay_cloud(at, ab["leave_zone"], tags + ["cloud"])
@@ -207,14 +207,14 @@ func _detonate(ab: Dictionary, stage_mult: float, tags: Array, strike_target: No
 	var ids: Array = ab["consume_status"] if ab.get("consume_status") is Array else [str(ab.get("consume_status", ""))]
 	var status: String = str(ids[0])
 	var carrying: Array = []
-	for e: Node3D in player.casting_part._enemies_near(player.global_position, float(ab.get("range", 10.0))):
+	for e: Enemy in player.casting_part._enemies_near(player.global_position, float(ab.get("range", 10.0))):
 		var n := 0
-		var asleep: bool = bool(e.call("has_status", "asleep"))
+		var asleep: bool = bool(e.has_status("asleep"))
 		for id: Variant in ids:
-			var counts: int = int(e.call("status_stacks", str(id))) if bool(e.call("has_status", str(id))) else 0
+			var counts: int = int(e.status_stacks(str(id))) if bool(e.has_status(str(id))) else 0
 			if counts > 0:
 				n += counts
-				e.call("clear_status", str(id))
+				e.clear_status(str(id))
 		if n > 0:
 			carrying.append([e, n, e.global_position, asleep])
 	var refund := 0.0
@@ -242,7 +242,7 @@ func _detonate(ab: Dictionary, stage_mult: float, tags: Array, strike_target: No
 		if float(ab.get("ray_damage", 0.0)) > 0.0:
 			_home_ray(where, carrier, float(ab["ray_damage"]) * stage_mult, tags)
 		if ab.has("per_stack_burst"):
-			for near: Node3D in player.casting_part._enemies_near(where, float(ab.get("burst_radius", 2.0))):
+			for near: Enemy in player.casting_part._enemies_near(where, float(ab.get("burst_radius", 2.0))):
 				player.combat_part.deal_damage(near, float(ab["per_stack_burst"]) * float(stacks) * stage_mult, tags + ["burst"])
 		if ab.has("overload_fracs"):
 			var fracs: Array = ab["overload_fracs"]
@@ -492,14 +492,14 @@ func _corpse_near(point: Vector3, reach: float) -> Fallen:
 	var f: Fallen = Fallen.nearest(player.get_tree(), point, reach)
 	if f != null:
 		return f
-	for e: Node3D in player.casting_part._enemies_near(point, reach):
-		if e.has_method("is_elite") and bool(e.call("is_elite")):
+	for e: Enemy in player.casting_part._enemies_near(point, reach):
+		if e.has_method("is_elite") and bool(e.is_elite()):
 			continue
-		var st: Array = e.call("status_from", "kneels_below", player)
+		var st: Array = e.status_from("kneels_below", player)
 		if st.is_empty() or not bool(e.call("_kneeling")):
 			continue
-		e.call("clear_status", str(st[0]))
-		var b: Body = e.get("body")
+		e.clear_status(str(st[0]))
+		var b: Body = e.body
 		player.combat_part.deal_damage(e, b.total() * 10.0 + 1.0, ["ability", "death", "execute", "captured"])
 		return Fallen.nearest(player.get_tree(), point, reach + 1.0)
 	return null
@@ -600,15 +600,15 @@ func _field_pulse(at: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -
 		var hit: Dictionary = player.hits_part._payload(ab, "on_hit")
 		var take: Dictionary = hit.get("consume_stacks", {})
 		hit.erase("consume_stacks")
-		for e: Node3D in player.casting_part._enemies_near(player.global_position, radius):
+		for e: Enemy in player.casting_part._enemies_near(player.global_position, radius):
 			if took >= cap_t:
 				break
 			for st: String in take:
-				if bool(e.call("has_status", st)):
-					var entry: Dictionary = (e.get("statuses") as Dictionary).get(st, {})
-					var left: int = int(e.call("status_stacks", st)) - int(take[st])
+				if bool(e.has_status(st)):
+					var entry: Dictionary = (e.statuses as Dictionary).get(st, {})
+					var left: int = int(e.status_stacks(st)) - int(take[st])
 					if left <= 0:
-						e.call("clear_status", st)
+						e.clear_status(st)
 					elif not entry.is_empty():
 						entry["stacks"] = left
 					took += int(take[st])
@@ -627,7 +627,7 @@ func _field_pulse(at: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -
 			player.essence = minf(player.essence_max, player.essence + float(ab.get("per_corpse_essence", 0.0)))
 			var aff: String = str(ab.get("affinity", ""))
 			player.reflux_by[aff] = maxf(0.0, player.casting_part.reflux_of(aff) - float(ab.get("per_corpse_reflux", 0.0)))
-			for e: Node3D in player.casting_part._enemies_near(f.global_position, float(ab.get("drag_radius", 2.0))):
+			for e: Enemy in player.casting_part._enemies_near(f.global_position, float(ab.get("drag_radius", 2.0))):
 				player.hits_part.apply_hit(e, player.hits_part._payload(ab, "on_hit"), tags, stage_mult)
 			f.spend()
 		return
@@ -647,7 +647,7 @@ func _field_pulse(at: Vector3, ab: Dictionary, stage_mult: float, tags: Array) -
 			continue
 		var p: Dictionary = player.hits_part._payload(ab, "on_hit")
 		p["damage"] = float(ab.get("per_stack_damage", 30.0)) * (g.mult() if bool(ab.get("age_scales", false)) else 1.0)
-		for e: Node3D in g.inside():
+		for e: Enemy in g.inside():
 			player.hits_part.apply_hit(e, p, tags + ["growth"], stage_mult)
 		g.wilt()
 
@@ -659,7 +659,7 @@ func _lift_zones(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 		var z := node as GroundZone
 		if z == null or z.caster != player or z.kind != want or z.from.distance_to(player.global_position) > float(ab.get("range", 12.0)):
 			continue
-		for e: Node3D in z.inside():
+		for e: Enemy in z.inside():
 			player.hits_part.apply_hit(e, player.hits_part._payload(ab, "on_hit"), tags, stage_mult)
 		z.end()
 
@@ -668,11 +668,11 @@ func _lift_zones(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 func _gather(target: Node3D, ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	var id: String = str(ab.get("consume_status", "dosed"))
 	var total := 0
-	for e: Node3D in player.casting_part._enemies_near(target.global_position, float(ab.get("gather_radius", 6.0))):
-		if e == target or not bool(e.call("has_status", id)):
+	for e: Enemy in player.casting_part._enemies_near(target.global_position, float(ab.get("gather_radius", 6.0))):
+		if e == target or not bool(e.has_status(id)):
 			continue
-		total += int(e.call("status_stacks", id))
-		e.call("clear_status", id)
+		total += int(e.status_stacks(id))
+		e.clear_status(id)
 		player.casting_part._line_visual(e.global_position + Vector3.UP, target.global_position + Vector3.UP, GameData.affinity_color(str(ab.get("affinity", ""))))
 	var cap: int = int(ab.get("gather_cap", 20))
 	var have: int = int(target.call("status_stacks", id)) if bool(target.call("has_status", id)) else 0
@@ -694,12 +694,12 @@ func _beats(ab: Dictionary, stage_mult: float, tags: Array) -> void:
 	SkillTimer.after(player.get_parent(), 0.0, func(_i: int) -> void:
 		if not is_instance_valid(player):
 			return
-		for e: Node3D in player.casting_part._enemies_near(player.global_position, reach):
-			var n: int = int(e.call("status_stacks", id)) if bool(e.call("has_status", id)) else 0
+		for e: Enemy in player.casting_part._enemies_near(player.global_position, reach):
+			var n: int = int(e.status_stacks(id)) if bool(e.has_status(id)) else 0
 			if n <= 0:
 				continue
 			player.combat_part.deal_damage(e, float(ab.get("per_stack_damage", 8.0)) * float(n) * stage_mult, tags + ["beat"])
-			if is_instance_valid(e) and not bool(e.call("is_dead")) and ab.has("on_hit"):
+			if is_instance_valid(e) and not bool(e.is_dead()) and ab.has("on_hit"):
 				player.hits_part.apply_hit(e, ab["on_hit"], tags, stage_mult)
 			if int(ab.get("pool_per_beat", 0)) > 0 and is_instance_valid(e):
 				player.hits_part.spill_blood(e.global_position, int(ab["pool_per_beat"])), int(ab.get("beats", 3)) - 1, float(ab.get("beat_s", 0.5)))
@@ -715,11 +715,11 @@ func _home_ray(from: Vector3, skip: Node3D, damage: float, tags: Array) -> void:
 	player.casting_part._line_visual(from + Vector3.UP, to + Vector3.UP, GameData.affinity_color("light"))
 	var a := Vector2(from.x, from.z)
 	var b := Vector2(to.x, to.z)
-	for e: Node3D in player.casting_part._enemies_near((from + to) * 0.5, from.distance_to(to) * 0.5 + 1.0):
+	for e: Enemy in player.casting_part._enemies_near((from + to) * 0.5, from.distance_to(to) * 0.5 + 1.0):
 		if e == skip:
 			continue
 		var p := Vector2(e.global_position.x, e.global_position.z)
-		if Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= 0.6 + float(e.get("radius")):
+		if Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) <= 0.6 + float(e.radius):
 			player.combat_part.deal_damage(e, damage, tags + ["ray"])
 
 
@@ -732,7 +732,7 @@ func _raise_prop(at: Vector3, ab: Dictionary, stage_mult: float, tags: Array) ->
 			var echo: Lure = _leave_lure(at, {"life": float(ab.get("turn_s", ab.get("life", 3.0))), "hp": 9999.0,
 				"lure_radius": float(ab.get("lure_radius", 8.0)), "breaks_on_hits": 1}, str(ab.get("affinity", "")), tags)
 			echo.visible = false
-			for e: Node3D in player.casting_part._enemies_near(at, float(ab.get("crack_radius", 1.5))):
+			for e: Enemy in player.casting_part._enemies_near(at, float(ab.get("crack_radius", 1.5))):
 				player.hits_part.apply_hit(e, player.hits_part._payload(ab, "on_hit"), tags, stage_mult)
 			return
 		"lamp":

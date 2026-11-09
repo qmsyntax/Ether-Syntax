@@ -7,7 +7,7 @@ extends UiScreen
 var role := ""
 
 
-func _init(game_node: Node, who: String) -> void:
+func _init(game_node: Main, who: String) -> void:
 	super(game_node)
 	role = who
 
@@ -51,7 +51,7 @@ func build(root: Control) -> void:
 			_passage(box)
 		"tempering":
 			box.add_child(UiWidgets.service_button("Train in the yard", "Break the body a little, on purpose. It comes back harder.", "",
-				func() -> void: game.call("open_tempering")))
+				func() -> void: game.open_tempering()))
 		"corpse_clerk":
 			_corpses(box)
 		_:
@@ -65,76 +65,76 @@ func build(root: Control) -> void:
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
 	box.add_child(foot)
-	var done := UiWidgets.small_button("Done  (%s)" % Keybinds.binding_text("interact"), func() -> void: game.call("close_screen"))
+	var done := UiWidgets.small_button("Done  (%s)" % Keybinds.binding_text("interact"), func() -> void: game.close_screen())
 	done.name = "DoneButton"
 	foot.add_child(done)
 	_ledger(root)
 
 
 func _healer(box: VBoxContainer) -> void:
-	var heal: Dictionary = player.call("next_healing")
+	var heal: Dictionary = player.next_healing()
 	box.add_child(UiWidgets.service_button("Be seen to", str(heal["desc"]),
 		("$%d" % int(heal["cost"])) if int(heal["cost"]) > 0 else "",
 		func() -> void:
-			player.call("buy_healing")
-			game.call("save_now")
-			rebuild(), int(heal["cost"]) > 0 and bool(player.call("can_afford", int(heal["cost"])))))
+			player.buy_healing()
+			game.save_now()
+			rebuild(), int(heal["cost"]) > 0 and bool(player.can_afford(int(heal["cost"])))))
 
 
 func _merchant(box: VBoxContainer) -> void:
 	box.add_child(UiWidgets.service_button("See the wares", "Satellites, packs, trinkets and scrolls. Credit extended, to a point.", "",
-		func() -> void: game.call("open_shop")))
-	var inv: Inventory = player.get("inventory")
+		func() -> void: game.open_shop()))
+	var inv: Inventory = player.inventory
 	var loot: int = inv.loot_value()
 	box.add_child(UiWidgets.service_button("Sell your loot", "Everything in your pack that is not gear." if loot > 0 else "Nothing in your pack that anyone wants.",
 		("+$%d" % loot) if loot > 0 else "", func() -> void:
-			game.call("town_sell_loot")
+			game.town_sell_loot()
 			rebuild(), loot > 0))
 	box.add_child(UiTheme.body("Gear you no longer want sells one piece at a time from your pack (%s)." % Keybinds.binding_text("inventory"), 13, UiTheme.TEXT_FAINT))
 
 
 func _innkeeper(box: VBoxContainer) -> void:
 	box.add_child(UiWidgets.service_button("A room for the night", "A night's sleep. Cuts close and bones knit a little. What is gone stays gone.",
-		"room  $%d" % int(game.get("night_rent")), func() -> void:
-			game.call("town_rest_night")
+		"room  $%d" % int(game.night_rent), func() -> void:
+			game.town_rest_night()
 			rebuild()))
 	box.add_child(UiWidgets.service_button("The register", "Write your name in the book, or find an older entry: save and load.", "",
-		func() -> void: game.call("open_saves")))
+		func() -> void: game.open_saves()))
 	box.add_child(UiWidgets.service_button("Someone else", "Leave this life on the shelf and begin a new character.", "",
-		func() -> void: game.call("new_character")))
+		func() -> void: game.new_character()))
 
 
 func _trainer(box: VBoxContainer) -> void:
-	var pts: int = int(player.get("skill_points"))
+	var pts: int = int(player.skill_points)
 	box.add_child(UiWidgets.service_button("Training", "Learn a skill on your affinities' trees, or drill one you know. Points come as your star grows.",
-		"%d point%s" % [pts, "" if pts == 1 else "s"], func() -> void: game.call("open_skill_tree", true)))
+		"%d point%s" % [pts, "" if pts == 1 else "s"], func() -> void: game.open_skill_tree(true)))
 
 
 func _passage(box: VBoxContainer) -> void:
-	var ticket: int = int(game.get("ticket_price"))
-	var mult: float = float(game.call("repeat_mult"))
+	var ticket: int = int(game.ticket_price)
+	var mult: float = float(game.repeat_mult())
 	box.add_child(UiWidgets.service_button("A ticket into the assault passage",
 		"Owned: ticket and meter. %d of %d walls for an exit; carry spoils out. x%.2f" % [
-			int(game.get("gate_at")), int(game.get("chambers")), mult],
-		"ticket  $%d" % ticket, func() -> void: game.call("enter_passage"), bool(player.call("can_afford", ticket))))
+			int(game.gate_at), int(game.chambers), mult],
+		"ticket  $%d" % ticket, func() -> void: game.enter_passage(), bool(player.can_afford(ticket))))
 
 
 func _corpses(box: VBoxContainer) -> void:
-	var bodies: Array = player.get("corpses")
+	var bodies: Array = player.corpses
 	if bodies.is_empty():
 		box.add_child(UiTheme.body("No body of yours lies out there. Come back when one does.", 15, UiTheme.TEXT_DIM))
 		return
-	var fee: int = int(player.call("corpse_fee"))
+	var fee: int = int(player.corpse_fee())
 	box.add_child(UiWidgets.service_button("Corpse retrieval",
 		"Your body lies %s with everything you had on it. Walk back for it, or pay the collectors to bring it.%s" % [
 			_where_name(str((bodies.back() as Dictionary).get("where", ""))),
 			"" if bodies.size() == 1 else "  (%d bodies; this brings the newest.)" % bodies.size()],
 		"$%d" % fee, func() -> void:
-			var why: String = player.call("buy_corpse_retrieval")
+			var why: String = player.buy_corpse_retrieval()
 			if why != "":
-				player.call("note", why)
-			game.call("save_now")
-			rebuild(), bool(player.call("can_afford", fee))))
+				player.note(why)
+			game.save_now()
+			rebuild(), bool(player.can_afford(fee))))
 
 
 ## A craftsperson at their station (design/12): work there, buy tools and supplies, learn the trade.
@@ -148,19 +148,19 @@ func _craft(box: VBoxContainer, station_id: String) -> void:
 			known += 1
 	var work := UiWidgets.service_button("Work at the %s" % str(st.get("name", station_id)).to_lower(),
 		"%s. Each combine pays the station's fee." % str(st.get("what", "")).capitalize(),
-		"%s %d" % [Crafting.skill_name(skill), Crafting.skill_of(player, skill)], func() -> void: game.call("open_crafting", station_id))
+		"%s %d" % [Crafting.skill_name(skill), Crafting.skill_of(player, skill)], func() -> void: game.open_crafting(station_id))
 	work.name = "WorkButton"
 	box.add_child(work)
 	box.add_child(UiWidgets.service_button("Tools and supplies", "What the trade needs and nobody here makes yet.", "",
-		func() -> void: game.call("open_station_shop", station_id)))
+		func() -> void: game.open_station_shop(station_id)))
 	var price: int = int(((GameData.crafting.get("skills", {}) as Dictionary).get(skill, {}) as Dictionary).get("teach_price", 0))
 	var teach := UiWidgets.service_button("Learn the trade",
 		("Every %s recipe taught here: %d of %d known." % [Crafting.skill_name(skill).to_lower(), known, all.size()]) if known < all.size() else "You know everything taught here.",
 		("$%d" % price) if known < all.size() else "", func() -> void:
-			var why: String = game.call("learn_trade", station_id)
+			var why: String = game.learn_trade(station_id)
 			if why != "":
-				player.call("note", why)
-			rebuild(), known < all.size() and bool(player.call("can_afford", price)))
+				player.note(why)
+			rebuild(), known < all.size() and bool(player.can_afford(price)))
 	teach.name = "TeachButton"
 	box.add_child(teach)
 
@@ -176,20 +176,20 @@ func _where_name(where: String) -> String:
 
 ## Your state while you decide: purse, pack, condition, soul (the old town menu's right half).
 func _ledger(root: Control) -> void:
-	var inv: Inventory = player.get("inventory")
-	var body: Body = player.get("body")
-	var money: int = int(player.get("money"))
+	var inv: Inventory = player.inventory
+	var body: Body = player.body
+	var money: int = int(player.money)
 	var right: VBoxContainer = framed(root, 0.67, 0.04, 0.985, 0.775)
 	right.add_theme_constant_override("separation", 6)
 	right.add_child(UiTheme.heading("Ledger", 22))
 	right.add_child(UiTheme.rule())
 	right.add_child(UiWidgets.stat_row("Purse", UiTheme.money_text(money), UiTheme.BAD if money < 0 else UiTheme.GOLD))
-	var last: int = int(game.get("_last_payout"))
+	var last: int = int(game.last_payout)
 	if last > 0:
 		right.add_child(UiWidgets.stat_row("Last delve carried out", "$%d" % last))
-	right.add_child(UiWidgets.stat_row("Delves made", str(int(game.get("delves")))))
+	right.add_child(UiWidgets.stat_row("Delves made", str(int(game.delves))))
 	right.add_child(UiWidgets.stat_row("Pack", "%d of %d kg" % [int(inv.weight()), int(inv.capacity())]))
-	right.add_child(UiWidgets.stat_row("Skill points", str(int(player.get("skill_points"))), UiTheme.STAR))
+	right.add_child(UiWidgets.stat_row("Skill points", str(int(player.skill_points)), UiTheme.STAR))
 
 	right.add_child(Control.new())
 	right.add_child(UiTheme.heading("Condition", 18))
@@ -200,17 +200,17 @@ func _ledger(root: Control) -> void:
 		right.add_child(UiTheme.body("No wounds.", 14, UiTheme.TEXT_DIM))
 	for w: Dictionary in body.wounds:
 		right.add_child(UiTheme.body("%s  -  costs you %d health  -  %s" % [str(w["name"]), int(round(float(w["max_cut"]))), Body.wound_state(w)], 14, Color("ff8a5c")))
-	if bool(player.get("arm_right_lost")):
+	if bool(player.arm_right_lost):
 		right.add_child(UiTheme.body("Striking arm: LOST. Rest will not bring it back.", 14, UiTheme.BAD))
 	else:
-		right.add_child(UiWidgets.Bar.new(float(player.get("arm_right")) / 100.0, Color(0.72, 0.74, 0.82), "striking arm  %d%%" % int(float(player.get("arm_right"))), 20.0))
+		right.add_child(UiWidgets.Bar.new(float(player.arm_right) / 100.0, Color(0.72, 0.74, 0.82), "striking arm  %d%%" % int(float(player.arm_right)), 20.0))
 
 	right.add_child(Control.new())
 	right.add_child(UiTheme.heading("Soul", 18))
 	right.add_child(UiTheme.rule())
-	var pcts: Array = player.get("star_pct")
+	var pcts: Array = player.star_pct
 	for i: int in pcts.size():
 		right.add_child(UiWidgets.Bar.new(float(pcts[i]) / 99.0, UiTheme.STAR.darkened(0.25), "star %d   %d%%" % [i + 1, int(float(pcts[i]))], 20.0))
-	right.add_child(UiTheme.body(str(player.call("aura_read")), 14, UiTheme.STAR))
-	var rate: float = float(player.get("satellite_rate"))
+	right.add_child(UiTheme.body(str(player.aura_read()), 14, UiTheme.STAR))
+	var rate: float = float(player.satellite_rate)
 	right.add_child(UiTheme.body(("Satellite: +%d essence per second." % int(rate)) if rate > 0.0 else "No satellite. Essence returns only when you meditate.", 14, UiTheme.TEXT_DIM))

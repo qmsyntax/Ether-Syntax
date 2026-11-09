@@ -15,11 +15,10 @@ extends Node
 signal camp_woke(camp_id: String)
 signal camp_cleared(camp_id: String)
 
-const EnemyScript := preload("res://scripts/enemy.gd")
 
 var main: Node
 var zone: ZoneBuilder
-var player: Node3D
+var player: Player
 ## id -> {def, state: asleep|awake|returning|cleared|calm, members: Array[Node3D], edge: Array[Node3D],
 ##        centre (level-local), anchor (level-local), leash, aggro, strength, timer}
 var camps: Dictionary = {}
@@ -87,12 +86,12 @@ func _populate(id: String) -> void:
 		var a: float = TAU * float(i) / float(maxi(1, kinds.size())) + 0.4
 		var r: float = spread * (0.45 + 0.55 * float(i % 2))
 		var spot: Vector3 = (c["centre"] as Vector3) + Vector3(cos(a) * r, 0.0, sin(a) * r)
-		var e: Node3D = _spawn(kinds[i], spot, float(c["strength"]), id)
+		var e: Enemy = _spawn(kinds[i], spot, float(c["strength"]), id)
 		(c["members"] as Array).append(e)
 	for edge: Dictionary in def.get("edge", []):
 		var off: Array = edge.get("offset", [6.0, 0.0])
 		var spot2: Vector3 = (c["centre"] as Vector3) + Vector3(float(off[0]), 0.0, float(off[1]))
-		var g: Node3D = _spawn(str(edge["kind"]), spot2, float(c["strength"]), id)
+		var g: Enemy = _spawn(str(edge["kind"]), spot2, float(c["strength"]), id)
 		g.set_meta("runs_to", str(edge.get("runs_to", "")))
 		(c["edge"] as Array).append(g)
 	c["state"] = "calm" if bool(def.get("herd", false)) else "asleep"
@@ -100,18 +99,18 @@ func _populate(id: String) -> void:
 
 
 ## A member of camp `camp_id` at `local` (level frame), asleep (or grazing, for a herd).
-func _spawn(kind: String, local: Vector3, strength: float, camp_id: String) -> Node3D:
+func _spawn(kind: String, local: Vector3, strength: float, camp_id: String) -> Enemy:
 	var d: Dictionary = GameData.enemy(kind)
-	var e: CharacterBody3D = Beast.new() if (str(d.get("creature", "")) != "" or d.has("stars")) else EnemyScript.new()
-	e.call("setup", kind, player, strength)
+	var e: Enemy = Beast.new() if (str(d.get("creature", "")) != "" or d.has("stars")) else Enemy.new()
+	e.setup(kind, player, strength)
 	e.position = local
-	e.set("camp", camp_id)
+	e.camp = camp_id
 	var lvl: Node3D = _level()
-	e.set("home", lvl.to_global(local))
+	e.home = lvl.to_global(local)
 	lvl.add_child(e)
 	var herd: bool = camp_id != "" and camps.has(camp_id) and bool((camps[camp_id]["def"] as Dictionary).get("herd", false))
 	if not herd and str(d.get("behaviour", "")) != "lurker":
-		e.call("sleep_at", lvl.to_global(local))
+		e.sleep_at(lvl.to_global(local))
 	e.connect("hurt", _on_hurt)
 	e.connect("killed", _on_killed)
 	if e.has_signal("fetched"):
@@ -125,7 +124,7 @@ func _spawn(kind: String, local: Vector3, strength: float, camp_id: String) -> N
 
 func _spawn_lurker(patch: Dictionary) -> void:
 	var p: Dictionary = patch["def"]
-	var e: Node3D = _spawn(str(p.get("kind", "sod_lurker")), patch["at"], float(p.get("strength", _cfg.get("lurker_strength", 0.7))), "")
+	var e: Enemy = _spawn(str(p.get("kind", "sod_lurker")), patch["at"], float(p.get("strength", _cfg.get("lurker_strength", 0.7))), "")
 	patch["lurker"] = e
 	e.set_meta("patch", true)
 
@@ -152,7 +151,7 @@ func tick(delta: float) -> void:
 		return
 	var lvl: Node3D = _level()
 	var me: Vector3 = lvl.to_local(player.global_position)
-	var alive: bool = not bool(player.get("dead"))
+	var alive: bool = not bool(player.dead)
 	var close_fight := false
 	for id: String in camps:
 		var c: Dictionary = camps[id]
@@ -162,8 +161,8 @@ func tick(delta: float) -> void:
 		if (c["members"] as Array).is_empty() and st != "cleared":
 			c["state"] = "cleared"
 			c["timer"] = float((c["def"] as Dictionary).get("respawn_s", _cfg.get("respawn_s", 480.0)))
-			for g: Node3D in c["edge"]:
-				g.call("go_home")
+			for g: Enemy in c["edge"]:
+				g.go_home()
 			camp_cleared.emit(id)
 			continue
 		match st:
@@ -174,13 +173,13 @@ func tick(delta: float) -> void:
 				if not alive or _flat(me, c["anchor"]) > float(c["leash"]):
 					_send_home(id)
 				else:
-					for e: Node3D in everyone:
-						if _flat(lvl.to_local(e.global_position), me) <= float(_cfg.get("fight_radius", 30.0)) and not bool(e.get("asleep")):
+					for e: Enemy in everyone:
+						if _flat(lvl.to_local(e.global_position), me) <= float(_cfg.get("fight_radius", 30.0)) and not bool(e.asleep):
 							close_fight = true
 			"returning":
 				var all_home := true
-				for e: Node3D in everyone:
-					if bool(e.call("is_going_home")):
+				for e: Enemy in everyone:
+					if bool(e.is_going_home()):
 						all_home = false
 				if all_home:
 					c["state"] = "calm" if bool((c["def"] as Dictionary).get("herd", false)) else "asleep"
@@ -190,24 +189,24 @@ func tick(delta: float) -> void:
 			"cleared":
 				c["timer"] = float(c["timer"]) - delta
 				if float(c["timer"]) <= 0.0 and _flat(me, c["centre"]) > float(_cfg.get("respawn_clear_m", 60.0)):
-					for g: Node3D in c["edge"]:
+					for g: Enemy in c["edge"]:
 						g.queue_free()
 					_populate(id)
 	for patch: Dictionary in patches:
-		var l: Node3D = patch["lurker"]
+		var l: Enemy = patch["lurker"]
 		if l == null or not is_instance_valid(l):
 			patch["timer"] = float(patch["timer"]) - delta
 			if float(patch["timer"]) <= 0.0 and _flat(me, patch["at"]) > float(_cfg.get("respawn_clear_m", 60.0)):
 				_spawn_lurker(patch)
 			continue
-		if not bool(l.get("buried")) and not bool(l.call("is_going_home")) and _flat(lvl.to_local(l.global_position), me) <= float(_cfg.get("fight_radius", 30.0)):
+		if not bool(l.get("buried")) and not bool(l.is_going_home()) and _flat(lvl.to_local(l.global_position), me) <= float(_cfg.get("fight_radius", 30.0)):
 			close_fight = true
 	if close_fight and alive and not _fighting:
 		_fighting = true
-		player.call("start_fight")
+		player.start_fight()
 	elif not close_fight and _fighting:
 		_fighting = false
-		player.call("end_fight")
+		player.end_fight()
 
 
 func _prune(c: Dictionary) -> void:
@@ -230,20 +229,20 @@ func wake_camp(id: String, anchor_local: Variant = null) -> void:
 	c["state"] = "awake"
 	if anchor_local is Vector3:
 		c["anchor"] = anchor_local
-	for e: Node3D in c["members"]:
+	for e: Enemy in c["members"]:
 		if e.has_method("provoke") and bool(e.call("is_calm")):
 			e.call("provoke", player)
 		else:
-			e.call("wake", player)
+			e.wake(player)
 	if was == "awake":
 		return
-	for g: Node3D in c["edge"]:
+	for g: Enemy in c["edge"]:
 		var to_id: String = str(g.get_meta("runs_to", ""))
 		if to_id != "" and camps.has(to_id) and str(camps[to_id]["state"]) == "asleep" and g.has_method("run_for"):
-			g.call("wake", player)
+			g.wake(player)
 			g.call("run_for", _level().to_global(camps[to_id]["centre"]), to_id)
 		else:
-			g.call("wake", player)
+			g.wake(player)
 	camp_woke.emit(id)
 
 
@@ -251,10 +250,10 @@ func wake_camp(id: String, anchor_local: Variant = null) -> void:
 func _send_home(id: String) -> void:
 	var c: Dictionary = camps[id]
 	c["state"] = "returning"
-	for e: Node3D in (c["members"] as Array) + (c["edge"] as Array):
+	for e: Enemy in (c["members"] as Array) + (c["edge"] as Array):
 		if e.has_method("run_for"):
 			e.set("run_to", null)
-		e.call("go_home")
+		e.go_home()
 
 
 ## A herd or roamer group grazes; one with a path drifts its grazing ground along it.
@@ -275,8 +274,8 @@ func _roam(c: Dictionary, delta: float) -> void:
 		c["centre"] = centre + to.normalized() * step
 	c["anchor"] = c["centre"]
 	var lvl: Node3D = _level()
-	for e: Node3D in c["members"]:
-		e.set("home", lvl.to_global(c["centre"]))
+	for e: Enemy in c["members"]:
+		e.home = lvl.to_global(c["centre"])
 
 
 # --- signals ------------------------------------------------------------------------------------
@@ -310,7 +309,7 @@ func _on_fetched(g: Node, camp_id: String) -> void:
 		c["leash"] = float(c["leash"]) + _flat(anchor, c["centre"])
 	wake_camp(camp_id, c["centre"])
 	if player != null and is_instance_valid(player) and player.has_method("note"):
-		player.call("note", "The Gleaner got there: %s is coming." % str((c["def"] as Dictionary).get("name", camp_id)).to_lower())
+		player.note("The Gleaner got there: %s is coming." % str((c["def"] as Dictionary).get("name", camp_id)).to_lower())
 
 
 # --- for the HUD and tests ----------------------------------------------------------------------
@@ -360,8 +359,8 @@ func at_rest() -> bool:
 			full += int(m.get("n", 1))
 		if members_of(id).size() != full:
 			return false                         # one was killed
-		for e: Node3D in members_of(id):
-			if not bool(e.get("asleep")) and not (e.has_method("is_calm") and bool(e.call("is_calm"))):
+		for e: Enemy in members_of(id):
+			if not bool(e.asleep) and not (e.has_method("is_calm") and bool(e.call("is_calm"))):
 				return false
 	for patch: Dictionary in patches:
 		var l: Variant = patch["lurker"]
@@ -395,7 +394,7 @@ func reset_all() -> void:
 		_spawn_lurker(patch)
 	if _fighting:
 		_fighting = false
-		player.call("end_fight")
+		player.end_fight()
 
 
 ## Seconds until camp `id` refills (tests); set it with the same key.
