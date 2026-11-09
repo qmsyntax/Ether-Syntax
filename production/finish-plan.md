@@ -94,10 +94,14 @@ phases below run to A, then B.
 - After that, every build that changes how something feels comes with a short "what to try" list.
 
 ### Phase 2 - Untangle (L) - before content multiplies the cost of every change
-- Split `player.gd` by concern: movement and feel, combat and hits, casting and kinds, runes and seals, progression
-  (stars, ascension, skill points), economy and inventory, the bot driver. Split `main.gd` into a game state machine
-  plus one controller per level type (town, field, passage, arena, Netherecho) and a test harness loaded only by test
-  flags. Split `enemy.gd` into one brain per behaviour.
+- [x] Split `player.gd` by concern: movement and feel, combat and hits, casting and kinds, runes and seals, progression
+  (stars, ascension, skill points), economy and inventory, the bot driver. Done 2026-11-08
+  (`docs/architecture/player-split.md`): `player.gd` is `class_name Player` (signals, lifecycle, shared and saved
+  state, forwarders) plus eleven `RefCounted` parts in `scripts/player/`, none over ~1,050 lines; no outside caller
+  changed; the suite, the timeline and cast-every-skill output and the self-test count are the same before and after.
+- [ ] Split `main.gd` into a game state machine plus one controller per level type (town, field, passage, arena,
+  Netherecho) and a test harness loaded only by test flags.
+- [ ] Split `enemy.gd` into one brain per behaviour.
 - Give the big objects class names and typed calls. Validate data once on load and remove the silent numeric fallbacks.
 - No behaviour change: the full suite and the combat-review probe must give the same numbers before and after.
 - Done when no gameplay file is over ~1,500 lines and the suite is green.

@@ -6578,10 +6578,14 @@ func _test_level_locks() -> void:
 					if not callers.has(name):
 						callers[name] = []
 					(callers[name] as Array).append(f)
-	_check("in the game's scripts only the seal screen calls bind_seal; the bind itself (_bind_construct) lives in player.gd alone",
-		(callers.get("bind_seal", []) as Array).all(func(f: String) -> bool: return f in ["player.gd", "ethercosm_screen.gd"])
+	# the player is player.gd plus its parts (docs/architecture/player-split.md): the bind lives in player_runes.gd,
+	# and player.gd only forwards to it
+	var the_player: Array[String] = ["player.gd", "player_runes.gd"]
+	_check("in the game's scripts only the seal screen calls bind_seal; the bind itself (_bind_construct) lives in the player alone",
+		(callers.get("bind_seal", []) as Array).all(func(f: String) -> bool: return f in the_player or f == "ethercosm_screen.gd")
 		and (callers.get("bind_seal", []) as Array).has("ethercosm_screen.gd")
-		and (callers.get("_bind_construct", []) as Array) == ["player.gd"], str(callers))
+		and (callers.get("_bind_construct", []) as Array).all(func(f: String) -> bool: return f in the_player)
+		and (callers.get("_bind_construct", []) as Array).has("player.gd"), str(callers))
 	_check("and the old entry points are gone: bind_first_ready, open_free_edit, seal_now, test_bind_unclosed (Brent 2026-11-03: every bind is open-word now)",
 		not callers.has("bind_first_ready") and not callers.has("open_free_edit") and not callers.has("seal_now") and not callers.has("test_bind_unclosed"), str(callers))
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
