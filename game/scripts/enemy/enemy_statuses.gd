@@ -79,9 +79,9 @@ func add_status(id: String, stacks: int = 1, by: Node = null, opts: Dictionary =
 		return add_status(str(def["needs_first"]), 1, by)
 	if id == "aloft":
 		if _shove_class() < 1.0:
-			enemy.take_poise(float(def.get("heavy_poise", 50.0)))    # too heavy to leave the ground: it loses its footing instead
+			enemy.hits_part.take_poise(float(def.get("heavy_poise", 50.0)))    # too heavy to leave the ground: it loses its footing instead
 			return 0
-		enemy.interrupt()
+		enemy.hits_part.interrupt()
 		enemy._leap_left = 0.0
 	var cap: int = int(def.get("stacks", 1))
 	for other: String in enemy.statuses:
@@ -112,12 +112,12 @@ func add_status(id: String, stacks: int = 1, by: Node = null, opts: Dictionary =
 				o["t"] = float(o["t"]) + float(data.get("clock_add", more[other_id]))
 		# turned round, its back to whoever did it (Turning Palm, Blowout, Deflect)
 		if bool(def.get("turn_away", false)) and who is Node3D and is_instance_valid(who):
-			enemy.turn_away_from((who as Node3D).global_position, float(entry["t"]))
+			enemy.hits_part.turn_away_from((who as Node3D).global_position, float(entry["t"]))
 	for gone: Variant in def.get("ends", []):
 		if str(gone) != id:
 			clear_status(str(gone))
 	if bool(def.get("control", false)) or bool(def.get("cannot_act", false)) or bool(def.get("cannot_attack", false)):
-		enemy.interrupt()                               # a hold breaks off whatever it was winding up
+		enemy.hits_part.interrupt()                               # a hold breaks off whatever it was winding up
 		enemy._leap_left = 0.0 if bool(def.get("cannot_act", false)) else enemy._leap_left
 	# a status that fills up turns into another (Chill, at five, is Frozen)
 	var on_cap: Dictionary = def.get("on_cap", {})
@@ -318,7 +318,7 @@ func _after_hurt(applied: float, was_winding: bool) -> void:
 			if float(s["taken"]) >= float(def["ends_after_damage"]):
 				_expire(id)
 	if was_winding and _st_any("staggers_in_windup"):
-		enemy.stagger(float(enemy._cfg["interrupt_stagger_s"]))
+		enemy.hits_part.stagger(float(enemy._cfg["interrupt_stagger_s"]))
 
 
 ## A status ran out: what it leaves behind (Frozen leaves Chill; Dosed pays its bill; a hold that
@@ -353,7 +353,7 @@ func _expire(id: String) -> void:
 	var data: Dictionary = s.get("data", {})
 	if float(data.get("release_shove", 0.0)) > 0.0 and who is Node3D:
 		enemy.shover = who
-		enemy.shove(enemy.global_position - (who as Node3D).global_position, float(data["release_shove"]))
+		enemy.hits_part.shove(enemy.global_position - (who as Node3D).global_position, float(data["release_shove"]))
 	_end_with(id)
 	# a status that raised another's cap is gone: what is above the plain cap falls away (Contained's Infected)
 	for other: String in enemy.statuses.keys():
@@ -489,20 +489,20 @@ func _tick_status(id: String, delta: float) -> void:
 		var away: Vector3 = enemy.global_position - (who as Node3D).global_position
 		away.y = 0.0
 		if away.length() > 0.05:
-			enemy.nudge(away.normalized() * nudge_per * delta)
+			enemy.hits_part.nudge(away.normalized() * nudge_per * delta)
 	var poise_per: float = float(data.get("poise_per_s", def.get("poise_per_s", 0.0)))
 	if poise_per > 0.0:
 		s["pacc"] = float(s.get("pacc", 0.0)) + delta
 		if float(s["pacc"]) >= 1.0:
 			s["pacc"] = 0.0
-			enemy.take_poise(poise_per)
+			enemy.hits_part.take_poise(poise_per)
 	# Sick: every so often it retches, loses what it was doing and stands still
 	var retch_every: float = float(data.get("retch_every", def.get("retch_every", 0.0)))
 	if retch_every > 0.0:
 		_retch_t += delta
 		if _retch_t >= retch_every:
 			_retch_t = 0.0
-			enemy.interrupt()
+			enemy.hits_part.interrupt()
 			enemy._held_t = float(data.get("retch_s", def.get("retch_s", 0.5)))
 
 

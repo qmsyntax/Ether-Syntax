@@ -57,7 +57,6 @@ var telegraph: Dictionary = {}
 
 var _def: Dictionary = {}
 var _cfg: Dictionary = {}
-var _shove_dir := Vector3.ZERO
 var _shove_left := 0.0
 var _attack_cd := 0.6
 var _cooldown := 1.3
@@ -109,10 +108,12 @@ var _strength := 1.0
 ## The parts (docs/architecture/enemy-split.md): each concern is a RefCounted that reaches the node
 ## through its `enemy` back-reference. Outside code keeps calling the node (the forwarders at the end).
 var status_part: EnemyStatuses
+var hits_part: EnemyHits
 
 
 func _init() -> void:
 	status_part = EnemyStatuses.new(self)
+	hits_part = EnemyHits.new(self)
 
 
 ## `strength` scales health and damage - dungeon stages past the midpoint hit harder.
@@ -215,167 +216,6 @@ func is_dead() -> bool:
 	return body.is_dead()
 
 
-# --- being hit ------------------------------------------------------------------------------
-
-## True if `point` is within the back arc: a hit from there is a rear hit. An Exposed body is all back.
-func is_behind(point: Vector3) -> bool:
-	if _st_any("counts_rear"):
-		return true
-	var from: Vector3 = point - global_position
-	from.y = 0.0
-	if from.length() < 0.05:
-		return false
-	return (-facing).angle_to(from.normalized()) <= deg_to_rad(float(_cfg["rear_arc_deg"]) * 0.5)
-
-
-## True if `point` is within the front arc (the same width as the back one).
-func is_in_front(point: Vector3) -> bool:
-	var from: Vector3 = point - global_position
-	from.y = 0.0
-	if from.length() < 0.05:
-		return true
-	return facing.angle_to(from.normalized()) <= deg_to_rad(float(_cfg["rear_arc_deg"]) * 0.5)
-
-
-## `tags` are the hit's (HitContext tags): "through" passes the front guard; a status's
-## damage_taken_except / damage_taken_from read them.
-func take_hit(amount: float, _heavy: bool, source: Node, tags: Array = []) -> float:
-	var mult := 1.0
-	for id: String in statuses:
-		var def: Dictionary = _sdef(id)
-		var excepted := false
-		for t: Variant in def.get("damage_taken_except", []):
-			if tags.has(t):
-				excepted = true
-		if not excepted:
-			mult *= float(def.get("damage_taken_mult", 1.0))
-		var from_aff: Dictionary = def.get("damage_taken_from", {})
-		for aff: String in from_aff:
-			if tags.has(aff):
-				mult *= float(from_aff[aff])
-	# hide, plate or a shield in front: it shrugs off part of anything that does not come round the side
-	if source is Node3D and not tags.has("through") and guards_front((source as Node3D).global_position):
-		mult *= 1.0 - front_armour()
-		_answer_block()
-	var want: float = amount * mult
-	# Spared: nothing takes it below its floor
-	var floor_hp: float = 0.0
-	for id: String in statuses:
-		floor_hp = maxf(floor_hp, float(_sdef(id).get("floor_health", 0.0)))
-	if floor_hp > 0.0:
-		want = minf(want, maxf(0.0, body.total() - floor_hp))
-	var winding: bool = _windup >= 0.0
-	var applied: float = body.apply_damage(want)
-	_flash = 0.12
-	if _rig != null:
-		_rig.flash(0.12)
-	_refresh_label()
-	var hushed: bool = body.is_dead() and source != null and is_instance_valid(source) and source.has_method("hush_radius") and float(source.call("hush_radius")) > 0.0
-	if applied > 0.0 and not hushed:
-		hurt.emit(self, source)                 # its camp wakes; a herd answers (FieldCamps)
-	if hushed:
-		# Muffle: a kill raises no alarm - those near it cannot call for help a while
-		for node: Node in get_tree().get_nodes_in_group("enemies"):
-			if node != self and (node as Node3D).global_position.distance_to(global_position) <= float(source.call("hush_radius")):
-				node.call("add_status", "muted", 1, source)
-	if applied > 0.0 and not body.is_dead():
-		_after_hurt(applied, winding)
-		for id: String in statuses.keys():
-			if statuses.has(id) and bool(_sdef(id).get("ends_on_source_hit", false)) and (statuses[id] as Dictionary).get("by") == source and source != null:
-				statuses.erase(id)                     # Charmed: a hit from whoever charmed it snaps it out
-	if body.is_dead():
-		_release_slot()
-		telegraph = {}
-		var quiet: bool = _st_any("no_death_effects")
-		if _def.has("death_burst") and str((_def["death_burst"] as Dictionary).get("kind", "")) == "scald" and is_inside_tree() and not quiet:
-			ScaldBurst.leave(get_parent(), global_position, _def["death_burst"], _strength, _player)
-		elif _def.has("death_burst") and is_inside_tree() and not quelled and not quiet and not _in_zone_flag("no_heal"):
-			var cfg: Dictionary = _def["death_burst"]
-			var burst := CenserBurst.new()
-			burst.radius = float(cfg.get("radius", 4.0))
-			burst.delay = float(cfg.get("delay", 0.8))
-			burst.heal_frac = float(cfg.get("heal_frac", 0.4))
-			burst.status = str(cfg.get("status", "frenzied"))
-			get_parent().add_child(burst)
-			burst.global_position = global_position
-		if not quiet:
-			_death_effects()
-		_leave_fallen()
-		remove_from_group("hittable")
-		remove_from_group("enemies")
-		killed.emit(self)
-		if _rig != null and _rig.has_method("lie_and_fade") and get_parent() != null:
-			var at: Transform3D = _rig.global_transform
-			remove_child(_rig)
-			get_parent().add_child(_rig)
-			_rig.global_transform = at
-			_rig.call("lie_and_fade", GameData.num("combat", "corpse_lie_s"))
-			_rig = null
-		queue_free()
-		return applied
-	# a pouncer struck while it is crouched or in the air comes down hard
-	if behaviour == "pouncer" and applied > 0.0 and (_windup >= 0.0 or _leap_left > 0.0):
-		_knock_down()
-	return applied
-
-
-## Take poise damage. At zero the enemy is Staggered: its attack is lost and it stands open.
-## Returns true if this broke it.
-func take_poise(amount: float) -> bool:
-	if body.is_dead() or amount <= 0.0 or has_status("staggered"):
-		return false
-	_poise_idle = 0.0
-	for id: String in statuses:
-		amount /= float(GameData.status(id).get("poise_mult", 1.0))      # a drum behind it steadies it
-	poise = maxf(0.0, poise - amount)
-	if poise > 0.0:
-		return false
-	stagger(float(_def.get("stagger_s", GameData.status("staggered").get("lasts", 1.5))))
-	return true
-
-
-## True if a hit from `point` meets this enemy's guard: it has front armour, the hit comes from
-## its front arc, it is on its feet, and (for a commander) it is still in the phase where it blocks.
-## A status with front_block_off (Exposed, Stripped, Seeped) takes the guard away.
-func guards_front(point: Vector3) -> bool:
-	if float(_def.get("front_armour", 0.0)) <= 0.0 or has_status("staggered") or has_status("stunned") or _st_any("front_block_off"):
-		return false
-	if _def.has("front_armour_until_frac") and body.total() / body.total_max() <= float(_def["front_armour_until_frac"]):
-		return false
-	return is_in_front(point)
-
-
-## True if a shot coming from `point` stops on this enemy's shield instead of passing through.
-func blocks_shot(point: Vector3) -> bool:
-	return bool(_def.get("blocks_shots", false)) and guards_front(point)
-
-
-## A blocked hit is answered: a quick swing, if whoever struck is still in reach.
-func _answer_block() -> void:
-	if not _def.has("counter") or _windup >= 0.0 or _special != "" or _charge_left > 0.0 or float(_special_cd["counter"]) > 0.0:
-		return
-	if not is_instance_valid(target) or global_position.distance_to(target.global_position) > _reach + radius + 0.5:
-		return
-	var cfg: Dictionary = _def["counter"]
-	_windup = float(cfg.get("windup", 0.25))
-	_special_cd["counter"] = float(cfg.get("cooldown", 2.5))
-	_update_melee_telegraph()
-
-
-## Cannot act for `seconds` and takes more damage; a bare strike on it is an Opening.
-func stagger(seconds: float) -> void:
-	interrupt()
-	_leap_left = 0.0
-	_stuck_t = 0.0
-	statuses["staggered"] = {"stacks": 1, "t": maxf(seconds, float((statuses.get("staggered", {}) as Dictionary).get("t", 0.0)))}
-	poise = poise_max                       # it gets its footing back when it gets up
-
-
-func _knock_down() -> void:
-	stagger(float(_def.get("knockdown_s", 2.0)))
-	_attack_cd = _cooldown
-
-
 func is_elite() -> bool:
 	return bool(_def.get("elite", false))
 
@@ -403,155 +243,6 @@ func claim_slot(_enemy: Node) -> bool:
 
 func release_slot(_enemy: Node) -> void:
 	pass
-
-
-## Where it fell stays a body for a while, for Death's skills (Fallen).
-func _leave_fallen() -> void:
-	if not is_inside_tree():
-		return
-	var f := Fallen.new()
-	f.kind = kind
-	var lie: float = GameData.num("combat", "corpse_lie_s")
-	if is_instance_valid(_player) and _player.has_method("corpse_lie_s"):
-		lie = float(_player.call("corpse_lie_s"))
-	f.life = lie
-	get_parent().add_child(f)
-	f.global_position = global_position
-
-
-## Cannot move or act for `seconds`; whatever it was doing is lost.
-func stun(seconds: float) -> void:
-	interrupt()
-	_leap_left = 0.0
-	statuses["stunned"] = {"stacks": 1, "t": maxf(seconds, float((statuses.get("stunned", {}) as Dictionary).get("t", 0.0)))}
-
-
-## Break off a wind-up. The attack is spent, not postponed.
-func interrupt() -> void:
-	if _windup >= 0.0:
-		_windup = -1.0
-		_attack_cd = _cooldown
-	_special = ""
-	_charge_left = 0.0
-	telegraph = {}
-
-
-## A skill that interrupts landed. Any wind-up is broken; an attack flagged interruptible (the
-## one shown with a white flash, or any attack of a Read enemy) also leaves its owner staggered.
-## Returns true if it staggered.
-func interrupt_attack() -> bool:
-	if _special == "charge" or _charge_left > 0.0:
-		return false                            # only a stun or a poise break stops the charge
-	var was_winding: bool = _windup >= 0.0
-	var flagged: bool = bool(_def.get("interruptible", false)) or _st_any("makes_interruptible")
-	interrupt()
-	if was_winding and flagged:
-		stagger(float(_cfg["interrupt_stagger_s"]))
-		return true
-	return false
-
-
-## True while it is winding up an attack that an interrupting skill would punish.
-func is_interruptible() -> bool:
-	return _windup >= 0.0 and (bool(_def.get("interruptible", false)) or _st_any("makes_interruptible"))
-
-
-## True while it is moving itself in an attack: a charge, a pounce, a leap (Headwind stops those).
-func is_lunging() -> bool:
-	return _charge_left > 0.0 or _leap_left > 0.0 or _special == "charge"
-
-
-## Throw this enemy `metres` along `dir`. Heavier enemies go less far; Soaked ones go farther.
-## It slides at the shove speed until the distance is spent or it meets something (see crushed).
-func shove(dir: Vector3, metres: float) -> void:
-	var flat := Vector3(dir.x, 0.0, dir.z)
-	if flat.length() < 0.001 or metres <= 0.0 or body.is_dead():
-		return
-	if _special == "charge" or _charge_left > 0.0 or _st_any("immovable"):
-		return                                  # nothing moves it once it has set itself to charge
-	var mult: float = _shove_class()
-	if has_status("soaked"):
-		mult *= float(GameData.status("soaked").get("shove_mult", 1.0))
-	for id: String in statuses.keys():
-		var def: Dictionary = _sdef(id)
-		if id != "soaked" and def.has("shove_mult"):
-			mult *= float(def["shove_mult"])
-			if bool(def.get("ends_on_shove", false)):
-				statuses.erase(id)              # Stilled: the next shove goes twice as far, once
-	if is_inside_tree():
-		for zone: Node in get_tree().get_nodes_in_group("ground_zones"):
-			if float(zone.get("shove_mult")) != 1.0 and bool(zone.call("has_point", global_position, radius)):
-				mult *= float(zone.get("shove_mult"))            # standing water: everything slides farther
-	_shove_dir = flat.normalized()
-	_shove_left = metres * mult
-	_leap_left = 0.0
-	interrupt()
-
-
-## Drag this enemy toward `point`: at most `metres` (heavier ones come less far), stopping `keep`
-## short of it. The same slide as a shove, so it can end in a Crush.
-func pull_toward(point: Vector3, metres: float, keep: float = 0.3) -> void:
-	var to: Vector3 = point - global_position
-	to.y = 0.0
-	var go: float = minf(metres * _shove_class(), to.length() - keep)
-	if go <= 0.05 or body.is_dead() or _special == "charge" or _charge_left > 0.0 or _st_any("immovable"):
-		return
-	_shove_dir = to.normalized()
-	_shove_left = go
-	_leap_left = 0.0
-	interrupt()
-
-
-## Moved a little by something on the ground (a lane of wind). It does not interrupt anything.
-func nudge(step: Vector3) -> void:
-	if body.is_dead() or _shove_left > 0.0 or _charge_left > 0.0 or _leap_left > 0.0 or _st_any("immovable"):
-		return
-	move_and_collide(Vector3(step.x, 0.0, step.z))
-
-
-## Face directly away from `point` and stay that way for `seconds`.
-func turn_away_from(point: Vector3, seconds: float) -> void:
-	var away: Vector3 = global_position - point
-	away.y = 0.0
-	if away.length() < 0.05:
-		return
-	facing = away.normalized()
-	_turned_t = seconds
-	_apply_facing()
-
-
-func is_shoved() -> bool:
-	return _shove_left > 0.0
-
-
-## One physics step of a shove. The body is moved an exact distance (not by velocity, whose time
-## step the engine chooses), so the budget and the ground covered always agree. Meeting anything
-## solid ends the shove; if distance was still owed, that is a crush.
-func _tick_shove(delta: float) -> void:
-	var cfg: Dictionary = GameData.balance["shove"]
-	var step: float = minf(_shove_left, float(cfg["speed"]) * delta)
-	velocity = Vector3.ZERO
-	var col: KinematicCollision3D = move_and_collide(_shove_dir * step)
-	if col == null:
-		_shove_left -= step
-		if _shove_left <= 0.0001:
-			_shove_left = 0.0
-			_shove_ended()                         # it ran its full distance: that is the end of the shove too
-		return
-	var left: float = _shove_left - col.get_travel().length()
-	_shove_left = 0.0
-	_shove_ended()
-	if left >= float(cfg["min_left"]):
-		var hit: Node = col.get_collider() as Node
-		crushed.emit(self, left, hit)
-		if is_instance_valid(shover) and shover.has_method("on_crush"):
-			shover.call("on_crush", self, left, hit)
-
-
-## A shove or a pull is over: whoever did it may mark that (Water's Adrift, for Siltfall).
-func _shove_ended() -> void:
-	if is_instance_valid(shover) and shover.has_method("on_shove_ended"):
-		shover.call("on_shove_ended", self)
 
 
 # --- the slot ring --------------------------------------------------------------------------
@@ -1611,3 +1302,27 @@ func _nearest_enemy_within(reach: float) -> Node3D: return status_part._nearest_
 func lure_reach() -> float: return status_part.lure_reach()
 func _charmed() -> bool: return status_part._charmed()
 func _kneeling() -> bool: return status_part._kneeling()
+
+# EnemyHits (hits_part): taking hits and poise
+func is_behind(point: Vector3) -> bool: return hits_part.is_behind(point)
+func is_in_front(point: Vector3) -> bool: return hits_part.is_in_front(point)
+func take_hit(amount: float, _heavy: bool, source: Node, tags: Array = []) -> float: return hits_part.take_hit(amount, _heavy, source, tags)
+func take_poise(amount: float) -> bool: return hits_part.take_poise(amount)
+func guards_front(point: Vector3) -> bool: return hits_part.guards_front(point)
+func blocks_shot(point: Vector3) -> bool: return hits_part.blocks_shot(point)
+func _answer_block() -> void: hits_part._answer_block()
+func stagger(seconds: float) -> void: hits_part.stagger(seconds)
+func _knock_down() -> void: hits_part._knock_down()
+func _leave_fallen() -> void: hits_part._leave_fallen()
+func stun(seconds: float) -> void: hits_part.stun(seconds)
+func interrupt() -> void: hits_part.interrupt()
+func interrupt_attack() -> bool: return hits_part.interrupt_attack()
+func is_interruptible() -> bool: return hits_part.is_interruptible()
+func is_lunging() -> bool: return hits_part.is_lunging()
+func shove(dir: Vector3, metres: float) -> void: hits_part.shove(dir, metres)
+func pull_toward(point: Vector3, metres: float, keep: float = 0.3) -> void: hits_part.pull_toward(point, metres, keep)
+func nudge(step: Vector3) -> void: hits_part.nudge(step)
+func turn_away_from(point: Vector3, seconds: float) -> void: hits_part.turn_away_from(point, seconds)
+func is_shoved() -> bool: return hits_part.is_shoved()
+func _tick_shove(delta: float) -> void: hits_part._tick_shove(delta)
+func _shove_ended() -> void: hits_part._shove_ended()
