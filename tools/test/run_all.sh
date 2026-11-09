@@ -35,6 +35,8 @@ to_unix() {
 TESTS=(
   "import|headless|1|600||--headless --path {GAME} --import"
   "smoke|headless|1|600|shot: player at |--headless --path {GAME} --quit-after 400 -- --shot"
+  # every script load()ed (the import does not compile a script nothing loads) and the data checked against data/schema.json
+  "loadall|headless|0|300|LOADALL: PASS|--headless --path {GAME} res://tests/load_all.tscn"
   "selftest|headless|0|600|SELFTEST: [0-9]+ passed, 0 failed|--headless --path {GAME} res://tests/selftest.tscn"
   "bot_dungeon|headless|0|600|BOT\[gate\]: .*-> PASS|--headless --path {GAME} -- --bot-dungeon"
   "bot_full|headless|0|600|BOT\[full\]: .*-> PASS|--headless --path {GAME} -- --bot-full"
